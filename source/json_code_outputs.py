@@ -1485,6 +1485,179 @@
 
 
 
+<<<<<<< HEAD
+=======
+import argparse
+import asyncio
+import json
+import datetime
+import outlines
+import transformers
+import re
+from kani import Kani
+from kani.engines.huggingface import HuggingEngine
+
+# Define the JSON schema for the time range output
+JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "time_range": {"type": "string"}
+    },
+    "required": ["time_range"]
+}
+
+# Load the calendar scheduling examples from the JSON file
+with open('test_scheduling.json', 'r') as file:
+    calendar_examples = json.load(file)
+
+# Argument parser to select the model
+parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
+parser.add_argument('--model', type=str, required=True, help="The HuggingFace model ID to use.")
+args = parser.parse_args()
+
+# Load the model selected by the user
+engine = HuggingEngine(model_id=args.model)
+
+# Tokenizer setup
+outlines_tokenizer = outlines.models.TransformerTokenizer(engine.tokenizer)
+
+# JSON logits processor setup
+json_logits_processor = outlines.processors.JSONLogitsProcessor(JSON_SCHEMA, outlines_tokenizer)
+
+# Assign logits processor to the model
+# engine.hyperparams["logits_processor"] = transformers.LogitsProcessorList([json_logits_processor])
+
+# Create the Kani instance
+ai = Kani(engine)
+
+# Function to parse the golden plan time into {HH:MM:HH:MM} format
+def parse_golden_plan_time(golden_plan):
+    match = re.search(r'(\d{1,2}:\d{2}) - (\d{1,2}:\d{2})', golden_plan)
+    if match:
+        start_time, end_time = match.groups()
+        return f"{{{start_time}:{end_time}}}"
+    return "Invalid format"
+
+# Initialize counters for accuracy calculation
+correct_0shot = 0
+correct_5shot = 0
+total_0shot = 0
+total_5shot = 0
+
+# Initialize lists for JSON output
+results_0shot = []
+results_5shot = []
+
+# Open the text file for writing results
+with open('model_results.txt', 'w') as txt_file, open('model_results.json', 'w') as json_file:
+    start_time = datetime.datetime.now()
+    
+    for example_id, example in calendar_examples.items():
+        for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+            prompt = example[prompt_type]
+            golden_plan = example['golden_plan']
+            print("Raw Golden Plan:", golden_plan)
+
+            # Parse golden plan into {HH:MM:HH:MM} format
+            expected_time = parse_golden_plan_time(golden_plan)
+            print("Parsed Expected Time:", expected_time)
+
+            # Append the suffix to the prompt
+            prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"HH:MM:HH:MM\"}. Make sure not to use any Python code, just the JSON direct output."
+            
+            # Run the model and capture the response
+            async def get_model_response():
+                full_response = ""
+                async for token in ai.chat_round_stream(prompt):
+                    full_response += token
+                    print(token, end="", flush=True)
+                print()
+                return print("Raw Model Response:", full_response.strip()) # Ensure we remove any whitespace
+            
+            model_response = asyncio.run(get_model_response())
+
+            def extract_time_range(response):
+                """Extracts HH:MM:HH:MM format from the model's raw response safely."""
+                if not response or not isinstance(response, str):  # Check if response is None or not a string
+                    return "Invalid response"
+                
+                match = re.search(r'(\d{1,2}:\d{2}):(\d{1,2}:\d{2})', response)
+                return f"{{{match.group(1)}:{match.group(2)}}}" if match else "Invalid response"
+
+            # Instead of using json.loads(), try extracting manually:
+            if model_response:
+                model_time = extract_time_range(model_response)
+            else:
+                model_time = "Invalid response"     
+                   
+            print("Raw Model Response:", model_response)
+
+            # Parse the model response
+            if model_response and isinstance(model_response, str):
+                try:
+                    model_time = json.loads(model_response).get('time_range', "Invalid response")
+                except json.JSONDecodeError:
+                    model_time = "Invalid response"
+            else:
+                model_time = "Invalid response"
+
+            print("Raw Model Response After Parse:", model_response)
+            print("Model Response:", model_time)
+            
+            # Write to the text file
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            txt_file.write(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time}\n")
+            
+            # Prepare the JSON output
+            result_entry = {
+                "final_time": f"{model_time}",
+                "expected_time": f"{expected_time}",
+                "exact_response": model_response,
+                "count": example_id
+            }
+            
+            if prompt_type == 'prompt_0shot':
+                results_0shot.append(result_entry)
+                total_0shot += 1
+                if model_time == expected_time:
+                    correct_0shot += 1
+            else:
+                results_5shot.append(result_entry)
+                total_5shot += 1
+                if model_time == expected_time:
+                    correct_5shot += 1
+    
+    # Calculate accuracies
+    accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
+    accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
+    total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
+    
+    # Write the final accuracy to the text file
+    end_time = datetime.datetime.now()
+    total_time = end_time - start_time
+    txt_file.write(f"\n0-shot prompts: Model guessed {correct_0shot} out of {total_0shot} correctly.\n")
+    txt_file.write(f"Accuracy: {accuracy_0shot:.2f}%\n")
+    txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
+    txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
+    txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
+    txt_file.write(f"Total time taken: {total_time}\n")
+    
+    # Write the JSON output
+    json_output = {
+        "0shot": results_0shot,
+        "5shot": results_5shot
+    }
+    json.dump(json_output, json_file, indent=4)
+
+print("Processing complete. Results saved to model_results.txt and model_results.json.")
+
+
+
+
+
+
+
+>>>>>>> 12faa57 (created a new json force method program that is very close to working but still shows none after parsing golden_plan solutions)
 
 
 
