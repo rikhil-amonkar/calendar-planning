@@ -1484,9 +1484,6 @@
 
 
 
-
-<<<<<<< HEAD
-=======
 import argparse
 import asyncio
 import json
@@ -1653,11 +1650,6 @@ print("Processing complete. Results saved to model_results.txt and model_results
 
 
 
-
-
-
-
->>>>>>> 12faa57 (created a new json force method program that is very close to working but still shows none after parsing golden_plan solutions)
 
 
 
