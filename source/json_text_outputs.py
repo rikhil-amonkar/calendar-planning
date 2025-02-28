@@ -1,3 +1,5 @@
+#*****************WORKING JSON FORCE CODE (TEXT OUTPUTS)*************************************
+
 import argparse
 import asyncio
 import json
@@ -7,6 +9,7 @@ import transformers
 import re
 from kani import Kani
 from kani.engines.huggingface import HuggingEngine
+from kani.engines import WrapperEngine
 
 # Define the JSON schema for the time range output
 JSON_SCHEMA = {
@@ -14,15 +17,14 @@ JSON_SCHEMA = {
     "properties": {
         "time_range": {
             "type": "string",
-
-#             "pattern": "^\\{\\d{2}:\\d{2}:\\d{2}:\\d{2}\\}$"
+            "pattern": "^\\{\\d{2}:\\d{2}:\\d{2}:\\d{2}\\}$"
         }
     },
     "required": ["time_range"],
 }
 
 # Load the calendar scheduling examples from the JSON file
-with open('100_prompt_scheduling.json', 'r') as file:
+with open('test_scheduling.json', 'r') as file:
     calendar_examples = json.load(file)
 
 # Argument parser to select the model
@@ -31,16 +33,33 @@ parser.add_argument('--model', type=str, required=True, help="The HuggingFace mo
 args = parser.parse_args()
 
 # Load the model selected by the user
-engine = HuggingEngine(model_id=args.model)
+class JSONGuidanceHFWrapper(WrapperEngine):
+    def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
+        super().__init__(engine, *args, **kwargs)
+        # keep a reference to the JSON schema we want to use
+        self.engine: HuggingEngine  # type hint for IDEs
+        self.json_schema = json_schema
+        self.outlines_tokenizer = outlines.models.TransformerTokenizer(self.engine.tokenizer)
 
-# Tokenizer setup
-outlines_tokenizer = outlines.models.TransformerTokenizer(engine.tokenizer)
+    def _create_logits_processor(self):
+        json_logits_processor = outlines.processors.JSONLogitsProcessor(self.json_schema, self.outlines_tokenizer)
+        return transformers.LogitsProcessorList([json_logits_processor])
 
-# JSON logits processor setup
-json_logits_processor = outlines.processors.JSONLogitsProcessor(JSON_SCHEMA, outlines_tokenizer)
+    async def predict(self, *args, **kwargs):
+        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+        if "logits_processor" not in kwargs:
+            kwargs["logits_processor"] = self._create_logits_processor()
+        return await super().predict(*args, **kwargs)
 
-# Assign logits processor to the model
-engine.hyperparams["logits_processor"] = transformers.LogitsProcessorList([json_logits_processor])
+    async def stream(self, *args, **kwargs):
+        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+        if "logits_processor" not in kwargs:
+            kwargs["logits_processor"] = self._create_logits_processor()
+        async for elem in super().stream(*args, **kwargs):
+            yield elem
+
+model = HuggingEngine(model_id=args.model)
+engine = JSONGuidanceHFWrapper(model, json_schema=JSON_SCHEMA)
 
 # Create the Kani instance
 ai = Kani(engine)
@@ -59,24 +78,21 @@ correct_5shot = 0
 total_0shot = 0
 total_5shot = 0
 
+# Initialize lists to store 0-shot and 5-shot results
+results_0shot = []
+results_5shot = []
+
 # Open the text file for writing results
 with open('ML-ML-3.1-8B_text_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-8B_json_txtresults.json', 'w') as json_file:
     start_time = datetime.datetime.now()
     
-    # Write the opening bracket for the JSON file (since it's an array of results)
-    json_file.write("[\n")
-    
     for example_id, example in calendar_examples.items():
-        for prompt_type in ['prompt_0shot']:
+        for prompt_type in ['prompt_0shot', 'prompt_5shot']:
             prompt = example[prompt_type]
-            print([prompt_type])
-            print(prompt)
             golden_plan = example['golden_plan']
-            print(golden_plan)
 
             # Parse golden plan into {HH:MM:HH:MM} format
             expected_time = parse_golden_plan_time(golden_plan)
-            print(expected_time)
 
             # Append the suffix to the prompt
             prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\"}. For example, if the proposed time is 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\"}"
@@ -86,7 +102,6 @@ with open('ML-ML-3.1-8B_text_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-
                 full_response = ""
                 async for token in ai.chat_round_stream(prompt):
                     full_response += token
-                    print(full_response)
                     print(token, end="", flush=True)
                 print()  # For a newline after the response
                 return full_response.strip()  # Return the actual response
@@ -144,25 +159,20 @@ with open('ML-ML-3.1-8B_text_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-
                 "count": example_id
             }
             
-            # Write the JSON result immediately (one line per result)
-            json.dump(result_entry, json_file)
-            json_file.write(",\n")  # Add a comma and newline for the next entry
-            
-            # Update counters
+            # Append the result to the appropriate list
             if prompt_type == 'prompt_0shot':
-                total_0shot += 1
-                if model_time == expected_time:
-                    correct_0shot += 1
+                results_0shot.append(result_entry)
             else:
-                total_5shot += 1
-                if model_time == expected_time:
-                    correct_5shot += 1
+                results_5shot.append(result_entry)
             
             # Clear the model_response and other temporary variables from memory
             del model_response, model_time, result_entry
             
-    # Write the closing bracket for the JSON file
-    json_file.write("]\n")
+    # Write the collected results to the JSON file in the desired format
+    json.dump({
+        "0shot": results_0shot,
+        "5shot": results_5shot
+    }, json_file, indent=4)
     
     # Calculate accuracies
     accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
@@ -180,7 +190,6 @@ with open('ML-ML-3.1-8B_text_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-
     txt_file.write(f"Total time taken: {total_time}\n")
 
 print("Processing complete. Results saved to model_results.txt and model_results.json.")
-
 
 
 # import argparse
@@ -352,8 +361,6 @@ print("Processing complete. Results saved to model_results.txt and model_results
 
 # print("Processing complete. Results saved to model_results.txt and model_results.json.")
 
-
-#*****************WORKING JSON FORCE CODE (TEXT OUTPUTS)*************************************
 
 # import argparse
 # import asyncio
