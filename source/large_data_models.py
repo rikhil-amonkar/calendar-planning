@@ -6,7 +6,9 @@ import asyncio
 from argparse import ArgumentParser
 from datetime import datetime
 import torch  # For clearing GPU cache
-
+import outlines
+import transformers
+import re
 
 # Argument parser for model selection
 parser = ArgumentParser()
@@ -18,24 +20,46 @@ args = parser.parse_args()
 with open("100_prompt_scheduling.json", "r") as file:
    prompts_data = json.load(file)
 
+JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "time_range": {
+            "type": "string",
+            "pattern": "^\\{\\d{2}:\\d{2}:\\d{2}:\\d{2}\\}$"
+        }
+    },
+    "required": ["time_range"],
+}
 
 # Define prefix and suffix messages
 prefix_message = "You are an expert at scheduling meetings. Your task is to find a suitable time for a meeting based on the participants' schedules and constraints. Follow these rules:\n"
-suffix_message = "\nProvide the meeting time range in the exact format {HH:MM:HH:MM}. Do not include any extra words, explanations, or other text. Only return the response in this format. Example output: {14:30:15:30}."
-
+suffix_message = "\nProvide a JSON output of the meeting time range in the exact format: {\"time_range\":\"{12:00:13:00}\"}."
 
 # Initialize the model
-engine = HuggingEngine(model_id=args.model, use_auth_token=True, model_load_kwargs={"device_map": "auto", "trust_remote_code": True})
-ai = Kani(engine)
+# load the base HF model in Kani
+engine = HuggingEngine(model_id=args.model)
 
+# outlines wants its tokenizer wrapped in TransformerTokenizer
+outlines_tokenizer = outlines.models.TransformerTokenizer(engine.tokenizer)
+
+# create the logits processor
+json_logits_processor = outlines.processors.JSONLogitsProcessor(JSON_SCHEMA, outlines_tokenizer)
+
+# and tell kani to pass it to every generate call
+engine.hyperparams["logits_processor"] = transformers.LogitsProcessorList([json_logits_processor])
+
+ai = Kani(engine)
 
 # Function to extract the time from the model's response
 def extract_time(response):
-   start = response.find("{")
-   end = response.find("}")
-   if start != -1 and end != -1:
-       time_str = response[start:end+1]
-       return time_str
+    match = re.search(r'\{(\d{1,2}:\d{2}:\d{1,2}:\d{2})\}', response)
+    if match:
+        time_str = f"{{{match.group(1)}}}"  # Keep brackets
+        print(time_str)
+        return time_str
+    else:
+        print("No valid time format found")
+        return None
 
 
 # Function to convert the golden plan to dictionary format and remove days of the week
@@ -103,20 +127,25 @@ async def run_model():
 
    for i in range(start_index, len(prompts_list)):
        key, data = prompts_list[i]
-       prompt_types = [k for k in data.keys() if k.startswith("prompt_")]
+       prompt_types = [k for k in data.keys() if k.startswith("prompt_0shot")]
+       print(prompt_types)
     
        for prompt_type in prompt_types:
            prompt = data[prompt_type]
+           print(prompt)
            golden_plan = data["golden_plan"]
+           print(golden_plan)
 
 
            full_prompt = prefix_message + prompt + suffix_message
+           print(full_prompt)
 
 
            max_retries = 3
            for retry in range(max_retries):
                try:
                    response = await ai.chat_round_str(full_prompt)
+                   print("RAW RESPONSE:", response)
                    predicted_time = extract_time(response)
                    expected_time = convert_golden_plan(golden_plan)
 
