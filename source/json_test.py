@@ -7,6 +7,7 @@ import transformers
 import re
 from kani import Kani
 from kani.engines.huggingface import HuggingEngine
+from kani.engines import WrapperEngine
 
 # Define the JSON schema for the time range output
 JSON_SCHEMA = {
@@ -20,17 +21,33 @@ JSON_SCHEMA = {
     "required": ["time_range"],
 }
 
-# Load the model selected by the user
-engine = HuggingEngine(model_id="meta-llama/Llama-3.1-8B-Instruct")
+class JSONGuidanceHFWrapper(WrapperEngine):
+    def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
+        super().__init__(engine, *args, **kwargs)
+        # keep a reference to the JSON schema we want to use
+        self.engine: HuggingEngine  # type hint for IDEs
+        self.json_schema = json_schema
+        self.outlines_tokenizer = outlines.models.TransformerTokenizer(self.engine.tokenizer)
 
-# Tokenizer setup
-outlines_tokenizer = outlines.models.TransformerTokenizer(engine.tokenizer)
+    def _create_logits_processor(self):
+        json_logits_processor = outlines.processors.JSONLogitsProcessor(self.json_schema, self.outlines_tokenizer)
+        return transformers.LogitsProcessorList([json_logits_processor])
 
-# JSON logits processor setup
-json_logits_processor = outlines.processors.JSONLogitsProcessor(JSON_SCHEMA, outlines_tokenizer)
+    async def predict(self, *args, **kwargs):
+        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+        if "logits_processor" not in kwargs:
+            kwargs["logits_processor"] = self._create_logits_processor()
+        return await super().predict(*args, **kwargs)
 
-# Assign logits processor to the model
-engine.hyperparams["logits_processor"] = transformers.LogitsProcessorList([json_logits_processor])
+    async def stream(self, *args, **kwargs):
+        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+        if "logits_processor" not in kwargs:
+            kwargs["logits_processor"] = self._create_logits_processor()
+        async for elem in super().stream(*args, **kwargs):
+            yield elem
+
+model = HuggingEngine(model_id="meta-llama/Meta-Llama-3.1-8B-Instruct")
+engine = JSONGuidanceHFWrapper(model, json_schema=JSON_SCHEMA)
 
 # Create the Kani instance
 ai = Kani(engine)
@@ -71,15 +88,15 @@ async def get_model_response(prompt):
     response = await ai.chat_round_str(prompt)
     return response  # Return the actual response
 
-model_response = asyncio.run(get_model_response(prompt0))
-print(model_response)
+# model_response = asyncio.run(get_model_response(prompt0))
+# print(model_response)
 
-#model_response = asyncio.run(get_model_response(prompt1))
-#print(model_response)
+# model_response = asyncio.run(get_model_response(prompt1))
+# print(model_response)
 
-# for prompt in [prompt0, prompt1]:
-#     model_response = asyncio.run(get_model_response(prompt))
-#     print(model_response)
+for prompt in [prompt0, prompt1]:
+    model_response = asyncio.run(get_model_response(prompt))
+    print(model_response)
 
 
 
