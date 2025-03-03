@@ -1,73 +1,65 @@
-def find_meeting_time(participants, meeting_duration, start_time, end_time):
+from datetime import datetime, timedelta
+
+def find_meeting_time(participants, meeting_duration, work_hours):
     """
-    Find a meeting time that works for everyone's schedule.
+    Find a suitable time slot for a meeting given the existing schedules of all participants.
 
     Args:
-        participants (dict): Dictionary of participants with their existing schedules.
-        meeting_duration (int): Duration of the meeting in minutes.
-        start_time (int): Start time of the workday in minutes (e.g., 9:00 = 540).
-        end_time (int): End time of the workday in minutes (e.g., 17:00 = 1020).
+        participants (dict): A dictionary where the keys are the names of the participants and the values are lists of tuples representing the start and end times of their existing meetings.
+        meeting_duration (int): The duration of the meeting in minutes.
+        work_hours (tuple): A tuple representing the start and end times of the work hours.
 
     Returns:
-        tuple: Proposed meeting time as a tuple of start and end times.
+        tuple: A tuple representing the start and end times of the proposed meeting.
     """
 
-    # Convert time to minutes
-    def time_to_minutes(time):
-        hours, minutes = map(int, time.split(':'))
-        return hours * 60 + minutes
+    # Convert the work hours to datetime objects
+    work_start = datetime.strptime(work_hours[0], '%H:%M')
+    work_end = datetime.strptime(work_hours[1], '%H:%M')
 
-    # Convert minutes to time
-    def minutes_to_time(minutes):
-        hours, minutes = divmod(minutes, 60)
-        return f"{hours:02d}:{minutes:02d}"
+    # Initialize the proposed meeting time to the start of the work hours
+    proposed_start = work_start
 
-    # Initialize the proposed meeting time
-    proposed_time = None
+    # Loop until we find a suitable time slot
+    while proposed_start < work_end:
+        # Calculate the end time of the proposed meeting
+        proposed_end = proposed_start + timedelta(minutes=meeting_duration)
 
-    # Iterate over the possible meeting times
-    for time in range(start_time, end_time - meeting_duration + 1):
-        # Assume the current time works for everyone
-        works_for_everyone = True
-
-        # Check if the current time works for each participant
-        for participant, schedule in participants.items():
-            for start, end in schedule:
-                # Convert schedule times to minutes
-                start_minutes = time_to_minutes(start)
-                end_minutes = time_to_minutes(end)
-
-                # If the current time overlaps with a scheduled meeting, it doesn't work
-                if start_minutes <= time < end_minutes or start_minutes < time + meeting_duration <= end_minutes:
-                    works_for_everyone = False
+        # Check if the proposed meeting time conflicts with any of the participants' existing meetings
+        conflict = False
+        for participant, meetings in participants.items():
+            for start, end in meetings:
+                start_time = datetime.strptime(start, '%H:%M')
+                end_time = datetime.strptime(end, '%H:%M')
+                if (proposed_start >= start_time and proposed_start < end_time) or (proposed_end > start_time and proposed_end <= end_time):
+                    conflict = True
                     break
-
-            # If the current time doesn't work for this participant, move on to the next time
-            if not works_for_everyone:
+            if conflict:
                 break
 
-        # If the current time works for everyone, propose it
-        if works_for_everyone:
-            proposed_time = (minutes_to_time(time), minutes_to_time(time + meeting_duration))
-            break
+        # If there is no conflict, return the proposed meeting time
+        if not conflict:
+            return (proposed_start.strftime('%H:%M'), proposed_end.strftime('%H:%M'))
 
-    return proposed_time
+        # If there is a conflict, increment the proposed start time by 30 minutes
+        proposed_start += timedelta(minutes=30)
+
+    # If we cannot find a suitable time slot, return None
+    return None
 
 
-# Define the existing schedules for each participant
+# Example usage
 participants = {
-    "Michelle": [("11:00", "12:00")],
-    "Steven": [("9:00", "9:30"), ("11:30", "12:00"), ("13:30", "14:00"), ("15:30", "16:00")],
-    "Jerry": [("9:00", "9:30"), ("10:00", "11:00"), ("11:30", "12:30"), ("13:00", "14:30"), ("15:30", "16:00"), ("16:30", "17:00")]
+    'Michelle': [('11:00', '12:00')],
+    'Steven': [('9:00', '9:30'), ('11:30', '12:00'), ('13:30', '14:00'), ('15:30', '16:00')],
+    'Jerry': [('9:00', '9:30'), ('10:00', '11:00'), ('11:30', '12:30'), ('13:00', '14:30'), ('15:30', '16:00'), ('16:30', '17:00')]
 }
+meeting_duration = 60
+work_hours = ('9:00', '17:00')
 
-# Define the meeting duration and work hours
-meeting_duration = 60  # 1 hour
-start_time = time_to_minutes("9:00")  # 540
-end_time = time_to_minutes("17:00")  # 1020
-
-# Find the proposed meeting time
-proposed_time = find_meeting_time(participants, meeting_duration, start_time, end_time)
-
-# Print the proposed meeting time
-print("Proposed meeting time:", proposed_time)
+proposed_time = find_meeting_time(participants, meeting_duration, work_hours)
+if proposed_time:
+    print('Proposed meeting time:', proposed_time[0], '-', proposed_time[1])
+else:
+    print('No suitable time slot found.')
+    
