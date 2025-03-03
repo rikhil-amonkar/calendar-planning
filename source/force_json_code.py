@@ -19,7 +19,7 @@ JSON_SCHEMA = {
         },
         "code": {
             "type": "string",
-            "pattern": "^\"\"\"\\n'''python\\n([\\s\\S]+)\\n'''\\n\"\"\"$"
+            "pattern": "^\"\"\"\"\\n'''python\\n([\\s\\S]+)\\n'''\\n\"\"\"\"$"
         }
     },
     "required": ["explanation", "code"]
@@ -101,6 +101,8 @@ def preprocess_response(model_response):
     """
     # Fix the extra triple quotes issue
     model_response = model_response.replace('""""', '"""')
+    # Remove extra newlines
+    model_response = model_response.strip()
     return model_response
 
 # Function to extract code from the model response
@@ -109,33 +111,56 @@ def extract_code(model_response):
     Extract the code from the model's response.
     """
     try:
-        # Preprocess the response to make it valid JSON
-        model_response = preprocess_response(model_response)
+        # Debug: Print the raw model response
+        print("********************Raw Model Response:\n", model_response)
         
         # Try to parse the response as JSON
         response_dict = json.loads(model_response)
         code = response_dict.get("code", "Invalid response")
 
-        print("********************Preproccessed Code:\n", code)
+        # Debug: Print the extracted code before further processing
+        print("********************Extracted Code (Before Processing):\n", code)
         
-        # If the code is wrapped in triple quotes, extract it
-        if code.startswith('"""') and code.endswith('"""'):
-            code = code[3:-3].strip()  # Remove the outer triple quotes
+        # If the code is wrapped in quad quotes, extract it
+        if code.startswith('""""') and code.endswith('""""'):
+            code = code[4:-4].strip()  # Remove the outer quad quotes
         elif code.startswith("'''python") and code.endswith("'''"):
             code = code[9:-3].strip()  # Remove the '''python and trailing '''
         else:
-            raise ValueError("Code is not properly enclosed in triple quotes.")
+            # Handle cases where the code is not properly enclosed
+            # Try to extract the code block using regex
+            match = re.search(r"```python\n([\s\\S]+?)\n```", code)
+            if match:
+                code = match.group(1).strip()
+            else:
+                # Debug: Print the code if regex extraction fails
+                print("********************Regex Extraction Failed. Code:\n", code)
+                raise ValueError("Code is not properly enclosed in quad quotes or a code block.")
         
-        return code
-    except json.JSONDecodeError:
-        # If JSON parsing fails, use regex to extract the code block
-        match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
+        # Debug: Print the fully parsed code
+        print("********************Fully Parsed Code:\n", code)
+        
+        return code  # Return the parsed code
+
+    except json.JSONDecodeError as e:
+        # Debug: Print the JSON decoding error
+        print("********************JSON Decode Error:", str(e))
+        # If JSON parsing fails, use regex to extract the code block directly from the raw response
+        match = re.search(r"```python\n([\s\\S]+?)\n```", model_response)
         if match:
-            code = match.group(1)
+            code = match.group(1).strip()
+            # Debug: Print the regex-extracted code
+            print("********************Regex-Extracted Code:\n", code)
+            return code  # Return the regex-extracted code
         else:
-            raise ValueError("Could not extract code from the model response.")
-    
-    return code
+            # Debug: Print the model response if regex extraction fails
+            print("********************Regex Extraction Failed. Model Response:\n", model_response)
+            return "Invalid response"  # Return a default value instead of raising an error
+
+    except Exception as e:
+        # Debug: Print any other exceptions
+        print("********************Error:", str(e))
+        return "Invalid response"  # Return a default value instead of raising an error
 
 # Function to write code to a file
 def write_code_to_file(code, filename="generated_code.py"):
@@ -196,13 +221,16 @@ with open('ML-L-3.1-70B_code_txtresults.txt', 'w') as txt_file, open('ML-L-3.1-7
             expected_time = parse_golden_plan_time(golden_plan)
 
             # Append the suffix to the prompt
-            prompt += """\n\nPlease generate a full Python script program which calculates the proposed time. Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. Ensure the code is enclosed within triple quotes (\"\"\") and starts with '''python. Use proper indentation and spacing."
-                "Your response must be in the following JSON format:\n" \
-                "{\n" \
-                "  \"explanation\": \"Any text surrounding the code here\",\n" \
-                "  \"code\": \"```python\\n# Your complete Python program here\\n```\"\n" \
-                "}\n"
-                """
+            prompt += """
+            Please generate a full Python script program which calculates the proposed time. Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. Ensure the code is enclosed within quadruple quotes (\"\"\"\") and starts with '''python. Use proper indentation and spacing.
+
+            Your response must be in the following JSON format:
+            {
+            "explanation": "Any text surrounding the code here",
+            "code": "\"\"\"\"\n'''python\n# Your complete Python program here\n'''\n\"\"\"\""
+            }
+            """
+
             # Run the model and capture the response
             async def get_model_response():
                 full_response = ""
