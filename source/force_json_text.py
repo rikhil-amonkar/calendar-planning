@@ -212,7 +212,10 @@ JSON_SCHEMA = {
     "properties": {
         "time_range": {
             "type": "string",
-            "pattern": "^\\{\\d{2}:\\d{2}:\\d{2}:\\d{2}\\}$"
+            "pattern": "^\\{\\d{1,2}:\\d{1,2}:\\d{1,2}:\\d{1,2}\\}$"
+        },
+        "explanation": {
+            "type": "string"
         }
     },
     "required": ["time_range"],
@@ -290,7 +293,10 @@ with open('DS-R1-DL-70B_text_txtresults.txt', 'w') as txt_file, open('DS-R1-DL-7
             expected_time = parse_golden_plan_time(golden_plan)
 
             # Append the suffix to the prompt
-            prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\"}. For example, if the proposed time is 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\"}"
+            prompt += """\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\"}.
+                    For example, if the proposed time is 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\"}
+                    Also, if you have any part around your final answer that is any text explanation of how you came up with your answer or surroudning words, write it in the explenation part.
+                    So your JSON outputted format answer should be something like this:\n{\"time_range\": \"{14:30:15:30}\", \"explanation\": \"To start, I think I will calculate the time by...\"}."""
 
             # Run the model and capture the response
             async def get_model_response():
@@ -309,7 +315,7 @@ with open('DS-R1-DL-70B_text_txtresults.txt', 'w') as txt_file, open('DS-R1-DL-7
                     return "Invalid response"
                 
                 # Extract the time range using regex
-                match = re.search(r'(\d{1,2}:\d{2}):(\d{1,2}:\d{2})', response)
+                match = re.search(r'(\d{1,2}:\d{1,2}):(\d{1,2}:\d{1,2})', response)
                 if not match:
                     return "Invalid response"
                 
@@ -330,7 +336,7 @@ with open('DS-R1-DL-70B_text_txtresults.txt', 'w') as txt_file, open('DS-R1-DL-7
             
             def validate_time_range(time_range):
                 """Validate that the time range matches the expected format."""
-                return re.match(r'^\{\d{1,2}:\d{2}:\d{1,2}:\d{2}\}$', time_range) is not None
+                return re.match(r'^\{\d{1,2}:\d{1,2}:\d{1,2}:\d{1,2}\}$', time_range) is not None
 
             if model_response:
                 model_time = extract_time_range(model_response)
