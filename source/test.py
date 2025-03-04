@@ -1,65 +1,89 @@
 from datetime import datetime, timedelta
 
-def find_meeting_time(participants, meeting_duration, work_hours):
+def find_meeting_time(participants, meeting_duration, start_time, end_time):
     """
-    Find a suitable time slot for a meeting given the existing schedules of all participants.
+    Find a time that works for everyone's schedule and constraints.
 
     Args:
-        participants (dict): A dictionary where the keys are the names of the participants and the values are lists of tuples representing the start and end times of their existing meetings.
+        participants (dict): A dictionary of participants and their schedules.
         meeting_duration (int): The duration of the meeting in minutes.
-        work_hours (tuple): A tuple representing the start and end times of the work hours.
+        start_time (str): The start time of the workday in 'HH:MM' format.
+        end_time (str): The end time of the workday in 'HH:MM' format.
 
     Returns:
-        tuple: A tuple representing the start and end times of the proposed meeting.
+        str: The proposed meeting time in '{HH:MM:HH:MM}' format.
     """
 
-    # Convert the work hours to datetime objects
-    work_start = datetime.strptime(work_hours[0], '%H:%M')
-    work_end = datetime.strptime(work_hours[1], '%H:%M')
+    # Convert start and end times to datetime objects
+    start_time = datetime.strptime(start_time, '%H:%M')
+    end_time = datetime.strptime(end_time, '%H:%M')
 
-    # Initialize the proposed meeting time to the start of the work hours
-    proposed_start = work_start
+    # Initialize the current time to the start time
+    current_time = start_time
 
-    # Loop until we find a suitable time slot
-    while proposed_start < work_end:
-        # Calculate the end time of the proposed meeting
-        proposed_end = proposed_start + timedelta(minutes=meeting_duration)
+    # Loop until we find a time that works for everyone
+    while current_time < end_time:
+        # Check if the current time works for everyone
+        if all(is_time_available(participant, current_time, meeting_duration) for participant in participants.values()):
+            # If it does, return the proposed meeting time
+            end_meeting_time = current_time + timedelta(minutes=meeting_duration)
+            return '{:%H:%M:%H:%M}'.format(current_time, end_meeting_time)
 
-        # Check if the proposed meeting time conflicts with any of the participants' existing meetings
-        conflict = False
-        for participant, meetings in participants.items():
-            for start, end in meetings:
-                start_time = datetime.strptime(start, '%H:%M')
-                end_time = datetime.strptime(end, '%H:%M')
-                if (proposed_start >= start_time and proposed_start < end_time) or (proposed_end > start_time and proposed_end <= end_time):
-                    conflict = True
-                    break
-            if conflict:
-                break
+        # If not, increment the current time by 30 minutes
+        current_time += timedelta(minutes=30)
 
-        # If there is no conflict, return the proposed meeting time
-        if not conflict:
-            return (proposed_start.strftime('%H:%M'), proposed_end.strftime('%H:%M'))
+def is_time_available(schedule, start_time, meeting_duration):
+    """
+    Check if a given time is available in a participant's schedule.
 
-        # If there is a conflict, increment the proposed start time by 30 minutes
-        proposed_start += timedelta(minutes=30)
+    Args:
+        schedule (list): A list of tuples representing the participant's schedule.
+        start_time (datetime): The start time of the meeting.
+        meeting_duration (int): The duration of the meeting in minutes.
 
-    # If we cannot find a suitable time slot, return None
-    return None
+    Returns:
+        bool: True if the time is available, False otherwise.
+    """
 
+    # Convert the start time to minutes
+    start_time_minutes = start_time.hour * 60 + start_time.minute
 
-# Example usage
+    # Convert the end time to minutes
+    end_time_minutes = start_time_minutes + meeting_duration
+
+    # Check if the meeting time conflicts with any scheduled events
+    for scheduled_start, scheduled_end in schedule:
+        scheduled_start_minutes = scheduled_start.hour * 60 + scheduled_start.minute
+        scheduled_end_minutes = scheduled_start_minutes + (scheduled_end.hour * 60 + scheduled_end.minute - scheduled_start.hour * 60 - scheduled_start.minute)
+
+        # If the meeting time conflicts with a scheduled event, return False
+        if start_time_minutes < scheduled_end_minutes and end_time_minutes > scheduled_start_minutes:
+            return False
+
+    # If the meeting time does not conflict with any scheduled events, return True
+    return True
+
+# Define the participants and their schedules
 participants = {
-    'Michelle': [('11:00', '12:00')],
-    'Steven': [('9:00', '9:30'), ('11:30', '12:00'), ('13:30', '14:00'), ('15:30', '16:00')],
-    'Jerry': [('9:00', '9:30'), ('10:00', '11:00'), ('11:30', '12:30'), ('13:00', '14:30'), ('15:30', '16:00'), ('16:30', '17:00')]
+    'Michelle': [(datetime.strptime('11:00', '%H:%M'), datetime.strptime('12:00', '%H:%M'))],
+    'Steven': [(datetime.strptime('09:00', '%H:%M'), datetime.strptime('09:30', '%H:%M')),
+               (datetime.strptime('11:30', '%H:%M'), datetime.strptime('12:00', '%H:%M')),
+               (datetime.strptime('13:30', '%H:%M'), datetime.strptime('14:00', '%H:%M')),
+               (datetime.strptime('15:30', '%H:%M'), datetime.strptime('16:00', '%H:%M'))],
+    'Jerry': [(datetime.strptime('09:00', '%H:%M'), datetime.strptime('09:30', '%H:%M')),
+              (datetime.strptime('10:00', '%H:%M'), datetime.strptime('11:00', '%H:%M')),
+              (datetime.strptime('11:30', '%H:%M'), datetime.strptime('12:30', '%H:%M')),
+              (datetime.strptime('13:00', '%H:%M'), datetime.strptime('14:30', '%H:%M')),
+              (datetime.strptime('15:30', '%H:%M'), datetime.strptime('16:00', '%H:%M')),
+              (datetime.strptime('16:30', '%H:%M'), datetime.strptime('17:00', '%H:%M'))]
 }
-meeting_duration = 60
-work_hours = ('9:00', '17:00')
 
-proposed_time = find_meeting_time(participants, meeting_duration, work_hours)
-if proposed_time:
-    print('Proposed meeting time:', proposed_time[0], '-', proposed_time[1])
-else:
-    print('No suitable time slot found.')
-    
+# Define the meeting duration and work hours
+meeting_duration = 60
+start_time = '09:00'
+end_time = '17:00'
+
+# Find a time that works for everyone
+proposed_time = find_meeting_time(participants, meeting_duration, start_time, end_time)
+
+print(proposed_time)
