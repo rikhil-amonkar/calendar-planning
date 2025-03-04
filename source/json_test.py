@@ -18,7 +18,7 @@ JSON_SCHEMA = {
         },
         "code": {
             "type": "string",
-            "pattern": "^\"\"\"\\n'''python\\n([\\s\\S]+)\\n'''\\n\"\"\"$"
+            "pattern": "^\"\"\\n'''python\\n([\\s\\S]+)\\n'''\\n\"\"\"$"
         }
     },
     "required": ["explanation", "code"]
@@ -74,35 +74,49 @@ Find a time that works for everyone's schedule and constraints.
 SOLUTION: 
 
 Please generate a full Python script program which calculates the proposed time. Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. 
-Generate a response in the following JSON format. Ensure the code is enclosed within triple quotes (\"\"\") and starts with '''python. Use proper indentation and spacing."""
+Generate a response in the following JSON format. Ensure the code is enclosed within double quotes in the beginning (\"\") and triple quotes at the end, and starts with '''python. Use proper indentation and spacing.
+
+Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}.
+
+Here is an example of a possible format of time: {14:30:15:30}.
+
+The final time must be encased in curly brackets: {}."""
+
+prompt1 = """You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:
+
+TASK: You need to schedule a meeting for Raymond, Billy and Donald for half an hour between the work hours of 9:00 to 17:00 on Monday. 
+
+Here are the existing schedules for everyone during the day: 
+Raymond has blocked their calendar on Monday during 9:00 to 9:30, 11:30 to 12:00, 13:00 to 13:30, 15:00 to 15:30; 
+Billy has meetings on Monday during 10:00 to 10:30, 12:00 to 13:00, 16:30 to 17:00; 
+Donald has meetings on Monday during 9:00 to 9:30, 10:00 to 11:00, 12:00 to 13:00, 14:00 to 14:30, 16:00 to 17:00; 
+
+Billy would like to avoid more meetings on Monday after 15:00. Find a time that works for everyone's schedule and constraints. 
+SOLUTION: 
+
+Please generate a full Python script program which calculates the proposed time. Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. 
+Generate a response in the following JSON format. Ensure the code is enclosed within double quotes in the beginning (\"\") and triple quotes at the end, and starts with '''python. Use proper indentation and spacing.
+
+Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}.
+
+Here is an example of a possible format of time: {14:30:15:30}.
+
+The final time must be encased in curly brackets: {}."""
 
 async def get_model_response(prompt):
     response = await ai.chat_round_str(prompt)
     return response
 
-def preprocess_response(model_response):
-    """
-    Preprocess the model response to make it valid JSON.
-    """
-    # Replace triple quotes with escaped double quotes
-    model_response = model_response.replace('"""', '\\"\\"\\"')
-    return model_response
-
 def extract_code(model_response):
-    try:
-        # Preprocess the response to make it valid JSON
-        model_response = preprocess_response(model_response)
-        
-        # Try to parse the response as JSON
-        response_dict = json.loads(model_response)
-        code = response_dict["code"]
-    except json.JSONDecodeError:
-        # If JSON parsing fails, use regex to extract the code block
-        match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
-        if match:
-            code = match.group(1)
-        else:
-            raise ValueError("Could not extract code from the model response.")
+    """
+    Extract the code block from the model response.
+    The code is expected to be wrapped in triple quotes and start with '''python.
+    """
+    match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
+    if match:
+        code = match.group(1)
+    else:
+        raise ValueError("Could not extract code from the model response.")
     
     return code
 
@@ -115,29 +129,32 @@ def run_generated_code(filename="generated_code.py"):
     return result.stdout
 
 async def main():
-    model_response = await get_model_response(prompt0)
-    print("Model Response:", model_response)
+    for prompt in [prompt0, prompt1]:
+        model_response = await get_model_response(prompt)  # Await the coroutine
+        print("\nModel Response:\n\n", model_response)
+        print("\n***************************************\n")
     
-    # Extract the code from the model response
-    try:
-        code = extract_code(model_response)
-    except ValueError as e:
-        print(f"Error: {e}")
-        return
-    
-    # Write the code to a file
-    write_code_to_file(code)
-    
-    # Run the generated code and capture the output
-    output = run_generated_code()
-    
-    # Print the output
-    print("Generated Code Output:", output)
+        # Extract the code from the model response
+        try:
+            code = extract_code(model_response)
+        except ValueError as e:
+            print(f"Error: {e}")
+            return
+        
+        # Write the code to a file
+        write_code_to_file(code)
+        
+        # Run the generated code and capture the output
+        output = run_generated_code()
+        
+        # Print the output
+        if output != None:
+            print("Generated Code Output:\n", output)
+        else:
+            print("Generated Code Output:\n None")
 
 # Run the main function
 asyncio.run(main())
-
-
 
 
 
