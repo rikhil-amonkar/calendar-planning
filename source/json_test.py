@@ -74,7 +74,7 @@ Find a time that works for everyone's schedule and constraints.
 SOLUTION: 
 
 Please generate a full Python script program which calculates the proposed time. Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. 
-Generate a response in the following JSON format. Ensure the code is enclosed within double quotes in the beginning (\"\") and triple quotes at the end, and starts with '''python. Use proper indentation and spacing.
+Generate a response in the following JSON format. Ensure the code starts with '''python and ends with ''' to encase the code. Use proper indentation and spacing.
 
 Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}.
 
@@ -95,7 +95,7 @@ Billy would like to avoid more meetings on Monday after 15:00. Find a time that 
 SOLUTION: 
 
 Please generate a full Python script program which calculates the proposed time. Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. 
-Generate a response in the following JSON format. Ensure the code is enclosed within double quotes in the beginning (\"\") and triple quotes at the end, and starts with '''python. Use proper indentation and spacing.
+Generate a response in the following JSON format. Ensure the code starts with '''python and ends with ''' to encase the code. Use proper indentation and spacing.
 
 Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}.
 

@@ -207,6 +207,20 @@ from kani.engines.huggingface import HuggingEngine
 from kani.engines import WrapperEngine
 
 # Define the JSON schema for the time range output
+# JSON_SCHEMA = {
+#     "type": "object",
+#     "properties": {
+#         "time_range": {
+#             "type": "string",
+#             "pattern": "^\\{\\d{1,2}:\\d{1,2}:\\d{1,2}:\\d{1,2}\\}$"
+#         },
+#         "explanation": {
+#             "type": "string"
+#         }
+#     },
+#     "required": ["time_range"],
+# }
+
 JSON_SCHEMA = {
     "type": "object",
     "properties": {
@@ -215,10 +229,12 @@ JSON_SCHEMA = {
             "pattern": "^\\{\\d{1,2}:\\d{1,2}:\\d{1,2}:\\d{1,2}\\}$"
         },
         "explanation": {
-            "type": "string"
+            "type": "string",
+            "minLength": 10,  # Ensure the explanation is not empty
+            "pattern": "^[A-Za-z0-9 .,!?]+$"  # Allow only alphanumeric and basic punctuation
         }
     },
-    "required": ["time_range"],
+    "required": ["time_range", "explanation"],
 }
 
 # Load the calendar scheduling examples from the JSON file
@@ -238,21 +254,23 @@ class JSONGuidanceHFWrapper(WrapperEngine):
         self.engine: HuggingEngine  # type hint for IDEs
         self.json_schema = json_schema
         self.outlines_tokenizer = outlines.models.TransformerTokenizer(self.engine.tokenizer)
+        self.logits_processor = self._create_logits_processor()  # Create logits processor once
 
     def _create_logits_processor(self):
         json_logits_processor = outlines.processors.JSONLogitsProcessor(self.json_schema, self.outlines_tokenizer)
+        print("Logits Processor Created Successfully.") # Debugging line for logits processor
         return transformers.LogitsProcessorList([json_logits_processor])
 
-    async def predict(self, *args, **kwargs):
+    async def predict(self, *args, temperature=1.0, **kwargs):
         # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
-        if "logits_processor" not in kwargs:
-            kwargs["logits_processor"] = self._create_logits_processor()
+        kwargs["logits_processor"] = self._create_logits_processor()
+        kwargs["temperature"] = temperature # Pass temperature to the engine
         return await super().predict(*args, **kwargs)
 
-    async def stream(self, *args, **kwargs):
+    async def stream(self, *args, temperature=1.0, **kwargs):
         # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
-        if "logits_processor" not in kwargs:
-            kwargs["logits_processor"] = self._create_logits_processor()
+        kwargs["logits_processor"] = self._create_logits_processor()
+        kwargs["temperature"] = temperature # Pass temperature to the engine
         async for elem in super().stream(*args, **kwargs):
             yield elem
 
@@ -294,14 +312,14 @@ with open('DS-R1-DL-70B_text_txtresults.txt', 'w') as txt_file, open('DS-R1-DL-7
 
             # Append the suffix to the prompt
             prompt += """\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\"}.
-                    For example, if the proposed time is 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\"}
-                    Also, if you have any part around your final answer that is any text explanation of how you came up with your answer or surroudning words, write it in the explenation part.
-                    So your JSON outputted format answer should be something like this:\n{\"time_range\": \"{14:30:15:30}\", \"explanation\": \"To start, I think I will calculate the time by...\"}."""
-
+                    For example, if the proposed time is 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\"}, but this time will vary based on the task.
+                    Also, provide a brief explanation of how you determined the time range. Avoid repetition and ensure the explanation is concise and relevant.
+                    Your JSON outputted format answer should be something like this:\n{\"time_range\": \"{HH:MM:HH:MM}\", \"explanation\": \"...\"}."""
+            
             # Run the model and capture the response
             async def get_model_response():
                 full_response = ""
-                async for token in ai.chat_round_stream(prompt):
+                async for token in ai.chat_round_stream(prompt, temperature=0.3): # Recommended temperature by Deepseek is 0.6
                     full_response += token
                     print(token, end="", flush=True)
                 print()  # For a newline after the response
