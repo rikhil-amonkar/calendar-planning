@@ -1,6 +1,3 @@
-  
-#*****************WORKING JSON FORCE CODE (not changed to work for code yet)*************************************
-
 import argparse
 import asyncio
 import json
@@ -8,16 +5,24 @@ import datetime
 import outlines
 import transformers
 import re
+import subprocess
 from kani import Kani
 from kani.engines.huggingface import HuggingEngine
+from kani.engines import WrapperEngine
 
-# Define the JSON schema for the time range output
+# Define the JSON schema for the output
 JSON_SCHEMA = {
     "type": "object",
     "properties": {
-        "time_range": {"type": "string"}
+        "explanation": {
+            "type": "string"
+        },
+        "code": {
+            "type": "string",
+            "pattern": "^\"\"\\n'''python\\n([\\s\\S]+)\\n'''\\n\"\"\"$"
+        }
     },
-    "required": ["time_range"]
+    "required": ["explanation", "code"]
 }
 
 # Load the calendar scheduling examples from the JSON file
@@ -29,23 +34,64 @@ parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
 parser.add_argument('--model', type=str, required=True, help="The HuggingFace model ID to use.")
 args = parser.parse_args()
 
+class JSONGuidanceHFWrapper(WrapperEngine):
+    def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
+        super().__init__(engine, *args, **kwargs)
+        # keep a reference to the JSON schema we want to use
+        self.engine: HuggingEngine  # type hint for IDEs
+        self.json_schema = json_schema
+        self.outlines_tokenizer = outlines.models.TransformerTokenizer(self.engine.tokenizer)
+
+    def _create_logits_processor(self):
+        json_logits_processor = outlines.processors.JSONLogitsProcessor(self.json_schema, self.outlines_tokenizer)
+        return transformers.LogitsProcessorList([json_logits_processor])
+
+    async def predict(self, *args, **kwargs):
+        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+        if "logits_processor" not in kwargs:
+            kwargs["logits_processor"] = self._create_logits_processor()
+        return await super().predict(*args, **kwargs)
+
+    async def stream(self, *args, **kwargs):
+        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+        if "logits_processor" not in kwargs:
+            kwargs["logits_processor"] = self._create_logits_processor()
+        async for elem in super().stream(*args, **kwargs):
+            yield elem
+
 # Load the model selected by the user
-engine = HuggingEngine(model_id=args.model)
-
-# Tokenizer setup
-outlines_tokenizer = outlines.models.TransformerTokenizer(engine.tokenizer)
-
-# JSON logits processor setup
-json_logits_processor = outlines.processors.JSONLogitsProcessor(JSON_SCHEMA, outlines_tokenizer)
-
-# Assign logits processor to the model
-# engine.hyperparams["logits_processor"] = transformers.LogitsProcessorList([json_logits_processor])
+model = HuggingEngine(model_id=args.model)
+engine = JSONGuidanceHFWrapper(model, json_schema=JSON_SCHEMA)
 
 # Create the Kani instance
 ai = Kani(engine)
 
-# Function to parse the golden plan time into {HH:MM:HH:MM} format
+def extract_code(model_response):
+    """Extract the code block from the model response."""
+    match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
+    if match:
+        return match.group(1)
+    else:
+        raise ValueError("Could not extract code from the model response.")
+
+def write_code_to_file(code, filename="generated_code.py"):
+    with open(filename, "w") as f:
+        f.write(code)
+
+def run_generated_code(filename="generated_code.py"):
+    result = subprocess.run(["python", filename], capture_output=True, text=True)
+    return result.stdout
+
+def parse_output(output):
+    """Parse the output to find the time in the format {HH:MM:HH:MM}."""
+    match = re.search(r"\{(\d{2}:\d{2}:\d{2}:\d{2})\}", output)
+    if match:
+        return match.group(0)
+    else:
+        return None
+
 def parse_golden_plan_time(golden_plan):
+    """Parse the golden plan time into {HH:MM:HH:MM} format."""
     match = re.search(r'(\d{1,2}:\d{2}) - (\d{1,2}:\d{2})', golden_plan)
     if match:
         start_time, end_time = match.groups()
@@ -75,8 +121,14 @@ with open('model_results.txt', 'w') as txt_file, open('model_results.json', 'w')
             expected_time = parse_golden_plan_time(golden_plan)
 
             # Append the suffix to the prompt
-            prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"HH:MM:HH:MM\"}. Make sure not to use any Python code, just the JSON direct output."
-            
+            prompt += "\n\nPlease generate a full Python script program which calculates the proposed time. " \
+                      "Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. " \
+                      "Generate a response in the following JSON format. Ensure the code starts with '''python and ends with ''' to encase the code. Use proper indentation and spacing. " \
+                      "Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}. " \
+                      "Here is an example of a possible format of time: {14:30:15:30}. " \
+                      "The final time must be encased in curly brackets: {}. " \
+                      "Generate a response in the following JSON format. Ensure the response strictly adheres to the JSON schema and does not include any additional text outside the JSON structure."
+
             # Run the model and capture the response
             async def get_model_response():
                 full_response = ""
@@ -88,37 +140,16 @@ with open('model_results.txt', 'w') as txt_file, open('model_results.json', 'w')
             
             model_response = asyncio.run(get_model_response())
 
-            def extract_time_range(response):
-                """Extracts HH:MM:HH:MM format from the model's raw response and removes leading zeros from single-digit hours."""
-                if not response or not isinstance(response, str):  # Check if response is None or not a string
-                    return "Invalid response"
-                
-                # Extract the time range using regex
-                match = re.search(r'(\d{1,2}:\d{2}):(\d{1,2}:\d{2})', response)
-                if not match:
-                    return "Invalid response"
-                
-                # Remove leading zeros from single-digit hours
-                start_time = match.group(1)
-                end_time = match.group(2)
-                
-                # Function to remove leading zeros from single-digit hours
-                def remove_leading_zero(time_str):
-                    parts = time_str.split(':')
-                    hour = parts[0].lstrip('0')  # Remove leading zeros from the hour
-                    return f"{hour}:{parts[1]}"
-                
-                start_time = remove_leading_zero(start_time)
-                end_time = remove_leading_zero(end_time)
-                
-                return f"{{{start_time}:{end_time}}}"
+            # Extract the code from the model response
+            try:
+                code = extract_code(model_response)
+                write_code_to_file(code)
+                output = run_generated_code()
+                model_time = parse_output(output)
+            except ValueError as e:
+                print(f"Error: {e}")
+                model_time = "Invalid response"
 
-            # Extract the time range from the model's response
-            if model_response:
-                model_time = extract_time_range(model_response)
-            else:
-                model_time = "Invalid response"     
-                   
             # Print the formatted output to the terminal
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time}")
@@ -167,7 +198,178 @@ with open('model_results.txt', 'w') as txt_file, open('model_results.json', 'w')
     }
     json.dump(json_output, json_file, indent=4)
 
-print("Processing complete. Results saved to model_results.txt and model_results.json.")
+print("Processing complete. Results saved to model_results.txt and model_results.json.")  
+
+
+#*****************WORKING JSON FORCE CODE (not changed to work for code yet)*************************************
+
+# import argparse
+# import asyncio
+# import json
+# import datetime
+# import outlines
+# import transformers
+# import re
+# from kani import Kani
+# from kani.engines.huggingface import HuggingEngine
+
+# # Define the JSON schema for the time range output
+# JSON_SCHEMA = {
+#     "type": "object",
+#     "properties": {
+#         "time_range": {"type": "string"}
+#     },
+#     "required": ["time_range"]
+# }
+
+# # Load the calendar scheduling examples from the JSON file
+# with open('test_scheduling.json', 'r') as file:
+#     calendar_examples = json.load(file)
+
+# # Argument parser to select the model
+# parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
+# parser.add_argument('--model', type=str, required=True, help="The HuggingFace model ID to use.")
+# args = parser.parse_args()
+
+# # Load the model selected by the user
+# engine = HuggingEngine(model_id=args.model)
+
+# # Tokenizer setup
+# outlines_tokenizer = outlines.models.TransformerTokenizer(engine.tokenizer)
+
+# # JSON logits processor setup
+# json_logits_processor = outlines.processors.JSONLogitsProcessor(JSON_SCHEMA, outlines_tokenizer)
+
+# # Assign logits processor to the model
+# # engine.hyperparams["logits_processor"] = transformers.LogitsProcessorList([json_logits_processor])
+
+# # Create the Kani instance
+# ai = Kani(engine)
+
+# # Function to parse the golden plan time into {HH:MM:HH:MM} format
+# def parse_golden_plan_time(golden_plan):
+#     match = re.search(r'(\d{1,2}:\d{2}) - (\d{1,2}:\d{2})', golden_plan)
+#     if match:
+#         start_time, end_time = match.groups()
+#         return f"{{{start_time}:{end_time}}}"
+#     return "Invalid format"
+
+# # Initialize counters for accuracy calculation
+# correct_0shot = 0
+# correct_5shot = 0
+# total_0shot = 0
+# total_5shot = 0
+
+# # Initialize lists for JSON output
+# results_0shot = []
+# results_5shot = []
+
+# # Open the text file for writing results
+# with open('model_results.txt', 'w') as txt_file, open('model_results.json', 'w') as json_file:
+#     start_time = datetime.datetime.now()
+    
+#     for example_id, example in calendar_examples.items():
+#         for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+#             prompt = example[prompt_type]
+#             golden_plan = example['golden_plan']
+
+#             # Parse golden plan into {HH:MM:HH:MM} format
+#             expected_time = parse_golden_plan_time(golden_plan)
+
+#             # Append the suffix to the prompt
+#             prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"HH:MM:HH:MM\"}. Make sure not to use any Python code, just the JSON direct output."
+            
+#             # Run the model and capture the response
+#             async def get_model_response():
+#                 full_response = ""
+#                 async for token in ai.chat_round_stream(prompt):
+#                     full_response += token
+#                     print(token, end="", flush=True)
+#                 print()  # For a newline after the response
+#                 return full_response.strip()  # Return the actual response
+            
+#             model_response = asyncio.run(get_model_response())
+
+#             def extract_time_range(response):
+#                 """Extracts HH:MM:HH:MM format from the model's raw response and removes leading zeros from single-digit hours."""
+#                 if not response or not isinstance(response, str):  # Check if response is None or not a string
+#                     return "Invalid response"
+                
+#                 # Extract the time range using regex
+#                 match = re.search(r'(\d{1,2}:\d{2}):(\d{1,2}:\d{2})', response)
+#                 if not match:
+#                     return "Invalid response"
+                
+#                 # Remove leading zeros from single-digit hours
+#                 start_time = match.group(1)
+#                 end_time = match.group(2)
+                
+#                 # Function to remove leading zeros from single-digit hours
+#                 def remove_leading_zero(time_str):
+#                     parts = time_str.split(':')
+#                     hour = parts[0].lstrip('0')  # Remove leading zeros from the hour
+#                     return f"{hour}:{parts[1]}"
+                
+#                 start_time = remove_leading_zero(start_time)
+#                 end_time = remove_leading_zero(end_time)
+                
+#                 return f"{{{start_time}:{end_time}}}"
+
+#             # Extract the time range from the model's response
+#             if model_response:
+#                 model_time = extract_time_range(model_response)
+#             else:
+#                 model_time = "Invalid response"     
+                   
+#             # Print the formatted output to the terminal
+#             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             print(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time}")
+
+#             # Write to the text file
+#             txt_file.write(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time}\n")
+            
+#             # Prepare the JSON output
+#             result_entry = {
+#                 "final_time": f"{model_time}",
+#                 "expected_time": f"{expected_time}",
+#                 "exact_response": model_response,
+#                 "count": example_id
+#             }
+            
+#             if prompt_type == 'prompt_0shot':
+#                 results_0shot.append(result_entry)
+#                 total_0shot += 1
+#                 if model_time == expected_time:
+#                     correct_0shot += 1
+#             else:
+#                 results_5shot.append(result_entry)
+#                 total_5shot += 1
+#                 if model_time == expected_time:
+#                     correct_5shot += 1
+    
+#     # Calculate accuracies
+#     accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
+#     accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
+#     total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
+    
+#     # Write the final accuracy to the text file
+#     end_time = datetime.datetime.now()
+#     total_time = end_time - start_time
+#     txt_file.write(f"\n0-shot prompts: Model guessed {correct_0shot} out of {total_0shot} correctly.\n")
+#     txt_file.write(f"Accuracy: {accuracy_0shot:.2f}%\n")
+#     txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
+#     txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
+#     txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
+#     txt_file.write(f"Total time taken: {total_time}\n")
+    
+#     # Write the JSON output
+#     json_output = {
+#         "0shot": results_0shot,
+#         "5shot": results_5shot
+#     }
+#     json.dump(json_output, json_file, indent=4)
+
+# print("Processing complete. Results saved to model_results.txt and model_results.json.")
 
 
 #*****************TEMPLATE OF FORCE JSON (TRAIN, COST)*************************************

@@ -1,85 +1,67 @@
 from datetime import datetime, timedelta
 
-def find_meeting_time(participants, start_time, end_time, meeting_duration, preferences=None):
-    # Convert time to minutes
+def find_meeting_time(participants, meeting_duration, start_time, end_time, preferences=None):
+    # Convert time to datetime objects
     start_time = datetime.strptime(start_time, '%H:%M')
     end_time = datetime.strptime(end_time, '%H:%M')
-    start_time_in_minutes = start_time.hour * 60 + start_time.minute
-    end_time_in_minutes = end_time.hour * 60 + end_time.minute
 
-    # Initialize a list to store the busy times
-    busy_times = []
+    # Calculate the end time of the meeting
+    meeting_end_time = lambda start: start + timedelta(minutes=meeting_duration)
 
-    # Iterate over each participant's schedule
-    for participant in participants:
-        for schedule in participant['schedule']:
-            # Convert schedule time to minutes
-            schedule_start_time = datetime.strptime(schedule['start'], '%H:%M')
-            schedule_end_time = datetime.strptime(schedule['end'], '%H:%M')
-            schedule_start_time_in_minutes = schedule_start_time.hour * 60 + schedule_start_time.minute
-            schedule_end_time_in_minutes = schedule_end_time.hour * 60 + schedule_end_time.minute
+    # Initialize the proposed time
+    proposed_time = None
 
-            # Add the busy time to the list
-            busy_times.append((schedule_start_time_in_minutes, schedule_end_time_in_minutes))
+    # Iterate over all possible times
+    for hour in range(start_time.hour, end_time.hour + 1):
+        for minute in range(0, 60):
+            # Skip if the time is outside of work hours
+            if (hour < start_time.hour or hour > end_time.hour) or \
+               (hour == start_time.hour and minute < start_time.minute) or \
+               (hour == end_time.hour and minute > end_time.minute):
+                continue
 
-    # Sort the busy times
-    busy_times.sort()
+            # Convert the current time to a datetime object
+            current_time = datetime.strptime(f'{hour}:{minute}', '%H:%M')
 
-    # Initialize the proposed meeting time
-    proposed_meeting_time = None
-
-    # Iterate over the time slots
-    for time in range(start_time_in_minutes, end_time_in_minutes - meeting_duration + 1):
-        # Assume the time slot is available
-        is_available = True
-
-        # Check if the time slot conflicts with any busy time
-        for busy_time in busy_times:
-            if time >= busy_time[0] and time + meeting_duration <= busy_time[1]:
-                # If the time slot conflicts with a busy time, it's not available
-                is_available = False
+            # Check if the current time works for all participants
+            if all(is_available(participant, current_time, meeting_end_time(current_time)) for participant in participants):
+                if preferences and 'avoid_after' in preferences and current_time >= datetime.strptime(preferences['avoid_after'], '%H:%M'):
+                    continue
+                proposed_time = f'{{{current_time.strftime("%H:%M"):}:{meeting_end_time(current_time).strftime("%H:%M")}}}'
                 break
 
-        # Check if the time slot meets the preferences
-        if preferences is not None:
-            for preference in preferences:
-                if preference['type'] == 'avoid_after' and time >= preference['time']:
-                    is_available = False
-                    break
-
-        # If the time slot is available and meets the preferences, propose it as the meeting time
-        if is_available:
-            proposed_meeting_time = (time, time + meeting_duration)
+        # If a proposed time is found, break the loop
+        if proposed_time:
             break
 
-    # Convert the proposed meeting time back to hours and minutes
-    proposed_meeting_start_time = datetime.strptime(str(proposed_meeting_time[0] // 60) + ':' + str(proposed_meeting_time[0] % 60), '%H:%M')
-    proposed_meeting_end_time = datetime.strptime(str(proposed_meeting_time[1] // 60) + ':' + str(proposed_meeting_time[1] % 60), '%H:%M')
+    return proposed_time
 
-    # Return the proposed meeting time
-    return '{' + proposed_meeting_start_time.strftime('%H:%M') + ':' + proposed_meeting_end_time.strftime('%H:%M') + '}'
 
-# Define the participants and their schedules
+def is_available(participant, start_time, end_time):
+    for busy_time in participant['busy']:
+        busy_start_time = datetime.strptime(busy_time['start'], '%H:%M')
+        busy_end_time = datetime.strptime(busy_time['end'], '%H:%M')
+
+        # Check if the proposed time overlaps with the busy time
+        if (start_time >= busy_start_time and start_time < busy_end_time) or \
+           (end_time > busy_start_time and end_time <= busy_end_time) or \
+           (start_time <= busy_start_time and end_time >= busy_end_time):
+            return False
+
+    return True
+
+
+# Example usage
 participants = [
-    {'name': 'Raymond','schedule': [{'start': '9:00', 'end': '9:30'}, {'start': '11:30', 'end': '12:00'}, {'start': '13:00', 'end': '13:30'}, {'start': '15:00', 'end': '15:30'}]},
-    {'name': 'Billy','schedule': [{'start': '10:00', 'end': '10:30'}, {'start': '12:00', 'end': '13:00'}, {'start': '16:30', 'end': '17:00'}]},
-    {'name': 'Donald','schedule': [{'start': '9:00', 'end': '9:30'}, {'start': '10:00', 'end': '11:00'}, {'start': '12:00', 'end': '13:00'}, {'start': '14:00', 'end': '14:30'}, {'start': '16:00', 'end': '17:00'}]}
+    {'name': 'Raymond', 'busy': [{'start': '09:00', 'end': '09:30'}, {'start': '11:30', 'end': '12:00'}, {'start': '13:00', 'end': '13:30'}, {'start': '15:00', 'end': '15:30'}]},
+    {'name': 'Billy', 'busy': [{'start': '10:00', 'end': '10:30'}, {'start': '12:00', 'end': '13:00'}, {'start': '16:30', 'end': '17:00'}]},
+    {'name': 'Donald', 'busy': [{'start': '09:00', 'end': '09:30'}, {'start': '10:00', 'end': '11:00'}, {'start': '12:00', 'end': '13:00'}, {'start': '14:00', 'end': '14:30'}, {'start': '16:00', 'end': '17:00'}]}
 ]
 
-# Define the meeting duration
 meeting_duration = 30
-
-# Define the start and end time of the work hours
-start_time = '9:00'
+start_time = '09:00'
 end_time = '17:00'
+preferences = {'avoid_after': '15:00'}
 
-# Define the preferences
-preferences = [
-    {'type': 'avoid_after', 'time': 15 * 60}  # Avoid meetings after 15:00
-]
-
-# Find the proposed meeting time
-proposed_meeting_time = find_meeting_time(participants, start_time, end_time, meeting_duration, preferences)
-
-# Print the proposed meeting time
-print(proposed_meeting_time)
+proposed_time = find_meeting_time(participants, meeting_duration, start_time, end_time, preferences)
+print(proposed_time)
