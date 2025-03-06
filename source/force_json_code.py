@@ -1,3 +1,5 @@
+#******************************WORKING JSON FORCE CODE (CODE OUTPUTS)*************************************
+
 import argparse
 import asyncio
 import json
@@ -10,7 +12,7 @@ from kani import Kani
 from kani.engines.huggingface import HuggingEngine
 from kani.engines import WrapperEngine
 
-# Define the JSON schema for the code output
+# Define the JSON schema for the output
 JSON_SCHEMA = {
     "type": "object",
     "properties": {
@@ -34,7 +36,6 @@ parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
 parser.add_argument('--model', type=str, required=True, help="The HuggingFace model ID to use.")
 args = parser.parse_args()
 
-# Load the model selected by the user
 class JSONGuidanceHFWrapper(WrapperEngine):
     def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
         super().__init__(engine, *args, **kwargs)
@@ -60,21 +61,66 @@ class JSONGuidanceHFWrapper(WrapperEngine):
         async for elem in super().stream(*args, **kwargs):
             yield elem
 
+# Load the model selected by the user
 model = HuggingEngine(model_id=args.model)
 engine = JSONGuidanceHFWrapper(model, json_schema=JSON_SCHEMA)
 
 # Create the Kani instance
 ai = Kani(engine)
 
-# Function to parse the golden plan time into {HH:MM:HH:MM} format
+def extract_code(model_response):
+    """Extract the code block from the model response."""
+    match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
+    if match:
+        return match.group(1)
+    else:
+        raise ValueError("Could not extract code from the model response.")
+
+def write_code_to_file(code, filename="generated_code.py"):
+    with open(filename, "w") as f:
+        f.write(code)
+
+def run_generated_code(filename="generated_code.py"):
+    result = subprocess.run(["python", filename], capture_output=True, text=True)
+    return result.stdout, result.stderr
+
+def parse_output(output):
+    """
+    Parse the output to find the time in the format {HH:MM:HH:MM}.
+    Remove leading zeros from single-digit hours.
+    """
+    match = re.search(r"\{(\d{2}:\d{2}:\d{2}:\d{2})\}", output)
+    if match:
+        time_str = match.group(0)
+        return remove_leading_zero_from_hour(time_str)  # Remove leading zeros
+    else:
+        return None
+
 def parse_golden_plan_time(golden_plan):
+    """Parse the golden plan time into {HH:MM:HH:MM} format."""
     match = re.search(r'(\d{1,2}:\d{2}) - (\d{1,2}:\d{2})', golden_plan)
     if match:
         start_time, end_time = match.groups()
         return f"{{{start_time}:{end_time}}}"
     return "Invalid format"
 
-# Function to categorize errors
+def remove_leading_zero_from_hour(time_str):
+    """
+    Remove leading zeros from single-digit hours in a time string.
+    Example: {09:30:10:30} → {9:30:10:30}
+    """
+    if not time_str or not isinstance(time_str, str):
+        return time_str  # Return as-is if invalid input
+
+    # Use regex to find and remove leading zeros from single-digit hours
+    def remove_zero(match):
+        hour = match.group(1).lstrip('0')  # Remove leading zeros
+        return f"{hour}:{match.group(2)}"
+
+    # Apply the function to all occurrences of HH:MM
+    time_str = re.sub(r"(\d{2}):(\d{2})", remove_zero, time_str)
+    return time_str
+
 def categorize_error(error_message):
     if "SyntaxError" in error_message:
         return "SyntaxError"
@@ -93,51 +139,20 @@ def categorize_error(error_message):
     else:
         return "Other"
 
-# Function to extract code from the model response
-def extract_code(model_response):
-    """
-    Extract the code block from the model response.
-    The code is expected to be wrapped in triple quotes and start with '''python.
-    """
-    match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
-    if match:
-        code = match.group(1)
-    else:
-        raise ValueError("Could not extract code from the model response.")
-    return code
-
-# Function to write code to a file
-def write_code_to_file(code, filename="generated_code.py"):
-    with open(filename, "w") as f:
-        f.write(code)
-
-# Function to execute the generated code
-def execute_code(filename="generated_code.py"):
-    result = subprocess.run(["python3", filename], capture_output=True, text=True)
-    if result.returncode == 0:
-        return result.stdout.strip(), None  # No error
-    else:
-        error_category = categorize_error(result.stderr.strip())
-        return f"Error: {result.stderr.strip()}", error_category
-
-# Function to format the time with curly brackets if it matches HH:MM:HH:MM
-def format_time_with_brackets(time_str):
-    if re.match(r'\d{1,2}:\d{2}:\d{1,2}:\d{2}', time_str):
-        return f"{{{time_str}}}"
-    return time_str
-
 # Initialize counters for accuracy calculation
 correct_0shot = 0
 correct_5shot = 0
 total_0shot = 0
 total_5shot = 0
+no_error_0shot = 0
+no_error_5shot = 0
 
-# Initialize lists to store 0-shot and 5-shot results
+# Initialize lists for JSON output
 results_0shot = []
 results_5shot = []
 
 # Open the text file for writing results
-with open('ML-ML-3.1-8B_code_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-8B_code_jsonresults.json', 'w') as json_file:
+with open('model_results.txt', 'w') as txt_file, open('model_results.json', 'w') as json_file:
     start_time = datetime.datetime.now()
     
     for example_id, example in calendar_examples.items():
@@ -149,7 +164,13 @@ with open('ML-ML-3.1-8B_code_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-
             expected_time = parse_golden_plan_time(golden_plan)
 
             # Append the suffix to the prompt
-            prompt += "\n\nPlease generate a full Python script program which calculates the proposed time. Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. Generate a response in the following JSON format. Ensure the code is enclosed within double quotes in the beginning (\"\") and triple quotes at the end, and starts with '''python. Use proper indentation and spacing. Finally, make sure the output of the program you generate displays the calculated time in the following format: HH:MM:HH:MM. Here is an example of a possible format of time: 14:30:15:30. Do not generate any text or code after you output the correct JSON format."
+            prompt += "\n\nPlease generate a full Python script program which calculates the proposed time. " \
+                      "Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. " \
+                      "Generate a response in the following JSON format. Ensure the code starts with '''python and ends with ''' to encase the code. Use proper indentation and spacing. " \
+                      "Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}. " \
+                      "Here is an example of a possible format of time: {14:30:15:30}. " \
+                      "The final time must be encased in curly brackets: {}. " \
+                      "Generate a response in the following JSON format. Ensure the response strictly adheres to the JSON schema and does not include any additional text outside the JSON structure."
 
             # Run the model and capture the response
             async def get_model_response():
@@ -165,69 +186,53 @@ with open('ML-ML-3.1-8B_code_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-
             # Extract the code from the model response
             try:
                 code = extract_code(model_response)
+                write_code_to_file(code)
+                output, error = run_generated_code()
+                model_time = parse_output(output)
+                error_type = categorize_error(error) if error else None
             except ValueError as e:
                 print(f"Error: {e}")
-                model_time = "Invalid"
-                error_category = "Code Extraction Failure"
-            else:
-                # Write the code to a file
-                write_code_to_file(code)
-                
-                # Execute the generated code and capture the output
-                execution_output, error_category = execute_code()
-                if execution_output.startswith("Error:"):
-                    model_time = "None"
-                else:
-                    # Extract the time range from the executed code's output
-                    match = re.search(r'\d{1,2}:\d{2}:\d{1,2}:\d{2}', execution_output)
-                    if match:
-                        print("Model Raw Answer:", model_time)
-                        model_time = format_time_with_brackets(match.group(0))
-                    else:
-                        model_time = "None"
-                        error_category = "Time Format Error"
-            
+                model_time = None
+                error_type = "ValueError"
+
             # Print the formatted output to the terminal
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_category}")
+            print(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}")
 
-            # Write to the text file immediately
-            txt_file.write(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_category}\n")
+            # Write to the text file
+            txt_file.write(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}\n")
             
             # Prepare the JSON output
             result_entry = {
                 "final_time": f"{model_time}",
                 "expected_time": f"{expected_time}",
                 "exact_response": model_response,
-                "error_category": error_category,
                 "count": example_id
             }
             
-            # Append the result to the appropriate list
             if prompt_type == 'prompt_0shot':
                 results_0shot.append(result_entry)
                 total_0shot += 1
                 if model_time == expected_time:
                     correct_0shot += 1
+                if not error_type:
+                    no_error_0shot += 1
             else:
                 results_5shot.append(result_entry)
                 total_5shot += 1
                 if model_time == expected_time:
                     correct_5shot += 1
-            
-            # Clear the model_response and other temporary variables from memory
-            del model_response, model_time, result_entry, error_category
-            
-    # Write the collected results to the JSON file in the desired format
-    json.dump({
-        "0shot": results_0shot,
-        "5shot": results_5shot
-    }, json_file, indent=4)
+                if not error_type:
+                    no_error_5shot += 1
     
     # Calculate accuracies
     accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
     accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
     total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
+    
+    # Calculate no-error accuracies
+    no_error_accuracy_0shot = (correct_0shot / no_error_0shot) * 100 if no_error_0shot > 0 else 0
+    no_error_accuracy_5shot = (correct_5shot / no_error_5shot) * 100 if no_error_5shot > 0 else 0
     
     # Write the final accuracy to the text file
     end_time = datetime.datetime.now()
@@ -237,9 +242,20 @@ with open('ML-ML-3.1-8B_code_txtresults.txt', 'w') as txt_file, open('ML-ML-3.1-
     txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
     txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
     txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
-    txt_file.write(f"Total time taken: {total_time}\n")
+    txt_file.write(f"0-shot prompts with no errors: {correct_0shot} out of {no_error_0shot} produced real outputs.\n")
+    txt_file.write(f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n")
+    txt_file.write(f"5-shot prompts with no errors: {correct_5shot} out of {no_error_5shot} produced real outputs.\n")
+    txt_file.write(f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n")
+    txt_file.write(f"Total time taken: {total_time.total_seconds():.2f} seconds\n")
+    
+    # Write the JSON output
+    json_output = {
+        "0shot": results_0shot,
+        "5shot": results_5shot
+    }
+    json.dump(json_output, json_file, indent=4)
 
-print("Processing complete. Results saved to ML-ML-3.1-8B_code_txtresults.txt and ML-ML-3.1-8B_code_jsonresults.json.")
+print("Processing complete. Results saved to model_results.txt and model_results.json.")
 
 
 # import argparse
