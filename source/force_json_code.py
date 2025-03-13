@@ -1,5 +1,3 @@
-#******************************WORKING JSON FORCE CODE (CODE OUTPUTS)*************************************
-
 import argparse
 import asyncio
 import json
@@ -8,6 +6,9 @@ import outlines
 import transformers
 import re
 import subprocess
+import os
+import io
+import contextlib
 from kani import Kani
 from kani.engines.huggingface import HuggingEngine
 from kani.engines import WrapperEngine
@@ -36,10 +37,14 @@ parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
 parser.add_argument('--model', type=str, required=True, help="The HuggingFace model ID to use.")
 args = parser.parse_args()
 
+# Compile regex patterns once for efficiency
+CODE_START_PATTERN = re.compile(r"'''python\n")
+CODE_END_PATTERN = re.compile(r"\n'''")
+TIME_PATTERN = re.compile(r"\{(\d{2}:\d{2}:\d{2}:\d{2})\}")
+
 class JSONGuidanceHFWrapper(WrapperEngine):
     def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
         super().__init__(engine, *args, **kwargs)
-        # keep a reference to the JSON schema we want to use
         self.engine: HuggingEngine  # type hint for IDEs
         self.json_schema = json_schema
         self.outlines_tokenizer = outlines.models.TransformerTokenizer(self.engine.tokenizer)
@@ -49,13 +54,11 @@ class JSONGuidanceHFWrapper(WrapperEngine):
         return transformers.LogitsProcessorList([json_logits_processor])
 
     async def predict(self, *args, **kwargs):
-        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
         if "logits_processor" not in kwargs:
             kwargs["logits_processor"] = self._create_logits_processor()
         return await super().predict(*args, **kwargs)
 
     async def stream(self, *args, **kwargs):
-        # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
         if "logits_processor" not in kwargs:
             kwargs["logits_processor"] = self._create_logits_processor()
         async for elem in super().stream(*args, **kwargs):
@@ -68,33 +71,35 @@ engine = JSONGuidanceHFWrapper(model, json_schema=JSON_SCHEMA)
 # Create the Kani instance
 ai = Kani(engine)
 
+def clear_console():
+    """Clear the console screen."""
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 def extract_code(model_response):
     """Extract the code block from the model response."""
-    match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
-    if match:
-        return match.group(1)
-    else:
+    start_match = CODE_START_PATTERN.search(model_response)
+    end_match = CODE_END_PATTERN.search(model_response[start_match.end():] if start_match else "")
+    if not start_match or not end_match:
         raise ValueError("Could not extract code from the model response.")
+    return model_response[start_match.end():start_match.end() + end_match.start()]
 
 def write_code_to_file(code, filename="generated_code.py"):
+    """Write the generated code to a file."""
     with open(filename, "w") as f:
         f.write(code)
 
 def run_generated_code(filename="generated_code.py"):
+    """Run the generated code from a file."""
     result = subprocess.run(["python", filename], capture_output=True, text=True)
     return result.stdout, result.stderr
 
 def parse_output(output):
-    """
-    Parse the output to find the time in the format {HH:MM:HH:MM}.
-    Remove leading zeros from single-digit hours.
-    """
-    match = re.search(r"\{(\d{2}:\d{2}:\d{2}:\d{2})\}", output)
+    """Parse the output to find the time in the format {HH:MM:HH:MM}."""
+    match = TIME_PATTERN.search(output)
     if match:
         time_str = match.group(0)
-        return remove_leading_zero_from_hour(time_str)  # Remove leading zeros
-    else:
-        return None
+        return remove_leading_zero_from_hour(time_str)
+    return None
 
 def parse_golden_plan_time(golden_plan):
     """Parse the golden plan time into {HH:MM:HH:MM} format."""
@@ -105,157 +110,686 @@ def parse_golden_plan_time(golden_plan):
     return "Invalid format"
 
 def remove_leading_zero_from_hour(time_str):
-    """
-    Remove leading zeros from single-digit hours in a time string.
-    Example: {09:30:10:30} → {9:30:10:30}
-    """
+    """Remove leading zeros from single-digit hours in a time string."""
     if not time_str or not isinstance(time_str, str):
-        return time_str  # Return as-is if invalid input
-
-    # Use regex to find and remove leading zeros from single-digit hours
-    def remove_zero(match):
-        hour = match.group(1).lstrip('0')  # Remove leading zeros
-        return f"{hour}:{match.group(2)}"
-
-    # Apply the function to all occurrences of HH:MM
-    time_str = re.sub(r"(\d{2}):(\d{2})", remove_zero, time_str)
-    return time_str
+        return time_str
+    return re.sub(r"(\d{2}):(\d{2})", lambda m: f"{int(m.group(1))}:{m.group(2)}", time_str)
 
 def categorize_error(error_message):
-    if "SyntaxError" in error_message:
-        return "SyntaxError"
-    elif "IndentationError" in error_message:
-        return "IndentationError"
-    elif "NameError" in error_message:
-        return "NameError"
-    elif "TypeError" in error_message:
-        return "TypeError"
-    elif "ValueError" in error_message:
-        return "ValueError"
-    elif "ImportError" in error_message:
-        return "ImportError"
-    elif "RuntimeError" in error_message:
-        return "RuntimeError"
-    else:
-        return "Other"
+    """Categorize the error message."""
+    error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", "ValueError", "ImportError", "RuntimeError", "AttributeError"]
+    for error_type in error_types:
+        if error_type in error_message:
+            return error_type
+    return "Other"
 
-# Initialize counters for accuracy calculation
-correct_0shot = 0
-correct_5shot = 0
-total_0shot = 0
-total_5shot = 0
-no_error_0shot = 0
-no_error_5shot = 0
+async def get_model_response(prompt, ai):
+    """Get the model's response to the prompt."""
+    full_response = ""
+    async for token in ai.chat_round_stream(prompt):
+        full_response += token
+    return full_response.strip()
 
-# Initialize lists for JSON output
-results_0shot = []
-results_5shot = []
+async def main():
+    # Initialize counters for accuracy calculation
+    correct_0shot = 0
+    correct_5shot = 0
+    total_0shot = 0
+    total_5shot = 0
+    no_error_0shot = 0
+    no_error_5shot = 0
 
-# Open the text file for writing results
-with open('model_results.txt', 'w') as txt_file, open('model_results.json', 'w') as json_file:
+    # Initialize lists for JSON output
+    results_0shot = []
+    results_5shot = []
+
     start_time = datetime.datetime.now()
-    
-    for example_id, example in calendar_examples.items():
-        for prompt_type in ['prompt_0shot', 'prompt_5shot']:
-            prompt = example[prompt_type]
-            golden_plan = example['golden_plan']
 
-            # Parse golden plan into {HH:MM:HH:MM} format
-            expected_time = parse_golden_plan_time(golden_plan)
+    # Counter for console-clearing logic
+    iteration_count = 0
 
-            # Append the suffix to the prompt
-            prompt += "\n\nPlease generate a full Python script program which calculates the proposed time. " \
-                      "Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. " \
-                      "Generate a response in the following JSON format. Ensure the code starts with '''python and ends with ''' to encase the code. Use proper indentation and spacing. " \
-                      "Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}. " \
-                      "Here is an example of a possible format of time: {14:30:15:30}. " \
-                      "The final time must be encased in curly brackets: {}. " \
-                      "Generate a response in the following JSON format. Ensure the response strictly adheres to the JSON schema and does not include any additional text outside the JSON structure."
+    # Open the text file for writing results
+    with open('ML-L-3.1-70B_text_coderesults.txt', 'w') as txt_file:
+        for example_id, example in calendar_examples.items():
+            for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+                prompt = example[prompt_type]
+                golden_plan = example['golden_plan']
+                expected_time = parse_golden_plan_time(golden_plan)
 
-            # Run the model and capture the response
-            async def get_model_response():
-                full_response = ""
-                async for token in ai.chat_round_stream(prompt):
-                    full_response += token
-                    print(token, end="", flush=True)
-                print()  # For a newline after the response
-                return full_response.strip()  # Return the actual response
-            
-            model_response = asyncio.run(get_model_response())
+                # Append the suffix to the prompt
+                prompt += "\n\nCreate a Python script that calculates a proposed time and outputs it in the format {HH:MM:HH:MM}. " \
+                          "The script should be clean, well-formatted, and enclosed within '''python and '''. " \
+                          "The output must be a valid time enclosed in curly brackets, like {14:30:15:30}. " \
+                          "Provide the response in JSON format, strictly following the schema without any extra text outside the JSON structure."
 
-            # Extract the code from the model response
-            try:
-                code = extract_code(model_response)
-                write_code_to_file(code)
-                output, error = run_generated_code()
-                model_time = parse_output(output)
-                error_type = categorize_error(error) if error else None
-            except ValueError as e:
-                print(f"Error: {e}")
-                model_time = None
-                error_type = "ValueError"
+                # Run the model and capture the response
+                try:
+                    model_response = await get_model_response(prompt, ai)
+                    code = extract_code(model_response)
+                    write_code_to_file(code)  # Write the generated code to a file
+                    output, error = run_generated_code()
+                    model_time = parse_output(output)
+                    error_type = categorize_error(error) if error else None
+                except ValueError as e:
+                    print(f"Error: {e}")
+                    model_time = None
+                    error_type = "ValueError"
 
-            # Print the formatted output to the terminal
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}")
+                # Print the formatted output to the terminal
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                output_line = f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}"
+                print(output_line)
 
-            # Write to the text file
-            txt_file.write(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}\n")
-            
-            # Prepare the JSON output
-            result_entry = {
-                "final_time": f"{model_time}",
-                "expected_time": f"{expected_time}",
-                "exact_response": model_response,
-                "count": example_id
-            }
-            
-            if prompt_type == 'prompt_0shot':
-                results_0shot.append(result_entry)
-                total_0shot += 1
-                if model_time == expected_time:
-                    correct_0shot += 1
-                if not error_type:
-                    no_error_0shot += 1
-            else:
-                results_5shot.append(result_entry)
-                total_5shot += 1
-                if model_time == expected_time:
-                    correct_5shot += 1
-                if not error_type:
-                    no_error_5shot += 1
-    
-    # Calculate accuracies
+                # Write the output to the text file
+                txt_file.write(output_line + "\n")
+
+                # Prepare the JSON output
+                result_entry = {
+                    "final_time": f"{model_time}",
+                    "expected_time": f"{expected_time}",
+                    "exact_response": model_response,
+                    "error_type": error_type,
+                    "count": example_id
+                }
+
+                if prompt_type == 'prompt_0shot':
+                    results_0shot.append(result_entry)
+                    total_0shot += 1
+                    if model_time == expected_time:
+                        correct_0shot += 1
+                    if not error_type:
+                        no_error_0shot += 1
+                else:
+                    results_5shot.append(result_entry)
+                    total_5shot += 1
+                    if model_time == expected_time:
+                        correct_5shot += 1
+                    if not error_type:
+                        no_error_5shot += 1
+
+                # Clear console after every 2 iterations
+                iteration_count += 1
+                if iteration_count % 2 == 0:
+                    clear_console()
+
+    # Write the final JSON output
+    with open('ML-L-3.1-70B_json_coderesults.json', 'w') as json_file:
+        json.dump({"0shot": results_0shot, "5shot": results_5shot}, json_file, indent=4)
+
+    # Calculate and print final accuracies
     accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
     accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
     total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
-    
-    # Calculate no-error accuracies
+
     no_error_accuracy_0shot = (correct_0shot / no_error_0shot) * 100 if no_error_0shot > 0 else 0
     no_error_accuracy_5shot = (correct_5shot / no_error_5shot) * 100 if no_error_5shot > 0 else 0
-    
-    # Write the final accuracy to the text file
+
     end_time = datetime.datetime.now()
     total_time = end_time - start_time
-    txt_file.write(f"\n0-shot prompts: Model guessed {correct_0shot} out of {total_0shot} correctly.\n")
-    txt_file.write(f"Accuracy: {accuracy_0shot:.2f}%\n")
-    txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
-    txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
-    txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
-    txt_file.write(f"0-shot prompts with no errors: {correct_0shot} out of {no_error_0shot} produced real outputs.\n")
-    txt_file.write(f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n")
-    txt_file.write(f"5-shot prompts with no errors: {correct_5shot} out of {no_error_5shot} produced real outputs.\n")
-    txt_file.write(f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n")
-    txt_file.write(f"Total time taken: {total_time.total_seconds():.2f} seconds\n")
-    
-    # Write the JSON output
-    json_output = {
-        "0shot": results_0shot,
-        "5shot": results_5shot
-    }
-    json.dump(json_output, json_file, indent=4)
 
-print("Processing complete. Results saved to model_results.txt and model_results.json.")
+    with open('ML-L-3.1-70B_text_coderesults.txt', 'a') as txt_file:
+        txt_file.write(f"\n0-shot prompts: Model guessed {correct_0shot} out of {total_0shot} correctly.\n")
+        txt_file.write(f"Accuracy: {accuracy_0shot:.2f}%\n")
+        txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
+        txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
+        txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
+        txt_file.write(f"0-shot prompts with no errors: {correct_0shot} out of {no_error_0shot} produced real outputs.\n")
+        txt_file.write(f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n")
+        txt_file.write(f"5-shot prompts with no errors: {correct_5shot} out of {no_error_5shot} produced real outputs.\n")
+        txt_file.write(f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n")
+        txt_file.write(f"Total time taken: {total_time.total_seconds():.2f} seconds\n")
+
+    print("Processing complete. Results saved to ML-L-3.1-70B_text_coderesults.txt and ML-L-3.1-70B_json_coderesults.json.")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+
+
+# import argparse
+# import asyncio
+# import json
+# import datetime
+# import outlines
+# import transformers
+# import re
+# import subprocess
+# from kani import Kani
+# from kani.engines.huggingface import HuggingEngine
+# from kani.engines import WrapperEngine
+
+# # Define the JSON schema for the output
+# JSON_SCHEMA = {
+#     "type": "object",
+#     "properties": {
+#         "explanation": {
+#             "type": "string"
+#         },
+#         "code": {
+#             "type": "string",
+#             "pattern": "^\"\"\\n'''python\\n([\\s\\S]+)\\n'''\\n\"\"\"$"
+#         }
+#     },
+#     "required": ["explanation", "code"]
+# }
+
+# # Load the calendar scheduling examples from the JSON file
+# with open('100_prompt_scheduling.json', 'r') as file:
+#     calendar_examples = json.load(file)
+
+# # Argument parser to select the model
+# parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
+# parser.add_argument('--model', type=str, required=True, help="The HuggingFace model ID to use.")
+# args = parser.parse_args()
+
+# class JSONGuidanceHFWrapper(WrapperEngine):
+#     def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
+#         super().__init__(engine, *args, **kwargs)
+#         # keep a reference to the JSON schema we want to use
+#         self.engine: HuggingEngine  # type hint for IDEs
+#         self.json_schema = json_schema
+#         self.outlines_tokenizer = outlines.models.TransformerTokenizer(self.engine.tokenizer)
+
+#     def _create_logits_processor(self):
+#         json_logits_processor = outlines.processors.JSONLogitsProcessor(self.json_schema, self.outlines_tokenizer)
+#         return transformers.LogitsProcessorList([json_logits_processor])
+
+#     async def predict(self, *args, **kwargs):
+#         # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+#         if "logits_processor" not in kwargs:
+#             kwargs["logits_processor"] = self._create_logits_processor()
+#         return await super().predict(*args, **kwargs)
+
+#     async def stream(self, *args, **kwargs):
+#         # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+#         if "logits_processor" not in kwargs:
+#             kwargs["logits_processor"] = self._create_logits_processor()
+#         async for elem in super().stream(*args, **kwargs):
+#             yield elem
+
+# # Load the model selected by the user
+# model = HuggingEngine(model_id=args.model)
+# engine = JSONGuidanceHFWrapper(model, json_schema=JSON_SCHEMA)
+
+# # Create the Kani instance
+# ai = Kani(engine)
+
+# def extract_code(model_response):
+#     """Extract the code block from the model response."""
+#     start_pattern = r"'''python\n"
+#     end_pattern = r"\n'''"
+    
+#     # Find the start and end of the code block
+#     start_match = re.search(start_pattern, model_response)
+#     end_match = re.search(end_pattern, model_response[start_match.end():] if start_match else "")
+    
+#     if not start_match or not end_match:
+#         raise ValueError("Could not extract code from the model response.")
+    
+#     # Extract the code
+#     code = model_response[start_match.end():start_match.end() + end_match.start()]
+#     return code
+
+# def write_code_to_file(code, filename="generated_code.py"):
+#     with open(filename, "w") as f:
+#         f.write(code)
+
+# def run_generated_code(filename="generated_code.py"):
+#     result = subprocess.run(["python", filename], capture_output=True, text=True)
+#     return result.stdout, result.stderr
+
+# def parse_output(output):
+#     """
+#     Parse the output to find the time in the format {HH:MM:HH:MM}.
+#     Remove leading zeros from single-digit hours.
+#     """
+#     match = re.search(r"\{(\d{2}:\d{2}:\d{2}:\d{2})\}", output)
+#     if match:
+#         time_str = match.group(0)
+#         return remove_leading_zero_from_hour(time_str)  # Remove leading zeros
+#     else:
+#         return None
+
+# def parse_golden_plan_time(golden_plan):
+#     """Parse the golden plan time into {HH:MM:HH:MM} format."""
+#     match = re.search(r'(\d{1,2}:\d{2}) - (\d{1,2}:\d{2})', golden_plan)
+#     if match:
+#         start_time, end_time = match.groups()
+#         return f"{{{start_time}:{end_time}}}"
+#     return "Invalid format"
+
+# def remove_leading_zero_from_hour(time_str):
+#     """
+#     Remove leading zeros from single-digit hours in a time string.
+#     Example: {09:30:10:30} → {9:30:10:30}
+#     """
+#     if not time_str or not isinstance(time_str, str):
+#         return time_str  # Return as-is if invalid input
+
+#     # Use regex to find and remove leading zeros from single-digit hours
+#     def remove_zero(match):
+#         hour = match.group(1).lstrip('0')  # Remove leading zeros
+#         return f"{hour}:{match.group(2)}"
+
+#     # Apply the function to all occurrences of HH:MM
+#     time_str = re.sub(r"(\d{2}):(\d{2})", remove_zero, time_str)
+#     return time_str
+
+# def categorize_error(error_message):
+#     if "SyntaxError" in error_message:
+#         return "SyntaxError"
+#     elif "IndentationError" in error_message:
+#         return "IndentationError"
+#     elif "NameError" in error_message:
+#         return "NameError"
+#     elif "TypeError" in error_message:
+#         return "TypeError"
+#     elif "ValueError" in error_message:
+#         return "ValueError"
+#     elif "ImportError" in error_message:
+#         return "ImportError"
+#     elif "RuntimeError" in error_message:
+#         return "RuntimeError"
+#     elif "AttributeError" in error_message:
+#         return "AttributeError"
+#     else:
+#         return "Other"
+
+# # Initialize counters for accuracy calculation
+# correct_0shot = 0
+# correct_5shot = 0
+# total_0shot = 0
+# total_5shot = 0
+# no_error_0shot = 0
+# no_error_5shot = 0
+
+# # Initialize lists for JSON output
+# results_0shot = []
+# results_5shot = []
+
+# # Open the text file for writing results
+# with open('ML-ML-3.1-8B_text_coderesults.txt', 'w') as txt_file, open('ML-ML-3.1-8B_json_coderesults.json', 'w') as json_file:
+#     start_time = datetime.datetime.now()
+    
+#     for example_id, example in calendar_examples.items():
+#         for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+#             prompt = example[prompt_type]
+#             golden_plan = example['golden_plan']
+
+#             # Parse golden plan into {HH:MM:HH:MM} format
+#             expected_time = parse_golden_plan_time(golden_plan)
+
+#             # Append the suffix to the prompt
+#             prompt += "\n\nPlease generate a full Python script program which calculates the proposed time. " \
+#                       "Generate a response in the following JSON format. Ensure the response strictly adheres to the JSON schema and does not include any additional text outside the JSON structure. " \
+#                       "Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. " \
+#                       "Generate a response in the following JSON format. Ensure the code starts with '''python and ends with ''' to encase the code. Use proper indentation and spacing. " \
+#                       "Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}. " \
+#                       "Here is an example of a possible format of time: {14:30:15:30}. " \
+#                       "The final time must be encased in curly brackets: {}. " \
+#                       "Make sure the time produced by the code running is a valid and logical time and that it must be encased in curly brackets: {}."
+
+#             # Run the model and capture the response
+#             async def get_model_response():
+#                 full_response = ""
+#                 code_block_started = False
+#                 code_block_ended = False
+#                 async for token in ai.chat_round_stream(prompt):
+#                     full_response += token
+#                     print(token, end="", flush=True)  # Print tokens as they are generated
+
+#                     # Check if the code block has started
+#                     if "'''python" in full_response and not code_block_started:
+#                         code_block_started = True
+
+#                     # Check if the code block has ended
+#                     if code_block_started and "'''" in full_response[full_response.rfind("'''python") + 9:]:
+#                         code_block_ended = True
+#                         break  # Stop generation once the code block ends
+
+#                 print()  # For a newline after the response
+#                 return full_response.strip()  # Return the actual response
+
+#             # Extract the code from the model response
+#             try:
+#                 model_response = asyncio.run(get_model_response())
+#                 code = extract_code(model_response)
+#                 write_code_to_file(code)
+#                 output, error = run_generated_code()
+#                 model_time = parse_output(output)
+#                 error_type = categorize_error(error) if error else None
+#             except ValueError as e:
+#                 print(f"Error: {e}")
+#                 model_time = None
+#                 error_type = "ValueError"
+
+#             # Print the formatted output to the terminal
+#             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             print(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}")
+
+#             # Write to the text file
+#             txt_file.write(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}\n")
+            
+#             # Prepare the JSON output
+#             result_entry = {
+#                 "final_time": f"{model_time}",
+#                 "expected_time": f"{expected_time}",
+#                 "exact_response": model_response,
+#                 "error_type": error_type,
+#                 "count": example_id
+#             }
+            
+#             if prompt_type == 'prompt_0shot':
+#                 results_0shot.append(result_entry)
+#                 total_0shot += 1
+#                 if model_time == expected_time:
+#                     correct_0shot += 1
+#                 if not error_type:
+#                     no_error_0shot += 1
+#             else:
+#                 results_5shot.append(result_entry)
+#                 total_5shot += 1
+#                 if model_time == expected_time:
+#                     correct_5shot += 1
+#                 if not error_type:
+#                     no_error_5shot += 1
+
+#             # Write the JSON output immediately
+#             json_output = {
+#                 "0shot": results_0shot,
+#                 "5shot": results_5shot
+#             }
+#             json_file.seek(0)
+#             json.dump(json_output, json_file, indent=4)
+#             json_file.truncate()
+    
+#     # Calculate accuracies
+#     accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
+#     accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
+#     total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
+    
+#     # Calculate no-error accuracies
+#     no_error_accuracy_0shot = (correct_0shot / no_error_0shot) * 100 if no_error_0shot > 0 else 0
+#     no_error_accuracy_5shot = (correct_5shot / no_error_5shot) * 100 if no_error_5shot > 0 else 0
+    
+#     # Write the final accuracy to the text file
+#     end_time = datetime.datetime.now()
+#     total_time = end_time - start_time
+#     txt_file.write(f"\n0-shot prompts: Model guessed {correct_0shot} out of {total_0shot} correctly.\n")
+#     txt_file.write(f"Accuracy: {accuracy_0shot:.2f}%\n")
+#     txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
+#     txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
+#     txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
+#     txt_file.write(f"0-shot prompts with no errors: {correct_0shot} out of {no_error_0shot} produced real outputs.\n")
+#     txt_file.write(f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n")
+#     txt_file.write(f"5-shot prompts with no errors: {correct_5shot} out of {no_error_5shot} produced real outputs.\n")
+#     txt_file.write(f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n")
+#     txt_file.write(f"Total time taken: {total_time.total_seconds()} seconds\n")
+
+# print("Processing complete. Results saved to model_results.txt and model_results.json.")
+
+
+
+#******************************WORKING JSON FORCE CODE (CODE OUTPUTS)*************************************
+
+# import argparse
+# import asyncio
+# import json
+# import datetime
+# import outlines
+# import transformers
+# import re
+# import subprocess
+# from kani import Kani
+# from kani.engines.huggingface import HuggingEngine
+# from kani.engines import WrapperEngine
+
+# # Define the JSON schema for the output
+# JSON_SCHEMA = {
+#     "type": "object",
+#     "properties": {
+#         "explanation": {
+#             "type": "string"
+#         },
+#         "code": {
+#             "type": "string",
+#             "pattern": "^\"\"\\n'''python\\n([\\s\\S]+)\\n'''\\n\"\"\"$"
+#         }
+#     },
+#     "required": ["explanation", "code"]
+# }
+
+# # Load the calendar scheduling examples from the JSON file
+# with open('100_prompt_scheduling.json', 'r') as file:
+#     calendar_examples = json.load(file)
+
+# # Argument parser to select the model
+# parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
+# parser.add_argument('--model', type=str, required=True, help="The HuggingFace model ID to use.")
+# args = parser.parse_args()
+
+# class JSONGuidanceHFWrapper(WrapperEngine):
+#     def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
+#         super().__init__(engine, *args, **kwargs)
+#         # keep a reference to the JSON schema we want to use
+#         self.engine: HuggingEngine  # type hint for IDEs
+#         self.json_schema = json_schema
+#         self.outlines_tokenizer = outlines.models.TransformerTokenizer(self.engine.tokenizer)
+
+#     def _create_logits_processor(self):
+#         json_logits_processor = outlines.processors.JSONLogitsProcessor(self.json_schema, self.outlines_tokenizer)
+#         return transformers.LogitsProcessorList([json_logits_processor])
+
+#     async def predict(self, *args, **kwargs):
+#         # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+#         if "logits_processor" not in kwargs:
+#             kwargs["logits_processor"] = self._create_logits_processor()
+#         return await super().predict(*args, **kwargs)
+
+#     async def stream(self, *args, **kwargs):
+#         # each time we call predict or stream, pass a new instance of JSONLogitsProcessor
+#         if "logits_processor" not in kwargs:
+#             kwargs["logits_processor"] = self._create_logits_processor()
+#         async for elem in super().stream(*args, **kwargs):
+#             yield elem
+
+# # Load the model selected by the user
+# model = HuggingEngine(model_id=args.model)
+# engine = JSONGuidanceHFWrapper(model, json_schema=JSON_SCHEMA)
+
+# # Create the Kani instance
+# ai = Kani(engine)
+
+# def extract_code(model_response):
+#     """Extract the code block from the model response."""
+#     match = re.search(r"'''python\n([\s\S]+?)\n'''", model_response)
+#     if match:
+#         return match.group(1)
+#     else:
+#         raise ValueError("Could not extract code from the model response.")
+
+# def write_code_to_file(code, filename="generated_code.py"):
+#     with open(filename, "w") as f:
+#         f.write(code)
+
+# def run_generated_code(filename="generated_code.py"):
+#     result = subprocess.run(["python", filename], capture_output=True, text=True)
+#     return result.stdout, result.stderr
+
+# def parse_output(output):
+#     """
+#     Parse the output to find the time in the format {HH:MM:HH:MM}.
+#     Remove leading zeros from single-digit hours.
+#     """
+#     match = re.search(r"\{(\d{2}:\d{2}:\d{2}:\d{2})\}", output)
+#     if match:
+#         time_str = match.group(0)
+#         return remove_leading_zero_from_hour(time_str)  # Remove leading zeros
+#     else:
+#         return None
+
+# def parse_golden_plan_time(golden_plan):
+#     """Parse the golden plan time into {HH:MM:HH:MM} format."""
+#     match = re.search(r'(\d{1,2}:\d{2}) - (\d{1,2}:\d{2})', golden_plan)
+#     if match:
+#         start_time, end_time = match.groups()
+#         return f"{{{start_time}:{end_time}}}"
+#     return "Invalid format"
+
+# def remove_leading_zero_from_hour(time_str):
+#     """
+#     Remove leading zeros from single-digit hours in a time string.
+#     Example: {09:30:10:30} → {9:30:10:30}
+#     """
+#     if not time_str or not isinstance(time_str, str):
+#         return time_str  # Return as-is if invalid input
+
+#     # Use regex to find and remove leading zeros from single-digit hours
+#     def remove_zero(match):
+#         hour = match.group(1).lstrip('0')  # Remove leading zeros
+#         return f"{hour}:{match.group(2)}"
+
+#     # Apply the function to all occurrences of HH:MM
+#     time_str = re.sub(r"(\d{2}):(\d{2})", remove_zero, time_str)
+#     return time_str
+
+# def categorize_error(error_message):
+#     if "SyntaxError" in error_message:
+#         return "SyntaxError"
+#     elif "IndentationError" in error_message:
+#         return "IndentationError"
+#     elif "NameError" in error_message:
+#         return "NameError"
+#     elif "TypeError" in error_message:
+#         return "TypeError"
+#     elif "ValueError" in error_message:
+#         return "ValueError"
+#     elif "ImportError" in error_message:
+#         return "ImportError"
+#     elif "RuntimeError" in error_message:
+#         return "RuntimeError"
+#     elif "AttributeError" in error_message:
+#         return "AttributeError"
+#     else:
+#         return "Other"
+
+# # Initialize counters for accuracy calculation
+# correct_0shot = 0
+# correct_5shot = 0
+# total_0shot = 0
+# total_5shot = 0
+# no_error_0shot = 0
+# no_error_5shot = 0
+
+# # Initialize lists for JSON output
+# results_0shot = []
+# results_5shot = []
+
+# # Open the text file for writing results
+# with open('ML-L-3.1-70B_text_coderesults.txt', 'w') as txt_file, open('ML-L-3.1-70B_json_coderesults.json', 'w') as json_file:
+#     start_time = datetime.datetime.now()
+    
+#     for example_id, example in calendar_examples.items():
+#         for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+#             prompt = example[prompt_type]
+#             golden_plan = example['golden_plan']
+
+#             # Parse golden plan into {HH:MM:HH:MM} format
+#             expected_time = parse_golden_plan_time(golden_plan)
+
+            # # Append the suffix to the prompt
+            # prompt += "\n\nPlease generate a full Python script program which calculates the proposed time. " \
+            #           "Generate a response in the following JSON format. Ensure the response strictly adheres to the JSON schema and does not include any additional text outside the JSON structure. " \
+            #           "Ensure the code is clean, well-formatted, and free from unnecessary escape characters or tags. " \
+            #           "Generate a response in the following JSON format. Ensure the code starts with '''python and ends with ''' to encase the code. Use proper indentation and spacing. " \
+            #           "Finally, make sure the output of the program you generate displays the calculated time in the following format: {HH:MM:HH:MM}. " \
+            #           "Here is an example of a possible format of time: {14:30:15:30}. " \
+            #           "The final time must be encased in curly brackets: {}. " 
+
+#             # Run the model and capture the response
+#             async def get_model_response():
+#                 full_response = ""
+#                 async for token in ai.chat_round_stream(prompt):
+#                     full_response += token
+#                     # print(token, end="", flush=True)
+#                 # print()  # For a newline after the response
+#                 return full_response.strip()  # Return the actual response
+            
+#             model_response = asyncio.run(get_model_response())
+
+#             # Extract the code from the model response
+#             try:
+#                 code = extract_code(model_response)
+#                 write_code_to_file(code)
+#                 output, error = run_generated_code()
+#                 model_time = parse_output(output)
+#                 error_type = categorize_error(error) if error else None
+#             except ValueError as e:
+#                 print(f"Error: {e}")
+#                 model_time = None
+#                 error_type = "ValueError"
+
+#             # Print the formatted output to the terminal
+#             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             print(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}")
+
+#             # Write to the text file
+#             txt_file.write(f"{example_id}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {model_time} EXPECTED: {expected_time} | ERROR: {error_type}\n")
+            
+#             # Prepare the JSON output
+#             result_entry = {
+#                 "final_time": f"{model_time}",
+#                 "expected_time": f"{expected_time}",
+#                 "exact_response": model_response,
+#                 "count": example_id
+#             }
+            
+#             if prompt_type == 'prompt_0shot':
+#                 results_0shot.append(result_entry)
+#                 total_0shot += 1
+#                 if model_time == expected_time:
+#                     correct_0shot += 1
+#                 if not error_type:
+#                     no_error_0shot += 1
+#             else:
+#                 results_5shot.append(result_entry)
+#                 total_5shot += 1
+#                 if model_time == expected_time:
+#                     correct_5shot += 1
+#                 if not error_type:
+#                     no_error_5shot += 1
+    
+#     # Calculate accuracies
+#     accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
+#     accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
+#     total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
+    
+#     # Calculate no-error accuracies
+#     no_error_accuracy_0shot = (correct_0shot / no_error_0shot) * 100 if no_error_0shot > 0 else 0
+#     no_error_accuracy_5shot = (correct_5shot / no_error_5shot) * 100 if no_error_5shot > 0 else 0
+    
+#     # Write the final accuracy to the text file
+#     end_time = datetime.datetime.now()
+#     total_time = end_time - start_time
+#     txt_file.write(f"\n0-shot prompts: Model guessed {correct_0shot} out of {total_0shot} correctly.\n")
+#     txt_file.write(f"Accuracy: {accuracy_0shot:.2f}%\n")
+#     txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
+#     txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
+#     txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
+#     txt_file.write(f"0-shot prompts with no errors: {correct_0shot} out of {no_error_0shot} produced real outputs.\n")
+#     txt_file.write(f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n")
+#     txt_file.write(f"5-shot prompts with no errors: {correct_5shot} out of {no_error_5shot} produced real outputs.\n")
+#     txt_file.write(f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n")
+#     txt_file.write(f"Total time taken: {total_time.total_seconds():.2f} seconds\n")
+    
+#     # Write the JSON output
+#     json_output = {
+#         "0shot": results_0shot,
+#         "5shot": results_5shot
+#     }
+#     json.dump(json_output, json_file, indent=4)
+
+# print("Processing complete. Results saved to model_results.txt and model_results.json.")
 
 
 # import argparse
