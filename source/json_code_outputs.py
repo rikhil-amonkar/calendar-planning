@@ -30,13 +30,13 @@ def load_prompts(file_path):
 # Define prefix and suffix messages
 prefix_message = (
     "You are an expert at scheduling meetings. Your task is to find a suitable time for a meeting "
-    "based on the participants' schedules and constraints. Follow this scenario:\n"
+    "based on the participants' schedules and constraints. In this case:\n"
 )
 suffix_message = (
-    "\nGenerate a full working Python script with code that calculates a proposed time and outputs it in the format {HH:MM:HH:MM}. " \
+    "\nGenerate a fully working Python script with code that calculates a proposed time and outputs it in the format HH:MM:HH:MM. " \
     "The script should be clean, well-formatted, and enclosed within '''python and '''. " \
-    "The output of the generated code must be a valid time enclosed in curly brackets, like {14:30:15:30}. " \
-    "Provide the response exactly as requested, with nothing else, only code."
+    "The output of the generated code must be a valid time, like {14:30:15:30}. " \
+    "Provide the response with only code."
 )
 
 # Initialize the model engine
@@ -50,17 +50,50 @@ def initialize_engine(model_id):
 
 # Function to extract the code from the model's response
 def extract_code(response):
-    start = response.find("```python")
+    # Define the possible code block delimiters
+    delimiters = ["'''python", "'''", "```python", "```"]
+    
+    # Find the start of the code block
+    start = -1
+    for delimiter in delimiters:
+        start = response.find(delimiter)
+        if start != -1:
+            start += len(delimiter)  # Move the start index to the end of the delimiter
+            break
+    
+    # If no delimiter is found, return None
     if start == -1:
-        start = response.find("```")
-    if start != -1:
-        start += len("```python") if "```python" in response else len("```")
-        end = response.find("```", start)
+        return None
+    
+    # Find the end of the code block
+    end = -1
+    for delimiter in delimiters:
+        end = response.find(delimiter, start)  # Search for the closing delimiter after the start
         if end != -1:
-            return response[start:end].strip()
-    return None
+            break
+    
+    # If no closing delimiter is found, return None
+    if end == -1:
+        return None
+    
+    # Extract and return the code block
+    return response[start:end].strip()
 
-# Function to normalize the time format (more lenient)
+# Function to remove leading zeros from times in the format HH:MM:HH:MM
+def remove_leading_zeros(time_str):
+    if not time_str:
+        return None
+    # Split the time string into parts
+    parts = time_str.strip("{}").split(":")
+    if len(parts) != 4:
+        return time_str  # Return the original string if the format is incorrect
+    # Remove leading zeros from each hour part
+    parts[0] = str(int(parts[0]))  # First hour
+    parts[2] = str(int(parts[2]))  # Second hour
+    # Reconstruct the time string
+    return f"{{{':'.join(parts)}}}"
+
+# Modify the normalize_time_format function to use remove_leading_zeros
 def normalize_time_format(time_str):
     if not time_str:
         return None
@@ -69,7 +102,8 @@ def normalize_time_format(time_str):
     match = time_pattern.search(time_str)
     if match:
         time_str = match.group(0)
-        return f"{{{time_str}}}"  # Add brackets for consistency
+        time_str = remove_leading_zeros(time_str)  # Remove leading zeros
+        return time_str  # Return the normalized time string
     return None
 
 # Function to categorize errors
@@ -181,7 +215,7 @@ async def run_model():
                     )
                     logging.info(line)
 
-                    with open("DS-R1-DL-8B_text_coderesults.txt", "a") as file:
+                    with open("DS-R1-DL-70B_text_coderesults.txt", "a") as file:
                         file.write(line + "\n")
 
                     json_output = {
@@ -192,7 +226,7 @@ async def run_model():
                         "count": key
                     }
 
-                    with open("DS-R1-DL-8B_json_coderesults.json", "r+") as json_file:
+                    with open("DS-R1-DL-70B_json_coderesults.json", "r+") as json_file:
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
@@ -228,7 +262,7 @@ async def run_model():
         f"\nTotal time taken: {total_time} seconds"
     )
 
-    with open("DS-R1-DL-8B_text_coderesults.txt", "a") as file:
+    with open("DS-R1-DL-70B_text_coderesults.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model
