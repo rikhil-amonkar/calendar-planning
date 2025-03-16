@@ -168,7 +168,7 @@ async def run_model():
     correct_output_count_5shot = 0
 
     # Initialize the JSON results file
-    json_results_file = "O3-M-25-01-31_json_coderesults.json"
+    json_results_file = "GPT-4O-M-24-07-18_json_coderesults.json"
     initialize_results_file(json_results_file)
 
     for key, data in prompts_list:
@@ -221,7 +221,7 @@ async def run_model():
                     )
                     logging.info(line)
 
-                    with open("O3-M-25-01-31_text_coderesults.txt", "a") as file:
+                    with open("GPT-4O-M-24-07-18_text_coderesults.txt", "a") as file:
                         file.write(line + "\n")
 
                     json_output = {
@@ -268,7 +268,7 @@ async def run_model():
         f"\nTotal time taken: {total_time} seconds"
     )
 
-    with open("O3-M-25-01-31_text_coderesults.txt", "a") as file:
+    with open("GPT-4O-M-24-07-18_text_coderesults.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model
