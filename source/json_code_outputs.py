@@ -226,7 +226,7 @@ async def run_model():
                         "count": key
                     }
 
-                    with open("DS-R1-DL-70B_json_coderesults.json", "r+") as json_file:
+                    with open("DS-R1-DL-8B_json_coderesults.json", "r+") as json_file:
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
@@ -262,7 +262,7 @@ async def run_model():
         f"\nTotal time taken: {total_time} seconds"
     )
 
-    with open("DS-R1-DL-70B_text_coderesults.txt", "a") as file:
+    with open("DS-R1-DL-8B_text_coderesults.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model
