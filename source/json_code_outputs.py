@@ -36,13 +36,23 @@ suffix_message = (
     "\nGenerate a fully working Python script with code that calculates a proposed time and outputs it in the format HH:MM:HH:MM. " \
     "The script should be clean, well-formatted, and enclosed within '''python and '''. " \
     "The output of the generated code must be a valid time, like {14:30:15:30}. " \
-    "Provide the response with only code."
+    "Provide minimal text with a complete response of code. Answer briefly and directly. Limit your response to the essential information." \
+    "Make sure the time found by the code is a valid time based on the task."
 )
 
 # Initialize the model engine
 def initialize_engine(model_id):
     try:
-        engine = HuggingEngine(model_id=model_id)
+        engine = HuggingEngine(
+            model_id=model_id,
+            top_p=0.95,  # Use top-p (nucleus) sampling
+            temperature=0.6,  # Adjust temperature
+            do_sample=True,  # Enable sampling
+            repetition_penalty=1.2,  # Reduce repetition
+            max_new_tokens=3000,  # Limit the number of tokens generated
+            top_k=50,  # Limit sampling to top 50 tokens
+            num_beams=2, # Limit beam search
+        )
         return engine
     except Exception as e:
         logging.error(f"Error initializing model: {e}")
@@ -97,13 +107,25 @@ def remove_leading_zeros(time_str):
 def normalize_time_format(time_str):
     if not time_str:
         return None
-    # Search for the time pattern without brackets
-    time_pattern = re.compile(r"\b\d{2}:\d{2}:\d{2}:\d{2}\b")
+    
+    # Use a regex to find four numbers in the format HH:MM:HH:MM, HH:MM-HH:MM, or HHMMHHMM
+    time_pattern = re.compile(r"(\d{1,2})[:-]?(\d{2})[:-]?(\d{1,2})[:-]?(\d{2})")
     match = time_pattern.search(time_str)
+    
     if match:
-        time_str = match.group(0)
-        time_str = remove_leading_zeros(time_str)  # Remove leading zeros
-        return time_str  # Return the normalized time string
+        # Extract the four numbers (hours and minutes)
+        start_hour, start_minute, end_hour, end_minute = match.groups()
+        
+        # Ensure two-digit format for hours and minutes
+        start_hour = f"{int(start_hour):02d}"
+        start_minute = f"{int(start_minute):02d}"
+        end_hour = f"{int(end_hour):02d}"
+        end_minute = f"{int(end_minute):02d}"
+        
+        # Reformat into the consistent format {HH:MM:HH:MM}
+        normalized_time = f"{{{start_hour}:{start_minute}:{end_hour}:{end_minute}}}"
+        return normalized_time
+    
     return None
 
 # Function to categorize errors
@@ -168,8 +190,8 @@ async def run_model():
     correct_output_count_5shot = 0
 
     # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("DS-R1-DL-8B_json_coderesults.json"):
-        with open("DS-R1-DL-8B_json_coderesults.json", "w") as json_file:
+    if not os.path.exists("DS-R1-DL-70B_json_coderesults.json"):
+        with open("DS-R1-DL-70B_json_coderesults.json", "w") as json_file:
             json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
 
     for key, data in prompts_list:
@@ -226,7 +248,7 @@ async def run_model():
                         "count": key
                     }
 
-                    with open("DS-R1-DL-8B_json_coderesults.json", "r+") as json_file:
+                    with open("DS-R1-DL-70B_json_coderesults.json", "r+") as json_file:
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
@@ -262,7 +284,7 @@ async def run_model():
         f"\nTotal time taken: {total_time} seconds"
     )
 
-    with open("DS-R1-DL-8B_text_coderesults.txt", "a") as file:
+    with open("DS-R1-DL-70B_text_coderesults.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model
