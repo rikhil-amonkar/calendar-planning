@@ -127,6 +127,7 @@ async def get_model_response(prompt, ai):
     """Get the model's response to the prompt."""
     full_response = ""
     async for token in ai.chat_round_stream(prompt):
+        print(token, end=" ")
         full_response += token
     return full_response.strip()
 
