@@ -6,7 +6,8 @@ import re
 import subprocess
 from argparse import ArgumentParser
 from datetime import datetime
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from kani import Kani
+from kani.engines.huggingface import HuggingEngine
 import torch
 import gc
 
@@ -41,14 +42,20 @@ suffix_message = (
     "Make sure the time found by the code is a valid time based on the task."
 )
 
-# Initialize the model and tokenizer
-def initialize_model(model_id):
+# Initialize the model engine
+def initialize_engine(model_id):
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
-        if torch.cuda.is_available():
-            model = model.to("cuda")
-        return model, tokenizer
+        engine = HuggingEngine(
+            model_id=model_id,
+            top_p=0.1,  # Use top-p (nucleus) sampling
+            temperature=0.2,  # Adjust temperature
+            do_sample=True,  # Enable sampling
+            repetition_penalty=1.4,  # Reduce repetition
+            max_new_tokens=3000,  # Limit the number of tokens generated
+            top_k=50,  # Limit sampling to top 50 tokens
+            num_beams=2, # Limit beam search
+        )
+        return engine
     except Exception as e:
         logging.error(f"Error initializing model: {e}")
         raise
@@ -177,7 +184,8 @@ async def run_model():
     prompts_data = load_prompts("100_prompt_scheduling.json")
     prompts_list = list(prompts_data.items())
 
-    model, tokenizer = initialize_model(args.model)
+    engine = initialize_engine(args.model)
+    ai = Kani(engine)
 
     no_error_count_0shot = 0
     correct_output_count_0shot = 0
@@ -185,12 +193,12 @@ async def run_model():
     correct_output_count_5shot = 0
 
     # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("DS-R1-DL-8B_json_coderesults.json"):
-        with open("DS-R1-DL-8B_json_coderesults.json", "w") as json_file:
+    if not os.path.exists("DS-R1-DL-70B_json_coderesults.json"):
+        with open("DS-R1-DL-70B_json_coderesults.json", "w") as json_file:
             json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
 
     # Define the starting point
-    start_from_prompt = "calendar_scheduling_example_0"  # Change this to your desired starting prompt
+    start_from_prompt = "calendar_scheduling_example_96"  # Change this to your desired starting prompt
     start_processing = False  # Flag to indicate when to start processing
 
     for key, data in prompts_list:
@@ -209,9 +217,7 @@ async def run_model():
                 full_prompt = prefix_message + prompt + suffix_message
 
                 try:
-                    inputs = tokenizer(full_prompt, return_tensors="pt").to(model.device)
-                    outputs = model.generate(**inputs, max_new_tokens=5000, do_sample=True, top_p=0.1, temperature=0.2, repetition_penalty=1.4, top_k=50, num_beams=2)
-                    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    response = await ai.chat_round_str(full_prompt)
                     # Stop the response after the second '''
                     response = stop_after_second_triple_quote(response)
                     code = extract_code(response)
@@ -246,7 +252,7 @@ async def run_model():
                     )
                     logging.info(line)
 
-                    with open("DS-R1-DL-8B_text_coderesults.txt", "a") as file:
+                    with open("DS-R1-DL-70B_text_coderesults.txt", "a") as file:
                         file.write(line + "\n")
 
                     json_output = {
@@ -257,7 +263,7 @@ async def run_model():
                         "count": key
                     }
 
-                    with open("DS-R1-DL-8B_json_coderesults.json", "r+") as json_file:
+                    with open("DS-R1-DL-70B_json_coderesults.json", "r+") as json_file:
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
@@ -268,7 +274,7 @@ async def run_model():
                         json_file.truncate()
 
                     # Clear memory
-                    del inputs, outputs, response, code, code_output, predicted_time, expected_time, error_type, json_output
+                    del response, code, code_output, predicted_time, expected_time, error_type, json_output
                     gc.collect()
                     torch.cuda.empty_cache()
 
@@ -298,13 +304,16 @@ async def run_model():
         f"\nTotal time taken: {total_time} seconds"
     )
 
-    with open("DS-R1-DL-8B_text_coderesults.txt", "a") as file:
+    with open("DS-R1-DL-70B_text_coderesults.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model
 if __name__ == "__main__":
-    # Set environment variable to reduce memory fragmentation
+    # Set enviroment variable to reduce memory fragmentation
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     asyncio.run(run_model())
+
+
 
 # import asyncio
 # import json
@@ -314,8 +323,7 @@ if __name__ == "__main__":
 # import subprocess
 # from argparse import ArgumentParser
 # from datetime import datetime
-# from kani import Kani
-# from kani.engines.huggingface import HuggingEngine
+# from transformers import AutoModelForCausalLM, AutoTokenizer
 # import torch
 # import gc
 
@@ -350,20 +358,15 @@ if __name__ == "__main__":
 #     "Make sure the time found by the code is a valid time based on the task."
 # )
 
-# # Initialize the model engine
-# def initialize_engine(model_id):
+# # Initialize the model and tokenizer
+# def initialize_model(model_id):
 #     try:
-#         engine = HuggingEngine(
-#             model_id=model_id,
-#             top_p=0.1,  # Use top-p (nucleus) sampling
-#             temperature=0.2,  # Adjust temperature
-#             do_sample=True,  # Enable sampling
-#             repetition_penalty=1.4,  # Reduce repetition
-#             max_new_tokens=3000,  # Limit the number of tokens generated
-#             top_k=50,  # Limit sampling to top 50 tokens
-#             num_beams=2, # Limit beam search
-#         )
-#         return engine
+#         tokenizer = AutoTokenizer.from_pretrained(model_id)
+#         model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
+#         if torch.cuda.is_available():
+#             model = model.to("cuda")
+#         model.gradient_checkpointing_enable()  # Enable gradient checkpointing
+#         return model, tokenizer
 #     except Exception as e:
 #         logging.error(f"Error initializing model: {e}")
 #         raise
@@ -492,8 +495,7 @@ if __name__ == "__main__":
 #     prompts_data = load_prompts("100_prompt_scheduling.json")
 #     prompts_list = list(prompts_data.items())
 
-#     engine = initialize_engine(args.model)
-#     ai = Kani(engine)
+#     model, tokenizer = initialize_model(args.model)
 
 #     no_error_count_0shot = 0
 #     correct_output_count_0shot = 0
@@ -506,7 +508,7 @@ if __name__ == "__main__":
 #             json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
 
 #     # Define the starting point
-#     start_from_prompt = "calendar_scheduling_example_57"  # Change this to your desired starting prompt
+#     start_from_prompt = "calendar_scheduling_example_0"  # Change this to your desired starting prompt
 #     start_processing = False  # Flag to indicate when to start processing
 
 #     for key, data in prompts_list:
@@ -525,7 +527,9 @@ if __name__ == "__main__":
 #                 full_prompt = prefix_message + prompt + suffix_message
 
 #                 try:
-#                     response = await ai.chat_round_str(full_prompt)
+#                     inputs = tokenizer(full_prompt, return_tensors="pt").to(model.device)
+#                     outputs = model.generate(**inputs, max_new_tokens=5000, do_sample=True, top_p=0.1, temperature=0.2, repetition_penalty=1.4, top_k=50, num_beams=2)
+#                     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 #                     # Stop the response after the second '''
 #                     response = stop_after_second_triple_quote(response)
 #                     code = extract_code(response)
@@ -582,7 +586,7 @@ if __name__ == "__main__":
 #                         json_file.truncate()
 
 #                     # Clear memory
-#                     del response, code, code_output, predicted_time, expected_time, error_type, json_output
+#                     del inputs, outputs, response, code, code_output, predicted_time, expected_time, error_type, json_output
 #                     gc.collect()
 #                     torch.cuda.empty_cache()
 
@@ -618,8 +622,10 @@ if __name__ == "__main__":
 # # Run the model
 # if __name__ == "__main__":
 #     # Set enviroment variable to reduce memory fragmentation
-#     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+#     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 #     asyncio.run(run_model())
+
+
 
 # import asyncio
 # import json
