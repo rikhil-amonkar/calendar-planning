@@ -622,6 +622,7 @@ if __name__ == "__main__":
 # # Run the model
 # if __name__ == "__main__":
 #     # Set enviroment variable to reduce memory fragmentation
+#     os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
 #     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 #     asyncio.run(run_model())
 
