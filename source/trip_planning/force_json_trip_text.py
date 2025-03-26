@@ -1,3 +1,5 @@
+#**********WORKING CODE, FORCE JSON, TEXT OUTPUTS, TRIP PLANNING, KANI************
+
 import argparse
 import asyncio
 import json
@@ -16,12 +18,25 @@ JSON_SCHEMA = {
         "itinerary": {
             "type": "array",
             "items": {
-                "type": "object",
-                "properties": {
-                    "day_range": {"type": "string", "pattern": "^Day \\d+-\\d+$"},
-                    "place": {"type": "string"}
-                },
-                "required": ["day_range", "place"]
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "day_range": {"type": "string", "pattern": "^Day \\d+-\\d+$"},
+                            "place": {"type": "string"}
+                        },
+                        "required": ["day_range", "place"]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "flying": {"type": "string", "pattern": "^Day \\d+-\\d+$"},
+                            "from": {"type": "string"},
+                            "to": {"type": "string"}
+                        },
+                        "required": ["flying", "from", "to"]
+                    }
+                ]
             }
         }
     },
@@ -67,7 +82,6 @@ ai = Kani(engine)
 def parse_golden_plan(golden_plan):
     """Parse the golden plan into structured itinerary format matching our JSON schema."""
     itinerary = []
-    current_day = 1
     
     # Split the plan into lines and process each line
     for line in golden_plan.split('\n'):
@@ -75,38 +89,38 @@ def parse_golden_plan(golden_plan):
         if not line or not line.startswith('**Day'):
             continue
             
-        # Extract day range and place
+        # Extract day range
         day_match = re.search(r'Day (\d+)(?:-(\d+))?', line)
-        place_match = re.search(r': (.*?)(?: for \d+ days|$)', line)
-        
-        if not day_match or not place_match:
+        if not day_match:
             continue
             
         start_day = int(day_match.group(1))
         end_day = int(day_match.group(2)) if day_match.group(2) else start_day
-        place = place_match.group(1).strip()
+        day_range = f"Day {start_day}-{end_day}"
         
-        # Remove "Arriving in" prefix if present
-        if place.startswith("Arriving in "):
-            place = place[12:]
-        
-        # Remove "Fly from X to Y" if present and take destination
-        if "Fly from" in place:
-            place = place.split(" to ")[-1]
-        
-        # Remove "Visit " prefix if present
-        if place.startswith("Visit "):
-            place = place[6:]
-        
+        # Handle flying days
+        if "Fly from" in line:
+            fly_match = re.search(r'Fly from ([^\s,.]+) to ([^\s,.]+)', line)
+            if fly_match:
+                itinerary.append({
+                    "flying": day_range,
+                    "from": fly_match.group(1),
+                    "to": fly_match.group(2)
+                })
+            continue
+        # Handle regular days
+        elif "Arriving in" in line:
+            place = re.search(r'Arriving in ([^\s,.]+)', line).group(1)
+        elif "Visit" in line:
+            place = re.search(r'Visit ([^\s,.]+)', line).group(1)
+        else:
+            continue  # skip if we couldn't determine the type
+            
         # Add to itinerary
         itinerary.append({
-            "day_range": f"Day {start_day}-{end_day}",
+            "day_range": day_range,
             "place": place
         })
-        
-        current_day = end_day + 1
-
-        print(itinerary)
     
     return itinerary
 
@@ -114,11 +128,36 @@ def compare_itineraries(model_itinerary, golden_itinerary):
     """Compare two itineraries and return True if they match exactly."""
     if len(model_itinerary) != len(golden_itinerary):
         return False
+    
     for model_item, golden_item in zip(model_itinerary, golden_itinerary):
-        if (model_item["day_range"] != golden_item["day_range"] or 
-            model_item["place"] != golden_item["place"]):
+        # Check if both items are the same type
+        if ("day_range" in model_item) != ("day_range" in golden_item):
             return False
+        if ("flying" in model_item) != ("flying" in golden_item):
+            return False
+        
+        # Compare based on type
+        if "day_range" in model_item:
+            if (model_item["day_range"] != golden_item["day_range"] or 
+                model_item["place"] != golden_item["place"]):
+                return False
+        elif "flying" in model_item:
+            if (model_item["flying"] != golden_item["flying"] or 
+                model_item["from"] != golden_item["from"] or 
+                model_item["to"] != golden_item["to"]):
+                return False
+    
     return True
+
+def format_itinerary_compact(itinerary):
+    """Convert itinerary to compact string representation for display."""
+    parts = []
+    for item in itinerary:
+        if "day_range" in item:
+            parts.append(f"{item['day_range']}: {item['place']}")
+        elif "flying" in item:
+            parts.append(f"{item['flying']}: {item['from']}→{item['to']}")
+    return ", ".join(parts)
 
 # Initialize counters
 correct_0shot = 0
@@ -131,7 +170,7 @@ results_0shot = []
 results_5shot = []
 
 # Output files
-with open('structured_trip_results.txt', 'w') as txt_file, open('structured_trip_results.json', 'w') as json_file:
+with open('ML-L-3.1-70B_forceJSON_text_trip_results.txt', 'w') as txt_file, open('ML-L-3.1-70B_forceJSON_text_trip_results.json', 'w') as json_file:
     start_time = datetime.datetime.now()
     
     for example_id, example in trip_examples.items():
@@ -144,10 +183,13 @@ with open('structured_trip_results.txt', 'w') as txt_file, open('structured_trip
 
             # Modify prompt to request structured JSON output
             structured_prompt = (
+                "You are a AI trip planner and your task is to plan a trip for a user. "
+                "For any days that involve flying, usually on the same day, include them in the plan with the flying details. "
                 f"{prompt}\n\nPlease provide your trip plan in the following exact JSON format:\n"
                 "{\n"
                 '  "itinerary": [\n'
                 '    {"day_range": "Day X-Y", "place": "City Name"},\n'
+                '    {"flying": "Day X-Y", "from": "City Name", "to": "City Name"},\n'
                 '    {"day_range": "Day Y-Z", "place": "City Name"}\n'
                 "  ]\n"
                 "}"
@@ -199,13 +241,17 @@ with open('structured_trip_results.txt', 'w') as txt_file, open('structured_trip
             else:
                 results_5shot.append(result_entry)
 
+            # Format for display
+            model_display = format_itinerary_compact(model_itinerary)
+            golden_display = format_itinerary_compact(golden_itinerary)
+            
             # Log output
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            output_line = f"{example_id}. [{timestamp}] | {prompt_type} | Correct: {is_correct}"
+            output_line = (
+                f"{example_id}. [{timestamp}] | {prompt_type} | Correct: {is_correct} | ANSWER: {model_display} | EXPECTED: {golden_display}"
+            )
             print(output_line)
             txt_file.write(f"{output_line}\n")
-            txt_file.write(f"Model: {json.dumps(model_itinerary, indent=2)}\n")
-            txt_file.write(f"Golden: {json.dumps(golden_itinerary, indent=2)}\n\n")
 
     # Save JSON results
     json.dump({
@@ -228,3 +274,4 @@ with open('structured_trip_results.txt', 'w') as txt_file, open('structured_trip
     txt_file.write(f"Total time: {total_time}\n")
 
 print("Processing complete. Results saved to structured_trip_results.txt and structured_trip_results.json.")
+
