@@ -10,13 +10,22 @@ from kani import Kani
 from kani.engines.huggingface import HuggingEngine
 import torch
 import gc
+import argparse
+from openai import OpenAI
+
+# Read the API key from a file
+with open('/home/rma336/openai_research/openai_api_key.txt', 'r') as key_file:
+    api_key = key_file.read().strip()
+
+# Initialize the OpenAI client
+client = OpenAI(api_key=api_key)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Set up the argument parser for model selection
-parser = ArgumentParser()
-parser.add_argument("--model", dest="model", help="Model name to use", required=True)
+# Argument parser to select the model
+parser = argparse.ArgumentParser(description="Select an OpenAI model.")
+parser.add_argument('--model', type=str, required=True, help="The OpenAI model ID to use.")
 args = parser.parse_args()
 
 # State management
@@ -88,14 +97,14 @@ def load_prompts(file_path):
 # # Define prefix and suffix messages
 # prefix_message = (
 #     "You are an expert at trip plannong. Your task is to find a suitable itinerary "
-#     "based on the participants' plan, requests, and constraints. In this case:\n"
+#     "based on the participants' plan, requests, and constraints. Your program should algorithmically calculate the best trip. In this case:\n"
 # )
 # suffix_message = (
-#     "\nGenerate a full, working Python script with real code that calculates a proposed itinerary trip plan and outputs it in a JSON dictionary format. " \
-#     "The Python script should have actual code, be clean, well-formatted. When run, it should calculate the best plan and output the JSON trip plan." \
-#     "The output of the generated code must be a valid time, such as: [{'day_range': 'Day 1-5', 'place': 'Helsinki'}, {'flying': 'Day 5-5', 'from': 'Helsinki', 'to': 'Barcelona'}, {'day_range': 'Day 5-9', 'place': 'Barcelona'}, {'flying': 'Day 9-9', 'from': 'Barcelona', 'to': 'Florence'}, {'day_range': 'Day 9-14', 'place': 'Florence'}] " \
-#     "Provide no text with only a complete response of code. Answer briefly and directly. Limit your response to the essential information." \
-#     "Make sure the trip plan found by the code is a valid time based on the task and is valid JSON dictionary format. " \
+#     "\nGenerate a full, working Python script with real code that calculates a proposed itinerary trip plan and outputs it in a JSON dictionary format. " 
+#     "The Python script should have actual code, be clean, well-formatted. When run, it should calculate the best plan and output the JSON trip plan."
+#     "The output of the generated code must be a valid time, such as: [{'day_range': 'Day 1-5', 'place': 'Helsinki'}, {'flying': 'Day 5-5', 'from': 'Helsinki', 'to': 'Barcelona'}, {'day_range': 'Day 5-9', 'place': 'Barcelona'}, {'flying': 'Day 9-9', 'from': 'Barcelona', 'to': 'Florence'}, {'day_range': 'Day 9-14', 'place': 'Florence'}] "
+#     "Provide no text with only a complete response of code. Answer briefly and directly. Limit your response to the essential information."
+#     "Make sure the trip plan found by the code is a valid time based on the task and is valid JSON dictionary format. "
 # )
 
 # Define prefix and suffix messages
@@ -125,55 +134,77 @@ suffix_message = (
 # Initialize the model engine
 def initialize_engine(model_id):
     try:
-        engine = HuggingEngine(
-            model_id=model_id
-            # top_p=0.1,  # Use top-p (nucleus) sampling
-            # temperature=0.2,  # Adjust temperature
-            # do_sample=True,  # Enable sampling
-            # repetition_penalty=1.4,  # Reduce repetition
-            # max_new_tokens=3000,  # Limit the number of tokens generated
-            # top_k=50,  # Limit sampling to top 50 tokens
-            # num_beams=2, # Limit beam search
-        )
-        return engine
+        # For OpenAI models, we'll use the client directly, so no engine initialization needed
+        return None
     except Exception as e:
         logging.error(f"Error initializing model: {e}")
         raise
 
 # Function to extract the code from the model's response
 def extract_code(response):
-    # Define the possible code block delimiters
-    delimiters = ["'''python", "'''", "```python", "```"]
+    """Extract Python code from a response, returning clean code without any delimiters."""
+    # Remove leading/trailing whitespace
+    response = response.strip()
     
-    # Find the start of the code block
-    start = -1
-    for delimiter in delimiters:
-        start = response.find(delimiter)
-        if start != -1:
-            start += len(delimiter)  # Move the start index to the end of the delimiter
-            break
+    # 1. First check for complete Python script patterns
+    python_indicators = [
+        "#!/usr/bin/env python",
+        "if __name__ == \"__main__\":",
+        "def main():",
+        "import ",
+        "from ",
+        "print(",
+        "def ",
+        "class ",
+        "return ",
+        " = "
+    ]
     
-    # If no delimiter is found, return None
-    if start == -1:
-        return None
+    # Count how many Python indicators are present
+    indicator_count = sum(1 for indicator in python_indicators if indicator in response)
     
-    # Find the end of the code block
-    end = -1
-    for delimiter in delimiters:
-        end = response.find(delimiter, start)  # Search for the closing delimiter after the start
-        if end != -1:
-            break
+    # If we find multiple indicators suggesting this is complete Python code
+    if indicator_count >= 3:
+        # Verify it has at least one line break (not just a one-liner)
+        if '\n' in response:
+            return response.strip()
     
-    # If no closing delimiter is found, return None
-    if end == -1:
-        return None
+    # 2. Check for delimited code blocks (traditional markdown-style)
+    delimiters = [
+        ("```python", "```"),  # GitHub-style
+        ("```", "```"),         # Generic code block
+        ("'''python", "'''"),   # Python-style
+        ("'''", "'''"),         # Generic quote
+        ('"""python', '"""'),   # Python-style
+        ('"""', '"""')          # Generic quote
+    ]
     
-    # Extract and return the code block
-    return response[start:end].strip()
+    for start_delim, end_delim in delimiters:
+        start_idx = response.find(start_delim)
+        if start_idx != -1:
+            start_idx += len(start_delim)
+            end_idx = response.find(end_delim, start_idx)
+            if end_idx != -1:
+                extracted = response[start_idx:end_idx].strip()
+                # Verify the extracted content looks like code
+                if any(indicator in extracted for indicator in python_indicators):
+                    return extracted
+    
+    # 3. If neither pattern matched, check for indented code blocks
+    lines = response.split('\n')
+    if len(lines) > 1 and all(line.startswith(('    ', '\t')) for line in lines[1:] if line.strip()):
+        return response
+    
+    # 4. Final fallback - return the raw response if it looks like code
+    if indicator_count >= 1:
+        return response
+    
+    # If nothing matched, return None
+    return None
 
 # Function to categorize errors
 def categorize_error(error_message):
-    error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", "ValueError", "ImportError", "RuntimeError", "AttributeError", "KeyError", "IndexError"]
+    error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", "ValueError", "ImportError", "RuntimeError", "AttributeError"]
     for error_type in error_types:
         if error_type in error_message:
             return error_type
@@ -182,9 +213,16 @@ def categorize_error(error_message):
 # Function to run the generated Python script and capture its output
 def run_generated_code(code):
     try:
+        # Clean the code by removing any remaining delimiters
+        clean_code = code.replace('```python', '').replace('```', '').replace('"""python', '').replace('"""', '').replace("'''python", "").replace("'''", "").strip()
+        
         with open("generated_code.py", "w") as file:
-            file.write(code)
-        result = subprocess.run(["python", "generated_code.py"], capture_output=True, text=True, check=True)
+            file.write(clean_code)
+        
+        result = subprocess.run(["python", "generated_code.py"], 
+                              capture_output=True, 
+                              text=True, 
+                              check=True)
         output = result.stdout.strip()
         return output, None
     except subprocess.CalledProcessError as e:
@@ -316,19 +354,16 @@ async def run_model():
     prompts_data = load_prompts("100_trip_planning_examples.json")
     prompts_list = list(prompts_data.items())
 
-    engine = initialize_engine(args.model)
-    ai = Kani(engine)
-
     # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("ML-L-3.1-70B_code_trip_results.json") or not state_loaded:
-        with open("ML-L-3.1-70B_code_trip_results.json", "w") as json_file:
+    if not os.path.exists("O3-M-25-01-31_code_trip_results.json") or not state_loaded:
+        with open("O3-M-25-01-31_code_trip_results.json", "w") as json_file:
             json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
 
-    with open("ML-L-3.1-70B_code_trip_results.txt", txt_mode) as txt_file:
+    with open("O3-M-25-01-31_code_trip_results.txt", txt_mode) as txt_file:
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
             txt_file.write("=== New Run Started ===\n")
-            with open("ML-L-3.1-70B_code_trip_results.json", "w") as json_file:
+            with open("O3-M-25-01-31_code_trip_results.json", "w") as json_file:
                 json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
             state.first_run = False
 
@@ -347,10 +382,19 @@ async def run_model():
                 correct_status = False
 
                 try:
-                    response = await ai.chat_round_str(full_prompt)
-                    # Stop the response after the second '''
-                    response = stop_after_second_triple_quote(response)
-                    code = extract_code(response)
+                    # Use OpenAI API directly instead of Kani
+                    response = client.chat.completions.create(
+                        model=args.model,
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant that generates Python code for trip planning."},
+                            {"role": "user", "content": full_prompt}
+                        ],
+                    )
+                    
+                    response_content = response.choices[0].message.content
+                    response_content = stop_after_second_triple_quote(response_content)
+                    code = extract_code(response_content)
+                    
                     if code:
                         code_output, error_type = run_generated_code(code)
                         predicted_plan = parse_model_output(code_output) if code_output else None
@@ -389,13 +433,13 @@ async def run_model():
                         "final_program_plan": predicted_plan,
                         "expected_plan": expected_plan,
                         "type_error": error_type,
-                        "full_response": response,
+                        "full_response": response_content,
                         "count": key,
                         "is_correct": correct_status
                     }
 
                     # Update JSON file
-                    with open("ML-L-3.1-70B_code_trip_results.json", "r+") as json_file:
+                    with open("O3-M-25-01-31_code_trip_results.json", "r+") as json_file:
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
