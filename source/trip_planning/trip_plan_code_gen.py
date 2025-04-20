@@ -113,7 +113,9 @@ suffix_message = (
     "3. Outputs the result as a JSON-formatted dictionary. \n"
     "Example structure of output from running code: [{'day_range': 'Day 1-5', 'place': 'Helsinki'}, {'flying': 'Day 5-5', 'from': 'Helsinki', 'to': 'Barcelona'}, {'day_range': 'Day 5-9', 'place': 'Barcelona'}, {'flying': 'Day 9-9', 'from': 'Barcelona', 'to': 'Florence'}, {'day_range': 'Day 9-14', 'place': 'Florence'}]"
     "\n"
-    "The program must include:\n"
+    "The program must follow these rules:\n"
+    "- Each place has a day_range, and transitions between places (flights) must happen on the same day the person departs and arrives—the last day in one place should be the same day as the flight and the first day in the next place.\n"
+    "\tFor example, if the last day in Helsinki is Day 5, the flight to Barcelona should also be on Day 5, and the first day in Barcelona should be Day 5.\n"
     "- Actual calculations to determine durations and transitions\n"
     "- Proper handling of travel days between locations\n"
     "- Correct sequencing of destinations based on the constraints\n"
@@ -352,7 +354,9 @@ async def run_model():
                     response = stop_after_second_triple_quote(response)
                     code = extract_code(response)
                     if code:
+                        # print(f"Extracted Generated Code: {code}")
                         code_output, error_type = run_generated_code(code)
+                        # print(f"Raw Code Output: {code_output}")
                         predicted_plan = parse_model_output(code_output) if code_output else None
                     else:
                         predicted_plan = None
