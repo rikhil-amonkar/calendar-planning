@@ -1,0 +1,53 @@
+from z3 import *
+
+# Define the time slots
+time_slots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+# Define the participants
+participants = ['Marie', 'Janice', 'Elijah', 'Theresa']
+
+# Define the existing schedules
+schedules = {
+    'Marie': [11, 15.5],
+    'Janice': [12.5, 13.5],
+    'Elijah': [10, 13, 14.5, 16.5],
+    'Theresa': [9.5, 10.5, 12.5, 13.5, 14.5, 16.5]
+}
+
+# Define the meeting duration
+meeting_duration = 0.5
+
+# Define the solver
+solver = Solver()
+
+# Define the variables
+start_time = [Int(participant + '_start') for participant in participants]
+end_time = [Int(participant + '_end') for participant in participants]
+
+# Add constraints for each participant
+for i, participant in enumerate(participants):
+    # The start time must be within the work hours
+    solver.add(And(start_time[i] >= 9, start_time[i] <= 17))
+    # The end time must be within the work hours
+    solver.add(And(end_time[i] >= 9, end_time[i] <= 17))
+    # The end time must be greater than or equal to the start time
+    solver.add(end_time[i] >= start_time[i])
+    # The end time must be less than or equal to the start time plus the meeting duration
+    solver.add(end_time[i] <= start_time[i] + meeting_duration)
+    # The start time must not conflict with existing schedule
+    for schedule_time in schedules[participant]:
+        solver.add(Or(start_time[i] > schedule_time + meeting_duration, end_time[i] < schedule_time))
+
+# Theresa do not want to meet on Monday after 12:00
+theresa_after_12 = [Int('theresa_after_12')]
+solver.add(Implies(theresa_after_12[0], start_time[participants.index('Theresa')] > 12))
+solver.add(Implies(theresa_after_12[0], end_time[participants.index('Theresa')] > 12))
+
+# Find a solution
+if solver.check() == sat:
+    model = solver.model()
+    # Print the solution
+    for participant in participants:
+        print(f"{participant} should start the meeting at {model[start_time[participants.index(participant)]]} and end at {model[end_time[participants.index(participant)]]}")
+else:
+    print("No solution exists")
