@@ -1,73 +1,65 @@
-def find_meeting_time(janice_busy, richard_busy, work_hours, duration):
+def find_meeting_time():
+    # Define work hours and days
+    work_hours_start = 9 * 60  # 9:00 in minutes
+    work_hours_end = 17 * 60   # 17:00 in minutes
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    start_hour, end_hour = work_hours
     
-    for day in days:
-        # Get busy slots for the day
-        janice_day = [slot for slot in janice_busy if slot[0] == day]
-        richard_day = [slot for slot in richard_busy if slot[0] == day]
-        
-        # Combine and sort all busy slots
-        busy_slots = janice_day + richard_day
-        busy_slots.sort(key=lambda x: x[1])
-        
-        # Initialize previous end time to start of work day
-        prev_end = start_hour * 60
-        
-        # Check gaps between busy slots
-        for slot in busy_slots:
-            slot_start = slot[1] * 60
-            if slot_start - prev_end >= duration:
-                # Found a gap
-                start_time = prev_end
-                end_time = start_time + duration
-                return f"{int(start_time//60):02d}:{int(start_time%60):02d}:{int(end_time//60):02d}:{int(end_time%60):02d}"
-            prev_end = max(prev_end, slot[2] * 60)
-        
-        # Check after last busy slot
-        if (end_hour * 60) - prev_end >= duration:
-            start_time = prev_end
-            end_time = start_time + duration
-            return f"{int(start_time//60):02d}:{int(start_time%60):02d}:{int(end_time//60):02d}:{int(end_time%60):02d}"
+    # Define Juan's busy times in minutes since midnight for each day
+    juan_busy = {
+        'Monday': [(11 * 60, 11 * 60 + 30)],
+        'Tuesday': [(11 * 60 + 30, 12 * 60), (12 * 60 + 30, 13 * 60 + 30), (15 * 60 + 30, 16 * 60)],
+        'Wednesday': [(14 * 60 + 30, 15 * 60)],
+        'Thursday': [(15 * 60 + 30, 16 * 60)],
+        'Friday': [(10 * 60 + 30, 11 * 60)]
+    }
     
-    return "No meeting time found"
+    # Define Doris's busy times in minutes since midnight for each day
+    doris_busy = {
+        'Monday': [(9 * 60, 17 * 60)],
+        'Tuesday': [(9 * 60, 15 * 60 + 30), (16 * 60, 16 * 60 + 30)],
+        'Wednesday': [(9 * 60, 9 * 60 + 30), (10 * 60, 12 * 60 + 30), (14 * 60, 14 * 60 + 30), (15 * 60, 16 * 60), (16 * 60 + 30, 17 * 60)],
+        'Thursday': [(9 * 60 + 30, 13 * 60), (14 * 60, 15 * 60 + 30), (16 * 60, 17 * 60)],
+        'Friday': [(9 * 60, 10 * 60), (10 * 60 + 30, 12 * 60), (13 * 60, 14 * 60 + 30), (15 * 60, 17 * 60)]
+    }
+    
+    # Doris's preferences to avoid Tuesday and Friday
+    preferred_days = ['Monday', 'Wednesday', 'Thursday']
+    
+    # Iterate through preferred days first, then others
+    for day in preferred_days + [d for d in days if d not in preferred_days]:
+        # Get busy intervals for both participants
+        juan_intervals = juan_busy.get(day, [])
+        doris_intervals = doris_busy.get(day, [])
+        
+        # Merge and sort all busy intervals
+        all_busy = juan_intervals + doris_intervals
+        all_busy.sort()
+        
+        # Find free slots
+        free_slots = []
+        prev_end = work_hours_start
+        
+        for start, end in all_busy:
+            if start > prev_end:
+                free_slots.append((prev_end, start))
+            prev_end = max(prev_end, end)
+        
+        if prev_end < work_hours_end:
+            free_slots.append((prev_end, work_hours_end))
+        
+        # Check each free slot for 30-minute availability
+        for slot_start, slot_end in free_slots:
+            if slot_end - slot_start >= 30:
+                # Convert back to HH:MM format
+                start_hh = slot_start // 60
+                start_mm = slot_start % 60
+                end_hh = (slot_start + 30) // 60
+                end_mm = (slot_start + 30) % 60
+                
+                # Format as HH:MM:HH:MM
+                return f"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}"
+    
+    return "No suitable time found"
 
-# Define busy slots for Janice and Richard
-janice_busy = [
-    ('Monday', 11.5, 12.0),
-    ('Tuesday', 9.5, 10.0),
-    ('Tuesday', 14.5, 15.0),
-    ('Wednesday', 11.0, 11.5),
-    ('Wednesday', 13.5, 14.0),
-    ('Thursday', 15.5, 16.0),
-    ('Friday', 13.5, 14.0),
-    ('Friday', 16.0, 16.5)
-]
-
-richard_busy = [
-    ('Monday', 9.0, 10.5),
-    ('Monday', 12.5, 13.5),
-    ('Monday', 14.0, 14.5),
-    ('Monday', 15.0, 15.5),
-    ('Tuesday', 9.5, 10.0),
-    ('Tuesday', 10.5, 11.0),
-    ('Tuesday', 12.0, 13.0),
-    ('Tuesday', 14.0, 14.5),
-    ('Tuesday', 15.5, 16.0),
-    ('Tuesday', 16.5, 17.0),
-    ('Wednesday', 9.0, 12.0),
-    ('Wednesday', 13.0, 13.5),
-    ('Wednesday', 14.0, 16.0),
-    ('Thursday', 9.0, 10.0),
-    ('Thursday', 10.5, 11.5),
-    ('Thursday', 12.0, 12.5),
-    ('Thursday', 13.0, 14.5),
-    ('Thursday', 15.0, 15.5),
-    ('Thursday', 16.0, 17.0),
-    ('Friday', 9.0, 17.0)
-]
-
-work_hours = (9.0, 17.0)
-duration = 30  # minutes
-
-print(find_meeting_time(janice_busy, richard_busy, work_hours, duration))
+# Output the proposed meeting time
+print(find_meeting_time())
