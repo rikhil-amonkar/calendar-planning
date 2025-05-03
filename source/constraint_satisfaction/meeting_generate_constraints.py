@@ -11,12 +11,12 @@ client = AsyncOpenAI(api_key=api_key)
 
 async def get_model_response(full_prompt):
     response = await client.chat.completions.create(
-        model='gpt-4.1',
+        model='gpt-4.1-nano',
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": full_prompt}
         ],
-        response_format={ "type": "json_object" }  # Request JSON response format
+        response_format={"type": "json_object"}
     )
     
     # Get the content and parse it as JSON
@@ -34,13 +34,9 @@ def process_examples(examples_file, output_folder):
         prompt = example['prompt_0shot']
         
         full_prompt = f"""
-
         Your job is to plan the meeting schedule to meet people at certain locations and times outputted in JSON format based on a description. Here's an example description:\n
-
         TASK: You are visiting Philadelphia for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nDrexel University to 30th Street Station: 8.\nDrexel University to Market Street: 12.\n30th Street Station to Drexel University: 10.\n30th Street Station to Market Street: 7.\nMarket Street to Drexel University: 15.\nMarket Street to 30th Street Station: 9.\n\nCONSTRAINTS: You arrive at Drexel University at 9:00AM. Harry will be at 30th Street Station from 2:00PM to 3:30PM. You'd like to meet Harry for a minimum of 60 minutes. Ronan will be at Market Street from 12:00PM to 2:00PM. You'd like to meet Ronan for a minimum of 30 minutes.\n\nYour response should start with 'SOLUTION:'.\n
-
         Here is the corresponding output JSON:\n
-
         {{
             "meeting_planning_example_harry_crafted": {{
                 "input_query": [
@@ -95,21 +91,29 @@ def process_examples(examples_file, output_folder):
 
         \n
         Now you try it. Your job is to plan the best meeting schedule when you can meet people at certain locations and times outputted in JSON format based on a description. IMPORTANT: The top-level JSON key must be "{example_id}". Here's an example description:\n
-
         {prompt}
         """
 
-        try:
-            model_response = asyncio.run(get_model_response(full_prompt))
-            
-            # Save the parsed JSON response directly
-            output_file_path = os.path.join(output_folder, f"{example_id}_output.json")
-            with open(output_file_path, 'w') as json_file:
-                json.dump(model_response, json_file, indent=4)
+        print(full_prompt)
+
+        # Retry mechanism: Try up to 3 times if the response fails
+        retries = 3
+        for attempt in range(retries):
+            try:
+                model_response = asyncio.run(get_model_response(full_prompt))
+                print(model_response)
                 
-        except Exception as e:
-            print(f"Error processing example {example_id}: {str(e)}")
-            continue
+                # Save the parsed JSON response directly
+                output_file_path = os.path.join(output_folder, f"{example_id}_output.json")
+                with open(output_file_path, 'w') as json_file:
+                    json.dump(model_response, json_file, indent=4)
+                break  # Exit the retry loop if successful
+                
+            except Exception as e:
+                print(f"Error processing example {example_id} on attempt {attempt + 1}: {str(e)}")
+                if attempt == retries - 1:  # Last attempt, move on to the next example
+                    print(f"Failed to process example {example_id} after {retries} attempts.")
+                    continue
 
 if __name__ == "__main__":
     examples_file = 'meeting_planning/meeting_all_1000_prompts.json'
