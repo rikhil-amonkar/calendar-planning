@@ -61,7 +61,7 @@ JSON_SCHEMA = {
 }
 
 # Load the meeting planning examples from the JSON file
-with open('100_meeting_planning_examples.json', 'r') as file:
+with open('meeting_all_1000_prompts.json', 'r') as file:
     meeting_examples = json.load(file)
 
 # Argument parser to select the model
@@ -70,7 +70,7 @@ parser.add_argument('--model', type=str, required=True, help="The HuggingFace mo
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_planning_state.json"
+STATE_FILE = "meeting_planning_state_3.json"
 
 class JSONGuidanceHFWrapper(WrapperEngine):
     def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
@@ -97,11 +97,11 @@ class JSONGuidanceHFWrapper(WrapperEngine):
 class EvaluationState:
     def __init__(self):
         self.correct_0shot = 0
-        self.correct_5shot = 0
+        # self.correct_5shot = 0
         self.total_0shot = 0
-        self.total_5shot = 0
+        # self.total_5shot = 0
         self.results_0shot = []
-        self.results_5shot = []
+        # self.results_5shot = []
         self.processed_examples = set()
         self.start_time = datetime.datetime.now()
         self.previous_time = datetime.timedelta(0)
@@ -110,11 +110,11 @@ class EvaluationState:
     def save(self):
         state_to_save = {
             "correct_0shot": self.correct_0shot,
-            "correct_5shot": self.correct_5shot,
+            # "correct_5shot": self.correct_5shot,
             "total_0shot": self.total_0shot,
-            "total_5shot": self.total_5shot,
+            # "total_5shot": self.total_5shot,
             "results_0shot": self.results_0shot,
-            "results_5shot": self.results_5shot,
+            # "results_5shot": self.results_5shot,
             "processed_examples": list(self.processed_examples),
             "start_time": self.start_time.isoformat(),
             "previous_time": self.previous_time.total_seconds(),
@@ -128,11 +128,11 @@ class EvaluationState:
             with open(STATE_FILE, 'r') as f:
                 loaded = json.load(f)
                 self.correct_0shot = loaded["correct_0shot"]
-                self.correct_5shot = loaded["correct_5shot"]
+                # self.correct_5shot = loaded["correct_5shot"]
                 self.total_0shot = loaded["total_0shot"]
-                self.total_5shot = loaded["total_5shot"]
+                # self.total_5shot = loaded["total_5shot"]
                 self.results_0shot = loaded["results_0shot"]
-                self.results_5shot = loaded["results_5shot"]
+                # self.results_5shot = loaded["results_5shot"]
                 self.processed_examples = set(loaded["processed_examples"])
                 self.previous_time = datetime.timedelta(seconds=loaded["previous_time"])
                 self.start_time = datetime.datetime.fromisoformat(loaded["start_time"])
@@ -304,8 +304,8 @@ async def main():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
     json_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    with open('DS-R1-DL-70B_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
-         open('DS-R1-DL-70B_forceJSON_text_meeting_results.json', json_mode) as json_file:
+    with open('ML-ML-3.1-8B_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
+         open('ML-ML-3.1-8B_forceJSON_text_meeting_results.json', json_mode) as json_file:
         
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
@@ -318,7 +318,7 @@ async def main():
             if example_id in state.processed_examples:
                 continue
                 
-            for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+            for prompt_type in ['prompt_0shot']:
                 prompt = example[prompt_type]
                 golden_plan = example['golden_plan']
 
@@ -327,8 +327,8 @@ async def main():
 
                 # Modify prompt to request structured JSON output
                 structured_prompt = (
-                    "You are an AI meeting planner and your task is to schedule meetings efficiently. "
-                    "Consider travel times and constraints carefully to optimize the schedule. "
+                    "You are an AI meeting planner and your task is to schedule meetings efficiently and short. "
+                    "Consider travel times and constraints carefully to optimize the schedule and make the plan concise. "
                     f"{prompt}\n\nPlease provide your meeting plan in the following exact JSON format:\n"
                     "{\n"
                     '  "schedule": [\n'
@@ -338,7 +338,8 @@ async def main():
                     '    {"action": "meet", "location": "Location Name", "duration": X, "time": "H:MMAM/PM"}\n'
                     "  ]\n"
                     "}\n"
-                    "Note: Times should be in format like '9:00AM' (no leading zero) and durations in minutes."
+                    "Note: Times should be in format like '9:00AM' (no leading zero) and durations in minutes." \
+                    "Note: Plan should be minimal, satisfy all constraints, and be concise and short."
                 )
 
                 # Run the model
@@ -421,10 +422,10 @@ async def main():
                     state.total_0shot += 1
                     if is_correct:
                         state.correct_0shot += 1
-                else:
-                    state.total_5shot += 1
-                    if is_correct:
-                        state.correct_5shot += 1
+                # else:
+                #     state.total_5shot += 1
+                #     if is_correct:
+                #         state.correct_5shot += 1
 
                 # Prepare result entry
                 result_entry = {
@@ -440,8 +441,8 @@ async def main():
                 # Store results
                 if prompt_type == 'prompt_0shot':
                     state.results_0shot.append(result_entry)
-                else:
-                    state.results_5shot.append(result_entry)
+                # else:
+                #     state.results_5shot.append(result_entry)
 
                 # Format for display
                 model_display = format_schedule_compact(model_schedule)
@@ -471,13 +472,13 @@ async def main():
             "end_time": current_time.isoformat(),
             "total_runtime_seconds": total_runtime.total_seconds(),
             "results": {
-                "0shot": state.results_0shot,
-                "5shot": state.results_5shot
+                "0shot": state.results_0shot
+                # "5shot": state.results_5shot
             },
             "accuracy": {
                 "0shot": state.correct_0shot / state.total_0shot if state.total_0shot > 0 else 0,
-                "5shot": state.correct_5shot / state.total_5shot if state.total_5shot > 0 else 0,
-                "total": (state.correct_0shot + state.correct_5shot) / (state.total_0shot + state.total_5shot) if (state.total_0shot + state.total_5shot) > 0 else 0
+                # "5shot": state.correct_5shot / state.total_5shot if state.total_5shot > 0 else 0,
+                # "total": (state.correct_0shot + state.correct_5shot) / (state.total_0shot + state.total_5shot) if (state.total_0shot + state.total_5shot) > 0 else 0
             }
         }
         json.dump(final_results, json_file, indent=4)
@@ -489,8 +490,8 @@ async def main():
         txt_file.write(f"End time: {current_time}\n")
         txt_file.write(f"Total runtime: {total_runtime}\n")
         txt_file.write(f"0-shot accuracy: {state.correct_0shot}/{state.total_0shot} ({state.correct_0shot/state.total_0shot:.2%})\n")
-        txt_file.write(f"5-shot accuracy: {state.correct_5shot}/{state.total_5shot} ({state.correct_5shot/state.total_5shot:.2%})\n")
-        txt_file.write(f"Total accuracy: {state.correct_0shot + state.correct_5shot}/{state.total_0shot + state.total_5shot} ({(state.correct_0shot + state.correct_5shot)/(state.total_0shot + state.total_5shot):.2%})\n")
+        # txt_file.write(f"5-shot accuracy: {state.correct_5shot}/{state.total_5shot} ({state.correct_5shot/state.total_5shot:.2%})\n")
+        # txt_file.write(f"Total accuracy: {state.correct_0shot + state.correct_5shot}/{state.total_0shot + state.total_5shot} ({(state.correct_0shot + state.correct_5shot)/(state.total_0shot + state.total_5shot):.2%})\n")
 
     print("Processing complete. Results saved.")
 
