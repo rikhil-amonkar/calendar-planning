@@ -99,8 +99,12 @@ def process_examples(examples_file, output_folder):
         {prompt}
         """
 
+        print(full_prompt)
+
         try:
             model_response = asyncio.run(get_model_response(full_prompt))
+
+            print(model_response)
             
             # Save the parsed JSON response directly
             output_file_path = os.path.join(output_folder, f"{example_id}_output.json")

@@ -1,88 +1,47 @@
-def find_meeting_time(participants_schedules, work_hours, duration):
-    # Convert time strings to minutes since 9:00 (540 minutes)
-    def time_to_minutes(time_str):
-        hh, mm = map(int, time_str.split(':'))
-        return hh * 60 + mm - 540  # Subtract 540 to start from 9:00 (0 minutes)
-    
-    def minutes_to_time(minutes):
-        total_minutes = minutes + 540
-        hh = total_minutes // 60
-        mm = total_minutes % 60
-        return f"{hh:02d}:{mm:02d}"
-    
-    start_work, end_work = work_hours.split(' to ')
-    work_start = time_to_minutes(start_work)
-    work_end = time_to_minutes(end_work)
-    
-    # Initialize the free slots for all participants
+def find_meeting_time():
+    # Define work hours
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60    # 17:00 in minutes
+    meeting_duration = 30  # minutes
+
+    # Elijah's busy times and constraints (in minutes)
+    elijah_busy = [(9 * 60, 10 * 60)]  # 9:00-10:00
+    elijah_no_meet_after = 15 * 60      # 15:00
+
+    # Beverly's busy times (in minutes)
+    beverly_busy = [
+        (9 * 60, 12.5 * 60),    # 9:00-12:30
+        (13.5 * 60, 15.5 * 60), # 13:30-15:30
+        (16.5 * 60, 17 * 60)    # 16:30-17:00
+    ]
+
+    # Combine all busy intervals for both participants
+    all_busy = elijah_busy + beverly_busy
+    all_busy.sort()  # Sort by start time
+
+    # Find free slots by checking gaps between busy intervals
     free_slots = []
-    for schedule in participants_schedules:
-        busy_slots = []
-        for busy in schedule:
-            start, end = busy.split(' to ')
-            busy_start = time_to_minutes(start)
-            busy_end = time_to_minutes(end)
-            busy_slots.append((busy_start, busy_end))
-        
-        # Sort busy slots by start time
-        busy_slots.sort()
-        
-        # Calculate free slots
-        current_time = work_start
-        free = []
-        for start, end in busy_slots:
-            if start > current_time:
-                free.append((current_time, start))
-            current_time = max(current_time, end)
-        if current_time < work_end:
-            free.append((current_time, work_end))
-        
-        free_slots.append(free)
-    
-    # Find intersection of all free slots
-    common_free = free_slots[0]
-    for slots in free_slots[1:]:
-        new_common = []
-        i = j = 0
-        while i < len(common_free) and j < len(slots):
-            start1, end1 = common_free[i]
-            start2, end2 = slots[j]
-            
-            # Find overlap
-            start = max(start1, start2)
-            end = min(end1, end2)
-            if start < end:
-                new_common.append((start, end))
-            
-            # Move the pointer which ends first
-            if end1 < end2:
-                i += 1
-            else:
-                j += 1
-        common_free = new_common
-    
-    # Find the first slot that can fit the duration
-    duration_min = duration * 60
-    for start, end in common_free:
-        if end - start >= duration_min:
-            meeting_start = minutes_to_time(start)
-            meeting_end = minutes_to_time(start + duration_min)
-            return f"{meeting_start}:{meeting_end}"
-    
+    previous_end = work_start
+
+    for start, end in all_busy:
+        if start > previous_end:
+            free_slots.append((previous_end, start))
+        previous_end = max(previous_end, end)
+
+    # Add the slot after the last busy interval if any
+    if previous_end < work_end:
+        free_slots.append((previous_end, work_end))
+
+    # Check each free slot for availability and Elijah's constraint
+    for slot_start, slot_end in free_slots:
+        # Adjust slot_end to respect Elijah's no-meet-after constraint
+        effective_end = min(slot_end, elijah_no_meet_after)
+        if effective_end - slot_start >= meeting_duration:
+            meeting_start = slot_start
+            meeting_end = meeting_start + meeting_duration
+            # Format the time as HH:MM:HH:MM
+            return f"{int(meeting_start // 60):02d}:{int(meeting_start % 60):02d}:{int(meeting_end // 60):02d}:{int(meeting_end % 60):02d}"
+
     return "No suitable time found"
 
-# Define participants' schedules
-participants_schedules = [
-    [],  # Diane is free all day
-    ["10:30 to 11:00", "16:00 to 16:30"],  # Olivia
-    ["9:00 to 9:30", "10:30 to 12:00", "12:30 to 15:00", "15:30 to 17:00"],  # Vincent
-    ["9:00 to 10:30", "11:00 to 12:00", "12:30 to 17:00"],  # Steven
-]
-
-# Define work hours and meeting duration
-work_hours = "9:00 to 17:00"
-duration = 0.5  # half hour
-
-# Find meeting time
-meeting_time = find_meeting_time(participants_schedules, work_hours, duration)
-print(meeting_time)
+print(find_meeting_time())
