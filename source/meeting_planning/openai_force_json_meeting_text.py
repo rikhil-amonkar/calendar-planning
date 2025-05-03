@@ -66,7 +66,7 @@ JSON_SCHEMA = {
 }
 
 # Load the meeting planning examples from the JSON file
-with open('100_meeting_planning_examples.json', 'r') as file:
+with open('meeting_all_1000_prompts.json', 'r') as file:
     meeting_examples = json.load(file)
 
 # Argument parser to select the model
@@ -75,16 +75,16 @@ parser.add_argument('--model', type=str, required=True, help="The OpenAI model I
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_planning_state.json"
+STATE_FILE = "meeting_planning_state_2.json"
 
 class EvaluationState:
     def __init__(self):
         self.correct_0shot = 0
-        self.correct_5shot = 0
+        # self.correct_5shot = 0
         self.total_0shot = 0
-        self.total_5shot = 0
+        # self.total_5shot = 0
         self.results_0shot = []
-        self.results_5shot = []
+        # self.results_5shot = []
         self.processed_examples = set()
         self.start_time = datetime.datetime.now()
         self.previous_time = datetime.timedelta(0)
@@ -93,11 +93,11 @@ class EvaluationState:
     def save(self):
         state_to_save = {
             "correct_0shot": self.correct_0shot,
-            "correct_5shot": self.correct_5shot,
+            # "correct_5shot": self.correct_5shot,
             "total_0shot": self.total_0shot,
-            "total_5shot": self.total_5shot,
+            # "total_5shot": self.total_5shot,
             "results_0shot": self.results_0shot,
-            "results_5shot": self.results_5shot,
+            # "results_5shot": self.results_5shot,
             "processed_examples": list(self.processed_examples),
             "start_time": self.start_time.isoformat(),
             "previous_time": self.previous_time.total_seconds(),
@@ -111,11 +111,11 @@ class EvaluationState:
             with open(STATE_FILE, 'r') as f:
                 loaded = json.load(f)
                 self.correct_0shot = loaded["correct_0shot"]
-                self.correct_5shot = loaded["correct_5shot"]
+                # self.correct_5shot = loaded["correct_5shot"]
                 self.total_0shot = loaded["total_0shot"]
-                self.total_5shot = loaded["total_5shot"]
+                # self.total_5shot = loaded["total_5shot"]
                 self.results_0shot = loaded["results_0shot"]
-                self.results_5shot = loaded["results_5shot"]
+                # self.results_5shot = loaded["results_5shot"]
                 self.processed_examples = set(loaded["processed_examples"])
                 self.previous_time = datetime.timedelta(seconds=loaded["previous_time"])
                 self.start_time = datetime.datetime.fromisoformat(loaded["start_time"])
@@ -295,7 +295,7 @@ async def main():
             if example_id in state.processed_examples:
                 continue
                 
-            for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+            for prompt_type in ['prompt_0shot']:
                 prompt = example[prompt_type]
                 golden_plan = example['golden_plan']
 
@@ -386,10 +386,10 @@ async def main():
                     state.total_0shot += 1
                     if is_correct:
                         state.correct_0shot += 1
-                else:
-                    state.total_5shot += 1
-                    if is_correct:
-                        state.correct_5shot += 1
+                # else:
+                #     state.total_5shot += 1
+                #     if is_correct:
+                #         state.correct_5shot += 1
 
                 # Prepare result entry
                 result_entry = {
@@ -405,8 +405,8 @@ async def main():
                 # Store results
                 if prompt_type == 'prompt_0shot':
                     state.results_0shot.append(result_entry)
-                else:
-                    state.results_5shot.append(result_entry)
+                # else:
+                #     state.results_5shot.append(result_entry)
 
                 # Format for display
                 model_display = format_schedule_compact(model_schedule)
@@ -436,13 +436,13 @@ async def main():
             "end_time": current_time.isoformat(),
             "total_runtime_seconds": total_runtime.total_seconds(),
             "results": {
-                "0shot": state.results_0shot,
-                "5shot": state.results_5shot
+                "0shot": state.results_0shot
+                # "5shot": state.results_5shot
             },
             "accuracy": {
-                "0shot": state.correct_0shot / state.total_0shot if state.total_0shot > 0 else 0,
-                "5shot": state.correct_5shot / state.total_5shot if state.total_5shot > 0 else 0,
-                "total": (state.correct_0shot + state.correct_5shot) / (state.total_0shot + state.total_5shot) if (state.total_0shot + state.total_5shot) > 0 else 0
+                "0shot": state.correct_0shot / state.total_0shot if state.total_0shot > 0 else 0
+                # "5shot": state.correct_5shot / state.total_5shot if state.total_5shot > 0 else 0,
+                # "total": (state.correct_0shot + state.correct_5shot) / (state.total_0shot + state.total_5shot) if (state.total_0shot + state.total_5shot) > 0 else 0
             }
         }
         json.dump(final_results, json_file, indent=4)
@@ -454,8 +454,8 @@ async def main():
         txt_file.write(f"End time: {current_time}\n")
         txt_file.write(f"Total runtime: {total_runtime}\n")
         txt_file.write(f"0-shot accuracy: {state.correct_0shot}/{state.total_0shot} ({state.correct_0shot/state.total_0shot:.2%})\n")
-        txt_file.write(f"5-shot accuracy: {state.correct_5shot}/{state.total_5shot} ({state.correct_5shot/state.total_5shot:.2%})\n")
-        txt_file.write(f"Total accuracy: {state.correct_0shot + state.correct_5shot}/{state.total_0shot + state.total_5shot} ({(state.correct_0shot + state.correct_5shot)/(state.total_0shot + state.total_5shot):.2%})\n")
+        # txt_file.write(f"5-shot accuracy: {state.correct_5shot}/{state.total_5shot} ({state.correct_5shot/state.total_5shot:.2%})\n")
+        # txt_file.write(f"Total accuracy: {state.correct_0shot + state.correct_5shot}/{state.total_0shot + state.total_5shot} ({(state.correct_0shot + state.correct_5shot)/(state.total_0shot + state.total_5shot):.2%})\n")
 
     print("Processing complete. Results saved.")
 

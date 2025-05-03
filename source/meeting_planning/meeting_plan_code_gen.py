@@ -254,66 +254,110 @@ def parse_golden_plan(golden_plan):
     return schedule
 
 def parse_model_output(model_output):
-    """Parse the model's JSON output into structured schedule format."""
+    """Parse the model's JSON output into structured schedule format, handling SOLUTION: cases."""
     if not model_output:
         return None
     
-    try:
-        # If the output is already a string, parse it as JSON
-        if isinstance(model_output, str):
-            schedule_data = json.loads(model_output)
-        else:
-            schedule_data = model_output
+    # Handle SOLUTION: prefix case
+    if isinstance(model_output, str):
+        # Remove SOLUTION: prefix if present
+        if model_output.startswith("SOLUTION:") or model_output.startswith("SOLUTION:"):  # Handle typo too
+            model_output = model_output.split(":", 1)[1].strip()
         
-        # Get the schedule array
-        schedule = schedule_data.get("schedule", [])
-        
-        # Normalize each step in the schedule
-        normalized_schedule = []
-        last_time = None
-        
-        for step in schedule:
-            if not isinstance(step, dict):
-                continue
-                
-            # Normalize action and location
-            action = step.get("action", "").lower()
-            location = step.get("location", "Unknown")
-            
-            # Handle time formatting
-            time = step.get("time")
-            if time:
-                try:
-                    time = remove_leading_zero_from_time(time)
-                except:
-                    time = None
-            
-            # Create cleaned step
-            cleaned_step = {"action": action, "location": location}
-            if time:
-                cleaned_step["time"] = time
-                last_time = time
-            
-            # Add action-specific fields
-            if action == "travel":
-                cleaned_step["duration"] = step.get("duration", 0)
-                cleaned_step["to"] = step.get("to", location)
-                if "time" in step:
-                    last_time = time
-            elif action == "meet":
-                cleaned_step["duration"] = step.get("duration", 0)
-                if "time" not in cleaned_step and last_time:
-                    cleaned_step["time"] = last_time
-            
-            normalized_schedule.append(cleaned_step)
-        
-        return normalized_schedule
+        # Handle "=== Code Execution Successful ===" cases
+        if "=== Code Execution Successful ===" in model_output:
+            # Find the last JSON structure before this marker
+            json_part = model_output.split("=== Code Execution Successful ===")[0].strip()
+            model_output = json_part
     
-    except json.JSONDecodeError:
+    try:
+        # First try to parse the output directly as JSON (in case it's just the JSON)
+        try:
+            if isinstance(model_output, str):
+                schedule_data = json.loads(model_output)
+            else:
+                schedule_data = model_output
+            return normalize_schedule(schedule_data)
+        except json.JSONDecodeError:
+            pass
+        
+        # If direct JSON parsing fails, look for JSON in print output
+        json_pattern = r'\{.*?"schedule"\s*:\s*\[.*?\]\}'
+        matches = re.findall(json_pattern, model_output, re.DOTALL)
+        if matches:
+            # Try each match from last to first (most likely the correct output is last)
+            for match in reversed(matches):
+                try:
+                    schedule_data = json.loads(match)
+                    if "schedule" in schedule_data:
+                        return normalize_schedule(schedule_data)
+                except json.JSONDecodeError:
+                    continue
+        
+        # If we still haven't found JSON, try to find the last dictionary-looking structure
+        dict_pattern = r'\{[\s\S]*?\}'
+        matches = re.findall(dict_pattern, model_output)
+        if matches:
+            # Try each match from last to first
+            for match in reversed(matches):
+                try:
+                    schedule_data = json.loads(match)
+                    if "schedule" in schedule_data:
+                        return normalize_schedule(schedule_data)
+                except json.JSONDecodeError:
+                    continue
+        
         return None
+        
     except Exception as e:
         logging.error(f"Error parsing model output: {e}")
         return None
+
+def normalize_schedule(schedule_data):
+    """Normalize the schedule data into our standard format."""
+    if not isinstance(schedule_data, dict) or "schedule" not in schedule_data:
+        return None
+    
+    schedule = schedule_data.get("schedule", [])
+    normalized_schedule = []
+    last_time = None
+    
+    for step in schedule:
+        if not isinstance(step, dict):
+            continue
+            
+        # Normalize action and location
+        action = step.get("action", "").lower()
+        location = step.get("location", "Unknown")
+        
+        # Handle time formatting
+        time = step.get("time")
+        if time:
+            try:
+                time = remove_leading_zero_from_time(time)
+            except:
+                time = None
+        
+        # Create cleaned step
+        cleaned_step = {"action": action, "location": location}
+        if time:
+            cleaned_step["time"] = time
+            last_time = time
+        
+        # Add action-specific fields
+        if action == "travel":
+            cleaned_step["duration"] = step.get("duration", 0)
+            cleaned_step["to"] = step.get("to", location)
+            if "time" in step:
+                last_time = time
+        elif action == "meet":
+            cleaned_step["duration"] = step.get("duration", 0)
+            if "time" not in cleaned_step and last_time:
+                cleaned_step["time"] = last_time
+        
+        normalized_schedule.append(cleaned_step)
+    
+    return normalized_schedule
 
 def stop_after_second_triple_quote(response):
     first_triple_quote = response.find("'''")
@@ -373,15 +417,15 @@ async def main():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
 
     # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("DS-R1-DL-8B_code_meeting_results.json") or not state_loaded:
-        with open("DS-R1-DL-8B_code_meeting_results.json", "w") as json_file:
+    if not os.path.exists("DS-R1-DL-70B_code_meeting_results.json") or not state_loaded:
+        with open("DS-R1-DL-70B_code_meeting_results.json", "w") as json_file:
             json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
 
-    with open("DS-R1-DL-8B_code_meeting_results.txt", txt_mode) as txt_file:
+    with open("DS-R1-DL-70B_code_meeting_results.txt", txt_mode) as txt_file:
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
             txt_file.write("=== New Run Started ===\n")
-            with open("DS-R1-DL-8B_code_meeting_results.json", "w") as json_file:
+            with open("DS-R1-DL-70B_code_meeting_results.json", "w") as json_file:
                 json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
             state.first_run = False
 
@@ -449,7 +493,7 @@ async def main():
                     }
 
                     # Update JSON file
-                    with open("DS-R1-DL-8B_code_meeting_results.json", "r+") as json_file:
+                    with open("DS-R1-DL-70B_code_meeting_results.json", "r+") as json_file:
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
