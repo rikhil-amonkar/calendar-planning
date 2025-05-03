@@ -3,11 +3,13 @@ import os
 import subprocess
 from openai import OpenAI
 import json
-with open("../../drums_llm_key.json") as f:
+with open("../../scheduling_key.json") as f:
     key = json.load(f)["openai"]
 client = OpenAI(api_key=key)
 
 def evaluate_output(pred, gold):
+    if isinstance(gold, list):
+        gold = gold[0]
     response = client.responses.create(
         model="gpt-4.1-nano",
         input=[
@@ -16,7 +18,7 @@ def evaluate_output(pred, gold):
             "content": [
                 {
                 "type": "input_text",
-                "text": "You are given two model outputs:\n1. " + pred + "\n2. " + gold + "\nAre the two time ranges identical? Answer in a JSON like {\"answer\": \"yes\"} or {\"answer\": \"no\"}."
+                "text": "You are given two model outputs:\n1. " + pred + "\n2. " + gold + "\nAre the two identical even though they can be expressed differently? Answer in a JSON like {\"answer\": \"yes\"} or {\"answer\": \"no\"}."
                 }
             ]
             }
@@ -63,17 +65,16 @@ for model in args.model:
         with open(f"../natural-plan/data/{task_name_map[task]}.json") as f:
             data = json.load(f)
         for idx, (id, example) in enumerate(data.items()):
-            if idx >= 100:
-                break
             try:
                 pred = open(f"../output/SMT/{model}/{task}/output/{id}.out").read()
             except FileNotFoundError:
                 print(f"Prediction file not found for id {id}, skipping.")
-                break
+                continue
             gold = example["golden_plan"]
             if evaluate_output(pred, gold) == "yes":
                 success_count += 1
             total_count += 1
+            print(total_count)
         with open(f"../output/SMT/{model}/{task}/report.txt", "w") as f:
             f.write(f"Success rate: {success_count / total_count * 100:.2f}%\n")
             f.write(f"Total examples: {total_count}\n")

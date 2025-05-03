@@ -19,7 +19,7 @@ for model in args.model:
     elif model == "gpt-4o-mini":
         model = "gpt-4o-mini-2024-07-18"
     for task in tasks:
-        input_folder = f"../output/SMT/{model}/{task}/"
+        input_folder = f"../output/SMT/{model}/{task}/code"
         output_folder = f"../output/SMT/{model}/{task}/output/"
         os.makedirs(output_folder, exist_ok=True)
 
