@@ -61,7 +61,7 @@ JSON_SCHEMA = {
 }
 
 # Load the meeting planning examples from the JSON file
-with open('meeting_all_1000_prompts.json', 'r') as file:
+with open('../../data/meeting_planning_100.json', 'r') as file:
     meeting_examples = json.load(file)
 
 # Argument parser to select the model
@@ -70,7 +70,7 @@ parser.add_argument('--model', type=str, required=True, help="The HuggingFace mo
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_planning_state_3.json"
+STATE_FILE = "meeting_planning_state_forcejson_meeting_text.json"
 
 class JSONGuidanceHFWrapper(WrapperEngine):
     def __init__(self, engine: HuggingEngine, *args, json_schema, **kwargs):
@@ -309,7 +309,6 @@ async def main():
         
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
-            txt_file.write("=== New Run Started ===\n")
             json_file.write("")  # Will be properly initialized later
             state.first_run = False
 

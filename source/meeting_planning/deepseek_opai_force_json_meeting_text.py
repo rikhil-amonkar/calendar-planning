@@ -66,7 +66,7 @@ JSON_SCHEMA = {
 }
 
 # Load the meeting planning examples from the JSON file
-with open('meeting_all_1000_prompts.json', 'r') as file:
+with open('../../data/meeting_planning_100.json', 'r') as file:
     meeting_examples = json.load(file)
 
 # Argument parser to select the model
@@ -75,7 +75,7 @@ parser.add_argument('--model', type=str, required=True, help="The DeepSeek model
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_planning_state.json"
+STATE_FILE = "meeting_planning_state_deepseek.json"
 
 class EvaluationState:
     def __init__(self):

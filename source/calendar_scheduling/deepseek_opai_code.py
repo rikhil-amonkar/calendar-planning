@@ -115,9 +115,9 @@ def categorize_error(error_message):
 # Function to run the generated Python script and capture its output
 def run_generated_code(code):
     try:
-        with open("generated_code_2.py", "w") as file:
+        with open("generated_code_deepseek.py", "w") as file:
             file.write(code)
-        result = subprocess.run(["python", "generated_code_2.py"], capture_output=True, text=True, check=True)
+        result = subprocess.run(["python", "generated_code_deepseek.py"], capture_output=True, text=True, check=True)
         output = result.stdout.strip()
         output = normalize_time_format(output)
         return output, None
@@ -160,7 +160,7 @@ async def run_model():
     # predicted_outputs_5shot = []
     start_time = datetime.now()
 
-    prompts_data = load_prompts("calendar_all_1000_prompts.json")
+    prompts_data = load_prompts("../../data/calendar_scheduling_100.json")
     prompts_list = list(prompts_data.items())
 
     no_error_count_0shot = 0

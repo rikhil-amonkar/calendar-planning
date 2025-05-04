@@ -49,7 +49,7 @@ JSON_SCHEMA = {
 }
 
 # Load the trip planning examples from the JSON file
-with open('trip_all_1000_prompts.json', 'r') as file:
+with open('../../data/trip_planning_100.json', 'r') as file:
     trip_examples = json.load(file)
 
 # Argument parser to select the model
@@ -148,7 +148,7 @@ results_0shot = []
 # results_5shot = []
 
 # Output files
-with open('O3-M-25-01-31_forceJSON_text_trip_results.txt', 'w') as txt_file, open('O3-M-25-01-31_forceJSON_text_trip_results.json', 'w') as json_file:
+with open('GPT-4O-M-24-07-18_forceJSON_text_trip_results.txt', 'w') as txt_file, open('GPT-4O-M-24-07-18_forceJSON_text_trip_results.json', 'w') as json_file:
     start_time = datetime.datetime.now()
     
     for example_id, example in trip_examples.items():

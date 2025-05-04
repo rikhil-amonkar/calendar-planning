@@ -94,6 +94,6 @@ def process_examples(examples_file, output_folder):
             continue
 
 if __name__ == "__main__":
-    examples_file = 'trip_planning/trip_all_1000_prompts.json'
-    output_folder = 'constraint_satisfaction/trip'
+    examples_file = '../../data/trip_planning_100.json'
+    output_folder = 'trip'
     process_examples(examples_file, output_folder)
