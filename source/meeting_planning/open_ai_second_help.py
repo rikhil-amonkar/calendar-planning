@@ -66,7 +66,7 @@ JSON_SCHEMA = {
 }
 
 # Load the meeting planning examples from the JSON file
-with open('meeting_all_1000_prompts.json', 'r') as file:
+with open('../../data/meeting_planning_100.json', 'r') as file:
     meeting_examples = json.load(file)
 
 # Argument parser to select the model
@@ -75,7 +75,7 @@ parser.add_argument('--model', type=str, required=True, help="The OpenAI model I
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_planning_state_4.json"
+STATE_FILE = "meeting_planning_state_openai_other.json"
 
 class EvaluationState:
     def __init__(self):
@@ -281,12 +281,11 @@ async def main():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
     json_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    with open('GPT-4O-M-24-07-18_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
-         open('GPT-4O-M-24-07-18_forceJSON_text_meeting_results.json', json_mode) as json_file:
+    with open('O3-M-25-01-31_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
+         open('O3-M-25-01-31_forceJSON_text_meeting_results.json', json_mode) as json_file:
         
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
-            txt_file.write("=== New Run Started ===\n")
             json_file.write("")  # Will be properly initialized later
             state.first_run = False
 

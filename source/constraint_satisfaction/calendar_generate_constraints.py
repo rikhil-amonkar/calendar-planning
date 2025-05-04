@@ -11,7 +11,7 @@ client = AsyncOpenAI(api_key=api_key)
 
 async def get_model_response(full_prompt):
     response = await client.chat.completions.create(
-        model='gpt-4.1',
+        model='gpt-4.1-nano',
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": full_prompt}
@@ -119,6 +119,6 @@ def process_examples(examples_file, output_folder):
             continue
 
 if __name__ == "__main__":
-    examples_file = 'calendar_scheduling/calendar_all_1000_prompts.json'
-    output_folder = 'constraint_satisfaction/calendar'
+    examples_file = '../../data/calendar_scheduling_100.json'
+    output_folder = 'calendar'
     process_examples(examples_file, output_folder)

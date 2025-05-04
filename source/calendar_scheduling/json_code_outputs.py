@@ -20,7 +20,7 @@ parser.add_argument("--model", dest="model", help="Model name to use", required=
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_scheduling_state.json"
+STATE_FILE = "meeting_scheduling_state_json_code.json"
 
 class EvaluationState:
     def __init__(self):
@@ -197,9 +197,9 @@ def categorize_error(error_message):
 # Function to run the generated Python script and capture its output
 def run_generated_code(code):
     try:
-        with open("generated_code_3.py", "w") as file:
+        with open("generated_code_json_code.py", "w") as file:
             file.write(code)
-        result = subprocess.run(["python", "generated_code_3.py"], capture_output=True, text=True, check=True)
+        result = subprocess.run(["python", "generated_code_json_code.py"], capture_output=True, text=True, check=True)
         output = result.stdout.strip()
         output = normalize_time_format(output)
         output = remove_leading_zeros(output)
@@ -235,7 +235,7 @@ async def run_model():
     state = EvaluationState()
     state_loaded = state.load()
 
-    prompts_data = load_prompts("calendar_all_1000_prompts.json")
+    prompts_data = load_prompts("../../data/calendar_scheduling_100.json")
     prompts_list = list(prompts_data.items())
 
     engine = initialize_engine(args.model)
@@ -245,15 +245,14 @@ async def run_model():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
 
     # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("ML-ML-3.1-8B_json_coderesults.json") or not state_loaded:
-        with open("ML-ML-3.1-8B_json_coderesults.json", "w") as json_file:
+    if not os.path.exists("ML-L-3.1-70B_json_coderesults.json") or not state_loaded:
+        with open("ML-L-3.1-70B_json_coderesults.json", "w") as json_file:
             json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
 
-    with open("ML-ML-3.1-8B_text_coderesults.txt", txt_mode) as txt_file:
+    with open("ML-L-3.1-70B_text_coderesults.txt", txt_mode) as txt_file:
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
-            txt_file.write("=== New Run Started ===\n")
-            with open("ML-ML-3.1-8B_json_coderesults.json", "w") as json_file:
+            with open("ML-L-3.1-70B_json_coderesults.json", "w") as json_file:
                 json.dump({"0shot": []}, json_file, indent=4)
             state.first_run = False
 
@@ -309,7 +308,7 @@ async def run_model():
                             "is_correct": correct_status
                         }
 
-                        with open("ML-ML-3.1-8B_json_coderesults.json", "r+") as json_file:
+                        with open("ML-L-3.1-70B_json_coderesults.json", "r+") as json_file:
                             file_data = json.load(json_file)
                             if prompt_type == "prompt_0shot":
                                 file_data["0shot"].append(json_output)
@@ -346,7 +345,7 @@ async def run_model():
         f"\nTotal time taken: {total_runtime} seconds"
     )
 
-    with open("ML-ML-3.1-8B_text_coderesults.txt", "a") as file:
+    with open("ML-L-3.1-70B_text_coderesults.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model

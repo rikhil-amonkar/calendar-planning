@@ -116,6 +116,6 @@ def process_examples(examples_file, output_folder):
                     continue
 
 if __name__ == "__main__":
-    examples_file = 'meeting_planning/meeting_all_1000_prompts.json'
-    output_folder = 'constraint_satisfaction/meeting'
+    examples_file = '../../data/meeting_planning_100.json'
+    output_folder = 'meeting'
     process_examples(examples_file, output_folder)

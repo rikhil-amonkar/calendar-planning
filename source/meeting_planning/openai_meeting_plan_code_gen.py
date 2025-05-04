@@ -30,19 +30,19 @@ parser.add_argument('--model', type=str, required=True, help="The HuggingFace mo
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_planning_state.json"
+STATE_FILE = "meeting_planning_state_openai_code.json"
 
 class EvaluationState:
     def __init__(self):
         self.expected_outputs_0shot = []
         self.predicted_outputs_0shot = []
-        self.expected_outputs_5shot = []
-        self.predicted_outputs_5shot = []
+        # self.expected_outputs_5shot = []
+        # self.predicted_outputs_5shot = []
         self.start_time = datetime.datetime.now()
         self.no_error_count_0shot = 0
         self.correct_output_count_0shot = 0
-        self.no_error_count_5shot = 0
-        self.correct_output_count_5shot = 0
+        # self.no_error_count_5shot = 0
+        # self.correct_output_count_5shot = 0
         self.processed_examples = set()
         self.previous_time = 0
         self.first_run = True
@@ -51,13 +51,13 @@ class EvaluationState:
         state_to_save = {
             "expected_outputs_0shot": self.expected_outputs_0shot,
             "predicted_outputs_0shot": self.predicted_outputs_0shot,
-            "expected_outputs_5shot": self.expected_outputs_5shot,
-            "predicted_outputs_5shot": self.predicted_outputs_5shot,
+            # "expected_outputs_5shot": self.expected_outputs_5shot,
+            # "predicted_outputs_5shot": self.predicted_outputs_5shot,
             "start_time": self.start_time.isoformat(),
             "no_error_count_0shot": self.no_error_count_0shot,
             "correct_output_count_0shot": self.correct_output_count_0shot,
-            "no_error_count_5shot": self.no_error_count_5shot,
-            "correct_output_count_5shot": self.correct_output_count_5shot,
+            # "no_error_count_5shot": self.no_error_count_5shot,
+            # "correct_output_count_5shot": self.correct_output_count_5shot,
             "processed_examples": list(self.processed_examples),
             "previous_time": self.previous_time,
             "first_run": self.first_run
@@ -71,12 +71,12 @@ class EvaluationState:
                 loaded = json.load(f)
                 self.expected_outputs_0shot = loaded["expected_outputs_0shot"]
                 self.predicted_outputs_0shot = loaded["predicted_outputs_0shot"]
-                self.expected_outputs_5shot = loaded["expected_outputs_5shot"]
-                self.predicted_outputs_5shot = loaded["predicted_outputs_5shot"]
+                # self.expected_outputs_5shot = loaded["expected_outputs_5shot"]
+                # self.predicted_outputs_5shot = loaded["predicted_outputs_5shot"]
                 self.no_error_count_0shot = loaded["no_error_count_0shot"]
                 self.correct_output_count_0shot = loaded["correct_output_count_0shot"]
-                self.no_error_count_5shot = loaded["no_error_count_5shot"]
-                self.correct_output_count_5shot = loaded["correct_output_count_5shot"]
+                # self.no_error_count_5shot = loaded["no_error_count_5shot"]
+                # self.correct_output_count_5shot = loaded["correct_output_count_5shot"]
                 self.processed_examples = set(loaded["processed_examples"])
                 self.previous_time = loaded["previous_time"]
                 self.start_time = datetime.datetime.fromisoformat(loaded["start_time"])
@@ -86,7 +86,7 @@ class EvaluationState:
             return False
 
 # Load the meeting planning examples from the JSON file
-with open('100_meeting_planning_examples.json', 'r') as file:
+with open('../../data/meeting_planning_100.json', 'r') as file:
     meeting_examples = json.load(file)
 
 # Define prefix and suffix messages for code generation
@@ -224,9 +224,9 @@ def categorize_error(error_message):
 
 def run_generated_code(code):
     try:
-        with open("generated_code.py", "w") as file:
+        with open("generated_code_openai_code.py", "w") as file:
             file.write(code)
-        result = subprocess.run(["python", "generated_code.py"], capture_output=True, text=True, check=True)
+        result = subprocess.run(["python", "generated_code_openai_code.py"], capture_output=True, text=True, check=True)
         output = result.stdout.strip()
         return output, None
     except subprocess.CalledProcessError as e:
@@ -464,15 +464,15 @@ async def main():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
 
     # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("GPT-4O-M-24-07-18_code_meeting_results.json") or not state_loaded:
-        with open("GPT-4O-M-24-07-18_code_meeting_results.json", "w") as json_file:
+    if not os.path.exists("O3-M-25-01-31_code_meeting_results.json") or not state_loaded:
+        with open("O3-M-25-01-31_code_meeting_results.json", "w") as json_file:
             json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
 
-    with open("GPT-4O-M-24-07-18_code_meeting_results.txt", txt_mode) as txt_file:
+    with open("O3-M-25-01-31_code_meeting_results.txt", txt_mode) as txt_file:
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
             txt_file.write("=== New Run Started ===\n")
-            with open("GPT-4O-M-24-07-18_code_meeting_results.json", "w") as json_file:
+            with open("O3-M-25-01-31_code_meeting_results.json", "w") as json_file:
                 json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
             state.first_run = False
 
@@ -481,7 +481,7 @@ async def main():
             if example_id in state.processed_examples:
                 continue
                 
-            for prompt_type in ["prompt_0shot", "prompt_5shot"]:
+            for prompt_type in ["prompt_0shot"]:
                 if prompt_type not in example:
                     continue
                     
@@ -519,14 +519,14 @@ async def main():
                             if predicted_plan == expected_plan:
                                 state.correct_output_count_0shot += 1
                                 correct_status = True
-                    elif prompt_type == "prompt_5shot":
-                        state.expected_outputs_5shot.append(expected_plan)
-                        state.predicted_outputs_5shot.append(predicted_plan)
-                        if error_type is None:
-                            state.no_error_count_5shot += 1
-                            if predicted_plan == expected_plan:
-                                state.correct_output_count_5shot += 1
-                                correct_status = True
+                    # elif prompt_type == "prompt_5shot":
+                    #     state.expected_outputs_5shot.append(expected_plan)
+                    #     state.predicted_outputs_5shot.append(predicted_plan)
+                    #     if error_type is None:
+                    #         state.no_error_count_5shot += 1
+                    #         if predicted_plan == expected_plan:
+                    #             state.correct_output_count_5shot += 1
+                    #             correct_status = True
 
                     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     line = (
@@ -547,12 +547,12 @@ async def main():
                     }
 
                     # Update JSON file
-                    with open("GPT-4O-M-24-07-18_code_meeting_results.json", "r+") as json_file:
+                    with open("O3-M-25-01-31_code_meeting_results.json", "r+") as json_file:
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
-                        elif prompt_type == "prompt_5shot":
-                            file_data["5shot"].append(json_output)
+                        # elif prompt_type == "prompt_5shot":
+                        #     file_data["5shot"].append(json_output)
                         json_file.seek(0)
                         json.dump(file_data, json_file, indent=4)
                         json_file.truncate()
@@ -574,23 +574,23 @@ async def main():
         total_runtime = state.previous_time + (end_time - state.start_time).total_seconds()
         
         accuracy_0shot = (state.correct_output_count_0shot / len(state.expected_outputs_0shot)) * 100 if state.expected_outputs_0shot else 0
-        accuracy_5shot = (state.correct_output_count_5shot / len(state.expected_outputs_5shot)) * 100 if state.expected_outputs_5shot else 0
-        total_accuracy = ((state.correct_output_count_0shot + state.correct_output_count_5shot) / 
-                         (len(state.expected_outputs_0shot) + len(state.expected_outputs_5shot))) * 100 if (state.expected_outputs_0shot + state.expected_outputs_5shot) else 0
+        # accuracy_5shot = (state.correct_output_count_5shot / len(state.expected_outputs_5shot)) * 100 if state.expected_outputs_5shot else 0
+        # total_accuracy = ((state.correct_output_count_0shot + state.correct_output_count_5shot) / 
+                        #  (len(state.expected_outputs_0shot) + len(state.expected_outputs_5shot))) * 100 if (state.expected_outputs_0shot + state.expected_outputs_5shot) else 0
 
         no_error_accuracy_0shot = (state.correct_output_count_0shot / state.no_error_count_0shot) * 100 if state.no_error_count_0shot > 0 else 0
-        no_error_accuracy_5shot = (state.correct_output_count_5shot / state.no_error_count_5shot) * 100 if state.no_error_count_5shot > 0 else 0
+        # no_error_accuracy_5shot = (state.correct_output_count_5shot / state.no_error_count_5shot) * 100 if state.no_error_count_5shot > 0 else 0
 
         accuracy_line = (
             f"\n0-shot prompts: Model guessed {state.correct_output_count_0shot} out of {len(state.expected_outputs_0shot)} correctly.\n"
             f"Accuracy: {accuracy_0shot:.2f}%\n"
-            f"\n5-shot prompts: Model guessed {state.correct_output_count_5shot} out of {len(state.expected_outputs_5shot)} correctly.\n"
-            f"Accuracy: {accuracy_5shot:.2f}%\n"
-            f"\nTotal accuracy: {total_accuracy:.2f}%\n"
+            # f"\n5-shot prompts: Model guessed {state.correct_output_count_5shot} out of {len(state.expected_outputs_5shot)} correctly.\n"
+            # f"Accuracy: {accuracy_5shot:.2f}%\n"
+            # f"\nTotal accuracy: {total_accuracy:.2f}%\n"
             f"\n0-shot prompts with no errors: {state.correct_output_count_0shot} out of {state.no_error_count_0shot} produced correct outputs.\n"
             f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n"
-            f"\n5-shot prompts with no errors: {state.correct_output_count_5shot} out of {state.no_error_count_5shot} produced correct outputs.\n"
-            f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n"
+            # f"\n5-shot prompts with no errors: {state.correct_output_count_5shot} out of {state.no_error_count_5shot} produced correct outputs.\n"
+            # f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n"
             f"\nTotal time taken: {total_runtime} seconds"
         )
 
