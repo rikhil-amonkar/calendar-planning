@@ -1,70 +1,98 @@
-from z3 import Optimize, Int, sat
+from z3 import Optimize, Int, Bool, If, And, Or, Not, sat, Sum
 
-# Create an optimizer instance.
+# --------------------------------------------------------------------
+# Travel times (in minutes)
+# Provided distances:
+#   Sunset District -> Golden Gate Park = 11 minutes.
+#   Golden Gate Park -> Sunset District = 10 minutes.
+travel = {
+    ("Sunset District", "Golden Gate Park"): 11,
+    ("Golden Gate Park", "Sunset District"): 10,
+}
+
+# --------------------------------------------------------------------
+# Friend data.
+# Each friend is a tuple: (location, avail_start, avail_end, min_duration)
+# Joshua is at Golden Gate Park from 8:45PM (1245) to 9:45PM (1305), 
+# and requires a meeting of at least 15 minutes.
+friends = [
+    ("Golden Gate Park", 1245, 1305, 15),  # Joshua
+]
+friend_names = ["Joshua"]
+num_friends = len(friends)
+
+# --------------------------------------------------------------------
+# Starting location and time.
+start_loc = "Sunset District"
+start_time = 540  # 9:00 AM
+
+# --------------------------------------------------------------------
+# Create the Z3 optimizer.
 opt = Optimize()
 
-# All times are measured in minutes after 9:00AM.
-# Variables:
-#   d       : departure time from Sunset District (in minutes after 9:00AM)
-#   m_start : meeting start time at Golden Gate Park (in minutes after 9:00AM)
-#   m_end   : meeting end time at Golden Gate Park (in minutes after 9:00AM)
-d = Int('d')
-m_start = Int('m_start')
-m_end = Int('m_end')
+# Decision variables for each friend i:
+#   x[i]    : Bool, True if meeting with friend i is scheduled.
+#   A[i]    : Int, arrival time at friend i's location (in minutes after midnight).
+#   order[i]: Int, the meeting order (if scheduled, order in [0, num_friends-1]; otherwise, -1).
+x = [Bool(f"x_{i}") for i in range(num_friends)]
+A = [Int(f"A_{i}") for i in range(num_friends)]
+order = [Int(f"order_{i}") for i in range(num_friends)]
 
-# Given travel time from Sunset District to Golden Gate Park is 11 minutes.
-sunset_to_ggp = 11
+# For each friend, if scheduled then order is in [0, num_friends-1], else it is -1.
+for i in range(num_friends):
+    opt.add(If(x[i],
+               And(order[i] >= 0, order[i] < num_friends),
+               order[i] == -1))
+    opt.add(A[i] >= 0)
 
-# Joshua's availability at Golden Gate Park:
-# 8:45PM is 11 hours and 45 minutes after 9:00AM -> 705 minutes.
-# 9:45PM is 12 hours and 45 minutes after 9:00AM -> 765 minutes.
-joshua_avail_from = 705
-joshua_avail_until = 765
+# For each pair of friends, ensure that if both are scheduled they have distinct orders.
+for i in range(num_friends):
+    for j in range(i+1, num_friends):
+        opt.add(Or(Not(x[i]), Not(x[j]), order[i] != order[j]))
 
-# CONSTRAINTS:
+# For each friend i that is scheduled, enforce the meeting to take place within the available window.
+# The meeting actually starts at: meeting_start = max(A[i], avail_start).
+# Then the meeting must finish (meeting_start + min_duration) on or before avail_end.
+for i in range(num_friends):
+    loc, avail_start, avail_end, dur = friends[i]
+    meeting_start = If(A[i] < avail_start, avail_start, A[i])
+    opt.add(Or(Not(x[i]), meeting_start + dur <= avail_end))
 
-# 1. You arrive at Sunset District at 9:00AM,
-#    so you cannot depart before 9:00AM.
-opt.add(d >= 0)
+# For the first scheduled meeting (order == 0), you must travel from the starting location.
+for i in range(num_friends):
+    loc, _, _, _ = friends[i]
+    t_time = travel[(start_loc, loc)]
+    opt.add(Or(Not(x[i]), order[i] != 0, A[i] >= start_time + t_time))
 
-# 2. When you depart from Sunset District at time d,
-#    you arrive at Golden Gate Park at:
-arrival_at_ggp = d + sunset_to_ggp
+# --------------------------------------------------------------------
+# Objective: Maximize the total number of meetings scheduled.
+opt.maximize(Sum([If(x[i], 1, 0) for i in range(num_friends)]))
 
-# 3. The meeting with Joshua cannot start before you arrive at Golden Gate Park,
-#    and it cannot start before Joshua's availability begins.
-opt.add(m_start >= arrival_at_ggp)
-opt.add(m_start >= joshua_avail_from)
-
-# 4. The meeting must end by Joshua's availability ending time.
-opt.add(m_end <= joshua_avail_until)
-
-# 5. You'd like to meet Joshua for at least 15 minutes.
-opt.add(m_end - m_start >= 15)
-
-# Objective: maximize the meeting duration (could potentially allow for a longer meeting within his availability).
-meeting_duration = m_end - m_start
-opt.maximize(meeting_duration)
-
-# Solve the scheduling problem.
+# --------------------------------------------------------------------
+# Solve and print the optimal meeting schedule.
 if opt.check() == sat:
     model = opt.model()
-    d_val = model[d].as_long()
-    m_start_val = model[m_start].as_long()
-    m_end_val = model[m_end].as_long()
-    
-    # Helper function: convert minutes after 9:00AM to HH:MM format.
-    def to_time(minutes_after_9):
-        total_minutes = 9 * 60 + minutes_after_9
-        hour = total_minutes // 60
-        minute = total_minutes % 60
-        return f"{hour:02d}:{minute:02d}"
-    
-    print("Optimal Schedule:")
-    print(f"  Depart Sunset District at: {to_time(d_val)} (9:00AM + {d_val} minutes)")
-    print(f"  Arrive at Golden Gate Park at: {to_time(d_val + sunset_to_ggp)} (travel time = {sunset_to_ggp} minutes)")
-    print(f"  Meeting with Joshua starts at: {to_time(m_start_val)}")
-    print(f"  Meeting with Joshua ends at: {to_time(m_end_val)}")
-    print(f"  Total meeting duration: {m_end_val - m_start_val} minutes")
+    schedule = []
+    for i in range(num_friends):
+        if model.evaluate(x[i]):
+            schedule.append((model.evaluate(order[i]).as_long(), i))
+    schedule.sort()  # sort by order
+
+    def to_time(minutes):
+        h = minutes // 60
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
+
+    print("Optimal meeting schedule:")
+    for ord_val, i in schedule:
+        loc, avail_start, avail_end, dur = friends[i]
+        arrival = model.evaluate(A[i]).as_long()
+        start_meet = arrival if arrival >= avail_start else avail_start
+        end_meet = start_meet + dur
+        print(f" Order {ord_val}: Meet {friend_names[i]} at {loc}")
+        print(f"    Arrival Time: {to_time(arrival)}")
+        print(f"    Meeting Time: {to_time(start_meet)} - {to_time(end_meet)}")
+    total_meetings = sum(1 for i in range(num_friends) if model.evaluate(x[i]))
+    print("Total friends met:", total_meetings)
 else:
-    print("No solution found.")
+    print("No feasible schedule found.")

@@ -1,35 +1,59 @@
 from z3 import *
 
-# Create the solver instance
+# Define the number of days and cities
+total_days = 12
+cities = [
+    "Riga", "Vilnius", "Dublin"
+]
+
+# Days assigned to each city with constraints
+stay_duration = {
+    "Riga": 5,
+    "Vilnius": 7,
+    "Dublin": 2
+}
+
+# Define direct flights between the cities
+flights = {
+    "Dublin": ["Riga"],
+    "Riga": ["Vilnius", "Dublin"],
+    "Vilnius": ["Riga"]
+}
+
+# Initialize the Z3 solver
 solver = Solver()
 
-# Variables for days spent in each city
-days_riga = Int('days_riga')
-days_vilnius = Int('days_vilnius')
-days_dublin = Int('days_dublin')
+# Create variables for each day
+trip = [Int(f'day_{i + 1}') for i in range(total_days)]
 
-# Constraints for days spent in each city
-solver.add(days_riga == 5)                  # Spend 5 days in Riga
-solver.add(days_vilnius == 5)                # Spend 5 days in Vilnius (adjusted)
-solver.add(days_dublin == 2)                 # Spend 2 days in Dublin
+# Each day must refer to one of the cities
+for day in trip:
+    solver.add(Or([day == cities.index(city) for city in cities]))
 
-# Total days constraint
-solver.add(days_riga + days_vilnius + days_dublin == 12)
+# Count the days spent in each city
+city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
 
-# Check for valid combinations
+# Enforce stay durations
+for city, duration in stay_duration.items():
+    solver.add(city_count[city] == duration)
+
+# Define direct flight connections
+for day in range(total_days - 1):
+    curr_city_index = trip[day]
+    next_city_index = trip[day + 1]
+    curr_city = cities[curr_city_index]
+    next_city = cities[next_city_index]
+    # If transitioning from one city to another, it must be a valid flight
+    solver.add(Or([And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
+                    for city in cities for next_city_city in flights[city]]))
+
+# Solve the problem
 if solver.check() == sat:
-    # If a valid solution is found, extract the values
-    days_riga_val = solver.model()[days_riga].as_long()
-    days_vilnius_val = solver.model()[days_vilnius].as_long()
-    days_dublin_val = solver.model()[days_dublin].as_long()
-    
-    # Create a trip plan description
-    valid_trip = (
-        f"Spend {days_riga_val} days in Riga, "
-        f"{days_vilnius_val} days in Vilnius, "
-        f"{days_dublin_val} days in Dublin."
-    )
+    model = solver.model()
+    itinerary = []
+    for day in range(total_days):
+        city = cities[model[trip[day]].as_long()]
+        itinerary.append(f"Day {day + 1}: {city}")
+    print("\n".join(itinerary))
 else:
-    valid_trip = "No valid trip plan found."
-
-print(valid_trip)
+    print("No valid trip plan found.")

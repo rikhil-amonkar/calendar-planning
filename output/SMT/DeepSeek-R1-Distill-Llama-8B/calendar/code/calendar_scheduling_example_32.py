@@ -1,38 +1,39 @@
-import z3
+from z3 import *
 
-# Define the blocked intervals for each person as lists of tuples (a, b) in minutes since 9:00
-blocked = [
-    # Emily's blocked intervals: 10:00-10:30 (600,630), 11:30-12:30 (150,210), 14:00-15:00 (840,1050), 16:00-16:30 (1440,1470)
-    [(600, 630), (150, 210), (840, 1050), (1440, 1470)],
-    # Melissa's blocked intervals: 9:30-10:00 (30,60), 14:30-15:00 (870,900)
-    [(30, 60), (870, 900)],
-    # Frank's blocked intervals: 10:00-10:30 (600,630), 11:00-11:30 (120,150), 12:30-13:00 (390,420), 13:30-14:30 (990,1020), 14:00-15:00 (960,1050), 15:30-16:00 (1110,1170), 16:00-16:30 (1140,1170)
-    [(600, 630), (120, 150), (390, 420), (990, 1020), (960, 1050), (1110, 1170), (1140, 1170)]
-]
+def main():
+    t = Variable('t')  # start time in minutes from 9:00
 
-# Create a Z3 context
-ctx = z3.Context()
+    # Define available intervals for each person
+    available = [
+        # Emily's blocked intervals
+        (600, 660), (690, 750), (1380, 1410), (1740, 1765),
+        # Melissa's blocked intervals
+        (150, 180), (1740, 1765),
+        # Frank's blocked intervals
+        (0, 30), (210, 240), (330, 390), (690, 750), (1050, 1080), (1500, 1500), (1800, 1980)
+    ]
 
-# Declare the variable for the start time
-s = z3.Variable('s')
+    # Create constraints for each available interval
+    for interval in available:
+        model.add_constraint(t >= interval[0])
+        model.add_constraint(t <= interval[1])
 
-# Add constraints for each blocked interval
-for person in range(3):
-    for (a, b) in blocked[person]:
-        # The constraint is (s + 60 <= a) OR (s >= b)
-        left = s + 60 <= a
-        right = s >= b
-        constraint = left.or(right)
-        ctx.add_constraint(constraint)
+    # Frank's constraint: t <= 9:30 (150 minutes)
+    model.add_constraint(t <= 150)
 
-# Solve the problem
-solution = ctx.solve()
+    # Solve the problem
+    result = model.solve()
+    if result:
+        print("Possible solution: t =", result[t].numerator())
+        print("Convert t to time:", time(t))
+    else:
+        print("No solution.")
 
-# If solution exists, print the start time in hours:minutes format
-if solution:
-    s_val = solution[s].value()
-    start_hr = s_val // 60
-    start_min = s_val % 60
-    print(f"{start_hr:02d}:{start_min:02d}")
-else:
-    print("No solution found")
+def time(t):
+    # Convert minutes back to hours:minutes
+    hours = t // 60
+    minutes = t % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+if __name__ == "__main__":
+    main()

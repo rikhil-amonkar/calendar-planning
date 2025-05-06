@@ -1,32 +1,41 @@
 from z3 import *
 
-s = Int('s')
-solver = Solver()
+s = Optimize()
 
-# Define work hours constraints (9:00-17:00 = 0-480 minutes)
-solver.add(s >= 0)
-solver.add(s + 30 <= 480)
+start_time = Int('start_time')
 
-# Bobby's preference: meeting ends by 15:00 (360 minutes from 9:00)
-solver.add(s + 30 <= 360)
+# Basic constraints (work hours 9:00-17:00 = 0-480 minutes)
+s.add(start_time >= 0)
+s.add(start_time + 30 <= 480)
 
-# Lisa's busy intervals (converted to minutes)
-for start, end in [(0, 60), (90, 150), (210, 240), (420, 450)]:
-    solver.add(Or(s + 30 <= start, s >= end))
+# Bobby's preference: meeting ends by 15:00 (360 minutes)
+s.add(start_time + 30 <= 360)
 
-# Bobby's busy intervals
-for start, end in [(0, 30), (60, 90), (150, 180), (360, 390)]:
-    solver.add(Or(s + 30 <= start, s >= end))
+# Lisa's blocked times (minutes since 9:00)
+lisa_blocks = [(0, 60), (90, 150), (150, 180), (420, 450)]
+for start, end in lisa_blocks:
+    s.add(Or(start_time + 30 <= start, start_time >= end))
 
-# Randy's busy intervals
-for start, end in [(30, 60), (90, 120), (150, 210), (240, 270), (330, 390), (420, 450)]:
-    solver.add(Or(s + 30 <= start, s >= end))
+# Bobby's blocked times
+bobby_blocks = [(0, 30), (60, 90), (150, 180), (360, 390)]
+for start, end in bobby_blocks:
+    s.add(Or(start_time + 30 <= start, start_time >= end))
 
-if solver.check() == sat:
-    m = solver.model()
-    start_min = m[s].as_long()
-    hours = 9 + start_min // 60
-    minutes = start_min % 60
-    print(f"Meeting starts at {hours}:{minutes:02d}")
+# Randy's blocked times
+randy_blocks = [(30, 60), (90, 120), (150, 210), (240, 270), (330, 390), (420, 450)]
+for start, end in randy_blocks:
+    s.add(Or(start_time + 30 <= start, start_time >= end))
+
+# Find earliest possible time
+s.minimize(start_time)
+
+if s.check() == sat:
+    m = s.model()
+    st = m[start_time].as_long()
+    start_h = 9 + st // 60
+    start_m = st % 60
+    end_h = 9 + (st + 30) // 60
+    end_m = (st + 30) % 60
+    print(f"Monday {start_h:02d}:{start_m:02d}-{end_h:02d}:{end_m:02d}")
 else:
     print("No solution found")

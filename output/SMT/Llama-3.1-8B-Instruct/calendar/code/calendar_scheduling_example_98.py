@@ -1,52 +1,87 @@
 from z3 import *
 
-# Define the time slots
-time_slots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
+def schedule_meeting(start_time, end_time, duration, juan_schedule, marilyn_schedule, ronald_schedule, juan_avoid_after):
+    # Create Z3 variables for the meeting time
+    juan_meeting = Int('juan_meeting')
+    marilyn_meeting = Int('marilyn_meeting')
+    ronald_meeting = Int('ronald_meeting')
 
-# Define the participants
-participants = ['Juan', 'Marilyn', 'Ronald']
+    # Create Z3 variables for the start and end times of the meeting
+    meeting_start = Int('meeting_start')
+    meeting_end = Int('meeting_end')
 
-# Define the existing schedules
-schedules = {
-    'Juan': [9, 15.5],
-    'Marilyn': [11, 12.5],
-    'Ronald': [9, 10.5, 12, 13, 14, 16.5]
-}
+    # Define the constraints for the meeting time
+    constraints = [
+        And(juan_meeting >= start_time, juan_meeting <= end_time),
+        And(marilyn_meeting >= start_time, marilyn_meeting <= end_time),
+        And(ronald_meeting >= start_time, ronald_meeting <= end_time),
+        meeting_start == juan_meeting,
+        meeting_end == juan_meeting + duration,
+        meeting_start == marilyn_meeting,
+        meeting_end == marilyn_meeting + duration,
+        meeting_start == ronald_meeting,
+        meeting_end == ronald_meeting + duration,
+    ]
 
-# Define the meeting duration
-meeting_duration = 0.5
+    # Define the constraints for Juan's schedule
+    juan_constraints = []
+    for start, end in juan_schedule:
+        juan_constraints.extend([
+            Not(And(juan_meeting >= start, juan_meeting < end)),
+            Not(And(meeting_start >= start, meeting_start < end)),
+            Not(And(meeting_end > start, meeting_end <= end)),
+        ])
+    constraints.extend(juan_constraints)
 
-# Define the solver
-solver = Solver()
+    # Define the constraints for Marilyn's schedule
+    marilyn_constraints = []
+    for start, end in marilyn_schedule:
+        marilyn_constraints.extend([
+            Not(And(marilyn_meeting >= start, marilyn_meeting < end)),
+            Not(And(meeting_start >= start, meeting_start < end)),
+            Not(And(meeting_end > start, meeting_end <= end)),
+        ])
+    constraints.extend(marilyn_constraints)
 
-# Define the variables
-start_time = [Int(participant + '_start') for participant in participants]
-end_time = [Int(participant + '_end') for participant in participants]
+    # Define the constraints for Ronald's schedule
+    ronald_constraints = []
+    for start, end in ronald_schedule:
+        ronald_constraints.extend([
+            Not(And(ronald_meeting >= start, ronald_meeting < end)),
+            Not(And(meeting_start >= start, meeting_start < end)),
+            Not(And(meeting_end > start, meeting_end <= end)),
+        ])
+    constraints.extend(ronald_constraints)
 
-# Add constraints for each participant
-for i, participant in enumerate(participants):
-    # The start time must be within the work hours
-    solver.add(And(start_time[i] >= 9, start_time[i] <= 17))
-    # The end time must be within the work hours
-    solver.add(And(end_time[i] >= 9, end_time[i] <= 17))
-    # The end time must be greater than or equal to the start time
-    solver.add(end_time[i] >= start_time[i])
-    # The end time must be less than or equal to the start time plus the meeting duration
-    solver.add(end_time[i] <= start_time[i] + meeting_duration)
-    # The start time must not conflict with existing schedule
-    for schedule_time in schedules[participant]:
-        solver.add(Or(start_time[i] > schedule_time + meeting_duration, end_time[i] < schedule_time))
+    # Define the constraint for Juan not meeting on Monday after 16:00
+    juan_avoid_after_constraints = [
+        Not(And(juan_meeting > 16 * 0, juan_meeting <= 17 * 60)),
+    ]
+    constraints.extend(juan_avoid_after_constraints)
 
-# Juan can not meet on Monday after 16:00
-juan_after_16 = [Int('juan_after_16')]
-solver.add(Implies(juan_after_16[0], start_time[participants.index('Juan')] > 15.5))
-solver.add(Implies(juan_after_16[0], end_time[participants.index('Juan')] > 15.5))
+    # Define the solver
+    solver = Solver()
 
-# Find a solution
-if solver.check() == sat:
-    model = solver.model()
-    # Print the solution
-    for participant in participants:
-        print(f"{participant} should start the meeting at {model[start_time[participants.index(participant)]]} and end at {model[end_time[participants.index(participant)]]}")
-else:
-    print("No solution exists")
+    # Add the constraints to the solver
+    solver.add(constraints)
+
+    # Solve the solver
+    result = solver.check()
+
+    # If the solver found a solution, print the meeting time
+    if result == sat:
+        model = solver.model()
+        print(f"Meeting time: {model[juan_meeting].as_long()} - {model[meeting_end].as_long()}")
+    else:
+        print("No solution found")
+
+# Example usage
+start_time = 9 * 60  # 9:00
+end_time = 17 * 60  # 17:00
+duration = 30  # 30 minutes
+juan_schedule = [(9 * 0, 10 * 30), (15 * 30, 16 * 0)]
+marilyn_schedule = [(11 * 0, 11 * 30), (12 * 30, 13 * 0)]
+ronald_schedule = [(9 * 0, 10 * 30), (12 * 0, 12 * 30), (13 * 0, 13 * 30), (14 * 0, 16 * 30)]
+juan_avoid_after = True
+
+schedule_meeting(start_time, end_time, duration, juan_schedule, marilyn_schedule, ronald_schedule, juan_avoid_after)

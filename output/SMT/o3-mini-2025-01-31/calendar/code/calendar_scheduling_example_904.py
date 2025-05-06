@@ -1,124 +1,158 @@
-from z3 import Solver, Int, Or, sat
+from z3 import Optimize, Int, Or, Implies, sat
 
-# Meeting parameters
-duration = 30           # meeting duration: 30 minutes
-WORK_START = 9 * 60     # 9:00 AM in minutes (540)
-WORK_END   = 17 * 60    # 17:00 (1020)
+# Helper functions to convert time strings.
+def time_to_minutes(time_str):
+    # Converts "HH:MM" into total minutes since midnight.
+    h, m = map(int, time_str.split(":"))
+    return h * 60 + m
 
-# Days encoding:
-# 0: Monday, 1: Tuesday, 2: Wednesday, 3: Thursday, 4: Friday
-candidate_days = [0, 1, 2, 3, 4]
+def minutes_to_time(total_minutes):
+    # Converts total minutes since midnight into "HH:MM" format.
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-# Busy intervals for Daniel (each tuple is (start, end) in minutes)
+# Meeting configuration.
+meeting_duration = 30  # Duration in minutes
+work_start = time_to_minutes("9:00")    # 9:00 -> 540 minutes
+work_end   = time_to_minutes("17:00")    # 17:00 -> 1020 minutes
+
+# Decision variable for meeting day.
+# We'll use: Monday = 0, Tuesday = 1, Wednesday = 2, Thursday = 3, Friday = 4.
+meeting_day = Int("meeting_day")
+# Allowed days are 0..4.
+allowed_days = [0,1,2,3,4]
+# Initially restrict meeting_day to one of the allowed values.
+day_constraint = Or([meeting_day == d for d in allowed_days])
+
+# Busy intervals for each participant are provided for each day.
+# We will add constraints only for the day the meeting is scheduled.
+
+# Daniel's busy intervals (per day):
 daniel_busy = {
-    0: [(9 * 60 + 30, 10 * 60 + 30),    # Monday: 9:30-10:30
-        (12 * 60, 12 * 60 + 30),         # Monday: 12:00-12:30
-        (13 * 60, 14 * 60),              # Monday: 13:00-14:00
-        (14 * 60 + 30, 15 * 60),         # Monday: 14:30-15:00
-        (15 * 60 + 30, 16 * 60)],        # Monday: 15:30-16:00
-    1: [(11 * 60, 12 * 60),             # Tuesday: 11:00-12:00
-        (13 * 60, 13 * 60 + 30),         # Tuesday: 13:00-13:30
-        (15 * 60 + 30, 16 * 60),         # Tuesday: 15:30-16:00
-        (16 * 60 + 30, 17 * 60)],        # Tuesday: 16:30-17:00
-    2: [(9 * 60, 10 * 60),              # Wednesday: 9:00-10:00
-        (14 * 60, 14 * 60 + 30)],        # Wednesday: 14:00-14:30
-    3: [(10 * 60 + 30, 11 * 60),         # Thursday: 10:30-11:00
-        (12 * 60, 13 * 60),             # Thursday: 12:00-13:00
-        (14 * 60 + 30, 15 * 60),         # Thursday: 14:30-15:00
-        (15 * 60 + 30, 16 * 60)],        # Thursday: 15:30-16:00
-    4: [(9 * 60, 9 * 60 + 30),          # Friday: 9:00-9:30
-        (11 * 60 + 30, 12 * 60),         # Friday: 11:30-12:00
-        (13 * 60, 13 * 60 + 30),         # Friday: 13:00-13:30
-        (16 * 60 + 30, 17 * 60)]         # Friday: 16:30-17:00
+    0: [  # Monday
+        (time_to_minutes("9:30"), time_to_minutes("10:30")),
+        (time_to_minutes("12:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:00"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00"))
+    ],
+    1: [  # Tuesday
+        (time_to_minutes("11:00"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ],
+    2: [  # Wednesday
+        (time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("14:00"), time_to_minutes("14:30"))
+    ],
+    3: [  # Thursday
+        (time_to_minutes("10:30"), time_to_minutes("11:00")),
+        (time_to_minutes("12:00"), time_to_minutes("13:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00"))
+    ],
+    4: [  # Friday
+        (time_to_minutes("9:00"), time_to_minutes("9:30")),
+        (time_to_minutes("11:30"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
 }
 
-# Busy intervals for Bradley
+# Bradley's busy intervals (per day):
 bradley_busy = {
-    0: [(9 * 60 + 30, 11 * 60),         # Monday: 9:30-11:00
-        (11 * 60 + 30, 12 * 60),         # Monday: 11:30-12:00
-        (12 * 60 + 30, 13 * 60),         # Monday: 12:30-13:00
-        (14 * 60, 15 * 60)],             # Monday: 14:00-15:00
-    1: [(10 * 60 + 30, 11 * 60),         # Tuesday: 10:30-11:00
-        (12 * 60, 13 * 60),             # Tuesday: 12:00-13:00
-        (13 * 60 + 30, 14 * 60),         # Tuesday: 13:30-14:00
-        (15 * 60 + 30, 16 * 60 + 30)],    # Tuesday: 15:30-16:30
-    2: [(9 * 60, 10 * 60),              # Wednesday: 9:00-10:00
-        (11 * 60, 13 * 60),             # Wednesday: 11:00-13:00
-        (13 * 60 + 30, 14 * 60),         # Wednesday: 13:30-14:00
-        (14 * 60 + 30, 17 * 60)],        # Wednesday: 14:30-17:00
-    3: [(9 * 60, 12 * 60 + 30),         # Thursday: 9:00-12:30
-        (13 * 60 + 30, 14 * 60),         # Thursday: 13:30-14:00
-        (14 * 60 + 30, 15 * 60),         # Thursday: 14:30-15:00
-        (15 * 60 + 30, 16 * 60 + 30)],    # Thursday: 15:30-16:30
-    4: [(9 * 60, 9 * 60 + 30),          # Friday: 9:00-9:30
-        (10 * 60, 12 * 60 + 30),         # Friday: 10:00-12:30
-        (13 * 60, 13 * 60 + 30),         # Friday: 13:00-13:30
-        (14 * 60, 14 * 60 + 30),         # Friday: 14:00-14:30
-        (15 * 60 + 30, 16 * 60 + 30)]     # Friday: 15:30-16:30
+    0: [  # Monday
+        (time_to_minutes("9:30"), time_to_minutes("11:00")),
+        (time_to_minutes("11:30"), time_to_minutes("12:00")),
+        (time_to_minutes("12:30"), time_to_minutes("13:00")),
+        (time_to_minutes("14:00"), time_to_minutes("15:00"))
+    ],
+    1: [  # Tuesday
+        (time_to_minutes("10:30"), time_to_minutes("11:00")),
+        (time_to_minutes("12:00"), time_to_minutes("13:00")),
+        (time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("15:30"), time_to_minutes("16:30"))
+    ],
+    2: [  # Wednesday
+        (time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("11:00"), time_to_minutes("13:00")),
+        (time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("17:00"))
+    ],
+    3: [  # Thursday
+        (time_to_minutes("9:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00")),
+        (time_to_minutes("15:30"), time_to_minutes("16:30"))
+    ],
+    4: [  # Friday
+        (time_to_minutes("9:00"), time_to_minutes("9:30")),
+        (time_to_minutes("10:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("14:00"), time_to_minutes("14:30")),
+        (time_to_minutes("15:30"), time_to_minutes("16:30"))
+    ]
 }
 
 # Preferences:
-# Daniel prefers NOT to meet on Wednesday (2) or Thursday (3).
-# Bradley does not want to meet on Monday (0) or Friday (4).
-# Also, Bradley does not want meetings on Tuesday that start before 12:00 (i.e. before 720 minutes).
+# Daniel prefers not to meet on Wednesday (2) or Thursday (3).
+# Bradley does not want to meet on Monday (0), or on Friday (4),
+# and if meeting on Tuesday (1) then not before 12:00.
+# For "prefer not" and "do not want", we treat them as hard constraints.
 
-def no_overlap(busy_start, busy_end, s, duration):
-    # returns a constraint that a meeting starting at s (lasting duration) 
-    # does not overlap with busy interval [busy_start, busy_end)
-    return Or(s + duration <= busy_start, s >= busy_end)
+# According to Daniel's preference, meeting_day cannot be 2 or 3.
+daniel_allowed_days = [0, 1, 4]  # Monday, Tuesday, Friday
 
-def find_meeting_time(days):
-    # Iterate over candidate days
-    for day in days:
-        # Apply preference constraints for days:
-        # Daniel does not want Wednesday (2) or Thursday (3)
-        if day in [2, 3]:
-            continue
-        # Bradley does not want Monday (0) or Friday (4)
-        if day in [0, 4]:
-            continue
-        
-        # If we've reached here, day must be Tuesday (day == 1)
-        solver = Solver()
-        
-        # Meeting start time (in minutes after midnight)
-        s = Int("s")
-        # Basic working hours constraint
-        solver.add(s >= WORK_START, s + duration <= WORK_END)
-        
-        # Additional Bradley preference for Tuesday: meeting must not start before 12:00 (720 minutes)
-        if day == 1:
-            solver.add(s >= 12 * 60)
-        
-        # Add Daniel's busy interval constraints (if any on this day)
-        if day in daniel_busy:
-            for busy_start, busy_end in daniel_busy[day]:
-                solver.add(no_overlap(busy_start, busy_end, s, duration))
-        
-        # Add Bradley's busy interval constraints (if any on this day)
-        if day in bradley_busy:
-            for busy_start, busy_end in bradley_busy[day]:
-                solver.add(no_overlap(busy_start, busy_end, s, duration))
-        
-        # Try every possible minute in the allowed window for a valid solution.
-        # We iterate from max(WORK_START, possible preference lower bound) to WORK_END - duration.
-        start_min_candidate = 12 * 60 if day == 1 else WORK_START
-        for t in range(start_min_candidate, WORK_END - duration + 1):
-            solver.push()
-            solver.add(s == t)
-            if solver.check() == sat:
-                return day, t
-            solver.pop()
-    return None, None
+# According to Bradley's preference, meeting_day cannot be 0 or 4.
+# And on Tuesday, meeting must start at or after 12:00.
+bradley_allowed_days = [1, 2, 3]  # Tuesday, Wednesday, Thursday
 
-day, t = find_meeting_time(candidate_days)
+# The overall allowed meeting days must be in the intersection:
+#   Intersection of Daniel's allowed days ([0,1,4]) and Bradley's allowed days ([1,2,3])
+# This is simply: {1} since 1 is the only common day.
+# Therefore, we must schedule the meeting on Tuesday.
+opt = Optimize()
+opt.add(day_constraint)
+opt.add(meeting_day == 1)
 
-if day is not None and t is not None:
-    day_names = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday"}
-    meeting_end = t + duration
-    start_hr, start_min = divmod(t, 60)
-    end_hr, end_min = divmod(meeting_end, 60)
-    print("A valid meeting time is on {} from {:02d}:{:02d} to {:02d}:{:02d}."
-          .format(day_names[day], start_hr, start_min, end_hr, end_min))
+# Also, Bradley prefers Tuesday meetings not to be before 12:00.
+tuesday_noon = time_to_minutes("12:00")
+opt.add(Implies(meeting_day == 1, 
+                # meeting_start must be at or after 12:00.
+                meeting_start >= tuesday_noon))
+
+# Decision variable for meeting start time (minutes from midnight).
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
+
+# Constrain meeting to fall within working hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
+
+# Helper function to add busy interval constraints for a given day and participant.
+def add_busy_constraints_for_day(day, busy_intervals):
+    for b_start, b_end in busy_intervals:
+        # When meeting is scheduled on the specific day, it must not overlap any busy interval.
+        opt.add(Implies(meeting_day == day, Or(meeting_end <= b_start, meeting_start >= b_end)))
+
+# Add busy constraints for Daniel on Tuesday.
+add_busy_constraints_for_day(1, daniel_busy[1])
+# Add busy constraints for Bradley on Tuesday.
+add_busy_constraints_for_day(1, bradley_busy[1])
+
+# Objective: minimize meeting start time, so that the meeting is as early as possible on Tuesday.
+opt.minimize(meeting_start)
+
+if opt.check() == sat:
+    model = opt.model()
+    chosen_day = model[meeting_day].as_long()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
+    day_names = {0:"Monday", 1:"Tuesday", 2:"Wednesday", 3:"Thursday", 4:"Friday"}
+    print("A possible meeting time:")
+    print("Day:   ", day_names[chosen_day])
+    print("Start: ", minutes_to_time(start_val))
+    print("End:   ", minutes_to_time(end_val))
 else:
-    print("No valid meeting time could be found that satisfies all constraints.")
+    print("No valid meeting time could be found.")

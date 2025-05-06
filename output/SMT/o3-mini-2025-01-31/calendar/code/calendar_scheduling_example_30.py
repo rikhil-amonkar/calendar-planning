@@ -1,82 +1,80 @@
-from z3 import Optimize, Or, Int, sat
+from z3 import Optimize, Int, Or, If, sat
 
-# Meeting duration: 30 minutes
-meeting_duration = 30
+# Helper functions to convert time strings to minutes and vice versa.
+def time_to_minutes(t):
+    # t should be in "HH:MM" format.
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
 
-# Working hours: 9:00 to 17:00 represented as minutes after 9:00 (0 to 480)
-work_start = 0
-work_end = 480
+def minutes_to_time(m):
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Busy intervals represented in minutes after 9:00.
+# Meeting configuration.
+meeting_duration = 30  # minutes
+work_start = time_to_minutes("9:00")
+work_end   = time_to_minutes("17:00")
 
-# Jeffrey's busy intervals:
-#  9:30 to 10:00 -> [30, 60)
-#  10:30 to 11:00 -> [90, 120)
-jeffrey_busy = [(30, 60), (90, 120)]
+# Busy intervals on Monday for each participant:
+# Jeffrey's busy intervals.
+jeffrey_busy = [
+    (time_to_minutes("9:30"), time_to_minutes("10:00")),
+    (time_to_minutes("10:30"), time_to_minutes("11:00"))
+]
 
-# Virginia's busy intervals:
-#  9:00 to 9:30 -> [0, 30)
-#  10:00 to 10:30 -> [60, 90)
-#  14:30 to 15:00 -> [330, 360)
-#  16:00 to 16:30 -> [420, 450)
-virginia_busy = [(0, 30), (60, 90), (330, 360), (420, 450)]
+# Virginia's busy intervals.
+virginia_busy = [
+    (time_to_minutes("9:00"), time_to_minutes("9:30")),
+    (time_to_minutes("10:00"), time_to_minutes("10:30")),
+    (time_to_minutes("14:30"), time_to_minutes("15:00")),
+    (time_to_minutes("16:00"), time_to_minutes("16:30"))
+]
 
-# Melissa's busy intervals:
-#  9:00 to 11:30 -> [0, 150)
-#  12:00 to 12:30 -> [180, 210)
-#  13:00 to 15:00 -> [240, 360)
-#  16:00 to 17:00 -> [420, 480)
-melissa_busy = [(0, 150), (180, 210), (240, 360), (420, 480)]
+# Melissa's busy intervals.
+melissa_busy = [
+    (time_to_minutes("9:00"), time_to_minutes("11:30")),
+    (time_to_minutes("12:00"), time_to_minutes("12:30")),
+    (time_to_minutes("13:00"), time_to_minutes("15:00")),
+    (time_to_minutes("16:00"), time_to_minutes("17:00"))
+]
 
-# Additional preference: Melissa would rather not meet on Monday after 14:00.
-# 14:00 in minutes after 9:00 is 300.
-# We add a constraint so that the meeting must start before 14:00.
-additional_constraint = 300  # meeting must start before 300
+# Create the Z3 Optimize solver.
+opt = Optimize()
 
-# Create a Z3 optimizer instance to find the earliest available meeting time.
-optimizer = Optimize()
+# Decision variable: meeting_start time in minutes from midnight on Monday.
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-# Define S as the start time of the meeting in minutes after 9:00.
-S = Int('S')
+# Constrain the meeting to be within the work hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
 
-# The meeting must be scheduled completely within work hours.
-optimizer.add(S >= work_start, S + meeting_duration <= work_end)
+# Melissa would rather not meet on Monday after 14:00;
+# We add this as a soft constraint, so if possible, the meeting should end by 14:00.
+opt.add_soft(meeting_end <= time_to_minutes("14:00"), weight=1)
 
-# Add the additional preference constraint for Melissa:
-optimizer.add(S < additional_constraint)
+# Helper function to add busy constraints.
+def add_busy_constraints(busy_intervals):
+    for b_start, b_end in busy_intervals:
+        # The meeting must either finish before the busy interval starts
+        # or start after the busy interval ends.
+        opt.add(Or(meeting_end <= b_start, meeting_start >= b_end))
 
-# Add constraints so the meeting does not overlap any busy interval.
+# Add constraints for each participant.
+add_busy_constraints(jeffrey_busy)
+add_busy_constraints(virginia_busy)
+add_busy_constraints(melissa_busy)
 
-# For Jeffrey's busy intervals:
-for busy_start, busy_end in jeffrey_busy:
-    optimizer.add(Or(S + meeting_duration <= busy_start, S >= busy_end))
+# Objective: prefer earlier meeting times by minimizing meeting_start.
+opt.minimize(meeting_start)
 
-# For Virginia's busy intervals:
-for busy_start, busy_end in virginia_busy:
-    optimizer.add(Or(S + meeting_duration <= busy_start, S >= busy_end))
-    
-# For Melissa's busy intervals:
-for busy_start, busy_end in melissa_busy:
-    optimizer.add(Or(S + meeting_duration <= busy_start, S >= busy_end))
-
-# The group would like the meeting at the earliest available time.
-optimizer.minimize(S)
-
-# Check if a valid meeting slot exists.
-if optimizer.check() == sat:
-    model = optimizer.model()
-    meeting_start = model[S].as_long()
-    meeting_end = meeting_start + meeting_duration
-
-    # Helper function to convert minutes after 9:00 to HH:MM format.
-    def minutes_to_time(minutes_after_nine):
-        total_minutes = 9 * 60 + minutes_after_nine
-        hours = total_minutes // 60
-        minutes = total_minutes % 60
-        return f"{hours:02d}:{minutes:02d}"
-    
-    print("A possible meeting time is:")
-    print("Start:", minutes_to_time(meeting_start))
-    print("End:", minutes_to_time(meeting_end))
+# Solve and output the result.
+if opt.check() == sat:
+    model = opt.model()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
+    print("A possible meeting time on Monday:")
+    print("Start:", minutes_to_time(start_val))
+    print("End:  ", minutes_to_time(end_val))
 else:
-    print("No valid meeting slot can be found.")
+    print("No valid meeting time could be found.")

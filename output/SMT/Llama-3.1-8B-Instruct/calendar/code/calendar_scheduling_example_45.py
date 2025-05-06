@@ -1,52 +1,80 @@
 from z3 import *
 
-# Define the time slots
-time_slots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
+def schedule_meeting(start_time, end_time, duration, andrew_schedule, grace_schedule, samuel_schedule):
+    # Create Z3 variables for the meeting time
+    andrew_meeting = Int('andrew_meeting')
+    grace_meeting = Int('grace_meeting')
+    samuel_meeting = Int('samuel_meeting')
 
-# Define the participants
-participants = ['Andrew', 'Grace', 'Samuel']
+    # Create Z3 variables for the start and end times of the meeting
+    meeting_start = Int('meeting_start')
+    meeting_end = Int('meeting_end')
 
-# Define the existing schedules
-schedules = {
-    'Andrew': [],
-    'Grace': [],
-    'Samuel': [9, 11, 13, 14, 16.5]
-}
+    # Define the constraints for the meeting time
+    constraints = [
+        And(andrew_meeting >= start_time, andrew_meeting <= end_time),
+        And(grace_meeting >= start_time, grace_meeting <= end_time),
+        And(samuel_meeting >= start_time, samuel_meeting <= end_time),
+        meeting_start == andrew_meeting,
+        meeting_end == andrew_meeting + duration,
+        meeting_start == grace_meeting,
+        meeting_end == grace_meeting + duration,
+        meeting_start == samuel_meeting,
+        meeting_end == samuel_meeting + duration,
+    ]
 
-# Define the meeting duration
-meeting_duration = 0.5
+    # Define the constraints for Andrew's schedule
+    andrew_constraints = []
+    for start, end in andrew_schedule:
+        andrew_constraints.extend([
+            Not(And(andrew_meeting >= start, andrew_meeting < end)),
+            Not(And(meeting_start >= start, meeting_start < end)),
+            Not(And(meeting_end > start, meeting_end <= end)),
+        ])
+    constraints.extend(andrew_constraints)
 
-# Define the solver
-solver = Solver()
+    # Define the constraints for Grace's schedule
+    grace_constraints = []
+    for start, end in grace_schedule:
+        grace_constraints.extend([
+            Not(And(grace_meeting >= start, grace_meeting < end)),
+            Not(And(meeting_start >= start, meeting_start < end)),
+            Not(And(meeting_end > start, meeting_end <= end)),
+        ])
+    constraints.extend(grace_constraints)
 
-# Define the variables
-start_time = [Int(participant + '_start') for participant in participants]
-end_time = [Int(participant + '_end') for participant in participants]
+    # Define the constraints for Samuel's schedule
+    samuel_constraints = []
+    for start, end in samuel_schedule:
+        samuel_constraints.extend([
+            Not(And(samuel_meeting >= start, samuel_meeting < end)),
+            Not(And(meeting_start >= start, meeting_start < end)),
+            Not(And(meeting_end > start, meeting_end <= end)),
+        ])
+    constraints.extend(samuel_constraints)
 
-# Add constraints for each participant
-for i, participant in enumerate(participants):
-    # The start time must be within the work hours
-    solver.add(And(start_time[i] >= 9, start_time[i] <= 17))
-    # The end time must be within the work hours
-    solver.add(And(end_time[i] >= 9, end_time[i] <= 17))
-    # The end time must be greater than or equal to the start time
-    solver.add(end_time[i] >= start_time[i])
-    # The end time must be less than or equal to the start time plus the meeting duration
-    solver.add(end_time[i] <= start_time[i] + meeting_duration)
-    # The start time must not conflict with existing schedule
-    for schedule_time in schedules[participant]:
-        solver.add(Or(start_time[i] > schedule_time + meeting_duration, end_time[i] < schedule_time))
+    # Define the solver
+    solver = Solver()
 
-# The group would like to meet at their earliest availability
-earliest_availability = [Int('earliest_availability')]
-solver.add(earliest_availability[0] == min(start_time[0], start_time[1], start_time[2]))
-solver.add(earliest_availability[0] == min(model[start_time[0]], model[start_time[1]], model[start_time[2]]))
+    # Add the constraints to the solver
+    solver.add(constraints)
 
-# Find a solution
-if solver.check() == sat:
-    model = solver.model()
-    # Print the solution
-    for participant in participants:
-        print(f"{participant} should start the meeting at {model[start_time[participants.index(participant)]]} and end at {model[end_time[participants.index(participant)]]}")
-else:
-    print("No solution exists")
+    # Solve the solver
+    result = solver.check()
+
+    # If the solver found a solution, print the meeting time
+    if result == sat:
+        model = solver.model()
+        print(f"Meeting time: {model[andrew_meeting].as_long()} - {model[meeting_end].as_long()}")
+    else:
+        print("No solution found")
+
+# Example usage
+start_time = 9 * 60  # 9:00
+end_time = 17 * 60  # 17:00
+duration = 30  # 30 minutes
+andrew_schedule = []
+grace_schedule = []
+samuel_schedule = [(9 * 60, 10 * 60 + 30), (11 * 60 + 30, 12 * 60), (13 * 60, 13 * 60 + 30), (14 * 60, 16 * 60), (16 * 60 + 30, 17 * 60)]
+
+schedule_meeting(start_time, end_time, duration, andrew_schedule, grace_schedule, samuel_schedule)

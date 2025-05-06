@@ -1,59 +1,61 @@
-from z3 import Solver, Int, Or, sat
+from z3 import *
 
-# Create a Z3 solver instance.
-solver = Solver()
+# A helper function to convert HH:MM into minutes since midnight.
+def time_to_minutes(t):
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
 
-# Meeting parameters:
-duration = 30  # meeting duration in minutes
-start = Int("start")  # meeting start time in minutes since midnight
+# Meeting configuration: half an hour (30 minutes).
+meeting_duration = 30
 
-# Work hours: from 9:00 (540 minutes) to 17:00 (1020 minutes)
-solver.add(start >= 540, start + duration <= 1020)
+# Work hours (9:00 to 17:00)
+work_start = time_to_minutes("9:00")   # 540
+work_end   = time_to_minutes("17:00")  # 1020
 
-# Albert's preference: Cannot meet after 11:00.
-# This means the meeting must finish by 11:00 (660 minutes).
-solver.add(start + duration <= 660)
+# Additional constraint: Albert cannot meet after 11:00.
+latest_end = time_to_minutes("11:00")  # 660
 
-# Helper function to add busy interval constraints.
-def add_busy_constraints(solver, busy_intervals):
-    # For each busy interval [b_start, b_end),
-    # ensure the meeting interval [start, start+duration) does not overlap with it.
-    for b_start, b_end in busy_intervals:
-        solver.add(Or(start + duration <= b_start, start >= b_end))
-
-# Deborah's busy intervals: Deborah is free the entire day.
-deborah_busy = []
-add_busy_constraints(solver, deborah_busy)
-
-# Albert's busy intervals (in minutes):
-# 9:00 to 10:00 -> [540, 600)
-# 10:30 to 12:00 -> [630, 720)
-# 15:00 to 16:30 -> [900, 990)
-albert_busy = [
-    (540, 600),
-    (630, 720),
-    (900, 990)
+# Deborah is free the entire day, so no blocked intervals for her.
+# Albert's blocked intervals on Monday:
+albert_events = [
+    (time_to_minutes("9:00"), time_to_minutes("10:00")),
+    (time_to_minutes("10:30"), time_to_minutes("12:00")),
+    (time_to_minutes("15:00"), time_to_minutes("16:30"))
 ]
-add_busy_constraints(solver, albert_busy)
 
-# Search for the earliest valid meeting time.
-found = False
-# The latest possible start time is given by work hours, and 
-# also meeting must finish by 11:00, so t must satisfy t + duration <= 660.
-# Therefore, t can be at most 660 - duration = 630.
-for t in range(540, 631):
-    solver.push()
-    solver.add(start == t)
-    if solver.check() == sat:
-        meeting_start = t
-        meeting_end = t + duration
-        sh, sm = divmod(meeting_start, 60)
-        eh, em = divmod(meeting_end, 60)
-        print(f"A valid meeting time is from {sh:02d}:{sm:02d} to {eh:02d}:{em:02d}.")
-        found = True
-        solver.pop()
-        break
-    solver.pop()
+# Create a Z3 solver instance
+s = Solver()
 
-if not found:
+# Declare an integer variable representing the meeting start time in minutes.
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
+
+# Constraint 1: Meeting must be within work hours.
+s.add(meeting_start >= work_start)
+s.add(meeting_end <= work_end)
+
+# Constraint 2: Meeting must finish by 11:00 since Albert cannot meet after 11:00.
+s.add(meeting_end <= latest_end)
+
+# Constraint 3: Ensure the meeting does not overlap any of Albert's blocked intervals.
+# For each event, the meeting must finish before the event starts or start after the event ends.
+for (event_start, event_end) in albert_events:
+    s.add(Or(meeting_end <= event_start, meeting_start >= event_end))
+
+# Check if a valid meeting time is found
+if s.check() == sat:
+    model = s.model()
+    start_minutes = model[meeting_start].as_long()
+    end_minutes = start_minutes + meeting_duration
+
+    # Helper function to convert minutes back to HH:MM format.
+    def minutes_to_time(m):
+        h = m // 60
+        m = m % 60
+        return f"{h:02d}:{m:02d}"
+
+    print("A possible meeting time:")
+    print(f"Start: {minutes_to_time(start_minutes)}")
+    print(f"End:   {minutes_to_time(end_minutes)}")
+else:
     print("No valid meeting time could be found.")

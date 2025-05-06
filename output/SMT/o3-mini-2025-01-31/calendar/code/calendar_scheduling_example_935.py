@@ -1,84 +1,138 @@
-from z3 import Solver, Int, Or, sat
+from z3 import Optimize, Int, Or, If, sat
 
-# Meeting parameters
-duration = 30  # 30 minutes meeting
-WORK_START = 9 * 60   # 9:00 in minutes
-WORK_END = 17 * 60    # 17:00 in minutes
+# Helper functions to convert between "HH:MM" strings and minutes since midnight.
+def time_to_minutes(t):
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
 
-# Day encoding: 0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday, 4 = Friday
-day_names = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday"}
+def minutes_to_time(m):
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Terry's busy intervals (in minutes from midnight)
-# Monday: 10:30-11:00, 12:30-14:00, 15:00-17:00
-# Tuesday: 9:30-10:00, 10:30-11:00, 14:00-14:30, 16:00-16:30
-# Wednesday: 9:30-10:30, 11:00-12:00, 13:00-13:30, 15:00-16:00, 16:30-17:00
-# Thursday: 9:30-10:00, 12:00-12:30, 13:00-14:30, 16:00-16:30
-# Friday: 9:00-11:30, 12:00-12:30, 13:30-16:00, 16:30-17:00
+# Meeting configuration.
+meeting_duration = 30  # 30-minute meeting.
+work_start = time_to_minutes("9:00")    # Work day starts at 9:00 (540 minutes).
+work_end   = time_to_minutes("17:00")    # Work day ends at 17:00 (1020 minutes).
+
+# Allowed days: Monday=0, Tuesday=1, Wednesday=2, Thursday=3, Friday=4.
+allowed_days = [0, 1, 2, 3, 4]
+
+# Busy intervals for Terry.
 terry_busy = {
-    0: [(10*60+30, 11*60), (12*60+30, 14*60), (15*60, 17*60)],
-    1: [(9*60+30, 10*60), (10*60+30, 11*60), (14*60, 14*60+30), (16*60, 16*60+30)],
-    2: [(9*60+30, 10*60+30), (11*60, 12*60), (13*60, 13*60+30), (15*60, 16*60), (16*60+30, 17*60)],
-    3: [(9*60+30, 10*60), (12*60, 12*60+30), (13*60, 14*60+30), (16*60, 16*60+30)],
-    4: [(9*60, 11*60+30), (12*60, 12*60+30), (13*60+30, 16*60), (16*60+30, 17*60)]
+    0: [  # Monday
+        (time_to_minutes("10:30"), time_to_minutes("11:00")),
+        (time_to_minutes("12:30"), time_to_minutes("14:00")),
+        (time_to_minutes("15:00"), time_to_minutes("17:00"))
+    ],
+    1: [  # Tuesday
+        (time_to_minutes("9:30"),  time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("11:00")),
+        (time_to_minutes("14:00"), time_to_minutes("14:30")),
+        (time_to_minutes("16:00"), time_to_minutes("16:30"))
+    ],
+    2: [  # Wednesday
+        (time_to_minutes("9:30"),  time_to_minutes("10:30")),
+        (time_to_minutes("11:00"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("15:00"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ],
+    3: [  # Thursday
+        (time_to_minutes("9:30"),  time_to_minutes("10:00")),
+        (time_to_minutes("12:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:00"), time_to_minutes("14:30")),
+        (time_to_minutes("16:00"), time_to_minutes("16:30"))
+    ],
+    4: [  # Friday
+        (time_to_minutes("9:00"),  time_to_minutes("11:30")),
+        (time_to_minutes("12:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:30"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
 }
 
-# Frances's busy intervals (in minutes from midnight)
-# Monday: 9:30-11:00, 11:30-13:00, 14:00-14:30, 15:00-16:00
-# Tuesday: 9:00-9:30, 10:00-10:30, 11:00-12:00, 13:00-14:30, 15:30-16:30
-# Wednesday: 9:30-10:00, 10:30-11:00, 11:30-16:00, 16:30-17:00
-# Thursday: 11:00-12:30, 14:30-17:00
-# Friday: 9:30-10:30, 11:00-12:30, 13:00-16:00, 16:30-17:00
+# Busy intervals for Frances.
 frances_busy = {
-    0: [(9*60+30, 11*60), (11*60+30, 13*60), (14*60, 14*60+30), (15*60, 16*60)],
-    1: [(9*60, 9*60+30), (10*60, 10*60+30), (11*60, 12*60), (13*60, 14*60+30), (15*60+30, 16*60+30)],
-    2: [(9*60+30, 10*60), (10*60+30, 11*60), (11*60+30, 16*60), (16*60+30, 17*60)],
-    3: [(11*60, 12*60+30), (14*60+30, 17*60)],
-    4: [(9*60+30, 10*60+30), (11*60, 12*60+30), (13*60, 16*60), (16*60+30, 17*60)]
+    0: [  # Monday
+        (time_to_minutes("9:30"),  time_to_minutes("11:00")),
+        (time_to_minutes("11:30"), time_to_minutes("13:00")),
+        (time_to_minutes("14:00"), time_to_minutes("14:30")),
+        (time_to_minutes("15:00"), time_to_minutes("16:00"))
+    ],
+    1: [  # Tuesday
+        (time_to_minutes("9:00"),  time_to_minutes("9:30")),
+        (time_to_minutes("10:00"), time_to_minutes("10:30")),
+        (time_to_minutes("11:00"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("14:30")),
+        (time_to_minutes("15:30"), time_to_minutes("16:30"))
+    ],
+    2: [  # Wednesday
+        (time_to_minutes("9:30"),  time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("11:00")),
+        (time_to_minutes("11:30"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ],
+    3: [  # Thursday
+        (time_to_minutes("11:00"), time_to_minutes("12:30")),
+        (time_to_minutes("14:30"), time_to_minutes("17:00"))
+    ],
+    4: [  # Friday
+        (time_to_minutes("9:30"),  time_to_minutes("10:30")),
+        (time_to_minutes("11:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:00"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
 }
 
-# Helper function to ensure meeting interval [s, s+duration] does not overlap busy interval [busy_start, busy_end]
-def no_overlap(busy_start, busy_end, meeting_start, duration):
-    return Or(meeting_start + duration <= busy_start, meeting_start >= busy_end)
+# Create a Z3 Optimize solver.
+opt = Optimize()
 
-def find_earliest_meeting():
-    # Because Frances prefers to avoid Tuesday, we try days in this order:
-    # Monday (0), Wednesday (2), Thursday (3), Friday (4), and finally Tuesday (1) if needed.
-    preferred_days = [0, 2, 3, 4, 1]
+# Decision variables:
+# meeting_day: 0 for Monday, 1 for Tuesday, 2 for Wednesday, 3 for Thursday, 4 for Friday.
+meeting_day = Int("meeting_day")
+opt.add(Or([meeting_day == d for d in allowed_days]))
+
+# meeting_start: start time (in minutes since midnight) on the chosen day.
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
+
+# Constrain meeting time to be within work hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
+
+# Frances would like to avoid more meetings on Tuesday.
+opt.add_soft(meeting_day != 1, weight=1)
+
+# Function to add busy constraints for a participant given their busy schedule dictionary.
+def add_daily_busy(busy_schedule):
+    for day, intervals in busy_schedule.items():
+        for b_start, b_end in intervals:
+            # If the meeting is on that day, then it must not overlap with the busy interval.
+            opt.add(If(meeting_day == day,
+                       Or(meeting_end <= b_start, meeting_start >= b_end),
+                       True))
+
+# Add busy constraints for Terry and Frances.
+add_daily_busy(terry_busy)
+add_daily_busy(frances_busy)
+
+# Objective: schedule the meeting at the earliest availability.
+# We'll minimize: overall_time = meeting_day * 1440 + meeting_start.
+overall_time = meeting_day * 1440 + meeting_start
+opt.minimize(overall_time)
+
+# Solve and display the meeting time.
+if opt.check() == sat:
+    model = opt.model()
+    chosen_day = model[meeting_day].as_long()
+    chosen_start = model[meeting_start].as_long()
+    chosen_end = chosen_start + meeting_duration
     
-    for day in preferred_days:
-        solver = Solver()
-        s = Int("s")  # meeting start time in minutes from midnight
-
-        # Meeting must be within work hours: [9:00, 17:00]
-        solver.add(s >= WORK_START, s + duration <= WORK_END)
-        
-        # Add Terry's constraints for the day if any busy slots exist
-        if day in terry_busy:
-            for (busy_start, busy_end) in terry_busy[day]:
-                solver.add(no_overlap(busy_start, busy_end, s, duration))
-                
-        # Add Frances's constraints for the day if any busy slots exist
-        if day in frances_busy:
-            for (busy_start, busy_end) in frances_busy[day]:
-                solver.add(no_overlap(busy_start, busy_end, s, duration))
-        
-        # Check every possible start minute in the work day for a valid meeting time
-        for t in range(WORK_START, WORK_END - duration + 1):
-            solver.push()
-            solver.add(s == t)
-            if solver.check() == sat:
-                return day, t
-            solver.pop()
+    day_names = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday"}
     
-    return None, None
-
-day, start_time = find_earliest_meeting()
-
-if day is not None and start_time is not None:
-    meeting_end = start_time + duration
-    start_hour, start_min = divmod(start_time, 60)
-    end_hour, end_min = divmod(meeting_end, 60)
-    print("Meeting scheduled on {} from {:02d}:{:02d} to {:02d}:{:02d}".format(
-          day_names[day], start_hour, start_min, end_hour, end_min))
+    print("A possible meeting time:")
+    print("Day:   ", day_names[chosen_day])
+    print("Start: ", minutes_to_time(chosen_start))
+    print("End:   ", minutes_to_time(chosen_end))
 else:
-    print("No valid meeting time found that satisfies all constraints.")
+    print("No valid meeting time could be found.")

@@ -1,0 +1,95 @@
+Running model: meta-llama/Llama-3.1-70B-Instruct
+Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   3%|▎         | 1/30 [00:00<00:18,  1.56it/s]Loading checkpoint shards:   7%|▋         | 2/30 [00:01<00:17,  1.61it/s]Loading checkpoint shards:  10%|█         | 3/30 [00:01<00:16,  1.63it/s]Loading checkpoint shards:  13%|█▎        | 4/30 [00:02<00:15,  1.65it/s]Loading checkpoint shards:  17%|█▋        | 5/30 [00:03<00:14,  1.70it/s]Loading checkpoint shards:  20%|██        | 6/30 [00:03<00:14,  1.71it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:04<00:13,  1.69it/s]Loading checkpoint shards:  27%|██▋       | 8/30 [00:04<00:13,  1.63it/s]Loading checkpoint shards:  30%|███       | 9/30 [00:05<00:13,  1.60it/s]Loading checkpoint shards:  33%|███▎      | 10/30 [00:06<00:12,  1.61it/s]Loading checkpoint shards:  37%|███▋      | 11/30 [00:06<00:11,  1.62it/s]Loading checkpoint shards:  40%|████      | 12/30 [00:07<00:11,  1.62it/s]Loading checkpoint shards:  43%|████▎     | 13/30 [00:07<00:10,  1.60it/s]Loading checkpoint shards:  47%|████▋     | 14/30 [00:08<00:10,  1.58it/s]Loading checkpoint shards:  50%|█████     | 15/30 [00:09<00:09,  1.59it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:09<00:08,  1.60it/s]Loading checkpoint shards:  57%|█████▋    | 17/30 [00:10<00:08,  1.61it/s]Loading checkpoint shards:  60%|██████    | 18/30 [00:11<00:07,  1.59it/s]Loading checkpoint shards:  63%|██████▎   | 19/30 [00:11<00:07,  1.57it/s]Loading checkpoint shards:  67%|██████▋   | 20/30 [00:12<00:06,  1.59it/s]Loading checkpoint shards:  70%|███████   | 21/30 [00:13<00:05,  1.60it/s]Loading checkpoint shards:  73%|███████▎  | 22/30 [00:13<00:04,  1.61it/s]Loading checkpoint shards:  77%|███████▋  | 23/30 [00:14<00:04,  1.58it/s]Loading checkpoint shards:  80%|████████  | 24/30 [00:14<00:03,  1.57it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:15<00:03,  1.59it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:16<00:02,  1.60it/s]Loading checkpoint shards:  90%|█████████ | 27/30 [00:16<00:01,  1.61it/s]Loading checkpoint shards:  93%|█████████▎| 28/30 [00:17<00:01,  1.58it/s]Loading checkpoint shards:  97%|█████████▋| 29/30 [00:18<00:00,  1.57it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:18<00:00,  1.89it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:18<00:00,  1.64it/s]
+The attention mask and the pad token id were not set. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+Setting `pad_token_id` to `eos_token_id`:128001 for open-end generation.
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+The attention mask and the pad token id were not set. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+Setting `pad_token_id` to `eos_token_id`:128001 for open-end generation.
+Running task: meeting
+Running example: meeting_planning_example_356
+Running example: meeting_planning_example_286
+An error occurred: CUDA error: unspecified launch failure
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+. Retrying in 5 seconds...
+Running model: meta-llama/Llama-3.1-70B-Instruct
+Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:00<00:00, 443.83it/s]
+Traceback (most recent call last):
+  File "/home/hz466/calendar-planning/source/generate_smt_input.py", line 76, in <module>
+    response_txt = asyncio.run(run_model(prompt))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/hz466/calendar-planning/source/generate_smt_input.py", line 50, in run_model
+    response = await ai.chat_round_str(prompt)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/kani.py", line 229, in chat_round_str
+    msg = await self.chat_round(query, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/kani.py", line 224, in chat_round
+    completion = await self.get_model_completion(**kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/kani.py", line 376, in get_model_completion
+    completion = await self.engine.predict(messages=messages, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/engines/huggingface/base.py", line 255, in predict
+    output = self.model.generate(input_toks, **hyperparams)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/generation/utils.py", line 2465, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/generation/utils.py", line 3422, in _sample
+    while self._has_unfinished_sequences(this_peer_finished, synced_gpus, device=input_ids.device):
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/generation/utils.py", line 2616, in _has_unfinished_sequences
+    elif this_peer_finished:
+         ^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: unspecified launch failure
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hz466/calendar-planning/source/generate_smt_input.py", line 82, in <module>
+    ai = initialize_model(model_name, keys)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/calendar-planning/source/generate_smt_input.py", line 35, in initialize_model
+    engine = HuggingEngine(model_id=model_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/engines/huggingface/base.py", line 111, in __init__
+    self.model.to(device)
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/modeling_utils.py", line 3698, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1340, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 900, in _apply
+    module._apply(fn)
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 900, in _apply
+    module._apply(fn)
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 927, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1326, in convert
+    return t.to(
+           ^^^^^
+RuntimeError: CUDA error: unspecified launch failure
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+

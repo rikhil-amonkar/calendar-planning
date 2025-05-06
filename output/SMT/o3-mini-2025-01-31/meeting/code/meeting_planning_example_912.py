@@ -1,276 +1,162 @@
-from z3 import *
+from z3 import Optimize, Int, Bool, If, And, Or, Not, Sum, sat
 
-# ---------------------------------------------------------------------
-# Friend definitions.
-#
-# All times are in minutes relative to 9:00AM.
-#
-# 1. Kimberly at Presidio from 3:30PM to 4:00PM:
-#       avail_start = 3:30PM = 390, avail_end = 420, duration 15.
-# 2. Elizabeth at Alamo Square from 7:15PM to 8:15PM:
-#       avail_start = 615, avail_end = 675, duration 15.
-# 3. Joshua at Marina District from 10:30AM to 2:15PM:
-#       avail_start = 90, avail_end = 315, duration 45.
-# 4. Sandra at Financial District from 7:30PM to 8:15PM:
-#       avail_start = 630, avail_end = 675, duration 45.
-# 5. Kenneth at Nob Hill from 12:45PM to 9:45PM:
-#       avail_start = 225, avail_end = 705, duration 30.
-# 6. Betty at Sunset District from 2:00PM to 7:00PM:
-#       avail_start = 300, avail_end = 600, duration 60.
-# 7. Deborah at Chinatown from 5:15PM to 8:30PM:
-#       avail_start = 495, avail_end = 690, duration 15.
-# 8. Barbara at Russian Hill from 5:30PM to 9:15PM:
-#       avail_start = 510, avail_end = 735, duration 120.
-# 9. Steven at North Beach from 5:45PM to 8:45PM:
-#       avail_start = 525, avail_end = 705, duration 90.
-# 10. Daniel at Haight-Ashbury from 6:30PM to 6:45PM:
-#       avail_start = 570, avail_end = 585, duration 15.
-friends = [
-    {"name": "Kimberly",  "location": "Presidio",           "avail_start": 390, "avail_end": 420, "duration": 15},
-    {"name": "Elizabeth",  "location": "Alamo Square",       "avail_start": 615, "avail_end": 675, "duration": 15},
-    {"name": "Joshua",     "location": "Marina District",    "avail_start": 90,  "avail_end": 315, "duration": 45},
-    {"name": "Sandra",     "location": "Financial District", "avail_start": 630, "avail_end": 675, "duration": 45},
-    {"name": "Kenneth",    "location": "Nob Hill",           "avail_start": 225, "avail_end": 705, "duration": 30},
-    {"name": "Betty",      "location": "Sunset District",    "avail_start": 300, "avail_end": 600, "duration": 60},
-    {"name": "Deborah",    "location": "Chinatown",          "avail_start": 495, "avail_end": 690, "duration": 15},
-    {"name": "Barbara",    "location": "Russian Hill",       "avail_start": 510, "avail_end": 735, "duration": 120},
-    {"name": "Steven",     "location": "North Beach",        "avail_start": 525, "avail_end": 705, "duration": 90},
-    {"name": "Daniel",     "location": "Haight-Ashbury",     "avail_start": 570, "avail_end": 585, "duration": 15},
-]
+# Location indices:
+# 0: Union Square
+# 1: Presidio
+# 2: Alamo Square
+# 3: Marina District
+# 4: Financial District
+# 5: Nob Hill
+# 6: Sunset District
+# 7: Chinatown
+# 8: Russian Hill
+# 9: North Beach
+# 10: Haight-Ashbury
 
-# ---------------------------------------------------------------------
-# List of locations (include the starting point Union Square).
-locations = [
-    "Union Square",
-    "Presidio",
-    "Alamo Square",
-    "Marina District",
-    "Financial District",
-    "Nob Hill",
-    "Sunset District",
-    "Chinatown",
-    "Russian Hill",
-    "North Beach",
-    "Haight-Ashbury",
-]
-
-# ---------------------------------------------------------------------
-# Travel distances between locations (in minutes).
-# The keys are tuples (origin, destination).
+# Build the travel time dictionary (in minutes) from the provided data.
 travel = {
-    # From Union Square:
-    ("Union Square", "Presidio"): 24,
-    ("Union Square", "Alamo Square"): 15,
-    ("Union Square", "Marina District"): 18,
-    ("Union Square", "Financial District"): 9,
-    ("Union Square", "Nob Hill"): 9,
-    ("Union Square", "Sunset District"): 27,
-    ("Union Square", "Chinatown"): 7,
-    ("Union Square", "Russian Hill"): 13,
-    ("Union Square", "North Beach"): 10,
-    ("Union Square", "Haight-Ashbury"): 18,
-    
-    # From Presidio:
-    ("Presidio", "Union Square"): 22,
-    ("Presidio", "Alamo Square"): 19,
-    ("Presidio", "Marina District"): 11,
-    ("Presidio", "Financial District"): 23,
-    ("Presidio", "Nob Hill"): 18,
-    ("Presidio", "Sunset District"): 15,
-    ("Presidio", "Chinatown"): 21,
-    ("Presidio", "Russian Hill"): 14,
-    ("Presidio", "North Beach"): 18,
-    ("Presidio", "Haight-Ashbury"): 15,
-    
-    # From Alamo Square:
-    ("Alamo Square", "Union Square"): 14,
-    ("Alamo Square", "Presidio"): 17,
-    ("Alamo Square", "Marina District"): 15,
-    ("Alamo Square", "Financial District"): 17,
-    ("Alamo Square", "Nob Hill"): 11,
-    ("Alamo Square", "Sunset District"): 16,
-    ("Alamo Square", "Chinatown"): 15,
-    ("Alamo Square", "Russian Hill"): 13,
-    ("Alamo Square", "North Beach"): 15,
-    ("Alamo Square", "Haight-Ashbury"): 5,
-    
-    # From Marina District:
-    ("Marina District", "Union Square"): 16,
-    ("Marina District", "Presidio"): 10,
-    ("Marina District", "Alamo Square"): 15,
-    ("Marina District", "Financial District"): 17,
-    ("Marina District", "Nob Hill"): 12,
-    ("Marina District", "Sunset District"): 19,
-    ("Marina District", "Chinatown"): 15,
-    ("Marina District", "Russian Hill"): 8,
-    ("Marina District", "North Beach"): 11,
-    ("Marina District", "Haight-Ashbury"): 16,
-    
-    # From Financial District:
-    ("Financial District", "Union Square"): 9,
-    ("Financial District", "Presidio"): 22,
-    ("Financial District", "Alamo Square"): 17,
-    ("Financial District", "Marina District"): 15,
-    ("Financial District", "Nob Hill"): 8,
-    ("Financial District", "Sunset District"): 30,
-    ("Financial District", "Chinatown"): 5,
-    ("Financial District", "Russian Hill"): 11,
-    ("Financial District", "North Beach"): 7,
-    ("Financial District", "Haight-Ashbury"): 19,
-    
-    # From Nob Hill:
-    ("Nob Hill", "Union Square"): 7,
-    ("Nob Hill", "Presidio"): 17,
-    ("Nob Hill", "Alamo Square"): 11,
-    ("Nob Hill", "Marina District"): 11,
-    ("Nob Hill", "Financial District"): 9,
-    ("Nob Hill", "Sunset District"): 24,
-    ("Nob Hill", "Chinatown"): 6,
-    ("Nob Hill", "Russian Hill"): 5,
-    ("Nob Hill", "North Beach"): 8,
-    ("Nob Hill", "Haight-Ashbury"): 13,
-    
-    # From Sunset District:
-    ("Sunset District", "Union Square"): 30,
-    ("Sunset District", "Presidio"): 16,
-    ("Sunset District", "Alamo Square"): 17,
-    ("Sunset District", "Marina District"): 21,
-    ("Sunset District", "Financial District"): 30,
-    ("Sunset District", "Nob Hill"): 27,
-    ("Sunset District", "Chinatown"): 30,
-    ("Sunset District", "Russian Hill"): 24,
-    ("Sunset District", "North Beach"): 28,
-    ("Sunset District", "Haight-Ashbury"): 15,
-    
-    # From Chinatown:
-    ("Chinatown", "Union Square"): 7,
-    ("Chinatown", "Presidio"): 19,
-    ("Chinatown", "Alamo Square"): 17,
-    ("Chinatown", "Marina District"): 12,
-    ("Chinatown", "Financial District"): 5,
-    ("Chinatown", "Nob Hill"): 9,
-    ("Chinatown", "Sunset District"): 29,
-    ("Chinatown", "Russian Hill"): 7,
-    ("Chinatown", "North Beach"): 3,
-    ("Chinatown", "Haight-Ashbury"): 19,
-    
-    # From Russian Hill:
-    ("Russian Hill", "Union Square"): 10,
-    ("Russian Hill", "Presidio"): 14,
-    ("Russian Hill", "Alamo Square"): 15,
-    ("Russian Hill", "Marina District"): 7,
-    ("Russian Hill", "Financial District"): 11,
-    ("Russian Hill", "Nob Hill"): 5,
-    ("Russian Hill", "Sunset District"): 23,
-    ("Russian Hill", "Chinatown"): 9,
-    ("Russian Hill", "North Beach"): 5,
-    ("Russian Hill", "Haight-Ashbury"): 17,
-    
-    # From North Beach:
-    ("North Beach", "Union Square"): 7,
-    ("North Beach", "Presidio"): 17,
-    ("North Beach", "Alamo Square"): 16,
-    ("North Beach", "Marina District"): 9,
-    ("North Beach", "Financial District"): 8,
-    ("North Beach", "Nob Hill"): 7,
-    ("North Beach", "Sunset District"): 27,
-    ("North Beach", "Chinatown"): 6,
-    ("North Beach", "Russian Hill"): 4,
-    ("North Beach", "Haight-Ashbury"): 18,
-    
-    # From Haight-Ashbury:
-    ("Haight-Ashbury", "Union Square"): 19,
-    ("Haight-Ashbury", "Presidio"): 15,
-    ("Haight-Ashbury", "Alamo Square"): 5,
-    ("Haight-Ashbury", "Marina District"): 17,
-    ("Haight-Ashbury", "Financial District"): 21,
-    ("Haight-Ashbury", "Nob Hill"): 15,
-    ("Haight-Ashbury", "Sunset District"): 15,
-    ("Haight-Ashbury", "Chinatown"): 19,
-    ("Haight-Ashbury", "Russian Hill"): 17,
-    ("Haight-Ashbury", "North Beach"): 19,
+    # From Union Square (0)
+    (0,1):24, (0,2):15, (0,3):18, (0,4):9, (0,5):9, (0,6):27, (0,7):7, (0,8):13, (0,9):10, (0,10):18,
+    # From Presidio (1)
+    (1,0):22, (1,2):19, (1,3):11, (1,4):23, (1,5):18, (1,6):15, (1,7):21, (1,8):14, (1,9):18, (1,10):15,
+    # From Alamo Square (2)
+    (2,0):14, (2,1):17, (2,3):15, (2,4):17, (2,5):11, (2,6):16, (2,7):15, (2,8):13, (2,9):15, (2,10):5,
+    # From Marina District (3)
+    (3,0):16, (3,1):10, (3,2):15, (3,4):17, (3,5):12, (3,6):19, (3,7):15, (3,8):8, (3,9):11, (3,10):16,
+    # From Financial District (4)
+    (4,0):9, (4,1):22, (4,2):17, (4,3):15, (4,5):8, (4,6):30, (4,7):5, (4,8):11, (4,9):7, (4,10):19,
+    # From Nob Hill (5)
+    (5,0):7, (5,1):17, (5,2):11, (5,3):11, (5,4):9, (5,6):24, (5,7):6, (5,8):5, (5,9):8, (5,10):13,
+    # From Sunset District (6)
+    (6,0):30, (6,1):16, (6,2):17, (6,3):21, (6,4):30, (6,5):27, (6,7):30, (6,8):24, (6,9):28, (6,10):15,
+    # From Chinatown (7)
+    (7,0):7, (7,1):19, (7,2):17, (7,3):12, (7,4):5, (7,5):9, (7,6):29, (7,8):7, (7,9):3, (7,10):19,
+    # From Russian Hill (8)
+    (8,0):10, (8,1):14, (8,2):15, (8,3):7, (8,4):11, (8,5):5, (8,6):23, (8,7):9, (8,9):5, (8,10):17,
+    # From North Beach (9)
+    (9,0):7, (9,1):17, (9,2):16, (9,3):9, (9,4):8, (9,5):7, (9,6):27, (9,7):6, (9,8):4, (9,10):18,
+    # From Haight-Ashbury (10)
+    (10,0):19, (10,1):15, (10,2):5, (10,3):17, (10,4):21, (10,5):15, (10,6):15, (10,7):19, (10,8):17, (10,9):19
 }
 
-def get_travel_time(origin, destination):
-    return travel[(origin, destination)]
-
-# ---------------------------------------------------------------------
-# Z3 Model and Optimization.
-# ---------------------------------------------------------------------
-# We use Optimize to maximize the number of meetings scheduled.
-opt = Optimize()
+# Define friend meeting information.
+# For friend i, we store (meeting_location, avail_start, avail_end, meeting_min)
+# Times in minutes after midnight.
+friends = [
+    # Kimberly at Presidio (loc 1): 3:30PM (930) to 4:00PM (960), min 15
+    (1, 930, 960, 15),
+    # Elizabeth at Alamo Square (loc 2): 7:15PM (1155) to 8:15PM (1215), min 15
+    (2, 1155, 1215, 15),
+    # Joshua at Marina District (loc 3): 10:30AM (630) to 2:15PM (855), min 45
+    (3, 630, 855, 45),
+    # Sandra at Financial District (loc 4): 7:30PM (1170) to 8:15PM (1215), min 45
+    (4, 1170, 1215, 45),
+    # Kenneth at Nob Hill (loc 5): 12:45PM (765) to 9:45PM (1305), min 30
+    (5, 765, 1305, 30),
+    # Betty at Sunset District (loc 6): 2:00PM (840) to 7:00PM (1140), min 60
+    (6, 840, 1140, 60),
+    # Deborah at Chinatown (loc 7): 5:15PM (1035) to 8:30PM (1230), min 15
+    (7, 1035, 1230, 15),
+    # Barbara at Russian Hill (loc 8): 5:30PM (1050) to 9:15PM (1275), min 120
+    (8, 1050, 1275, 120),
+    # Steven at North Beach (loc 9): 5:45PM (1065) to 8:45PM (1245), min 90
+    (9, 1065, 1245, 90),
+    # Daniel at Haight-Ashbury (loc 10): 6:30PM (1110) to 6:45PM (1125), min 15
+    (10, 1110, 1125, 15)
+]
 num_friends = len(friends)
 
+# Start location and start time.
+start_loc = 0  # Union Square
+start_time = 540  # 9:00AM
+
+opt = Optimize()
+
 # Decision variables:
-#   For each friend i:
-#      x[i] is a Boolean that is True if we schedule a meeting with friend i.
-#      start[i] is the meeting start time (in minutes relative to 9:00AM).
-x = [Bool(f"x_{i}") for i in range(num_friends)]
-start = [Int(f"start_{i}") for i in range(num_friends)]
+# For each friend i, x[i] is True if you choose to meet them.
+# A[i] is the (arrival) time at friend i's location.
+# order[i] is the position (order) in the itinerary if friend i is chosen, else -1.
+x = [ Bool(f"x_{i}") for i in range(num_friends) ]
+A = [ Int(f"A_{i}") for i in range(num_friends) ]
+order = [ Int(f"order_{i}") for i in range(num_friends) ]
 
-# Set broad bounds for meeting start times.
 for i in range(num_friends):
-    opt.add(start[i] >= -300, start[i] <= 1000)
+    # If not chosen, we set order[i] = -1.
+    opt.add( Or( Not(x[i]), And(order[i] >= 0, order[i] < num_friends) ) )
+    opt.add( Or( Not(x[i]), True, ) )  # Just to have option for x[i] true.
+    # Enforce: if not chosen then order is -1.
+    opt.add( If(x[i], True, order[i] == -1) )
+    # Arrival time must be nonnegative.
+    opt.add( A[i] >= 0 )
 
-# Starting at Union Square at 9:00AM (time 0)
-starting_location = "Union Square"
-arrival_time = 0
-
-# For each friend scheduled, ensure:
-# (a) Meeting start is not before the friend’s available start,
-# (b) Meeting plus duration finishes by the available end,
-# (c) And that you have enough time to travel from the starting location.
-for i, friend in enumerate(friends):
-    dur = friend["duration"]
-    avail_start = friend["avail_start"]
-    avail_end = friend["avail_end"]
-    loc = friend["location"]
-    travel_from_start = get_travel_time(starting_location, loc)
-    
-    opt.add(Implies(x[i], start[i] >= avail_start))
-    opt.add(Implies(x[i], start[i] + dur <= avail_end))
-    opt.add(Implies(x[i], start[i] >= arrival_time + travel_from_start))
-
-# Non-overlap constraints:
-# For any two scheduled meetings, ensure that one meeting (plus required travel time) is finished
-# before the other starts.
+# For any two friends that are chosen, they must get different order numbers.
 for i in range(num_friends):
     for j in range(i+1, num_friends):
-        dur_i = friends[i]["duration"]
-        dur_j = friends[j]["duration"]
-        loc_i = friends[i]["location"]
-        loc_j = friends[j]["location"]
-        travel_i_j = get_travel_time(loc_i, loc_j)
-        travel_j_i = get_travel_time(loc_j, loc_i)
-        no_overlap = Or(
-            start[i] + dur_i + travel_i_j <= start[j],
-            start[j] + dur_j + travel_j_i <= start[i]
-        )
-        opt.add(Implies(And(x[i], x[j]), no_overlap))
+        opt.add( Or( Not(x[i]), Not(x[j]), order[i] != order[j] ) )
 
-# Objective: maximize the total number of meetings scheduled.
-opt.maximize(Sum([If(x[i], 1, 0) for i in range(num_friends)]))
+# Meeting availability constraints.
+for i in range(num_friends):
+    loc, avail_start, avail_end, meet_req = friends[i]
+    # Effective meeting start is the later of the arrival time and avail_start.
+    eff_start = If(A[i] < avail_start, avail_start, A[i])
+    # If meeting is held, then finishing the meeting must be no later than avail_end.
+    opt.add( Or( Not(x[i]), eff_start + meet_req <= avail_end ) )
 
-# ---------------------------------------------------------------------
-# Solve and print the schedule.
-# ---------------------------------------------------------------------
+# Travel constraints:
+# For a friend that is visited first (order==0) we must travel from the start location.
+for i in range(num_friends):
+    loc, _, _, _ = friends[i]
+    t_travel = travel[(start_loc, loc)]
+    opt.add( Or( Not(x[i]), order[i] != 0, A[i] >= start_time + t_travel ) )
+
+# For every two different friends, if friend j is scheduled immediately after friend i in the itinerary,
+# then the arrival time at j must be at least the departure time from i plus travel time.
+for i in range(num_friends):
+    for j in range(num_friends):
+        if i == j:
+            continue
+        loc_i, avail_i, _, meet_i = friends[i]
+        loc_j, avail_j, _, _ = friends[j]
+        # Effective departure from friend i: meeting starts at max(A_i, avail_start_i) and lasts meet_i.
+        dep_i = If(A[i] < avail_i, avail_i, A[i]) + meet_i
+        travel_time = travel[(loc_i, loc_j)]
+        cond = And( x[i], x[j], order[j] == order[i] + 1 )
+        opt.add( Or( Not(cond), A[j] >= dep_i + travel_time ) )
+
+# (Optional: Force order numbers to be contiguous among chosen ones. This is not strictly necessary.)
+
+# Objective: maximize the number of friends met.
+opt.maximize( Sum([ If(x[i], 1, 0) for i in range(num_friends) ] ) )
+
+# Solve and output the optimal schedule.
 if opt.check() == sat:
     model = opt.model()
-    schedule = []
+    chosen = []
     for i in range(num_friends):
         if model.evaluate(x[i]):
-            t = model.evaluate(start[i]).as_long()
-            schedule.append((t, friends[i]["name"], friends[i]["location"], friends[i]["duration"]))
-    schedule.sort(key=lambda tup: tup[0])
-    
-    print("Optimal schedule (times in minutes after 9:00AM):")
-    for t, name, loc, dur in schedule:
-        finish = t + dur
-        def to_time(minutes):
-            total = 9*60 + minutes
-            hour = total // 60
-            minute = total % 60
-            return f"{hour:02d}:{minute:02d}"
-        print(f"Meet {name} at {loc} from {to_time(t)} to {to_time(finish)} (duration {dur} mins)")
+            chosen.append((model.evaluate(order[i]).as_long(), i))
+    chosen.sort()  # sort by order
+    print("Optimal meeting schedule:")
+    def to_time(t):
+        h = t // 60
+        m = t % 60
+        return f"{h:02d}:{m:02d}"
+    for ord_val, i in chosen:
+        loc, avail_start, avail_end, meet_req = friends[i]
+        arrival = model.evaluate(A[i]).as_long()
+        meeting_start = arrival if arrival >= avail_start else avail_start
+        meeting_end = meeting_start + meet_req
+        loc_names = {
+            0:"Union Square", 1:"Presidio", 2:"Alamo Square", 3:"Marina District",
+            4:"Financial District", 5:"Nob Hill", 6:"Sunset District", 7:"Chinatown",
+            8:"Russian Hill", 9:"North Beach", 10:"Haight-Ashbury"
+        }
+        friend_names = ["Kimberly", "Elizabeth", "Joshua", "Sandra", "Kenneth",
+                        "Betty", "Deborah", "Barbara", "Steven", "Daniel"]
+        print(f" Order {ord_val}: Meet {friend_names[i]} at {loc_names[loc]}")
+        print(f"   Arrival time: {to_time(arrival)}")
+        print(f"   Meeting from {to_time(meeting_start)} to {to_time(meeting_end)}")
+    total = sum(1 for i in range(num_friends) if model.evaluate(x[i]))
+    print("Total friends met:", total)
 else:
-    print("No feasible schedule found.")
+    print("No feasible meeting schedule found.")

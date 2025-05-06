@@ -1,43 +1,38 @@
 from z3 import *
 
+# Define travel times (in minutes)
+travel_times = {
+    ('Nob Hill', 'Presidio'): 17,
+    ('Presidio', 'Nob Hill'): 18,
+}
+
+# Define meeting time and duration (in minutes after 9:00 AM)
+meeting_time = (675, 120)  # Robert will be at Presidio from 11:15 AM (675 minutes after midnight)
+
 # Initialize the Z3 solver
 solver = Solver()
 
-# Define the time variables
-depart_presidio = Real('depart_presidio')  # Time you leave Nob Hill to head to Presidio
-arrive_presidio = Real('arrive_presidio')  # Time you arrive at Presidio
-depart_robert = Real('depart_robert')       # Time you leave Presidio after meeting Robert
+# Create variables for meeting start and end times
+meeting_start = Int('meeting_start')
+meeting_end = Int('meeting_end')
 
-# Constants
-travel_time_nob_to_presidio = 17  # minutes from Nob Hill to Presidio
-travel_time_presidio_to_nob = 18   # minutes from Presidio back to Nob Hill
-meeting_duration = 120              # minimum meeting duration (in minutes)
-robert_start = 11.25               # 11:15 AM in hours
-robert_end = 17.75                 # 5:45 PM in hours
-arrival_time_nob = 9.0             # 9:00 AM in hours
+# Add constraints for the meeting based on Robert's availability
+solver.add(meeting_start >= meeting_time[0])  # Must start after Robert is available
+solver.add(meeting_end == meeting_start + meeting_time[1])  # Calculate end time
 
-# Constraints
-solver.add(arrive_presidio == depart_presidio + travel_time_nob_to_presidio)  # Arrival time at Presidio
-solver.add(depart_presidio >= arrival_time_nob)  # Must leave after arriving at Nob Hill
-solver.add(depart_presidio <= robert_end - (meeting_duration / 60))  # Must leave in time to meet for 120 minutes
-solver.add(arrive_presidio >= robert_start)  # Must arrive at or after Robert starts being available
-solver.add(depart_robert >= arrive_presidio + (meeting_duration / 60))  # Must leave after meeting for 120 minutes
+# Add travel time constraints from Nob Hill
+solver.add(meeting_start >= 540 + travel_times[('Nob Hill', 'Presidio')])  # Must start after 9:00 AM + travel time (540 = 9:00 AM in minutes)
 
-# Maximize the meeting time with Robert (ideally want to meet him for 120 minutes)
-meet_time = min(depart_robert - arrive_presidio, meeting_duration / 60)
+# Objective: maximize total meeting time (though there's only one meeting here)
+total_meeting_time = meeting_end - meeting_start
+solver.maximize(total_meeting_time)
 
-# We want to maximize the meeting time
-solver.maximize(meet_time)
-
-# Check if the solution is satisfiable and output the result
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    depart_presidio_val = model[depart_presidio].as_decimal(2)
-    arrive_presidio_val = model[arrive_presidio].as_decimal(2)
-    depart_robert_val = model[depart_robert].as_decimal(2)
-
-    print(f"Depart from Nob Hill to Presidio at: {depart_presidio_val} hours")
-    print(f"Arrive at Presidio at: {arrive_presidio_val} hours")
-    print(f"Depart from Presidio after meeting Robert at: {depart_robert_val} hours")
+    start = model[meeting_start].as_long()
+    end = model[meeting_end].as_long()
+    print("SOLUTION:")
+    print(f"Meeting starts at {start} minutes after midnight, ends at {end} minutes after midnight.")
 else:
-    print("No valid schedule found.")
+    print("SOLUTION: No valid meeting schedule found.")

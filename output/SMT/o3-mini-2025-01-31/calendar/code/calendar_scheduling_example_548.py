@@ -1,55 +1,58 @@
-from z3 import Solver, Int, Or, sat
+from z3 import *
 
-# Create a Z3 solver instance
-solver = Solver()
+# Helper functions
+def time_to_minutes(t):
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
 
-# Meeting parameters:
-duration = 30  # duration in minutes
-start = Int("start")  # meeting start time in minutes since midnight
+def minutes_to_time(m):
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Work hours: 9:00 (540 minutes) to 17:00 (1020 minutes)
-solver.add(start >= 540, start + duration <= 1020)
+# Meeting configuration
+meeting_duration = 30  # half an hour meeting
+work_start = time_to_minutes("9:00")    # 540 minutes
+work_end   = time_to_minutes("17:00")   # 1020 minutes
 
-# Nicole's preference: Would rather not meet before 16:00.
-# Enforce that the meeting must start no earlier than 16:00 (960 minutes)
-solver.add(start >= 960)
-
-# Helper function to add busy interval constraints.
-def add_busy_constraints(solver, busy_intervals):
-    # For each busy interval [b_start, b_end),
-    # ensure that the meeting interval [start, start+duration) does not overlap with it.
-    for b_start, b_end in busy_intervals:
-        solver.add(Or(start + duration <= b_start, start >= b_end))
-
-# Judy's busy intervals: Judy is free the entire day.
-judy_busy = []
-add_busy_constraints(solver, judy_busy)
-
-# Nicole's busy intervals (in minutes):
-# 9:00 to 10:00  -> [540, 600)
-# 10:30 to 16:30 -> [630, 990)
+# Participants' schedules (Monday):
+# Judy is free all day, so no busy intervals.
+# Nicole's busy intervals on Monday.
 nicole_busy = [
-    (540, 600),
-    (630, 990)
+    (time_to_minutes("9:00"), time_to_minutes("10:00")),
+    (time_to_minutes("10:30"), time_to_minutes("16:30"))
 ]
-add_busy_constraints(solver, nicole_busy)
 
-# Search for the earliest valid meeting time.
-found = False
-# The latest possible start time is 1020 - duration = 1020 - 30 = 990 minutes.
-for t in range(540, 991):
-    solver.push()
-    solver.add(start == t)
-    if solver.check() == sat:
-        meeting_start = t
-        meeting_end = t + duration
-        sh, sm = divmod(meeting_start, 60)
-        eh, em = divmod(meeting_end, 60)
-        print(f"A valid meeting time is from {sh:02d}:{sm:02d} to {eh:02d}:{em:02d}.")
-        found = True
-        solver.pop()
-        break
-    solver.pop()
+# Nicole would rather not meet on Monday before 16:00.
+# We enforce that the meeting must start no earlier than 16:00.
+preferred_start = time_to_minutes("16:00")
 
-if not found:
+# Create a Z3 Solver instance 
+s = Solver()
+
+# Declare an integer variable for the meeting start time (in minutes)
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
+
+# Constraint 1: The meeting must be within work hours (9:00 to 17:00)
+s.add(meeting_start >= work_start, meeting_end <= work_end)
+
+# Constraint 2: Honor Nicole's preference: meeting should not start before 16:00.
+s.add(meeting_start >= preferred_start)
+
+# Constraint 3: The meeting must not overlap any busy interval of Nicole.
+# For each busy interval, the meeting either must finish before the busy period starts
+# or start after the busy period ends.
+for busy_start, busy_end in nicole_busy:
+    s.add(Or(meeting_end <= busy_start, meeting_start >= busy_end))
+
+# Check for a valid solution
+if s.check() == sat:
+    model = s.model()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
+    print("A possible meeting time on Monday:")
+    print("Start:", minutes_to_time(start_val))
+    print("End:  ", minutes_to_time(end_val))
+else:
     print("No valid meeting time could be found.")

@@ -1,91 +1,99 @@
-from z3 import Solver, Int, Or, sat
+from z3 import Solver, Int, Or
+
+# Helper functions for converting time strings to minutes and vice versa.
+def time_to_minutes(t):
+    hours, minutes = map(int, t.split(":"))
+    return hours * 60 + minutes
+
+def minutes_to_time(m):
+    hours = m // 60
+    minutes = m % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+# Meeting configuration.
+meeting_duration = 30  # 30-minute meeting
+work_start = time_to_minutes("9:00")   # 540 minutes
+work_end   = time_to_minutes("17:00")   # 1020 minutes
+
+# Busy intervals for each participant on Monday (in minutes).
+# Each participant's busy intervals is a list of tuples (start, end).
+
+gregory_busy = [
+    (time_to_minutes("9:00"), time_to_minutes("9:30")),
+    (time_to_minutes("11:30"), time_to_minutes("12:00"))
+]
+
+jonathan_busy = [
+    (time_to_minutes("9:00"), time_to_minutes("9:30")),
+    (time_to_minutes("12:00"), time_to_minutes("12:30")),
+    (time_to_minutes("13:00"), time_to_minutes("13:30")),
+    (time_to_minutes("15:00"), time_to_minutes("16:00")),
+    (time_to_minutes("16:30"), time_to_minutes("17:00"))
+]
+
+barbara_busy = [
+    (time_to_minutes("10:00"), time_to_minutes("10:30")),
+    (time_to_minutes("13:30"), time_to_minutes("14:00"))
+]
+
+jesse_busy = [
+    (time_to_minutes("10:00"), time_to_minutes("11:00")),
+    (time_to_minutes("12:30"), time_to_minutes("14:30"))
+]
+
+alan_busy = [
+    (time_to_minutes("9:30"), time_to_minutes("11:00")),
+    (time_to_minutes("11:30"), time_to_minutes("12:30")),
+    (time_to_minutes("13:00"), time_to_minutes("15:30")),
+    (time_to_minutes("16:00"), time_to_minutes("17:00"))
+]
+
+nicole_busy = [
+    (time_to_minutes("9:00"), time_to_minutes("10:30")),
+    (time_to_minutes("11:30"), time_to_minutes("12:00")),
+    (time_to_minutes("12:30"), time_to_minutes("13:30")),
+    (time_to_minutes("14:00"), time_to_minutes("17:00"))
+]
+
+catherine_busy = [
+    (time_to_minutes("9:00"), time_to_minutes("10:30")),
+    (time_to_minutes("12:00"), time_to_minutes("13:30")),
+    (time_to_minutes("15:00"), time_to_minutes("15:30")),
+    (time_to_minutes("16:00"), time_to_minutes("16:30"))
+]
 
 # Create a Z3 solver instance.
 solver = Solver()
 
-# Meeting parameters:
-# Work hours: 9:00 (540 minutes) to 17:00 (1020 minutes)
-duration = 30
-start = Int("start")  # Meeting start time in minutes since midnight
+# Define the meeting start time variable (in minutes).
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-# Constrain the meeting to be entirely within work hours.
-solver.add(start >= 540, start + duration <= 1020)
+# Constraint 1: The meeting must be within work hours.
+solver.add(meeting_start >= work_start, meeting_end <= work_end)
 
-# Helper function to add non-overlap constraints for a list of busy intervals.
-def add_busy_constraints(solver, busy_intervals):
-    for busy_start, busy_end in busy_intervals:
-        # The meeting [start, start+duration) must either finish before a busy interval starts 
-        # or start after it ends.
-        solver.add(Or(start + duration <= busy_start, start >= busy_end))
+# For a given busy interval [busy_start, busy_end], the meeting must not overlap:
+#   meeting_end <= busy_start  or  meeting_start >= busy_end
+def add_busy_constraints(busy_intervals):
+    for (busy_start, busy_end) in busy_intervals:
+        solver.add(Or(meeting_end <= busy_start, meeting_start >= busy_end))
 
-# Define busy intervals for each participant, in minutes from midnight.
+# Add constraints for each participant.
+add_busy_constraints(gregory_busy)
+add_busy_constraints(jonathan_busy)
+add_busy_constraints(barbara_busy)
+add_busy_constraints(jesse_busy)
+add_busy_constraints(alan_busy)
+add_busy_constraints(nicole_busy)
+add_busy_constraints(catherine_busy)
 
-# Gregory's busy intervals:
-# 9:00 to 9:30 -> [540, 570)
-# 11:30 to 12:00 -> [690, 720)
-gregory_busy = [(540, 570), (690, 720)]
-add_busy_constraints(solver, gregory_busy)
-
-# Jonathan's busy intervals:
-# 9:00 to 9:30 -> [540, 570)
-# 12:00 to 12:30 -> [720, 750)
-# 13:00 to 13:30 -> [780, 810)
-# 15:00 to 16:00 -> [900, 960)
-# 16:30 to 17:00 -> [990, 1020)
-jonathan_busy = [(540, 570), (720, 750), (780, 810), (900, 960), (990, 1020)]
-add_busy_constraints(solver, jonathan_busy)
-
-# Barbara's busy intervals:
-# 10:00 to 10:30 -> [600, 630)
-# 13:30 to 14:00 -> [810, 840)
-barbara_busy = [(600, 630), (810, 840)]
-add_busy_constraints(solver, barbara_busy)
-
-# Jesse's busy intervals:
-# 10:00 to 11:00 -> [600, 660)
-# 12:30 to 14:30 -> [750, 870)
-jesse_busy = [(600, 660), (750, 870)]
-add_busy_constraints(solver, jesse_busy)
-
-# Alan's busy intervals:
-# 9:30 to 11:00 -> [570, 660)
-# 11:30 to 12:30 -> [690, 750)
-# 13:00 to 15:30 -> [780, 930)
-# 16:00 to 17:00 -> [960, 1020)
-alan_busy = [(570, 660), (690, 750), (780, 930), (960, 1020)]
-add_busy_constraints(solver, alan_busy)
-
-# Nicole's busy intervals:
-# 9:00 to 10:30 -> [540, 630)
-# 11:30 to 12:00 -> [690, 720)
-# 12:30 to 13:30 -> [750, 810)
-# 14:00 to 17:00 -> [840, 1020)
-nicole_busy = [(540, 630), (690, 720), (750, 810), (840, 1020)]
-add_busy_constraints(solver, nicole_busy)
-
-# Catherine's busy intervals:
-# 9:00 to 10:30 -> [540, 630)
-# 12:00 to 13:30 -> [720, 810)
-# 15:00 to 15:30 -> [900, 930)
-# 16:00 to 16:30 -> [960, 990)
-catherine_busy = [(540, 630), (720, 810), (900, 930), (960, 990)]
-add_busy_constraints(solver, catherine_busy)
-
-# Search for the earliest available meeting time that fits everyone's schedule.
-found = False
-for t in range(540, 1020 - duration + 1):
-    solver.push()
-    solver.add(start == t)
-    if solver.check() == sat:
-        meeting_start = t
-        meeting_end = t + duration
-        sh, sm = divmod(meeting_start, 60)
-        eh, em = divmod(meeting_end, 60)
-        print(f"A valid meeting time is from {sh:02d}:{sm:02d} to {eh:02d}:{em:02d}.")
-        found = True
-        solver.pop()
-        break
-    solver.pop()
-
-if not found:
+# Check for a valid meeting time.
+if solver.check() == sat:
+    model = solver.model()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
+    print("A possible meeting time on Monday:")
+    print("Start:", minutes_to_time(start_val))
+    print("End:  ", minutes_to_time(end_val))
+else:
     print("No valid meeting time could be found.")

@@ -1,37 +1,72 @@
 from z3 import *
 
 def main():
-    # Time in minutes after 9:00 AM
-    T_depart = Int('T_depart')  # Departure time from Fisherman's Wharf
-    T_start = Int('T_start')    # Start time of meeting
-    T_end = Int('T_end')        # End time of meeting
-
-    opt = Optimize()
-    opt.add(T_depart >= 0)
-    opt.add(T_start >= T_depart + 11)  # Travel time to Nob Hill
-    opt.add(T_start >= 315)            # 2:15PM (9AM + 315 mins)
-    opt.add(T_end <= 645)              # 7:45PM (9AM + 645 mins)
-    opt.add(T_end - T_start >= 90)     # Minimum meeting duration
-    opt.minimize(T_end)                # Optimize for earliest possible end
-
-    if opt.check() == sat:
-        m = opt.model()
-        depart = m.eval(T_depart).as_long()
-        start = m.eval(T_start).as_long()
-        end = m.eval(T_end).as_long()
-
-        def time_str(mins):
-            total_mins = 9 * 60 + mins
-            hours, mins = divmod(total_mins, 60)
-            am_pm = "AM" if hours < 12 else "PM"
-            hours = hours if hours <= 12 else hours - 12
-            return f"{hours}:{mins:02d}{am_pm}"
-
-        print(f"Depart Fisherman's Wharf at {time_str(depart)}")
-        print(f"Arrive Nob Hill at {time_str(depart + 11)}")
-        print(f"Meet Kenneth from {time_str(start)} to {time_str(end)}")
+    # Friends data: name, location, start (min), end (min), duration (min)
+    friends = [
+        ("Virtual", "Fisherman's Wharf", 9*60, 9*60, 0),
+        ("Kenneth", "Nob Hill", 14*60+15, 19*60+45, 90)
+    ]
+    
+    # Travel times matrix
+    travel = {
+        "Fisherman's Wharf": {
+            "Nob Hill": 11
+        },
+        "Nob Hill": {
+            "Fisherman's Wharf": 11
+        }
+    }
+    
+    s = Optimize()
+    
+    # Friend variables: visited, arrival, departure
+    friend_vars = []
+    for name, loc, start, end, dur in friends:
+        visited = Bool(f'v_{name}')
+        arrive = Int(f'a_{name}')
+        depart = Int(f'd_{name}')
+        friend_vars.append( (name, loc, start, end, dur, visited, arrive, depart) )
+    
+    # Constraints for each friend's availability and duration
+    for name, loc, start, end, dur, v, a, d in friend_vars:
+        if name == "Virtual":
+            s.add(v == True)
+            s.add(a == 9*60)
+            s.add(d == 9*60)
+        else:
+            s.add(Implies(v, And(a >= start, d <= end, d >= a + dur)))
+    
+    # Ordering and travel time constraints between friends
+    B = {}
+    for i, (name_i, loc_i, _, _, _, vi, ai, di) in enumerate(friend_vars):
+        for j, (name_j, loc_j, _, _, _, vj, aj, dj) in enumerate(friend_vars):
+            if i != j:
+                b = Bool(f'b_{name_i}_{name_j}')
+                B[(i,j)] = b
+                # If both visited, one must come before the other
+                s.add(Implies(And(vi, vj), Or(b, B[(j,i)])))
+                # If i is before j, j's arrival >= i's departure + travel time
+                if loc_i in travel and loc_j in travel[loc_i]:
+                    travel_time = travel[loc_i][loc_j]
+                    s.add(Implies(And(b, vi, vj), aj >= di + travel_time))
+                s.add(Implies(b, Not(B[(j,i)])))
+    
+    # Maximize number of friends visited (excluding Virtual)
+    total = Sum([If(v, 1, 0) for (name, *_) in friend_vars if name != "Virtual"])
+    s.maximize(total)
+    
+    if s.check() == sat:
+        m = s.model()
+        print("Optimal schedule:")
+        for name, _, _, _, _, v, a, d in friend_vars:
+            if name == "Virtual":
+                continue
+            if m.eval(v):
+                a_val = m.eval(a).as_long()
+                d_val = m.eval(d).as_long()
+                print(f"{name}: {a_val//60:02}:{a_val%60:02} - {d_val//60:02}:{d_val%60:02}")
     else:
-        print("No solution found")
+        print("No valid schedule found.")
 
 if __name__ == "__main__":
     main()

@@ -1,38 +1,49 @@
 from z3 import *
 
 # Define the time intervals
-start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60   # 17:00 in minutes
-meeting_duration = 30  # 0.5 hours in minutes
-
-# Define the existing schedules
-schedules = {
-    'Diane': [(9 * 60 + 30, 10 * 60), (14 * 60 + 30, 15 * 60)],
-    'Jack': [(13 * 60 + 30, 14 * 60), (14 * 60 + 30, 15 * 60)],
-    'Eugene': [(9 * 60, 10 * 60), (10 * 60 + 30, 11 * 60 + 30), (12 * 60, 14 * 60 + 30), (15 * 60, 16 * 60 + 30)],
-    'Patricia': [(9 * 60 + 30, 10 * 60 + 30), (11 * 60, 12 * 60), (12 * 60 + 30, 14 * 60), (15 * 60, 16 * 60 + 30)]
+time_intervals = {
+    "Monday": [(0, 8*60), (8*60, 9*60), (9*60, 10*60), (10*60, 11*60), (11*60, 12*60), 
+               (12*60, 13*60), (13*60, 14*60), (14*60, 15*60), (15*60, 16*60), (16*60, 17*60), 
+               (17*60, 24*60)],
 }
 
-# Create a Z3 solver
-solver = Solver()
+# Define the busy intervals for each person
+busy_intervals = {
+    "Diane": {
+        "Monday": [(9*60+30, 10*60), (14*60+30, 15*60)],
+    },
+    "Jack": {
+        "Monday": [(13*60+30, 14*60), (14*60+30, 15*60)],
+    },
+    "Eugene": {
+        "Monday": [(9*60, 10*60), (10*60+30, 11*60+30), (12*60, 14*60+30), (15*60, 16*60+30)],
+    },
+    "Patricia": {
+        "Monday": [(9*60+30, 10*60+30), (11*60, 12*60), (12*60+30, 14*60), (15*60, 16*60+30)],
+    }
+}
 
-# Define the variables
-meeting_start = Int('meeting_start')
+# Create the solver
+s = Solver()
 
-# Add constraints
-solver.add(meeting_start >= start_time)
-solver.add(meeting_start + meeting_duration <= end_time)
+# Create the variables
+start_time = Int('start_time')
 
-# Add constraints for each participant's schedule
-for participant, schedule in schedules.items():
-    for start, end in schedule:
-        solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
+# Add the constraints
+s.add(start_time >= 9*60)  # start time should be after 9:00
+s.add(start_time <= 16*60)  # start time should be before 17:00
+s.add(start_time + 30 <= 17*60)  # end time should be before 17:00
 
-# Solve the problem
-result = solver.check()
+# Add the constraints for the busy intervals
+for person, intervals in busy_intervals.items():
+    for i, interval in enumerate(intervals["Monday"]):
+        s.add(Or(start_time < busy_intervals[person]["Monday"][i][0], 
+                  start_time + 30 > busy_intervals[person]["Monday"][i][1]))
 
-if result == sat:
-    print("A meeting time has been found:")
-    print("Start time: {:.2f}:00".format(solver.model()[meeting_start].as_long() / 60))
+# Check the solution
+if s.check() == sat:
+    model = s.model()
+    start_time_minutes = model[start_time].as_long()
+    print(f"Meeting can be scheduled on Monday at {start_time_minutes//60}:{start_time_minutes%60:02d} for 30 minutes.")
 else:
-    print("No meeting time could be found.")
+    print("No solution found.")

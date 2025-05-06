@@ -1,37 +1,36 @@
 from z3 import *
 
-def schedule_meeting():
-    s = Solver()
-    start = Int('start')
-    meeting_duration = 30  # Half-hour meeting
-    
-    # Convert all times to minutes since 9:00 (0 minutes)
-    s.add(start >= 0)
-    s.add(start + meeting_duration <= 480)  # End by 17:00 (480 minutes)
-    
-    # Juan's constraints
-    # Can't meet before 10:30 (90 minutes) and must end by 15:30 (390 minutes)
-    s.add(start >= 90)
-    s.add(start + meeting_duration <= 390)
-    
-    # Marilyn's constraints
-    # Avoid 11:00-11:30 (120-150) and 12:30-13:00 (210-240)
-    s.add(Or(start + meeting_duration <= 120, start >= 150))
-    s.add(Or(start + meeting_duration <= 210, start >= 240))
-    
-    # Ronald's constraints
-    # Avoid 12:00-12:30 (180-210), 13:00-13:30 (240-270), and 14:00-16:30 (300-450)
-    s.add(Or(start + meeting_duration <= 180, start >= 210))
-    s.add(Or(start + meeting_duration <= 240, start >= 270))
-    s.add(Or(start + meeting_duration <= 300, start >= 450))
-    
-    if s.check() == sat:
-        m = s.model()
-        start_min = m[start].as_long()
-        hours = 9 + start_min // 60
-        minutes = start_min % 60
-        print(f"Meeting starts at {hours:02d}:{minutes:02d}")
-    else:
-        print("No valid time found.")
+s = Optimize()
 
-schedule_meeting()
+start_time = Int('start_time')
+s.add(start_time >= 0)
+s.add(start_time + 30 <= 480)  # 30-minute duration within 9:00-17:00
+
+# Convert schedules to minutes since 9:00
+busy = {
+    'Juan': [(0, 90), (390, 420)],
+    'Marilyn': [(120, 150), (210, 240)],
+    'Ronald': [(0, 90), (180, 210), (240, 270), (300, 450)]
+}
+
+# Add constraints for each participant's busy times
+for person, blocks in busy.items():
+    for block_start, block_end in blocks:
+        s.add(Or(start_time + 30 <= block_start, start_time >= block_end))
+
+# Juan's additional constraint: meeting must end by 16:00 (420 minutes)
+s.add(start_time + 30 <= 420)
+
+# Optimize for earliest time
+s.minimize(start_time)
+
+if s.check() == sat:
+    m = s.model()
+    st = m[start_time].as_long()
+    start_h = 9 + st // 60
+    start_m = st % 60
+    end_h = 9 + (st + 30) // 60
+    end_m = (st + 30) % 60
+    print(f"Monday {start_h:02d}:{start_m:02d}-{end_h:02d}:{end_m:02d}")
+else:
+    print("No solution found")

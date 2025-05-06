@@ -1,86 +1,106 @@
-from z3 import Solver, Int, Or, sat
+from z3 import *
 
-# Meeting parameters
-duration = 60                # meeting length: 60 minutes (1 hour)
-WORK_START = 9 * 60          # 9:00 AM in minutes (540)
-WORK_END = 17 * 60           # 5:00 PM in minutes (1020)
+# Helper functions to convert time string (HH:MM) to minutes and vice versa.
+def time_to_minutes(t):
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
 
-# Days: 0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday, 4 = Friday
-day_names = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday"}
+def minutes_to_time(m):
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Betty's busy intervals (in minutes)
-# Monday: 10:00-10:30, 11:30-12:30, 16:00-16:30
-# Tuesday: 9:30-10:00, 10:30-11:00, 12:00-12:30, 13:30-15:00, 16:30-17:00
-# Wednesday: 13:30-14:00, 14:30-15:00
-# Friday: 9:00-10:00, 11:30-12:00, 12:30-13:00, 14:30-15:00
+# Meeting configuration.
+meeting_duration = 60  # one hour meeting
+work_start = time_to_minutes("9:00")   # 540 minutes
+work_end   = time_to_minutes("17:00")  # 1020 minutes
+
+# Days are encoded as:
+# 0: Monday, 1: Tuesday, 2: Wednesday, 3: Thursday, 4: Friday
+
+# Busy intervals (in minutes) for each participant on each day.
+
+# Betty's busy intervals.
+# Also note: Betty cannot meet on Wednesday or Thursday.
 betty_busy = {
-    0: [(10 * 60, 10 * 60 + 30), (11 * 60 + 30, 12 * 60 + 30), (16 * 60, 16 * 60 + 30)],
-    1: [(9 * 60 + 30, 10 * 60), (10 * 60 + 30, 11 * 60), (12 * 60, 12 * 60 + 30), (13 * 60 + 30, 15 * 60), (16 * 60 + 30, 17 * 60)],
-    2: [(13 * 60 + 30, 14 * 60), (14 * 60 + 30, 15 * 60)],
-    4: [(9 * 60, 10 * 60), (11 * 60 + 30, 12 * 60), (12 * 60 + 30, 13 * 60), (14 * 60 + 30, 15 * 60)]
+    0: [(time_to_minutes("10:00"), time_to_minutes("10:30")),
+        (time_to_minutes("11:30"), time_to_minutes("12:30")),
+        (time_to_minutes("16:00"), time_to_minutes("16:30"))],
+    1: [(time_to_minutes("9:30"), time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("11:00")),
+        (time_to_minutes("12:00"), time_to_minutes("12:30")),
+        (time_to_minutes("13:30"), time_to_minutes("15:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))],
+    2: [(time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00"))],
+    3: [],  # Betty is free on Thursday but she has a constraint not to meet that day.
+    4: [(time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("11:30"), time_to_minutes("12:00")),
+        (time_to_minutes("12:30"), time_to_minutes("13:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00"))]
 }
 
-# Megan's busy intervals (in minutes)
-# Monday: 9:00-17:00
-# Tuesday: 9:00-9:30, 10:00-10:30, 12:00-14:00, 15:00-15:30, 16:00-16:30
-# Wednesday: 9:30-10:30, 11:00-11:30, 12:30-13:00, 13:30-14:30, 15:30-17:00
-# Thursday: 9:00-10:30, 11:30-14:00, 14:30-15:00, 15:30-16:30
-# Friday: 9:00-17:00
+# Megan's busy intervals.
 megan_busy = {
-    0: [(9 * 60, 17 * 60)],
-    1: [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (12 * 60, 14 * 60), (15 * 60, 15 * 60 + 30), (16 * 60, 16 * 60 + 30)],
-    2: [(9 * 60 + 30, 10 * 60 + 30), (11 * 60, 11 * 60 + 30), (12 * 60 + 30, 13 * 60), (13 * 60 + 30, 14 * 60 + 30), (15 * 60 + 30, 17 * 60)],
-    3: [(9 * 60, 10 * 60 + 30), (11 * 60 + 30, 14 * 60), (14 * 60 + 30, 15 * 60), (15 * 60 + 30, 16 * 60 + 30)],
-    4: [(9 * 60, 17 * 60)]
+    0: [(time_to_minutes("9:00"), time_to_minutes("17:00"))],
+    1: [(time_to_minutes("9:00"), time_to_minutes("9:30")),
+        (time_to_minutes("10:00"), time_to_minutes("10:30")),
+        (time_to_minutes("12:00"), time_to_minutes("14:00")),
+        (time_to_minutes("15:00"), time_to_minutes("15:30")),
+        (time_to_minutes("16:00"), time_to_minutes("16:30"))],
+    2: [(time_to_minutes("9:30"), time_to_minutes("10:30")),
+        (time_to_minutes("11:00"), time_to_minutes("11:30")),
+        (time_to_minutes("12:30"), time_to_minutes("13:00")),
+        (time_to_minutes("13:30"), time_to_minutes("14:30")),
+        (time_to_minutes("15:30"), time_to_minutes("17:00"))],
+    3: [(time_to_minutes("9:00"), time_to_minutes("10:30")),
+        (time_to_minutes("11:30"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00")),
+        (time_to_minutes("15:30"), time_to_minutes("16:30"))],
+    4: [(time_to_minutes("9:00"), time_to_minutes("17:00"))]
 }
 
-# Betty's avoid days: Betty cannot meet on Wednesday (2) or Thursday (3)
-betty_avoid = {2, 3}
+# Create Z3 solver.
+s = Solver()
 
-def no_overlap(busy_start, busy_end, s, dur):
-    # The meeting [s, s+dur) should not overlap with a busy interval [busy_start, busy_end)
-    return Or(s + dur <= busy_start, s >= busy_end)
+# Define variables:
+# meeting_day: an integer in {0,1,2,3,4} representing the day of the week.
+# meeting_start: the meeting start time in minutes from midnight.
+meeting_day = Int("meeting_day")
+s.add(Or(meeting_day == 0, meeting_day == 1, meeting_day == 2, meeting_day == 3, meeting_day == 4))
 
-def find_earliest_meeting():
-    # Iterate over days Monday to Friday
-    for day in range(5):
-        # Skip if Betty avoids the day
-        if day in betty_avoid:
-            continue
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-        solver = Solver()
-        s = Int("s")  # meeting start time (in minutes from midnight)
+# Constraint 1: Meeting must occur within work hours.
+s.add(meeting_start >= work_start, meeting_end <= work_end)
 
-        # Ensure the meeting is during working hours
-        solver.add(s >= WORK_START, s + duration <= WORK_END)
+# Constraint 2: Apply Betty's day restrictions.
+# Betty cannot meet on Wednesday (day 2) or Thursday (day 3).
+s.add(meeting_day != 2, meeting_day != 3)
 
-        # Constrain against Betty's busy intervals (if any) for this day
-        if day in betty_busy:
-            for busy_start, busy_end in betty_busy[day]:
-                solver.add(no_overlap(busy_start, busy_end, s, duration))
-        
-        # Constrain against Megan's busy intervals (if any) for this day
-        if day in megan_busy:
-            for busy_start, busy_end in megan_busy[day]:
-                solver.add(no_overlap(busy_start, busy_end, s, duration))
-        
-        # Try possible start times in increasing order (earliest first)
-        for t in range(WORK_START, WORK_END - duration + 1):
-            solver.push()
-            solver.add(s == t)
-            if solver.check() == sat:
-                model = solver.model()
-                return day, model[s].as_long()
-            solver.pop()
-    return None, None
+# Define a helper function to add constraints for a participant's busy intervals.
+def add_busy_constraints(busy_dict):
+    for day, intervals in busy_dict.items():
+        for (busy_start, busy_end) in intervals:
+            # If the meeting is scheduled on the same day, it must not overlap with the busy interval.
+            s.add(Implies(meeting_day == day, Or(meeting_end <= busy_start, meeting_start >= busy_end)))
 
-day, start_time = find_earliest_meeting()
+# Add constraints for Betty and Megan.
+add_busy_constraints(betty_busy)
+add_busy_constraints(megan_busy)
 
-if day is not None and start_time is not None:
-    meeting_end = start_time + duration
-    sh, sm = divmod(start_time, 60)
-    eh, em = divmod(meeting_end, 60)
-    print("Meeting scheduled on {} from {:02d}:{:02d} to {:02d}:{:02d}".format(
-          day_names[day], sh, sm, eh, em))
+# Check for a valid meeting time.
+if s.check() == sat:
+    model = s.model()
+    day_val = model[meeting_day].as_long()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
+    
+    day_names = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday"}
+    print("A possible meeting time:")
+    print("Day:   ", day_names[day_val])
+    print("Start: ", minutes_to_time(start_val))
+    print("End:   ", minutes_to_time(end_val))
 else:
-    print("No valid meeting time found that satisfies all constraints.")
+    print("No valid meeting time could be found.")

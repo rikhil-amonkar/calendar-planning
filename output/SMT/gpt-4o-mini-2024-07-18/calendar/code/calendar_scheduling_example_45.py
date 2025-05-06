@@ -1,42 +1,47 @@
 from z3 import *
 
-# Define work hours in minutes
+# Define work hours and meeting duration
 work_start = 9 * 60  # 9:00 AM in minutes
 work_end = 17 * 60   # 5:00 PM in minutes
 meeting_duration = 30  # Meeting duration in minutes
 
-# Define existing schedules for each participant in minutes
-andrew_schedule = []  # Andrew is free the entire day
-grace_schedule = []    # Grace is free the entire day
-samuel_schedule = [
-    (9 * 60, 10.5 * 60),  # 9:00 to 10:30
-    (11.5 * 60, 12 * 60), # 11:30 to 12:00
-    (13 * 60, 13.5 * 60), # 1:00 to 1:30
-    (14 * 60, 16 * 60),    # 2:00 to 4:00
-    (16.5 * 60, 17 * 60)   # 4:30 to 5:00
-]
+# Define busy times for each participant (in minutes from midnight)
+busy_times = {
+    "Andrew": [],  # Andrew is wide open all day
+    "Grace": [],   # Grace has no meetings all day
+    "Samuel": [
+        (9 * 60, 10 * 60 + 30),    # 9:00 to 10:30
+        (11 * 60 + 30, 12 * 60),   # 11:30 to 12:00
+        (13 * 60, 13 * 60 + 30),   # 13:00 to 13:30
+        (14 * 60, 16 * 60),         # 14:00 to 16:00
+        (16 * 60 + 30, 17 * 60)     # 16:30 to 17:00
+    ]
+}
 
-# Create a Z3 solver instance
-s = Solver()
+# Initialize the Z3 solver
+solver = Solver()
 
-# Define the variable for the start time of the meeting
-meeting_start = Int('meeting_start')
-s.add(meeting_start >= work_start)  # Start time cannot be before work starts
-s.add(meeting_start + meeting_duration <= work_end)  # Meeting must finish before work ends
+# Variable for the start time of the meeting
+start_time = Int('start_time')
 
-# Function to add participant constraints
-def add_constraints(schedule, meeting_start):
-    for start, end in schedule:
-        s.add(meeting_start + meeting_duration <= start)  # Meeting must end before this participant's meeting starts
-        s.add(meeting_start >= end)                        # Meeting must start after this participant's meeting ends
+# Constraints: the meeting must occur during work hours
+solver.add(start_time >= work_start)
+solver.add(start_time + meeting_duration <= work_end)
 
-# Adding constraints for Samuel's schedule
-add_constraints(samuel_schedule, meeting_start)
+# Function to add busy time constraints for each participant
+def add_busy_constraints(participant):
+    for busy_start, busy_end in busy_times[participant]:
+        # Ensure the meeting does not overlap with busy times
+        solver.add(Or(start_time + meeting_duration <= busy_start, start_time >= busy_end))
 
-# Check for satisfiability
-if s.check() == sat:
-    model = s.model()
-    start_time = model[meeting_start].as_long()
-    print(f"Meeting can be scheduled starting at {start_time // 60}:{start_time % 60:02d}.")
+# Add busy time constraints for Samuel since Andrew and Grace are free
+add_busy_constraints("Samuel")
+
+# Check for a solution
+if solver.check() == sat:
+    model = solver.model()
+    meeting_start = model[start_time].as_long()
+    meeting_end = meeting_start + meeting_duration
+    print(f"Meeting can be scheduled from {meeting_start // 60:02}:{meeting_start % 60:02} to {meeting_end // 60:02}:{meeting_end % 60:02}")
 else:
-    print("No possible time found for the meeting.")
+    print("No available time found for the meeting.")

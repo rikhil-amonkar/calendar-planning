@@ -18,6 +18,8 @@ for model in args.model:
         model = "o3-mini-2025-01-31"
     elif model == "gpt-4o-mini":
         model = "gpt-4o-mini-2024-07-18"
+    elif '/' in model:
+        model = model.split('/')[-1]
     for task in tasks:
         input_folder = f"../output/SMT/{model}/{task}/code"
         output_folder = f"../output/SMT/{model}/{task}/output/"

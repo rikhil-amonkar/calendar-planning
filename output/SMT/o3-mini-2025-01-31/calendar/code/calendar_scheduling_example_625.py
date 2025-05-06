@@ -1,89 +1,77 @@
-from z3 import Solver, Int, Or, Implies, sat
+from z3 import *
 
-# Meeting parameters:
-duration = 30  # meeting duration in minutes
-start = Int("start")  # meeting start time in minutes from midnight
-day = Int("day")      # day: 0 for Monday, 1 for Tuesday
+# Helper function: Convert a time string "HH:MM" to minutes after midnight.
+def time_to_minutes(t):
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
 
-# Work hours: 9:00 (540 minutes) to 17:00 (1020 minutes)
-WORK_START = 540
-WORK_END = 1020
+# Meeting configuration
+meeting_duration = 30  # 30 minutes meeting
 
-solver = Solver()
-solver.add(start >= WORK_START, start + duration <= WORK_END)
-solver.add(Or(day == 0, day == 1))
+# Workday boundaries (for both days)
+work_start = time_to_minutes("9:00")   # 540 minutes
+work_end   = time_to_minutes("17:00")  # 1020 minutes
 
-# Jeffrey is free the entire week, so no constraints for him.
+# Harold's busy intervals on Monday and Tuesday:
+# Monday busy intervals for Harold:
+monday_events = [
+    (time_to_minutes("9:00"), time_to_minutes("10:00")),
+    (time_to_minutes("10:30"), time_to_minutes("17:00"))
+]
+# Tuesday busy intervals for Harold:
+tuesday_events = [
+    (time_to_minutes("9:00"), time_to_minutes("9:30")),
+    (time_to_minutes("10:30"), time_to_minutes("11:30")),
+    (time_to_minutes("12:30"), time_to_minutes("13:30")),
+    (time_to_minutes("14:30"), time_to_minutes("15:30")),
+    (time_to_minutes("16:00"), time_to_minutes("17:00"))
+]
 
-# Harold's busy schedule in minutes from midnight:
-# Monday:
-#   9:00 to 10:00   -> (540, 600)
-#   10:30 to 17:00  -> (630, 1020)
-harold_monday_busy = [(540, 600), (630, 1020)]
-# Tuesday:
-#   9:00 to 9:30   -> (540, 570)
-#   10:30 to 11:30 -> (630, 690)
-#   12:30 to 13:30 -> (750, 810)
-#   14:30 to 15:30 -> (870, 930)
-#   16:00 to 17:00 -> (960, 1020)
-harold_tuesday_busy = [(540, 570), (630, 690), (750, 810), (870, 930), (960, 1020)]
+# Jeffrey has no meetings during the week.
 
-# Helper function: meeting [start, start+duration) must not overlap busy interval [busy_start, busy_end)
-def non_overlap(busy_start, busy_end):
-    return Or(start + duration <= busy_start, start >= busy_end)
+# Create a Z3 solver instance.
+s = Solver()
 
-# Add Harold's busy time constraints for Monday:
-for b_start, b_end in harold_monday_busy:
-    solver.add(Implies(day == 0, non_overlap(b_start, b_end)))
-    
-# Add Harold's busy time constraints for Tuesday:
-for b_start, b_end in harold_tuesday_busy:
-    solver.add(Implies(day == 1, non_overlap(b_start, b_end)))
+# meeting_start is an integer variable representing the start time in minutes.
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-# Additional scheduling preferences:
-# 1. Harold would like to avoid more meetings on Monday.
-#    (So we try Tuesday first and only fall back to Monday if necessary.)
-# 2. On Tuesday, Harold prefers meetings to be scheduled before 14:30.
-#    That means the meeting should finish by 14:30 (which is 870 minutes from midnight).
-solver.add(Implies(day == 1, start + duration <= 870))
+# day variable: 0 represents Monday, 1 represents Tuesday.
+day = Int("day")
+s.add(Or(day == 0, day == 1))  # day must be either Monday or Tuesday
 
-# We now try to find a solution.
-# First, attempt to schedule on Tuesday (day == 1) as preferred.
-found = False
-meeting_start = None
-meeting_day = None
+# Common constraints: meeting must be within work hours.
+s.add(meeting_start >= work_start)
+s.add(meeting_end <= work_end)
 
-for t in range(WORK_START, WORK_END - duration + 1):
-    solver.push()
-    solver.add(start == t, day == 1)
-    if solver.check() == sat:
-        model = solver.model()
-        meeting_start = model[start].as_long()
-        meeting_day = model[day].as_long()  # should be 1 for Tuesday
-        found = True
-        solver.pop()
-        break
-    solver.pop()
+# Add day-specific constraints:
+# For Monday: the meeting must not overlap any of Monday busy intervals.
+for (start_busy, end_busy) in monday_events:
+    s.add(Implies(day == 0, Or(meeting_end <= start_busy, meeting_start >= end_busy)))
 
-# If no Tuesday slot is found, then try Monday.
-if not found:
-    for t in range(WORK_START, WORK_END - duration + 1):
-        solver.push()
-        solver.add(start == t, day == 0)
-        if solver.check() == sat:
-            model = solver.model()
-            meeting_start = model[start].as_long()
-            meeting_day = model[day].as_long()  # should be 0 for Monday
-            found = True
-            solver.pop()
-            break
-        solver.pop()
+# For Tuesday: the meeting must not overlap any of Tuesday busy intervals.
+for (start_busy, end_busy) in tuesday_events:
+    s.add(Implies(day == 1, Or(meeting_end <= start_busy, meeting_start >= end_busy)))
+# And Harold would like the meeting to be scheduled Tuesday before 14:30 if on Tuesday.
+s.add(Implies(day == 1, meeting_end <= time_to_minutes("14:30")))
 
-if found:
-    meeting_end = meeting_start + duration
-    start_hour, start_min = divmod(meeting_start, 60)
-    end_hour, end_min = divmod(meeting_end, 60)
-    day_str = "Monday" if meeting_day == 0 else "Tuesday"
-    print(f"A valid meeting time is on {day_str} from {start_hour:02d}:{start_min:02d} to {end_hour:02d}:{end_min:02d}.")
+# Check if a solution exists.
+if s.check() == sat:
+    model = s.model()
+    chosen_day = model[day].as_long()
+    start = model[meeting_start].as_long()
+    end = start + meeting_duration
+
+    # Helper function to convert minutes to HH:MM format.
+    def minutes_to_time(m):
+        h = m // 60
+        m = m % 60
+        return f"{h:02d}:{m:02d}"
+
+    day_str = "Monday" if chosen_day == 0 else "Tuesday"
+    print("A possible meeting time:")
+    print(f"Day:   {day_str}")
+    print(f"Start: {minutes_to_time(start)}")
+    print(f"End:   {minutes_to_time(end)}")
 else:
     print("No valid meeting time could be found.")

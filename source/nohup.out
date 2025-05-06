@@ -1,0 +1,112 @@
+Running model: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+Loading checkpoint shards:   0%|          | 0/17 [00:00<?, ?it/s]Loading checkpoint shards:   6%|▌         | 1/17 [00:01<00:21,  1.34s/it]Loading checkpoint shards:  12%|█▏        | 2/17 [00:02<00:16,  1.13s/it]Loading checkpoint shards:  18%|█▊        | 3/17 [00:02<00:09,  1.44it/s]Loading checkpoint shards:  24%|██▎       | 4/17 [00:03<00:10,  1.23it/s]Loading checkpoint shards:  29%|██▉       | 5/17 [00:04<00:10,  1.16it/s]Loading checkpoint shards:  35%|███▌      | 6/17 [00:05<00:09,  1.10it/s]Loading checkpoint shards:  41%|████      | 7/17 [00:06<00:09,  1.08it/s]Loading checkpoint shards:  47%|████▋     | 8/17 [00:07<00:08,  1.06it/s]Loading checkpoint shards:  53%|█████▎    | 9/17 [00:08<00:07,  1.06it/s]Loading checkpoint shards:  59%|█████▉    | 10/17 [00:09<00:06,  1.04it/s]Loading checkpoint shards:  65%|██████▍   | 11/17 [00:10<00:05,  1.04it/s]Loading checkpoint shards:  71%|███████   | 12/17 [00:11<00:04,  1.03it/s]Loading checkpoint shards:  76%|███████▋  | 13/17 [00:12<00:03,  1.04it/s]Loading checkpoint shards:  82%|████████▏ | 14/17 [00:13<00:02,  1.03it/s]Loading checkpoint shards:  88%|████████▊ | 15/17 [00:14<00:01,  1.03it/s]Loading checkpoint shards:  94%|█████████▍| 16/17 [00:15<00:00,  1.02it/s]Loading checkpoint shards: 100%|██████████| 17/17 [00:16<00:00,  1.04s/it]Loading checkpoint shards: 100%|██████████| 17/17 [00:16<00:00,  1.04it/s]
+The attention mask and the pad token id were not set. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+Setting `pad_token_id` to `eos_token_id`:128001 for open-end generation.
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+Running task: trip
+Running example: trip_planning_example_1500
+Traceback (most recent call last):
+  File "/home/hz466/calendar-planning/source/generate_smt_input.py", line 76, in <module>
+    response_txt = asyncio.run(run_model(prompt))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 674, in run_until_complete
+    self.run_forever()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 641, in run_forever
+    self._run_once()
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 1987, in _run_once
+    handle._run()
+  File "/usr/lib/python3.12/asyncio/events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "/home/hz466/calendar-planning/source/generate_smt_input.py", line 50, in run_model
+    response = await ai.chat_round_str(prompt)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/kani.py", line 229, in chat_round_str
+    msg = await self.chat_round(query, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/kani.py", line 224, in chat_round
+    completion = await self.get_model_completion(**kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/kani.py", line 376, in get_model_completion
+    completion = await self.engine.predict(messages=messages, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/kani/engines/huggingface/base.py", line 255, in predict
+    output = self.model.generate(input_toks, **hyperparams)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/generation/utils.py", line 2465, in generate
+    result = self._sample(
+             ^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/generation/utils.py", line 3434, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/accelerate/hooks.py", line 170, in new_forward
+    output = module._old_forward(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/utils/generic.py", line 965, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/models/llama/modeling_llama.py", line 821, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+                                       ^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/utils/generic.py", line 965, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/models/llama/modeling_llama.py", line 571, in forward
+    layer_outputs = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/accelerate/hooks.py", line 170, in new_forward
+    output = module._old_forward(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/models/llama/modeling_llama.py", line 318, in forward
+    hidden_states, self_attn_weights = self.self_attn(
+                                       ^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/accelerate/hooks.py", line 170, in new_forward
+    output = module._old_forward(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/models/llama/modeling_llama.py", line 274, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/integrations/sdpa_attention.py", line 30, in sdpa_attention_forward
+    key = repeat_kv(key, module.num_key_value_groups)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hz466/env/lib/python3.12/site-packages/transformers/integrations/sdpa_attention.py", line 14, in repeat_kv
+    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 157, in _on_sigint
+    raise KeyboardInterrupt()
+KeyboardInterrupt

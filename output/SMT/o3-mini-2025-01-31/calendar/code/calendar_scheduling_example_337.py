@@ -1,78 +1,97 @@
-from z3 import *
+from z3 import Optimize, Int, Or, sat
 
-# Create the Z3 solver instance.
-solver = Solver()
+# Helper functions for time conversion.
+def time_to_minutes(t):
+    # Convert "HH:MM" to minutes since midnight.
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
 
-# Meeting parameters:
-# Work hours: 9:00 (540 minutes) to 17:00 (1020 minutes)
-# Meeting duration: 30 minutes.
-duration = 30
-start = Int("start")  # Meeting start time in minutes since midnight
+def minutes_to_time(m):
+    # Convert minutes since midnight back to "HH:MM" format.
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Constrain meeting to be within work hours.
-solver.add(start >= 540, start + duration <= 1020)
+# Meeting configuration.
+meeting_duration = 30  # 30-minute meeting.
+work_start = time_to_minutes("9:00")   # 9:00 AM (540 minutes)
+work_end   = time_to_minutes("17:00")   # 5:00 PM (1020 minutes)
 
-# Helper function to add constraints for busy intervals.
-def add_busy_constraints(sol, busy_intervals):
-    # For each busy interval [bs, be), the meeting must either finish at or before bs 
-    # or start at or after be.
-    for bs, be in busy_intervals:
-        sol.add(Or(start + duration <= bs, start >= be))
+# Busy intervals on Monday for each participant.
+# John: 11:30-12:00, 14:00-14:30.
+john_busy = [
+    (time_to_minutes("11:30"), time_to_minutes("12:00")),
+    (time_to_minutes("14:00"), time_to_minutes("14:30"))
+]
 
-# John's busy intervals:
-#   11:30 to 12:00 → [690, 720)
-#   14:00 to 14:30 → [840, 870)
-john_busy = [(690, 720), (840, 870)]
-add_busy_constraints(solver, john_busy)
+# Megan: 12:00-12:30, 14:00-15:00, 15:30-16:00.
+megan_busy = [
+    (time_to_minutes("12:00"), time_to_minutes("12:30")),
+    (time_to_minutes("14:00"), time_to_minutes("15:00")),
+    (time_to_minutes("15:30"), time_to_minutes("16:00"))
+]
 
-# Megan's busy intervals:
-#   12:00 to 12:30 → [720, 750)
-#   14:00 to 15:00 → [840, 900)
-#   15:30 to 16:00 → [930, 960)
-megan_busy = [(720, 750), (840, 900), (930, 960)]
-add_busy_constraints(solver, megan_busy)
+# Brandon: no meetings.
+brandon_busy = []  # No busy intervals.
 
-# Brandon has no meetings, so no constraints are added.
+# Kimberly: 9:00-9:30, 10:00-10:30, 11:00-14:30, 15:00-16:00, 16:30-17:00.
+kimberly_busy = [
+    (time_to_minutes("9:00"),  time_to_minutes("9:30")),
+    (time_to_minutes("10:00"), time_to_minutes("10:30")),
+    (time_to_minutes("11:00"), time_to_minutes("14:30")),
+    (time_to_minutes("15:00"), time_to_minutes("16:00")),
+    (time_to_minutes("16:30"), time_to_minutes("17:00"))
+]
 
-# Kimberly's busy intervals:
-#   9:00 to 9:30   → [540, 570)
-#   10:00 to 10:30 → [600, 630)
-#   11:00 to 14:30 → [660, 870)
-#   15:00 to 16:00 → [900, 960)
-#   16:30 to 17:00 → [990, 1020)
-kimberly_busy = [(540, 570), (600, 630), (660, 870), (900, 960), (990, 1020)]
-add_busy_constraints(solver, kimberly_busy)
+# Sean: 10:00-11:00, 11:30-14:00, 15:00-15:30.
+sean_busy = [
+    (time_to_minutes("10:00"), time_to_minutes("11:00")),
+    (time_to_minutes("11:30"), time_to_minutes("14:00")),
+    (time_to_minutes("15:00"), time_to_minutes("15:30"))
+]
 
-# Sean's busy intervals:
-#   10:00 to 11:00 → [600, 660)
-#   11:30 to 14:00 → [690, 840)
-#   15:00 to 15:30 → [900, 930)
-sean_busy = [(600, 660), (690, 840), (900, 930)]
-add_busy_constraints(solver, sean_busy)
+# Lori: 9:00-9:30, 10:30-12:00, 13:00-14:30, 16:00-16:30.
+lori_busy = [
+    (time_to_minutes("9:00"),  time_to_minutes("9:30")),
+    (time_to_minutes("10:30"), time_to_minutes("12:00")),
+    (time_to_minutes("13:00"), time_to_minutes("14:30")),
+    (time_to_minutes("16:00"), time_to_minutes("16:30"))
+]
 
-# Lori's busy intervals:
-#   9:00 to 9:30   → [540, 570)
-#   10:30 to 12:00 → [630, 720)
-#   13:00 to 14:30 → [780, 870)
-#   16:00 to 16:30 → [960, 990)
-lori_busy = [(540, 570), (630, 720), (780, 870), (960, 990)]
-add_busy_constraints(solver, lori_busy)
+# Create a Z3 optimizer.
+opt = Optimize()
 
-# Find the earliest valid meeting time.
-found = False
-for t in range(540, 1020 - duration + 1):
-    solver.push()  # Save the current solver state
-    solver.add(start == t)
-    if solver.check() == sat:
-        meeting_start = t
-        meeting_end = t + duration
-        sh, sm = divmod(meeting_start, 60)
-        eh, em = divmod(meeting_end, 60)
-        print("A valid meeting time is from {:02d}:{:02d} to {:02d}:{:02d}".format(sh, sm, eh, em))
-        found = True
-        solver.pop()  # Restore state before breaking
-        break
-    solver.pop()  # Restore state and try next minute
+# Decision variable: the meeting start time (in minutes from midnight on Monday).
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-if not found:
+# Constrain meeting time to lie within work hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
+
+# Function to add busy constraints: the meeting must not overlap with busy intervals.
+def add_busy_constraints(busy_intervals):
+    for b_start, b_end in busy_intervals:
+        # Meeting must end before a busy interval starts OR start after it ends.
+        opt.add(Or(meeting_end <= b_start, meeting_start >= b_end))
+
+# Add busy constraints for each participant.
+add_busy_constraints(john_busy)
+add_busy_constraints(megan_busy)
+add_busy_constraints(brandon_busy)  # This one adds nothing.
+add_busy_constraints(kimberly_busy)
+add_busy_constraints(sean_busy)
+add_busy_constraints(lori_busy)
+
+# Objective: schedule the meeting at the earliest available time.
+opt.minimize(meeting_start)
+
+# Solve and print the solution.
+if opt.check() == sat:
+    model = opt.model()
+    start_time = model[meeting_start].as_long()
+    end_time = start_time + meeting_duration
+    print("A possible meeting time on Monday:")
+    print("Start:", minutes_to_time(start_time))
+    print("End:  ", minutes_to_time(end_time))
+else:
     print("No valid meeting time could be found.")

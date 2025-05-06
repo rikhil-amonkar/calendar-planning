@@ -1,42 +1,38 @@
 from z3 import *
 
+# Define travel times (in minutes)
+travel_times = {
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Chinatown', 'Golden Gate Park'): 23,
+}
+
+# Define a meeting time and duration (in minutes after 9:00 AM)
+meeting_time = (960, 105)  # David will be at Chinatown from 4:00 PM to 9:45 PM (960 minutes after midnight)
+
 # Initialize the Z3 solver
 solver = Solver()
 
-# Define the time variables
-depart_chinatown = Real('depart_chinatown')  # Time we leave Golden Gate Park to head to Chinatown
-arrive_chinatown = Real('arrive_chinatown')  # Time we arrive at Chinatown
-depart_david = Real('depart_david')  # Time we leave Chinatown after meeting with David
+# Create variables for the meeting start and end times
+meeting_start = Int('meeting_start')
+meeting_end = Int('meeting_end')
 
-# Constants
-travel_time_gg_park_to_chinatown = 23  # minutes
-meeting_duration = 105                   # minutes
-david_start = 16.0                       # 4:00 PM in hours
-david_end = 21.75                        # 9:45 PM in hours
-arrival_time_gg_park = 9.0               # 9:00 AM in hours
+# Add constraints for the meeting based on David's availability
+solver.add(meeting_start >= meeting_time[0])  # Must start after David is available (4:00 PM)
+solver.add(meeting_end == meeting_start + meeting_time[1])  # Calculate end time
 
-# Constraints
-solver.add(arrive_chinatown == depart_chinatown + travel_time_gg_park_to_chinatown)
-solver.add(depart_chinatown >= arrival_time_gg_park)  # Must leave after arriving at Golden Gate Park
-solver.add(depart_chinatown <= david_end - meeting_duration)  # Must leave in time to meet for 105 minutes
-solver.add(arrive_chinatown >= david_start)  # Must arrive at or after David starts being available
-solver.add(depart_david >= arrive_chinatown + meeting_duration)  # Must leave after meeting for 105 minutes
+# Add travel time constraints from Golden Gate Park
+solver.add(meeting_start >= 540 + travel_times[('Golden Gate Park', 'Chinatown')])  # Must start after 9:00 AM + travel time
 
-# Maximize the meeting time with David (ideally want to meet for 105 minutes)
-meet_time = min(depart_david - arrive_chinatown, meeting_duration)
+# Objective: maximize the meeting time (not strictly necessary in this simple case)
+total_meeting_time = meeting_end - meeting_start
+solver.maximize(total_meeting_time)
 
-# We want to maximize the meeting time
-solver.maximize(meet_time)
-
-# Check if the solution is satisfiable and output the result
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    depart_chinatown_val = model[depart_chinatown].as_decimal(2)
-    arrive_chinatown_val = model[arrive_chinatown].as_decimal(2)
-    depart_david_val = model[depart_david].as_decimal(2)
-
-    print(f"Depart from Golden Gate Park to Chinatown at: {depart_chinatown_val} hours")
-    print(f"Arrive at Chinatown at: {arrive_chinatown_val} hours")
-    print(f"Depart from Chinatown after meeting David at: {depart_david_val} hours")
+    start = model[meeting_start].as_long()
+    end = model[meeting_end].as_long()
+    print("SOLUTION:")
+    print(f"Meeting starts at {start} minutes after midnight, ends at {end} minutes after midnight.")
 else:
-    print("No valid schedule found.")
+    print("SOLUTION: No valid meeting schedule found.")

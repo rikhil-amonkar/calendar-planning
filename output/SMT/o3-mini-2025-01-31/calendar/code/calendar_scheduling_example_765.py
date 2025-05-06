@@ -1,110 +1,114 @@
-from z3 import Solver, Int, Or, sat
+from z3 import Optimize, Int, Or, If, sat
 
-# Meeting duration (30 minutes)
-duration = 30
+# Helper functions for converting times.
+def time_to_minutes(t):
+    # Converts a "HH:MM" time string into minutes past midnight.
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
 
-# Meeting start variable is represented in minutes after midnight.
-start = Int("start")
+def minutes_to_time(m):
+    # Converts minutes past midnight into a "HH:MM" time string.
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Define work hours in minutes (9:00=540, 17:00=1020)
-WORK_START = 540
-WORK_END = 1020
+# Meeting configuration.
+meeting_duration = 30  # half-hour meeting.
+work_start = time_to_minutes("9:00")   # 9:00 AM
+work_end   = time_to_minutes("17:00")   # 5:00 PM
 
-# Day encoding: 0 = Monday, 1 = Tuesday, 2 = Wednesday.
-candidate_days = [0, 1, 2]
+# Allowed meeting days: Monday=0, Tuesday=1, Wednesday=2.
+allowed_days = [0, 1, 2]
 
-# Joshua's busy schedule (times in minutes after midnight):
-# Monday:
-#    15:00 to 15:30 -> (900, 930)
-# Tuesday:
-#    11:30 to 12:00 -> (690, 720)
-#    13:00 to 13:30 -> (780, 810)
-#    14:30 to 15:00 -> (870, 900)
-# Wednesday:
-#    (No meetings for Joshua on Wednesday)
+# Busy intervals for Joshua.
+# Monday: 15:00 to 15:30.
+# Tuesday: 11:30 to 12:00, 13:00 to 13:30, 14:30 to 15:00.
+# Wednesday: No meetings.
 joshua_busy = {
-    0: [(900, 930)],
-    1: [(690, 720), (780, 810), (870, 900)],
-    2: []
+    0: [(time_to_minutes("15:00"), time_to_minutes("15:30"))],
+    1: [
+        (time_to_minutes("11:30"), time_to_minutes("12:00")),
+        (time_to_minutes("13:00"), time_to_minutes("13:30")),
+        (time_to_minutes("14:30"), time_to_minutes("15:00"))
+    ],
+    2: []  # No busy intervals on Wednesday.
 }
 
-# Joyce's busy schedule:
-# Monday:
-#    9:00 to 9:30  -> (540, 570)
-#    10:00 to 11:00 -> (600, 660)
-#    11:30 to 12:30 -> (690, 750)
-#    13:00 to 15:00 -> (780, 900)
-#    15:30 to 17:00 -> (930, 1020)
-# Tuesday:
-#    9:00 to 17:00  -> (540, 1020)
-# Wednesday:
-#    9:00 to 9:30 -> (540, 570)
-#    10:00 to 11:00 -> (600, 660)
-#    12:30 to 15:30 -> (750, 930)
-#    16:00 to 16:30 -> (960, 990)
+# Busy intervals for Joyce.
+# Monday: 9:00-9:30, 10:00-11:00, 11:30-12:30, 13:00-15:00, 15:30-17:00.
+# Tuesday: 9:00-17:00 (full day busy).
+# Wednesday: 9:00-9:30, 10:00-11:00, 12:30-15:30, 16:00-16:30.
 joyce_busy = {
-    0: [(540, 570), (600, 660), (690, 750), (780, 900), (930, 1020)],
-    1: [(540, 1020)],  # Fully busy
-    2: [(540, 570), (600, 660), (750, 930), (960, 990)]
+    0: [
+        (time_to_minutes("9:00"),  time_to_minutes("9:30")),
+        (time_to_minutes("10:00"), time_to_minutes("11:00")),
+        (time_to_minutes("11:30"), time_to_minutes("12:30")),
+        (time_to_minutes("13:00"), time_to_minutes("15:00")),
+        (time_to_minutes("15:30"), time_to_minutes("17:00"))
+    ],
+    1: [
+        (time_to_minutes("9:00"),  time_to_minutes("17:00"))
+    ],
+    2: [
+        (time_to_minutes("9:00"),  time_to_minutes("9:30")),
+        (time_to_minutes("10:00"), time_to_minutes("11:00")),
+        (time_to_minutes("12:30"), time_to_minutes("15:30")),
+        (time_to_minutes("16:00"), time_to_minutes("16:30"))
+    ]
 }
 
-# Joyce has a preference: she would rather not meet on Monday before 12:00.
-# We enforce that if the meeting is on Monday (day 0), then the meeting must start at 12:00 (720 minutes) or later.
-def apply_joyce_preference(day, solver):
-    if day == 0:
-        solver.add(start >= 720)
+# Create the Z3 optimizer instance.
+opt = Optimize()
 
-# Helper function:
-# The meeting interval [start, start+duration) must NOT overlap with a busy interval [busy_start, busy_end).
-def non_overlap(busy_start, busy_end):
-    # Either the meeting ends before busy interval starts,
-    # or the meeting starts after the busy interval ends.
-    return Or(start + duration <= busy_start, start >= busy_end)
+# Decision Variables:
+# meeting_day: integer representing the day (Monday=0, Tuesday=1, Wednesday=2).
+meeting_day = Int("meeting_day")
+opt.add(Or([meeting_day == d for d in allowed_days]))
 
-found = False
-meeting_day = None
-meeting_start_val = None
+# meeting_start: meeting start time (in minutes since midnight) on the chosen day.
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-# Iterate over candidate days (ordered) to satisfy the "earliest availability" request.
-for day in candidate_days:
-    solver = Solver()
-    # Meeting must lie within work hours.
-    solver.add(start >= WORK_START, start + duration <= WORK_END)
-    
-    # Apply Joyce's scheduling preference for Monday.
-    apply_joyce_preference(day, solver)
-    
-    # Add Joshua's busy constraints for this day.
-    for b_start, b_end in joshua_busy.get(day, []):
-        solver.add(non_overlap(b_start, b_end))
-    
-    # Add Joyce's busy constraints for this day.
-    for b_start, b_end in joyce_busy.get(day, []):
-        solver.add(non_overlap(b_start, b_end))
-    
-    # Iterate minute-by-minute to ensure we find the earliest available meeting time on this day.
-    for t in range(WORK_START, WORK_END - duration + 1):
-        # When day==0, ensure t satisfies Joyce’s preference (t >= 720)
-        if day == 0 and t < 720:
-            continue
-        solver.push()
-        solver.add(start == t)
-        if solver.check() == sat:
-            meeting_start_val = t
-            meeting_day = day
-            found = True
-            solver.pop()
-            break
-        solver.pop()
-    
-    if found:
-        break
+# Hard constraints: meeting must be within work hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
 
-if found:
-    meeting_end_val = meeting_start_val + duration
-    start_hr, start_min = divmod(meeting_start_val, 60)
-    end_hr, end_min = divmod(meeting_end_val, 60)
-    day_names = {0: "Monday", 1: "Tuesday", 2: "Wednesday"}
-    print(f"A valid meeting time is on {day_names[meeting_day]} from {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d}.")
+# Function to add busy time constraints.
+def add_busy_constraints(schedule):
+    # For each allowed day, ensure that if the meeting is on that day,
+    # it does not overlap with any busy interval.
+    for d in allowed_days:
+        intervals = schedule.get(d, [])
+        for b_start, b_end in intervals:
+            opt.add(If(meeting_day == d,
+                       Or(meeting_end <= b_start, meeting_start >= b_end),
+                       True))
+
+# Add busy constraints for both Joshua and Joyce.
+add_busy_constraints(joshua_busy)
+add_busy_constraints(joyce_busy)
+
+# Joyce's preference: she would rather not meet on Monday before 12:00.
+# We add this as a soft constraint; if meeting is on Monday, then ideally meeting_start >= 12:00.
+no_early_monday = If(meeting_day == 0, meeting_start >= time_to_minutes("12:00"), True)
+opt.add_soft(no_early_monday, weight=1, id="no_monday_before_12")
+
+# We also set an objective to choose the earliest available meeting time;
+# we define an overall metric as day*1440 + meeting_start (prioritizing earlier days and times).
+overall_time = meeting_day * 1440 + meeting_start
+opt.minimize(overall_time)
+
+# Solve the scheduling problem.
+if opt.check() == sat:
+    model = opt.model()
+    chosen_day = model[meeting_day].as_long()
+    chosen_start = model[meeting_start].as_long()
+    chosen_end = chosen_start + meeting_duration
+
+    # Map day integers to day names.
+    day_mapping = {0: "Monday", 1: "Tuesday", 2: "Wednesday"}
+    print("A possible meeting time:")
+    print("Day:   ", day_mapping[chosen_day])
+    print("Start: ", minutes_to_time(chosen_start))
+    print("End:   ", minutes_to_time(chosen_end))
 else:
-    print("No valid meeting time could be found that meets all constraints.")
+    print("No valid meeting time could be found.")

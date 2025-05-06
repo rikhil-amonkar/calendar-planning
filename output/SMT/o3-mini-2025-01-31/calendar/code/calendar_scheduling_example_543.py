@@ -1,60 +1,68 @@
-from z3 import Solver, Int, Or, sat
+from z3 import *
 
-# Create a Z3 solver instance.
-solver = Solver()
+# Convert a time string HH:MM to minutes
+def time_to_minutes(t):
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
 
-# Meeting parameters:
-duration = 60  # meeting duration in minutes (1 hour)
-start = Int("start")  # meeting start time in minutes since midnight
+# Meeting configuration (one hour meeting)
+meeting_duration = 60
 
-# Work hours: from 9:00 (540 minutes) to 17:00 (1020 minutes)
-solver.add(start >= 540, start + duration <= 1020)
+# Workday boundaries in minutes (9:00 to 17:00)
+work_start = time_to_minutes("9:00")   # 540 minutes
+work_end = time_to_minutes("17:00")    # 1020 minutes
 
-# Helper function to add busy interval constraints.
-def add_busy_constraints(solver, busy_intervals):
-    # For each busy interval [b_start, b_end), ensure that the meeting
-    # [start, start + duration) does not overlap with it.
-    for b_start, b_end in busy_intervals:
-        solver.add(Or(start + duration <= b_start, start >= b_end))
-
-# James's busy intervals (in minutes):
-# 11:30 to 12:00 -> [690, 720)
-# 14:30 to 15:00 -> [870, 900)
-james_busy = [
-    (690, 720),
-    (870, 900)
+# Existing events from both participants in minutes.
+# Each event is represented as a (start, end) tuple.
+# James's events on Monday:
+james_events = [
+    (time_to_minutes("11:30"), time_to_minutes("12:00")),
+    (time_to_minutes("14:30"), time_to_minutes("15:00"))
 ]
-add_busy_constraints(solver, james_busy)
 
-# John's busy intervals (in minutes):
-# 9:30 to 11:00  -> [570, 660)
-# 11:30 to 12:00 -> [690, 720)
-# 12:30 to 13:30 -> [750, 810)
-# 14:30 to 16:30 -> [870, 990)
-john_busy = [
-    (570, 660),
-    (690, 720),
-    (750, 810),
-    (870, 990)
+# John's events on Monday:
+john_events = [
+    (time_to_minutes("9:30"), time_to_minutes("11:00")),
+    (time_to_minutes("11:30"), time_to_minutes("12:00")),
+    (time_to_minutes("12:30"), time_to_minutes("13:30")),
+    (time_to_minutes("14:30"), time_to_minutes("16:30"))
 ]
-add_busy_constraints(solver, john_busy)
 
-# Search for the earliest valid meeting time.
-found = False
-# The latest possible start time is 1020 - 60 = 960.
-for t in range(540, 961):
-    solver.push()
-    solver.add(start == t)
-    if solver.check() == sat:
-        meeting_start = t
-        meeting_end = t + duration
-        sh, sm = divmod(meeting_start, 60)
-        eh, em = divmod(meeting_end, 60)
-        print(f"A valid meeting time is from {sh:02d}:{sm:02d} to {eh:02d}:{em:02d}.")
-        found = True
-        solver.pop()
-        break
-    solver.pop()
+# Combine all events since the meeting must avoid all.
+all_events = james_events + john_events
 
-if not found:
+# Create a Z3 solver instance
+s = Solver()
+
+# meeting_start is the starting time in minutes for the meeting.
+meeting_start = Int("meeting_start")
+
+# The meeting must start after the work day begins and end by or before work_end.
+s.add(meeting_start >= work_start)
+s.add(meeting_start + meeting_duration <= work_end)
+
+# For each blocked event, the meeting must not overlap.
+# To avoid overlapping with an event (event_start, event_end),
+# we add the constraint: meeting_end <= event_start OR meeting_start >= event_end.
+meeting_end = meeting_start + meeting_duration
+
+for (e_start, e_end) in all_events:
+    s.add(Or(meeting_end <= e_start, meeting_start >= e_end))
+
+# Check if a solution exists
+if s.check() == sat:
+    model = s.model()
+    start_minutes = model[meeting_start].as_long()
+    end_minutes = start_minutes + meeting_duration
+
+    # Convert minutes back to HH:MM format.
+    def minutes_to_time(m):
+        h = m // 60
+        m = m % 60
+        return f"{h:02d}:{m:02d}"
+
+    print("A possible meeting time:")
+    print(f"Start: {minutes_to_time(start_minutes)}")
+    print(f"End:   {minutes_to_time(end_minutes)}")
+else:
     print("No valid meeting time could be found.")

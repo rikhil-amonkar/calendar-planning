@@ -1,68 +1,76 @@
-from z3 import Optimize, Int, sat
+from z3 import Optimize, Int, Bool, If, And, Or, sat
 
-# Create an optimizer instance.
+# ----------------------------------------------------------------------------
+# Given travel times (in minutes)
+# Russian Hill to Richmond District: 14.
+# (The reverse is given as 13, but we only need the travel time from your start.)
+travel_time = {("Russian Hill", "Richmond District"): 14}
+
+# ----------------------------------------------------------------------------
+# Friend data for Daniel: (location, avail_start, avail_end, min_duration)
+# Daniel is at Richmond District from 7:00PM to 8:15PM.
+# 7:00PM => 1140 minutes; 8:15PM => 1215 minutes.
+# Minimum meeting duration is 75 minutes.
+friend = ("Richmond District", 1140, 1215, 75)
+friend_name = "Daniel"
+
+# ----------------------------------------------------------------------------
+# Starting parameters.
+start_loc = "Russian Hill"
+start_time = 540  # 9:00AM in minutes after midnight
+
+# ----------------------------------------------------------------------------
+# Create the Z3 optimizer.
 opt = Optimize()
 
-# All times are measured in minutes after 9:00AM.
-# Variables:
-#   d       : departure time from Russian Hill (in minutes after 9:00AM)
-#   m_start : meeting start time at Richmond District (in minutes after 9:00AM)
-#   m_end   : meeting end time at Richmond District (in minutes after 9:00AM)
-d = Int('d')
-m_start = Int('m_start')
-m_end = Int('m_end')
+# Decision variables:
+# x: Boolean, True if meeting with Daniel is scheduled.
+# A: Integer, arrival time (in minutes) at Daniel's location.
+# order: Integer, the order of the meeting if scheduled (here only one meeting, so order is 0 if scheduled).
+x = Bool("x_0")
+A = Int("A_0")
+order = Int("order_0")
 
-# Given travel time from Russian Hill to Richmond District is 14 minutes.
-rh_to_rd = 14
+# When meeting is scheduled, order must be within [0,0]; if not scheduled, order is -1.
+opt.add(If(x, And(order >= 0, order < 1), order == -1))
+opt.add(A >= 0)
 
-# Daniel's availability at Richmond District:
-# 7:00PM is 600 minutes after 9:00AM (7:00PM = 9:00AM + 10 hours = 600 minutes),
-# 8:15PM is 675 minutes after 9:00AM.
-daniel_avail_from = 600
-daniel_avail_until = 675
+# Constraint: For the meeting with Daniel (if scheduled) as the first meeting,
+# ensure travel time is met from the starting location.
+# Russian Hill to Richmond District takes 14 minutes.
+opt.add(Or(Not(x), order != 0, A >= start_time + travel_time[(start_loc, friend[0])]))
 
-# CONSTRAINTS:
+# Define the meeting start time as the later of your arrival time (A) or Daniel's available start time.
+meeting_start = If(A < friend[1], friend[1], A)
 
-# 1. You arrive at Russian Hill at 9:00AM, so you cannot depart before 9:00AM.
-opt.add(d >= 0)
+# Constraint: Ensure that the meeting lasts at least the required duration (75 minutes)
+# and finishes by Daniel's available end time.
+opt.add(Or(Not(x), meeting_start + friend[3] <= friend[2]))
 
-# 2. When you depart from Russian Hill at time d, you arrive at Richmond District at:
-arrival_at_rd = d + rh_to_rd
+# ----------------------------------------------------------------------------
+# Objective: Maximize the number of meetings scheduled.
+opt.maximize(If(x, 1, 0))
 
-# 3. The meeting with Daniel cannot start before you arrive at Richmond District,
-#    and cannot start before Daniel's availability begins.
-opt.add(m_start >= arrival_at_rd)
-opt.add(m_start >= daniel_avail_from)
-
-# 4. The meeting must finish no later than Daniel's availability ends.
-opt.add(m_end <= daniel_avail_until)
-
-# 5. You'd like to meet Daniel for at least 75 minutes.
-opt.add(m_end - m_start >= 75)
-
-# Objective: maximize the meeting duration.
-meeting_duration = m_end - m_start
-opt.maximize(meeting_duration)
-
-# Solve the scheduling problem.
+# ----------------------------------------------------------------------------
+# Solve the model and output the schedule.
 if opt.check() == sat:
     model = opt.model()
-    d_val = model[d].as_long()
-    m_start_val = model[m_start].as_long()
-    m_end_val = model[m_end].as_long()
+    if model.evaluate(x):
+        arrival_time = model.evaluate(A).as_long()
+        # The meeting starts at the later of arrival_time and friend[1] (Daniel's start avail time)
+        meeting_start_time = friend[1] if arrival_time < friend[1] else arrival_time
+        meeting_end_time = meeting_start_time + friend[3]
 
-    # Helper function: convert minutes after 9:00AM to HH:MM format.
-    def to_time(minutes_after_9):
-        total_minutes = 9 * 60 + minutes_after_9
-        hour = total_minutes // 60
-        minute = total_minutes % 60
-        return f"{hour:02d}:{minute:02d}"
+        def to_time(minutes):
+            h = minutes // 60
+            m = minutes % 60
+            return f"{h:02d}:{m:02d}"
 
-    print("Optimal Schedule:")
-    print(f"  Depart Russian Hill at: {to_time(d_val)} (9:00AM + {d_val} minutes)")
-    print(f"  Arrive at Richmond District at: {to_time(d_val + rh_to_rd)} (travel time = {rh_to_rd} minutes)")
-    print(f"  Meeting with Daniel starts at: {to_time(m_start_val)}")
-    print(f"  Meeting with Daniel ends at: {to_time(m_end_val)}")
-    print(f"  Total meeting duration: {m_end_val - m_start_val} minutes")
+        print("Optimal meeting schedule:")
+        print(f"Meet {friend_name} at {friend[0]}")
+        print("Arrival Time:", to_time(arrival_time))
+        print("Meeting Time:", to_time(meeting_start_time), "to", to_time(meeting_end_time))
+    else:
+        print("No meeting scheduled.")
 else:
-    print("No solution found.")
+    print("No feasible schedule found.")
