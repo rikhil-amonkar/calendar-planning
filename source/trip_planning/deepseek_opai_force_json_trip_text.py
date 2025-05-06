@@ -52,7 +52,7 @@ JSON_SCHEMA = {
 }
 
 # Load the trip planning examples from the JSON file
-with open('100_trip_planning_examples.json', 'r') as file:
+with open('trip_all_1000_prompts.json', 'r') as file:
     trip_examples = json.load(file)
 
 # Argument parser to select the model
@@ -142,20 +142,20 @@ def format_itinerary_compact(itinerary):
 
 # Initialize counters
 correct_0shot = 0
-correct_5shot = 0
+# correct_5shot = 0
 total_0shot = 0
-total_5shot = 0
+# total_5shot = 0
 
 # Initialize results lists
 results_0shot = []
-results_5shot = []
+# results_5shot = []
 
 # Output files
 with open('DS-R1-FULL_forceJSON_text_trip_results.txt', 'w') as txt_file, open('DS-R1-FULL_forceJSON_text_trip_results.json', 'w') as json_file:
     start_time = datetime.datetime.now()
     
     for example_id, example in trip_examples.items():
-        for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+        for prompt_type in ['prompt_0shot']:
             prompt = example[prompt_type]
             golden_plan = example['golden_plan']
 
@@ -217,10 +217,10 @@ with open('DS-R1-FULL_forceJSON_text_trip_results.txt', 'w') as txt_file, open('
                 total_0shot += 1
                 if is_correct:
                     correct_0shot += 1
-            else:
-                total_5shot += 1
-                if is_correct:
-                    correct_5shot += 1
+            # else:
+            #     total_5shot += 1
+            #     if is_correct:
+            #         correct_5shot += 1
 
             # Prepare result entry
             result_entry = {
@@ -235,8 +235,8 @@ with open('DS-R1-FULL_forceJSON_text_trip_results.txt', 'w') as txt_file, open('
             # Store results
             if prompt_type == 'prompt_0shot':
                 results_0shot.append(result_entry)
-            else:
-                results_5shot.append(result_entry)
+            # else:
+            #     results_5shot.append(result_entry)
 
             # Format for display
             model_display = format_itinerary_compact(model_itinerary)
@@ -253,11 +253,11 @@ with open('DS-R1-FULL_forceJSON_text_trip_results.txt', 'w') as txt_file, open('
     # Save JSON results
     json.dump({
         "0shot": results_0shot,
-        "5shot": results_5shot,
+        # "5shot": results_5shot,
         "accuracy": {
-            "0shot": correct_0shot / total_0shot if total_0shot > 0 else 0,
-            "5shot": correct_5shot / total_5shot if total_5shot > 0 else 0,
-            "total": (correct_0shot + correct_5shot) / (total_0shot + total_5shot) if (total_0shot + total_5shot) > 0 else 0
+            "0shot": correct_0shot / total_0shot if total_0shot > 0 else 0
+            # "5shot": correct_5shot / total_5shot if total_5shot > 0 else 0,
+            # "total": (correct_0shot + correct_5shot) / (total_0shot + total_5shot) if (total_0shot + total_5shot) > 0 else 0
         }
     }, json_file, indent=4)
 
@@ -266,8 +266,8 @@ with open('DS-R1-FULL_forceJSON_text_trip_results.txt', 'w') as txt_file, open('
     total_time = end_time - start_time
     txt_file.write("\n=== Final Results ===\n")
     txt_file.write(f"0-shot accuracy: {correct_0shot}/{total_0shot} ({correct_0shot/total_0shot:.2%})\n")
-    txt_file.write(f"5-shot accuracy: {correct_5shot}/{total_5shot} ({correct_5shot/total_5shot:.2%})\n")
-    txt_file.write(f"Total accuracy: {correct_0shot + correct_5shot}/{total_0shot + total_5shot} ({(correct_0shot + correct_5shot)/(total_0shot + total_5shot):.2%})\n")
+    # txt_file.write(f"5-shot accuracy: {correct_5shot}/{total_5shot} ({correct_5shot/total_5shot:.2%})\n")
+    # txt_file.write(f"Total accuracy: {correct_0shot + correct_5shot}/{total_0shot + total_5shot} ({(correct_0shot + correct_5shot)/(total_0shot + total_5shot):.2%})\n")
     txt_file.write(f"Total time: {total_time}\n")
 
 print("Processing complete. Results saved to openai_forceJSON_text_trip_results.txt and openai_forceJSON_text_trip_results.json.")
