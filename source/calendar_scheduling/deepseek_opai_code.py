@@ -106,7 +106,7 @@ def normalize_time_format(time_str):
 
 # Function to categorize errors
 def categorize_error(error_message):
-    error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", "ValueError", "ImportError", "RuntimeError", "AttributeError"]
+    error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", "ValueError", "ImportError", "RuntimeError", "AttributeError", "KeyError", "IndexError"]
     for error_type in error_types:
         if error_type in error_message:
             return error_type
@@ -115,9 +115,9 @@ def categorize_error(error_message):
 # Function to run the generated Python script and capture its output
 def run_generated_code(code):
     try:
-        with open("generated_code.py", "w") as file:
+        with open("generated_code_deepseek.py", "w") as file:
             file.write(code)
-        result = subprocess.run(["python", "generated_code.py"], capture_output=True, text=True, check=True)
+        result = subprocess.run(["python", "generated_code_deepseek.py"], capture_output=True, text=True, check=True)
         output = result.stdout.strip()
         output = normalize_time_format(output)
         return output, None
@@ -150,30 +150,30 @@ def stop_after_second_triple_quote(response):
 def initialize_results_file(file_path):
     if not os.path.exists(file_path):
         with open(file_path, "w") as json_file:
-            json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+            json.dump({"0shot": []}, json_file, indent=4)
 
 # Main function to run the model
 async def run_model():
     expected_outputs_0shot = []
     predicted_outputs_0shot = []
-    expected_outputs_5shot = []
-    predicted_outputs_5shot = []
+    # expected_outputs_5shot = []
+    # predicted_outputs_5shot = []
     start_time = datetime.now()
 
-    prompts_data = load_prompts("100_prompt_scheduling.json")
+    prompts_data = load_prompts("../../data/calendar_scheduling_100.json")
     prompts_list = list(prompts_data.items())
 
     no_error_count_0shot = 0
     correct_output_count_0shot = 0
-    no_error_count_5shot = 0
-    correct_output_count_5shot = 0
+    # no_error_count_5shot = 0
+    # correct_output_count_5shot = 0
 
     # Initialize the JSON results file with original naming
     json_results_file = "DS-R1-FULL_json_coderesults.json"
     initialize_results_file(json_results_file)
 
     for key, data in prompts_list:
-        for prompt_type in ["prompt_0shot", "prompt_5shot"]:
+        for prompt_type in ["prompt_0shot"]:
             if prompt_type in data:
                 prompt = data[prompt_type]
                 golden_plan = data["golden_plan"]
@@ -208,13 +208,13 @@ async def run_model():
                             no_error_count_0shot += 1
                             if predicted_time == expected_time:
                                 correct_output_count_0shot += 1
-                    elif prompt_type == "prompt_5shot":
-                        expected_outputs_5shot.append(expected_time)
-                        predicted_outputs_5shot.append(predicted_time)
-                        if error_type is None:
-                            no_error_count_5shot += 1
-                            if predicted_time == expected_time:
-                                correct_output_count_5shot += 1
+                    # elif prompt_type == "prompt_5shot":
+                    #     expected_outputs_5shot.append(expected_time)
+                    #     predicted_outputs_5shot.append(predicted_time)
+                    #     if error_type is None:
+                    #         no_error_count_5shot += 1
+                    #         if predicted_time == expected_time:
+                    #             correct_output_count_5shot += 1
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     line = (
@@ -240,8 +240,8 @@ async def run_model():
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
-                        elif prompt_type == "prompt_5shot":
-                            file_data["5shot"].append(json_output)
+                        # elif prompt_type == "prompt_5shot":
+                        #     file_data["5shot"].append(json_output)
                         json_file.seek(0)
                         json.dump(file_data, json_file, indent=4)
                         json_file.truncate()
@@ -253,22 +253,22 @@ async def run_model():
     total_time = (end_time - start_time).total_seconds()
 
     accuracy_0shot = (correct_output_count_0shot / len(expected_outputs_0shot)) * 100 if expected_outputs_0shot else 0
-    accuracy_5shot = (correct_output_count_5shot / len(expected_outputs_5shot)) * 100 if expected_outputs_5shot else 0
-    total_accuracy = ((correct_output_count_0shot + correct_output_count_5shot) / (len(expected_outputs_0shot) + len(expected_outputs_5shot))) * 100 if (expected_outputs_0shot + expected_outputs_5shot) else 0
+    # accuracy_5shot = (correct_output_count_5shot / len(expected_outputs_5shot)) * 100 if expected_outputs_5shot else 0
+    # total_accuracy = ((correct_output_count_0shot + correct_output_count_5shot) / (len(expected_outputs_0shot) + len(expected_outputs_5shot))) * 100 if (expected_outputs_0shot + expected_outputs_5shot) else 0
 
     no_error_accuracy_0shot = (correct_output_count_0shot / no_error_count_0shot) * 100 if no_error_count_0shot > 0 else 0
-    no_error_accuracy_5shot = (correct_output_count_5shot / no_error_count_5shot) * 100 if no_error_count_5shot > 0 else 0
+    # no_error_accuracy_5shot = (correct_output_count_5shot / no_error_count_5shot) * 100 if no_error_count_5shot > 0 else 0
 
     accuracy_line = (
         f"\n0-shot prompts: Model guessed {correct_output_count_0shot} out of {len(expected_outputs_0shot)} correctly.\n"
         f"Accuracy: {accuracy_0shot:.2f}%\n"
-        f"\n5-shot prompts: Model guessed {correct_output_count_5shot} out of {len(expected_outputs_5shot)} correctly.\n"
-        f"Accuracy: {accuracy_5shot:.2f}%\n"
-        f"\nTotal accuracy: {total_accuracy:.2f}%\n"
+        # f"\n5-shot prompts: Model guessed {correct_output_count_5shot} out of {len(expected_outputs_5shot)} correctly.\n"
+        # f"Accuracy: {accuracy_5shot:.2f}%\n"
+        # f"\nTotal accuracy: {total_accuracy:.2f}%\n"
         f"\n0-shot prompts with no errors: {correct_output_count_0shot} out of {no_error_count_0shot} produced correct outputs.\n"
         f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n"
-        f"\n5-shot prompts with no errors: {correct_output_count_5shot} out of {no_error_count_5shot} produced correct outputs.\n"
-        f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n"
+        # f"\n5-shot prompts with no errors: {correct_output_count_5shot} out of {no_error_count_5shot} produced correct outputs.\n"
+        # f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n"
         f"\nTotal time taken: {total_time} seconds"
     )
 

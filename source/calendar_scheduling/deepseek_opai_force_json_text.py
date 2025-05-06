@@ -27,7 +27,7 @@ JSON_SCHEMA = {
 }
 
 # Load the calendar scheduling examples from the JSON file
-with open('100_prompt_scheduling.json', 'r') as file:
+with open('calendar_all_1000_prompts.json', 'r') as file:
     calendar_examples = json.load(file)
 
 # Argument parser to select the model
@@ -58,7 +58,7 @@ with open('DS-R1-FULL_text_txtresults.txt', 'w') as txt_file, open('DS-R1-FULL_j
     start_time = datetime.datetime.now()
     
     for example_id, example in calendar_examples.items():
-        for prompt_type in ['prompt_0shot', 'prompt_5shot']:
+        for prompt_type in ['prompt_0shot']:
             prompt = example[prompt_type]
             golden_plan = example['golden_plan']
 
@@ -152,34 +152,34 @@ with open('DS-R1-FULL_text_txtresults.txt', 'w') as txt_file, open('DS-R1-FULL_j
                 total_0shot += 1
                 if model_time == expected_time:
                     correct_0shot += 1
-            else:
-                results_5shot.append(result_entry)
-                total_5shot += 1
-                if model_time == expected_time:
-                    correct_5shot += 1
+            # else:
+            #     results_5shot.append(result_entry)
+            #     total_5shot += 1
+            #     if model_time == expected_time:
+            #         correct_5shot += 1
             
             # Clear the model_response and other temporary variables from memory
             del model_response, model_time, result_entry
             
     # Write the collected results to the JSON file in the desired format
     json.dump({
-        "0shot": results_0shot,
-        "5shot": results_5shot
+        "0shot": results_0shot
+        # "5shot": results_5shot
     }, json_file, indent=4)
     
     # Calculate accuracies
     accuracy_0shot = (correct_0shot / total_0shot) * 100 if total_0shot > 0 else 0
-    accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
-    total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
+    # accuracy_5shot = (correct_5shot / total_5shot) * 100 if total_5shot > 0 else 0
+    # total_accuracy = ((correct_0shot + correct_5shot) / (total_0shot + total_5shot)) * 100 if (total_0shot + total_5shot) > 0 else 0
     
     # Write the final accuracy to the text file
     end_time = datetime.datetime.now()
     total_time = end_time - start_time
     txt_file.write(f"\n0-shot prompts: Model guessed {correct_0shot} out of {total_0shot} correctly.\n")
     txt_file.write(f"Accuracy: {accuracy_0shot:.2f}%\n")
-    txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
-    txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
-    txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
+    # txt_file.write(f"5-shot prompts: Model guessed {correct_5shot} out of {total_5shot} correctly.\n")
+    # txt_file.write(f"Accuracy: {accuracy_5shot:.2f}%\n")
+    # txt_file.write(f"Total accuracy: {total_accuracy:.2f}%\n")
     txt_file.write(f"Total time taken: {total_time}\n")
 
 print("Processing complete. Results saved to model_results.txt and model_results.json.")
