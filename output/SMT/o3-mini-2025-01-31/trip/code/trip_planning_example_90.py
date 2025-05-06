@@ -1,82 +1,151 @@
-from z3 import *
+from z3 import Solver, IntVector, Distinct, And, Or, If, sat
 
-# We have a 17-day trip visiting 3 cities with the following requirements:
-#   • Naples: 5 days, and you plan to visit relatives in Naples between Day 1 and Day 5.
-#   • Vienna: 7 days.
-#   • Vilnius: 7 days.
+# -----------------------------------------------------------------------------
+# City definitions:
 #
-# Without overlaps the total days would be 5 + 7 + 7 = 19 days.
-# By overlapping the flight days (each flight day counts as both the last day in the current city 
-# and the first day in the next), the trip is planned in 17 days.
+# We have 3 cities:
+# 0: Vilnius   – Planned stay: 7 days.
+# 1: Naples    – Planned stay: 5 days.
+#               Event: Visit relatives in Naples between day 1 and day 5.
+# 2: Vienna    – Planned stay: 7 days.
 #
-# The available direct flights are:
-#   • between Naples and Vienna,
-#   • between Vienna and Vilnius.
-#
-# Thus, the itinerary order is:
-#   Naples -> Vienna -> Vilnius.
-#
-# Let:
-#   d1 = flight day from Naples to Vienna.
-#   d2 = flight day from Vienna to Vilnius.
-#
-# The segments are modeled as follows:
-#
-# 1. Naples segment:
-#      - Runs from Day 1 to Day d1.
-#      - Duration = d1 days.
-#      - Must be 5 days, so: d1 == 5.
-#      - Also, visiting relatives in Naples between Day 1 and Day 5 is ensured.
-#
-# 2. Vienna segment:
-#      - Runs from Day d1 to Day d2.
-#      - Duration = d2 - d1 + 1 days.
-#      - Must be 7 days, so: d2 - d1 + 1 == 7.
-#
-# 3. Vilnius segment:
-#      - Runs from Day d2 to Day 17.
-#      - Duration = 17 - d2 + 1 days.
-#      - Must be 7 days, so: 17 - d2 + 1 == 7.
-#
-# Now we model these constraints using the Z3 Solver.
+# Total planned days = 7 + 5 + 7 = 19.
+# There will be 2 flight days (one per transition), so the effective trip duration is
+# 19 - 2 = 17 days.
+# -----------------------------------------------------------------------------
 
+cities   = ["Vilnius", "Naples", "Vienna"]
+durations = [7, 5, 7]
+
+# -----------------------------------------------------------------------------
+# Allowed direct flights (bidirectional):
+#
+# "Naples and Vienna" -> (1,2) and (2,1)
+# "Vienna and Vilnius" -> (2,0) and (0,2)
+# -----------------------------------------------------------------------------
+
+allowed_flights = {
+    (1,2), (2,1),
+    (2,0), (0,2)
+}
+
+def flight_allowed(a, b):
+    return (a, b) in allowed_flights
+
+# -----------------------------------------------------------------------------
+# Create the Z3 solver and decision variables.
+#
+# pos[i]: the city visited at itinerary position i (i = 0,1,2).
+#         They form a permutation of {0,1,2}.
+#
+# S[i]: the arrival day at the city at position i.
+# The trip starts on day 1 so S[0] == 1.
+#
+# Effective stay:
+#   If city is visited as the first city, effective stay = full planned duration.
+#   Otherwise, effective stay = (planned duration - 1) days (accounting for flight day).
+#
+# Trip end constraint:
+#   S[2] + (effective stay for city at pos[2]) - 1 == 17.
+# -----------------------------------------------------------------------------
+
+n = 3
 s = Solver()
 
-# Flight day variables:
-d1 = Int('d1')  # Flight day from Naples to Vienna.
-d2 = Int('d2')  # Flight day from Vienna to Vilnius.
+# Itinerary permutation.
+pos = IntVector("pos", n)
+s.add(Distinct(pos))
+for i in range(n):
+    s.add(pos[i] >= 0, pos[i] < n)
 
-# Constraint for the Naples segment: 5 days.
-s.add(d1 == 5)
+# Arrival days.
+S_days = IntVector("S", n)
+s.add(S_days[0] == 1)
+for i in range(n):
+    s.add(S_days[i] >= 1)
 
-# Constraint for the Vienna segment: 7 days.
-s.add(d2 - d1 + 1 == 7)
+# -----------------------------------------------------------------------------
+# Sequential arrival constraints:
+#
+# For position 1: S[1] = S[0] + (full duration of city at pos[0])
+# For position i >= 2: S[i] = S[i-1] + (planned duration of city at pos[i-1] - 1).
+# -----------------------------------------------------------------------------
 
-# Constraint for the Vilnius segment: 7 days.
-s.add(17 - d2 + 1 == 7)
+# Position 1 constraint:
+s.add(
+    S_days[1] ==
+    If(pos[0] == 0, durations[0],
+    If(pos[0] == 1, durations[1],
+    /* else pos[0]==2 */  durations[2]))
+)
 
-# Enforce ordering and valid day ranges.
-s.add(d1 < d2)
-s.add(d1 >= 1, d2 <= 17)
+# Positions 2 constraint:
+s.add(
+    S_days[2] ==
+    S_days[1] +
+    If(pos[1] == 0, durations[0] - 1,
+    If(pos[1] == 1, durations[1] - 1,
+    /* else pos[1]==2 */  durations[2] - 1))
+)
 
+# Trip end constraint:
+last_eff = If(pos[n-1] == 0, durations[0] - 1,
+               If(pos[n-1] == 1, durations[1] - 1,
+               durations[2] - 1))
+s.add(S_days[n-1] + last_eff - 1 == 17)
+
+# -----------------------------------------------------------------------------
+# Flight connectivity constraints:
+#
+# For each consecutive pair (pos[i], pos[i+1]), there must be a direct flight.
+# -----------------------------------------------------------------------------
+for i in range(n - 1):
+    flight_options = []
+    for a in range(n):
+        for b in range(n):
+            if flight_allowed(a, b):
+                flight_options.append(And(pos[i] == a, pos[i+1] == b))
+    s.add(Or(flight_options))
+
+# -----------------------------------------------------------------------------
+# Event constraint:
+#
+# Naples (city 1) relatives visit event must happen between day 1 and day 5.
+# Let effective stay at Naples be:
+#   If first city: durations[1],
+#   Else: durations[1] - 1.
+# The visit period is [S, S + effective - 1].
+# We require:
+#    S <= 5 and (S + effective - 1) >= 1.
+# -----------------------------------------------------------------------------
+for i in range(n):
+    s.add(
+        If(pos[i] == 1,
+           And(
+               S_days[i] <= 5,
+               If(i == 0,
+                  S_days[i] + durations[1] - 1 >= 1,
+                  S_days[i] + (durations[1] - 1) - 1 >= 1)
+           ),
+           True)
+    )
+
+# -----------------------------------------------------------------------------
+# Solve the scheduling problem.
+# -----------------------------------------------------------------------------
 if s.check() == sat:
     m = s.model()
-    d1_val = m[d1].as_long()  # Expected to be 5 (flight from Naples to Vienna on Day 5)
-    d2_val = m[d2].as_long()  # Expected to be 11 (flight from Vienna to Vilnius on Day 11)
+    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
+    arrivals  = [m.evaluate(S_days[i]).as_long() for i in range(n)]
     
-    print("Trip plan found:\n")
-    
-    # Naples segment.
-    print("1. Stay in Naples from Day 1 to Day {} (5 days).".format(d1_val))
-    print("   -> Visit relatives in Naples between Day 1 and Day 5.")
-    print("   -> On Day {}, take a direct flight from Naples to Vienna.".format(d1_val))
-    
-    # Vienna segment.
-    print("2. Stay in Vienna from Day {} to Day {} (7 days).".format(d1_val, d2_val))
-    print("   -> On Day {}, take a direct flight from Vienna to Vilnius.".format(d2_val))
-    
-    # Vilnius segment.
-    print("3. Stay in Vilnius from Day {} to Day 17 (7 days).".format(d2_val))
-    
+    print("Trip Itinerary:")
+    for i in range(n):
+        city = cities[itinerary[i]]
+        eff = durations[itinerary[i]] if i == 0 else durations[itinerary[i]] - 1
+        departure = arrivals[i] + eff - 1
+        print(f" Position {i+1}: {city:8s} | Arrival: Day {arrivals[i]:2d} | Departure: Day {departure:2d}")
+    trip_end = m.evaluate(S_days[n-1] +
+                          (durations[itinerary[n-1]] if n == 1 else durations[itinerary[n-1]] - 1) - 1)
+    print(f"Trip ends on day: {trip_end}")
 else:
-    print("No solution exists!")
+    print("No valid trip plan could be found.")

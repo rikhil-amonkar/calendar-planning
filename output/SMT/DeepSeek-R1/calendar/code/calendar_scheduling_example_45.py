@@ -1,27 +1,34 @@
-from z3 import *
+from z3 import Optimize, Int, Or, sat
 
-s = Int('s')
-opt = Optimize()
+s = Optimize()
+start = Int('start')
 
-# Convert work hours to minutes (9:00 = 0, 17:00 = 480)
-opt.add(s >= 0)
-opt.add(s + 30 <= 480)
+# Meeting duration is 30 minutes, work hours 9:00-17:00 (480 minutes)
+s.add(start >= 0, start <= 450)  # 450 = 17:00 - 0:30
 
-# Samuel's busy intervals (9:00-10:30, 11:30-12:00, 13:00-13:30, 14:00-16:00, 16:30-17:00)
-samuel_busy = [(0, 90), (150, 180), (240, 270), (300, 420), (450, 480)]
-for start, end in samuel_busy:
-    opt.add(Or(s + 30 <= start, s >= end))
+# Samuel's busy intervals (converted to minutes since 9:00)
+samuel_busy = [
+    (0, 90),     # 9:00-10:30
+    (150, 180),  # 11:30-12:00
+    (240, 270),  # 13:00-13:30
+    (300, 420),  # 14:00-16:00
+    (450, 480)   # 16:30-17:00
+]
 
-# Andrew and Grace have no constraints
+# Add constraints for Samuel's availability
+for s_start, s_end in samuel_busy:
+    s.add(Or(start + 30 <= s_start, start >= s_end))
 
-# Find earliest possible time
-opt.minimize(s)
+# Andrew and Grace have no constraints, so no additional rules needed
 
-if opt.check() == sat:
-    m = opt.model()
-    start_min = m[s].as_long()
-    hours = 9 + start_min // 60
+# Find earliest possible time by minimizing start
+s.minimize(start)
+
+if s.check() == sat:
+    m = s.model()
+    start_min = m[start].as_long()
+    hours = start_min // 60 + 9
     minutes = start_min % 60
-    print(f"Meeting starts at {hours}:{minutes:02d}")
+    print(f"Meeting starts at {hours:02d}:{minutes:02d}")
 else:
-    print("No solution found")
+    print("No suitable time found.")

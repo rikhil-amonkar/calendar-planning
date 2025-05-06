@@ -1,89 +1,170 @@
-from z3 import *
+from z3 import Solver, IntVector, Distinct, And, Or, If, sat
 
-# We have a 9-day trip visiting 3 cities with the following requirements:
-#   • Mykonos: 6 days, and you must attend a conference in Mykonos on Day 4 and Day 9.
-#   • Budapest: 3 days.
-#   • Hamburg: 2 days.
+# -----------------------------------------------------------------------------
+# City definitions and planned durations:
 #
-# The total individual durations add up to 6 + 3 + 2 = 11 days,
-# but overlapping the flight days (each flight day counts as the last day in the departing city 
-# and the first day in the next) reduces the total to 9 days.
+# We have 3 cities:
+# 0: Mykonos  – 6 days.
+#    Event: You must attend a conference in Mykonos on both day 4 and day 9.
+#           (We require that the visit interval covers day 4 and day 9.)
+# 1: Budapest – 3 days.
+# 2: Hamburg  – 2 days.
 #
-# Available direct flights:
-#   • between Hamburg and Budapest,
-#   • between Budapest and Mykonos.
+# Total planned days = 6 + 3 + 2 = 11.
+# There are 2 flights between cities, so the effective trip duration = 11 - 2 = 9 days.
 #
-# We choose the itinerary order:
-#   Hamburg -> Budapest -> Mykonos
-#
-# We adopt the convention that a direct flight on a day counts as both the last day at the
-# departing city and the first day at the arriving city.
-#
-# Let:
-#   d1 = flight day from Hamburg to Budapest.
-#   d2 = flight day from Budapest to Mykonos.
-#
-# Then the segments become:
-#
-# 1. Hamburg segment:
-#    - Runs from Day 1 to Day d1.
-#    - Duration = d1 days.
-#    - Must be 2 days, so: d1 = 2.
-#
-# 2. Budapest segment:
-#    - Runs from Day d1 to Day d2.
-#    - Duration = d2 - d1 + 1 days.
-#    - Must be 3 days, so: d2 - d1 + 1 = 3  -->  d2 = d1 + 2.
-#      With d1 = 2, we get d2 = 4.
-#
-# 3. Mykonos segment:
-#    - Runs from Day d2 to Day 9.
-#    - Duration = 9 - d2 + 1 days.
-#    - Must be 6 days, so: 9 - d2 + 1 = 6.
-#      With d2 = 4, we have 9 - 4 + 1 = 6.
-#
-# This itinerary ensures that:
-#   - You are in Hamburg from Day 1 to Day 2 (2 days), then fly to Budapest on Day 2.
-#   - You are in Budapest from Day 2 to Day 4 (3 days), then fly to Mykonos on Day 4.
-#   - You are in Mykonos from Day 4 to Day 9 (6 days), attending the conference on Day 4 (arrival day) and Day 9.
-#
+# Note:
+# - In the first visited city the full planned duration is used (interval = [S, S + duration - 1]).
+# - In every subsequent city one day is lost to flying (interval = [S, S + duration - 2]).
+# -----------------------------------------------------------------------------
+cities    = ["Mykonos", "Budapest", "Hamburg"]
+durations = [6,         3,         2]
 
+# Event requirement for Mykonos:
+# We require that if Mykonos is visited at itinerary position i then:
+#   its visit interval must cover day 4 and day 9.
+# That is, if city = Mykonos then:
+#   For first city: S[i] <= 4    and  S[i] + (6 - 1) >= 9.
+#   For later cities: S[i] <= 4    and  S[i] + (6 - 2) >= 9.
+events = {
+    0: (4, 9)  # meaning arrival must be no later than day 4 and departure no earlier than day 9.
+}
+
+# -----------------------------------------------------------------------------
+# Allowed direct flights.
+#
+# Given flights:
+# - Budapest and Mykonos -> bidirectional: (Mykonos,Budapest) and (Budapest,Mykonos)
+# - Hamburg and Budapest  -> bidirectional: (Budapest,Hamburg) and (Hamburg,Budapest)
+#
+# There is no direct flight between Mykonos and Hamburg.
+# -----------------------------------------------------------------------------
+allowed_flights = {
+    (0, 1), (1, 0),  # Mykonos <--> Budapest
+    (1, 2), (2, 1)   # Budapest <--> Hamburg
+}
+
+def flight_allowed(a, b):
+    return (a, b) in allowed_flights
+
+# -----------------------------------------------------------------------------
+# Create the Z3 solver and decision variables.
+#
+# We represent the itinerary as a permutation of the 3 cities.
+#   pos[i] : the city index visited at itinerary position i (for i in 0,1,2).
+#   S[i]   : the arrival day at the city visited at position i.
+#
+# For the first city (i == 0): visit interval is [S[0], S[0] + durations[city] - 1].
+# For each subsequent city (i >= 1): visit interval is [S[i], S[i] + durations[city] - 2].
+#
+# The departure day from the final city must equal total_trip = 9.
+# -----------------------------------------------------------------------------
+n = 3
+total_trip = 9
 s = Solver()
 
-# Define flight day variables:
-d1 = Int('d1')  # Flight day from Hamburg to Budapest.
-d2 = Int('d2')  # Flight day from Budapest to Mykonos.
+# Permutation: each city appears exactly once.
+pos = IntVector("pos", n)
+s.add(Distinct(pos))
+for i in range(n):
+    s.add(And(pos[i] >= 0, pos[i] < n))
 
-# 1. Hamburg segment (2 days):
-s.add(d1 == 2)
+# Arrival day for each visited city.
+# (Typically we fix the trip’s start day S[0] to 1.)
+S = IntVector("S", n)
+s.add(S[0] == 1)
+for i in range(n):
+    s.add(S[i] >= 1)
 
-# 2. Budapest segment (3 days):
-s.add(d2 - d1 + 1 == 3)
+# Helper functions: full duration for the first city and effective duration for subsequents.
+def full_duration(i):
+    return sum([If(pos[i] == c, durations[c], 0) for c in range(n)])
+def effective_duration(i):
+    # For subsequent cities: effective duration = planned duration - 1.
+    return sum([If(pos[i] == c, durations[c] - 1, 0) for c in range(n)])
 
-# 3. Mykonos segment (6 days):
-s.add(9 - d2 + 1 == 6)
+# -----------------------------------------------------------------------------
+# Sequential arrival constraints:
+#
+# For position 1: S[1] = S[0] + (full_duration of city at pos[0]).
+# For positions >= 2: S[i] = S[i-1] + (effective_duration of city at pos[i-1]).
+# -----------------------------------------------------------------------------
+s.add(S[1] == S[0] + full_duration(0))
+for i in range(2, n):
+    s.add(S[i] == S[i-1] + effective_duration(i-1))
 
-# Enforce ordering and valid day ranges:
-s.add(d1 < d2)
-s.add(d1 >= 1, d2 <= 9)
+# -----------------------------------------------------------------------------
+# Trip end constraint:
+#
+# The departure day from the final city equals:
+#   If first city: S[n-1] + durations[city] - 1.
+#   Otherwise: S[n-1] + (durations[city] - 1) [since effective_duration = duration - 1].
+#
+# Our constraint is:
+#   S[n-1] + effective_duration(n-1) - 1 == total_trip.
+# -----------------------------------------------------------------------------
+s.add(S[n-1] + effective_duration(n-1) - 1 == total_trip)
 
+# -----------------------------------------------------------------------------
+# Flight connectivity constraints:
+#
+# For every consecutive pair of cities (i and i+1),
+# there must be a direct flight between the cities.
+# -----------------------------------------------------------------------------
+for i in range(n - 1):
+    flight_opts = []
+    for a in range(n):
+        for b in range(n):
+            if flight_allowed(a, b):
+                flight_opts.append(And(pos[i] == a, pos[i+1] == b))
+    s.add(Or(flight_opts))
+
+# -----------------------------------------------------------------------------
+# Event constraints:
+#
+# For each city with a conference event, if that city is visited at itinerary
+# position i then its visit interval must cover both required days.
+#
+# For Mykonos:
+#   if i == 0 (first city): require S[i] <= 4 and S[i] + (6 - 1) >= 9.
+#   if i >= 1 (later city): require S[i] <= 4 and S[i] + (6 - 2) >= 9.
+# -----------------------------------------------------------------------------
+for i in range(n):
+    # For city index 0 (Mykonos)
+    s.add(
+        If(pos[i] == 0,
+           And(
+               S[i] <= events[0][0],
+               If(i == 0,
+                  S[i] + durations[0] - 1 >= events[0][1],
+                  S[i] + durations[0] - 2 >= events[0][1]
+               )
+           ),
+           True)
+    )
+
+# -----------------------------------------------------------------------------
+# Solve the scheduling problem.
+# -----------------------------------------------------------------------------
 if s.check() == sat:
     m = s.model()
-    d1_val = m[d1].as_long()  # Expected: 2 (Hamburg -> Budapest flight on Day 2)
-    d2_val = m[d2].as_long()  # Expected: 4 (Budapest -> Mykonos flight on Day 4)
+    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
+    arrivals  = [m.evaluate(S[i]).as_long() for i in range(n)]
     
-    print("Trip plan found:\n")
-    
-    # Hamburg segment.
-    print("1. Stay in Hamburg from Day 1 to Day {} (2 days).".format(d1_val))
-    print("   -> On Day {}, take a direct flight from Hamburg to Budapest.".format(d1_val))
-    
-    # Budapest segment.
-    print("2. Stay in Budapest from Day {} to Day {} (3 days).".format(d1_val, d2_val))
-    print("   -> On Day {}, take a direct flight from Budapest to Mykonos.".format(d2_val))
-    
-    # Mykonos segment.
-    print("3. Stay in Mykonos from Day {} to Day 9 (6 days).".format(d2_val))
-    print("   -> Attend the conference in Mykonos on Day 4 and Day 9.")
+    print("Trip Itinerary:")
+    for i in range(n):
+        city = cities[itinerary[i]]
+        if i == 0:
+            departure = arrivals[i] + durations[itinerary[i]] - 1
+        else:
+            departure = arrivals[i] + durations[itinerary[i]] - 2
+        print(f" Position {i+1}: {city:8s} | Arrival: Day {arrivals[i]:2d} | Departure: Day {departure:2d}")
+    # Final trip end day
+    last_city = itinerary[-1]
+    if n - 1 == 0:
+        final_departure = arrivals[-1] + durations[last_city] - 1
+    else:
+        final_departure = arrivals[-1] + durations[last_city] - 2
+    print("Trip ends on Day:", final_departure)
 else:
-    print("No solution exists!")
+    print("No valid trip plan could be found.")

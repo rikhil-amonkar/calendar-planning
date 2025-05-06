@@ -1,34 +1,36 @@
-import z3
+from z3 import *
 
-# Define the blocked intervals for each person as lists of tuples (a, b) in minutes since 9:00
-blocked = [
-    # Samuel's blocked intervals: 9:00-10:30 (0,90), 11:30-12:00 (150,180), 13:00-13:30 (240,270), 14:00-16:00 (300,960), 16:30-17:00 (990,1050)
-    [(0, 90), (150, 180), (240, 270), (300, 960), (990, 1050)]
-]
+def main():
+    t = Variable('t')  # start time in minutes from 9:00
 
-# Create a Z3 context
-ctx = z3.Context()
+    # Define available intervals for each person
+    available = [
+        # Andrew is available the entire day
+        (0, 480),
+        # Grace is available the entire day
+        (0, 480),
+        # Samuel's blocked intervals
+        (600, 690), (690, 750), (780, 810), (1500, 1800), (1950, 2010), (2010, 2400)
+    ]
 
-# Declare the variable for the start time
-s = z3.Variable('s')
+    # Create constraints for each available interval
+    for interval in available:
+        model.add_constraint(t >= interval[0])
+        model.add_constraint(t <= interval[1])
 
-# Add constraints for each blocked interval
-for interval in blocked:
-    a, b = interval
-    # The constraint is (s + 60 <= a) OR (s >= b)
-    left = s + 60 <= a
-    right = s >= b
-    constraint = left.or(right)
-    ctx.add_constraint(constraint)
+    # Solve the problem
+    result = model.solve()
+    if result:
+        print("Possible solution: t =", result[t].numerator())
+        print("Convert t to time:", time(t))
+    else:
+        print("No solution.")
 
-# Solve the problem
-solution = ctx.solve()
+def time(t):
+    # Convert minutes back to hours:minutes
+    hours = t // 60
+    minutes = t % 60
+    return f"{hours:02d}:{minutes:02d}"
 
-# If solution exists, print the start time in hours:minutes format
-if solution:
-    s_val = solution[s].value()
-    start_hr = s_val // 60
-    start_min = s_val % 60
-    print(f"{start_hr:02d}:{start_min:02d}")
-else:
-    print("No solution found")
+if __name__ == "__main__":
+    main()

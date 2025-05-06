@@ -1,41 +1,37 @@
 from z3 import *
 
-def schedule_meeting():
-    s = Solver()
-    start = Int('start')
-    duration = 30  # Half-hour meeting
-    
-    # Convert times to minutes since 9:00 (0 minutes)
-    s.add(start >= 0)
-    s.add(start + duration <= 480)  # End by 17:00 (480 minutes)
-    
-    # Diane's constraints: 9:30-10:00 (30-60), 14:30-15:00 (330-360)
-    s.add(Or(start + duration <= 30, start >= 60))
-    s.add(Or(start + duration <= 330, start >= 360))
-    
-    # Jack's constraints: 13:30-14:00 (270-300), 14:30-15:00 (330-360)
-    s.add(Or(start + duration <= 270, start >= 300))
-    s.add(Or(start + duration <= 330, start >= 360))
-    
-    # Eugene's constraints: 9:00-10:00 (0-60), 10:30-11:30 (90-150), 12:00-14:30 (180-330), 15:00-16:30 (360-450)
-    s.add(Or(start + duration <= 0, start >= 60))
-    s.add(Or(start + duration <= 90, start >= 150))
-    s.add(Or(start + duration <= 180, start >= 330))
-    s.add(Or(start + duration <= 360, start >= 450))
-    
-    # Patricia's constraints: 9:30-10:30 (30-90), 11:00-12:00 (120-180), 12:30-14:00 (210-300), 15:00-16:30 (360-450)
-    s.add(Or(start + duration <= 30, start >= 90))
-    s.add(Or(start + duration <= 120, start >= 180))
-    s.add(Or(start + duration <= 210, start >= 300))
-    s.add(Or(start + duration <= 360, start >= 450))
-    
-    if s.check() == sat:
-        m = s.model()
-        start_min = m[start].as_long()
-        hours = 9 + start_min // 60
-        minutes = start_min % 60
-        print(f"Meeting starts at {hours:02d}:{minutes:02d}")
-    else:
-        print("No valid time found.")
+s = Optimize()
 
-schedule_meeting()
+start = Int('start')
+day = 0  # Fixed to Monday
+
+# Meeting must be 30 minutes within 9:00-17:00 (0-480 minutes)
+s.add(start >= 0)
+s.add(start + 30 <= 480)
+
+# Define busy intervals in minutes since 9:00
+busy = {
+    'Diane': [(30, 60), (330, 360)],
+    'Jack': [(210, 240), (330, 360)],
+    'Eugene': [(0, 60), (90, 150), (180, 330), (360, 450)],
+    'Patricia': [(30, 90), (120, 180), (210, 300), (360, 450)]
+}
+
+# Add constraints for each person's busy intervals
+for person in busy:
+    for (block_start, block_end) in busy[person]:
+        s.add(Or(start + 30 <= block_start, start >= block_end))
+
+# Optimize for earliest time
+s.minimize(start)
+
+if s.check() == sat:
+    m = s.model()
+    st = m[start].as_long()
+    start_h = 9 + st // 60
+    start_m = st % 60
+    end_h = 9 + (st + 30) // 60
+    end_m = (st + 30) % 60
+    print(f"Monday {start_h:02d}:{start_m:02d}-{end_h:02d}:{end_m:02d}")
+else:
+    print("No solution found")

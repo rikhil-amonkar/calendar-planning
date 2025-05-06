@@ -1,41 +1,46 @@
 from z3 import *
 
-# Define the time intervals
+# Define the time slots
 start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60   # 17:00 in minutes
+end_time = 17 * 60  # 17:00 in minutes
 meeting_duration = 30  # 0.5 hours in minutes
 
-# Define the existing schedules
-schedules = {
-    'Adam': [(14 * 60, 15 * 60)],
-    'John': [(13 * 60, 13 * 60 + 30), (14 * 60, 14 * 60 + 30), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],
-    'Stephanie': [(9 * 60 + 30, 10 * 60), (10 * 60 + 30, 11 * 60), (11 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],
-    'Anna': [(9 * 60 + 30, 10 * 60), (12 * 60, 12 * 60 + 30), (13 * 60, 15 * 60 + 30), (16 * 60 + 30, 17 * 60)]
-}
+# Define the existing schedules for Adam, John, Stephanie and Anna
+adam_schedule = [(14 * 60, 15 * 60)]
+john_schedule = [(13 * 60, 13 * 60 + 30), (14 * 60, 14 * 60 + 30), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]
+stephanie_schedule = [(9 * 60 + 30, 10 * 60), (10 * 60 + 30, 11 * 60), (11 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]
+anna_schedule = [(9 * 60 + 30, 10 * 60), (12 * 60, 12 * 60 + 30), (13 * 60, 15 * 60 + 30), (16 * 60 + 30, 17 * 60)]
 
 # Create a Z3 solver
 solver = Solver()
 
-# Define the variables
+# Create a Z3 variable to represent the start time of the meeting
 meeting_start = Int('meeting_start')
 
-# Add constraints
-solver.add(meeting_start >= start_time)
-solver.add(meeting_start + meeting_duration <= end_time)
+# Add constraints to ensure the meeting start time is within the work hours
+solver.add(And(meeting_start >= start_time, meeting_start <= end_time - meeting_duration))
 
-# Add constraints for each participant's schedule
-for participant, schedule in schedules.items():
-    for start, end in schedule:
-        solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
+# Add constraints to avoid everyone's schedule
+for start, end in adam_schedule:
+    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
 
-# Add Anna's preference to not meet before 14:30
-solver.add(meeting_start >= 14 * 60 + 30)
+for start, end in john_schedule:
+    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
 
-# Solve the problem
-result = solver.check()
+for start, end in stephanie_schedule:
+    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
 
-if result == sat:
-    print("A meeting time has been found:")
-    print("Start time: {:.2f}:00".format(solver.model()[meeting_start].as_long() / 60))
+for start, end in anna_schedule:
+    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
+
+# Add constraint to prefer not to meet before 14:30 for Anna
+solver.add(Or(meeting_start >= 14 * 60 + 30, meeting_start + meeting_duration <= 14 * 60 + 30))
+
+# Check if the solver can find a solution
+if solver.check() == sat:
+    # Get the solution
+    model = solver.model()
+    meeting_start_time = model[meeting_start].as_long()
+    print(f"Meeting can be scheduled from {meeting_start_time // 60}:{meeting_start_time % 60:02} to {(meeting_start_time + meeting_duration) // 60}:{(meeting_start_time + meeting_duration) % 60:02}")
 else:
-    print("No meeting time could be found.")
+    print("No solution found")

@@ -1,38 +1,66 @@
 from z3 import *
 
-# Create the solver instance
+# Define the number of days and cities
+total_days = 16
+cities = [
+    "Lyon", "Bucharest", "Porto"
+]
+
+# Days assigned to each city with constraints
+stay_duration = {
+    "Lyon": 7,
+    "Bucharest": 7,
+    "Porto": 4
+}
+
+# Constraints for specific events
+wedding_days_bucharest = range(1, 8)  # Wedding in Bucharest between day 1 and day 7
+
+# Define direct flights between the cities
+flights = {
+    "Bucharest": ["Lyon"],
+    "Lyon": ["Porto", "Bucharest"],
+    "Porto": ["Lyon"]
+}
+
+# Initialize the Z3 solver
 solver = Solver()
 
-# Variables for days spent in each city
-days_lyon = Int('days_lyon')
-days_bucharest = Int('days_bucharest')
-days_porto = Int('days_porto')
+# Create variables for each day
+trip = [Int(f'day_{i + 1}') for i in range(total_days)]
 
-# Constraints for days spent in each city
-solver.add(days_lyon == 7)                # Spend 7 days in Lyon
-solver.add(days_bucharest == 5)           # Spend 5 days in Bucharest (adjusted)
-solver.add(days_porto == 4)               # Spend 4 days in Porto
+# Each day must refer to one of the cities
+for day in trip:
+    solver.add(Or([day == cities.index(city) for city in cities]))
 
-# Total days constraint
-solver.add(days_lyon + days_bucharest + days_porto == 16)
+# Count the days spent in each city
+city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
 
-# Constraints for attending the wedding in Bucharest (must be on day 1 to day 7)
-# We assume that the visit to Bucharest will be early enough to fulfill this constraint.
+# Enforce stay durations
+for city, duration in stay_duration.items():
+    solver.add(city_count[city] == duration)
 
-# Check for possible combinations
+# Attend wedding in Bucharest between day 1 and day 7
+for day in wedding_days_bucharest:
+    solver.add(trip[day - 1] == cities.index("Bucharest"))  # Adjust for 0-based index
+
+# Define direct flight connections
+for day in range(total_days - 1):
+    curr_city_index = trip[day]
+    next_city_index = trip[day + 1]
+    curr_city = cities[curr_city_index]
+    next_city = cities[next_city_index]
+    # If transitioning from one city to another, it must be a valid flight
+    solver.add(Or([And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
+                    for city in cities for next_city_city in flights[city]]))
+
+# Solve the problem
 if solver.check() == sat:
-    # If a valid solution is found, extract the values
-    days_lyon_val = solver.model()[days_lyon].as_long()
-    days_bucharest_val = solver.model()[days_bucharest].as_long()
-    days_porto_val = solver.model()[days_porto].as_long()
-    
-    # Create a trip plan description
-    valid_trip = (
-        f"Spend {days_lyon_val} days in Lyon, "
-        f"{days_bucharest_val} days in Bucharest, "
-        f"{days_porto_val} days in Porto."
-    )
+    model = solver.model()
+    itinerary = []
+    for day in range(total_days):
+        city = cities[model[trip[day]].as_long()]
+        itinerary.append(f"Day {day + 1}: {city}")
+    print("\n".join(itinerary))
 else:
-    valid_trip = "No valid trip plan found."
-
-print(valid_trip)
+    print("No valid trip plan found.")

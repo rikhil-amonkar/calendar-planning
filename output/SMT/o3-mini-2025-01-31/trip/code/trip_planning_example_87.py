@@ -1,84 +1,161 @@
-from z3 import *
+from z3 import Solver, IntVector, Distinct, And, Or, If, sat
 
-# We have a 7-day trip visiting 3 cities with the following requirements:
-#   • Riga: 2 days, and you plan to visit relatives in Riga between Day 1 and Day 2.
-#   • Amsterdam: 2 days.
-#   • Mykonos: 5 days.
+# -----------------------------------------------------------------------------
+# City definitions and planned durations:
 #
-# Without overlapping, the total is 2 + 2 + 5 = 9 days.
-# With overlapping flight days (where a flight day counts as the last day in the current city
-# and the first day in the next), we can fit the trip into 7 days.
+# We have 3 cities:
+# 0: Riga      – 2 days.
+#               Event: Visit relatives in Riga between day 1 and day 2.
+# 1: Amsterdam – 2 days.
+# 2: Mykonos   – 5 days.
 #
-# The available direct flights are:
-#   • between Riga and Amsterdam,
-#   • between Amsterdam and Mykonos.
+# Total planned duration = 2 + 2 + 5 = 9 days.
+# There are 2 flight transitions, so the effective trip duration = 9 - 2 = 7 days.
 #
-# Therefore, the itinerary ordering is: Riga -> Amsterdam -> Mykonos.
+# Note:
+# - In the first city you enjoy the full duration.
+# - In every subsequent city, one day is "lost" due to a flight (effective stay = duration - 1).
+# -----------------------------------------------------------------------------
+cities    = ["Riga", "Amsterdam", "Mykonos"]
+durations = [2,       2,           5]
+
+# Event windows: mapping city index -> (event_start, event_end)
+# For Riga, we want to visit relatives between day 1 and day 2.
+events = {
+    0: (1, 2)
+}
+
+# -----------------------------------------------------------------------------
+# Allowed direct flights:
 #
-# Define:
-#   d1 = flight day from Riga to Amsterdam.
-#   d2 = flight day from Amsterdam to Mykonos.
+# - Amsterdam and Mykonos: bidirectional -> (Amsterdam, Mykonos) and (Mykonos, Amsterdam)
+# - Riga and Amsterdam: bidirectional -> (Riga, Amsterdam) and (Amsterdam, Riga)
+# -----------------------------------------------------------------------------
+allowed_flights = {
+    (1,2), (2,1),
+    (0,1), (1,0)
+}
+
+def flight_allowed(a, b):
+    return (a, b) in allowed_flights
+
+# -----------------------------------------------------------------------------
+# Create the Z3 solver and decision variables.
 #
-# Then:
+# We represent the itinerary as a permutation (ordering) of the 3 cities:
+#   pos[i] : the city index visited at itinerary position i.
+#   S[i]   : the arrival day at the city visited at position i.
 #
-# 1. Riga segment:
-#    - Runs from Day 1 to Day d1.
-#    - Duration: d1 days.
-#    - Must last for 2 days (to fulfill the requirement in Riga and for visiting relatives),
-#      so we set: d1 == 2.
+# For the first city (i == 0): visit interval = [S[i], S[i] + duration - 1].
+# For every subsequent city (i >= 1): effective visit interval = [S[i], S[i] + duration - 2].
 #
-# 2. Amsterdam segment:
-#    - Runs from Day d1 to Day d2.
-#    - Duration: d2 - d1 + 1 days.
-#    - Must last for 2 days, so: d2 - d1 + 1 == 2.
-#      With d1 == 2, this implies d2 == 3.
-#
-# 3. Mykonos segment:
-#    - Runs from Day d2 to Day 7.
-#    - Duration: 7 - d2 + 1 days.
-#    - Must last for 5 days, so: 7 - d2 + 1 == 5.
-#      With d2 == 3, we have 7 - 3 + 1 = 5.
-#
-# Additionally, the relatives in Riga should be visited between Day 1 and Day 2.
-# This is naturally satisfied since the Riga segment covers Days 1 and 2.
-#
-# We now model these constraints with Z3.
+# The departure day from the final city must equal total_trip = 7.
+# -----------------------------------------------------------------------------
+n = 3
+total_trip = 7
 s = Solver()
 
-# Flight day variables:
-d1 = Int('d1')  # Flight day from Riga to Amsterdam.
-d2 = Int('d2')  # Flight day from Amsterdam to Mykonos.
+# Itinerary permutation: each city appears exactly once.
+pos = IntVector("pos", n)
+s.add(Distinct(pos))
+for i in range(n):
+    s.add(pos[i] >= 0, pos[i] < n)
 
-# Constraint for Riga segment: 2 days.
-s.add(d1 == 2)
+# Arrival days vector.
+S = IntVector("S", n)
+s.add(S[0] == 1)  # Trip starts on day 1.
+for i in range(n):
+    s.add(S[i] >= 1)
 
-# Constraint for Amsterdam segment: 2 days.
-s.add(d2 - d1 + 1 == 2)
+# Helper functions for duration expressions at itinerary positions.
+def full_duration(i):
+    # For the first visited city.
+    return sum([If(pos[i] == c, durations[c], 0) for c in range(n)])
+    
+def effective_duration(i):
+    # For subsequent cities, effective duration = (duration - 1).
+    return sum([If(pos[i] == c, durations[c] - 1, 0) for c in range(n)])
 
-# Constraint for Mykonos segment: 5 days.
-s.add(7 - d2 + 1 == 5)
+# -----------------------------------------------------------------------------
+# Sequential arrival constraints:
+#
+# For position 1:
+#   S[1] = S[0] + (full duration of city at pos[0]).
+# For positions i >= 2:
+#   S[i] = S[i-1] + (effective duration of city at pos[i-1]).
+# -----------------------------------------------------------------------------
+s.add(S[1] == S[0] + full_duration(0))
+for i in range(2, n):
+    s.add(S[i] == S[i-1] + effective_duration(i-1))
 
-# Enforce ordering and valid day ranges.
-s.add(d1 < d2)
-s.add(d1 >= 1, d2 <= 7)
+# -----------------------------------------------------------------------------
+# Trip end constraint:
+#
+# For the final city (position n-1), the departure time is:
+#   if not first city: S[n-1] + (duration - 1) - 1 = S[n-1] + duration - 2.
+# This must equal total_trip (7).
+# -----------------------------------------------------------------------------
+s.add(S[n-1] + effective_duration(n-1) - 1 == total_trip)
 
+# -----------------------------------------------------------------------------
+# Flight connectivity constraints:
+#
+# For every consecutive pair in the itinerary (i and i+1), there must be a direct flight.
+# -----------------------------------------------------------------------------
+for i in range(n-1):
+    flight_options = []
+    for a in range(n):
+        for b in range(n):
+            if flight_allowed(a, b):
+                flight_options.append(And(pos[i] == a, pos[i+1] == b))
+    s.add(Or(flight_options))
+
+# -----------------------------------------------------------------------------
+# Event constraints:
+#
+# For each event city visited at itinerary position i, the city's visit interval must
+# cover the event window.
+#
+# The visit interval is:
+#   - if i == 0: [S[i], S[i] + duration - 1]
+#   - if i >= 1: [S[i], S[i] + duration - 2]
+# -----------------------------------------------------------------------------
+for i in range(n):
+    for city, (ev_start, ev_end) in events.items():
+        s.add(
+            If(pos[i] == city,
+               And(
+                   S[i] <= ev_end,
+                   If(i == 0,
+                      S[i] + durations[city] - 1 >= ev_start,
+                      S[i] + durations[city] - 2 >= ev_start)
+               ),
+               True)
+        )
+
+# -----------------------------------------------------------------------------
+# Solve the scheduling problem.
+# -----------------------------------------------------------------------------
 if s.check() == sat:
     m = s.model()
-    d1_val = m[d1].as_long()  # Expected to be 2 (Riga -> Amsterdam flight on Day 2).
-    d2_val = m[d2].as_long()  # Expected to be 3 (Amsterdam -> Mykonos flight on Day 3).
-
-    print("Trip plan found:\n")
+    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
+    arrivals  = [m.evaluate(S[i]).as_long() for i in range(n)]
     
-    # Riga segment.
-    print("1. Stay in Riga from Day 1 to Day {} (2 days).".format(d1_val))
-    print("   -> Visit your relatives in Riga between Day 1 and Day 2.")
-    print("   -> On Day {}, take a direct flight from Riga to Amsterdam.".format(d1_val))
+    print("Trip Itinerary:")
+    for i in range(n):
+        city = itinerary[i]
+        city_name = cities[city]
+        if i == 0:
+            departure = arrivals[i] + durations[city] - 1
+        else:
+            departure = arrivals[i] + durations[city] - 2
+        print(f" Position {i+1}: {city_name:10s} | Arrival: Day {arrivals[i]:2d} | Departure: Day {departure:2d}")
     
-    # Amsterdam segment.
-    print("2. Stay in Amsterdam from Day {} to Day {} (2 days).".format(d1_val, d2_val))
-    print("   -> On Day {}, take a direct flight from Amsterdam to Mykonos.".format(d2_val))
-    
-    # Mykonos segment.
-    print("3. Stay in Mykonos from Day {} to Day 7 (5 days).".format(d2_val))
+    last_city = itinerary[n-1]
+    if n-1 == 0:
+        final_departure = arrivals[n-1] + durations[last_city] - 1
+    else:
+        final_departure = arrivals[n-1] + durations[last_city] - 2
+    print("Trip ends on Day:", final_departure)
 else:
-    print("No solution exists!")
+    print("No valid trip plan could be found.")

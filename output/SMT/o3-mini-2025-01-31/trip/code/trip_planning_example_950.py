@@ -1,126 +1,128 @@
-from z3 import *
+from z3 import Solver, IntVector, Distinct, And, Or, If, Sum, sat
 
-# We have 7 cities with the following assigned indices and durations:
-# 0: Mykonos   (3 days) – Wedding between day 4 and day 6, so force arrival = 4.
-# 1: Riga      (3 days)
-# 2: Munich    (4 days)
-# 3: Bucharest (4 days)
-# 4: Rome      (4 days) – Conference between day 1 and day 4, so force arrival = 1.
-# 5: Nice      (3 days)
-# 6: Krakow    (2 days) – Annual show between day 16 and 17, so force arrival = 16.
+# We have 7 cities with the following properties:
+# 0: Mykonos  - 3 days, with a wedding that must occur between day 4 and day 6.
+#                 For its 3-day visit [S, S+2], require S <= 6 and S+2 >= 4.
+# 1: Riga     - 3 days, no special event.
+# 2: Munich   - 4 days, no special event.
+# 3: Bucharest- 4 days, no special event.
+# 4: Rome     - 4 days, with a conference that must cover day 1 and day 4.
+#                 For its 4-day visit [S, S+3], since the trip cannot start before day 1,
+#                 we force S == 1.
+# 5: Nice     - 3 days, no special event.
+# 6: Krakow   - 2 days, with an annual show that must occur from day 16 to day 17.
+#                 For its 2-day visit [S, S+1], we require S == 16.
 #
-# Total raw days = 3 + 3 + 4 + 4 + 4 + 3 + 2 = 23.
-# We have 6 transitions (each pair shares one day),
-# so the overall trip length = 23 - 6 = 17 days.
+# Total durations = 3 + 3 + 4 + 4 + 4 + 3 + 2 = 23.
+# There are 6 flights between the 7 cities (each flight overlaps one day).
+# Hence the effective trip length is 23 - 6 = 17 days.
+# The departure day from the last city must equal 17.
+
+n = 7
+total_trip = 17
 cities = ["Mykonos", "Riga", "Munich", "Bucharest", "Rome", "Nice", "Krakow"]
 durations = [3, 3, 4, 4, 4, 3, 2]
 
-# Allowed direct flights:
-# The flights are given as follows (city index in parentheses):
-# 1. Nice and Riga               → bidir(5, 1)
-# 2. Bucharest and Munich          → bidir(3, 2)
-# 3. Mykonos and Munich            → bidir(0, 2)
-# 4. Riga and Bucharest            → bidir(1, 3)
-# 5. Rome and Nice                → bidir(4, 5)
-# 6. Rome and Munich               → bidir(4, 2)
-# 7. Mykonos and Nice              → bidir(0, 5)
-# 8. Rome and Mykonos              → bidir(4, 0)
-# 9. Munich and Krakow             → bidir(2, 6)
-# 10. Rome and Bucharest           → bidir(4, 3)
-# 11. Nice and Munich              → bidir(5, 2)
-# 12. from Riga to Munich          → one-way: (1, 2) only
-# 13. from Rome to Riga            → one-way: (4, 1) only
+solver = Solver()
 
-allowed_flights = []
-
-def bidir(a, b):
-    allowed_flights.append((a, b))
-    allowed_flights.append((b, a))
-
-# 1. Nice (5) and Riga (1)
-bidir(5, 1)
-# 2. Bucharest (3) and Munich (2)
-bidir(3, 2)
-# 3. Mykonos (0) and Munich (2)
-bidir(0, 2)
-# 4. Riga (1) and Bucharest (3)
-bidir(1, 3)
-# 5. Rome (4) and Nice (5)
-bidir(4, 5)
-# 6. Rome (4) and Munich (2)
-bidir(4, 2)
-# 7. Mykonos (0) and Nice (5)
-bidir(0, 5)
-# 8. Rome (4) and Mykonos (0)
-bidir(4, 0)
-# 9. Munich (2) and Krakow (6)
-bidir(2, 6)
-# 10. Rome (4) and Bucharest (3)
-bidir(4, 3)
-# 11. Nice (5) and Munich (2)
-bidir(5, 2)
-# 12. from Riga to Munich: one-way (from 1 to 2)
-allowed_flights.append((1, 2))
-# 13. from Rome to Riga: one-way (from 4 to 1)
-allowed_flights.append((4, 1))
-
-# Set up the Z3 solver.
-s = Solver()
-n = len(cities)  # 7 cities
-
-# Define visitation order as a permutation of city indices.
-order = [Int(f"order_{i}") for i in range(n)]
+# Decision variables:
+# pos[i] will represent the index of the city visited at position i.
+pos = IntVector("pos", n)
+solver.add(Distinct(pos))
 for i in range(n):
-    s.add(And(order[i] >= 0, order[i] < n))
-s.add(Distinct(order))
+    solver.add(And(pos[i] >= 0, pos[i] < n))
 
-# Define arrival and departure day variables for each visit in the order.
-arrivals = [Int(f"arr_{i}") for i in range(n)]
-departures = [Int(f"dep_{i}") for i in range(n)]
-
+# S[i] represents the arrival (start) day for the city in position i.
 # The trip starts on day 1.
-s.add(arrivals[0] == 1)
-
-# For each visit slot, departure = arrival + duration - 1.
+S = IntVector("S", n)
+solver.add(S[0] == 1)
 for i in range(n):
-    s.add(Or([If(order[i] == c, departures[i] == arrivals[i] + durations[c] - 1, False)
-              for c in range(n)]))
+    solver.add(S[i] >= 1)
 
-# Consecutive visits share one transit day: arrival of next equals departure of previous.
+# Chain the arrival times:
+# When you finish the stay at the city in position i-1 (i.e. spending its full duration),
+# you take a flight that overlaps the final day.
+# Hence, for i>=1: S[i] = S[i-1] + (duration(city at pos[i-1]) - 1)
+for i in range(1, n):
+    solver.add(S[i] == S[i-1] + Sum([If(pos[i-1] == c, durations[c] - 1, 0) for c in range(n)]))
+
+# The departure day from the last city must equal total_trip.
+solver.add(S[n-1] + Sum([If(pos[n-1] == c, durations[c] - 1, 0) for c in range(n)]) == total_trip)
+
+# Allowed direct flights between consecutive cities.
+# City indices:
+# 0: Mykonos, 1: Riga, 2: Munich, 3: Bucharest, 4: Rome, 5: Nice, 6: Krakow.
+#
+# The allowed flights are given as follows:
+# - Nice and Riga            : (5,1) and (1,5)
+# - Bucharest and Munich     : (3,2) and (2,3)
+# - Mykonos and Munich       : (0,2) and (2,0)
+# - Riga and Bucharest       : (1,3) and (3,1)
+# - Rome and Nice            : (4,5) and (5,4)
+# - Rome and Munich          : (4,2) and (2,4)
+# - Mykonos and Nice         : (0,5) and (5,0)
+# - Rome and Mykonos         : (4,0) and (0,4)
+# - Munich and Krakow        : (2,6) and (6,2)
+# - Rome and Bucharest       : (4,3) and (3,4)
+# - Nice and Munich          : (5,2) and (2,5)
+# - from Riga to Munich      : (1,2)  [unidirectional]
+# - from Rome to Riga        : (4,1)  [unidirectional]
+
+allowed_flights = {
+    (5,1), (1,5),
+    (3,2), (2,3),
+    (0,2), (2,0),
+    (1,3), (3,1),
+    (4,5), (5,4),
+    (4,2), (2,4),
+    (0,5), (5,0),
+    (4,0), (0,4),
+    (2,6), (6,2),
+    (4,3), (3,4),
+    (5,2), (2,5),
+    (1,2),  # Riga -> Munich (unidirectional)
+    (4,1)   # Rome -> Riga (unidirectional)
+}
+
 for i in range(n - 1):
-    s.add(arrivals[i+1] == departures[i])
+    opts = []
+    for a in range(n):
+        for b in range(n):
+            if (a, b) in allowed_flights:
+                opts.append(And(pos[i] == a, pos[i+1] == b))
+    solver.add(Or(opts))
 
-# Overall trip must finish on day 17.
-s.add(departures[n-1] == 17)
-
-# Time-specific event constraints:
-# Rome (city 4): conference between day1 and day4, force arrival = 1.
+# Special event constraints:
 for i in range(n):
-    s.add(If(order[i] == 4, arrivals[i] == 1, True))
-# Mykonos (city 0): wedding between day4 and day6, force arrival = 4.
-for i in range(n):
-    s.add(If(order[i] == 0, arrivals[i] == 4, True))
-# Krakow (city 6): annual show between day16 and day17, force arrival = 16.
-for i in range(n):
-    s.add(If(order[i] == 6, arrivals[i] == 16, True))
+    # Mykonos (city 0): Wedding between day 4 and day 6.
+    # For a 3-day visit [S, S+2], require: S <= 6 and S+2 >= 4.
+    solver.add(If(pos[i] == 0, And(S[i] <= 6, S[i] + 2 >= 4), True))
+    
+    # Rome (city 4): Conference on day 1 and day 4.
+    # For a 4-day visit [S, S+3], to include day 1 and day 4 we need S == 1.
+    solver.add(If(pos[i] == 4, S[i] == 1, True))
+    
+    # Krakow (city 6): Annual show from day 16 to day 17.
+    # For a 2-day visit [S, S+1], require S == 16.
+    solver.add(If(pos[i] == 6, S[i] == 16, True))
 
-# Connectivity constraints:
-# For every consecutive pair in the itinerary, there must be an allowed direct flight from
-# the earlier city to the later city (respecting one-way directions).
-for i in range(n - 1):
-    flight_options = []
-    for (frm, to) in allowed_flights:
-        flight_options.append(And(order[i] == frm, order[i+1] == to))
-    s.add(Or(*flight_options))
-
-# Solve and print the itinerary.
-if s.check() == sat:
-    m = s.model()
-    print("Itinerary (City, arrival day, departure day):")
+# -----------------------------------------------------------------------------
+# Solve the model.
+# -----------------------------------------------------------------------------
+if solver.check() == sat:
+    m = solver.model()
+    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
+    arrivals  = [m.evaluate(S[i]).as_long() for i in range(n)]
+    
+    print("Trip Itinerary:")
     for i in range(n):
-        city_idx = m.evaluate(order[i]).as_long()
-        a_day = m.evaluate(arrivals[i]).as_long()
-        d_day = m.evaluate(departures[i]).as_long()
-        print(f"  {cities[city_idx]:9s}: [{a_day}, {d_day}]")
+        city_index = itinerary[i]
+        city = cities[city_index]
+        arrival = arrivals[i]
+        departure = arrival + durations[city_index] - 1
+        print(f" Position {i+1}: {city:10s} | Arrival: Day {arrival:2d} | Departure: Day {departure:2d}")
+    
+    final_day = m.evaluate(S[n-1] + durations[itinerary[-1]] - 1)
+    print("Trip ends on Day:", final_day)
 else:
-    print("No solution found")
+    print("No valid trip plan could be found.")

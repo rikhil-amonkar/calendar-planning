@@ -1,86 +1,114 @@
-from z3 import Solver, Int, Or, sat
+from z3 import Optimize, Int, Or, Implies, sat
 
-# Meeting duration: 30 minutes.
-duration = 30
+# Helper functions.
+def time_to_minutes(t):
+    # Converts "HH:MM" to minutes since midnight.
+    h, m = map(int, t.split(":"))
+    return h * 60 + m
 
-# Workday from 9:00 (540 minutes) to 17:00 (1020 minutes).
-WORK_START = 9 * 60     # 540
-WORK_END   = 17 * 60    # 1020
+def minutes_to_time(m):
+    # Converts minutes since midnight to "HH:MM" format.
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Candidate days represented as integers:
-# Monday = 0, Tuesday = 1, Wednesday = 2, Thursday = 3.
-candidate_days = [0, 1, 2, 3]
+# Meeting configuration.
+meeting_duration = 30  # 30-minute meeting.
+work_start = time_to_minutes("9:00")   # 540 minutes.
+work_end   = time_to_minutes("17:00")  # 1020 minutes.
 
-# Busy schedules for Mary:
-# Tuesday: 10:00-10:30 (600,630), 15:30-16:00 (930,960)
-# Wednesday: 9:30-10:00 (570,600), 15:00-15:30 (900,930)
-# Thursday: 9:00-10:00 (540,600), 10:30-11:30 (630,690)
+# Days encoding:
+# 0 -> Monday, 1 -> Tuesday, 2 -> Wednesday, 3 -> Thursday.
+possible_days = [0, 1, 2, 3]
+
+# Busy schedules for Mary.
+# If a day is not specified, Mary is free on that day.
 mary_busy = {
-    1: [(600, 630), (930, 960)],
-    2: [(570, 600), (900, 930)],
-    3: [(540, 600), (630, 690)]
+    1: [  # Tuesday
+        (time_to_minutes("10:00"), time_to_minutes("10:30")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00"))
+    ],
+    2: [  # Wednesday
+        (time_to_minutes("9:30"), time_to_minutes("10:00")),
+        (time_to_minutes("15:00"), time_to_minutes("15:30"))
+    ],
+    3: [  # Thursday
+        (time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("11:30"))
+    ]
 }
 
-# Busy schedules for Alexis:
-# Monday: 9:00-10:00 (540,600), 10:30-12:00 (630,720), 12:30-16:30 (750,990)
-# Tuesday: 9:00-10:00 (540,600), 10:30-11:30 (630,690), 12:00-15:30 (720,930), 16:00-17:00 (960,1020)
-# Wednesday: 9:00-11:00 (540,660), 11:30-17:00 (690,1020)
-# Thursday: 10:00-12:00 (600,720), 14:00-14:30 (840,870), 15:30-16:00 (930,960), 16:30-17:00 (990,1020)
+# Busy schedules for Alexis.
 alexis_busy = {
-    0: [(540,600), (630,720), (750,990)],
-    1: [(540,600), (630,690), (720,930), (960,1020)],
-    2: [(540,660), (690,1020)],
-    3: [(600,720), (840,870), (930,960), (990,1020)]
+    0: [  # Monday
+        (time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("12:00")),
+        (time_to_minutes("12:30"), time_to_minutes("16:30"))
+    ],
+    1: [  # Tuesday
+        (time_to_minutes("9:00"), time_to_minutes("10:00")),
+        (time_to_minutes("10:30"), time_to_minutes("11:30")),
+        (time_to_minutes("12:00"), time_to_minutes("15:30")),
+        (time_to_minutes("16:00"), time_to_minutes("17:00"))
+    ],
+    2: [  # Wednesday
+        (time_to_minutes("9:00"), time_to_minutes("11:00")),
+        (time_to_minutes("11:30"), time_to_minutes("17:00"))
+    ],
+    3: [  # Thursday
+        (time_to_minutes("10:00"), time_to_minutes("12:00")),
+        (time_to_minutes("14:00"), time_to_minutes("14:30")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00")),
+        (time_to_minutes("16:30"), time_to_minutes("17:00"))
+    ]
 }
 
-# The group wants to meet at their earliest availability;
-# so we try days in order (Monday first) and then the earliest start time.
+# Create an Optimize object to minimize for earliest availability.
+opt = Optimize()
 
-solution_found = False
-selected_day = None
-selected_start = None
+# Decision variables:
+# meeting_day: 0 (Monday) to 3 (Thursday)
+# meeting_start: the starting time (in minutes) of the meeting on that day.
+meeting_day = Int("meeting_day")
+opt.add(Or([meeting_day == d for d in possible_days]))
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-# Define helper to ensure a meeting starting at 'start_var' (lasting for 'duration')
-# does not overlap with a busy interval defined by (busy_start, busy_end).
-def no_overlap(busy_start, busy_end, start_var):
-    return Or(start_var + duration <= busy_start, start_var >= busy_end)
+# Constraint: meeting must fit in work hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
 
-# Search candidate days in order
-for day in candidate_days:
-    solver = Solver()
-    start = Int("start")
-    solver.add(start >= WORK_START, start + duration <= WORK_END)
+# Helper function: add constraints that meeting does not overlap a busy interval.
+def add_busy_constraints(busy_intervals, day_val):
+    for busy_start, busy_end in busy_intervals:
+        # For the meeting on given day, it should either finish before a busy interval starts 
+        # or start after that busy interval ends.
+        opt.add(Implies(meeting_day == day_val, Or(meeting_end <= busy_start, meeting_start >= busy_end)))
 
-    # Add Mary's busy intervals (if any) for the current day.
-    for (busy_start, busy_end) in mary_busy.get(day, []):
-        solver.add(no_overlap(busy_start, busy_end, start))
+# Add constraints for Mary's busy intervals.
+for day, intervals in mary_busy.items():
+    add_busy_constraints(intervals, day)
+
+# Add constraints for Alexis's busy intervals.
+for day, intervals in alexis_busy.items():
+    add_busy_constraints(intervals, day)
+
+# Objective: The group would like the meeting at their earliest availability.
+# We want to minimize based on day and meeting_start.
+# We'll combine both into one objective: meeting_day*10000 + meeting_start
+# This ensures that a lower day (e.g. Monday) is prioritized and within a day, earlier start times are preferred.
+opt.minimize(meeting_day * 10000 + meeting_start)
+
+# Check and print solution.
+if opt.check() == sat:
+    model = opt.model()
+    chosen_day = model[meeting_day].as_long()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
     
-    # Add Alexis's busy intervals (if any) for the current day.
-    for (busy_start, busy_end) in alexis_busy.get(day, []):
-        solver.add(no_overlap(busy_start, busy_end, start))
-    
-    # Try to find the earliest available start time by iterating minute-by-minute.
-    for t in range(WORK_START, WORK_END - duration + 1):
-        solver.push()
-        solver.add(start == t)
-        if solver.check() == sat:
-            selected_start = t
-            selected_day = day
-            solution_found = True
-            solver.pop()
-            break
-        solver.pop()
-
-    if solution_found:
-        break
-
-if solution_found:
-    selected_end = selected_start + duration
-    # Convert minutes to HH:MM format.
-    start_hour, start_min = divmod(selected_start, 60)
-    end_hour, end_min = divmod(selected_end, 60)
     day_names = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday"}
-    print("A valid meeting time is on {} from {:02d}:{:02d} to {:02d}:{:02d}."
-          .format(day_names[selected_day], start_hour, start_min, end_hour, end_min))
+    print("A possible meeting time:")
+    print("Day:   ", day_names[chosen_day])
+    print("Start: ", minutes_to_time(start_val))
+    print("End:   ", minutes_to_time(end_val))
 else:
-    print("No valid meeting time could be found that satisfies all constraints.")
+    print("No valid meeting time could be found.")

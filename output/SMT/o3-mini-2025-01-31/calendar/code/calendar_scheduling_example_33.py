@@ -1,90 +1,86 @@
 from z3 import Optimize, Int, Or, sat
 
-# Meeting duration in minutes
-meeting_duration = 30
+# Helper functions to convert between time strings and minutes after midnight.
+def time_to_minutes(t):
+    hours, minutes = map(int, t.split(":"))
+    return hours * 60 + minutes
 
-# Define working hours from 9:00 to 17:00.
-# Represent time as minutes after 9:00.
-work_start = 0
-work_end = 480
+def minutes_to_time(m):
+    h = m // 60
+    m = m % 60
+    return f"{h:02d}:{m:02d}"
 
-# Busy intervals for each participant (expressed in minutes after 9:00):
+# Meeting configuration.
+meeting_duration = 30  # in minutes
+work_start = time_to_minutes("9:00")
+work_end   = time_to_minutes("17:00")
+
+# Bobby's preference: no meetings after 15:00.
+# That means the meeting must end by 15:00.
+bobby_latest_end = time_to_minutes("15:00")
+
+# Busy intervals (in minutes) on Monday for each participant.
 
 # Lisa's busy intervals:
-# 9:00 to 10:00    -> [0, 60)
-# 10:30 to 11:30   -> [90, 150)
-# 12:30 to 13:00   -> [210, 240)
-# 16:00 to 16:30   -> [420, 450)
-lisa_busy = [(0, 60), (90, 150), (210, 240), (420, 450)]
+lisa_busy = [
+    (time_to_minutes("9:00"),  time_to_minutes("10:00")),
+    (time_to_minutes("10:30"), time_to_minutes("11:30")),
+    (time_to_minutes("12:30"), time_to_minutes("13:00")),
+    (time_to_minutes("16:00"), time_to_minutes("16:30"))
+]
 
 # Bobby's busy intervals:
-# 9:00 to 9:30    -> [0, 30)
-# 10:00 to 10:30  -> [60, 90)
-# 11:30 to 12:00  -> [150, 180)
-# 15:00 to 15:30  -> [360, 390)
-bobby_busy = [(0, 30), (60, 90), (150, 180), (360, 390)]
+bobby_busy = [
+    (time_to_minutes("9:00"),  time_to_minutes("9:30")),
+    (time_to_minutes("10:00"), time_to_minutes("10:30")),
+    (time_to_minutes("11:30"), time_to_minutes("12:00")),
+    (time_to_minutes("15:00"), time_to_minutes("15:30"))
+]
 
 # Randy's busy intervals:
-# 9:30 to 10:00    -> [30, 60)
-# 10:30 to 11:00   -> [90, 120)
-# 11:30 to 12:30   -> [150, 210)
-# 13:00 to 13:30   -> [240, 270)
-# 14:30 to 15:30   -> [330, 390)
-# 16:00 to 16:30   -> [420, 450)
-randy_busy = [(30, 60), (90, 120), (150, 210), (240, 270), (330, 390), (420, 450)]
+randy_busy = [
+    (time_to_minutes("9:30"),  time_to_minutes("10:00")),
+    (time_to_minutes("10:30"), time_to_minutes("11:00")),
+    (time_to_minutes("11:30"), time_to_minutes("12:30")),
+    (time_to_minutes("13:00"), time_to_minutes("13:30")),
+    (time_to_minutes("14:30"), time_to_minutes("15:30")),
+    (time_to_minutes("16:00"), time_to_minutes("16:30")),
+]
 
-# Bobby's preference: He prefers to avoid meetings after 15:00.
-# We interpret this as the meeting must finish by 15:00. 
-# Since 15:00 is 360 minutes after 9:00 and the meeting lasts 30 minutes, we require:
-max_start_for_bobby = 360 - meeting_duration  # i.e., S <= 330
+# Create the Z3 Optimize solver.
+opt = Optimize()
 
-# Create a Z3 Optimize instance
-optimizer = Optimize()
+# Decision variable: meeting_start in minutes from midnight on Monday.
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
 
-# Define the meeting start time variable (in minutes after 9:00)
-S = Int('S')
+# Meeting must be within work hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
 
-# Meeting must lie within working hours.
-optimizer.add(S >= work_start, S + meeting_duration <= work_end)
+# Respect Bobby's preference: the meeting must finish by 15:00.
+opt.add(meeting_end <= bobby_latest_end)
 
-# Bobby's preference: meeting must end by 15:00.
-optimizer.add(S <= max_start_for_bobby)
+# Function to add non-overlapping constraints for busy intervals.
+def add_busy_constraints(busy_intervals):
+    for b_start, b_end in busy_intervals:
+        # Meeting must end before a busy interval starts or start after it ends.
+        opt.add(Or(meeting_end <= b_start, meeting_start >= b_end))
 
-# A helper function to ensure that the meeting does not overlap with a busy interval.
-def no_overlap(s, busy_interval):
-    busy_start, busy_end = busy_interval
-    return Or(s + meeting_duration <= busy_start, s >= busy_end)
+# Add constraints from each participant.
+add_busy_constraints(lisa_busy)
+add_busy_constraints(bobby_busy)
+add_busy_constraints(randy_busy)
 
-# Add non-overlap constraints for each busy interval for Lisa.
-for interval in lisa_busy:
-    optimizer.add(no_overlap(S, interval))
+# Objective: choose the earliest available meeting time.
+opt.minimize(meeting_start)
 
-# Add non-overlap constraints for Bobby.
-for interval in bobby_busy:
-    optimizer.add(no_overlap(S, interval))
-
-# Add non-overlap constraints for Randy.
-for interval in randy_busy:
-    optimizer.add(no_overlap(S, interval))
-
-# Optionally, we can minimize S to schedule the meeting at the earliest possible time.
-optimizer.minimize(S)
-
-# Check and print the solution.
-if optimizer.check() == sat:
-    model = optimizer.model()
-    meeting_start = model[S].as_long()
-    meeting_end = meeting_start + meeting_duration
-
-    # Helper function to convert minutes-after-9:00 to HH:MM format.
-    def minutes_to_time(minutes_after_nine):
-        total_minutes = 9 * 60 + minutes_after_nine
-        hours = total_minutes // 60
-        minutes = total_minutes % 60
-        return f"{hours:02d}:{minutes:02d}"
-    
-    print("A possible meeting time is:")
-    print("Start:", minutes_to_time(meeting_start))
-    print("End:", minutes_to_time(meeting_end))
+# Find and print a solution.
+if opt.check() == sat:
+    model = opt.model()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
+    print("A possible meeting time on Monday:")
+    print("Start:", minutes_to_time(start_val))
+    print("End:  ", minutes_to_time(end_val))
 else:
-    print("No valid meeting slot can be found.")
+    print("No valid meeting time could be found.")

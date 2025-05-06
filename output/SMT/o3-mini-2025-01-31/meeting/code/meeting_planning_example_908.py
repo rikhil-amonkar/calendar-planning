@@ -1,66 +1,11 @@
-from z3 import *
+from z3 import Optimize, Int, Bool, If, And, Or, Not, sat, Sum
 
-# ---------------------------------------------------------------------
-# Friend definitions
-#
-# Times are measured in minutes after 9:00AM.
-# Convert each friend’s availability window relative to 9:00AM:
-#
-# 1. Mark at Fisherman's Wharf: 8:15AM to 10:00AM becomes [-45, 60].
-#    Minimum meeting duration: 30 minutes.
-# 2. Stephanie at Presidio: 12:15PM to 3:00PM becomes [195, 360].
-#    Minimum meeting duration: 75 minutes.
-# 3. Betty at Bayview: 7:15AM to 8:30PM becomes [-105, 690].
-#    Minimum meeting duration: 15 minutes.
-# 4. Lisa at Haight-Ashbury: 3:30PM to 6:30PM becomes [390, 570].
-#    Minimum meeting duration: 45 minutes.
-# 5. William at Russian Hill: 6:45PM to 8:00PM becomes [585, 660].
-#    Minimum meeting duration: 60 minutes.
-# 6. Brian at The Castro: 9:15AM to 1:15PM becomes [15, 255].
-#    Minimum meeting duration: 30 minutes.
-# 7. Joseph at Marina District: 10:45AM to 3:00PM becomes [105, 360].
-#    Minimum meeting duration: 90 minutes.
-# 8. Ashley at Richmond District: 9:45AM to 11:15AM becomes [45, 75].
-#    Minimum meeting duration: 45 minutes.
-# 9. Patricia at Union Square: 4:30PM to 8:00PM becomes [450, 660].
-#    Minimum meeting duration: 120 minutes.
-# 10. Karen at Sunset District: 4:30PM to 10:00PM becomes [450, 780].
-#     Minimum meeting duration: 105 minutes.
-#
-friends = [
-    {"name": "Mark",      "location": "Fisherman's Wharf",  "avail_start": -45, "avail_end": 60,  "duration": 30},
-    {"name": "Stephanie", "location": "Presidio",           "avail_start": 195, "avail_end": 360, "duration": 75},
-    {"name": "Betty",     "location": "Bayview",            "avail_start": -105, "avail_end": 690, "duration": 15},
-    {"name": "Lisa",      "location": "Haight-Ashbury",     "avail_start": 390, "avail_end": 570, "duration": 45},
-    {"name": "William",   "location": "Russian Hill",       "avail_start": 585, "avail_end": 660, "duration": 60},
-    {"name": "Brian",     "location": "The Castro",         "avail_start": 15,  "avail_end": 255, "duration": 30},
-    {"name": "Joseph",    "location": "Marina District",    "avail_start": 105, "avail_end": 360, "duration": 90},
-    {"name": "Ashley",    "location": "Richmond District",  "avail_start": 45,  "avail_end": 75,  "duration": 45},
-    {"name": "Patricia",  "location": "Union Square",       "avail_start": 450, "avail_end": 660, "duration": 120},
-    {"name": "Karen",     "location": "Sunset District",    "avail_start": 450, "avail_end": 780, "duration": 105},
-]
-
-# ---------------------------------------------------------------------
-# List of locations – these include all friend meeting places plus the starting point.
-locations = [
-    "Financial District",
-    "Fisherman's Wharf",
-    "Presidio",
-    "Bayview",
-    "Haight-Ashbury",
-    "Russian Hill",
-    "The Castro",
-    "Marina District",
-    "Richmond District",
-    "Union Square",
-    "Sunset District"
-]
-
-# ---------------------------------------------------------------------
-# Travel distances between locations (in minutes)
-# Each key is a tuple (origin, destination)
+# ----------------------------------------------------------------------------
+# Travel times (in minutes) between neighborhoods.
+# Locations: Financial District, Fisherman's Wharf, Presidio, Bayview,
+# Haight-Ashbury, Russian Hill, The Castro, Marina District, Richmond District,
+# Union Square, Sunset District.
 travel = {
-    # Financial District distances:
     ("Financial District", "Fisherman's Wharf"): 10,
     ("Financial District", "Presidio"): 22,
     ("Financial District", "Bayview"): 19,
@@ -71,8 +16,7 @@ travel = {
     ("Financial District", "Richmond District"): 21,
     ("Financial District", "Union Square"): 9,
     ("Financial District", "Sunset District"): 30,
-
-    # Fisherman's Wharf distances:
+    
     ("Fisherman's Wharf", "Financial District"): 11,
     ("Fisherman's Wharf", "Presidio"): 17,
     ("Fisherman's Wharf", "Bayview"): 26,
@@ -83,8 +27,7 @@ travel = {
     ("Fisherman's Wharf", "Richmond District"): 18,
     ("Fisherman's Wharf", "Union Square"): 13,
     ("Fisherman's Wharf", "Sunset District"): 27,
-
-    # Presidio distances:
+    
     ("Presidio", "Financial District"): 23,
     ("Presidio", "Fisherman's Wharf"): 19,
     ("Presidio", "Bayview"): 31,
@@ -95,8 +38,7 @@ travel = {
     ("Presidio", "Richmond District"): 7,
     ("Presidio", "Union Square"): 22,
     ("Presidio", "Sunset District"): 15,
-
-    # Bayview distances:
+    
     ("Bayview", "Financial District"): 19,
     ("Bayview", "Fisherman's Wharf"): 25,
     ("Bayview", "Presidio"): 32,
@@ -107,8 +49,7 @@ travel = {
     ("Bayview", "Richmond District"): 25,
     ("Bayview", "Union Square"): 18,
     ("Bayview", "Sunset District"): 23,
-
-    # Haight-Ashbury distances:
+    
     ("Haight-Ashbury", "Financial District"): 21,
     ("Haight-Ashbury", "Fisherman's Wharf"): 23,
     ("Haight-Ashbury", "Presidio"): 15,
@@ -119,8 +60,7 @@ travel = {
     ("Haight-Ashbury", "Richmond District"): 10,
     ("Haight-Ashbury", "Union Square"): 19,
     ("Haight-Ashbury", "Sunset District"): 15,
-
-    # Russian Hill distances:
+    
     ("Russian Hill", "Financial District"): 11,
     ("Russian Hill", "Fisherman's Wharf"): 7,
     ("Russian Hill", "Presidio"): 14,
@@ -131,8 +71,7 @@ travel = {
     ("Russian Hill", "Richmond District"): 14,
     ("Russian Hill", "Union Square"): 10,
     ("Russian Hill", "Sunset District"): 23,
-
-    # The Castro distances:
+    
     ("The Castro", "Financial District"): 21,
     ("The Castro", "Fisherman's Wharf"): 24,
     ("The Castro", "Presidio"): 20,
@@ -143,8 +82,7 @@ travel = {
     ("The Castro", "Richmond District"): 16,
     ("The Castro", "Union Square"): 19,
     ("The Castro", "Sunset District"): 17,
-
-    # Marina District distances:
+    
     ("Marina District", "Financial District"): 17,
     ("Marina District", "Fisherman's Wharf"): 10,
     ("Marina District", "Presidio"): 10,
@@ -155,8 +93,7 @@ travel = {
     ("Marina District", "Richmond District"): 11,
     ("Marina District", "Union Square"): 16,
     ("Marina District", "Sunset District"): 19,
-
-    # Richmond District distances:
+    
     ("Richmond District", "Financial District"): 22,
     ("Richmond District", "Fisherman's Wharf"): 18,
     ("Richmond District", "Presidio"): 7,
@@ -167,8 +104,7 @@ travel = {
     ("Richmond District", "Marina District"): 9,
     ("Richmond District", "Union Square"): 21,
     ("Richmond District", "Sunset District"): 11,
-
-    # Union Square distances:
+    
     ("Union Square", "Financial District"): 9,
     ("Union Square", "Fisherman's Wharf"): 15,
     ("Union Square", "Presidio"): 24,
@@ -179,8 +115,7 @@ travel = {
     ("Union Square", "Marina District"): 18,
     ("Union Square", "Richmond District"): 20,
     ("Union Square", "Sunset District"): 27,
-
-    # Sunset District distances:
+    
     ("Sunset District", "Financial District"): 30,
     ("Sunset District", "Fisherman's Wharf"): 29,
     ("Sunset District", "Presidio"): 16,
@@ -193,86 +128,123 @@ travel = {
     ("Sunset District", "Union Square"): 30,
 }
 
-def get_travel_time(origin, destination):
-    return travel[(origin, destination)]
-
-# ---------------------------------------------------------------------
-# Z3 Model
-# ---------------------------------------------------------------------
-# Use Optimize to maximize the number of meetings scheduled.
-opt = Optimize()
-
+# ----------------------------------------------------------------------------
+# Friends data.
+# Each friend is defined as a tuple: (location, avail_start, avail_end, min_duration)
+# Times are expressed in minutes after midnight.
+#
+# Mark:       at Fisherman's Wharf from 8:15AM to 10:00AM  => [495, 600], min_duration=30.
+# Stephanie:  at Presidio from 12:15PM to 3:00PM         => [735, 900], min_duration=75.
+# Betty:      at Bayview from 7:15AM to 8:30PM            => [435, 1230], min_duration=15.
+# Lisa:       at Haight-Ashbury from 3:30PM to 6:30PM      => [930, 1110], min_duration=45.
+# William:    at Russian Hill from 6:45PM to 8:00PM         => [1125, 1200], min_duration=60.
+# Brian:      at The Castro from 9:15AM to 1:15PM           => [555, 795], min_duration=30.
+# Joseph:     at Marina District from 10:45AM to 3:00PM     => [645, 900], min_duration=90.
+# Ashley:     at Richmond District from 9:45AM to 11:15AM   => [585, 675], min_duration=45.
+# Patricia:   at Union Square from 4:30PM to 8:00PM         => [990, 1200], min_duration=120.
+# Karen:      at Sunset District from 4:30PM to 10:00PM       => [990, 1320], min_duration=105.
+friends = [
+    ("Fisherman's Wharf", 495, 600, 30),    # Mark
+    ("Presidio",            735, 900, 75),    # Stephanie
+    ("Bayview",             435, 1230, 15),   # Betty
+    ("Haight-Ashbury",      930, 1110, 45),   # Lisa
+    ("Russian Hill",       1125, 1200, 60),   # William
+    ("The Castro",         555, 795, 30),     # Brian
+    ("Marina District",     645, 900, 90),    # Joseph
+    ("Richmond District",   585, 675, 45),    # Ashley
+    ("Union Square",        990, 1200, 120),  # Patricia
+    ("Sunset District",       990, 1320, 105), # Karen
+]
+friend_names = ["Mark", "Stephanie", "Betty", "Lisa", "William", "Brian", "Joseph", "Ashley", "Patricia", "Karen"]
 num_friends = len(friends)
 
-# Decision variables:
-# x[i] is True if meeting with friend i is scheduled.
-# start[i] is the start time (minutes after 9:00AM) for friend i's meeting.
+# ----------------------------------------------------------------------------
+# Starting parameters.
+start_loc = "Financial District"
+start_time = 540  # 9:00AM
+
+# ----------------------------------------------------------------------------
+# Create the Z3 optimizer.
+opt = Optimize()
+
+# Decision Variables:
+#   x[i] : Boolean flag indicating whether meeting with friend i is scheduled.
+#   A[i] : Integer arrival time at friend i's location (in minutes).
+#   order[i] : Integer representing the visitation order for friend i if scheduled, else -1.
 x = [Bool(f"x_{i}") for i in range(num_friends)]
-start = [Int(f"start_{i}") for i in range(num_friends)]
+A = [Int(f"A_{i}") for i in range(num_friends)]
+order = [Int(f"order_{i}") for i in range(num_friends)]
 
-# Set bounds for start times.
+# If a meeting is scheduled then its order is in range [0, num_friends-1], otherwise set to -1.
 for i in range(num_friends):
-    opt.add(start[i] >= -300, start[i] <= 1000)
+    opt.add(If(x[i],
+               And(order[i] >= 0, order[i] < num_friends),
+               order[i] == -1))
+    opt.add(A[i] >= 0)
 
-# Starting location is Financial District at time 0.
-starting_location = "Financial District"
-arrival_time = 0
-
-# For each scheduled meeting, enforce that:
-#   (a) meeting starts no earlier than friend's available start.
-#   (b) meeting finishes (start + duration) by friend's available end.
-#   (c) meeting cannot start before you've reached the friend from the starting point.
-for i, friend in enumerate(friends):
-    dur = friend["duration"]
-    avail_start = friend["avail_start"]
-    avail_end = friend["avail_end"]
-    loc = friend["location"]
-    travel_from_start = get_travel_time(starting_location, loc)
-    
-    opt.add(Implies(x[i], start[i] >= avail_start))
-    opt.add(Implies(x[i], start[i] + dur <= avail_end))
-    opt.add(Implies(x[i], start[i] >= arrival_time + travel_from_start))
-
-# Non-overlap constraints:
-# For any two scheduled meetings, ensure that one meeting (plus travel)
-# finishes before the other starts.
+# Ensure that any two scheduled meetings have distinct order values.
 for i in range(num_friends):
     for j in range(i+1, num_friends):
-        dur_i = friends[i]["duration"]
-        dur_j = friends[j]["duration"]
-        loc_i = friends[i]["location"]
-        loc_j = friends[j]["location"]
-        travel_i_to_j = get_travel_time(loc_i, loc_j)
-        travel_j_to_i = get_travel_time(loc_j, loc_i)
-        no_overlap = Or(
-            start[i] + dur_i + travel_i_to_j <= start[j],
-            start[j] + dur_j + travel_j_to_i <= start[i]
-        )
-        opt.add(Implies(And(x[i], x[j]), no_overlap))
+        opt.add(Or(Not(x[i]), Not(x[j]), order[i] != order[j]))
 
-# Objective: maximize total meetings scheduled.
+# For each friend, if scheduled, the meeting starts at the later of your arrival and the friend’s available start.
+# Meeting must finish (start time + min_duration) no later than the friend’s available end.
+for i in range(num_friends):
+    loc, avail_start, avail_end, dur = friends[i]
+    meeting_start = If(A[i] < avail_start, avail_start, A[i])
+    opt.add(Or(Not(x[i]), meeting_start + dur <= avail_end))
+
+# For the first scheduled meeting (order == 0), ensure you have enough travel time from the starting location.
+for i in range(num_friends):
+    loc, _, _, _ = friends[i]
+    travel_time = travel[(start_loc, loc)]
+    opt.add(Or(Not(x[i]), order[i] != 0, A[i] >= start_time + travel_time))
+
+# For consecutive meetings, if friend j follows friend i then travel time must be observed.
+for i in range(num_friends):
+    for j in range(num_friends):
+        if i == j:
+            continue
+        loc_i, avail_start_i, _, dur_i = friends[i]
+        loc_j, avail_start_j, _, _ = friends[j]
+        meeting_start_i = If(A[i] < avail_start_i, avail_start_i, A[i])
+        departure_i = meeting_start_i + friends[i][3]  # meeting duration for i
+        travel_time_ij = travel[(loc_i, loc_j)]
+        condition = And(x[i], x[j], order[j] == order[i] + 1)
+        opt.add(Or(Not(condition), A[j] >= departure_i + travel_time_ij))
+
+# ----------------------------------------------------------------------------
+# Objective: maximize the number of meetings scheduled.
 opt.maximize(Sum([If(x[i], 1, 0) for i in range(num_friends)]))
 
-# ---------------------------------------------------------------------
-# Solve and print the schedule
-# ---------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# Solve the model and output the schedule.
 if opt.check() == sat:
     model = opt.model()
-    schedule = []
+    
+    # Gather and sort scheduled meetings by visitation order.
+    scheduled = []
     for i in range(num_friends):
         if model.evaluate(x[i]):
-            t = model.evaluate(start[i]).as_long()
-            schedule.append((t, friends[i]["name"], friends[i]["location"], friends[i]["duration"]))
-    schedule.sort(key=lambda tup: tup[0])
+            scheduled.append((model.evaluate(order[i]).as_long(), i))
+    scheduled.sort()
+
+    def to_time(minutes):
+        h = minutes // 60
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
     
-    print("Optimal schedule (times in minutes after 9:00AM):")
-    for t, name, loc, dur in schedule:
-        finish = t + dur
-        def to_time(minutes):
-            total = 9 * 60 + minutes
-            hour = total // 60
-            minute = total % 60
-            return f"{hour:02d}:{minute:02d}"
-        print(f"Meet {name} at {loc} from {to_time(t)} to {to_time(finish)} (duration {dur} mins)")
+    print("Optimal meeting schedule:")
+    for ord_val, i in scheduled:
+        loc, avail_start, avail_end, dur = friends[i]
+        arr_time = model.evaluate(A[i]).as_long()
+        start_meeting = arr_time if arr_time >= avail_start else avail_start
+        end_meeting = start_meeting + dur
+        print(f" Order {ord_val}: Meet {friend_names[i]} at {loc}")
+        print(f"    Arrival Time: {to_time(arr_time)}")
+        print(f"    Meeting Time: {to_time(start_meeting)} - {to_time(end_meeting)}")
+    
+    total = sum(1 for i in range(num_friends) if model.evaluate(x[i]))
+    print("Total friends met:", total)
 else:
     print("No feasible schedule found.")

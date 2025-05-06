@@ -1,86 +1,105 @@
-from z3 import *
+from z3 import Optimize, Int, Or, sat
 
-# Create a Z3 solver instance.
-solver = Solver()
+# Helper functions for converting time strings.
+def time_to_minutes(time_str):
+    # Converts a time string "HH:MM" into total minutes since midnight.
+    hours, minutes = map(int, time_str.split(":"))
+    return hours * 60 + minutes
 
-# Meeting parameters:
-# Work hours on Monday: from 9:00 (540 minutes) to 17:00 (1020 minutes)
-# Meeting duration: 30 minutes.
-duration = 30
-start = Int("start")  # Meeting start time in minutes since midnight.
+def minutes_to_time(total_minutes):
+    # Converts minutes since midnight back to "HH:MM" format.
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
 
-# Constrain the meeting to be within work hours.
-solver.add(start >= 540, start + duration <= 1020)
-# Additionally, Jose does not want to meet after 15:30.
-# This means the meeting must finish by 15:30, i.e. start + duration <= 930.
-solver.add(start + duration <= 930)
+# Meeting configuration.
+meeting_duration = 30  # meeting is 30 minutes long
+work_start = time_to_minutes("9:00")    # 540 minutes
+work_end   = time_to_minutes("17:00")    # 1020 minutes
 
-# Helper function to add constraints for busy intervals.
-def add_busy_constraints(s, busy_intervals):
-    for bs, be in busy_intervals:
-        # The meeting avoids overlapping a busy interval if it
-        # finishes by the start of the interval or starts after the interval ends.
-        s.add(Or(start + duration <= bs, start >= be))
+# Busy intervals for each participant on Monday (in minutes).
 
-# Jose's busy intervals:
-#   11:00 to 11:30 -> [660, 690)
-#   12:30 to 13:00 -> [750, 780)
-jose_busy = [(660, 690), (750, 780)]
-add_busy_constraints(solver, jose_busy)
+# Jose's busy intervals.
+jose_busy = [
+    (time_to_minutes("11:00"), time_to_minutes("11:30")),
+    (time_to_minutes("12:30"), time_to_minutes("13:00"))
+]
+# Jose does not want meetings after 15:30, so we require the meeting to finish by 15:30.
 
-# Keith's busy intervals:
-#   14:00 to 14:30 -> [840, 870)
-#   15:00 to 15:30 -> [900, 930)
-keith_busy = [(840, 870), (900, 930)]
-add_busy_constraints(solver, keith_busy)
+# Keith's busy intervals.
+keith_busy = [
+    (time_to_minutes("14:00"), time_to_minutes("14:30")),
+    (time_to_minutes("15:00"), time_to_minutes("15:30"))
+]
 
-# Logan's busy intervals:
-#   9:00 to 10:00   -> [540, 600)
-#   12:00 to 12:30  -> [720, 750)
-#   15:00 to 15:30  -> [900, 930)
-logan_busy = [(540, 600), (720, 750), (900, 930)]
-add_busy_constraints(solver, logan_busy)
+# Logan's busy intervals.
+logan_busy = [
+    (time_to_minutes("9:00"),  time_to_minutes("10:00")),
+    (time_to_minutes("12:00"), time_to_minutes("12:30")),
+    (time_to_minutes("15:00"), time_to_minutes("15:30"))
+]
 
-# Megan's busy intervals:
-#   9:00 to 10:30   -> [540, 630)
-#   11:00 to 12:00  -> [660, 720)
-#   13:00 to 13:30  -> [780, 810)
-#   14:30 to 16:30  -> [870, 990)
-megan_busy = [(540, 630), (660, 720), (780, 810), (870, 990)]
-add_busy_constraints(solver, megan_busy)
+# Megan's busy intervals.
+megan_busy = [
+    (time_to_minutes("9:00"),  time_to_minutes("10:30")),
+    (time_to_minutes("11:00"), time_to_minutes("12:00")),
+    (time_to_minutes("13:00"), time_to_minutes("13:30")),
+    (time_to_minutes("14:30"), time_to_minutes("16:30"))
+]
 
-# Gary's busy intervals:
-#   9:00 to 9:30    -> [540, 570)
-#   10:00 to 10:30  -> [600, 630)
-#   11:30 to 13:00  -> [690, 780)
-#   13:30 to 14:00  -> [810, 840)
-#   14:30 to 16:30  -> [870, 990)
-gary_busy = [(540, 570), (600, 630), (690, 780), (810, 840), (870, 990)]
-add_busy_constraints(solver, gary_busy)
+# Gary's busy intervals.
+gary_busy = [
+    (time_to_minutes("9:00"),  time_to_minutes("9:30")),
+    (time_to_minutes("10:00"), time_to_minutes("10:30")),
+    (time_to_minutes("11:30"), time_to_minutes("13:00")),
+    (time_to_minutes("13:30"), time_to_minutes("14:00")),
+    (time_to_minutes("14:30"), time_to_minutes("16:30"))
+]
 
-# Bobby's busy intervals:
-#   11:00 to 11:30  -> [660, 690)
-#   12:00 to 12:30  -> [720, 750)
-#   13:00 to 16:00  -> [780, 960)
-bobby_busy = [(660, 690), (720, 750), (780, 960)]
-add_busy_constraints(solver, bobby_busy)
+# Bobby's busy intervals.
+bobby_busy = [
+    (time_to_minutes("11:00"), time_to_minutes("11:30")),
+    (time_to_minutes("12:00"), time_to_minutes("12:30")),
+    (time_to_minutes("13:00"), time_to_minutes("16:00"))
+]
 
-# Search for the earliest valid meeting start time.
-found = False
-# Meeting must finish by 15:30 → start + 30 <= 930, hence start <= 900.
-for t in range(540, 901):  # iterate possible start times from 9:00 (540) to 15:00 (900)
-    solver.push()
-    solver.add(start == t)
-    if solver.check() == sat:
-        meeting_start = t
-        meeting_end = t + duration
-        sh, sm = divmod(meeting_start, 60)
-        eh, em = divmod(meeting_end, 60)
-        print("A valid meeting time is from {:02d}:{:02d} to {:02d}:{:02d}".format(sh, sm, eh, em))
-        found = True
-        solver.pop()
-        break
-    solver.pop()
+# Create an Optimize solver.
+opt = Optimize()
 
-if not found:
+# Decision variable: meeting start time (in minutes from midnight on Monday).
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
+
+# Constrain the meeting to occur within work hours.
+opt.add(meeting_start >= work_start, meeting_end <= work_end)
+
+# Enforce Jose's preference to meet before 15:30 (meeting must finish by 15:30).
+jose_deadline = time_to_minutes("15:30")  # 930 minutes
+opt.add(meeting_end <= jose_deadline)
+
+# Helper function to add constraints to avoid overlapping a busy interval.
+def add_busy_constraints(busy_intervals):
+    for busy_start, busy_end in busy_intervals:
+        # The meeting must finish at or before a busy interval starts or start at or after it ends.
+        opt.add(Or(meeting_end <= busy_start, meeting_start >= busy_end))
+
+# Add busy constraints for all participants.
+add_busy_constraints(jose_busy)
+add_busy_constraints(keith_busy)
+add_busy_constraints(logan_busy)
+add_busy_constraints(megan_busy)
+add_busy_constraints(gary_busy)
+add_busy_constraints(bobby_busy)
+
+# Objective: find the earliest meeting time.
+opt.minimize(meeting_start)
+
+if opt.check() == sat:
+    model = opt.model()
+    start_val = model[meeting_start].as_long()
+    end_val = start_val + meeting_duration
+    print("A possible meeting time on Monday:")
+    print("Start:", minutes_to_time(start_val))
+    print("End:  ", minutes_to_time(end_val))
+else:
     print("No valid meeting time could be found.")

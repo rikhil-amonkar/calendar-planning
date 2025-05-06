@@ -1,40 +1,38 @@
 from z3 import *
 
-# Define the time intervals
+# Define the time slots
 start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60   # 17:00 in minutes
+end_time = 17 * 60  # 17:00 in minutes
 meeting_duration = 30  # 0.5 hours in minutes
 
-# Define the existing schedules
-schedules = {
-    'Andrew': [],
-    'Grace': [],
-    'Samuel': [(9 * 60, 10 * 60 + 30), (11 * 60 + 30, 12 * 60), (13 * 60, 13 * 60 + 30), (14 * 60, 16 * 60), (16 * 60 + 30, 17 * 60)]
-}
+# Define the existing schedules for Andrew, Grace and Samuel
+andrew_schedule = []  # Andrew's calendar is wide open the entire day
+grace_schedule = []  # Grace has no meetings the whole day
+samuel_schedule = [(9 * 60, 10 * 60 + 30), (11 * 60 + 30, 12 * 60), (13 * 60, 13 * 60 + 30), (14 * 60, 16 * 60), (16 * 60 + 30, 17 * 60)]
 
 # Create a Z3 solver
 solver = Solver()
 
-# Define the variables
+# Create a Z3 variable to represent the start time of the meeting
 meeting_start = Int('meeting_start')
 
-# Add constraints
-solver.add(meeting_start >= start_time)
-solver.add(meeting_start + meeting_duration <= end_time)
+# Add constraints to ensure the meeting start time is within the work hours
+solver.add(And(meeting_start >= start_time, meeting_start <= end_time - meeting_duration))
 
-# Add constraints for each participant's schedule
-for participant, schedule in schedules.items():
-    for start, end in schedule:
-        solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
+# Add constraints to avoid Samuel's schedule
+for start, end in samuel_schedule:
+    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
 
-# Add a constraint to meet at the earliest availability
-solver.add(meeting_start == start_time)
+# Add constraint to schedule the meeting at the earliest availability
+min_start_time = Int('min_start_time')
+solver.add(min_start_time == meeting_start)
+solver.minimize(min_start_time)
 
-# Solve the problem
-result = solver.check()
-
-if result == sat:
-    print("A meeting time has been found:")
-    print("Start time: {:.2f}:00".format(solver.model()[meeting_start].as_long() / 60))
+# Check if the solver can find a solution
+if solver.check() == sat:
+    # Get the solution
+    model = solver.model()
+    meeting_start_time = model[meeting_start].as_long()
+    print(f"Meeting can be scheduled from {meeting_start_time // 60}:{meeting_start_time % 60:02} to {(meeting_start_time + meeting_duration) // 60}:{(meeting_start_time + meeting_duration) % 60:02}")
 else:
-    print("No meeting time could be found.")
+    print("No solution found")

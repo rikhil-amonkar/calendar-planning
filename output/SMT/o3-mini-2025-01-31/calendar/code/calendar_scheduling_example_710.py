@@ -1,79 +1,92 @@
-from z3 import Solver, Int, Or, sat
+from z3 import *
 
-# Meeting parameters
-duration = 30  # meeting duration in minutes (half an hour)
-start = Int("start")  # meeting start time in minutes from midnight
+# Helper functions to convert time formats.
+def time_to_minutes(time_str):
+    h, m = map(int, time_str.split(":"))
+    return h * 60 + m
 
-# Work hours: 9:00 (540 minutes) to 17:00 (1020 minutes)
-WORK_START = 540
-WORK_END = 1020
+def minutes_to_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-# Days encoding: 0 = Monday, 1 = Tuesday, 2 = Wednesday
-# Cheryl cannot meet on Wednesday, so eligible days are Monday and Tuesday.
-eligible_days = [0, 1]
+# Meeting configuration.
+meeting_duration = 30  # 30 minutes meeting.
+work_start = time_to_minutes("9:00")   # 540 minutes.
+work_end   = time_to_minutes("17:00")  # 1020 minutes.
 
-# Cheryl's busy schedule (in minutes):
+# Days: 0 = Monday, 1 = Tuesday, 2 = Wednesday.
+# Cheryl's busy intervals.
 cheryl_busy = {
-    0: [(540, 570),      # Monday: 9:00 to 9:30
-        (11*60 + 30, 13*60),  # Monday: 11:30 to 13:00 -> (690, 780)
-        (15*60 + 30, 16*60)], # Monday: 15:30 to 16:00 -> (930, 960)
-    1: [(15*60, 15*60 + 30)]  # Tuesday: 15:00 to 15:30 -> (900, 930)
-    # No schedule for Wednesday as Cheryl cannot meet on Wednesday.
+    0: [   # Monday
+        (time_to_minutes("9:00"), time_to_minutes("9:30")),
+        (time_to_minutes("11:30"), time_to_minutes("13:00")),
+        (time_to_minutes("15:30"), time_to_minutes("16:00"))
+    ],
+    1: [   # Tuesday
+        (time_to_minutes("15:00"), time_to_minutes("15:30"))
+    ],
+    2: []  # Although no busy intervals listed for Wednesday,
+          # Cheryl cannot meet on Wednesday.
 }
 
-# Kyle's busy schedule (in minutes):
+# Kyle's busy intervals.
 kyle_busy = {
-    0: [(540, 1020)],   # Monday: busy 9:00 to 17:00
-    1: [(570, 1020)],   # Tuesday: busy 9:30 to 17:00
-    2: [(540, 570),      # Wednesday: 9:00 to 9:30
-        (600, 780),      # Wednesday: 10:00 to 13:00
-        (13*60+30, 14*60),  # Wednesday: 13:30 to 14:00 -> (810,840)
-        (14*60+30, 1020)]   # Wednesday: 14:30 to 17:00 -> (870,1020)
+    0: [   # Monday
+        (time_to_minutes("9:00"), time_to_minutes("17:00"))
+    ],
+    1: [   # Tuesday
+        (time_to_minutes("9:30"), time_to_minutes("17:00"))
+    ],
+    2: [   # Wednesday
+        (time_to_minutes("9:00"), time_to_minutes("9:30")),
+        (time_to_minutes("10:00"), time_to_minutes("13:00")),
+        (time_to_minutes("13:30"), time_to_minutes("14:00")),
+        (time_to_minutes("14:30"), time_to_minutes("17:00"))
+    ]
 }
 
-def non_overlap(busy_start, busy_end):
-    # The meeting interval [start, start+duration) should not overlap with [busy_start, busy_end)
-    return Or(start + duration <= busy_start, start >= busy_end)
+# Create a Z3 solver instance.
+s = Solver()
 
-found = False
-meeting_day = None  # 0 for Monday or 1 for Tuesday
-meeting_start = None
+# Define a variable for the meeting day (0: Monday, 1: Tuesday, 2: Wednesday).
+meeting_day = Int("meeting_day")
+s.add(Or(meeting_day == 0, meeting_day == 1, meeting_day == 2))
 
-# Try each eligible day in order.
-for day in eligible_days:
-    solver = Solver()
-    # Meeting must occur within work hours.
-    solver.add(start >= WORK_START, start + duration <= WORK_END)
-    
-    # Add Cheryl's busy time constraints.
-    for b_start, b_end in cheryl_busy.get(day, []):
-        solver.add(non_overlap(b_start, b_end))
-    
-    # Add Kyle's busy time constraints.
-    for b_start, b_end in kyle_busy.get(day, []):
-        solver.add(non_overlap(b_start, b_end))
-    
-    # Try possible start times within work hours.
-    for t in range(WORK_START, WORK_END - duration + 1):
-        solver.push()
-        solver.add(start == t)
-        if solver.check() == sat:
-            meeting_start = t
-            meeting_day = day
-            found = True
-            solver.pop()
-            break
-        solver.pop()
-        
-    if found:
-        break
+# Constraint: Cheryl cannot meet on Wednesday.
+s.add(meeting_day != 2)
 
-if found:
-    meeting_end = meeting_start + duration
-    # Convert minutes to HH:MM format.
-    start_hour, start_min = divmod(meeting_start, 60)
-    end_hour, end_min = divmod(meeting_end, 60)
-    day_str = {0: "Monday", 1: "Tuesday", 2: "Wednesday"}[meeting_day]
-    print(f"A valid meeting time is on {day_str} from {start_hour:02d}:{start_min:02d} to {end_hour:02d}:{end_min:02d}.")
+# Define the meeting start time (in minutes).
+meeting_start = Int("meeting_start")
+meeting_end = meeting_start + meeting_duration
+
+# Constraint: Meeting must be within work hours.
+s.add(meeting_start >= work_start, meeting_end <= work_end)
+
+# For each busy interval of Cheryl, if the meeting is on that day then
+# the meeting must not overlap the busy interval.
+for day_val, intervals in cheryl_busy.items():
+    for (busy_start, busy_end) in intervals:
+        s.add(Implies(meeting_day == day_val, Or(meeting_end <= busy_start, meeting_start >= busy_end)))
+
+# For each busy interval of Kyle, if the meeting is on that day then
+# the meeting must not overlap the busy interval.
+for day_val, intervals in kyle_busy.items():
+    for (busy_start, busy_end) in intervals:
+        s.add(Implies(meeting_day == day_val, Or(meeting_end <= busy_start, meeting_start >= busy_end)))
+
+# Check for a valid meeting time.
+if s.check() == sat:
+    model = s.model()
+    chosen_day = model[meeting_day].as_long()
+    start = model[meeting_start].as_long()
+    end = start + meeting_duration
+    
+    day_str = {0: "Monday", 1: "Tuesday", 2: "Wednesday"}[chosen_day]
+    
+    print("A possible meeting time:")
+    print(f"Day:   {day_str}")
+    print(f"Start: {minutes_to_time(start)}")
+    print(f"End:   {minutes_to_time(end)}")
 else:
-    print("No valid meeting time could be found that meets all constraints.")
+    print("No valid meeting time could be found.")

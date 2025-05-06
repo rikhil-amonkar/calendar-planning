@@ -1,37 +1,37 @@
-from z3 import *
+import z3
 
-# Define the blocked intervals for Samuel in minutes
-samuel_blocked = [
-    (540, 630),   # 9:00-10:30
-    (690, 720),   # 11:30-12:00
-    (780, 810),   # 13:00-13:30
-    (840, 960),   # 14:00-16:00
-    (990, 1020)   # 16:30-17:00
-]
+def schedule_meeting():
+    solver = z3.Solver()
+    t = z3.Int('t')
+    
+    # Work hours constraint: 9:00 to 17:00 (540 to 1020 minutes)
+    solver.add(t >= 540)  # 9:00 AM
+    solver.add(t + 30 <= 1020)  # Meeting ends by 5:00 PM
+    
+    # Samuel's busy intervals in minutes (start, end)
+    busy_intervals = [
+        (540, 630),  # 9:00-10:30
+        (690, 720),  # 11:30-12:00
+        (780, 810),  # 13:00-13:30
+        (840, 960),  # 14:00-16:00
+        (990, 1020)  # 16:30-17:00
+    ]
+    
+    # Add constraints for each busy interval
+    for s, e in busy_intervals:
+        solver.add(z3.Or(t + 30 <= s, t >= e))
+    
+    # Solve the constraints
+    if solver.check() == z3.sat:
+        model = solver.model()
+        start_time = model[t].as_long()
+        # Convert start time back to hours:minutes format
+        hours = start_time // 60
+        minutes = start_time % 60
+        end_hours = (start_time + 30) // 60
+        end_minutes = (start_time + 30) % 60
+        print(f"Meeting can be scheduled from {hours:02d}:{minutes:02d} to {end_hours:02d}:{end_minutes:02d}")
+    else:
+        print("No solution found.")
 
-# Create the variable for the start time
-t = Int('t')
-
-# Create constraints for Samuel's blocked times
-samuel_constraints = [Or(t + 30 <= s, t >= e) for (s, e) in samuel_blocked]
-
-# Combine all constraints
-constraints = samuel_constraints
-
-# Add the constraints for the valid time range
-constraints.append(540 <= t)  # 9:00
-constraints.append(t <= 990)  # 16:30
-
-# Create the solver and add constraints
-solver = Solver()
-solver.add(constraints)
-
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    start_time = model[t].as_long()
-    hours = start_time // 60
-    minutes = start_time % 60
-    print(f"Meeting can be scheduled at {hours:02d}:{minutes:02d}")
-else:
-    print("No solution found")
+schedule_meeting()

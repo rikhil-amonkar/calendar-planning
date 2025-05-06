@@ -20,20 +20,25 @@ args = parser.parse_args()
 with open("../../scheduling_key.json") as f:
     keys = json.load(f)
 
-for model_name in args.model:
+def initialize_model(model_name, keys):
+    """Initializes the Kani AI model based on the model name."""
     print(f"Running model: {model_name}")
     if model_name.startswith("gpt") or model_name.startswith("o"):
         if model_name == "o3-mini":
             model_name = "o3-mini-2025-01-31"
         elif model_name == "gpt-4o-mini":
             model_name = "gpt-4o-mini-2024-07-18"
-        engine = OpenAIEngine(keys["openai"], model=model_name,max_context_size=20000)
+        engine = OpenAIEngine(keys["openai"], model=model_name, max_context_size=20000)
     elif model_name == "DeepSeek-R1":
-        engine = OpenAIEngine(keys["deepseek"], model = "deepseek-reasoner", api_base="https://api.deepseek.com",max_context_size=20000)
+        engine = OpenAIEngine(keys["deepseek"], model="deepseek-reasoner", api_base="https://api.deepseek.com", max_context_size=20000)
     else:
-        engine = HuggingEngine(model_id = model_name)
+        engine = HuggingEngine(model_id=model_name)
 
     ai = Kani(engine, system_prompt="")
+    return ai
+
+for model_name in args.model:
+    ai = initialize_model(model_name, keys)
 
     task_name_map = {
         "calendar": "calendar_scheduling",
@@ -56,7 +61,7 @@ for model_name in args.model:
 
     for task in tasks:
         print(f"Running task: {task}")
-        with open(f"../natural-plan/data/{task_name_map[task]}.json") as f:
+        with open(f"../data/{task_name_map[task]}_100.json") as f:
             data = json.load(f)
 
         for idx, (id, example) in enumerate(data.items()):
@@ -74,6 +79,7 @@ for model_name in args.model:
                 except Exception as e:
                     print(f"An error occurred: {e}. Retrying in 5 seconds...")
                     time.sleep(5)
+                    ai = initialize_model(model_name, keys)
 
             #print(response_txt)
 
