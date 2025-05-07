@@ -304,8 +304,8 @@ async def main():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
     json_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    with open('ML-ML-3.1-8B_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
-         open('ML-ML-3.1-8B_forceJSON_text_meeting_results.json', json_mode) as json_file:
+    with open('ML-L-3.1-70B_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
+         open('ML-L-3.1-70B_forceJSON_text_meeting_results.json', json_mode) as json_file:
         
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:

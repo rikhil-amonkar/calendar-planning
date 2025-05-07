@@ -1,56 +1,98 @@
 import os
 import json
+import re
 
-# Define the folder where the constraint dictionaries are located
-calendar_folder = 'constraint_satisfaction/calendar'
-report_filename = 'constraint_satisfaction/calendar_constraint_report.txt'  # Output file name
+def load_constraint_dicts(folder_path):
+    """Load all constraint dictionaries from files in the given folder."""
+    constraint_dicts = {}
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".json") and "calendar_scheduling_example_" in filename:
+            with open(os.path.join(folder_path, filename), 'r') as file:
+                constraint_dicts[filename] = json.load(file)
+    print(constraint_dicts)
+    return constraint_dicts
 
-# Function to read and write each constraint dict with the number of constraints
-def write_constraints_to_file():
-    # List and sort all the JSON files in the calendar folder (sorting in case we want them in order)
-    json_files = sorted([f for f in os.listdir(calendar_folder) if f.endswith('.json')])
+def load_model_responses(json_file_path):
+    """Load model responses from the provided JSON file."""
+    with open(json_file_path, 'r') as file:
+        model_responses = json.load(file)
+    return model_responses
 
-    # Open the output report file for writing
-    with open(report_filename, 'w') as report_file:
-        # Iterate through the sorted files
-        for filename in json_files:
-            json_file_path = os.path.join(calendar_folder, filename)
+def time_to_minutes(time_str):
+    """Convert time in military format (HH:MM) to total minutes."""
+    time_str = time_str.strip("{}")  # Remove curly braces
+    hours, minutes = map(int, time_str.split(":"))
+    return hours * 60 + minutes
 
-            # Read the JSON content from the constraint dict file
-            with open(json_file_path, 'r') as f:
-                constraint_data = json.load(f)
+def parse_answer_time(final_time):
+    """Parse the answer time from model output string, assuming format: {start_time:end_time}."""
+    time_match = re.search(r'(\d{2}:\d{2}):(\d{2}:\d{2})', final_time)
+    if time_match:
+        start_time = time_match.group(1)
+        end_time = time_match.group(2)
+        return start_time, end_time
+    return None, None
 
-            # Iterate through each scheduling example inside the JSON file
-            for example_key, example_data in constraint_data.items():
-                allowed_ranges = example_data.get('allowed_ranges', [])
-                disallowed_ranges = example_data.get('disallowed_ranges', [])
-                preferred_ranges = example_data.get('preferred_ranges', [])
-                unpreferred_ranges = example_data.get('unpreferred_ranges', [])
-                optimization = example_data.get('optimization', None)  # Get optimization (could be None)
+def compare_time_with_constraints(model_start_time, model_end_time, constraint_dict):
+    """Compare the model's time with the constraints and calculate the broken constraints."""
+    constraints_broken = 0
+    total_constraints = 0
 
-                # Count optimization as 1 if it's not None or "nay", otherwise 0
-                optimization_count = 1 if optimization not in [None, "any"] else 0
+    # Loop through allowed, disallowed, preferred, and unpreferred ranges
+    for constraint_type in ['allowed_ranges', 'disallowed_ranges', 'preferred_ranges', 'unpreferred_ranges']:
+        if constraint_type in constraint_dict:
+            total_constraints += len(constraint_dict[constraint_type])  # Count each range in these sections
+            for constraint in constraint_dict[constraint_type]:
+                if constraint['day'] == "Monday":  # Assuming we're only interested in Monday for simplicity
+                    constraint_start = time_to_minutes(str(constraint['start']))
+                    constraint_end = time_to_minutes(str(constraint['end']))
+                    model_start_minutes = time_to_minutes(str(model_start_time))
+                    model_end_minutes = time_to_minutes(str(model_end_time))
 
-                # Calculate the total number of constraints for each type (including 0 if empty)
-                total_constraints = (
-                    len(allowed_ranges) +
-                    len(disallowed_ranges) +
-                    len(preferred_ranges) +
-                    len(unpreferred_ranges) +
-                    optimization_count  # Add optimization count based on the condition
-                )
+                    # Check if model time breaks the constraint (i.e., if the model time does not fit in the allowed range)
+                    if (model_start_minutes < constraint_start or model_end_minutes > constraint_end):
+                        constraints_broken += 1
 
-                # Write the constraint dictionary and the number of constraints to the file
-                report_file.write(f"Example: {example_key}\n")
-                report_file.write(f"Allowed Ranges: {allowed_ranges} (Count: {len(allowed_ranges)})\n")
-                report_file.write(f"Disallowed Ranges: {disallowed_ranges} (Count: {len(disallowed_ranges)})\n")
-                report_file.write(f"Preferred Ranges: {preferred_ranges} (Count: {len(preferred_ranges)})\n")
-                report_file.write(f"Unpreferred Ranges: {unpreferred_ranges} (Count: {len(unpreferred_ranges)})\n")
-                report_file.write(f"Optimization: {optimization} (Count: {optimization_count})\n")
-                report_file.write(f"Total Constraints: {total_constraints}\n")
-                report_file.write("-" * 40 + "\n")
+    return constraints_broken, total_constraints
 
-    print(f"Report written to: {report_filename}")
 
-# Run the program
-write_constraints_to_file()
+def process_files(constraint_dicts_folder, model_responses_file, output_file):
+    """Process all files, compare the times, and write results to output_file."""
+    # Load the constraint dictionaries and model responses
+    constraint_dicts = load_constraint_dicts(constraint_dicts_folder)
+    model_responses = load_model_responses(model_responses_file)
+
+    with open(output_file, 'w') as output:
+        # Process each constraint dictionary and its corresponding model response
+        for constraint_filename, constraint_dict in constraint_dicts.items():
+            example_id = re.search(r'calendar_scheduling_example_(\d+)', constraint_filename).group(1)
+
+            # Find the model response corresponding to this example ID
+            model_response = None
+            for response in model_responses.get("0shot", []):
+                if response["count"].endswith(example_id):
+                    model_response = response
+                    print(model_response)
+                    break
+
+            if model_response:
+                model_final_time = model_response["final_time"]
+                model_start_time, model_end_time = parse_answer_time(model_final_time)
+                
+                if model_start_time and model_end_time:
+                    constraints_broken, total_constraints = compare_time_with_constraints(
+                        model_start_time, model_end_time, constraint_dict)
+
+                    # Calculate accuracy (inverse of constraints broken)
+                    if total_constraints > 0:
+                        accuracy = ((total_constraints - constraints_broken) / total_constraints) * 100
+                    else:
+                        accuracy = 100.0
+                    output.write(f"{constraint_filename} | Model Response: {model_start_time}:{model_end_time} | Total Constraints: {total_constraints} | Constraints Broken: {constraints_broken} out of {total_constraints} | Response Accuracy: {accuracy:.2f}%\n")
+
+if __name__ == "__main__":
+    constraint_dicts_folder = "constraint_satisfaction/calendar"  # Replace with the path to the constraint dictionaries folder
+    model_responses_folder = "calendar_scheduling/100_random_0shot_text_outputs/O3-M-25-01-31_json_txtresults.json"  # Replace with the path to the model responses folder
+    output_file = "constraint_satisfaction/calendar_constraint_results.txt"  # Output file to store the results
+
+    process_files(constraint_dicts_folder, model_responses_folder, output_file)

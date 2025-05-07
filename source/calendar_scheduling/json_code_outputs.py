@@ -197,9 +197,9 @@ def categorize_error(error_message):
 # Function to run the generated Python script and capture its output
 def run_generated_code(code):
     try:
-        with open("generated_code_json_code.py", "w") as file:
+        with open("generated_code_json_code_cal.py", "w") as file:
             file.write(code)
-        result = subprocess.run(["python", "generated_code_json_code.py"], capture_output=True, text=True, check=True)
+        result = subprocess.run(["python", "generated_code_json_code_cal.py"], capture_output=True, text=True, check=True)
         output = result.stdout.strip()
         output = normalize_time_format(output)
         output = remove_leading_zeros(output)
@@ -245,14 +245,14 @@ async def run_model():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
 
     # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("ML-L-3.1-70B_json_coderesults.json") or not state_loaded:
-        with open("ML-L-3.1-70B_json_coderesults.json", "w") as json_file:
-            json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+    if not os.path.exists("DS-R1-DL-70B_json_coderesults.json") or not state_loaded:
+        with open("DS-R1-DL-70B_json_coderesults.json", "w") as json_file:
+            json.dump({"0shot": []}, json_file, indent=4)
 
-    with open("ML-L-3.1-70B_text_coderesults.txt", txt_mode) as txt_file:
+    with open("DS-R1-DL-70B_text_coderesults.txt", txt_mode) as txt_file:
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
-            with open("ML-L-3.1-70B_json_coderesults.json", "w") as json_file:
+            with open("DS-R1-DL-70B_json_coderesults.json", "w") as json_file:
                 json.dump({"0shot": []}, json_file, indent=4)
             state.first_run = False
 
@@ -308,7 +308,7 @@ async def run_model():
                             "is_correct": correct_status
                         }
 
-                        with open("ML-L-3.1-70B_json_coderesults.json", "r+") as json_file:
+                        with open("DS-R1-DL-70B_json_coderesults.json", "r+") as json_file:
                             file_data = json.load(json_file)
                             if prompt_type == "prompt_0shot":
                                 file_data["0shot"].append(json_output)
@@ -333,7 +333,7 @@ async def run_model():
     total_runtime = state.previous_time + (end_time - state.start_time).total_seconds()
     
     accuracy_0shot = (state.correct_output_count_0shot / len(state.expected_outputs_0shot)) * 100 if state.expected_outputs_0shot else 0
-    total_accuracy = accuracy_0shot  # Since we're only using 0-shot now
+    # total_accuracy = accuracy_0shot  # Since we're only using 0-shot now
 
     no_error_accuracy_0shot = (state.correct_output_count_0shot / state.no_error_count_0shot) * 100 if state.no_error_count_0shot > 0 else 0
 
@@ -345,7 +345,7 @@ async def run_model():
         f"\nTotal time taken: {total_runtime} seconds"
     )
 
-    with open("ML-L-3.1-70B_text_coderesults.txt", "a") as file:
+    with open("DS-R1-DL-70B_text_coderesults.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model
