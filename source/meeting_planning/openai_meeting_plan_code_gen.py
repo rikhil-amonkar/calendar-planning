@@ -164,7 +164,11 @@ def extract_code(response):
     """Extract Python code from a response, completely removing any markdown delimiters."""
     response = response.strip()
     
-    # Handle markdown code blocks (```python or ```)
+    # First handle SOLUTION: prefix
+    if response.startswith("SOLUTION:"):
+        response = response[len("SOLUTION:"):].strip()
+    
+    # Then handle markdown code blocks (```python or ```)
     if response.startswith("```python"):
         end = response.find("```", 9)
         if end != -1:
@@ -315,49 +319,48 @@ def parse_model_output(model_output):
     if not model_output:
         return None
     
-    # Handle SOLUTION: prefix case
-    if isinstance(model_output, str) and model_output.startswith("SOLUTION:"):
-        model_output = model_output[len("SOLUTION:"):].strip()
+    # If we already have a dictionary (from direct code execution), just normalize it
+    if isinstance(model_output, dict):
+        return normalize_schedule(model_output)
     
+    # Handle SOLUTION: prefix case - extract the actual content
+    if isinstance(model_output, str):
+        model_output = model_output.strip()
+        if model_output.startswith("SOLUTION:"):
+            model_output = model_output[len("SOLUTION:"):].strip()
+    
+    # First try to parse the output directly as JSON (in case it's just the JSON)
     try:
-        # First try to parse the output directly as JSON (in case it's just the JSON)
+        if isinstance(model_output, str):
+            schedule_data = json.loads(model_output)
+            return normalize_schedule(schedule_data)
+    except json.JSONDecodeError:
+        pass
+    
+    # If direct JSON parsing fails, look for JSON in print output
+    json_pattern = r'\{.*?"schedule"\s*:\s*\[.*?\]\}'
+    matches = re.search(json_pattern, model_output, re.DOTALL)
+    if matches:
         try:
-            if isinstance(model_output, str):
-                schedule_data = json.loads(model_output)
-            else:
-                schedule_data = model_output
+            schedule_data = json.loads(matches.group(0))
             return normalize_schedule(schedule_data)
         except json.JSONDecodeError:
             pass
-        
-        # If direct JSON parsing fails, look for JSON in print output
-        json_pattern = r'\{.*?"schedule"\s*:\s*\[.*?\]\}'
-        matches = re.search(json_pattern, model_output, re.DOTALL)
-        if matches:
+    
+    # If we still haven't found JSON, try to find the last dictionary-looking structure
+    dict_pattern = r'\{[\s\S]*?\}'
+    matches = re.findall(dict_pattern, model_output)
+    if matches:
+        # Try each match from last to first (most likely the output is at the end)
+        for match in reversed(matches):
             try:
-                schedule_data = json.loads(matches.group(0))
-                return normalize_schedule(schedule_data)
+                schedule_data = json.loads(match)
+                if "schedule" in schedule_data:
+                    return normalize_schedule(schedule_data)
             except json.JSONDecodeError:
-                pass
-        
-        # If we still haven't found JSON, try to find the last dictionary-looking structure
-        dict_pattern = r'\{[\s\S]*?\}'
-        matches = re.findall(dict_pattern, model_output)
-        if matches:
-            # Try each match from last to first (most likely the output is at the end)
-            for match in reversed(matches):
-                try:
-                    schedule_data = json.loads(match)
-                    if "schedule" in schedule_data:
-                        return normalize_schedule(schedule_data)
-                except json.JSONDecodeError:
-                    continue
-        
-        return None
-        
-    except Exception as e:
-        logging.error(f"Error parsing model output: {e}")
-        return None
+                continue
+    
+    return None
 
 def normalize_schedule(schedule_data):
     """Normalize the schedule data into our standard format."""
@@ -466,14 +469,14 @@ async def main():
     # Ensure the JSON file exists with the correct structure
     if not os.path.exists("O3-M-25-01-31_code_meeting_results.json") or not state_loaded:
         with open("O3-M-25-01-31_code_meeting_results.json", "w") as json_file:
-            json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+            json.dump({"0shot": []}, json_file, indent=4)
 
     with open("O3-M-25-01-31_code_meeting_results.txt", txt_mode) as txt_file:
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
             txt_file.write("=== New Run Started ===\n")
             with open("O3-M-25-01-31_code_meeting_results.json", "w") as json_file:
-                json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+                json.dump({"0shot": []}, json_file, indent=4)
             state.first_run = False
 
         for example_id, example in meeting_examples.items():

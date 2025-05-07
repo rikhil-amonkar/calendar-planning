@@ -479,13 +479,13 @@ async def main():
     # Ensure the JSON file exists with the correct structure
     if not os.path.exists("DS-R1-FULL_code_meeting_results.json") or not state_loaded:
         with open("DS-R1-FULL_code_meeting_results.json", "w") as json_file:
-            json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+            json.dump({"0shot": []}, json_file, indent=4)
 
     with open("DS-R1-FULL_code_meeting_results.txt", txt_mode) as txt_file:
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
             with open("DS-R1-FULL_code_meeting_results.json", "w") as json_file:
-                json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+                json.dump({"0shot": []}, json_file, indent=4)
             state.first_run = False
 
         for example_id, example in meeting_examples.items():
@@ -493,7 +493,7 @@ async def main():
             if example_id in state.processed_examples:
                 continue
                 
-            for prompt_type in ["prompt_0shot", "prompt_5shot"]:
+            for prompt_type in ["prompt_0shot"]:
                 if prompt_type not in example:
                     continue
                     
