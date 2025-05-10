@@ -213,8 +213,8 @@ async def run_model():
 
     # Determine file open mode
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
-    json_results_file = "DS-R1-DL-8B_code_calendar_results.json"
-    txt_results_file = "DS-R1-DL-8B_code_calendar_results.txt"
+    json_results_file = "DS-R1-DL-70B_code_calendar_results.json"
+    txt_results_file = "DS-R1-DL-70B_code_calendar_results.txt"
 
     # Ensure the JSON file exists with the correct structure
     if not os.path.exists(json_results_file) or not state_loaded:

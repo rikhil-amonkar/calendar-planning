@@ -1,162 +1,101 @@
 import json
+from datetime import datetime, timedelta
 
-# Function to read the original JSON file
-def read_json_file(file_path):
-    with open(file_path, 'r') as file:
-        return json.load(file)
+def parse_time_range(time_str):
+    """Parse time range string like '2:45PM to 5:30PM' into start and end times"""
+    start_str, end_str = time_str.split(' to ')
+    return start_str.strip(), end_str.strip()
 
-# Function to save the transformed JSON to a file
-def save_json_file(file_path, data):
-    with open(file_path, 'w') as file:
-        json.dump(data, file, indent=2)
+def extract_meeting_events(golden_schedule):
+    """Extract only the 'meet' actions from the golden schedule"""
+    return [event for event in golden_schedule if event['action'] == 'meet']
 
-# Function to load the people data
-def load_people_data(file_path):
-    with open(file_path, 'r') as file:
-        return json.load(file)
+def find_person_for_meeting(constraints, location, start_time):
+    """Find the person associated with a meeting at given location and time"""
+    for constraint in constraints:
+        if len(constraint) >= 4 and isinstance(constraint[0], str) and constraint[0] not in location:
+            # This looks like a person constraint (name is first element)
+            person, constraint_location, time_range, _ = constraint[:4]
+            if constraint_location == location:
+                constraint_start, _ = parse_time_range(time_range)
+                if constraint_start == start_time:
+                    return person
+    return None
 
-# Function to restructure the data
-def restructure_data(original_data, people_data):
-    new_data = {"0shot": []}
+def transform_entry(original_entry, person_data):
+    """Transform a single entry from the original format to the new format"""
+    example_id = original_entry['example_id']
+    person_info = person_data.get(example_id, {})
     
-    # Iterate through each example in the 0shot list
-    for example in original_data["0shot"]:
-        new_example = {}
+    # Process expected time (golden schedule)
+    expected_itinerary = []
+    golden_meetings = extract_meeting_events(original_entry['golden_schedule'])
+    
+    for meeting in golden_meetings:
+        location = meeting['location']
+        start_time = meeting['time']
+        duration = meeting['duration']
         
-        # Get the corresponding person data for the example based on "count"
-        person_data = people_data.get(example["count"], None)
+        # Calculate end time from start time and duration
+        start_dt = datetime.strptime(start_time, "%I:%M%p")
+        end_dt = start_dt + timedelta(minutes=duration)
+        end_time = end_dt.strftime("%I:%M%p").lstrip('0')
         
-        # Process final_program_plan
-        if example.get('final_program_plan') is not None:
-            if example['final_program_plan']:
-                new_example['final_program_time'] = {
-                    "itinerary": []
-                }
-                for entry in example['final_program_plan']:
-                    if entry["action"] == "meet":
-                        meeting = {
-                            "action": "meet",
-                            "location": entry["location"],
-                            "person": match_person(entry["location"], entry["time"], person_data),
-                            "start_time": entry["time"],
-                            "end_time": calculate_end_time(entry["time"], entry["duration"] if "duration" in entry else 0)
-                        }
-                        new_example['final_program_time']["itinerary"].append(meeting)
-            else:
-                new_example['final_program_time'] = {"itinerary": "None"}
-        else:
-            new_example['final_program_time'] = {"itinerary": "None"}
+        # Find person for this meeting
+        person = find_person_for_meeting(
+            person_info.get('constraints', []),
+            location,
+            start_time
+        )
         
-        # Process expected_plan similarly
-        if example.get('expected_plan') is not None:
-            if example['expected_plan']:
-                new_example['expected_time'] = {
-                    "itinerary": []
-                }
-                for entry in example['expected_plan']:
-                    if entry["action"] == "meet":
-                        meeting = {
-                            "action": "meet",
-                            "location": entry["location"],
-                            "person": match_person(entry["location"], entry["time"], person_data),
-                            "start_time": entry["time"],
-                            "end_time": calculate_end_time(entry["time"], entry["duration"] if "duration" in entry else 0)
-                        }
-                        new_example['expected_time']["itinerary"].append(meeting)
-            else:
-                new_example['expected_time'] = {"itinerary": "None"}
-        else:
-            new_example['expected_time'] = {"itinerary": "None"}
-        
-        # Set has_error if type_error is not None
-        new_example["has_error"] = example.get("type_error") is not None
-        
-        # Set the raw_model_response
-        new_example["raw_model_response"] = example.get("full_response", "None")
-        
-        # Copy the count from the original data
-        new_example["count"] = example.get("count", "None")
-        
-        # Add the transformed example to the new data
-        new_data["0shot"].append(new_example)
+        expected_itinerary.append({
+            "action": "meet",
+            "location": location,
+            "person": person or "Unknown",
+            "start_time": start_time,
+            "end_time": end_time
+        })
     
-    return new_data
+    return {
+        "final_program_time": {
+            "itinerary": "None"
+        },
+        "expected_time": {
+            "itinerary": expected_itinerary
+        },
+        "raw_model_response": original_entry.get('model_response', ''),
+        "count": example_id
+    }
 
-# Helper function to match person based on location and time
-def match_person(location, time, person_data):
-    if person_data:
-        for constraint in person_data["constraints"]:
-            # Check if the location and time match (time may have a range)
-            if location == constraint[1] and is_time_in_range(time, constraint[2]):
-                return constraint[0]  # Return the person name that matches the location and time
-    return "Unknown"  # If no match, return "Unknown"
-
-# Helper function to check if the time is in the range (e.g., "2:45PM to 5:30PM")
-def is_time_in_range(time_str, time_range_str):
-    # Example: time_str = "2:45PM", time_range_str = "2:45PM to 5:30PM"
-    time_range = time_range_str.split(" to ")
-    start_time = time_range[0]
-    end_time = time_range[1]
+def transform_data(original_data, person_data):
+    """Transform the entire dataset"""
+    transformed = {}
     
-    # Convert time_str, start_time, and end_time to minutes
-    time_minutes = convert_time_to_minutes(time_str)
-    start_minutes = convert_time_to_minutes(start_time)
-    end_minutes = convert_time_to_minutes(end_time)
+    for prompt_type, entries in original_data['results'].items():
+        transformed[prompt_type] = [
+            transform_entry(entry, person_data)
+            for entry in entries
+        ]
     
-    return start_minutes <= time_minutes <= end_minutes
+    return transformed
 
-# Helper function to calculate end time
-def calculate_end_time(start_time_str, duration):
-    # Convert the start time string "HH:MMAM/PM" to minutes since midnight
-    start_time = convert_time_to_minutes(start_time_str)
-    end_time = start_time + duration
-    # Convert back the minutes to time format
-    return convert_minutes_to_time(end_time)
-
-# Convert time string "HH:MMAM/PM" to minutes since midnight
-def convert_time_to_minutes(time_str):
-    # Handle 12-hour time format, parsing AM/PM
-    hour = int(time_str.split(":")[0])
-    minute = int(time_str.split(":")[1][:2])
-    period = time_str[-2:]
+def main():
+    # Load the original data
+    with open('meet_test_json.json', 'r') as f:
+        original_data = json.load(f)
     
-    if period == "PM" and hour != 12:
-        hour += 12
-    elif period == "AM" and hour == 12:
-        hour = 0
+    # Load the person data
+    with open('../data/meeting_planning_100.json', 'r') as f:
+        person_data = json.load(f)
     
-    return hour * 60 + minute
-
-# Convert minutes since midnight back to time string "H:MMAM/PM" (removes leading zero)
-def convert_minutes_to_time(minutes):
-    hour = int(minutes // 60)  # Ensure that hour is an integer
-    minute = int(minutes % 60)  # Ensure that minute is an integer
-    period = "AM" if hour < 12 else "PM"
+    # Transform the data
+    transformed_data = transform_data(original_data, person_data)
     
-    # Remove the leading zero if hour is less than 10
-    if hour == 0:
-        hour = 12
-    elif hour > 12:
-        hour -= 12
+    # Save the transformed data
+    with open('meet_new_json.json', 'w') as f:
+        json.dump(transformed_data, f, indent=2)
     
-    return f"{hour}:{minute:02d}{period}"
+    print("Transformation complete. Data saved to transformed_data.json")
 
-
-# Example usage
-input_file_path = 'meeting_planning/100_random_0shot_code_outputs/O3-M-25-01-31_code_meeting_results.json'  # Replace with your actual input file path
-output_file_path = input_file_path  # Replace with your actual output file path
-people_file_path = '../data/meeting_planning_100.json'  # Replace with the file path containing the people data
-
-# Read the input file
-original_data = read_json_file(input_file_path)
-
-# Read the people data
-people_data = load_people_data(people_file_path)
-
-# Restructure the data
-transformed_data = restructure_data(original_data, people_data)
-
-# Save the transformed data to the output file
-save_json_file(output_file_path, transformed_data)
-
-print(f"Transformed data saved to {output_file_path}")
+if __name__ == "__main__":
+    main()
