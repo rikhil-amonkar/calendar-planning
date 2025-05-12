@@ -1,0 +1,148 @@
+{
+    "0shot": [
+        {
+            "final_program_plan": [
+                {
+                    "day_range": "Day 1-2",
+                    "place": "Reykjavik"
+                },
+                {
+                    "flying": "Day 2-2",
+                    "from": "Reykjavik",
+                    "to": "Stockholm"
+                },
+                {
+                    "day_range": "Day 2-4",
+                    "place": "Stockholm"
+                },
+                {
+                    "flying": "Day 4-4",
+                    "from": "Stockholm",
+                    "to": "Tallinn"
+                },
+                {
+                    "day_range": "Day 4-8",
+                    "place": "Tallinn"
+                },
+                {
+                    "flying": "Day 8-8",
+                    "from": "Tallinn",
+                    "to": "Oslo"
+                },
+                {
+                    "day_range": "Day 8-12",
+                    "place": "Oslo"
+                },
+                {
+                    "flying": "Day 12-12",
+                    "from": "Oslo",
+                    "to": "Geneva"
+                },
+                {
+                    "day_range": "Day 12-13",
+                    "place": "Geneva"
+                },
+                {
+                    "flying": "Day 13-13",
+                    "from": "Geneva",
+                    "to": "Split"
+                },
+                {
+                    "day_range": "Day 13-15",
+                    "place": "Split"
+                },
+                {
+                    "flying": "Day 15-15",
+                    "from": "Split",
+                    "to": "Stuttgart"
+                },
+                {
+                    "day_range": "Day 15-19",
+                    "place": "Stuttgart"
+                },
+                {
+                    "flying": "Day 19-19",
+                    "from": "Stuttgart",
+                    "to": "Porto"
+                },
+                {
+                    "day_range": "Day 19-21",
+                    "place": "Porto"
+                }
+            ],
+            "expected_plan": [
+                {
+                    "day_range": "Day 1-2",
+                    "place": "Reykjavik"
+                },
+                {
+                    "flying": "Day 2-2",
+                    "from": "Reykjavik",
+                    "to": "Stockholm"
+                },
+                {
+                    "day_range": "Day 2-4",
+                    "place": "Stockholm"
+                },
+                {
+                    "flying": "Day 4-4",
+                    "from": "Stockholm",
+                    "to": "Tallinn"
+                },
+                {
+                    "day_range": "Day 4-8",
+                    "place": "Tallinn"
+                },
+                {
+                    "flying": "Day 8-8",
+                    "from": "Tallinn",
+                    "to": "Oslo"
+                },
+                {
+                    "day_range": "Day 8-12",
+                    "place": "Oslo"
+                },
+                {
+                    "flying": "Day 12-12",
+                    "from": "Oslo",
+                    "to": "Geneva"
+                },
+                {
+                    "day_range": "Day 12-13",
+                    "place": "Geneva"
+                },
+                {
+                    "flying": "Day 13-13",
+                    "from": "Geneva",
+                    "to": "Split"
+                },
+                {
+                    "day_range": "Day 13-15",
+                    "place": "Split"
+                },
+                {
+                    "flying": "Day 15-15",
+                    "from": "Split",
+                    "to": "Stuttgart"
+                },
+                {
+                    "day_range": "Day 15-19",
+                    "place": "Stuttgart"
+                },
+                {
+                    "flying": "Day 19-19",
+                    "from": "Stuttgart",
+                    "to": "Porto"
+                },
+                {
+                    "day_range": "Day 19-21",
+                    "place": "Porto"
+                }
+            ],
+            "type_error": null,
+            "full_response": "#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Define the input parameters:\n    total_days = 21\n    # Cities and their planned durations (including the overlap flight day concept):\n    durations = {\n        \"Reykjavik\": 2,  # conference on day1-2\n        \"Stockholm\": 3,  # meet friend between day2 and day4\n        \"Tallinn\": 5,\n        \"Oslo\": 5,\n        \"Geneva\": 2,\n        \"Split\": 3,\n        \"Stuttgart\": 5,\n        \"Porto\": 3  # workshop between day19 and day21\n    }\n    \n    # Direct flight connections (directed edges as provided)\n    flights = {\n        \"Reykjavik\": [\"Stuttgart\", \"Stockholm\", \"Oslo\"],\n        \"Stockholm\": [\"Tallinn\", \"Oslo\", \"Split\", \"Geneva\"],\n        \"Tallinn\": [\"Oslo\"],\n        \"Oslo\": [\"Split\", \"Geneva\", \"Porto\"],\n        \"Split\": [\"Stuttgart\"],\n        \"Stuttgart\": [\"Porto\"],\n        \"Geneva\": [\"Porto\", \"Split\"]\n    }\n    # We have 8 cities to visit: Reykjavik, Stockholm, Tallinn, Oslo, Geneva, Split, Stuttgart, Porto.\n    # After analyzing constraints and available flights, one valid ordering is:\n    # 1. Reykjavik  (conference on day 1-2)\n    # 2. Stockholm (flight from Reykjavik to Stockholm on day 2; friend meeting day2-4 available in Stockholm)\n    # 3. Tallinn   (flight from Stockholm to Tallinn on day 4)\n    # 4. Oslo      (flight from Tallinn to Oslo on day 8)\n    # 5. Geneva    (flight from Oslo to Geneva on day 12)\n    # 6. Split     (flight from Geneva to Split on day 13)\n    # 7. Stuttgart (flight from Split to Stuttgart on day 15)\n    # 8. Porto     (flight from Stuttgart to Porto on day 19; workshop available day19-21)\n    #\n    # This itinerary respects the flight connections:\n    # Reykjavik -> Stockholm (allowed)\n    # Stockholm -> Tallinn (allowed)\n    # Tallinn -> Oslo (allowed)\n    # Oslo -> Geneva (allowed)\n    # Geneva -> Split (allowed)\n    # Split -> Stuttgart (allowed)\n    # Stuttgart -> Porto (allowed)\n    #\n    # The calculation of the day ranges uses the idea from the provided example:\n    # Each city is assigned its planned duration.\n    # The flight day is considered the last day of stay (i.e. the arrival city and departure city share that day).\n    # Overall total days = sum(city_durations) - (number_of_flights)  i.e., 28 - 7 = 21.\n    \n    itinerary_order = [\n        \"Reykjavik\",\n        \"Stockholm\",\n        \"Tallinn\",\n        \"Oslo\",\n        \"Geneva\",\n        \"Split\",\n        \"Stuttgart\",\n        \"Porto\"\n    ]\n    \n    # Calculate the itinerary schedule.\n    # Start with day 1.\n    current_day = 1\n    itinerary = []\n    \n    # For each city in order, assign a day range.\n    num_cities = len(itinerary_order)\n    for i, city in enumerate(itinerary_order):\n        stay_duration = durations[city]\n        # The stay is from current_day to (current_day + stay_duration - 1).\n        # This last day will be reused for the flight (if not the final city).\n        arrival_day = current_day\n        departure_day = current_day + stay_duration - 1\n        itinerary.append({\n            \"day_range\": f\"Day {arrival_day}-{departure_day}\",\n            \"place\": city\n        })\n        # If this is not the last city, add a flight leg.\n        if i < num_cities - 1:\n            next_city = itinerary_order[i+1]\n            # Check that next_city is reachable from city via direct flight.\n            if next_city not in flights.get(city, []):\n                raise ValueError(f\"No direct flight from {city} to {next_city}\")\n            # The flight is scheduled on the departure_day.\n            itinerary.append({\n                \"flying\": f\"Day {departure_day}-{departure_day}\",\n                \"from\": city,\n                \"to\": next_city\n            })\n            # Next city starts on the same day as departure_day.\n            current_day = departure_day\n        else:\n            # Last city; current_day updated to departure_day (end of trip)\n            current_day = departure_day\n    \n    # Check that total days match the total_days constraint.\n    if current_day != total_days:\n        raise ValueError(f\"The computed itinerary takes {current_day} days, but {total_days} days were required.\")\n    \n    # Output the itinerary as JSON.\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "trip_planning_example_1088",
+            "is_correct": true
+        }
+    ]
+}

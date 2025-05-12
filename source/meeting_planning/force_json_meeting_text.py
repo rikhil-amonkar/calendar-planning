@@ -13,51 +13,26 @@ from kani.engines import WrapperEngine
 import os
 
 # Define the structured JSON schema for the meeting plan output
+# Update the JSON_SCHEMA definition to:
 JSON_SCHEMA = {
     "type": "object",
     "properties": {
-        "schedule": {
+        "itinerary": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "action": {"type": "string", "enum": ["start", "travel", "wait", "meet"]},
+                    "action": {"type": "string", "enum": ["meet"]},
                     "location": {"type": "string"},
-                    "time": {"type": "string"},
-                    "duration": {"type": "number", "minimum": 0},
-                    "to": {"type": "string"}  # only for travel actions
+                    "person": {"type": "string"},
+                    "start_time": {"type": "string"},
+                    "end_time": {"type": "string"}
                 },
-                "required": ["action", "location"],
-                "anyOf": [
-                    {
-                        "properties": {
-                            "action": {"const": "start"}
-                        },
-                        "required": ["time"]
-                    },
-                    {
-                        "properties": {
-                            "action": {"const": "travel"}
-                        },
-                        "required": ["duration", "to"]
-                    },
-                    {
-                        "properties": {
-                            "action": {"const": "wait"}
-                        },
-                        "required": ["time"]
-                    },
-                    {
-                        "properties": {
-                            "action": {"const": "meet"}
-                        },
-                        "required": ["duration"]
-                    }
-                ]
+                "required": ["action", "location", "person", "start_time", "end_time"]
             }
         }
     },
-    "required": ["schedule"]
+    "required": ["itinerary"]
 }
 
 # Load the meeting planning examples from the JSON file
@@ -96,12 +71,7 @@ class JSONGuidanceHFWrapper(WrapperEngine):
 
 class EvaluationState:
     def __init__(self):
-        self.correct_0shot = 0
-        # self.correct_5shot = 0
-        self.total_0shot = 0
-        # self.total_5shot = 0
         self.results_0shot = []
-        # self.results_5shot = []
         self.processed_examples = set()
         self.start_time = datetime.datetime.now()
         self.previous_time = datetime.timedelta(0)
@@ -109,12 +79,7 @@ class EvaluationState:
 
     def save(self):
         state_to_save = {
-            "correct_0shot": self.correct_0shot,
-            # "correct_5shot": self.correct_5shot,
-            "total_0shot": self.total_0shot,
-            # "total_5shot": self.total_5shot,
             "results_0shot": self.results_0shot,
-            # "results_5shot": self.results_5shot,
             "processed_examples": list(self.processed_examples),
             "start_time": self.start_time.isoformat(),
             "previous_time": self.previous_time.total_seconds(),
@@ -127,12 +92,7 @@ class EvaluationState:
         try:
             with open(STATE_FILE, 'r') as f:
                 loaded = json.load(f)
-                self.correct_0shot = loaded["correct_0shot"]
-                # self.correct_5shot = loaded["correct_5shot"]
-                self.total_0shot = loaded["total_0shot"]
-                # self.total_5shot = loaded["total_5shot"]
                 self.results_0shot = loaded["results_0shot"]
-                # self.results_5shot = loaded["results_5shot"]
                 self.processed_examples = set(loaded["processed_examples"])
                 self.previous_time = datetime.timedelta(seconds=loaded["previous_time"])
                 self.start_time = datetime.datetime.fromisoformat(loaded["start_time"])
@@ -141,22 +101,53 @@ class EvaluationState:
         except (FileNotFoundError, json.JSONDecodeError, KeyError):
             return False
 
-def remove_leading_zero_from_time(time_str):
-    """Remove leading zero from the time string if the hour is a single digit."""
-    # Handle both "HH:MMAM/PM" and "HH:MM AM/PM" formats
-    time_str = time_str.replace(" ", "")
-    time_part, period = time_str[:-2], time_str[-2:].upper()
+def convert_to_24hour(time_str):
+    """Convert time string to 24-hour format without leading zeros."""
+    # Remove any spaces and make uppercase
+    time_str = time_str.replace(" ", "").upper()
     
-    time_parts = time_part.split(":")
-    if len(time_parts[0]) == 2 and time_parts[0][0] == "0":
-        time_parts[0] = time_parts[0][1]  # Remove leading zero
+    # Handle case where time might already be in 24-hour format
+    if 'AM' not in time_str and 'PM' not in time_str:
+        # Try to parse as 24-hour format
+        try:
+            hours, minutes = map(int, time_str.split(':'))
+            if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
+                return None
+            return f"{hours}:{minutes:02d}"
+        except:
+            return None
     
-    return f"{':'.join(time_parts)}{period}"
+    # Split into time and period
+    time_part = time_str[:-2]
+    period = time_str[-2:]
+    
+    # Split hours and minutes
+    try:
+        if ':' in time_part:
+            hours, minutes = map(int, time_part.split(':'))
+        else:
+            hours = int(time_part)
+            minutes = 0
+    except:
+        return None
+    
+    # Validate time
+    if hours < 0 or hours > 12 or minutes < 0 or minutes > 59:
+        return None
+    
+    # Convert to 24-hour format
+    if period == "PM" and hours != 12:
+        hours += 12
+    elif period == "AM" and hours == 12:
+        hours = 0
+    
+    # Format without leading zero
+    return f"{hours}:{minutes:02d}"
 
 def parse_golden_plan(golden_plan):
-    """Parse the golden plan into structured schedule format matching our JSON schema."""
-    schedule = []
-    last_time = None  # Track the last time encountered
+    """Parse the golden plan into structured itinerary format."""
+    itinerary = []
+    current_location = None
     
     for step in golden_plan:
         step = step.strip()
@@ -167,126 +158,66 @@ def parse_golden_plan(golden_plan):
         if step.startswith("You start at"):
             match = re.search(r"You start at (.+?) at (.+?)\.", step)
             if match:
-                time = remove_leading_zero_from_time(match.group(2))
-                schedule.append({
-                    "action": "start",
-                    "location": match.group(1),
-                    "time": time
-                })
-                last_time = time
+                current_location = match.group(1)
+                start_time = convert_to_24hour(match.group(2))
                 
         # Parse travel action
         elif "travel to" in step:
             match = re.search(r"You travel to (.+?) in (\d+) minutes and arrive at (.+?)\.", step)
             if match:
-                time = remove_leading_zero_from_time(match.group(3))
-                schedule.append({
-                    "action": "travel",
-                    "location": match.group(1),
-                    "duration": int(match.group(2)),
-                    "time": time,
-                    "to": match.group(1)
-                })
-                last_time = time
-                
-        # Parse wait action
-        elif "wait until" in step:
-            match = re.search(r"You wait until (.+?)\.", step)
-            if match:
-                time = remove_leading_zero_from_time(match.group(1))
-                schedule.append({
-                    "action": "wait",
-                    "location": schedule[-1]["location"] if schedule else "Unknown",
-                    "time": time
-                })
-                last_time = time
+                current_location = match.group(1)
+                arrival_time = convert_to_24hour(match.group(3))
                 
         # Parse meet action
         elif "meet" in step and "for" in step:
             match = re.search(r"You meet (.+?) for (\d+) minutes from (.+?) to (.+?)\.", step)
-            if match:
-                time = remove_leading_zero_from_time(match.group(3))
-                schedule.append({
-                    "action": "meet",
-                    "location": schedule[-1]["location"] if schedule else "Unknown",
-                    "duration": int(match.group(2)),
-                    "time": time
-                })
-                last_time = time
+            if match and current_location:
+                person = match.group(1)
+                start_time = convert_to_24hour(match.group(3))
+                end_time = convert_to_24hour(match.group(4))
                 
-    return schedule
+                itinerary.append({
+                    "action": "meet",
+                    "location": current_location,
+                    "person": person,
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
+                
+    return itinerary
 
-def compare_schedules(model_schedule, golden_schedule):
-    """Compare two schedules and return True if they match exactly."""
-    if len(model_schedule) != len(golden_schedule):
+def compare_itineraries(model_itinerary, golden_itinerary):
+    """Compare two itineraries and return True if they match exactly."""
+    if len(model_itinerary) != len(golden_itinerary):
         return False
     
-    for model_step, golden_step in zip(model_schedule, golden_schedule):
-        # Skip if either step is not a dictionary
-        if not isinstance(model_step, dict) or not isinstance(golden_step, dict):
+    for model_meet, golden_meet in zip(model_itinerary, golden_itinerary):
+        # Skip if either meet is not a dictionary
+        if not isinstance(model_meet, dict) or not isinstance(golden_meet, dict):
             return False
             
-        # Check action type matches
-        if model_step.get("action") != golden_step.get("action"):
-            return False
-            
-        # Check common fields
-        if model_step.get("location") != golden_step.get("location"):
-            return False
-            
-        # Action-specific checks with time normalization
-        if model_step.get("action") == "travel":
-            if (model_step.get("duration") != golden_step.get("duration")):
+        # Check all required fields
+        for field in ["action", "location", "person", "start_time", "end_time"]:
+            if model_meet.get(field) != golden_meet.get(field):
                 return False
-            # Only compare time if both have it
-            if 'time' in model_step and 'time' in golden_step:
-                if remove_leading_zero_from_time(model_step['time']) != remove_leading_zero_from_time(golden_step['time']):
-                    return False
-        elif model_step.get("action") == "meet":
-            if (model_step.get("duration") != golden_step.get("duration")):
-                return False
-            # Only compare time if both have it
-            if 'time' in model_step and 'time' in golden_step:
-                if remove_leading_zero_from_time(model_step['time']) != remove_leading_zero_from_time(golden_step['time']):
-                    return False
-        elif model_step.get("action") in ["start", "wait"]:
-            # Only compare time if both have it
-            if 'time' in model_step and 'time' in golden_step:
-                if remove_leading_zero_from_time(model_step['time']) != remove_leading_zero_from_time(golden_step['time']):
-                    return False
     
     return True
 
-def format_schedule_compact(schedule):
-    """Convert schedule to compact string representation for display."""
+def format_itinerary_compact(itinerary):
+    """Convert itinerary to compact string representation for display."""
     parts = []
-    last_time = None
     
-    for step in schedule:
-        if not isinstance(step, dict):
+    for meeting in itinerary:
+        if not isinstance(meeting, dict):
             continue
             
-        action = step.get("action")
-        location = step.get("location", "Unknown")
+        action = meeting.get("action", "meet")
+        location = meeting.get("location", "Unknown")
+        person = meeting.get("person", "Unknown")
+        start_time = meeting.get("start_time", "?")
+        end_time = meeting.get("end_time", "?")
         
-        if action == "start":
-            time = remove_leading_zero_from_time(step.get('time', '')) if 'time' in step else 'Unknown'
-            parts.append(f"Start at {location} at {time}")
-            last_time = time if 'time' in step else last_time
-        elif action == "travel":
-            duration = step.get('duration', '?')
-            time = remove_leading_zero_from_time(step.get('time', '')) if 'time' in step else 'Unknown'
-            parts.append(f"Travel to {location} ({duration}min)")
-            last_time = time if 'time' in step else last_time
-        elif action == "wait":
-            time = remove_leading_zero_from_time(step.get('time', '')) if 'time' in step else 'Unknown'
-            parts.append(f"Wait until {time}")
-            last_time = time if 'time' in step else last_time
-        elif action == "meet":
-            duration = step.get('duration', '?')
-            meet_time = remove_leading_zero_from_time(step.get('time', last_time if last_time else ''))
-            parts.append(f"Meet for {duration}min at {meet_time}")
-            last_time = meet_time
+        parts.append(f"{action} {person} at {location} ({start_time}-{end_time})")
     
     return " → ".join(parts)
 
@@ -304,8 +235,8 @@ async def main():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
     json_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    with open('ML-ML-3.1-8B_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
-         open('ML-ML-3.1-8B_forceJSON_text_meeting_results.json', json_mode) as json_file:
+    with open('ML-L-3.1-70B_forceJSON_text_meeting_results.txt', txt_mode) as txt_file, \
+         open('ML-L-3.1-70B_forceJSON_text_meeting_results.json', json_mode) as json_file:
         
         # Write header if this is a fresh run
         if not state_loaded or state.first_run:
@@ -317,167 +248,142 @@ async def main():
             if example_id in state.processed_examples:
                 continue
                 
-            for prompt_type in ['prompt_0shot']:
-                prompt = example[prompt_type]
-                golden_plan = example['golden_plan']
+            prompt = example['prompt_0shot']
+            golden_plan = example['golden_plan']
 
-                # Parse golden plan into structured format
-                golden_schedule = parse_golden_plan(golden_plan)
+            # Parse golden plan into structured format
+            golden_itinerary = parse_golden_plan(golden_plan)
 
-                # Modify prompt to request structured JSON output
-                structured_prompt = (
-                    "You are an AI meeting planner and your task is to schedule meetings efficiently and short. "
-                    "Consider travel times and constraints carefully to optimize the schedule and make the plan concise. "
-                    f"{prompt}\n\nPlease provide your meeting plan in the following exact JSON format:\n"
-                    "{\n"
-                    '  "schedule": [\n'
-                    '    {"action": "start", "location": "Location Name", "time": "H:MMAM/PM"},\n'
-                    '    {"action": "travel", "location": "Destination", "duration": X, "time": "H:MMAM/PM", "to": "Destination"},\n'
-                    '    {"action": "wait", "location": "Location Name", "time": "H:MMAM/PM"},\n'
-                    '    {"action": "meet", "location": "Location Name", "duration": X, "time": "H:MMAM/PM"}\n'
-                    "  ]\n"
-                    "}\n"
-                    "Note: Times should be in format like '9:00AM' (no leading zero) and durations in minutes." \
-                    "Note: Plan should be minimal, satisfy all constraints, and be concise and short."
-                )
+            # Modify prompt to request structured JSON output
+            structured_prompt = (
+                "You are an AI meeting planner and your task is to schedule meetings efficiently. "
+                "Consider travel times and constraints carefully to optimize the schedule. "
+                f"{prompt}\n\nPlease provide your meeting plan in the following exact JSON format:\n"
+                "{\n"
+                '  "itinerary": [\n'
+                '    {"action": "meet", "location": "Location Name", "person": "Person Name", "start_time": "H:MM", "end_time": "H:MM"},\n'
+                '    {"action": "meet", "location": "Location Name", "person": "Person Name", "start_time": "H:MM", "end_time": "H:MM"}\n'
+                "  ]\n"
+                "}\n"
+                "Note: Times should be in 24-hour format without leading zeros (e.g., '9:30' not '09:30', '13:30' not '1:30PM')."
+            )
 
-                # Run the model
-                async def get_model_response():
-                    full_response = ""
-                    async for token in ai.chat_round_stream(structured_prompt):
-                        full_response += token
-                        print(token, end="", flush=True)
-                    print()
-                    return full_response.strip()
+            # Run the model
+            async def get_model_response():
+                full_response = ""
+                async for token in ai.chat_round_stream(structured_prompt):
+                    full_response += token
+                    print(token, end="", flush=True)
+                print()
+                return full_response.strip()
+            
+            try:
+                model_response = await get_model_response()
+                print(f"Model response: {model_response}")
                 
                 try:
-                    model_response = await get_model_response()
+                    model_data = json.loads(model_response)
                     
-                    # Clean the response to ensure valid JSON
-                    model_response = model_response.strip()
-                    if not model_response.startswith('{'):
-                        # Try to find the first { if the response has preamble
-                        start_idx = model_response.find('{')
-                        if start_idx >= 0:
-                            model_response = model_response[start_idx:]
+                    # Handle both direct "itinerary" and "SOLUTION.itinerary" cases
+                    if "SOLUTION" in model_data and "itinerary" in model_data["SOLUTION"]:
+                        model_itinerary = model_data["SOLUTION"]["itinerary"]
+                    else:
+                        model_itinerary = model_data.get("itinerary", [])
                     
-                    try:
-                        model_data = json.loads(model_response)
-                        model_schedule = model_data.get("schedule", [])
-                        
-                        # Validate and clean each step in the schedule
-                        cleaned_schedule = []
-                        last_time = None
-                        for step in model_schedule:
-                            if not isinstance(step, dict):
-                                continue
-                                
-                            # Normalize action and location
-                            action = step.get("action", "").lower()
-                            location = step.get("location", "Unknown")
+                    # Validate and clean each meeting in the itinerary
+                    cleaned_itinerary = []
+                    for meeting in model_itinerary:
+                        if not isinstance(meeting, dict):
+                            continue
                             
-                            # Handle time formatting
-                            time = step.get("time")
-                            if time:
-                                try:
-                                    time = remove_leading_zero_from_time(time)
-                                except:
-                                    time = None
+                        # Normalize action and location
+                        action = meeting.get("action", "").lower()
+                        if action != "meet":
+                            continue
                             
-                            # Create cleaned step
-                            cleaned_step = {"action": action, "location": location}
-                            if time:
-                                cleaned_step["time"] = time
-                                last_time = time
+                        location = meeting.get("location", "Unknown")
+                        person = meeting.get("person", "Unknown")
+                        
+                        # Convert and validate times
+                        start_time = meeting.get("start_time")
+                        end_time = meeting.get("end_time")
+                        
+                        if start_time:
+                            start_time = convert_to_24hour(start_time)
+                        if end_time:
+                            end_time = convert_to_24hour(end_time)
+                        
+                        if not start_time or not end_time:
+                            continue
                             
-                            # Add action-specific fields
-                            if action == "travel":
-                                cleaned_step["duration"] = step.get("duration", 0)
-                                cleaned_step["to"] = step.get("to", location)
-                                if "time" in step:
-                                    last_time = time
-                            elif action == "meet":
-                                cleaned_step["duration"] = step.get("duration", 0)
-                                if "time" not in cleaned_step and last_time:
-                                    cleaned_step["time"] = last_time
-                            
-                            cleaned_schedule.append(cleaned_step)
-                        
-                        model_schedule = cleaned_schedule
-                        
-                    except json.JSONDecodeError as e:
-                        print(f"JSON decode error: {e}")
-                        model_schedule = []
-                        
-                except Exception as e:
-                    print(f"Error getting model response: {e}")
-                    model_schedule = []
+                        cleaned_itinerary.append({
+                            "action": action,
+                            "location": location,
+                            "person": person,
+                            "start_time": start_time,
+                            "end_time": end_time
+                        })
+                    
+                    model_itinerary = cleaned_itinerary
+                    
+                except json.JSONDecodeError as e:
+                    print(f"JSON decode error: {e}")
+                    model_itinerary = []
 
-                # Compare with golden schedule
-                is_correct = compare_schedules(model_schedule, golden_schedule)
-
-                # Update state
-                if prompt_type == 'prompt_0shot':
-                    state.total_0shot += 1
-                    if is_correct:
-                        state.correct_0shot += 1
-                # else:
-                #     state.total_5shot += 1
-                #     if is_correct:
-                #         state.correct_5shot += 1
+                # Compare with golden itinerary
+                is_correct = compare_itineraries(model_itinerary, golden_itinerary)
 
                 # Prepare result entry
                 result_entry = {
-                    "example_id": example_id,
-                    "prompt_type": prompt_type,
-                    "model_response": model_response,
-                    "model_schedule": model_schedule,
-                    "golden_schedule": golden_schedule,
-                    "is_correct": is_correct,
-                    "timestamp": datetime.datetime.now().isoformat()
+                    "final_program_time": {"itinerary": model_itinerary},
+                    "expected_time": {"itinerary": golden_itinerary},
+                    "count": example_id,
+                    "is_correct": is_correct
                 }
 
                 # Store results
-                if prompt_type == 'prompt_0shot':
-                    state.results_0shot.append(result_entry)
-                # else:
-                #     state.results_5shot.append(result_entry)
+                state.results_0shot.append(result_entry)
 
                 # Format for display
-                model_display = format_schedule_compact(model_schedule)
-                golden_display = format_schedule_compact(golden_schedule)
+                model_display = format_itinerary_compact(model_itinerary)
+                golden_display = format_itinerary_compact(golden_itinerary)
                 
                 # Log output
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 output_line = (
-                    f"{example_id}. [{timestamp}] | {prompt_type} | Correct: {is_correct} | "
+                    f"{example_id}. [{timestamp}] | Correct: {is_correct} | "
                     f"ANSWER: {model_display} | EXPECTED: {golden_display}"
                 )
                 print(output_line)
                 txt_file.write(f"{output_line}\n")
 
-                # Save state after each prompt type
+                # Save state after each example
                 state.processed_examples.add(example_id)
                 state.save()
+
+            except Exception as e:
+                print(f"Error processing example {example_id}: {e}")
 
         # Final results handling
         current_time = datetime.datetime.now()
         total_runtime = state.previous_time + (current_time - state.start_time)
         
-        # Save final JSON results
+        # Calculate accuracy
+        correct_count = sum(1 for result in state.results_0shot if result["is_correct"])
+        total_count = len(state.results_0shot)
+        accuracy = correct_count / total_count if total_count > 0 else 0
+        
+        # Save final JSON results in the new format
         final_results = {
-            "model": args.model,
-            "start_time": state.start_time.isoformat(),
-            "end_time": current_time.isoformat(),
-            "total_runtime_seconds": total_runtime.total_seconds(),
-            "results": {
-                "0shot": state.results_0shot
-                # "5shot": state.results_5shot
-            },
-            "accuracy": {
-                "0shot": state.correct_0shot / state.total_0shot if state.total_0shot > 0 else 0,
-                # "5shot": state.correct_5shot / state.total_5shot if state.total_5shot > 0 else 0,
-                # "total": (state.correct_0shot + state.correct_5shot) / (state.total_0shot + state.total_5shot) if (state.total_0shot + state.total_5shot) > 0 else 0
+            "0shot": state.results_0shot,
+            "metadata": {
+                "model": args.model,
+                "start_time": state.start_time.isoformat(),
+                "end_time": current_time.isoformat(),
+                "total_runtime_seconds": total_runtime.total_seconds(),
+                "accuracy": accuracy,
+                "correct_count": correct_count,
+                "total_count": total_count
             }
         }
         json.dump(final_results, json_file, indent=4)
@@ -488,12 +394,9 @@ async def main():
         txt_file.write(f"Start time: {state.start_time}\n")
         txt_file.write(f"End time: {current_time}\n")
         txt_file.write(f"Total runtime: {total_runtime}\n")
-        txt_file.write(f"0-shot accuracy: {state.correct_0shot}/{state.total_0shot} ({state.correct_0shot/state.total_0shot:.2%})\n")
-        # txt_file.write(f"5-shot accuracy: {state.correct_5shot}/{state.total_5shot} ({state.correct_5shot/state.total_5shot:.2%})\n")
-        # txt_file.write(f"Total accuracy: {state.correct_0shot + state.correct_5shot}/{state.total_0shot + state.total_5shot} ({(state.correct_0shot + state.correct_5shot)/(state.total_0shot + state.total_5shot):.2%})\n")
+        txt_file.write(f"Accuracy: {correct_count}/{total_count} ({accuracy:.2%})\n")
 
     print("Processing complete. Results saved.")
 
 if __name__ == "__main__":
     asyncio.run(main())
-

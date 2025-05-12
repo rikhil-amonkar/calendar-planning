@@ -35,13 +35,13 @@ class EvaluationState:
     def __init__(self):
         self.expected_outputs_0shot = []
         self.predicted_outputs_0shot = []
-        self.expected_outputs_5shot = []
-        self.predicted_outputs_5shot = []
+        # self.expected_outputs_5shot = []
+        # self.predicted_outputs_5shot = []
         self.start_time = datetime.now()
         self.no_error_count_0shot = 0
         self.correct_output_count_0shot = 0
-        self.no_error_count_5shot = 0
-        self.correct_output_count_5shot = 0
+        # self.no_error_count_5shot = 0
+        # self.correct_output_count_5shot = 0
         self.processed_examples = set()
         self.previous_time = 0
         self.first_run = True
@@ -50,13 +50,13 @@ class EvaluationState:
         state_to_save = {
             "expected_outputs_0shot": self.expected_outputs_0shot,
             "predicted_outputs_0shot": self.predicted_outputs_0shot,
-            "expected_outputs_5shot": self.expected_outputs_5shot,
-            "predicted_outputs_5shot": self.predicted_outputs_5shot,
+            # "expected_outputs_5shot": self.expected_outputs_5shot,
+            # "predicted_outputs_5shot": self.predicted_outputs_5shot,
             "start_time": self.start_time.isoformat(),
             "no_error_count_0shot": self.no_error_count_0shot,
             "correct_output_count_0shot": self.correct_output_count_0shot,
-            "no_error_count_5shot": self.no_error_count_5shot,
-            "correct_output_count_5shot": self.correct_output_count_5shot,
+            # "no_error_count_5shot": self.no_error_count_5shot,
+            # "correct_output_count_5shot": self.correct_output_count_5shot,
             "processed_examples": list(self.processed_examples),
             "previous_time": self.previous_time,
             "first_run": self.first_run
@@ -70,12 +70,12 @@ class EvaluationState:
                 loaded = json.load(f)
                 self.expected_outputs_0shot = loaded["expected_outputs_0shot"]
                 self.predicted_outputs_0shot = loaded["predicted_outputs_0shot"]
-                self.expected_outputs_5shot = loaded["expected_outputs_5shot"]
-                self.predicted_outputs_5shot = loaded["predicted_outputs_5shot"]
+                # self.expected_outputs_5shot = loaded["expected_outputs_5shot"]
+                # self.predicted_outputs_5shot = loaded["predicted_outputs_5shot"]
                 self.no_error_count_0shot = loaded["no_error_count_0shot"]
                 self.correct_output_count_0shot = loaded["correct_output_count_0shot"]
-                self.no_error_count_5shot = loaded["no_error_count_5shot"]
-                self.correct_output_count_5shot = loaded["correct_output_count_5shot"]
+                # self.no_error_count_5shot = loaded["no_error_count_5shot"]
+                # self.correct_output_count_5shot = loaded["correct_output_count_5shot"]
                 self.processed_examples = set(loaded["processed_examples"])
                 self.previous_time = loaded["previous_time"]
                 self.start_time = datetime.fromisoformat(loaded["start_time"])
@@ -185,10 +185,10 @@ def run_generated_code(code):
     try:
         clean_code = code.replace('```python', '').replace('```', '').replace('"""python', '').replace('"""', '').replace("'''python", "").replace("'''", "").strip()
         
-        with open("generated_code.py", "w") as file:
+        with open("generated_code_trip_code_deepseek.py", "w") as file:
             file.write(clean_code)
         
-        result = subprocess.run(["python", "generated_code.py"], 
+        result = subprocess.run(["python", "generated_code_trip_code_deepseek.py"], 
                               capture_output=True, 
                               text=True, 
                               check=True)
@@ -301,25 +301,24 @@ async def run_model():
 
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    prompts_data = load_prompts("100_trip_planning_examples.json")
+    prompts_data = load_prompts("../../data/trip_planning_100.json")
     prompts_list = list(prompts_data.items())
 
     if not os.path.exists("DS-R1-FULL_code_trip_results.json") or not state_loaded:
         with open("DS-R1-FULL_code_trip_results.json", "w") as json_file:
-            json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+            json.dump({"0shot": []}, json_file, indent=4)
 
     with open("DS-R1-FULL_code_trip_results.txt", txt_mode) as txt_file:
         if not state_loaded or state.first_run:
-            txt_file.write("=== New Run Started ===\n")
             with open("DS-R1-FULL_code_trip_results.json", "w") as json_file:
-                json.dump({"0shot": [], "5shot": []}, json_file, indent=4)
+                json.dump({"0shot": []}, json_file, indent=4)
             state.first_run = False
 
         for key, data in prompts_list:
             if key in state.processed_examples:
                 continue
                 
-            for prompt_type in ["prompt_0shot", "prompt_5shot"]:
+            for prompt_type in ["prompt_0shot"]:
                 if prompt_type not in data:
                     continue
                     
@@ -360,14 +359,14 @@ async def run_model():
                             if predicted_plan == expected_plan:
                                 state.correct_output_count_0shot += 1
                                 correct_status = True
-                    elif prompt_type == "prompt_5shot":
-                        state.expected_outputs_5shot.append(expected_plan)
-                        state.predicted_outputs_5shot.append(predicted_plan)
-                        if error_type is None:
-                            state.no_error_count_5shot += 1
-                            if predicted_plan == expected_plan:
-                                state.correct_output_count_5shot += 1
-                                correct_status = True
+                    # elif prompt_type == "prompt_5shot":
+                    #     state.expected_outputs_5shot.append(expected_plan)
+                    #     state.predicted_outputs_5shot.append(predicted_plan)
+                    #     if error_type is None:
+                    #         state.no_error_count_5shot += 1
+                    #         if predicted_plan == expected_plan:
+                    #             state.correct_output_count_5shot += 1
+                    #             correct_status = True
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     line = (
@@ -390,8 +389,8 @@ async def run_model():
                         file_data = json.load(json_file)
                         if prompt_type == "prompt_0shot":
                             file_data["0shot"].append(json_output)
-                        elif prompt_type == "prompt_5shot":
-                            file_data["5shot"].append(json_output)
+                        # elif prompt_type == "prompt_5shot":
+                        #     file_data["5shot"].append(json_output)
                         json_file.seek(0)
                         json.dump(file_data, json_file, indent=4)
                         json_file.truncate()
@@ -410,23 +409,23 @@ async def run_model():
         total_runtime = state.previous_time + (end_time - state.start_time).total_seconds()
         
         accuracy_0shot = (state.correct_output_count_0shot / len(state.expected_outputs_0shot)) * 100 if state.expected_outputs_0shot else 0
-        accuracy_5shot = (state.correct_output_count_5shot / len(state.expected_outputs_5shot)) * 100 if state.expected_outputs_5shot else 0
-        total_accuracy = ((state.correct_output_count_0shot + state.correct_output_count_5shot) / 
-                         (len(state.expected_outputs_0shot) + len(state.expected_outputs_5shot))) * 100 if (state.expected_outputs_0shot + state.expected_outputs_5shot) else 0
+        # accuracy_5shot = (state.correct_output_count_5shot / len(state.expected_outputs_5shot)) * 100 if state.expected_outputs_5shot else 0
+        # total_accuracy = ((state.correct_output_count_0shot + state.correct_output_count_5shot) / 
+                        #  (len(state.expected_outputs_0shot) + len(state.expected_outputs_5shot))) * 100 if (state.expected_outputs_0shot + state.expected_outputs_5shot) else 0
 
         no_error_accuracy_0shot = (state.correct_output_count_0shot / state.no_error_count_0shot) * 100 if state.no_error_count_0shot > 0 else 0
-        no_error_accuracy_5shot = (state.correct_output_count_5shot / state.no_error_count_5shot) * 100 if state.no_error_count_5shot > 0 else 0
+        # no_error_accuracy_5shot = (state.correct_output_count_5shot / state.no_error_count_5shot) * 100 if state.no_error_count_5shot > 0 else 0
 
         accuracy_line = (
             f"\n0-shot prompts: Model guessed {state.correct_output_count_0shot} out of {len(state.expected_outputs_0shot)} correctly.\n"
             f"Accuracy: {accuracy_0shot:.2f}%\n"
-            f"\n5-shot prompts: Model guessed {state.correct_output_count_5shot} out of {len(state.expected_outputs_5shot)} correctly.\n"
-            f"Accuracy: {accuracy_5shot:.2f}%\n"
-            f"\nTotal accuracy: {total_accuracy:.2f}%\n"
+            # f"\n5-shot prompts: Model guessed {state.correct_output_count_5shot} out of {len(state.expected_outputs_5shot)} correctly.\n"
+            # f"Accuracy: {accuracy_5shot:.2f}%\n"
+            # f"\nTotal accuracy: {total_accuracy:.2f}%\n"
             f"\n0-shot prompts with no errors: {state.correct_output_count_0shot} out of {state.no_error_count_0shot} produced correct outputs.\n"
             f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n"
-            f"\n5-shot prompts with no errors: {state.correct_output_count_5shot} out of {state.no_error_count_5shot} produced correct outputs.\n"
-            f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n"
+            # f"\n5-shot prompts with no errors: {state.correct_output_count_5shot} out of {state.no_error_count_5shot} produced correct outputs.\n"
+            # f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n"
             f"\nTotal time taken: {total_runtime} seconds"
         )
 
