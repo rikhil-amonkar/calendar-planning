@@ -1,59 +1,44 @@
 import itertools
 from z3 import *
 
-# Define travel times between locations
+# Define travel times between locations (in minutes)
 travel_times = {
-    ('Haight-Ashbury', 'Fisherman\'s Wharf'): 23,
-    ('Haight-Ashbury', 'Richmond District'): 10,
-    ('Haight-Ashbury', 'Mission District'): 11,
-    ('Haight-Ashbury', 'Bayview'): 18,
-    ('Fisherman\'s Wharf', 'Haight-Ashbury'): 22,
-    ('Fisherman\'s Wharf', 'Richmond District'): 18,
+    ('Financial District', 'Fisherman\'s Wharf'): 10,
+    ('Financial District', 'Pacific Heights'): 13,
+    ('Financial District', 'Mission District'): 17,
+    ('Fisherman\'s Wharf', 'Financial District'): 11,
+    ('Fisherman\'s Wharf', 'Pacific Heights'): 12,
     ('Fisherman\'s Wharf', 'Mission District'): 22,
-    ('Fisherman\'s Wharf', 'Bayview'): 26,
-    ('Richmond District', 'Haight-Ashbury'): 10,
-    ('Richmond District', 'Fisherman\'s Wharf'): 18,
-    ('Richmond District', 'Mission District'): 20,
-    ('Richmond District', 'Bayview'): 26,
-    ('Mission District', 'Haight-Ashbury'): 12,
+    ('Pacific Heights', 'Financial District'): 13,
+    ('Pacific Heights', 'Fisherman\'s Wharf'): 13,
+    ('Pacific Heights', 'Mission District'): 15,
+    ('Mission District', 'Financial District'): 17,
     ('Mission District', 'Fisherman\'s Wharf'): 22,
-    ('Mission District', 'Richmond District'): 20,
-    ('Mission District', 'Bayview'): 15,
-    ('Bayview', 'Haight-Ashbury'): 19,
-    ('Bayview', 'Fisherman\'s Wharf'): 25,
-    ('Bayview', 'Richmond District'): 25,
-    ('Bayview', 'Mission District'): 13,
+    ('Mission District', 'Pacific Heights'): 16,
 }
 
 # Define friends' data (time in minutes since midnight)
 friends = [
     {
-        'name': 'Sarah',
+        'name': 'David',
         'location': 'Fisherman\'s Wharf',
-        'start': 885,   # 2:45 PM
-        'end': 1050,    # 5:30 PM
-        'duration': 105
+        'start': 645,   # 10:45 AM
+        'end': 990,     # 3:30 PM
+        'duration': 15
     },
     {
-        'name': 'Mary',
-        'location': 'Richmond District',
-        'start': 780,   # 1:00 PM
-        'end': 1155,    # 7:15 PM
+        'name': 'Timothy',
+        'location': 'Pacific Heights',
+        'start': 540,   # 9:00 AM
+        'end': 990,     # 3:30 PM
         'duration': 75
     },
     {
-        'name': 'Helen',
+        'name': 'Robert',
         'location': 'Mission District',
-        'start': 1305,  # 9:45 PM
-        'end': 1350,    # 10:30 PM
-        'duration': 30
-    },
-    {
-        'name': 'Thomas',
-        'location': 'Bayview',
-        'start': 915,   # 3:15 PM
-        'end': 1125,    # 6:45 PM
-        'duration': 120
+        'start': 735,   # 12:15 PM
+        'end': 1365,    # 7:45 PM
+        'duration': 90
     }
 ]
 
@@ -86,11 +71,11 @@ def main():
             if len(perm) > max_met:
                 max_met = len(perm)
                 best_schedule = perm
-                if max_met == 4:
-                    break  # Cannot do better than meeting all four
+                if max_met == 3:
+                    break  # Cannot do better than meeting all three
 
     if best_schedule:
-        print("SOLUTION: The optimal schedule meets all four friends in the following order:")
+        print("SOLUTION: The optimal schedule meets all three friends in the following order:")
         print(" -> ".join([f['name'] for f in best_schedule]))
     else:
         print("SOLUTION: No valid schedule found.")

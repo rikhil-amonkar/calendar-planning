@@ -3,56 +3,56 @@ from z3 import *
 
 # Define travel times between locations
 travel_times = {
-    ('Haight-Ashbury', 'Fisherman\'s Wharf'): 23,
-    ('Haight-Ashbury', 'Richmond District'): 10,
-    ('Haight-Ashbury', 'Mission District'): 11,
-    ('Haight-Ashbury', 'Bayview'): 18,
-    ('Fisherman\'s Wharf', 'Haight-Ashbury'): 22,
-    ('Fisherman\'s Wharf', 'Richmond District'): 18,
-    ('Fisherman\'s Wharf', 'Mission District'): 22,
-    ('Fisherman\'s Wharf', 'Bayview'): 26,
-    ('Richmond District', 'Haight-Ashbury'): 10,
-    ('Richmond District', 'Fisherman\'s Wharf'): 18,
-    ('Richmond District', 'Mission District'): 20,
-    ('Richmond District', 'Bayview'): 26,
-    ('Mission District', 'Haight-Ashbury'): 12,
-    ('Mission District', 'Fisherman\'s Wharf'): 22,
-    ('Mission District', 'Richmond District'): 20,
-    ('Mission District', 'Bayview'): 15,
-    ('Bayview', 'Haight-Ashbury'): 19,
-    ('Bayview', 'Fisherman\'s Wharf'): 25,
-    ('Bayview', 'Richmond District'): 25,
+    ('Bayview', 'Pacific Heights'): 23,
     ('Bayview', 'Mission District'): 13,
+    ('Bayview', 'Haight-Ashbury'): 19,
+    ('Bayview', 'Financial District'): 19,
+    ('Pacific Heights', 'Bayview'): 22,
+    ('Pacific Heights', 'Mission District'): 15,
+    ('Pacific Heights', 'Haight-Ashbury'): 11,
+    ('Pacific Heights', 'Financial District'): 13,
+    ('Mission District', 'Bayview'): 15,
+    ('Mission District', 'Pacific Heights'): 16,
+    ('Mission District', 'Haight-Ashbury'): 12,
+    ('Mission District', 'Financial District'): 17,
+    ('Haight-Ashbury', 'Bayview'): 18,
+    ('Haight-Ashbury', 'Pacific Heights'): 12,
+    ('Haight-Ashbury', 'Mission District'): 11,
+    ('Haight-Ashbury', 'Financial District'): 21,
+    ('Financial District', 'Bayview'): 19,
+    ('Financial District', 'Pacific Heights'): 13,
+    ('Financial District', 'Mission District'): 17,
+    ('Financial District', 'Haight-Ashbury'): 19,
 }
 
 # Define friends' data (time in minutes since midnight)
 friends = [
     {
-        'name': 'Sarah',
-        'location': 'Fisherman\'s Wharf',
-        'start': 885,   # 2:45 PM
-        'end': 1050,    # 5:30 PM
-        'duration': 105
+        'name': 'Mary',
+        'location': 'Pacific Heights',
+        'start': 600,   # 10:00 AM
+        'end': 1140,    # 7:00 PM
+        'duration': 45
     },
     {
-        'name': 'Mary',
-        'location': 'Richmond District',
-        'start': 780,   # 1:00 PM
-        'end': 1155,    # 7:15 PM
+        'name': 'Lisa',
+        'location': 'Mission District',
+        'start': 1260,  # 8:30 PM
+        'end': 1440,    # 10:00 PM
         'duration': 75
     },
     {
-        'name': 'Helen',
-        'location': 'Mission District',
-        'start': 1305,  # 9:45 PM
-        'end': 1350,    # 10:30 PM
-        'duration': 30
+        'name': 'Betty',
+        'location': 'Haight-Ashbury',
+        'start': 435,   # 7:15 AM
+        'end': 1035,    # 5:15 PM
+        'duration': 90
     },
     {
-        'name': 'Thomas',
-        'location': 'Bayview',
-        'start': 915,   # 3:15 PM
-        'end': 1125,    # 6:45 PM
+        'name': 'Charles',
+        'location': 'Financial District',
+        'start': 685,   # 11:15 AM
+        'end': 900,     # 3:00 PM
         'duration': 120
     }
 ]
