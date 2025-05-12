@@ -40,111 +40,101 @@ prefix_message = (
     "based on the participants' schedules and constraints. In this case:\n"
 )
 suffix_message = (
-    "\nGenerate a fully working Python script with code that calculates a proposed time and outputs it in the format HH:MM:HH:MM. " \
-    "The script should be clean, well-formatted, and enclosed within '''python and '''. " \
-    "The output of the generated code must be a valid time, like {14:30:15:30}. " \
+    "\nGenerate a fully working Python script with code that calculates a proposed time and outputs it in the format HH:MM:HH:MM. "
+    "The script should also output the day of the week (e.g., Monday, Tuesday). "
+    "The script should be clean, well-formatted, and enclosed within '''python and '''. "
+    "The output of the generated code must include both the time range (like {14:30:15:30}) and the day of the week. "
     "Provide the response with only code."
 )
 
 # Function to extract the code from the model's response
 def extract_code(response):
-    # Define the possible code block delimiters
     delimiters = ["'''python", "'''", "```python", "```"]
     
-    # Find the start of the code block
     start = -1
     for delimiter in delimiters:
         start = response.find(delimiter)
         if start != -1:
-            start += len(delimiter)  # Move the start index to the end of the delimiter
+            start += len(delimiter)
             break
     
-    # If no delimiter is found, return None
     if start == -1:
         return None
     
-    # Find the end of the code block
     end = -1
     for delimiter in delimiters:
-        end = response.find(delimiter, start)  # Search for the closing delimiter after the start
+        end = response.find(delimiter, start)
         if end != -1:
             break
     
-    # If no closing delimiter is found, return None
     if end == -1:
         return None
     
-    # Extract and return the code block
     return response[start:end].strip()
 
-# Function to remove leading zeros from times in the format HH:MM:HH:MM
+# Function to remove leading zeros from times
 def remove_leading_zeros(time_str):
     if not time_str:
         return None
-    # Split the time string into parts
     parts = time_str.strip("{}").split(":")
     if len(parts) != 4:
-        return time_str  # Return the original string if the format is incorrect
-    # Remove leading zeros from each hour part
-    parts[0] = str(int(parts[0]))  # First hour
-    parts[2] = str(int(parts[2]))  # Second hour
-    # Reconstruct the time string
+        return time_str
+    parts[0] = str(int(parts[0]))
+    parts[2] = str(int(parts[2]))
     return f"{{{':'.join(parts)}}}"
 
-# Modify the normalize_time_format function to use remove_leading_zeros
+# Function to normalize time format
 def normalize_time_format(time_str):
     if not time_str:
         return None
-    # Search for the time pattern without brackets
     time_pattern = re.compile(r"\b\d{2}:\d{2}:\d{2}:\d{2}\b")
     match = time_pattern.search(time_str)
     if match:
         time_str = match.group(0)
-        time_str = remove_leading_zeros(time_str)  # Remove leading zeros
-        return time_str  # Return the normalized time string
+        time_str = remove_leading_zeros(time_str)
+        return time_str
     return None
-
-# Function to categorize errors
-def categorize_error(error_message):
-    error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", "ValueError", "ImportError", "RuntimeError", "AttributeError", "KeyError", "IndexError"]
-    for error_type in error_types:
-        if error_type in error_message:
-            return error_type
-    return "Other"
 
 # Function to run the generated Python script and capture its output
 def run_generated_code(code):
     try:
         with open("generated_code_deepseek.py", "w") as file:
             file.write(code)
-        result = subprocess.run(["python", "generated_code_deepseek.py"], capture_output=True, text=True, check=True)
+        result = subprocess.run(["python", "generated_code_deepseek.py"], 
+                              capture_output=True, text=True, check=True)
         output = result.stdout.strip()
-        output = normalize_time_format(output)
-        return output, None
-    except subprocess.CalledProcessError as e:
-        error_type = categorize_error(e.stderr)
-        return None, error_type
+        
+        # Extract day and time from the output
+        day_match = re.search(r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)', 
+                             output, re.IGNORECASE)
+        day = day_match.group(0) if day_match else None
+        
+        time_output = normalize_time_format(output)
+        
+        return time_output, day, False  # No error
+    except subprocess.CalledProcessError:
+        return None, None, True  # Error occurred
+    except Exception:
+        return None, None, True  # Error occurred
 
-# Function to convert the golden plan to dictionary format
-def convert_golden_plan(golden_plan):
-    if "Here is the proposed time:" in golden_plan:
-        time_part = golden_plan.split(": ")[-1].strip()
-        start_time, end_time = time_part.split(" - ")
-        start_time = start_time.split(", ")[-1] if ", " in start_time else start_time
-        end_time = end_time.split(", ")[-1] if ", " in end_time else end_time
+# Function to parse the golden plan time into day and time format
+def parse_golden_plan(golden_plan):
+    match = re.search(r'(\w+), (\d{1,2}:\d{2}) - (\d{1,2}:\d{2})', golden_plan)
+    if match:
+        day_of_week, start_time, end_time = match.groups()
         time_range = f"{{{start_time}:{end_time}}}"
-        return time_range
-    return None
+        return day_of_week, time_range
+    return "Invalid day format", "Invalid time format"
 
 # Function to stop the model's response after the second '''
 def stop_after_second_triple_quote(response):
     first_triple_quote = response.find("'''")
     if first_triple_quote == -1:
-        return response  # No triple quotes found
+        return response
     second_triple_quote = response.find("'''", first_triple_quote + 3)
     if second_triple_quote == -1:
-        return response  # Only one triple quote found
-    return response[:second_triple_quote + 3]  # Stop after the second triple quote
+        return response
+    return response[:second_triple_quote + 3]
 
 # Function to initialize the JSON results file
 def initialize_results_file(file_path):
@@ -152,12 +142,10 @@ def initialize_results_file(file_path):
         with open(file_path, "w") as json_file:
             json.dump({"0shot": []}, json_file, indent=4)
 
-# Main function to run the model
+# Function to run the model
 async def run_model():
     expected_outputs_0shot = []
     predicted_outputs_0shot = []
-    # expected_outputs_5shot = []
-    # predicted_outputs_5shot = []
     start_time = datetime.now()
 
     prompts_data = load_prompts("../../data/calendar_scheduling_100.json")
@@ -165,11 +153,8 @@ async def run_model():
 
     no_error_count_0shot = 0
     correct_output_count_0shot = 0
-    # no_error_count_5shot = 0
-    # correct_output_count_5shot = 0
 
-    # Initialize the JSON results file with original naming
-    json_results_file = "DS-R1-FULL_json_coderesults.json"
+    json_results_file = "DS-R1-FULL_code_calendar_results.json"
     initialize_results_file(json_results_file)
 
     for key, data in prompts_list:
@@ -189,59 +174,60 @@ async def run_model():
                         stream=False
                     )
                     response_content = response.choices[0].message.content
-                    # Stop the response after the second '''
                     response_content = stop_after_second_triple_quote(response_content)
                     code = extract_code(response_content)
+                    
                     if code:
-                        code_output, error_type = run_generated_code(code)
+                        code_output, day_output, has_error = run_generated_code(code)
                         predicted_time = code_output if code_output else None
+                        predicted_day = day_output if day_output else None
                     else:
                         predicted_time = None
-                        error_type = "NoCodeGenerated"
+                        predicted_day = None
+                        has_error = True
 
-                    expected_time = convert_golden_plan(golden_plan)
+                    expected_day, expected_time = parse_golden_plan(golden_plan)
 
                     if prompt_type == "prompt_0shot":
-                        expected_outputs_0shot.append(expected_time)
-                        predicted_outputs_0shot.append(predicted_time)
-                        if error_type is None:
+                        expected_outputs_0shot.append((expected_day, expected_time))
+                        predicted_outputs_0shot.append((predicted_day, predicted_time))
+                        if not has_error:
                             no_error_count_0shot += 1
-                            if predicted_time == expected_time:
+                            if predicted_time == expected_time and predicted_day == expected_day:
                                 correct_output_count_0shot += 1
-                    # elif prompt_type == "prompt_5shot":
-                    #     expected_outputs_5shot.append(expected_time)
-                    #     predicted_outputs_5shot.append(predicted_time)
-                    #     if error_type is None:
-                    #         no_error_count_5shot += 1
-                    #         if predicted_time == expected_time:
-                    #             correct_output_count_5shot += 1
 
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     line = (
-                        f"{key}. [{timestamp}] | PROMPT TYPE: {prompt_type} | ANSWER: {predicted_time} "
-                        f"EXPECTED: {expected_time} | ERROR: {error_type}"
+                        f"{key}. [{timestamp}] | PROMPT TYPE: {prompt_type} | "
+                        f"ANSWER: {predicted_time}, {predicted_day} | "
+                        f"EXPECTED: {expected_time}, {expected_day} | "
+                        f"ERROR: {'Yes' if has_error else 'No'}"
                     )
                     logging.info(line)
 
-                    # Use original filename for text results
-                    text_results_file = "DS-R1-FULL_text_coderesults.txt"
-                    with open(text_results_file, "a") as file:
+                    with open("DS-R1-FULL_code_calendar_results.txt", "a") as file:
                         file.write(line + "\n")
 
+                    # JSON output format
                     json_output = {
-                        "final_program_time": predicted_time,
-                        "expected_time": expected_time,
-                        "type_error": error_type,
-                        "full_response": response_content,
+                        "final_program_time": {
+                            "day": predicted_day,
+                            "start_time": predicted_time.split(":")[0] + ":" + predicted_time.split(":")[1] if predicted_time else None,
+                            "end_time": predicted_time.split(":")[2] + ":" + predicted_time.split(":")[3] if predicted_time else None
+                        },
+                        "expected_time": {
+                            "day": expected_day,
+                            "start_time": expected_time.split(":")[0] + ":" + expected_time.split(":")[1] if expected_time else None,
+                            "end_time": expected_time.split(":")[2] + ":" + expected_time.split(":")[3] if expected_time else None
+                        },
+                        "has_error": has_error,
+                        "raw_model_response": response_content,
                         "count": key
                     }
 
                     with open(json_results_file, "r+") as json_file:
                         file_data = json.load(json_file)
-                        if prompt_type == "prompt_0shot":
-                            file_data["0shot"].append(json_output)
-                        # elif prompt_type == "prompt_5shot":
-                        #     file_data["5shot"].append(json_output)
+                        file_data["0shot"].append(json_output)
                         json_file.seek(0)
                         json.dump(file_data, json_file, indent=4)
                         json_file.truncate()
@@ -253,28 +239,17 @@ async def run_model():
     total_time = (end_time - start_time).total_seconds()
 
     accuracy_0shot = (correct_output_count_0shot / len(expected_outputs_0shot)) * 100 if expected_outputs_0shot else 0
-    # accuracy_5shot = (correct_output_count_5shot / len(expected_outputs_5shot)) * 100 if expected_outputs_5shot else 0
-    # total_accuracy = ((correct_output_count_0shot + correct_output_count_5shot) / (len(expected_outputs_0shot) + len(expected_outputs_5shot))) * 100 if (expected_outputs_0shot + expected_outputs_5shot) else 0
-
     no_error_accuracy_0shot = (correct_output_count_0shot / no_error_count_0shot) * 100 if no_error_count_0shot > 0 else 0
-    # no_error_accuracy_5shot = (correct_output_count_5shot / no_error_count_5shot) * 100 if no_error_count_5shot > 0 else 0
 
     accuracy_line = (
         f"\n0-shot prompts: Model guessed {correct_output_count_0shot} out of {len(expected_outputs_0shot)} correctly.\n"
         f"Accuracy: {accuracy_0shot:.2f}%\n"
-        # f"\n5-shot prompts: Model guessed {correct_output_count_5shot} out of {len(expected_outputs_5shot)} correctly.\n"
-        # f"Accuracy: {accuracy_5shot:.2f}%\n"
-        # f"\nTotal accuracy: {total_accuracy:.2f}%\n"
         f"\n0-shot prompts with no errors: {correct_output_count_0shot} out of {no_error_count_0shot} produced correct outputs.\n"
         f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n"
-        # f"\n5-shot prompts with no errors: {correct_output_count_5shot} out of {no_error_count_5shot} produced correct outputs.\n"
-        # f"No-error accuracy: {no_error_accuracy_5shot:.2f}%\n"
         f"\nTotal time taken: {total_time} seconds"
     )
 
-    # Use original filename for text results
-    text_results_file = "DS-R1-FULL_text_coderesults.txt"
-    with open(text_results_file, "a") as file:
+    with open("DS-R1-FULL_code_calendar_results.txt", "a") as file:
         file.write(accuracy_line)
 
 # Run the model
