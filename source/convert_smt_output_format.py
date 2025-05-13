@@ -7,6 +7,12 @@ with open("../../scheduling_key.json") as f:
     key = json.load(f)["openai"]
 client = OpenAI(api_key=key)
 
+# Argument parsing
+parser = argparse.ArgumentParser(description="")
+parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True, help="")
+parser.add_argument('--model', required=True, nargs='+', help="")
+args = parser.parse_args()
+
 def extract_answer(answer_str, task):
     prompt = {
         "calendar": "Given the following time range:\n" + answer_str + "\nExtract the meeting start day and time in a JSON like {\"day\": \"Monday\", \"start_time\": \"14:30\", \"end_time\": \"15:30\"}. The time should be in 24-hour format. If no end time is given, assume the end time is one hour later than the start time. If no day given, assume the day is Monday. If no time range is given at all, output an empty JSON.",
@@ -60,12 +66,6 @@ def evaluate_output(pred, gold, task):
     print(f"Pred: {pred_range}\nGold: {gold_range}\n")
     return pred_range == gold_range
 
-# Argument parsing
-parser = argparse.ArgumentParser(description="")
-parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True, help="")
-parser.add_argument('--model', required=True, nargs='+', help="")
-args = parser.parse_args()
-
 task_name_map = {
     "calendar": "calendar_scheduling",
     "trip": "trip_planning",
@@ -108,10 +108,11 @@ for model in args.model:
             output_dict = {
                 "0shot": [
                     {
+                        "count": id,
                         "final_program_time": pred_formatted,
                         "expected_time": gold_formatted,
                         "has_error": has_error,
-                        "count": id
+                        "is_correct": gold_formatted == pred_formatted
                     }
                 ]
             }
