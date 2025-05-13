@@ -1,179 +1,156 @@
 from z3 import *
+from itertools import combinations
 
-def main():
-    friends_data = [
-        {'name': 'Linda', 'location': 'Marina District', 'start': 1080, 'end': 1320, 'min_duration': 30},
-        {'name': 'Kenneth', 'location': 'The Castro', 'start': 885, 'end': 975, 'min_duration': 30},
-        {'name': 'Kimberly', 'location': 'Richmond District', 'start': 855, 'end': 1320, 'min_duration': 30},
-        {'name': 'Paul', 'location': 'Alamo Square', 'start': 1260, 'end': 1290, 'min_duration': 15},
-        {'name': 'Carol', 'location': 'Financial District', 'start': 615, 'end': 720, 'min_duration': 60},
-        {'name': 'Brian', 'location': 'Presidio', 'start': 600, 'end': 1290, 'min_duration': 75},
-        {'name': 'Laura', 'location': 'Mission District', 'start': 975, 'end': 1230, 'min_duration': 30},
-        {'name': 'Sandra', 'location': 'Nob Hill', 'start': 555, 'end': 1110, 'min_duration': 60},
-        {'name': 'Karen', 'location': 'Russian Hill', 'start': 1110, 'end': 1320, 'min_duration': 75},
-    ]
+friends = [
+    {'name': 'Start', 'location': 'Pacific Heights', 'available_start': 540, 'available_end': 540, 'duration': 0},
+    {'name': 'Linda', 'location': 'Marina District', 'available_start': 1080, 'available_end': 1320, 'duration': 30},
+    {'name': 'Kenneth', 'location': 'The Castro', 'available_start': 885, 'available_end': 975, 'duration': 30},
+    {'name': 'Kimberly', 'location': 'Richmond District', 'available_start': 855, 'available_end': 1320, 'duration': 30},
+    {'name': 'Paul', 'location': 'Alamo Square', 'available_start': 1260, 'available_end': 1290, 'duration': 15},
+    {'name': 'Carol', 'location': 'Financial District', 'available_start': 615, 'available_end': 720, 'duration': 60},
+    {'name': 'Brian', 'location': 'Presidio', 'available_start': 600, 'available_end': 1290, 'duration': 75},
+    {'name': 'Laura', 'location': 'Mission District', 'available_start': 975, 'available_end': 1230, 'duration': 30},
+    {'name': 'Sandra', 'location': 'Nob Hill', 'available_start': 555, 'available_end': 1110, 'duration': 60},
+    {'name': 'Karen', 'location': 'Russian Hill', 'available_start': 1110, 'available_end': 1320, 'duration': 75},
+]
 
-    travel_times = {
-        'Pacific Heights': {
-            'Marina District': 6,
-            'The Castro': 16,
-            'Richmond District': 12,
-            'Alamo Square': 10,
-            'Financial District': 13,
-            'Presidio': 11,
-            'Mission District': 15,
-            'Nob Hill': 8,
-            'Russian Hill': 7,
-        },
-        'Marina District': {
-            'Pacific Heights': 7,
-            'The Castro': 22,
-            'Richmond District': 11,
-            'Alamo Square': 15,
-            'Financial District': 17,
-            'Presidio': 10,
-            'Mission District': 20,
-            'Nob Hill': 12,
-            'Russian Hill': 8,
-        },
-        'The Castro': {
-            'Pacific Heights': 16,
-            'Marina District': 21,
-            'Richmond District': 16,
-            'Alamo Square': 8,
-            'Financial District': 21,
-            'Presidio': 20,
-            'Mission District': 7,
-            'Nob Hill': 16,
-            'Russian Hill': 18,
-        },
-        'Richmond District': {
-            'Pacific Heights': 10,
-            'Marina District': 9,
-            'The Castro': 16,
-            'Alamo Square': 13,
-            'Financial District': 22,
-            'Presidio': 7,
-            'Mission District': 20,
-            'Nob Hill': 17,
-            'Russian Hill': 13,
-        },
-        'Alamo Square': {
-            'Pacific Heights': 10,
-            'Marina District': 15,
-            'The Castro': 8,
-            'Richmond District': 11,
-            'Financial District': 17,
-            'Presidio': 17,
-            'Mission District': 10,
-            'Nob Hill': 11,
-            'Russian Hill': 13,
-        },
-        'Financial District': {
-            'Pacific Heights': 13,
-            'Marina District': 15,
-            'The Castro': 20,
-            'Richmond District': 21,
-            'Alamo Square': 17,
-            'Presidio': 22,
-            'Mission District': 17,
-            'Nob Hill': 8,
-            'Russian Hill': 11,
-        },
-        'Presidio': {
-            'Pacific Heights': 11,
-            'Marina District': 11,
-            'The Castro': 21,
-            'Richmond District': 7,
-            'Alamo Square': 19,
-            'Financial District': 23,
-            'Mission District': 26,
-            'Nob Hill': 18,
-            'Russian Hill': 14,
-        },
-        'Mission District': {
-            'Pacific Heights': 16,
-            'Marina District': 19,
-            'The Castro': 7,
-            'Richmond District': 20,
-            'Alamo Square': 11,
-            'Financial District': 15,
-            'Presidio': 25,
-            'Nob Hill': 12,
-            'Russian Hill': 15,
-        },
-        'Nob Hill': {
-            'Pacific Heights': 8,
-            'Marina District': 11,
-            'The Castro': 17,
-            'Richmond District': 14,
-            'Alamo Square': 11,
-            'Financial District': 9,
-            'Presidio': 17,
-            'Mission District': 13,
-            'Russian Hill': 5,
-        },
-        'Russian Hill': {
-            'Pacific Heights': 7,
-            'Marina District': 7,
-            'The Castro': 21,
-            'Richmond District': 14,
-            'Alamo Square': 15,
-            'Financial District': 11,
-            'Presidio': 14,
-            'Mission District': 16,
-            'Nob Hill': 5,
-        },
-    }
+for friend in friends:
+    friend['met'] = Bool(friend['name'])
+    friend['start'] = Int(f'start_{friend["name"]}')
+    friend['end'] = Int(f'end_{friend["name"]}')
 
-    opt = Optimize()
+travel_time = {
+    ('Pacific Heights', 'Marina District'): 6,
+    ('Pacific Heights', 'The Castro'): 16,
+    ('Pacific Heights', 'Richmond District'): 12,
+    ('Pacific Heights', 'Alamo Square'): 10,
+    ('Pacific Heights', 'Financial District'): 13,
+    ('Pacific Heights', 'Presidio'): 11,
+    ('Pacific Heights', 'Mission District'): 15,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Russian Hill'): 7,
+    ('Marina District', 'Pacific Heights'): 7,
+    ('Marina District', 'The Castro'): 22,
+    ('Marina District', 'Richmond District'): 11,
+    ('Marina District', 'Alamo Square'): 15,
+    ('Marina District', 'Financial District'): 17,
+    ('Marina District', 'Presidio'): 10,
+    ('Marina District', 'Mission District'): 20,
+    ('Marina District', 'Nob Hill'): 12,
+    ('Marina District', 'Russian Hill'): 8,
+    ('The Castro', 'Pacific Heights'): 16,
+    ('The Castro', 'Marina District'): 21,
+    ('The Castro', 'Richmond District'): 16,
+    ('The Castro', 'Alamo Square'): 8,
+    ('The Castro', 'Financial District'): 21,
+    ('The Castro', 'Presidio'): 20,
+    ('The Castro', 'Mission District'): 7,
+    ('The Castro', 'Nob Hill'): 16,
+    ('The Castro', 'Russian Hill'): 18,
+    ('Richmond District', 'Pacific Heights'): 10,
+    ('Richmond District', 'Marina District'): 9,
+    ('Richmond District', 'The Castro'): 16,
+    ('Richmond District', 'Alamo Square'): 13,
+    ('Richmond District', 'Financial District'): 22,
+    ('Richmond District', 'Presidio'): 7,
+    ('Richmond District', 'Mission District'): 20,
+    ('Richmond District', 'Nob Hill'): 17,
+    ('Richmond District', 'Russian Hill'): 13,
+    ('Alamo Square', 'Pacific Heights'): 10,
+    ('Alamo Square', 'Marina District'): 15,
+    ('Alamo Square', 'The Castro'): 8,
+    ('Alamo Square', 'Richmond District'): 11,
+    ('Alamo Square', 'Financial District'): 17,
+    ('Alamo Square', 'Presidio'): 17,
+    ('Alamo Square', 'Mission District'): 10,
+    ('Alamo Square', 'Nob Hill'): 11,
+    ('Alamo Square', 'Russian Hill'): 13,
+    ('Financial District', 'Pacific Heights'): 13,
+    ('Financial District', 'Marina District'): 15,
+    ('Financial District', 'The Castro'): 20,
+    ('Financial District', 'Richmond District'): 21,
+    ('Financial District', 'Alamo Square'): 17,
+    ('Financial District', 'Presidio'): 22,
+    ('Financial District', 'Mission District'): 17,
+    ('Financial District', 'Nob Hill'): 8,
+    ('Financial District', 'Russian Hill'): 11,
+    ('Presidio', 'Pacific Heights'): 11,
+    ('Presidio', 'Marina District'): 11,
+    ('Presidio', 'The Castro'): 21,
+    ('Presidio', 'Richmond District'): 7,
+    ('Presidio', 'Alamo Square'): 19,
+    ('Presidio', 'Financial District'): 23,
+    ('Presidio', 'Mission District'): 26,
+    ('Presidio', 'Nob Hill'): 18,
+    ('Presidio', 'Russian Hill'): 14,
+    ('Mission District', 'Pacific Heights'): 16,
+    ('Mission District', 'Marina District'): 19,
+    ('Mission District', 'The Castro'): 7,
+    ('Mission District', 'Richmond District'): 20,
+    ('Mission District', 'Alamo Square'): 11,
+    ('Mission District', 'Financial District'): 15,
+    ('Mission District', 'Presidio'): 25,
+    ('Mission District', 'Nob Hill'): 12,
+    ('Mission District', 'Russian Hill'): 15,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Marina District'): 11,
+    ('Nob Hill', 'The Castro'): 17,
+    ('Nob Hill', 'Richmond District'): 14,
+    ('Nob Hill', 'Alamo Square'): 11,
+    ('Nob Hill', 'Financial District'): 9,
+    ('Nob Hill', 'Presidio'): 17,
+    ('Nob Hill', 'Mission District'): 13,
+    ('Nob Hill', 'Russian Hill'): 5,
+    ('Russian Hill', 'Pacific Heights'): 7,
+    ('Russian Hill', 'Marina District'): 7,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Richmond District'): 14,
+    ('Russian Hill', 'Alamo Square'): 15,
+    ('Russian Hill', 'Financial District'): 11,
+    ('Russian Hill', 'Presidio'): 14,
+    ('Russian Hill', 'Mission District'): 16,
+    ('Russian Hill', 'Nob Hill'): 5,
+}
 
-    for friend in friends_data:
-        friend['met'] = Bool(f"met_{friend['name']}")
-        friend['start_var'] = Real(f"start_{friend['name']}")
-        friend['end_var'] = Real(f"end_{friend['name']}")
+solver = Solver()
 
-    for friend in friends_data:
-        met = friend['met']
-        start = friend['start_var']
-        end = friend['end_var']
-        opt.add(Implies(met, start >= friend['start']))
-        opt.add(Implies(met, end <= friend['end']))
-        opt.add(Implies(met, end == start + friend['min_duration']))
+# Start must be met with fixed times
+solver.add(friends[0]['met'] == True)
+solver.add(friends[0]['start'] == 540)
+solver.add(friends[0]['end'] == 540)
 
-        initial_location = 'Pacific Heights'
-        travel_time = travel_times[initial_location][friend['location']]
-        from_start = 540 + travel_time
-        predecessor_conds = [start >= from_start]
+for friend in friends[1:]:
+    met = friend['met']
+    start = friend['start']
+    end = friend['end']
+    solver.add(Implies(met, start >= friend['available_start']))
+    solver.add(Implies(met, end == start + friend['duration']))
+    solver.add(Implies(met, end <= friend['available_end']))
 
-        for other in friends_data:
-            if other['name'] == friend['name']:
-                continue
-            travel = travel_times[other['location']][friend['location']]
-            cond = And(other['met'], start >= other['end_var'] + travel)
-            predecessor_conds.append(cond)
+# Add pairwise constraints including Start
+for a, b in combinations(friends, 2):
+    a_before_b = Bool(f"{a['name']}_before_{b['name']}")
+    travel_ab = travel_time.get((a['location'], b['location']), None)
+    travel_ba = travel_time.get((b['location'], a['location']), None)
+    if travel_ab is None or travel_ba is None:
+        continue
+    solver.add(Implies(And(a['met'], b['met'], a_before_b), b['start'] >= a['end'] + travel_ab))
+    solver.add(Implies(And(a['met'], b['met'], Not(a_before_b)), a['start'] >= b['end'] + travel_ba))
 
-        opt.add(Implies(met, Or(predecessor_conds)))
+max_friends = Sum([If(f['met'], 1, 0) for f in friends[1:]])
+solver.maximize(max_friends)
 
-    opt.maximize(Sum([If(friend['met'], 1, 0) for friend in friends_data]))
-
-    if opt.check() == sat:
-        model = opt.model()
-        schedule = []
-        for friend in friends_data:
-            if model.evaluate(friend['met']):
-                start_val = model.evaluate(friend['start_var']).as_long()
-                schedule.append((start_val, friend))
-        schedule.sort()
-        print("Optimal Schedule:")
-        for time, friend in schedule:
-            start_hr, start_min = divmod(time, 60)
-            end_time = time + friend['min_duration']
-            end_hr, end_min = divmod(end_time, 60)
-            print(f"{friend['name']}: {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d} at {friend['location']}")
-        print(f"Total friends met: {len(schedule)}")
-    else:
-        print("No solution found.")
-
-if __name__ == "__main__":
-    main()
+if solver.check() == sat:
+    model = solver.model()
+    schedule = []
+    for friend in friends[1:]:
+        if model.eval(friend['met']):
+            start = model.eval(friend['start']).as_long()
+            end = model.eval(friend['end']).as_long()
+            schedule.append((friend['name'], start, end))
+    schedule.sort(key=lambda x: x[1])
+    print("Optimal Schedule:")
+    for name, s, e in schedule:
+        print(f"{name}: {s//60:02d}:{s%60:02d}-{e//60:02d}:{e%60:02d}")
+else:
+    print("No valid schedule found.")

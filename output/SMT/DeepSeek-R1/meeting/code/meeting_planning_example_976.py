@@ -1,135 +1,177 @@
 from z3 import *
+from itertools import combinations
 
-def main():
-    friends_data = [
-        {'name': 'Matthew', 'location': 'Bayview', 'start': 1095, 'end': 1320, 'min_duration': 120},
-        {'name': 'Karen', 'location': 'Chinatown', 'start': 1095, 'end': 1155, 'min_duration': 90},
-        {'name': 'Sarah', 'location': 'Alamo Square', 'start': 1200, 'end': 1305, 'min_duration': 105},
-        {'name': 'Jessica', 'location': 'Nob Hill', 'start': 990, 'end': 1125, 'min_duration': 120},
-        {'name': 'Stephanie', 'location': 'Presidio', 'start': 450, 'end': 615, 'min_duration': 60},
-        {'name': 'Mary', 'location': 'Union Square', 'start': 1005, 'end': 1290, 'min_duration': 60},
-        {'name': 'Charles', 'location': 'The Castro', 'start': 990, 'end': 1320, 'min_duration': 105},
-        {'name': 'Nancy', 'location': 'North Beach', 'start': 885, 'end': 1200, 'min_duration': 15},
-        {'name': 'Thomas', 'location': 'Fisherman\'s Wharf', 'start': 810, 'end': 1140, 'min_duration': 30},
-        {'name': 'Brian', 'location': 'Marina District', 'start': 735, 'end': 1080, 'min_duration': 60},
-    ]
+friends = [
+    {'name': 'Start', 'location': 'Embarcadero', 'available_start': 540, 'available_end': 540, 'duration': 0},
+    {'name': 'Matthew', 'location': 'Bayview', 'available_start': 1095, 'available_end': 1320, 'duration': 120},
+    {'name': 'Karen', 'location': 'Chinatown', 'available_start': 1095, 'available_end': 1170, 'duration': 90},
+    {'name': 'Sarah', 'location': 'Alamo Square', 'available_start': 1200, 'available_end': 1305, 'duration': 105},
+    {'name': 'Jessica', 'location': 'Nob Hill', 'available_start': 990, 'available_end': 1065, 'duration': 120},
+    {'name': 'Stephanie', 'location': 'Presidio', 'available_start': 450, 'available_end': 615, 'duration': 60},
+    {'name': 'Mary', 'location': 'Union Square', 'available_start': 1005, 'available_end': 1170, 'duration': 60},
+    {'name': 'Charles', 'location': 'The Castro', 'available_start': 990, 'available_end': 1320, 'duration': 105},
+    {'name': 'Nancy', 'location': 'North Beach', 'available_start': 885, 'available_end': 1080, 'duration': 15},
+    {'name': 'Thomas', 'location': 'Fisherman\'s Wharf', 'available_start': 810, 'available_end': 1020, 'duration': 30},
+    {'name': 'Brian', 'location': 'Marina District', 'available_start': 735, 'available_end': 1080, 'duration': 60},
+]
 
-    travel_times = {
-        'Embarcadero': {
-            'Bayview': 21, 'Chinatown': 7, 'Alamo Square': 19, 'Nob Hill': 10,
-            'Presidio': 20, 'Union Square': 10, 'The Castro': 25, 'North Beach': 5,
-            'Fisherman\'s Wharf': 6, 'Marina District': 12
-        },
-        'Bayview': {
-            'Embarcadero': 19, 'Chinatown': 19, 'Alamo Square': 16, 'Nob Hill': 20,
-            'Presidio': 32, 'Union Square': 18, 'The Castro': 19, 'North Beach': 22,
-            'Fisherman\'s Wharf': 25, 'Marina District': 27
-        },
-        'Chinatown': {
-            'Embarcadero': 5, 'Bayview': 20, 'Alamo Square': 17, 'Nob Hill': 9,
-            'Presidio': 19, 'Union Square': 7, 'The Castro': 22, 'North Beach': 3,
-            'Fisherman\'s Wharf': 8, 'Marina District': 12
-        },
-        'Alamo Square': {
-            'Embarcadero': 16, 'Bayview': 16, 'Chinatown': 15, 'Nob Hill': 11,
-            'Presidio': 17, 'Union Square': 14, 'The Castro': 8, 'North Beach': 15,
-            'Fisherman\'s Wharf': 19, 'Marina District': 15
-        },
-        'Nob Hill': {
-            'Embarcadero': 9, 'Bayview': 19, 'Chinatown': 6, 'Alamo Square': 11,
-            'Presidio': 17, 'Union Square': 7, 'The Castro': 17, 'North Beach': 8,
-            'Fisherman\'s Wharf': 10, 'Marina District': 11
-        },
-        'Presidio': {
-            'Embarcadero': 20, 'Bayview': 31, 'Chinatown': 21, 'Alamo Square': 19,
-            'Nob Hill': 18, 'Union Square': 22, 'The Castro': 21, 'North Beach': 18,
-            'Fisherman\'s Wharf': 19, 'Marina District': 11
-        },
-        'Union Square': {
-            'Embarcadero': 11, 'Bayview': 15, 'Chinatown': 7, 'Alamo Square': 15,
-            'Nob Hill': 9, 'Presidio': 24, 'The Castro': 17, 'North Beach': 10,
-            'Fisherman\'s Wharf': 15, 'Marina District': 18
-        },
-        'The Castro': {
-            'Embarcadero': 22, 'Bayview': 19, 'Chinatown': 22, 'Alamo Square': 8,
-            'Nob Hill': 16, 'Presidio': 20, 'Union Square': 19, 'North Beach': 20,
-            'Fisherman\'s Wharf': 24, 'Marina District': 21
-        },
-        'North Beach': {
-            'Embarcadero': 6, 'Bayview': 25, 'Chinatown': 6, 'Alamo Square': 16,
-            'Nob Hill': 7, 'Presidio': 17, 'Union Square': 7, 'The Castro': 23,
-            'Fisherman\'s Wharf': 5, 'Marina District': 9
-        },
-        'Fisherman\'s Wharf': {
-            'Embarcadero': 8, 'Bayview': 26, 'Chinatown': 12, 'Alamo Square': 21,
-            'Nob Hill': 11, 'Presidio': 17, 'Union Square': 13, 'The Castro': 27,
-            'North Beach': 6, 'Marina District': 9
-        },
-        'Marina District': {
-            'Embarcadero': 14, 'Bayview': 27, 'Chinatown': 15, 'Alamo Square': 15,
-            'Nob Hill': 12, 'Presidio': 10, 'Union Square': 16, 'The Castro': 22,
-            'North Beach': 11, 'Fisherman\'s Wharf': 10
-        },
-    }
+for friend in friends:
+    friend['met'] = Bool(friend['name'])
+    friend['start'] = Int(f'start_{friend["name"]}')
+    friend['end'] = Int(f'end_{friend["name"]}')
 
-    opt = Optimize()
+travel_time = {
+    ('Embarcadero', 'Bayview'): 21,
+    ('Embarcadero', 'Chinatown'): 7,
+    ('Embarcadero', 'Alamo Square'): 19,
+    ('Embarcadero', 'Nob Hill'): 10,
+    ('Embarcadero', 'Presidio'): 20,
+    ('Embarcadero', 'Union Square'): 10,
+    ('Embarcadero', 'The Castro'): 25,
+    ('Embarcadero', 'North Beach'): 5,
+    ('Embarcadero', 'Fisherman\'s Wharf'): 6,
+    ('Embarcadero', 'Marina District'): 12,
+    ('Bayview', 'Embarcadero'): 19,
+    ('Bayview', 'Chinatown'): 19,
+    ('Bayview', 'Alamo Square'): 16,
+    ('Bayview', 'Nob Hill'): 20,
+    ('Bayview', 'Presidio'): 32,
+    ('Bayview', 'Union Square'): 18,
+    ('Bayview', 'The Castro'): 19,
+    ('Bayview', 'North Beach'): 22,
+    ('Bayview', 'Fisherman\'s Wharf'): 25,
+    ('Bayview', 'Marina District'): 27,
+    ('Chinatown', 'Embarcadero'): 5,
+    ('Chinatown', 'Bayview'): 20,
+    ('Chinatown', 'Alamo Square'): 17,
+    ('Chinatown', 'Nob Hill'): 9,
+    ('Chinatown', 'Presidio'): 19,
+    ('Chinatown', 'Union Square'): 7,
+    ('Chinatown', 'The Castro'): 22,
+    ('Chinatown', 'North Beach'): 3,
+    ('Chinatown', 'Fisherman\'s Wharf'): 8,
+    ('Chinatown', 'Marina District'): 12,
+    ('Alamo Square', 'Embarcadero'): 16,
+    ('Alamo Square', 'Bayview'): 16,
+    ('Alamo Square', 'Chinatown'): 15,
+    ('Alamo Square', 'Nob Hill'): 11,
+    ('Alamo Square', 'Presidio'): 17,
+    ('Alamo Square', 'Union Square'): 14,
+    ('Alamo Square', 'The Castro'): 8,
+    ('Alamo Square', 'North Beach'): 15,
+    ('Alamo Square', 'Fisherman\'s Wharf'): 19,
+    ('Alamo Square', 'Marina District'): 15,
+    ('Nob Hill', 'Embarcadero'): 9,
+    ('Nob Hill', 'Bayview'): 19,
+    ('Nob Hill', 'Chinatown'): 6,
+    ('Nob Hill', 'Alamo Square'): 11,
+    ('Nob Hill', 'Presidio'): 17,
+    ('Nob Hill', 'Union Square'): 7,
+    ('Nob Hill', 'The Castro'): 17,
+    ('Nob Hill', 'North Beach'): 8,
+    ('Nob Hill', 'Fisherman\'s Wharf'): 10,
+    ('Nob Hill', 'Marina District'): 11,
+    ('Presidio', 'Embarcadero'): 20,
+    ('Presidio', 'Bayview'): 31,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'Alamo Square'): 19,
+    ('Presidio', 'Nob Hill'): 18,
+    ('Presidio', 'Union Square'): 22,
+    ('Presidio', 'The Castro'): 21,
+    ('Presidio', 'North Beach'): 18,
+    ('Presidio', 'Fisherman\'s Wharf'): 19,
+    ('Presidio', 'Marina District'): 11,
+    ('Union Square', 'Embarcadero'): 11,
+    ('Union Square', 'Bayview'): 15,
+    ('Union Square', 'Chinatown'): 7,
+    ('Union Square', 'Alamo Square'): 15,
+    ('Union Square', 'Nob Hill'): 9,
+    ('Union Square', 'Presidio'): 24,
+    ('Union Square', 'The Castro'): 17,
+    ('Union Square', 'North Beach'): 10,
+    ('Union Square', 'Fisherman\'s Wharf'): 15,
+    ('Union Square', 'Marina District'): 18,
+    ('The Castro', 'Embarcadero'): 22,
+    ('The Castro', 'Bayview'): 19,
+    ('The Castro', 'Chinatown'): 22,
+    ('The Castro', 'Alamo Square'): 8,
+    ('The Castro', 'Nob Hill'): 16,
+    ('The Castro', 'Presidio'): 20,
+    ('The Castro', 'Union Square'): 19,
+    ('The Castro', 'North Beach'): 20,
+    ('The Castro', 'Fisherman\'s Wharf'): 24,
+    ('The Castro', 'Marina District'): 21,
+    ('North Beach', 'Embarcadero'): 6,
+    ('North Beach', 'Bayview'): 25,
+    ('North Beach', 'Chinatown'): 6,
+    ('North Beach', 'Alamo Square'): 16,
+    ('North Beach', 'Nob Hill'): 7,
+    ('North Beach', 'Presidio'): 17,
+    ('North Beach', 'Union Square'): 7,
+    ('North Beach', 'The Castro'): 23,
+    ('North Beach', 'Fisherman\'s Wharf'): 5,
+    ('North Beach', 'Marina District'): 9,
+    ('Fisherman\'s Wharf', 'Embarcadero'): 8,
+    ('Fisherman\'s Wharf', 'Bayview'): 26,
+    ('Fisherman\'s Wharf', 'Chinatown'): 12,
+    ('Fisherman\'s Wharf', 'Alamo Square'): 21,
+    ('Fisherman\'s Wharf', 'Nob Hill'): 11,
+    ('Fisherman\'s Wharf', 'Presidio'): 17,
+    ('Fisherman\'s Wharf', 'Union Square'): 13,
+    ('Fisherman\'s Wharf', 'The Castro'): 27,
+    ('Fisherman\'s Wharf', 'North Beach'): 6,
+    ('Fisherman\'s Wharf', 'Marina District'): 9,
+    ('Marina District', 'Embarcadero'): 14,
+    ('Marina District', 'Bayview'): 27,
+    ('Marina District', 'Chinatown'): 15,
+    ('Marina District', 'Alamo Square'): 15,
+    ('Marina District', 'Nob Hill'): 12,
+    ('Marina District', 'Presidio'): 10,
+    ('Marina District', 'Union Square'): 16,
+    ('Marina District', 'The Castro'): 22,
+    ('Marina District', 'North Beach'): 11,
+    ('Marina District', 'Fisherman\'s Wharf'): 10,
+}
 
-    # Create variables for each friend
-    for friend in friends_data:
-        friend['met'] = Bool(f"met_{friend['name']}")
-        friend['start_var'] = Real(f"start_{friend['name']}")
-        friend['end_var'] = Real(f"end_{friend['name']}")
+solver = Solver()
 
-    # Add constraints for each friend
-    for friend in friends_data:
-        met = friend['met']
-        start = friend['start_var']
-        end = friend['end_var']
-        
-        # Time window and duration constraints
-        opt.add(Implies(met, start >= friend['start']))
-        opt.add(Implies(met, end <= friend['end']))
-        opt.add(Implies(met, end == start + friend['min_duration']))
-        
-        # Travel constraints from possible predecessors
-        predecessor_conds = []
-        
-        # From starting point (Embarcadero at 540 minutes = 9:00AM)
-        travel_time = travel_times['Embarcadero'].get(friend['location'], 0)
-        from_start = 540 + travel_time
-        predecessor_conds.append(start >= from_start)
-        
-        # From other friends' locations
-        for other in friends_data:
-            if other['name'] == friend['name']:
-                continue
-            travel = travel_times[other['location']].get(friend['location'], 0)
-            cond = And(other['met'], start >= other['end_var'] + travel)
-            predecessor_conds.append(cond)
-        
-        opt.add(Implies(met, Or(*predecessor_conds)))
+# Start must be met with fixed times
+solver.add(friends[0]['met'] == True)
+solver.add(friends[0]['start'] == 540)
+solver.add(friends[0]['end'] == 540)
 
-    # Maximize number of friends met
-    opt.maximize(Sum([If(f['met'], 1, 0) for f in friends_data]))
+for friend in friends[1:]:
+    met = friend['met']
+    start = friend['start']
+    end = friend['end']
+    solver.add(Implies(met, start >= friend['available_start']))
+    solver.add(Implies(met, end == start + friend['duration']))
+    solver.add(Implies(met, end <= friend['available_end']))
 
-    if opt.check() == sat:
-        model = opt.model()
-        schedule = []
-        for friend in friends_data:
-            if model.evaluate(friend['met']):
-                start_val = model.evaluate(friend['start_var']).as_long()
-                schedule.append((start_val, friend))
-        schedule.sort()
-        
-        print("Optimal Schedule:")
-        for time, friend in schedule:
-            start_hr, start_min = divmod(time, 60)
-            end_time = time + friend['min_duration']
-            end_hr, end_min = divmod(end_time, 60)
-            print(f"{friend['name']}: {int(start_hr):02d}:{int(start_min):02d} to {int(end_hr):02d}:{int(end_min):02d} at {friend['location']}")
-        print(f"Total friends met: {len(schedule)}")
-    else:
-        print("No solution found.")
+# Add pairwise constraints including Start
+for a, b in combinations(friends, 2):
+    a_before_b = Bool(f"{a['name']}_before_{b['name']}")
+    travel_ab = travel_time.get((a['location'], b['location']), None)
+    travel_ba = travel_time.get((b['location'], a['location']), None)
+    if travel_ab is None or travel_ba is None:
+        continue
+    solver.add(Implies(And(a['met'], b['met'], a_before_b), b['start'] >= a['end'] + travel_ab))
+    solver.add(Implies(And(a['met'], b['met'], Not(a_before_b)), a['start'] >= b['end'] + travel_ba))
 
-if __name__ == "__main__":
-    main()
+max_friends = Sum([If(f['met'], 1, 0) for f in friends[1:]])
+solver.maximize(max_friends)
+
+if solver.check() == sat:
+    model = solver.model()
+    schedule = []
+    for friend in friends[1:]:
+        if model.eval(friend['met']):
+            start = model.eval(friend['start']).as_long()
+            end = model.eval(friend['end']).as_long()
+            schedule.append((friend['name'], start, end))
+    schedule.sort(key=lambda x: x[1])
+    print("Optimal Schedule:")
+    for name, s, e in schedule:
+        print(f"{name}: {s//60:02d}:{s%60:02d}-{e//60:02d}:{e%60:02d}")
+else:
+    print("No valid schedule found.")

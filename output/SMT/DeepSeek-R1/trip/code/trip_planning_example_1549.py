@@ -1,125 +1,72 @@
 from z3 import *
 
-# Define cities and their IDs
-cities = ["Prague", "Tallinn", "Warsaw", "Porto", "Naples", "Milan", "Lisbon", "Santorini", "Riga", "Stockholm"]
-city_id = {city: idx for idx, city in enumerate(cities)}
+def main():
+    s = Solver()
+    cities = {
+        'Prague': 0,
+        'Tallinn': 1,
+        'Warsaw': 2,
+        'Porto': 3,
+        'Naples': 4,
+        'Milan': 5,
+        'Lisbon': 6,
+        'Santorini': 7,
+        'Riga': 8,
+        'Stockholm': 9
+    }
+    city_names = {v: k for k, v in cities.items()}
+    days_total = 28
 
-# Direct flights (parse directional and bidirectional)
-direct_flights = [
-    "Riga and Prague",
-    "Stockholm and Milan",
-    "Riga and Milan",
-    "Lisbon and Stockholm",
-    "from Stockholm to Santorini",
-    "Naples and Warsaw",
-    "Lisbon and Warsaw",
-    "Naples and Milan",
-    "Lisbon and Naples",
-    "from Riga to Tallinn",
-    "Tallinn and Prague",
-    "Stockholm and Warsaw",
-    "Riga and Warsaw",
-    "Lisbon and Riga",
-    "Riga and Stockholm",
-    "Lisbon and Porto",
-    "Lisbon and Prague",
-    "Milan and Porto",
-    "Prague and Milan",
-    "Lisbon and Milan",
-    "Warsaw and Porto",
-    "Warsaw and Tallinn",
-    "Santorini and Milan",
-    "Stockholm and Prague",
-    "Stockholm and Tallinn",
-    "Warsaw and Milan",
-    "Santorini and Naples",
-    "Warsaw and Prague"
-]
+    # Assign each day to a city (0-9)
+    day_city = [Int(f'day_{i}') for i in range(days_total)]
+    for dc in day_city:
+        s.add(dc >= 0, dc <= 9)
 
-# Parse flight pairs (bidirectional or directional)
-flight_pairs = []
-for flight in direct_flights:
-    if flight.startswith("from"):
-        parts = flight.split()
-        a = parts[1]
-        b = parts[3]
-        a_id = city_id[a]
-        b_id = city_id[b]
-        flight_pairs.append((a_id, b_id))
+    # Total days per city constraints
+    totals = [5, 3, 2, 3, 5, 3, 5, 5, 4, 2]
+    for city_code in range(10):
+        total = sum([If(dc == city_code, 1, 0) for dc in day_city])
+        s.add(total == totals[city_code])
+
+    # Fixed Riga days (1-based 5-8 → 0-based 4-7)
+    for i in range(4, 8):
+        s.add(day_city[i] == cities['Riga'])
+    # Fixed Tallinn days (1-based 18-20 → 0-based 17-19)
+    for i in range(17, 20):
+        s.add(day_city[i] == cities['Tallinn'])
+    # Fixed Milan days (1-based 24-26 → 0-based 23-25)
+    for i in range(23, 26):
+        s.add(day_city[i] == cities['Milan'])
+
+    # Direct flights including staying in the same city
+    direct_flights = {
+        0: [0, 8, 1, 6, 5, 9, 2],  # Prague
+        1: [1, 0, 2, 9],           # Tallinn
+        2: [2, 4, 6, 8, 9, 3, 1, 5, 0],  # Warsaw
+        3: [3, 6, 5, 2],            # Porto
+        4: [4, 2, 5, 6, 7],         # Naples
+        5: [5, 9, 8, 4, 3, 0, 6, 2, 7],  # Milan
+        6: [6, 9, 2, 4, 8, 3, 0, 5],  # Lisbon
+        7: [7, 5, 4],               # Santorini
+        8: [8, 0, 5, 2, 1, 9, 6],  # Riga
+        9: [9, 5, 7, 2, 8, 6, 0, 1]   # Stockholm
+    }
+
+    # Ensure consecutive days are connected by direct flights
+    for i in range(days_total - 1):
+        current = day_city[i]
+        next_day = day_city[i + 1]
+        allowed = direct_flights.get(current, [current])
+        s.add(Or([next_day == a for a in allowed]))
+
+    if s.check() == sat:
+        model = s.model()
+        schedule = [model.evaluate(day).as_long() for day in day_city]
+        print("Day  City")
+        for idx, city_code in enumerate(schedule):
+            print(f"{idx + 1:3}  {city_names[city_code]}")
     else:
-        cities_flight = flight.split(" and ")
-        a = cities_flight[0]
-        b = cities_flight[1]
-        a_id = city_id[a]
-        b_id = city_id[b]
-        flight_pairs.append((a_id, b_id))
-        flight_pairs.append((b_id, a_id))
+        print("No valid trip plan exists.")
 
-# Required days per city
-required_days = {
-    city_id["Prague"]: 5,
-    city_id["Tallinn"]: 3,
-    city_id["Warsaw"]: 2,
-    city_id["Porto"]: 3,
-    city_id["Naples"]: 5,
-    city_id["Milan"]: 3,
-    city_id["Lisbon"]: 5,
-    city_id["Santorini"]: 5,
-    city_id["Riga"]: 4,
-    city_id["Stockholm"]: 2
-}
-
-# Create solver
-s = Solver()
-
-# Day variables: 0-based for 28 days (days 1-28)
-days = [Int(f'day_{i+1}') for i in range(28)]
-for day in days:
-    s.add(day >= 0, day < 10)  # Validate city IDs (0-9)
-
-# Sum constraints for each city
-for city in required_days:
-    total = Sum([If(day == city, 1, 0) for day in days])
-    s.add(total == required_days[city])
-
-# Flight constraints between consecutive days
-for i in range(27):
-    current = days[i]
-    next_day = days[i+1]
-    constraints = [current == next_day]  # Stay in same city
-    for a, b in flight_pairs:
-        constraints.append(And(current == a, next_day == b))
-    s.add(Or(constraints))
-
-# Specific date constraints
-tallinn = city_id["Tallinn"]
-milan = city_id["Milan"]
-riga = city_id["Riga"]
-
-# Tallinn between days 18-20 (indices 17-19)
-for i in range(17, 20):
-    s.add(days[i] == tallinn)
-
-# Milan between days 24-26 (indices 23-25)
-for i in range(23, 26):
-    s.add(days[i] == milan)
-
-# Riga between days 5-8 (indices 4-7)
-for i in range(4, 8):
-    s.add(days[i] == riga)
-
-# Check and print solution
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[day] for day in days]
-    city_names = {v: k for k, v in city_id.items()}
-    current_city = schedule[0]
-    start_day = 1
-    for i in range(1, 28):
-        if schedule[i] != current_city:
-            print(f"Days {start_day}-{i}: {city_names[current_city.as_long()]}")
-            current_city = schedule[i]
-            start_day = i + 1
-    print(f"Days {start_day}-28: {city_names[current_city.as_long()]}")
-else:
-    print("No valid itinerary possible.")
+if __name__ == "__main__":
+    main()

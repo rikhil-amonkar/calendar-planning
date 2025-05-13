@@ -1,76 +1,58 @@
 from z3 import *
 
-# Define cities and their IDs
-cities = ["Helsinki", "Valencia", "Dubrovnik", "Porto", "Prague", "Reykjavik"]
-city_id = {city: idx for idx, city in enumerate(cities)}
+def main():
+    s = Solver()
+    cities = {
+        'Helsinki': 0,
+        'Valencia': 1,
+        'Dubrovnik': 2,
+        'Porto': 3,
+        'Prague': 4,
+        'Reykjavik': 5
+    }
+    city_names = {v: k for k, v in cities.items()}
+    days_total = 18
 
-# Direct flights (bidirectional)
-direct_flights = [
-    ("Helsinki", "Prague"),
-    ("Prague", "Valencia"),
-    ("Valencia", "Porto"),
-    ("Helsinki", "Reykjavik"),
-    ("Dubrovnik", "Helsinki"),
-    ("Reykjavik", "Prague")
-]
+    # Assign each day to a city (0-5)
+    day_city = [Int(f'day_{i}') for i in range(days_total)]
+    for dc in day_city:
+        s.add(dc >= 0, dc <= 5)
 
-# Create flight pairs in both directions
-flight_pairs = []
-for a, b in direct_flights:
-    a_id = city_id[a]
-    b_id = city_id[b]
-    flight_pairs.append((a_id, b_id))
-    flight_pairs.append((b_id, a_id))
+    # Total days per city constraints
+    totals = [4, 5, 4, 3, 3, 4]
+    for city_code in range(6):
+        total = sum([If(dc == city_code, 1, 0) for dc in day_city])
+        s.add(total == totals[city_code])
 
-# Required days per city
-required_days = {
-    city_id["Helsinki"]: 4,
-    city_id["Valencia"]: 5,
-    city_id["Dubrovnik"]: 4,
-    city_id["Porto"]: 3,
-    city_id["Prague"]: 3,
-    city_id["Reykjavik"]: 4
-}
+    # Fixed Porto days (1-based 16-18 → 0-based 15-17)
+    for i in range(15, 18):
+        s.add(day_city[i] == cities['Porto'])
 
-# Create solver
-s = Solver()
+    # Direct flights including staying in the same city
+    direct_flights = {
+        0: [0,4,5,2],   # Helsinki
+        1: [1,4,3],     # Valencia
+        2: [2,0],       # Dubrovnik
+        3: [3,1],       # Porto
+        4: [4,0,1,5],   # Prague
+        5: [5,0,4]      # Reykjavik
+    }
 
-# Day variables: 18 days (indices 0-17 correspond to days 1-18)
-days = [Int(f'day_{i+1}') for i in range(18)]
-for day in days:
-    s.add(day >= 0, day < 6)  # Validate city IDs (0-5)
+    # Ensure consecutive days are connected by direct flights
+    for i in range(days_total - 1):
+        current = day_city[i]
+        next_day = day_city[i + 1]
+        allowed = direct_flights.get(current, [current])
+        s.add(Or([next_day == a for a in allowed]))
 
-# Sum constraints for each city
-for city in required_days:
-    total = Sum([If(day == city, 1, 0) for day in days])
-    s.add(total == required_days[city])
+    if s.check() == sat:
+        model = s.model()
+        schedule = [model.evaluate(day).as_long() for day in day_city]
+        print("Day  City")
+        for idx, city_code in enumerate(schedule):
+            print(f"{idx + 1:3}  {city_names[city_code]}")
+    else:
+        print("No valid trip plan exists.")
 
-# Flight constraints between consecutive days
-for i in range(17):
-    current = days[i]
-    next_day = days[i+1]
-    constraints = [current == next_day]  # Stay in same city
-    for a, b in flight_pairs:
-        constraints.append(And(current == a, next_day == b))
-    s.add(Or(constraints))
-
-# Porto must be days 16-18 (indices 15-17)
-porto = city_id["Porto"]
-for i in range(15, 18):
-    s.add(days[i] == porto)
-
-# Check and print solution
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[day] for day in days]
-    city_names = {v: k for k, v in city_id.items()}
-    current_city = schedule[0]
-    start_day = 1
-    for i in range(1, 18):
-        if schedule[i] != current_city:
-            print(f"Days {start_day}-{i}: {city_names[current_city.as_long()]}")
-            current_city = schedule[i]
-            start_day = i + 1
-    print(f"Days {start_day}-18: {city_names[current_city.as_long()]}")
-else:
-    print("No valid itinerary possible.")
+if __name__ == "__main__":
+    main()

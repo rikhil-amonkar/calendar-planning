@@ -11,6 +11,7 @@ client = OpenAI(api_key=key)
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True, help="")
 parser.add_argument('--model', required=True, nargs='+', help="")
+parser.add_argument('--start', type=int, required=False, help="Starting index for processing examples")
 args = parser.parse_args()
 
 def extract_answer(answer_str, task):
@@ -43,12 +44,12 @@ def evaluate_by_gpt(text, type="json_object"):
         reasoning={},
         tools=[],
         temperature=0,
-        max_output_tokens=1000,
+        max_output_tokens=2000,
         top_p=1,
         store=True
     )
     output_json = response.output[0].content[0].text
-    #print(f"Output JSON: {output_json}")
+    print(f"Output JSON: {output_json}")
     output_json = json.loads(output_json)
     return output_json
 
@@ -88,6 +89,8 @@ for model in args.model:
         with open(f"../data/{task_name_map[task]}_100.json") as f:
             data = json.load(f)
         for idx, (id, example) in enumerate(data.items()):
+            if args.start is not None and idx < args.start:
+                continue
             print(idx)
             try:
                 pred = open(f"../output/SMT/{model}/{task}/output/{id}.out").read()

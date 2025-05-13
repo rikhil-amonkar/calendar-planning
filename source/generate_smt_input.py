@@ -13,6 +13,7 @@ import time
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True, help="")
 parser.add_argument('--model', required=True, nargs='+', help="")
+parser.add_argument('--fresh', action='store_true', help="Whether to run on all data.")
 parser.add_argument('--start', type=int, default=0, help="Starting index for the examples")
 parser.add_argument('--end', type=int, default=-1, help="Ending index for the examples")
 args = parser.parse_args()
@@ -42,6 +43,7 @@ def initialize_model(model_name, keys):
 for model_name in args.model:
     ai = initialize_model(model_name, keys)
 
+    model_short_name = model_name.split("/")[-1] if "/" in model_name else model_name
     task_name_map = {
         "calendar": "calendar_scheduling",
         "trip": "trip_planning",
@@ -69,6 +71,13 @@ for model_name in args.model:
         for idx, (id, example) in enumerate(data.items()):
             if idx < args.start or (args.end != -1 and idx >= args.end):
                 continue
+            output_dir = f"../output/SMT/{model_short_name}/{task}/code"
+            os.makedirs(output_dir, exist_ok=True)
+            output_fname = f"{id}.py"
+            output_path = os.path.join(output_dir, output_fname)
+            if os.path.exists(output_path) and not args.fresh:
+                print(f"Skipping {output_path}, file already exists.")
+                continue
             print(f"Running example: {id}")
             prompt = "Given the following scheduling problem:\n"
             prompt += f"{example['prompt_0shot']}\n"
@@ -84,11 +93,6 @@ for model_name in args.model:
                     ai = initialize_model(model_name, keys)
 
             #print(response_txt)
-
-            model_short_name = model_name.split("/")[-1] if "/" in model_name else model_name
-            output_dir = f"../output/SMT/{model_short_name}/{task}/code"
-            output_fname = f"{id}.py"
-            os.makedirs(output_dir, exist_ok=True)
             # Save raw response text
             output_path = os.path.join(output_dir, output_fname)
             with open(output_path, "w") as f:

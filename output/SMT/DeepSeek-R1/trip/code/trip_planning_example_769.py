@@ -1,82 +1,77 @@
 from z3 import *
 
-# Define cities with indices
-cities = {
-    'Porto': 0,
-    'Prague': 1,
-    'Reykjavik': 2,
-    'Santorini': 3,
-    'Amsterdam': 4,
-    'Munich': 5
-}
+def main():
+    s = Solver()
+    cities = {
+        'Porto': 0,
+        'Prague': 1,
+        'Reykjavik': 2,
+        'Santorini': 3,
+        'Amsterdam': 4,
+        'Munich': 5
+    }
+    city_names = {v: k for k, v in cities.items()}
+    days_total = 16
 
-# Inverse mapping for output
-inv_cities = {v: k for k, v in cities.items()}
+    # Each day is assigned to a city (0-5)
+    day_city = [Int(f'day_{i+1}') for i in range(days_total)]
+    for dc in day_city:
+        s.add(dc >= 0, dc <= 5)
 
-# Required days per city
-required_days = {
-    cities['Porto']: 5,
-    cities['Prague']: 4,
-    cities['Reykjavik']: 4,
-    cities['Santorini']: 2,
-    cities['Amsterdam']: 2,
-    cities['Munich']: 4
-}
+    # Total days per city
+    totals = [0]*6
+    totals[cities['Porto']] = 5
+    totals[cities['Prague']] = 4
+    totals[cities['Reykjavik']] = 4
+    totals[cities['Santorini']] = 2
+    totals[cities['Amsterdam']] = 2
+    totals[cities['Munich']] = 4
 
-# Allowed direct flights (from, to)
-allowed_flights = [
-    (0, 4), (4, 0),   # Porto <-> Amsterdam
-    (5, 4), (4, 5),   # Munich <-> Amsterdam
-    (2, 4), (4, 2),   # Reykjavik <-> Amsterdam
-    (5, 0), (0, 5),   # Munich <-> Porto
-    (1, 2), (2, 1),   # Prague <-> Reykjavik
-    (2, 5), (5, 2),   # Reykjavik <-> Munich
-    (4, 3), (3, 4),   # Amsterdam <-> Santorini
-    (1, 4), (4, 1),   # Prague <-> Amsterdam
-    (1, 5), (5, 1)    # Prague <-> Munich
-]
+    for city_code in range(6):
+        total = sum([If(dc == city_code, 1, 0) for dc in day_city])
+        s.add(total == totals[city_code])
 
-# Create solver
-s = Solver()
+    # Amsterdam on days 14 and 15 (0-based index 13 and 14)
+    s.add(day_city[13] == cities['Amsterdam'])
+    s.add(day_city[14] == cities['Amsterdam'])
 
-# Day variables: 1 to 16 (indices 0-15)
-days = [Int(f'day_{i}') for i in range(16)]
+    # Reykjavik days must be between day 4 and 7 (inclusive)
+    for i in range(days_total):
+        day_number = i + 1
+        s.add(Implies(day_city[i] == cities['Reykjavik'], And(day_number >= 4, day_number <= 7)))
 
-# Constraints for each day to be a valid city
-for d in days:
-    s.add(Or([d == c for c in cities.values()]))
+    # At least one Munich day between day7 and day10
+    munich_in_window = []
+    for i in range(6, 10):  # days 7-10 (indices 6-9)
+        munich_in_window.append(day_city[i] == cities['Munich'])
+    s.add(Or(munich_in_window))
 
-# Fixed days in Reykjavik (days 4-7, indices 3-6)
-for i in range(3, 7):
-    s.add(days[i] == cities['Reykjavik'])
+    # Direct flights between consecutive days
+    direct_flights = {
+        cities['Porto']: [cities['Amsterdam'], cities['Munich']],
+        cities['Prague']: [cities['Reykjavik'], cities['Amsterdam'], cities['Munich']],
+        cities['Reykjavik']: [cities['Prague'], cities['Amsterdam'], cities['Munich']],
+        cities['Santorini']: [cities['Amsterdam']],
+        cities['Amsterdam']: [cities['Porto'], cities['Munich'], cities['Reykjavik'], cities['Prague'], cities['Santorini']],
+        cities['Munich']: [cities['Porto'], cities['Amsterdam'], cities['Reykjavik'], cities['Prague']]
+    }
 
-# Fixed days in Amsterdam (days 14-15, indices 13-14)
-s.add(days[13] == cities['Amsterdam'])
-s.add(days[14] == cities['Amsterdam'])
+    for i in range(days_total - 1):
+        current = day_city[i]
+        next_c = day_city[i + 1]
+        s.add(Or(
+            current == next_c,
+            Or([And(current == c, next_c in direct_flights[c]) for c in direct_flights])
+        ))
 
-# Fixed days in Munich (days 7-10, indices 6-9)
-for i in range(6, 10):
-    s.add(days[i] == cities['Munich'])
+    if s.check() == sat:
+        model = s.model()
+        schedule = [model.evaluate(day).as_long() for day in day_city]
+        print("Day  City")
+        for idx, city_code in enumerate(schedule):
+            print(f"{idx + 1:3}  {city_names[city_code]}")
+    else:
+        print("No valid trip plan exists.")
 
-# Count constraints for each city
-for city, total in required_days.items():
-    count = Sum([If(d == city, 1, 0) for d in days])
-    s.add(count == total)
-
-# Flight constraints between consecutive days
-for i in range(1, 16):
-    current = days[i]
-    prev = days[i-1]
-    s.add(Or(current == prev, Or([And(prev == f, current == t) for (f, t) in allowed_flights])))
-
-# Check satisfiability
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[d] for d in days]
-    # Print the schedule
-    for i in range(16):
-        day = i + 1
-        city = inv_cities[schedule[i].as_long()]
-        print(f"Day {day}: {city}")
-else:
-    print("No valid trip plan found.")
+if __name__ == "__main__":
+    main()

@@ -1,62 +1,68 @@
 from z3 import *
+from itertools import combinations
 
-def main():
-    # Initialize the optimizer
-    opt = Optimize()
+friends = [
+    {'name': 'Start', 'location': 'Pacific Heights', 'available_start': 540, 'available_end': 540, 'duration': 0},
+    {'name': 'Jason', 'location': 'Presidio', 'available_start': 600, 'available_end': 975, 'duration': 90},
+    {'name': 'Kenneth', 'location': 'Marina District', 'available_start': 930, 'available_end': 1005, 'duration': 45},
+]
 
-    # Convert times to minutes since midnight
-    pacific_heights_departure = 9 * 60  # 9:00 AM
+for friend in friends:
+    friend['met'] = Bool(friend['name'])
+    friend['start'] = Int(f'start_{friend["name"]}')
+    friend['end'] = Int(f'end_{friend["name"]}')
 
-    # Jason's availability at Presidio: 10:00 AM to 4:15 PM
-    jason_available_start = 10 * 60
-    jason_available_end = 16 * 60 + 15
+travel_time = {
+    ('Pacific Heights', 'Presidio'): 11,
+    ('Pacific Heights', 'Marina District'): 6,
+    ('Presidio', 'Pacific Heights'): 11,
+    ('Presidio', 'Marina District'): 10,
+    ('Marina District', 'Pacific Heights'): 7,
+    ('Marina District', 'Presidio'): 10,
+}
 
-    # Kenneth's availability at Marina: 3:30 PM to 4:45 PM
-    kenneth_available_start = 15 * 60 + 30
-    kenneth_available_end = 16 * 60 + 45
+solver = Solver()
 
-    # Meeting duration constraints
-    jason_min_duration = 90
-    kenneth_min_duration = 45
+# Start must be met with fixed times
+solver.add(friends[0]['met'] == True)
+solver.add(friends[0]['start'] == 540)
+solver.add(friends[0]['end'] == 540)
 
-    # Variables for meeting start and end times
-    jason_start = Int('jason_start')
-    jason_end = Int('jason_end')
-    kenneth_start = Int('kenneth_start')
-    kenneth_end = Int('kenneth_end')
+for friend in friends[1:]:
+    met = friend['met']
+    start = friend['start']
+    end = friend['end']
+    solver.add(Implies(met, start >= friend['available_start']))
+    solver.add(Implies(met, end == start + friend['duration']))
+    solver.add(Implies(met, end <= friend['available_end']))
+    # Add travel time from Start location
+    travel_from_start = travel_time.get((friends[0]['location'], friend['location']), 0)
+    solver.add(Implies(met, start >= 540 + travel_from_start))
 
-    # Boolean flags for whether meetings are scheduled
-    jason_met = Bool('jason_met')
-    kenneth_met = Bool('kenneth_met')
+# Add pairwise constraints between all friends (including Start)
+for a, b in combinations(friends, 2):
+    travel_ab = travel_time.get((a['location'], b['location']), None)
+    travel_ba = travel_time.get((b['location'], a['location']), None)
+    if travel_ab is None or travel_ba is None:
+        continue
+    solver.add(Implies(And(a['met'], b['met']),
+                  Or(b['start'] >= a['end'] + travel_ab,
+                     a['start'] >= b['end'] + travel_ba)))
 
-    # Constraints for Jason's meeting
-    opt.add(Implies(jason_met, And(
-        jason_start >= jason_available_start,
-        jason_end <= jason_available_end,
-        jason_end >= jason_start + jason_min_duration,
-        # Travel from Pacific Heights to Presidio (11 minutes)
-        jason_start >= pacific_heights_departure + 11
-    )))
+max_friends = Sum([If(f['met'], 1, 0) for f in friends[1:]])
+solver.maximize(max_friends)
 
-    # Constraints for Kenneth's meeting
-    # Arrival time depends on whether Jason was met first
-    arrival_at_marina = If(jason_met, jason_end + 10, pacific_heights_departure + 6)
-    opt.add(Implies(kenneth_met, And(
-        kenneth_start >= arrival_at_marina,
-        kenneth_start >= kenneth_available_start,
-        kenneth_end <= kenneth_available_end,
-        kenneth_end >= kenneth_start + kenneth_min_duration
-    )))
-
-    # Maximize the number of friends met
-    opt.maximize(If(jason_met, 1, 0) + If(kenneth_met, 1, 0))
-
-    if opt.check() == sat:
-        m = opt.model()
-        print(f"Jason: {'Met' if m.eval(jason_met) else 'Not met'}")
-        print(f"Kenneth: {'Met' if m.eval(kenneth_met) else 'Not met'}")
-    else:
-        print("No valid schedule found")
-
-if __name__ == "__main__":
-    main()
+if solver.check() == sat:
+    model = solver.model()
+    schedule = []
+    for friend in friends[1:]:
+        if model.eval(friend['met']):
+            start = model.eval(friend['start']).as_long()
+            end = model.eval(friend['end']).as_long()
+            schedule.append((friend['name'], start, end))
+    schedule.sort(key=lambda x: x[1])
+    print("Optimal Schedule:")
+    for name, s, e in schedule:
+        print(f"{name}: {s//60:02d}:{s%60:02d}-{e//60:02d}:{e%60:02d}")
+else:
+    print("No valid schedule found.")
