@@ -31,6 +31,8 @@ def initialize_model(model_name, keys):
         engine = OpenAIEngine(keys["openai"], model=model_name, max_context_size=20000)
     elif model_name == "DeepSeek-R1":
         engine = OpenAIEngine(keys["deepseek"], model="deepseek-reasoner", api_base="https://api.deepseek.com", max_context_size=20000)
+    elif model_name == "DeepSeek-V3":
+        engine = OpenAIEngine(keys["deepseek"], model="deepseek-chat", api_base="https://api.deepseek.com", max_context_size=20000)
     else:
         engine = HuggingEngine(model_id=model_name)
 
