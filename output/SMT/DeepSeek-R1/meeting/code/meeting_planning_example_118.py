@@ -1,84 +1,73 @@
 from z3 import *
 
-def main():
-    friends_data = [
-        {'name': 'Richard', 'location': 'Union Square', 'start': 525, 'end': 780, 'min_duration': 120},
-        {'name': 'Charles', 'location': 'Presidio', 'start': 585, 'end': 780, 'min_duration': 120},
-    ]
+friends = [
+    {'name': 'Start', 'location': 'Bayview', 'available_start': 540, 'available_end': 540, 'duration': 0},
+    {'name': 'Richard', 'location': 'Union Square', 'available_start': 525, 'available_end': 780, 'duration': 120},
+    {'name': 'Charles', 'location': 'Presidio', 'available_start': 585, 'available_end': 780, 'duration': 120},
+]
 
-    travel_times = {
-        'Bayview': {
-            'Union Square': 17,
-            'Presidio': 31
-        },
-        'Union Square': {
-            'Bayview': 15,
-            'Presidio': 24
-        },
-        'Presidio': {
-            'Bayview': 31,
-            'Union Square': 22
-        }
-    }
+for friend in friends:
+    friend['met'] = Bool(friend['name'])
+    friend['start'] = Int(f'start_{friend["name"]}')
+    friend['end'] = Int(f'end_{friend["name"]}')
 
-    opt = Optimize()
+travel_time = {
+    ('Bayview', 'Union Square'): 17,
+    ('Bayview', 'Presidio'): 31,
+    ('Union Square', 'Bayview'): 15,
+    ('Union Square', 'Presidio'): 24,
+    ('Presidio', 'Bayview'): 31,
+    ('Presidio', 'Union Square'): 22,
+}
 
-    # Create variables for each friend
-    for friend in friends_data:
-        friend['met'] = Bool(f"met_{friend['name']}")
-        friend['start_var'] = Real(f"start_{friend['name']}")
-        friend['end_var'] = Real(f"end_{friend['name']}")
+solver = Solver()
 
-    # Add constraints for each friend
-    for friend in friends_data:
-        met = friend['met']
-        start = friend['start_var']
-        end = friend['end_var']
-        
-        # Time window and duration constraints
-        opt.add(Implies(met, start >= friend['start']))
-        opt.add(Implies(met, end <= friend['end']))
-        opt.add(Implies(met, end == start + friend['min_duration']))
-        
-        # Travel constraints from possible predecessors
-        predecessor_conds = []
-        
-        # From starting point (Bayview at 540 minutes)
-        travel_time = travel_times['Bayview'].get(friend['location'], 0)
-        from_start = 540 + travel_time
-        predecessor_conds.append(start >= from_start)
-        
-        # From other friends' locations
-        for other in friends_data:
-            if other['name'] == friend['name']:
-                continue
-            travel = travel_times[other['location']].get(friend['location'], 0)
-            cond = And(other['met'], start >= other['end_var'] + travel)
-            predecessor_conds.append(cond)
-        
-        opt.add(Implies(met, Or(*predecessor_conds)))
+# Start must be met with fixed times
+solver.add(friends[0]['met'] == True)
+solver.add(friends[0]['start'] == 540)
+solver.add(friends[0]['end'] == 540)
 
-    # Maximize number of friends met
-    opt.maximize(Sum([If(f['met'], 1, 0) for f in friends_data]))
+for friend in friends[1:]:
+    met = friend['met']
+    start = friend['start']
+    end = friend['end']
+    solver.add(Implies(met, start >= friend['available_start']))
+    solver.add(Implies(met, end == start + friend['duration']))
+    solver.add(Implies(met, end <= friend['available_end']))
 
-    if opt.check() == sat:
-        model = opt.model()
-        schedule = []
-        for friend in friends_data:
-            if model.evaluate(friend['met']):
-                start_val = model.evaluate(friend['start_var']).as_long()
-                schedule.append((start_val, friend))
-        schedule.sort()
-        
-        print("Optimal Schedule:")
-        for time, friend in schedule:
-            start_hr, start_min = divmod(time, 60)
-            end_time = time + friend['min_duration']
-            end_hr, end_min = divmod(end_time, 60)
-            print(f"{friend['name']}: {int(start_hr):02d}:{int(start_min):02d} to {int(end_hr):02d}:{int(end_min):02d} at {friend['location']}")
-        print(f"Total friends met: {len(schedule)}")
-    else:
-        print("No solution found.")
+# Add travel constraints between locations
+for i in range(1, len(friends)):
+    for j in range(1, len(friends)):
+        if i == j: continue
+        a = friends[i]
+        b = friends[j]
+        travel = travel_time.get((a['location'], b['location']), None)
+        if travel is None: continue
+        # Either a comes before b or vice versa
+        solver.add(Implies(And(a['met'], b['met']), 
+                         Or(b['start'] >= a['end'] + travel,
+                            a['start'] >= b['end'] + travel_time[(b['location'], a['location'])])
+                         ))
 
-if __name__ == "__main__":
-    main()
+# Travel from Start to first meeting
+for friend in friends[1:]:
+    travel = travel_time.get(('Bayview', friend['location']), 0)
+    solver.add(Implies(friend['met'], friend['start'] >= 540 + travel))
+
+max_friends = Sum([If(f['met'], 1, 0) for f in friends[1:]])
+solver.maximize(max_friends)
+
+if solver.check() == sat:
+    model = solver.model()
+    schedule = []
+    for friend in friends[1:]:
+        if model.eval(friend['met']):
+            start = model.eval(friend['start']).as_long()
+            end = model.eval(friend['end']).as_long()
+            schedule.append((friend['name'], start, end))
+    schedule.sort(key=lambda x: x[1])
+    print("Optimal Schedule:")
+    for name, s, e in schedule:
+        print(f"{name}: {s//60:02d}:{s%60:02d}-{e//60:02d}:{e%60:02d}")
+else:
+    print("No valid schedule found.")

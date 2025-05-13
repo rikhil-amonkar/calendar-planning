@@ -1,83 +1,60 @@
 from z3 import *
 
-# Define cities and their IDs
-cities = ["Salzburg", "Stockholm", "Venice", "Frankfurt", "Florence", "Barcelona", "Stuttgart"]
-city_id = {city: idx for idx, city in enumerate(cities)}
+def main():
+    s = Solver()
+    cities = {
+        'Salzburg': 0,
+        'Stockholm': 1,
+        'Venice': 2,
+        'Frankfurt': 3,
+        'Florence': 4,
+        'Barcelona': 5,
+        'Stuttgart': 6
+    }
+    city_names = {v: k for k, v in cities.items()}
+    days_total = 18
 
-# Direct flights (bidirectional)
-direct_flights = [
-    ("Barcelona", "Frankfurt"),
-    ("Florence", "Frankfurt"),
-    ("Stockholm", "Barcelona"),
-    ("Barcelona", "Florence"),
-    ("Venice", "Barcelona"),
-    ("Stuttgart", "Barcelona"),
-    ("Frankfurt", "Salzburg"),
-    ("Stockholm", "Frankfurt"),
-    ("Stuttgart", "Stockholm"),
-    ("Stuttgart", "Frankfurt"),
-    ("Venice", "Stuttgart"),
-    ("Venice", "Frankfurt")
-]
+    # Assign each day to a city (0-6)
+    day_city = [Int(f'day_{i}') for i in range(days_total)]
+    for dc in day_city:
+        s.add(dc >= 0, dc <= 6)
 
-# Create flight pairs in both directions
-flight_pairs = []
-for a, b in direct_flights:
-    a_id = city_id[a]
-    b_id = city_id[b]
-    flight_pairs.append((a_id, b_id))
-    flight_pairs.append((b_id, a_id))
+    # Total days per city constraints
+    totals = [4, 2, 5, 4, 4, 2, 3]
+    for city_code in range(7):
+        total = sum([If(dc == city_code, 1, 0) for dc in day_city])
+        s.add(total == totals[city_code])
 
-# Required days per city
-required_days = {
-    city_id["Salzburg"]: 4,
-    city_id["Stockholm"]: 2,
-    city_id["Venice"]: 5,  # Typo in original problem? Should be "Venice"
-    city_id["Frankfurt"]: 4,
-    city_id["Florence"]: 4,
-    city_id["Barcelona"]: 2,
-    city_id["Stuttgart"]: 3
-}
+    # Fixed Venice days (1-based 1-5 → 0-based 0-4)
+    for i in range(5):
+        s.add(day_city[i] == cities['Venice'])
 
-# Create solver
-s = Solver()
+    # Direct flights including staying in the same city
+    direct_flights = {
+        0: [0, 3],               # Salzburg
+        1: [1, 3, 5, 6],         # Stockholm
+        2: [2, 3, 5, 6],         # Venice
+        3: [3, 0, 1, 4, 5, 6, 2], # Frankfurt
+        4: [4, 3, 5],            # Florence
+        5: [5, 1, 3, 4, 2, 6],   # Barcelona
+        6: [6, 1, 3, 2, 5]       # Stuttgart
+    }
 
-# Day variables for 18 days (indices 0-17 correspond to days 1-18)
-days = [Int(f'day_{i+1}') for i in range(18)]
-for day in days:
-    s.add(day >= 0, day < 7)  # Validate city IDs (0-6)
+    # Ensure consecutive days are connected by direct flights
+    for i in range(days_total - 1):
+        current = day_city[i]
+        next_day = day_city[i + 1]
+        allowed = direct_flights.get(current, [current])
+        s.add(Or([next_day == a for a in allowed]))
 
-# Sum constraints for each city
-for city in required_days:
-    total = Sum([If(day == city, 1, 0) for day in days])
-    s.add(total == required_days[city])
+    if s.check() == sat:
+        model = s.model()
+        schedule = [model.evaluate(day).as_long() for day in day_city]
+        print("Day  City")
+        for idx, city_code in enumerate(schedule):
+            print(f"{idx + 1:3}  {city_names[city_code]}")
+    else:
+        print("No valid trip plan exists.")
 
-# Flight constraints between consecutive days
-for i in range(17):
-    current = days[i]
-    next_day = days[i+1]
-    constraints = [current == next_day]  # Stay in same city
-    for a, b in flight_pairs:
-        constraints.append(And(current == a, next_day == b))
-    s.add(Or(constraints))
-
-# Venice must be visited days 1-5 (indices 0-4)
-venice_id = city_id["Venice"]
-for i in range(5):
-    s.add(days[i] == venice_id)
-
-# Check and print solution
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[day] for day in days]
-    city_names = {v: k for k, v in city_id.items()}
-    current_city = schedule[0]
-    start_day = 1
-    for i in range(1, 18):
-        if schedule[i] != current_city:
-            print(f"Days {start_day}-{i}: {city_names[current_city.as_long()]}")
-            current_city = schedule[i]
-            start_day = i + 1
-    print(f"Days {start_day}-18: {city_names[current_city.as_long()]}")
-else:
-    print("No valid itinerary possible.")
+if __name__ == "__main__":
+    main()

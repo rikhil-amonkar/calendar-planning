@@ -1,70 +1,61 @@
 from z3 import *
 
-# Define cities with indices
-cities = {
-    'Prague': 0,
-    'Berlin': 1,
-    'Tallinn': 2,
-    'Stockholm': 3
-}
+def main():
+    s = Solver()
+    cities = {'Prague': 0, 'Berlin': 1, 'Tallinn': 2, 'Stockholm': 3}
+    city_names = {v: k for k, v in cities.items()}
+    days_total = 12
 
-# Inverse mapping for output
-inv_cities = {v: k for k, v in cities.items()}
+    # Each day is assigned to a city (0-3)
+    day_city = [Int(f'day_{i+1}') for i in range(days_total)]
+    for dc in day_city:
+        s.add(dc >= 0, dc <= 3)
 
-# Required days per city
-required_days = {
-    cities['Prague']: 2,
-    cities['Berlin']: 3,
-    cities['Tallinn']: 5,
-    cities['Stockholm']: 5
-}
+    # Total days in each city
+    total_prague = sum([If(dc == cities['Prague'], 1, 0) for dc in day_city])
+    total_berlin = sum([If(dc == cities['Berlin'], 1, 0) for dc in day_city])
+    total_tallinn = sum([If(dc == cities['Tallinn'], 1, 0) for dc in day_city])
+    total_stockholm = sum([If(dc == cities['Stockholm'], 1, 0) for dc in day_city])
 
-# Allowed direct flights (from, to)
-allowed_flights = [
-    (1, 2), (2, 1),   # Berlin <-> Tallinn
-    (0, 2), (2, 0),   # Prague <-> Tallinn
-    (3, 2), (2, 3),   # Stockholm <-> Tallinn
-    (0, 3), (3, 0),   # Prague <-> Stockholm
-    (3, 1), (1, 3)    # Stockholm <-> Berlin
-]
+    s.add(total_prague == 2)
+    s.add(total_berlin == 3)
+    s.add(total_tallinn == 5)
+    s.add(total_stockholm == 5)
 
-# Create solver
-s = Solver()
+    # Conference in Berlin on days 6 and 8 (1-based index)
+    s.add(day_city[5] == cities['Berlin'])  # Day 6
+    s.add(day_city[7] == cities['Berlin'])  # Day 8
 
-# Day variables: 1 to 12 (indices 0-11)
-days = [Int(f'day_{i}') for i in range(12)]
+    # Tallinn days must be between day 8 and 12 (inclusive)
+    for i in range(days_total):
+        day_number = i + 1
+        s.add(Implies(day_city[i] == cities['Tallinn'], And(day_number >= 8, day_number <= 12)))
 
-# Constraints for each day to be a valid city
-for d in days:
-    s.add(Or([d == c for c in cities.values()]))
+    # Direct flights between consecutive days
+    direct_flights = {
+        cities['Prague']: [cities['Tallinn'], cities['Stockholm']],
+        cities['Berlin']: [cities['Tallinn'], cities['Stockholm']],
+        cities['Tallinn']: [cities['Prague'], cities['Berlin'], cities['Stockholm']],
+        cities['Stockholm']: [cities['Prague'], cities['Berlin'], cities['Tallinn']]
+    }
 
-# Fixed days in Berlin (days 6 and 8, indices 5 and 7)
-s.add(days[5] == cities['Berlin'])
-s.add(days[7] == cities['Berlin'])
+    for i in range(days_total - 1):
+        current = day_city[i]
+        next_c = day_city[i + 1]
+        # Either stay or take a direct flight
+        s.add(Or(
+            current == next_c,
+            Or([And(current == c, next_c == n) for c in direct_flights for n in direct_flights[c]])
+        ))
 
-# Fixed days in Tallinn (days 8-12, indices 7-11)
-for i in range(7, 12):
-    s.add(days[i] == cities['Tallinn'])
+    if s.check() == sat:
+        model = s.model()
+        schedule = [model.evaluate(day).as_long() for day in day_city]
+        print("Day  City")
+        for idx, city_code in enumerate(schedule):
+            print(f"{idx + 1:3}  {city_names[city_code]}")
+    else:
+        print("No valid trip plan exists.")
 
-# Count constraints for each city
-for city, total in required_days.items():
-    count = Sum([If(d == city, 1, 0) for d in days])
-    s.add(count == total)
-
-# Flight constraints between consecutive days
-for i in range(1, 12):
-    current = days[i]
-    prev = days[i-1]
-    s.add(Or(current == prev, Or([And(prev == f, current == t) for (f, t) in allowed_flights])))
-
-# Check satisfiability
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[d] for d in days]
-    # Print the schedule
-    for i in range(12):
-        day = i + 1
-        city = inv_cities[schedule[i].as_long()]
-        print(f"Day {day}: {city}")
-else:
-    print("No valid trip plan found.")
+if __name__ == "__main__":
+    main()

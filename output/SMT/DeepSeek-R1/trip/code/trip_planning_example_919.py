@@ -1,101 +1,76 @@
 from z3 import *
 
-# Define cities and their IDs
-cities = ["Vienna", "Milan", "Rome", "Riga", "Lisbon", "Vilnius", "Oslo"]
-city_id = {city: idx for idx, city in enumerate(cities)}
-
-# Direct flights (bidirectional)
-direct_flights = [
-    ("Riga", "Oslo"),
-    ("Rome", "Oslo"),
-    ("Vienna", "Milan"),
-    ("Vienna", "Vilnius"),
-    ("Vienna", "Lisbon"),
-    ("Riga", "Milan"),
-    ("Lisbon", "Oslo"),
-    ("Rome", "Riga"),
-    ("Rome", "Lisbon"),
-    ("Vienna", "Riga"),
-    ("Vienna", "Rome"),
-    ("Milan", "Oslo"),
-    ("Vienna", "Oslo"),
-    ("Vilnius", "Oslo"),
-    ("Riga", "Vilnius"),
-    ("Vilnius", "Milan"),
-    ("Riga", "Lisbon"),
-    ("Milan", "Lisbon")
-]
-
-# Create flight pairs in both directions
-flight_pairs = []
-for a, b in direct_flights:
-    a_id = city_id[a]
-    b_id = city_id[b]
-    flight_pairs.append((a_id, b_id))
-    flight_pairs.append((b_id, a_id))
-
-# Required days per city
-required_days = {
-    city_id["Vienna"]: 4,
-    city_id["Milan"]: 2,
-    city_id["Rome"]: 3,
-    city_id["Riga"]: 2,
-    city_id["Lisbon"]: 3,
-    city_id["Vilnius"]: 4,
-    city_id["Oslo"]: 3
+# Define the cities
+cities = {
+    "Vienna": 0,
+    "Milan": 1,
+    "Rome": 2,
+    "Riga": 3,
+    "Lisbon": 4,
+    "Vilnius": 5,
+    "Oslo": 6
 }
 
-# Create solver
-s = Solver()
+# Direct flights adjacency list (bidirectional)
+adjacency = {
+    cities["Vienna"]: [cities["Milan"], cities["Vilnius"], cities["Lisbon"], cities["Riga"], cities["Rome"], cities["Oslo"]],
+    cities["Milan"]: [cities["Vienna"], cities["Riga"], cities["Oslo"], cities["Vilnius"], cities["Lisbon"]],
+    cities["Rome"]: [cities["Oslo"], cities["Riga"], cities["Lisbon"], cities["Vienna"]],
+    cities["Riga"]: [cities["Oslo"], cities["Milan"], cities["Rome"], cities["Vilnius"], cities["Lisbon"], cities["Vienna"]],
+    cities["Lisbon"]: [cities["Vienna"], cities["Oslo"], cities["Rome"], cities["Riga"], cities["Milan"]],
+    cities["Vilnius"]: [cities["Vienna"], cities["Oslo"], cities["Milan"], cities["Riga"]],
+    cities["Oslo"]: [cities["Riga"], cities["Rome"], cities["Vienna"], cities["Milan"], cities["Vilnius"], cities["Lisbon"]]
+}
 
-# Day variables: 15 days (indices 0-14 correspond to days 1-15)
-days = [Int(f'day_{i+1}') for i in range(15)]
-for day in days:
-    s.add(day >= 0, day < 7)  # Validate city IDs (0-6)
+# Days 1 to 15
+days = 15
+solver = Solver()
+city_vars = [Int(f"day_{i}") for i in range(1, days + 1)]
 
-# Sum constraints for each city
-for city in required_days:
-    total = Sum([If(day == city, 1, 0) for day in days])
-    s.add(total == required_days[city])
+# Each day must be one of the cities
+for day in city_vars:
+    solver.add(Or([day == c for c in cities.values()]))
 
-# Flight constraints between consecutive days
-for i in range(14):
-    current = days[i]
-    next_day = days[i+1]
-    constraints = [current == next_day]  # Stay in same city
-    for a, b in flight_pairs:
-        constraints.append(And(current == a, next_day == b))
-    s.add(Or(constraints))
+# Vienna must be days 1-4 (conference)
+for i in range(4):
+    solver.add(city_vars[i] == cities["Vienna"])
 
-# Specific date constraints
-vienna = city_id["Vienna"]
-lisbon = city_id["Lisbon"]
-oslo = city_id["Oslo"]
+# Lisbon must be days 11-13 (relatives)
+solver.add(city_vars[10] == cities["Lisbon"])  # Day 11
+solver.add(city_vars[11] == cities["Lisbon"])  # Day 12
+solver.add(city_vars[12] == cities["Lisbon"])  # Day 13
 
-# Vienna must be days 1-4 (indices 0-3)
-for i in range(0, 4):
-    s.add(days[i] == vienna)
+# Oslo must be days 13-15 (friend)
+solver.add(city_vars[12] == cities["Oslo"])   # Day 13
+solver.add(city_vars[13] == cities["Oslo"])   # Day 14
+solver.add(city_vars[14] == cities["Oslo"])   # Day 15
 
-# Lisbon must be days 11-13 (indices 10-12)
-for i in range(10, 13):
-    s.add(days[i] == lisbon)
+# Consecutive days must have direct flights
+for i in range(days - 1):
+    current = city_vars[i]
+    next_day = city_vars[i + 1]
+    solver.add(Or([current == next_day] + [And(current == c, next_day == n) for c in adjacency for n in adjacency[c]))
 
-# Oslo must be days 13-15 (indices 12-14)
-for i in range(12, 15):
-    s.add(days[i] == oslo)
+# Total days per city
+city_days = [
+    (cities["Vienna"], 4),
+    (cities["Milan"], 2),
+    (cities["Rome"], 3),
+    (cities["Riga"], 2),
+    (cities["Lisbon"], 3),
+    (cities["Vilnius"], 4),
+    (cities["Oslo"], 3),
+]
+
+for city, total in city_days:
+    solver.add(Sum([If(city_var == city, 1, 0) for city_var in city_vars]) == total)
 
 # Check and print solution
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[day] for day in days]
-    city_names = {v: k for k, v in city_id.items()}
-    current_city = schedule[0]
-    start_day = 1
-    for i in range(1, 15):
-        if schedule[i] != current_city:
-            print(f"Days {start_day}-{i}: {city_names[current_city.as_long()]}")
-            current_city = schedule[i]
-            start_day = i + 1
-    print(f"Days {start_day}-15: {city_names[current_city.as_long()]}")
+if solver.check() == sat:
+    model = solver.model()
+    schedule = [model[day].as_long() for day in city_vars]
+    inv_cities = {v: k for k, v in cities.items()}
+    for i in range(days):
+        print(f"Day {i + 1}: {inv_cities[schedule[i]]}")
 else:
-    print("No valid itinerary possible.")
+    print("No valid schedule exists.")

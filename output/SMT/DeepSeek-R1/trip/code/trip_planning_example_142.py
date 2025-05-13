@@ -1,69 +1,62 @@
 from z3 import *
 
-# Define cities and their IDs
-cities = ["Madrid", "Dublin", "Tallinn"]
-city_id = {city: idx for idx, city in enumerate(cities)}
-
-# Direct flights (bidirectional)
-direct_flights = [
-    ("Madrid", "Dublin"),
-    ("Dublin", "Tallinn")
-]
-
-# Create flight pairs in both directions
-flight_pairs = []
-for a, b in direct_flights:
-    a_id = city_id[a]
-    b_id = city_id[b]
-    flight_pairs.append((a_id, b_id))
-    flight_pairs.append((b_id, a_id))
-
-# Required days per city
-required_days = {
-    city_id["Madrid"]: 4,
-    city_id["Dublin"]: 3,
-    city_id["Tallinn"]: 2
+# Define the cities
+cities = {
+    "Madrid": 0,
+    "Dublin": 1,
+    "Tallinn": 2
 }
 
-# Create solver
-s = Solver()
+# Direct flights adjacency list (bidirectional)
+direct_flights = {
+    cities["Madrid"]: [cities["Dublin"]],
+    cities["Dublin"]: [cities["Madrid"], cities["Tallinn"]],
+    cities["Tallinn"]: [cities["Dublin"]]
+}
 
-# Day variables: 7 days (indices 0-6 correspond to days 1-7)
-days = [Int(f'day_{i+1}') for i in range(7)]
-for day in days:
-    s.add(day >= 0, day < 3)  # Validate city IDs (0-2)
+# Create adjacency list with all bidirectional flights
+adjacency = {i: [] for i in cities.values()}
+for city, connects in direct_flights.items():
+    adjacency[city] = connects.copy()
+    for c in connects:
+        if city not in adjacency[c]:
+            adjacency[c].append(city)
 
-# Sum constraints for each city
-for city in required_days:
-    total = Sum([If(day == city, 1, 0) for day in days])
-    s.add(total == required_days[city])
+# Days 1 to 7
+days = 7
+solver = Solver()
+city_vars = [Int(f"day_{i}") for i in range(1, days + 1)]
 
-# Flight constraints between consecutive days
-for i in range(6):
-    current = days[i]
-    next_day = days[i+1]
-    constraints = [current == next_day]  # Stay in same city
-    for a, b in flight_pairs:
-        constraints.append(And(current == a, next_day == b))
-    s.add(Or(constraints))
+# Each day must be one of the cities
+for day in city_vars:
+    solver.add(Or([day == c for c in cities.values()]))
 
-# Tallinn must be days 6-7 (indices 5-6)
-tallinn = city_id["Tallinn"]
-s.add(days[5] == tallinn)
-s.add(days[6] == tallinn)
+# Tallinn must be days 6 and 7 (workshop)
+solver.add(city_vars[5] == cities["Tallinn"])  # Day 6
+solver.add(city_vars[6] == cities["Tallinn"])  # Day 7
+
+# Consecutive days must have direct flights
+for i in range(days - 1):
+    current = city_vars[i]
+    next_day = city_vars[i + 1]
+    solver.add(Or([current == next_day] + [And(current == c, next_day == n) for c in adjacency for n in adjacency[c]))
+
+# Total days per city
+city_days = [
+    (cities["Madrid"], 4),
+    (cities["Dublin"], 3),
+    (cities["Tallinn"], 2),
+]
+
+for city, total in city_days:
+    solver.add(Sum([If(city_var == city, 1, 0) for city_var in city_vars]) == total)
 
 # Check and print solution
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[day] for day in days]
-    city_names = {v: k for k, v in city_id.items()}
-    current_city = schedule[0]
-    start_day = 1
-    for i in range(1, 7):
-        if schedule[i] != current_city:
-            print(f"Days {start_day}-{i}: {city_names[current_city.as_long()]}")
-            current_city = schedule[i]
-            start_day = i + 1
-    print(f"Days {start_day}-7: {city_names[current_city.as_long()]}")
+if solver.check() == sat:
+    model = solver.model()
+    schedule = [model[day].as_long() for day in city_vars]
+    inv_cities = {v: k for k, v in cities.items()}
+    for i in range(days):
+        print(f"Day {i + 1}: {inv_cities[schedule[i]]}")
 else:
-    print("No valid itinerary possible.")
+    print("No valid schedule exists.")
