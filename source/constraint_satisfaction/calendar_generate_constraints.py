@@ -11,7 +11,7 @@ client = AsyncOpenAI(api_key=api_key)
 
 async def get_model_response(full_prompt):
     response = await client.chat.completions.create(
-        model='gpt-4.1-nano',
+        model='gpt-4.1-mini',
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": full_prompt}
@@ -101,7 +101,7 @@ def process_examples(examples_file, output_folder):
         }}
 
         \n
-        Now you try it. Your job is to extract the time when people are unavailable in JSON based on a description. IMPORTANT: The top-level JSON key must be "{example_id}". Here's an example description:\n
+        Make sure the only keys in the JSON are "input_query", "allowed_ranges", "disallowed_ranges", optimization, "preferred_ranges", and "unpreferred_ranges". The values of these keys should be lists of dictionaries, where each dictionary has the keys "day", "start", and "end". The values of "day" should be strings, and the values of "start" and "end" should be floats for in between hours and int values for single hours such as 14 and 14.5. For the times, only use whole ints or half and hour as .5, for example, do not use 9.30 or 9.3 to represent 9:30, instead use 9.5. The ranges should be inclusive on both ends.\n Make sure to include the "optimization" key with the value "none", "earliest", or "latest" depending on the problem.\n Make sure that allowed_ranges are the time ranges between busy slots, disallowed_ranges are the busy slots, preferred_ranges are the time ranges that the user prefers to have the meeting in, and unpreferred_ranges are the time ranges that the user does not prefer to have the meeting in.\n Now you try it. Your job is to extract the time when people are unavailable in JSON based on a description. IMPORTANT: The top-level JSON key must be "{example_id}". Here's an example description:\n
 
         {prompt}
         """
@@ -119,6 +119,6 @@ def process_examples(examples_file, output_folder):
             continue
 
 if __name__ == "__main__":
-    examples_file = '../../data/calendar_scheduling_100.json'
-    output_folder = 'calendar'
+    examples_file = '../data/calendar_scheduling_100.json'
+    output_folder = 'constraint_satisfaction/calendar'
     process_examples(examples_file, output_folder)

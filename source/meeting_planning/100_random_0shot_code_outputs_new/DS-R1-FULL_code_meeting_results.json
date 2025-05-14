@@ -201,6 +201,46 @@
         },
         {
             "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "9:31",
+                        "end_time": "10:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Laura",
+                        "start_time": "12:30",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ronald",
+                        "start_time": "13:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input parameters\ntravel_times = {\n    'Financial District': {\n        'Russian Hill': 10,\n        'Sunset District': 31,\n        'North Beach': 7,\n        'The Castro': 23,\n        'Golden Gate Park': 23\n    },\n    'Russian Hill': {\n        'Financial District': 11,\n        'Sunset District': 23,\n        'North Beach': 5,\n        'The Castro': 21,\n        'Golden Gate Park': 21\n    },\n    'Sunset District': {\n        'Financial District': 30,\n        'Russian Hill': 24,\n        'North Beach': 29,\n        'The Castro': 17,\n        'Golden Gate Park': 11\n    },\n    'North Beach': {\n        'Financial District': 8,\n        'Russian Hill': 4,\n        'Sunset District': 27,\n        'The Castro': 22,\n        'Golden Gate Park': 22\n    },\n    'The Castro': {\n        'Financial District': 20,\n        'Russian Hill': 18,\n        'Sunset District': 17,\n        'North Beach': 20,\n        'Golden Gate Park': 11\n    },\n    'Golden Gate Park': {\n        'Financial District': 26,\n        'Russian Hill': 19,\n        'Sunset District': 10,\n        'North Beach': 24,\n        'The Castro': 13\n    }\n}\n\nfriends = {\n    'Ronald': {\n        'location': 'Russian Hill',\n        'available_start': time_to_minutes('13:45'),\n        'available_end': time_to_minutes('17:15'),\n        'min_duration': 105\n    },\n    'Patricia': {\n        'location': 'Sunset District',\n        'available_start': time_to_minutes('9:15'),\n        'available_end': time_to_minutes('22:00'),\n        'min_duration': 60\n    },\n    'Laura': {\n        'location': 'North Beach',\n        'available_start': time_to_minutes('12:30'),\n        'available_end': time_to_minutes('12:45'),\n        'min_duration': 15\n    },\n    'Emily': {\n        'location': 'The Castro',\n        'available_start': time_to_minutes('16:15'),\n        'available_end': time_to_minutes('18:30'),\n        'min_duration': 60\n    },\n    'Mary': {\n        'location': 'Golden Gate Park',\n        'available_start': time_to_minutes('15:00'),\n        'available_end': time_to_minutes('16:30'),\n        'min_duration': 60\n    }\n}\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes('9:00')\n    current_location = 'Financial District'\n    schedule = []\n    met_friends = set()\n    \n    for friend_name in order:\n        friend = friends[friend_name]\n        location = friend['location']\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet this friend\n        start_time = max(arrival_time, friend['available_start'])\n        end_time = start_time + friend['min_duration']\n        \n        if end_time > friend['available_end']:\n            return None  # Can't meet this friend\n        \n        schedule.append({\n            'action': 'meet',\n            'location': location,\n            'person': friend_name,\n            'start_time': minutes_to_time(start_time),\n            'end_time': minutes_to_time(end_time)\n        })\n        \n        met_friends.add(friend_name)\n        current_time = end_time\n        current_location = location\n    \n    return {\n        'itinerary': schedule,\n        'met_count': len(met_friends)\n    }\n\n# Generate all possible orders of meeting friends\nall_orders = permutations(friends.keys())\nbest_schedule = None\nbest_met = 0\n\nfor order in all_orders:\n    schedule = calculate_schedule(order)\n    if schedule and schedule['met_count'] > best_met:\n        best_schedule = schedule\n        best_met = schedule['met_count']\n\nif best_schedule:\n    print(json.dumps({'itinerary': best_schedule['itinerary']}, indent=2))\nelse:\n    print(json.dumps({'itinerary': []}, indent=2))\n```",
+            "count": "meeting_planning_example_444"
+        },
+        {
+            "final_program_time": {
                 "itinerary": [
                     {
                         "action": "meet",
@@ -5387,6 +5427,110 @@
             "has_error": false,
             "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary\ntravel_times = {\n    'Union Square': {\n        'The Castro': 17,\n        'North Beach': 10,\n        'Embarcadero': 11,\n        'Alamo Square': 15,\n        'Nob Hill': 9,\n        'Presidio': 24,\n        'Fisherman\\'s Wharf': 15,\n        'Mission District': 14,\n        'Haight-Ashbury': 18\n    },\n    'The Castro': {\n        'Union Square': 19,\n        'North Beach': 20,\n        'Embarcadero': 22,\n        'Alamo Square': 8,\n        'Nob Hill': 16,\n        'Presidio': 20,\n        'Fisherman\\'s Wharf': 24,\n        'Mission District': 7,\n        'Haight-Ashbury': 6\n    },\n    'North Beach': {\n        'Union Square': 7,\n        'The Castro': 23,\n        'Embarcadero': 6,\n        'Alamo Square': 16,\n        'Nob Hill': 7,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 5,\n        'Mission District': 18,\n        'Haight-Ashbury': 18\n    },\n    'Embarcadero': {\n        'Union Square': 10,\n        'The Castro': 25,\n        'North Beach': 5,\n        'Alamo Square': 19,\n        'Nob Hill': 10,\n        'Presidio': 20,\n        'Fisherman\\'s Wharf': 6,\n        'Mission District': 20,\n        'Haight-Ashbury': 21\n    },\n    'Alamo Square': {\n        'Union Square': 14,\n        'The Castro': 8,\n        'North Beach': 15,\n        'Embarcadero': 16,\n        'Nob Hill': 11,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 19,\n        'Mission District': 10,\n        'Haight-Ashbury': 5\n    },\n    'Nob Hill': {\n        'Union Square': 7,\n        'The Castro': 17,\n        'North Beach': 8,\n        'Embarcadero': 9,\n        'Alamo Square': 11,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 10,\n        'Mission District': 13,\n        'Haight-Ashbury': 13\n    },\n    'Presidio': {\n        'Union Square': 22,\n        'The Castro': 21,\n        'North Beach': 18,\n        'Embarcadero': 20,\n        'Alamo Square': 19,\n        'Nob Hill': 18,\n        'Fisherman\\'s Wharf': 19,\n        'Mission District': 26,\n        'Haight-Ashbury': 15\n    },\n    'Fisherman\\'s Wharf': {\n        'Union Square': 13,\n        'The Castro': 27,\n        'North Beach': 6,\n        'Embarcadero': 8,\n        'Alamo Square': 21,\n        'Nob Hill': 11,\n        'Presidio': 17,\n        'Mission District': 22,\n        'Haight-Ashbury': 22\n    },\n    'Mission District': {\n        'Union Square': 15,\n        'The Castro': 7,\n        'North Beach': 17,\n        'Embarcadero': 19,\n        'Alamo Square': 11,\n        'Nob Hill': 12,\n        'Presidio': 25,\n        'Fisherman\\'s Wharf': 22,\n        'Haight-Ashbury': 12\n    },\n    'Haight-Ashbury': {\n        'Union Square': 19,\n        'The Castro': 6,\n        'North Beach': 19,\n        'Embarcadero': 20,\n        'Alamo Square': 5,\n        'Nob Hill': 15,\n        'Presidio': 15,\n        'Fisherman\\'s Wharf': 23,\n        'Mission District': 11\n    }\n}\n\n# Friend constraints\nfriends = [\n    {\n        'name': 'Melissa',\n        'location': 'The Castro',\n        'available_start': '20:15',\n        'available_end': '21:15',\n        'min_duration': 30\n    },\n    {\n        'name': 'Kimberly',\n        'location': 'North Beach',\n        'available_start': '7:00',\n        'available_end': '10:30',\n        'min_duration': 15\n    },\n    {\n        'name': 'Joseph',\n        'location': 'Embarcadero',\n        'available_start': '15:30',\n        'available_end': '19:30',\n        'min_duration': 75\n    },\n    {\n        'name': 'Barbara',\n        'location': 'Alamo Square',\n        'available_start': '20:45',\n        'available_end': '21:45',\n        'min_duration': 15\n    },\n    {\n        'name': 'Kenneth',\n        'location': 'Nob Hill',\n        'available_start': '12:15',\n        'available_end': '17:15',\n        'min_duration': 105\n    },\n    {\n        'name': 'Joshua',\n        'location': 'Presidio',\n        'available_start': '16:30',\n        'available_end': '18:15',\n        'min_duration': 105\n    },\n    {\n        'name': 'Brian',\n        'location': 'Fisherman\\'s Wharf',\n        'available_start': '9:30',\n        'available_end': '15:30',\n        'min_duration': 45\n    },\n    {\n        'name': 'Steven',\n        'location': 'Mission District',\n        'available_start': '19:30',\n        'available_end': '21:00',\n        'min_duration': 90\n    },\n    {\n        'name': 'Betty',\n        'location': 'Haight-Ashbury',\n        'available_start': '19:00',\n        'available_end': '20:30',\n        'min_duration': 90\n    }\n]\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef can_schedule(friend, start_time, end_time):\n    available_start = time_to_minutes(friend['available_start'])\n    available_end = time_to_minutes(friend['available_end'])\n    min_duration = friend['min_duration']\n    \n    # Check if the meeting fits within the friend's availability\n    if start_time < available_start or end_time > available_end:\n        return False\n    \n    # Check if the meeting duration is sufficient\n    if (end_time - start_time) < min_duration:\n        return False\n    \n    return True\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes('9:00')  # Start at Union Square at 9:00 AM\n    current_location = 'Union Square'\n    schedule = []\n    \n    for friend in order:\n        location = friend['location']\n        travel_time = travel_times[current_location].get(location, float('inf'))\n        \n        # Arrival time at friend's location\n        arrival_time = current_time + travel_time\n        \n        # Find the latest possible start time that allows for min_duration\n        available_start = time_to_minutes(friend['available_start'])\n        available_end = time_to_minutes(friend['available_end'])\n        min_duration = friend['min_duration']\n        \n        # Calculate possible meeting window\n        meeting_start = max(arrival_time, available_start)\n        meeting_end = min(meeting_start + min_duration, available_end)\n        \n        if meeting_end - meeting_start < min_duration:\n            return None  # Can't meet this friend with these constraints\n        \n        # Add to schedule\n        schedule.append({\n            'action': 'meet',\n            'location': location,\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location\n        current_time = meeting_end\n        current_location = location\n    \n    return schedule\n\ndef evaluate_schedule(schedule):\n    if not schedule:\n        return 0\n    \n    # Count number of friends met\n    return len(schedule)\n\n# Generate all possible friend orders (permutations)\nbest_schedule = None\nbest_score = 0\n\n# Since there are too many permutations, we'll use a heuristic approach\n# Prioritize friends with tighter time windows first\nsorted_friends = sorted(friends, key=lambda x: (\n    time_to_minutes(x['available_end']) - time_to_minutes(x['available_start']) - x['min_duration']\n))\n\n# Try permutations in order of priority\nfrom itertools import permutations\nfor perm in permutations(sorted_friends):\n    schedule = calculate_schedule(perm)\n    score = evaluate_schedule(schedule)\n    if score > best_score:\n        best_score = score\n        best_schedule = schedule\n        if best_score == len(friends):  # Found optimal solution\n            break\n\n# Output the best schedule found\noutput = {\n    \"itinerary\": best_schedule if best_schedule else []\n}\n\nprint(json.dumps(output, indent=2))\n```",
             "count": "meeting_planning_example_800"
+        },
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Jessica",
+                        "start_time": "9:13",
+                        "end_time": "11:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Rebecca",
+                        "start_time": "11:35",
+                        "end_time": "12:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jason",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "17:25",
+                        "end_time": "18:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Jessica",
+                        "start_time": "9:13",
+                        "end_time": "11:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "John",
+                        "start_time": "11:18",
+                        "end_time": "11:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "11:40",
+                        "end_time": "12:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Rebecca",
+                        "start_time": "12:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jason",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "18:28",
+                        "end_time": "19:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    'Union Square': {\n        'Mission District': 14,\n        'Fisherman\\'s Wharf': 15,\n        'Russian Hill': 13,\n        'Marina District': 18,\n        'North Beach': 10,\n        'Chinatown': 7,\n        'Pacific Heights': 15,\n        'The Castro': 17,\n        'Nob Hill': 9,\n        'Sunset District': 27\n    },\n    'Mission District': {\n        'Union Square': 15,\n        'Fisherman\\'s Wharf': 22,\n        'Russian Hill': 15,\n        'Marina District': 19,\n        'North Beach': 17,\n        'Chinatown': 16,\n        'Pacific Heights': 16,\n        'The Castro': 7,\n        'Nob Hill': 12,\n        'Sunset District': 24\n    },\n    'Fisherman\\'s Wharf': {\n        'Union Square': 13,\n        'Mission District': 22,\n        'Russian Hill': 7,\n        'Marina District': 9,\n        'North Beach': 6,\n        'Chinatown': 12,\n        'Pacific Heights': 12,\n        'The Castro': 27,\n        'Nob Hill': 11,\n        'Sunset District': 27\n    },\n    'Russian Hill': {\n        'Union Square': 10,\n        'Mission District': 16,\n        'Fisherman\\'s Wharf': 7,\n        'Marina District': 7,\n        'North Beach': 5,\n        'Chinatown': 9,\n        'Pacific Heights': 7,\n        'The Castro': 21,\n        'Nob Hill': 5,\n        'Sunset District': 23\n    },\n    'Marina District': {\n        'Union Square': 16,\n        'Mission District': 20,\n        'Fisherman\\'s Wharf': 10,\n        'Russian Hill': 8,\n        'North Beach': 11,\n        'Chinatown': 15,\n        'Pacific Heights': 7,\n        'The Castro': 22,\n        'Nob Hill': 12,\n        'Sunset District': 19\n    },\n    'North Beach': {\n        'Union Square': 7,\n        'Mission District': 18,\n        'Fisherman\\'s Wharf': 5,\n        'Russian Hill': 4,\n        'Marina District': 9,\n        'Chinatown': 6,\n        'Pacific Heights': 8,\n        'The Castro': 23,\n        'Nob Hill': 7,\n        'Sunset District': 27\n    },\n    'Chinatown': {\n        'Union Square': 7,\n        'Mission District': 17,\n        'Fisherman\\'s Wharf': 8,\n        'Russian Hill': 7,\n        'Marina District': 12,\n        'North Beach': 3,\n        'Pacific Heights': 10,\n        'The Castro': 22,\n        'Nob Hill': 9,\n        'Sunset District': 29\n    },\n    'Pacific Heights': {\n        'Union Square': 12,\n        'Mission District': 15,\n        'Fisherman\\'s Wharf': 13,\n        'Russian Hill': 7,\n        'Marina District': 6,\n        'North Beach': 9,\n        'Chinatown': 11,\n        'The Castro': 16,\n        'Nob Hill': 8,\n        'Sunset District': 21\n    },\n    'The Castro': {\n        'Union Square': 19,\n        'Mission District': 7,\n        'Fisherman\\'s Wharf': 24,\n        'Russian Hill': 18,\n        'Marina District': 21,\n        'North Beach': 20,\n        'Chinatown': 22,\n        'Pacific Heights': 16,\n        'Nob Hill': 16,\n        'Sunset District': 17\n    },\n    'Nob Hill': {\n        'Union Square': 7,\n        'Mission District': 13,\n        'Fisherman\\'s Wharf': 10,\n        'Russian Hill': 5,\n        'Marina District': 11,\n        'North Beach': 8,\n        'Chinatown': 6,\n        'Pacific Heights': 8,\n        'The Castro': 17,\n        'Sunset District': 24\n    },\n    'Sunset District': {\n        'Union Square': 30,\n        'Mission District': 25,\n        'Fisherman\\'s Wharf': 29,\n        'Russian Hill': 24,\n        'Marina District': 21,\n        'North Beach': 28,\n        'Chinatown': 30,\n        'Pacific Heights': 21,\n        'The Castro': 17,\n        'Nob Hill': 27\n    }\n}\n\n# Friend availability\nfriends = {\n    'Kevin': {\n        'location': 'Mission District',\n        'start': 20.75,  # 8:45 PM\n        'end': 21.75,    # 9:45 PM\n        'duration': 1.0  # 60 minutes\n    },\n    'Mark': {\n        'location': 'Fisherman\\'s Wharf',\n        'start': 17.25,  # 5:15 PM\n        'end': 20.0,     # 8:00 PM\n        'duration': 1.5  # 90 minutes\n    },\n    'Jessica': {\n        'location': 'Russian Hill',\n        'start': 9.0,    # 9:00 AM\n        'end': 15.0,     # 3:00 PM\n        'duration': 2.0  # 120 minutes\n    },\n    'Jason': {\n        'location': 'Marina District',\n        'start': 15.25, # 3:15 PM\n        'end': 21.75,    # 9:45 PM\n        'duration': 2.0  # 120 minutes\n    },\n    'John': {\n        'location': 'North Beach',\n        'start': 9.75,   # 9:45 AM\n        'end': 18.0,     # 6:00 PM\n        'duration': 0.25 # 15 minutes\n    },\n    'Karen': {\n        'location': 'Chinatown',\n        'start': 16.75,  # 4:45 PM\n        'end': 19.0,     # 7:00 PM\n        'duration': 1.25 # 75 minutes\n    },\n    'Sarah': {\n        'location': 'Pacific Heights',\n        'start': 17.5,   # 5:30 PM\n        'end': 18.25,    # 6:15 PM\n        'duration': 0.75 # 45 minutes\n    },\n    'Amanda': {\n        'location': 'The Castro',\n        'start': 20.0,   # 8:00 PM\n        'end': 21.25,    # 9:15 PM\n        'duration': 1.0 # 60 minutes\n    },\n    'Nancy': {\n        'location': 'Nob Hill',\n        'start': 9.75,   # 9:45 AM\n        'end': 13.0,     # 1:00 PM\n        'duration': 0.75 # 45 minutes\n    },\n    'Rebecca': {\n        'location': 'Sunset District',\n        'start': 8.75,   # 8:45 AM\n        'end': 15.0,     # 3:00 PM\n        'duration': 1.25 # 75 minutes\n    }\n}\n\ndef time_to_float(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours + minutes / 60.0\n\ndef float_to_time(time_float):\n    hours = int(time_float)\n    minutes = int((time_float - hours) * 60)\n    return f\"{hours}:{minutes:02d}\"\n\ndef get_travel_time(from_loc, to_loc):\n    return travel_times.get(from_loc, {}).get(to_loc, float('inf')) / 60.0\n\ndef is_schedule_valid(schedule):\n    current_time = 9.0  # Start at Union Square at 9:00 AM\n    current_location = 'Union Square'\n    \n    for entry in schedule:\n        # Travel to the location\n        travel_time = get_travel_time(current_location, entry['location'])\n        arrival_time = current_time + travel_time\n        \n        # Check if we arrive before the meeting window closes\n        friend = friends[entry['person']]\n        latest_start = friend['end'] - entry['duration']\n        \n        if arrival_time > latest_start:\n            return False\n        \n        # Start the meeting as soon as possible after arrival\n        start_time = max(arrival_time, friend['start'])\n        end_time = start_time + entry['duration']\n        \n        if end_time > friend['end']:\n            return False\n        \n        current_time = end_time\n        current_location = entry['location']\n    \n    return True\n\ndef calculate_total_meeting_time(schedule):\n    total = 0\n    for entry in schedule:\n        total += entry['duration']\n    return total\n\ndef generate_possible_schedules():\n    friend_names = list(friends.keys())\n    # We'll try permutations of all friends, but limit to reasonable length for performance\n    # In reality, we'd need a more sophisticated approach for larger problems\n    for perm in permutations(friend_names, min(5, len(friend_names))):\n        schedule = []\n        for name in perm:\n            schedule.append({\n                'person': name,\n                'location': friends[name]['location'],\n                'duration': friends[name]['duration']\n            })\n        if is_schedule_valid(schedule):\n            yield schedule\n\ndef find_best_schedule():\n    best_schedule = None\n    best_time = 0\n    \n    for schedule in generate_possible_schedules():\n        total_time = calculate_total_meeting_time(schedule)\n        if total_time > best_time:\n            best_time = total_time\n            best_schedule = schedule\n    \n    return best_schedule\n\ndef build_itinerary(schedule):\n    if not schedule:\n        return {\"itinerary\": []}\n    \n    itinerary = []\n    current_time = 9.0  # Start at Union Square at 9:00 AM\n    current_location = 'Union Square'\n    \n    for entry in schedule:\n        # Travel to the location\n        travel_time = get_travel_time(current_location, entry['location'])\n        arrival_time = current_time + travel_time\n        \n        # Calculate meeting times\n        friend = friends[entry['person']]\n        start_time = max(arrival_time, friend['start'])\n        end_time = start_time + entry['duration']\n        \n        # Add travel and meeting to itinerary\n        if arrival_time < start_time:\n            itinerary.append({\n                \"action\": \"travel\",\n                \"from\": current_location,\n                \"to\": entry['location'],\n                \"start_time\": float_to_time(current_time),\n                \"end_time\": float_to_time(arrival_time)\n            })\n            current_time = arrival_time\n        \n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": entry['location'],\n            \"person\": entry['person'],\n            \"start_time\": float_to_time(start_time),\n            \"end_time\": float_to_time(end_time)\n        })\n        \n        current_time = end_time\n        current_location = entry['location']\n    \n    return {\"itinerary\": itinerary}\n\nbest_schedule = find_best_schedule()\nresult = build_itinerary(best_schedule)\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_940"
         },
         {
             "final_program_time": {
