@@ -1,50 +1,37 @@
-from z3 import Optimize, Int, Or, sat
+import z3
 
-opt = Optimize()
-start = Int('start')
-duration = 30  # 30 minutes
+solver = z3.Optimize()
+S = z3.Int('S')
 
-# Convert time constraints to minutes since 9:00 (0-480)
-opt.add(start >= 0, start + duration <= 480)
+# General time constraints (minutes since 9:00)
+solver.add(S >= 60)          # Megan's preference: no meetings before 10:00
+solver.add(S + 30 <= 480)    # Meeting must end by 17:00
 
-# Megan's preference: start after 10:00 (60 minutes)
-opt.add(start >= 60)
-
-# Kimberly's busy periods
-kimberly_busy = [
-    (60, 90),    # 10:00-10:30
-    (120, 180),  # 11:00-12:00
-    (420, 450)   # 16:00-16:30
+# Define all blocked intervals in minutes
+blocked_intervals = [
+    # Kimberly's busy periods
+    (60, 90), (120, 180), (420, 450),
+    # Marie's busy periods
+    (60, 120), (150, 360), (420, 450),
+    # Diana's busy periods
+    (30, 60), (90, 330), (390, 480)
 ]
-for (s, e) in kimberly_busy:
-    opt.add(Or(start + duration <= s, start >= e))
 
-# Marie's busy periods
-marie_busy = [
-    (60, 120),   # 10:00-11:00
-    (150, 360),  # 11:30-15:00
-    (420, 450)   # 16:00-16:30
-]
-for (s, e) in marie_busy:
-    opt.add(Or(start + duration <= s, start >= e))
-
-# Diana's busy periods
-diana_busy = [
-    (30, 60),    # 9:30-10:00
-    (90, 330),   # 10:30-14:30
-    (390, 480)   # 15:30-17:00
-]
-for (s, e) in diana_busy:
-    opt.add(Or(start + duration <= s, start >= e))
+# Add constraints to avoid all blocked intervals
+for start, end in blocked_intervals:
+    solver.add(z3.Or(S + 30 <= start, S >= end))
 
 # Find earliest possible time
-opt.minimize(start)
+solver.minimize(S)
 
-if opt.check() == sat:
-    m = opt.model()
-    start_min = m[start].as_long()
-    hours = 9 + start_min // 60
-    minutes = start_min % 60
-    print(f"Meeting starts on Monday at {hours:02d}:{minutes:02d}")
+if solver.check() == z3.sat:
+    model = solver.model()
+    start_minutes = model[S].as_long()
+    start_h = 9 + start_minutes // 60
+    start_m = start_minutes % 60
+    end_minutes = start_minutes + 30
+    end_h = 9 + end_minutes // 60
+    end_m = end_minutes % 60
+    print(f"Monday\n{start_h}:{start_m:02d}\n{end_h}:{end_m:02d}")
 else:
-    print("No valid time found")
+    print("No solution found")

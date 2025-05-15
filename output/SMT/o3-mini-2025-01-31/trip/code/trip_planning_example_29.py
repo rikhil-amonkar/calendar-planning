@@ -1,178 +1,113 @@
-from z3 import Solver, IntVector, Distinct, And, Or, If, sat
+from z3 import *
 
-# -----------------------------------------------------------------------------
-# City definitions and planned durations:
-#
-# We have 3 cities:
-# 0: Krakow    – 2 days.
-#              Event: Attend a wedding in Krakow between day 9 and day 10.
+# City indices and requirements:
+# 0: Krakow   – 2 days; event: attend a wedding in Krakow between day 9 and day 10.
 # 1: Dubrovnik – 7 days.
-# 2: Frankfurt  – 3 days.
-#
-# Planned total days = 2 + 7 + 3 = 12 days.
-# There are 2 flights (since we visit 3 cities),
-# so the effective trip duration = 12 - 2 = 10 days.
-#
-# Note on timing:
-#   In the first visited city the full planned duration is used:
-#     Visit interval = [arrival, arrival + duration - 1]
-#   For each subsequent city one day is “lost” to the flight, so the 
-#     effective visit interval = [arrival, arrival + (duration - 1) - 1]
-#     (i.e. [arrival, arrival + duration - 2])
-#
-# For the wedding event in Krakow (a 2‐day stay) the interval must cover
-# day 9 and day 10. That forces the visit interval for Krakow to be exactly [9, 10].
-# Hence, if Krakow is visited as the first city then its arrival must be 9,
-# and if it is visited later then its arrival (S) must also equal 9.
-#
-# With our “rigid” time model (i.e. no waiting time beyond the planned duration)
-# the arrival times are completely determined by the order of visits.
-# -----------------------------------------------------------------------------
-cities    = ["Krakow", "Dubrovnik", "Frankfurt"]
-durations = [2,         7,           3]
+# 2: Frankfurt – 3 days.
+city_names = ["Krakow", "Dubrovnik", "Frankfurt"]
+req = [2, 7, 3]  # Total required day credits = 2+7+3 = 12
 
-# -----------------------------------------------------------------------------
-# Allowed direct flights.
-#
-# Given flights:
-#  - "Frankfurt and Krakow" gives flights in both directions between Frankfurt (2)
-#    and Krakow (0).
-#  - "Dubrovnik and Frankfurt" gives flights in both directions between Dubrovnik (1)
-#    and Frankfurt (2).
-#
-# There is no direct flight between Krakow and Dubrovnik.
-# -----------------------------------------------------------------------------
-allowed_flights = {
-    (0, 2), (2, 0),   # Krakow <-> Frankfurt
-    (1, 2), (2, 1)    # Dubrovnik <-> Frankfurt
-}
+# Total base days = 10.
+# On a day with no flight, the city gets 1 credit.
+# On a flight day (when you fly from A to B on that day), both A and B get 1 credit.
+# Hence, total credits = base days + (# flights).
+# To reach 12 credits, we need exactly 2 flights (10 + 2 = 12).
+# This partitions the trip into 3 segments (each segment corresponds to a visited city).
+DAYS = 10
 
-def flight_allowed(a, b):
-    return (a, b) in allowed_flights
+# Allowed direct flights (bidirectional unless indicated):
+# Frankfurt and Krakow: (2,0) and (0,2)
+# Dubrovnik and Frankfurt: (1,2) and (2,1)
+allowed_flights = [
+    (2,0), (0,2),
+    (1,2), (2,1)
+]
 
-# -----------------------------------------------------------------------------
-# Create the Z3 solver and decision variables.
-#
-# We represent the itinerary as a permutation of the 3 cities:
-#   pos[i] : the city index visited at itinerary position i, for i in {0,1,2}.
-#   S[i]   : the arrival day at the city visited at position i.
-#
-# We impose that the trip “starts” on day 1:
-#   S[0] == 1.
-#
-# Also, the departure from a city is determined by its visit interval:
-#   For the first city: interval = [S[i], S[i] + duration - 1].
-#   For a subsequent city: interval = [S[i], S[i] + duration - 2].
-#
-# The trip finish constraint is that the departure (end) day of the final city
-# equals 10.
-#
-# With the (fixed) planned durations and the fact that there are 2 flights,
-# it must hold that:
-#    (2 + 7 + 3) - 2 = 10.
-# -----------------------------------------------------------------------------
-n = 3
-total_trip = 10
+# Create Z3 variables:
+# c[d] represents the base city on day d
+c = [Int(f"c_{d}") for d in range(DAYS)]
+# flight[d] is True if a flight occurs on day d (for d>=1, day 0 no flight)
+flight = [Bool(f"flight_{d}") for d in range(DAYS)]
+# isSeg[d] is True if day d is the starting day of a segment (either day 0 or a day with a flight)
+isSeg = [Bool(f"seg_{d}") for d in range(DAYS)]
+
 s = Solver()
 
-# Permutation: each city appears exactly once.
-pos = IntVector("pos", n)
-s.add(Distinct(pos))
-for i in range(n):
-    s.add(And(pos[i] >= 0, pos[i] < n))
+# 1. Domain: each day's base city must be in {0,1,2}
+for d in range(DAYS):
+    s.add(c[d] >= 0, c[d] < len(city_names))
 
-# Arrival days for each visited city.
-# We fix the start day to 1.
-S = IntVector("S", n)
-s.add(S[0] == 1)
-for i in range(n):
-    s.add(S[i] >= 1)
+# 2. Day 0 is always the start of a segment.
+s.add(isSeg[0] == True)
 
-# Helper functions to pick the planned duration (or effective duration) based on the city 
-def full_duration(i):
-    # For the first city in the itinerary, we use the full planned duration.
-    return sum([If(pos[i] == c, durations[c], 0) for c in range(n)])
-    
-def effective_duration(i):
-    # For subsequent cities, one day is lost due to the flight.
-    return sum([If(pos[i] == c, durations[c] - 1, 0) for c in range(n)])
+# 3. For each day d>=1, define if a flight occurs and enforce allowed transitions.
+for d in range(1, DAYS):
+    # A flight happens if the city changes from day d-1.
+    s.add(flight[d] == (c[d] != c[d-1]))
+    s.add(isSeg[d] == flight[d])
+    # If a flight occurs, the transition must follow one of the allowed flights.
+    s.add(Implies(flight[d],
+                  Or([And(c[d-1] == frm, c[d] == to) for (frm, to) in allowed_flights])
+                 ))
 
-# -----------------------------------------------------------------------------
-# Sequential arrival constraints:
-#
-# The arrival time for city at position 1 is:
-#   S[1] = S[0] + full_duration(0)
-#
-# For any city at position i (i >= 2):
-#   S[i] = S[i-1] + effective_duration(i-1)
-# -----------------------------------------------------------------------------
-s.add(S[1] == S[0] + full_duration(0))
-for i in range(2, n):
-    s.add(S[i] == S[i-1] + effective_duration(i-1))
-    
-# -----------------------------------------------------------------------------
-# Final trip end constraint:
-#
-# For the final city at position n-1 (which is not the first city),
-# its departure day is given by:
-#   departure = S[n-1] + effective_duration(n-1) - 1
-#
-# We require:
-#   S[n-1] + effective_duration(n-1) - 1 == total_trip
-# -----------------------------------------------------------------------------
-s.add(S[n-1] + effective_duration(n-1) - 1 == total_trip)
+# 4. Exactly 2 flights must occur.
+s.add(Sum([If(flight[d], 1, 0) for d in range(1, DAYS)]) == 2)
 
-# -----------------------------------------------------------------------------
-# Direct flight connectivity constraints:
-#
-# For every consecutive pair of cities in the itinerary, there must be a direct flight.
-# -----------------------------------------------------------------------------
-for i in range(n - 1):
-    flight_options = []
-    for a in range(n):
-        for b in range(n):
-            if flight_allowed(a, b):
-                flight_options.append(And(pos[i] == a, pos[i+1] == b))
-    s.add(Or(flight_options))
+# 5. The starting city of each segment (day0 and any flight day) must be distinct,
+# ensuring that each city is visited exactly once.
+for i in range(DAYS):
+    for j in range(i+1, DAYS):
+        s.add(Implies(And(isSeg[i], isSeg[j]), c[i] != c[j]))
+# Also enforce that every city appears as a segment's starting city.
+for city in range(len(city_names)):
+    s.add(Or([And(isSeg[d], c[d] == city) for d in range(DAYS)]))
 
-# -----------------------------------------------------------------------------
-# Wedding event constraint for Krakow:
-#
-# The wedding in Krakow must be attended between day 9 and day 10.
-# Because the stay in Krakow is 2 days long, its visit interval is:
-#   - if it is the first city: [S, S+1]
-#   - if it is not the first city: [S, S+ (2-1)] = [S, S+1]
-#
-# To cover the wedding window [9, 10], it is necessary that S (the arrival day)
-# equals 9.
-#
-# We add: if a city in the itinerary is Krakow (city 0) then its arrival S must equal 9.
-# -----------------------------------------------------------------------------
-for i in range(n):
-    s.add(If(pos[i] == 0, S[i] == 9, True))
+# 6. Compute day contributions:
+# Day 0 gives 1 credit to the city c[0].
+# For d>=1:
+#  - If a flight occurs on day d, then both the previous day's city and the current day's city get 1 credit.
+#  - Otherwise, only the current day's city gets 1 credit.
+counts = [Int(f"count_{i}") for i in range(len(city_names))]
+for city in range(len(city_names)):
+    base = If(c[0] == city, 1, 0)
+    daily = []
+    for d in range(1, DAYS):
+        daily.append(
+            If(flight[d],
+               If(c[d-1] == city, 1, 0) + If(c[d] == city, 1, 0),
+               If(c[d] == city, 1, 0)
+            )
+        )
+    s.add(counts[city] == base + Sum(daily))
+    s.add(counts[city] == req[city])
 
-# -----------------------------------------------------------------------------
-# Solve the scheduling problem.
-# -----------------------------------------------------------------------------
+# 7. Event constraint: Attend a wedding in Krakow (city 0)
+# between day 9 and day 10 (i.e. indices 8 and 9).
+def inCityOnDay(d, target):
+    if d == 0:
+        return c[0] == target
+    # If flight occurs, consider both previous city's flight and current city.
+    return If(flight[d],
+              Or(c[d-1] == target, c[d] == target),
+              c[d] == target)
+
+wedding_event = [inCityOnDay(d, 0) for d in [8, 9]]
+s.add(Or(wedding_event))
+
+# Solve and print the itinerary
 if s.check() == sat:
     m = s.model()
-    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
-    arrivals  = [m.evaluate(S[i]).as_long() for i in range(n)]
-    
-    print("Trip Itinerary:")
-    for i in range(n):
-        city_index = itinerary[i]
-        city_name = cities[city_index]
-        if i == 0:
-            departure = arrivals[i] + durations[city_index] - 1
-        else:
-            departure = arrivals[i] + durations[city_index] - 2
-        print(f" Position {i+1}: {city_name:10s} | Arrival: Day {arrivals[i]:2d} | Departure: Day {departure:2d}")
-    
-    if n - 1 == 0:
-        final_departure = arrivals[-1] + durations[itinerary[-1]] - 1
-    else:
-        final_departure = arrivals[-1] + durations[itinerary[-1]] - 2
-    print("Trip ends on Day:", final_departure)
+    print("Found a valid itinerary:")
+    for d in range(DAYS):
+        city_idx = m[c[d]].as_long()
+        day_str = f"Day {d+1:2d}: {city_names[city_idx]}"
+        if d >= 1 and m.evaluate(flight[d]):
+            dep = city_names[m[c[d-1]].as_long()]
+            arr = city_names[city_idx]
+            day_str += f" (Flight: {dep} -> {arr})"
+        print(day_str)
+    print("\nCity day contributions:")
+    for i in range(len(city_names)):
+        print(f"{city_names[i]}: {m.evaluate(counts[i])}")
 else:
-    print("No valid trip plan could be found.")
+    print("No solution found")

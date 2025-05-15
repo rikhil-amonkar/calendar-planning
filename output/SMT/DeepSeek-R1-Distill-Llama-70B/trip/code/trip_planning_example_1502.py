@@ -1,96 +1,101 @@
 from z3 import *
 
-# Define cities and their required days
-cities = {
-    0: 'Santorini',
-    1: 'Valencia',
-    2: 'Madrid',
-    3: 'Seville',
-    4: 'Bucharest',
-    5: 'Vienna',
-    6: 'Riga',
-    7: 'Tallinn',
-    8: 'Krakow',
-    9: 'Frankfurt'
+# Define the cities and their durations
+cities = ['Santorini', 'Valencia', 'Madrid', 'Seville', 'Bucharest', 'Vienna', 'Riga', 'Tallinn', 'Krakow', 'Frankfurt']
+durations = {
+    'Santorini': 3,
+    'Valencia': 4,
+    'Madrid': 2,
+    'Seville': 2,
+    'Bucharest': 3,
+    'Vienna': 4,
+    'Riga': 4,
+    'Tallinn': 5,
+    'Krakow': 5,
+    'Frankfurt': 4
 }
 
-required_days = {
-    0: 3,
-    1: 4,
-    2: 2,
-    3: 2,
-    4: 3,
-    5: 4,
-    6: 4,
-    7: 5,
-    8: 5,
-    9: 4
+# Define direct flights between cities
+flights = {
+    'Vienna': ['Bucharest', 'Seville', 'Valencia', 'Madrid', 'Krakow', 'Frankfurt', 'Riga'],
+    'Santorini': ['Madrid', 'Bucharest'],
+    'Seville': ['Valencia'],
+    'Madrid': ['Valencia', 'Seville', 'Bucharest', 'Frankfurt'],
+    'Bucharest': ['Riga', 'Valencia', 'Santorini'],
+    'Valencia': ['Bucharest', 'Krakow', 'Frankfurt'],
+    'Riga': ['Tallinn'],
+    'Tallinn': [],
+    'Krakow': ['Frankfurt'],
+    'Frankfurt': ['Tallinn', 'Bucharest', 'Riga']
 }
 
-# Define allowed transitions between cities
-allowed_transitions = [
-    (5, 4), (0, 2), (3, 1), (5, 3), (2, 1), (4, 6), (1, 4), (0, 4),
-    (5, 1), (5, 2), (1, 8), (1, 9), (8, 9), (6, 7), (5, 8), (5, 9),
-    (2, 3), (0, 5), (5, 6), (9, 7), (9, 4), (2, 4), (2, 9), (9, 6),
-    (9, 5)
-]
+# Create variables for each city's start and end days
+start = {city: Int(city + '_start') for city in cities}
+end = {city: Int(city + '_end') for city in cities}
 
-# Build neighbors dictionary
-neighbors = {}
-for a, b in allowed_transitions:
-    if a not in neighbors:
-        neighbors[a] = []
-    neighbors[a].append(b)
-
-# Create day variables
-days = [Int(f"day_{i}") for i in range(27)]
-
+# Create solver
 solver = Solver()
 
-# Add domain constraints for each day
-for i in range(27):
-    solver.add(days[i] >= 0)
-    solver.add(days[i] <= 9)
+# Add duration constraints for each city
+for city in cities:
+    solver.add(end[city] == start[city] + durations[city] - 1)
 
-# Add specific day constraints
-# Vienna between day 3 and day 6
-for i in range(2, 6):
-    solver.add(days[i] == 5)
-# Madrid between day 6 and day 7
-solver.add(days[5] == 2)
-solver.add(days[6] == 2)
-# Riga between day 20 and day 23
-for i in range(19, 23):
-    solver.add(days[i] == 6)
-# Tallinn between day 23 and day 27
-for i in range(22, 27):
-    solver.add(days[i] == 7)
-# Krakow between day 11 and day 15
-for i in range(10, 15):
-    solver.add(days[i] == 8)
+# Add constraints for the entire trip duration
+for city in cities:
+    solver.add(start[city] >= 1)
+    solver.add(end[city] <= 27)
 
-# Add transition constraints
-for i in range(26):
-    a = days[i]
-    b = days[i+1]
-    for city in neighbors:
-        if city == a:
+# Add fixed constraints for specific events
+solver.add(start['Vienna'] >= 3)
+solver.add(end['Vienna'] <= 6)
+solver.add(start['Riga'] >= 20)
+solver.add(end['Riga'] <= 23)
+solver.add(start['Tallinn'] >= 23)
+solver.add(end['Tallinn'] <= 27)
+solver.add(start['Krakow'] >= 11)
+solver.add(end['Krakow'] <= 15)
+
+# Create 'next' variables to model the sequence of cities
+next_city = {city: String(city + '_next') for city in cities}
+
+# Each city must have a next city that is different
+for city in cities:
+    solver.add(Or([next_city[city] == c for c in cities if c != city]))
+
+# For each possible pair of cities (A, B), if B is the next city after A,
+# then A's end day must be B's start day, and there must be a flight from A to B
+for a in cities:
+    for b in cities:
+        if a == b:
             continue
-        # If current day is 'city', next day must be in its neighbors
-        solver.add(Implies(a == city, Or([b == neighbor for neighbor in neighbors.get(city, [])])))
+        solver.add(
+            Implies(
+                next_city[a] == b,
+                And(
+                    end[a] == start[b],
+                    b in flights.get(a, [])
+                )
+            )
+        )
 
-# Add count constraints for each city
-for c in required_days:
-    solver.add(PbEq([(days[i] == c, 1) for i in range(27)], required_days[c]))
+# Ensure that the sequence starts with Vienna and ends with Tallinn
+solver.add(next_city['Vienna'] != 'Vienna')  # Vienna is not the last city
+solver.add(next_city['Tallinn'] == 'Tallinn')  # Tallinn has no next city
 
 # Solve the problem
 result = solver.check()
 
 if result == sat:
     model = solver.model()
-    print("Trip Plan:")
-    for i in range(27):
-        day = model[days[i]].as_long()
-        print(f"Day {i+1}: {cities[day]}")
+    itinerary = []
+    current_city = 'Vienna'
+    while current_city != 'Tallinn':
+        next_c = model[next_city[current_city]]
+        itinerary.append((current_city, model[start[current_city]], model[end[current_city]]))
+        current_city = next_c
+    itinerary.append((current_city, model[start[current_city]], model[end[current_city]]))
+    
+    for city_info in itinerary:
+        print(f"City: {city_info[0]}, Start Day: {city_info[1]}, End Day: {city_info[2]}")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

@@ -1,31 +1,36 @@
-from z3 import Optimize, Int, Or, sat
+import z3
 
-opt = Optimize()
-start = Int('start')
-duration = 30  # 30 minutes
+solver = z3.Optimize()
+S = z3.Int('S')
 
-# Convert time constraints to minutes since 9:00 (0-480)
-opt.add(start >= 0, start + duration <= 480)
+# Total work hours on Monday: 9:00 (0) to 17:00 (480 minutes)
+solver.add(S >= 0)
+solver.add(S + 30 <= 480)
 
-# Nicole's busy periods (minutes since 9:00)
-nicole_busy = [
-    (0, 60),    # 9:00-10:00
-    (90, 450)   # 10:30-16:30
+# Nicole's blocked intervals (minutes since 9:00)
+nicole_blocks = [
+    (0, 60),   # 9:00-10:00
+    (90, 450)  # 10:30-16:30
 ]
-for (s, e) in nicole_busy:
-    opt.add(Or(start + duration <= s, start >= e))
 
-# Nicole's preference: start after 16:00 (420 minutes)
-opt.add(start >= 420)
+# Add constraints to avoid blocked intervals
+for start, end in nicole_blocks:
+    solver.add(z3.Or(S + 30 <= start, S >= end))
+
+# Nicole's preference: meeting starts at or after 16:00 (420 minutes)
+solver.add(S >= 420)
 
 # Find earliest possible time
-opt.minimize(start)
+solver.minimize(S)
 
-if opt.check() == sat:
-    m = opt.model()
-    start_min = m[start].as_long()
-    hours = 9 + start_min // 60
-    minutes = start_min % 60
-    print(f"Meeting starts on Monday at {hours:02d}:{minutes:02d}")
+if solver.check() == z3.sat:
+    model = solver.model()
+    start_minutes = model[S].as_long()
+    start_h = 9 + start_minutes // 60
+    start_m = start_minutes % 60
+    end_minutes = start_minutes + 30
+    end_h = 9 + end_minutes // 60
+    end_m = end_minutes % 60
+    print(f"Monday\n{start_h}:{start_m:02d}\n{end_h}:{end_m:02d}")
 else:
-    print("No valid time found")
+    print("No solution found")

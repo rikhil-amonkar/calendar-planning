@@ -1,150 +1,174 @@
-from z3 import Solver, IntVector, Distinct, And, Or, If, Sum, sat
+from z3 import *
 
-# We have 9 cities with the following properties:
-# City indices and durations:
-# 0: Salzburg  - 2 days.
-# 1: Venice    - 5 days.
-# 2: Bucharest - 4 days.
-# 3: Brussels  - 2 days, with a friend meeting between day 21 and day 22.
-#                 For a 2-day visit [S, S+1] we force S == 21.
-# 4: Hamburg   - 4 days.
-# 5: Copenhagen- 4 days, with a wedding between day 18 and day 21.
-#                 For a 4-day visit [S, S+3] this forces S == 18.
-# 6: Nice      - 3 days, with a relatives visit between day 9 and day 11.
-#                 For a 3-day visit [S, S+2] we force S == 9.
-# 7: Zurich    - 5 days.
-# 8: Naples    - 4 days, with a workshop between day 22 and day 25.
-#                 For a 4-day visit [S, S+3] we force S == 22.
-#
-# Total durations = 2 + 5 + 4 + 2 + 4 + 4 + 3 + 5 + 4 = 33.
-# There are 8 flights (each flight overlaps one day), so the effective trip length equals 33 - 8 = 25 days.
-# Therefore, the departure day from the last city must equal 25.
+# City indices and required credits:
+# 0: Salzburg   – required 2 days.
+# 1: Venice     – required 5 days.
+# 2: Bucharest  – required 4 days.
+# 3: Brussels   – required 2 days.
+# 4: Hamburg    – required 4 days.
+# 5: Copenhagen – required 4 days.
+# 6: Nice       – required 3 days.
+# 7: Zurich     – required 5 days.
+# 8: Naples     – required 4 days.
+city_names = ["Salzburg", "Venice", "Bucharest", "Brussels", "Hamburg", "Copenhagen", "Nice", "Zurich", "Naples"]
+required_credits = [2, 5, 4, 2, 4, 4, 3, 5, 4]
+# Total required credits = 2+5+4+2+4+4+3+5+4 = 33
 
-cities = ["Salzburg", "Venice", "Bucharest", "Brussels", "Hamburg", "Copenhagen", "Nice", "Zurich", "Naples"]
-durations = [2, 5, 4, 2, 4, 4, 3, 5, 4]
-n = len(cities)
-total_trip = 25
+# Total itinerary days:
+DAYS = 25
+# Credit rule:
+# - On a day with no flight, you get 1 credit for the city of that day.
+# - On a flight day (city change), you get 1 credit for the departure and 1 credit for the arrival.
+# Thus total credits = DAYS + (# flight-days).
+# To achieve 33 credits, we need (# flight-days) = 33 - 25 = 8.
+REQUIRED_FLIGHTS = 8
 
-solver = Solver()
-
-# Decision variables:
-# pos[i] represents the index of the city visited in the i-th position.
-# They form a permutation of the indices 0..8.
-pos = IntVector("pos", n)
-solver.add(Distinct(pos))
-for i in range(n):
-    solver.add(And(pos[i] >= 0, pos[i] < n))
-
-# S[i] represents the arrival (start) day for the city at position i.
-# The trip always starts on day 1.
-S = IntVector("S", n)
-solver.add(S[0] == 1)
-for i in range(n):
-    solver.add(S[i] >= 1)
-
-# Chain arrival times using the fact that taking a flight overlaps the last day of a city's stay.
-for i in range(1, n):
-    solver.add(S[i] == S[i-1] + Sum([If(pos[i-1] == c, durations[c] - 1, 0) for c in range(n)]))
-
-# The departure day from the last city must equal total_trip.
-solver.add(S[n-1] + Sum([If(pos[n-1] == c, durations[c] - 1, 0) for c in range(n)]) == total_trip)
-
-# Allowed direct flights between consecutive cities.
-# City indices:
-# 0: Salzburg, 1: Venice, 2: Bucharest, 3: Brussels, 4: Hamburg,
-# 5: Copenhagen, 6: Nice, 7: Zurich, 8: Naples.
-# The allowed direct flights (bidirectional unless noted as one-way) are:
-allowed_flights = {
-    # Zurich and Brussels
+# Allowed direct flights (bidirectional unless noted otherwise):
+# "Zurich and Brussels"       : (7,3) and (3,7)
+# "Bucharest and Copenhagen"   : (2,5) and (5,2)
+# "Venice and Brussels"        : (1,3) and (3,1)
+# "Nice and Zurich"            : (6,7) and (7,6)
+# "Hamburg and Nice"           : (4,6) and (6,4)
+# "Zurich and Naples"          : (7,8) and (8,7)
+# "Hamburg and Bucharest"      : (4,2) and (2,4)
+# "Zurich and Copenhagen"      : (7,5) and (5,7)
+# "Bucharest and Brussels"     : (2,3) and (3,2)
+# "Hamburg and Brussels"       : (4,3) and (3,4)
+# "Venice and Naples"          : (1,8) and (8,1)
+# "Venice and Copenhagen"      : (1,5) and (5,1)
+# "Bucharest and Naples"       : (2,8) and (8,2)
+# "Hamburg and Copenhagen"     : (4,5) and (5,4)
+# "Venice and Zurich"          : (1,7) and (7,1)
+# "Nice and Brussels"          : (6,3) and (3,6)
+# "Hamburg and Venice"         : (4,1) and (1,4)
+# "Copenhagen and Naples"      : (5,8) and (8,5)
+# "Nice and Naples"            : (6,8) and (8,6)
+# "Hamburg and Zurich"         : (4,7) and (7,4)
+# "Salzburg and Hamburg"       : (0,4) and (4,0)
+# "Zurich and Bucharest"       : (7,2) and (2,7)
+# "Brussels and Naples"        : (3,8) and (8,3)
+# "Copenhagen and Brussels"    : (5,3) and (3,5)
+# "Venice and Nice"            : (1,6) and (6,1)
+# "Nice and Copenhagen"        : (6,5) and (5,6)
+allowed_flights = [
     (7,3), (3,7),
-    # Bucharest and Copenhagen
     (2,5), (5,2),
-    # Venice and Brussels
     (1,3), (3,1),
-    # Nice and Zurich
     (6,7), (7,6),
-    # Hamburg and Nice
     (4,6), (6,4),
-    # Zurich and Naples
     (7,8), (8,7),
-    # Hamburg and Bucharest
     (4,2), (2,4),
-    # Zurich and Copenhagen
     (7,5), (5,7),
-    # Bucharest and Brussels
     (2,3), (3,2),
-    # Hamburg and Brussels
     (4,3), (3,4),
-    # Venice and Naples
     (1,8), (8,1),
-    # Venice and Copenhagen
     (1,5), (5,1),
-    # Bucharest and Naples
     (2,8), (8,2),
-    # Hamburg and Copenhagen
     (4,5), (5,4),
-    # Venice and Zurich
     (1,7), (7,1),
-    # Nice and Brussels
     (6,3), (3,6),
-    # Hamburg and Venice
     (4,1), (1,4),
-    # Copenhagen and Naples
     (5,8), (8,5),
-    # Nice and Naples
     (6,8), (8,6),
-    # Hamburg and Zurich
     (4,7), (7,4),
-    # Salzburg and Hamburg
     (0,4), (4,0),
-    # Zurich and Bucharest
     (7,2), (2,7),
-    # Brussels and Naples
     (3,8), (8,3),
-    # Copenhagen and Brussels
     (5,3), (3,5),
-    # Venice and Nice
     (1,6), (6,1),
-    # Nice and Copenhagen
     (6,5), (5,6)
-}
+]
 
-for i in range(n-1):
-    flight_options = []
-    for a in range(n):
-        for b in range(n):
-            if (a, b) in allowed_flights:
-                flight_options.append(And(pos[i] == a, pos[i+1] == b))
-    solver.add(Or(flight_options))
+# Create the Z3 solver.
+s = Solver()
 
-# Special event constraints:
-for i in range(n):
-    # For Brussels (city index 3): meeting friends between day 21 and day 22 forces S == 21.
-    solver.add(If(pos[i] == 3, S[i] == 21, True))
-    # For Copenhagen (city index 5): wedding between day 18 and day 21 forces S == 18.
-    solver.add(If(pos[i] == 5, S[i] == 18, True))
-    # For Nice (city index 6): relatives visit between day 9 and day 11 forces S == 9.
-    solver.add(If(pos[i] == 6, S[i] == 9, True))
-    # For Naples (city index 8): workshop between day 22 and day 25 forces S == 22.
-    solver.add(If(pos[i] == 8, S[i] == 22, True))
+# Variables:
+# c[d]: city index on day d (0 <= d < DAYS)
+c = [Int(f"c_{d}") for d in range(DAYS)]
+# flight[d]: Boolean indicating if a flight (change of city) occurs on day d.
+# Convention: day 0 has no flight.
+flight = [Bool(f"flight_{d}") for d in range(DAYS)]
 
-# -----------------------------------------------------------------------------
-# Solve the model.
-# -----------------------------------------------------------------------------
-if solver.check() == sat:
-    m = solver.model()
-    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
-    arrivals  = [m.evaluate(S[i]).as_long() for i in range(n)]
-    
-    print("Trip Itinerary:")
-    for i in range(n):
-        city_index = itinerary[i]
-        city = cities[city_index]
-        arrival = arrivals[i]
-        departure = arrival + durations[city_index] - 1
-        print(f" Position {i+1}: {city:10s} | Arrival: Day {arrival:2d} | Departure: Day {departure:2d}")
-    
-    final_day = m.evaluate(S[n-1] + durations[itinerary[-1]] - 1)
-    print("Trip ends on Day:", final_day)
+# Domain constraints: each day's city is among 0..8.
+for d in range(DAYS):
+    s.add(c[d] >= 0, c[d] < len(city_names))
+s.add(flight[0] == False)
+
+# For days 1 to DAYS-1, determine flight occurrence and allowed transitions.
+for d in range(1, DAYS):
+    # A flight occurs if today's city is different from yesterday's.
+    s.add(flight[d] == (c[d] != c[d-1]))
+    # If a flight occurs, then the transition (c[d-1] -> c[d]) must be an allowed flight.
+    s.add(Implies(flight[d],
+                  Or([And(c[d-1] == frm, c[d] == to) for (frm, to) in allowed_flights])
+                 ))
+
+# Enforce exactly REQUIRED_FLIGHTS flight days.
+s.add(Sum([If(flight[d], 1, 0) for d in range(DAYS)]) == REQUIRED_FLIGHTS)
+
+# Define helper: inCityOnDay(d, target)
+# On a flight day, the day "covers" both the departure (previous day) and arrival (current day).
+def inCityOnDay(d, target):
+    if d == 0:
+        return c[0] == target
+    return If(flight[d],
+              Or(c[d-1] == target, c[d] == target),
+              c[d] == target)
+
+# Compute day credits (contributions) for each city.
+# Day 0 contributes 1 credit to city c[0].
+# For each day d>=1:
+#   - if no flight: add 1 credit for city c[d].
+#   - if flight: add 1 credit for departure (c[d-1]) and 1 for arrival (c[d]).
+counts = [Int(f"count_{i}") for i in range(len(city_names))]
+for city in range(len(city_names)):
+    base = If(c[0] == city, 1, 0)
+    daily_contrib = []
+    for d in range(1, DAYS):
+        daily_contrib.append(
+            If(flight[d],
+               If(c[d-1] == city, 1, 0) + If(c[d] == city, 1, 0),
+               If(c[d] == city, 1, 0)
+            )
+        )
+    s.add(counts[city] == base + Sum(daily_contrib))
+    # Enforce the required day credits for each city.
+    s.add(counts[city] == required_credits[city])
+    # Ensure each city is visited at least once in the itinerary.
+    s.add(Or([c[d] == city for d in range(DAYS)]))
+
+# Event constraints:
+
+# 1. Meet friends in Brussels (city 3) between day 21 and day 22.
+# Day numbers are 1-indexed, so day 21 and day 22 correspond to indices 20 and 21.
+s.add(Or(inCityOnDay(20, 3), inCityOnDay(21, 3)))
+
+# 2. Wedding in Copenhagen (city 5) between day 18 and day 21.
+# That is days 18, 19, 20, 21 => zero-indexed 17,18,19,20.
+s.add(Or([inCityOnDay(d, 5) for d in [17, 18, 19, 20]]))
+
+# 3. Visit relatives in Nice (city 6) between day 9 and day 11.
+# That is days 9, 10, 11 => zero-indexed 8,9,10.
+s.add(Or([inCityOnDay(d, 6) for d in [8, 9, 10]]))
+
+# 4. Workshop in Naples (city 8) between day 22 and day 25.
+# That is days 22, 23, 24, 25 => zero-indexed 21,22,23,24.
+s.add(Or([inCityOnDay(d, 8) for d in [21, 22, 23, 24]]))
+
+# Solve the scheduling problem.
+if s.check() == sat:
+    m = s.model()
+    print("Found a valid itinerary:")
+    for d in range(DAYS):
+        city_idx = m[c[d]].as_long()
+        day_str = f"Day {d+1:02d}: {city_names[city_idx]}"
+        if d >= 1 and m.evaluate(flight[d]):
+            dep = m[c[d-1]].as_long()
+            arr = m[c[d]].as_long()
+            day_str += f" (Flight: {city_names[dep]} -> {city_names[arr]})"
+        print(day_str)
+    print("\nCity day contributions:")
+    for i in range(len(city_names)):
+        print(f"{city_names[i]:10s}: {m.evaluate(counts[i])}")
 else:
-    print("No valid trip plan could be found.")
+    print("No solution found.")

@@ -1,69 +1,48 @@
 from z3 import *
 
 def find_meeting_time():
-    # Initialize the solver with optimization
-    opt = Optimize()
-    
-    # Meeting duration is 30 minutes
-    meeting_duration = 30
-    
-    # Work hours are from 9:00 to 17:00 (480 minutes total, from 0 to 480)
-    start_time = 0  # 9:00 AM as 0 minutes
-    end_time = 480   # 17:00 PM as 480 minutes (8 hours * 60 minutes)
-    
-    # Define the meeting start time
+    # Define the work hours
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    meeting_duration = 30  # 30 minutes
+
+    # Nicole's busy slots in minutes since 9:00
+    nicole_busy = [
+        (0, 60),        # 9:00-10:00
+        (90, 450)       # 10:30-16:30
+    ]
+
+    # Create a Z3 solver instance
+    s = Solver()
+
+    # The meeting start time (in minutes since 9:00)
     meeting_start = Int('meeting_start')
     
-    # Meeting must be within work hours
-    opt.add(meeting_start >= start_time)
-    opt.add(meeting_start + meeting_duration <= end_time)
-    
-    # Judy is free all day (no constraints)
-    
-    # Nicole's busy slots (in minutes from 9:00)
-    nicole_busy = [
-        (9*60, 10*60),       # 9:00-10:00
-        (10*60+30, 16*60+30) # 10:30-16:30
-    ]
-    
-    # Nicole's preference: would rather not meet before 16:00 (16*60)
-    # We'll model this as a soft constraint with penalty
-    penalty = Int('penalty')
-    opt.add(penalty >= 0)
-    nicole_preference_penalty = If(meeting_start < (16*60), 100, 0)
-    opt.add(penalty == nicole_preference_penalty)
-    
-    # Function to add no-overlap constraints
-    def add_busy_constraints(busy_slots):
-        for slot_start, slot_end in busy_slots:
-            opt.add(Or(
-                meeting_start + meeting_duration <= slot_start,
-                meeting_start >= slot_end
-            ))
-    
-    # Add constraints for Nicole's busy times
-    add_busy_constraints(nicole_busy)
-    
-    # We want to minimize the penalty (prefer times after 16:00)
-    opt.minimize(penalty)
-    
-    # Also prefer earlier times among the preferred options
-    opt.minimize(meeting_start)
-    
-    # Check for solution
-    if opt.check() == sat:
-        m = opt.model()
-        start_min = m[meeting_start].as_long()
-        
-        # Convert to readable time
-        hours = 9 + start_min // 60
-        minutes = start_min % 60
-        end_min = start_min + meeting_duration
-        end_h = 9 + end_min // 60
-        end_m = end_min % 60
-        
-        print(f"Optimal meeting time: {hours:02d}:{minutes:02d}-{end_h:02d}:{end_m:02d}")
+    # Constraints: meeting must be within work hours and have enough duration
+    s.add(meeting_start >= 0)
+    s.add(meeting_start + meeting_duration <= work_end - work_start)
+
+    # Nicole prefers to avoid meetings before 16:00 (420 minutes since 9:00)
+    s.add(meeting_start >= 420)
+
+    # Function to check if a time slot overlaps with any busy slot
+    def is_free(time, busy_slots):
+        return And([Or(time + meeting_duration <= start, time >= end) for start, end in busy_slots])
+
+    # Add constraint that the meeting time must be free for Nicole
+    s.add(is_free(meeting_start, nicole_busy))
+
+    # Check if a solution exists
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m[meeting_start].as_long()
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        print(f"Monday, {start_hour:02d}:{start_minute:02d} to {end_hour:02d}:{end_minute:02d}")
     else:
-        print("No suitable time slot found")
+        print("No suitable meeting time found.")
 
 find_meeting_time()

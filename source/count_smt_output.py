@@ -23,7 +23,7 @@ for filename in os.listdir(directory):
             entry = data.get("0shot", [{}])[0]
             if entry.get("has_error") is False:
                 has_error_false += 1
-            if entry.get("final_program_time") and entry.get("final_program_time").get("itinerary"):
+            if entry.get("final_program_time") and "itinerary" not in entry.get("final_program_time") or "itinerary" in entry.get("final_program_time") and entry.get("final_program_time").get("itinerary"):
                 final_program_time_not_empty += 1
             if entry.get("is_correct") is True:
                 is_correct_true += 1

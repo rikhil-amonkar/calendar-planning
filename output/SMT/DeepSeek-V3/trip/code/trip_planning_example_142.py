@@ -1,87 +1,62 @@
 from z3 import *
 
-def plan_trip():
-    # Initialize solver
-    s = Solver()
-
-    # Cities
-    cities = ['Madrid', 'Dublin', 'Tallinn']
-    city_indices = {city: idx for idx, city in enumerate(cities)}
-    
-    # Days (1-7)
-    days = 7
-    day_range = range(1, days + 1)
-    
-    # Create variables: city_day[i][j] is True if in city i on day j
-    city_day = [[Bool(f'city_{i}_day_{j}') for j in day_range] for i in range(len(cities))]
-    
-    # Constraints
-    
-    # 1. Each day must be in exactly one city
-    for day in day_range:
-        s.add(ExactlyOne([city_day[i][day-1] for i in range(len(cities))))
-    
-    # 2. Stay durations
-    stay_durations = {
-        'Madrid': 4,
-        'Dublin': 3,
+def solve_trip_planning():
+    # Cities and their codes
+    cities = {
+        'Madrid': 0,
+        'Dublin': 1,
         'Tallinn': 2
     }
+    city_names = {v: k for k, v in cities.items()}
     
-    for city, duration in stay_durations.items():
-        idx = city_indices[city]
-        s.add(Sum([If(city_day[idx][day-1], 1, 0) for day in day_range]) == duration)
-    
-    # 3. Fixed events
-    # Workshop in Tallinn between day 6-7
-    tallinn_idx = city_indices['Tallinn']
-    s.add(And(city_day[tallinn_idx][5], city_day[tallinn_idx][6]))  # Days 6-7
-    
-    # 4. Flight connections (direct flights)
-    connections = {
-        'Madrid': ['Dublin'],
-        'Dublin': ['Madrid', 'Tallinn'],
-        'Tallinn': ['Dublin']
+    # Direct flight connections
+    direct_flights = {
+        0: [1],  # Madrid
+        1: [0, 2],  # Dublin
+        2: [1]  # Tallinn
     }
     
-    # 5. Transition constraints
-    for day in range(1, days):
-        for from_city in cities:
-            from_idx = city_indices[from_city]
-            for to_city in cities:
-                to_idx = city_indices[to_city]
-                if to_city not in connections[from_city] and from_city != to_city:
-                    s.add(Implies(And(city_day[from_idx][day-1], city_day[to_idx][day]),
-                          False))
+    # Required days in each city
+    required_days = {
+        0: 4,  # Madrid
+        1: 3,  # Dublin
+        2: 2   # Tallinn
+    }
     
-    # 6. Consecutive stays
-    for city, duration in stay_durations.items():
-        if duration > 0:
-            idx = city_indices[city]
-            s.add(Or([And([city_day[idx][d] for d in range(day, day+duration)])
-                    for day in range(days - duration + 1)]))
+    # Create Z3 variables for each day
+    days = [Int(f'day_{i}') for i in range(7)]
+    s = Solver()
     
-    # Solve
+    # Each day must be one of the cities
+    for day in days:
+        s.add(Or([day == c for c in cities.values()]))
+    
+    # Event constraints
+    # Workshop in Tallinn (days 6-7)
+    s.add(days[5] == 2)
+    s.add(days[6] == 2)
+    
+    # Flight constraints between consecutive days
+    for i in range(6):
+        current = days[i]
+        next_day = days[i+1]
+        s.add(Or(next_day == current, 
+               And(next_day != current, 
+                   Or([next_day == dest for dest in direct_flights[current]]))))
+    
+    # Total days in each city must match requirements
+    for city in cities.values():
+        total = Sum([If(day == city, 1, 0) for day in days])
+        s.add(total == required_days[city])
+    
+    # Solve and print schedule
     if s.check() == sat:
         m = s.model()
-        itinerary = []
-        for day in day_range:
-            for i, city in enumerate(cities):
-                if is_true(m.eval(city_day[i][day-1])):
-                    itinerary.append((day, city))
-                    break
-        
-        print("7-Day European Trip Itinerary:")
-        for day, city in itinerary:
-            print(f"Day {day}: {city}")
-        
-        print("\nFlight Transitions:")
-        prev_city = None
-        for day, city in itinerary:
-            if prev_city and prev_city != city:
-                print(f"Day {day}: Fly from {prev_city} to {city}")
-            prev_city = city
+        schedule = [m[day].as_long() for day in days]
+        print("Day\tCity")
+        for i in range(7):
+            print(f"{i+1}\t{city_names[schedule[i]]}")
     else:
-        print("No valid itinerary found")
+        print("No valid trip plan found.")
 
-plan_trip()
+solve_trip_planning()

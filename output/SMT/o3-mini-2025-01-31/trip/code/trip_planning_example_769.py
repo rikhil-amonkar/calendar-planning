@@ -1,115 +1,137 @@
-from z3 import Solver, IntVector, Distinct, And, Or, If, Sum, sat
+from z3 import *
 
-# We have 6 cities with the following properties:
-# 0: Porto      - 5 days.
-# 1: Prague     - 4 days.
-# 2: Reykjavik  - 4 days, and you must attend a wedding there between day 4 and day 7.
-#                   For a 4‐day visit [S, S+3] to cover the wedding window, we require S == 4.
-# 3: Santorini  - 2 days.
-# 4: Amsterdam  - 2 days, and you must attend a conference there on day 14 and day 15.
-#                   For a 2‐day visit [S, S+1] to cover day 14 and 15, we require S == 14.
-# 5: Munich     - 4 days, and you want to meet a friend in Munich between day 7 and day 10.
-#                   For a 4‐day visit [S, S+3] to intersect [7,10] we require S <= 10 and S+3 >= 7.
+# City indices:
+# 0: Porto       – required 5 days
+# 1: Prague      – required 4 days
+# 2: Reykjavik   – required 4 days; event: attend wedding in Reykjavik between day 4 and day 7.
+# 3: Santorini   – required 2 days
+# 4: Amsterdam   – required 2 days; event: attend conference in Amsterdam during day 14 and day 15.
+# 5: Munich      – required 4 days; event: meet a friend in Munich between day 7 and day 10.
+city_names = ["Porto", "Prague", "Reykjavik", "Santorini", "Amsterdam", "Munich"]
+req = [5, 4, 4, 2, 2, 4]
+
+# Total required day credits:
+#   5 + 4 + 4 + 2 + 2 + 4 = 21
 #
-# The total visit durations sum = (5 + 4 + 4 + 2 + 2 + 4) = 21.
-# When traveling by direct flights (one flight per connection between cities), we subtract (6 - 1) = 5 days
-# so the trip ends on day 21 - 5 = 16.
-# Total trip length = 16 days.
-#
+# In this itinerary:
+# - When there is no flight on a day, that day contributes 1 credit.
+# - When you take a flight on day X (i.e. the city changes from day X-1 to day X),
+#   day X contributes 1 credit for the origin and 1 credit for the destination.
+# For T days and F flight-days, total credits = T + F.
+# Here T = 16, required total credits = 21, so we need F = 5 flight-days.
+DAYS = 16
+REQUIRED_FLIGHTS = 5
+
 # Allowed direct flights (bidirectional unless stated otherwise):
-# - Porto and Amsterdam:        (0,4) and (4,0)
-# - Munich and Amsterdam:       (5,4) and (4,5)
-# - Reykjavik and Amsterdam:    (2,4) and (4,2)
-# - Munich and Porto:           (5,0) and (0,5)
-# - Prague and Reykjavik:       (1,2) and (2,1)
-# - Reykjavik and Munich:       (2,5) and (5,2)
-# - Amsterdam and Santorini:    (4,3) and (3,4)
-# - Prague and Amsterdam:       (1,4) and (4,1)
-# - Prague and Munich:          (1,5) and (5,1)
+allowed_flights = [
+    # Porto <-> Amsterdam
+    (0, 4), (4, 0),
+    # Munich <-> Amsterdam
+    (5, 4), (4, 5),
+    # Reykjavik <-> Amsterdam
+    (2, 4), (4, 2),
+    # Munich <-> Porto
+    (5, 0), (0, 5),
+    # Prague <-> Reykjavik
+    (1, 2), (2, 1),
+    # Reykjavik <-> Munich
+    (2, 5), (5, 2),
+    # Amsterdam <-> Santorini
+    (4, 3), (3, 4),
+    # Prague <-> Amsterdam
+    (1, 4), (4, 1),
+    # Prague <-> Munich
+    (1, 5), (5, 1)
+]
 
-cities = ["Porto", "Prague", "Reykjavik", "Santorini", "Amsterdam", "Munich"]
-durations = [5, 4, 4, 2, 2, 4]
-n = len(cities)
-total_trip = 16
+# Create the Z3 solver
+s = Solver()
 
-solver = Solver()
+# Variables:
+# c[d] is the "base" city on day d (for d = 0,...,15)
+c = [Int(f"c_{d}") for d in range(DAYS)]
+# flight[d] is a Boolean variable that indicates whether a flight occurs on day d.
+# By convention, day 0 has no flight.
+flight = [Bool(f"flight_{d}") for d in range(DAYS)]
 
-# Decision variables:
-# pos[i] is the index of the city visited at the i-th position.
-pos = IntVector("pos", n)
-solver.add(Distinct(pos))
-for i in range(n):
-    solver.add(And(pos[i] >= 0, pos[i] < n))
+# Domain constraints: each day's city must be in the range [0, 5]
+for d in range(DAYS):
+    s.add(c[d] >= 0, c[d] < len(city_names))
 
-# S[i] is the arrival day at the city in position i.
-# The trip starts on day 1.
-S = IntVector("S", n)
-solver.add(S[0] == 1)
-for i in range(n):
-    solver.add(S[i] >= 1)
+# Day 0 has no flight.
+s.add(flight[0] == False)
 
-# Transit: When moving consecutively from one city to the next,
-# the arrival day S[i] = S[i-1] + (duration(previous city) - 1).
-for i in range(1, n):
-    expr = Sum([If(pos[i-1] == c, durations[c] - 1, 0) for c in range(n)])
-    solver.add(S[i] == S[i-1] + expr)
-
-# Final departure day constraint:
-# Departure day from the last city is S[n-1] + (duration(last city) - 1) == total_trip.
-solver.add(S[n-1] + Sum([If(pos[n-1] == c, durations[c] - 1, 0) for c in range(n)]) == total_trip)
-
-# Allowed direct flights constraints between consecutive cities:
-allowed_flights = {
-    (0,4), (4,0),     # Porto <-> Amsterdam
-    (5,4), (4,5),     # Munich <-> Amsterdam
-    (2,4), (4,2),     # Reykjavik <-> Amsterdam
-    (5,0), (0,5),     # Munich <-> Porto
-    (1,2), (2,1),     # Prague <-> Reykjavik
-    (2,5), (5,2),     # Reykjavik <-> Munich
-    (4,3), (3,4),     # Amsterdam <-> Santorini
-    (1,4), (4,1),     # Prague <-> Amsterdam
-    (1,5), (5,1)      # Prague <-> Munich
-}
-for i in range(n - 1):
-    options = []
-    for a in range(n):
-        for b in range(n):
-            if (a, b) in allowed_flights:
-                options.append(And(pos[i] == a, pos[i+1] == b))
-    solver.add(Or(options))
-
-# Special event constraints:
-for i in range(n):
-    # For Reykjavik (index 2): Wedding between day 4 and 7.
-    # With a 4-day visit (days S...S+3), force start day S to be 4.
-    solver.add(If(pos[i] == 2, S[i] == 4, True))
+# For each day d=1,...,DAYS-1, define flight existence and enforce allowed transitions.
+for d in range(1, DAYS):
+    s.add(flight[d] == (c[d] != c[d-1]))
+    s.add(Implies(flight[d],
+                  Or([And(c[d-1] == frm, c[d] == to) for (frm, to) in allowed_flights])
+                 ))
     
-    # For Amsterdam (index 4): Conference on day 14 and day 15.
-    # With a 2-day visit (days S, S+1), force S == 14.
-    solver.add(If(pos[i] == 4, S[i] == 14, True))
-    
-    # For Munich (index 5): Meeting a friend between day 7 and day 10.
-    # With a 4-day visit (days S...S+3), ensure the visit overlaps the interval [7,10]:
-    # This is satisfied if S <= 10 and S+3 >= 7.
-    solver.add(If(pos[i] == 5, And(S[i] <= 10, S[i] + 3 >= 7), True))
+# Constrain the total number of flight-days to equal REQUIRED_FLIGHTS (5)
+s.add(Sum([If(flight[d], 1, 0) for d in range(DAYS)]) == REQUIRED_FLIGHTS)
 
-# -----------------------------------------------------------------------------
-# Solve the model.
-# -----------------------------------------------------------------------------
-if solver.check() == sat:
-    m = solver.model()
-    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
-    arrivals  = [m.evaluate(S[i]).as_long() for i in range(n)]
-    
-    print("Trip Itinerary:")
-    for i in range(n):
-        city_idx = itinerary[i]
-        city = cities[city_idx]
-        arrival = arrivals[i]
-        departure = arrival + durations[city_idx] - 1
-        print(f" Position {i+1}: {city:10s} | Arrival: Day {arrival:2d} | Departure: Day {departure:2d}")
-    
-    final_day = m.evaluate(S[n-1] + durations[itinerary[-1]] - 1)
-    print("Trip ends on Day:", final_day)
+# Helper function: inCityOnDay(d, target)
+# This returns a condition that is true if, on day d, the itinerary "includes" city 'target'.
+# On a day with a flight, both the departure city (previous day) and the arrival city count.
+def inCityOnDay(d, target):
+    if d == 0:
+        return c[0] == target
+    return If(flight[d],
+              Or(c[d-1] == target, c[d] == target),
+              c[d] == target)
+
+# Compute day credits for each city.
+# On day 0, the base city gets 1 credit.
+# For each day d from 1 to DAYS-1:
+#  - If no flight on day d, add 1 credit for the base city.
+#  - If flight on day d, add 1 credit for both the departure (day d-1) and arrival (day d).
+counts = [Int(f"count_{i}") for i in range(len(city_names))]
+for city in range(len(city_names)):
+    base_credit = If(c[0] == city, 1, 0)
+    daily = []
+    for d in range(1, DAYS):
+        daily.append(
+            If(flight[d],
+               If(c[d-1] == city, 1, 0) + If(c[d] == city, 1, 0),
+               If(c[d] == city, 1, 0)
+            )
+        )
+    s.add(counts[city] == base_credit + Sum(daily))
+    # Enforce required credits for each city.
+    s.add(counts[city] == req[city])
+    # Also, ensure each city is visited at least once.
+    s.add(Or([c[d] == city for d in range(DAYS)]))
+
+# Event Constraints:
+
+# 1. Wedding in Reykjavik between day 4 and day 7.
+#    That is, on at least one day among day 4 to day 7 (i.e. indices 3,4,5,6), the itinerary includes Reykjavik (city 2).
+s.add(Or([inCityOnDay(d, 2) for d in range(3, 7)]))
+
+# 2. Conference in Amsterdam during day 14 and day 15.
+#    That is, on day 14 (index 13) and day 15 (index 14) the itinerary includes Amsterdam (city 4).
+s.add(inCityOnDay(13, 4))
+s.add(inCityOnDay(14, 4))
+
+# 3. Meet a friend in Munich between day 7 and day 10.
+#    That is, on at least one day among day 7 to day 10 (indices 6,7,8,9), the itinerary includes Munich (city 5).
+s.add(Or([inCityOnDay(d, 5) for d in range(6, 10)]))
+
+# Solve the scheduling problem.
+if s.check() == sat:
+    m = s.model()
+    print("Found a valid itinerary:")
+    for d in range(DAYS):
+        city_idx = m[c[d]].as_long()
+        day_str = f"Day {d+1:2d}: {city_names[city_idx]}"
+        if d >= 1 and m.evaluate(flight[d]):
+            dep = m[c[d-1]].as_long()
+            arr = city_idx
+            day_str += f" (Flight: {city_names[dep]} -> {city_names[arr]})"
+        print(day_str)
+    print("\nCity day contributions:")
+    for i in range(len(city_names)):
+        print(f"{city_names[i]:10s}: {m.evaluate(counts[i])}")
 else:
-    print("No valid trip plan could be found.")
+    print("No solution found.")

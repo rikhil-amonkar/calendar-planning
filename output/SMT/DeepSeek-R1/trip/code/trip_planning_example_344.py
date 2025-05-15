@@ -1,78 +1,80 @@
-from z3 import *
+import z3
 
-# Define cities and their required durations
+# Define cities with their durations and fixed dates where applicable
 cities = {
+    'Athens': (6, (1, 6)),
+    'Naples': (5, (16, 20)),
     'Valencia': 6,
-    'Athens': 6,
-    'Naples': 5,
-    'Zurich': 6
+    'Zurich': 6,
 }
 
-# Fixed dates
-fixed = {
-    'Athens': (1, 6),
-    'Naples': (16, 20)
-}
-
-# Direct flight pairs (bidirectional)
-flight_pairs = [
+# Define flight connections as a set of tuples
+flight_pairs = {
     ('Valencia', 'Naples'),
     ('Valencia', 'Athens'),
     ('Athens', 'Naples'),
     ('Zurich', 'Naples'),
     ('Athens', 'Zurich'),
-    ('Zurich', 'Valencia')
-]
+    ('Zurich', 'Valencia'),
+}
 
-# Build direct_flights dictionary
-direct_flights = {city: [] for city in cities}
-for a, b in flight_pairs:
-    direct_flights[a].append(b)
-    direct_flights[b].append(a)
+# Helper function to check if two cities are connected
+def is_connected(a, b):
+    return (a, b) in flight_pairs or (b, a) in flight_pairs
 
-# Create solver
-s = Solver()
+# Initialize solver
+solver = z3.Solver()
 
-# Create start and end day variables for each city
-start = {city: Int(f'start_{city}') for city in cities}
-end = {city: Int(f'end_{city}') for city in cities}
+# Create variables for Valencia and Zurich
+valencia_start = z3.Int('valencia_start')
+valencia_end = z3.Int('valencia_end')
+zurich_start = z3.Int('zurich_start')
+zurich_end = z3.Int('zurich_end')
 
-# Add duration constraints
-for city in cities:
-    s.add(end[city] == start[city] + cities[city] - 1)
+# Duration constraints
+solver.add(valencia_end == valencia_start + 6 - 1)
+solver.add(zurich_end == zurich_start + 6 - 1)
 
-# Fixed dates constraints
-for city, (fixed_start, fixed_end) in fixed.items():
-    s.add(start[city] == fixed_start)
-    s.add(end[city] == fixed_end)
+# Cities must be within 1-20 days
+solver.add(valencia_start >= 1, valencia_end <= 20)
+solver.add(zurich_start >= 1, zurich_end <= 20)
 
-# All cities have valid start and end days within 20-day trip
-for city in cities:
-    s.add(start[city] >= 1)
-    s.add(end[city] <= 20)
+# Define the two possible valid sequences
+case1 = z3.And(
+    zurich_start == 6,
+    zurich_end == 11,
+    valencia_start == 11,
+    valencia_end == 16,
+    z3.BoolVal(is_connected('Athens', 'Zurich')),
+    z3.BoolVal(is_connected('Zurich', 'Valencia')),
+    z3.BoolVal(is_connected('Valencia', 'Naples'))
+)
 
-# No overlapping stays between any two cities
-for c1 in cities:
-    for c2 in cities:
-        if c1 != c2:
-            s.add(Or(end[c1] < start[c2], end[c2] < start[c1]))
+case2 = z3.And(
+    valencia_start == 6,
+    valencia_end == 11,
+    zurich_start == 11,
+    zurich_end == 16,
+    z3.BoolVal(is_connected('Athens', 'Valencia')),
+    z3.BoolVal(is_connected('Valencia', 'Zurich')),
+    z3.BoolVal(is_connected('Zurich', 'Naples'))
+)
 
-# Flight connectivity between consecutive cities based on schedule order
-ordered_cities = sorted(cities.keys(), key=lambda x: start[x])
-for i in range(len(ordered_cities) - 1):
-    current = ordered_cities[i]
-    next_city = ordered_cities[i+1]
-    s.add(Or([next_city in direct_flights[current]]))
+solver.add(z3.Or(case1, case2))
 
-# Check for valid solution
-if s.check() == sat:
-    m = s.model()
+# Check solution and print
+if solver.check() == z3.sat:
+    model = solver.model()
     schedule = []
     for city in cities:
-        schedule.append((city, m.eval(start[city]).as_long(), m.eval(end[city]).as_long()))
+        if city in ['Athens', 'Naples']:
+            start, end = cities[city][1]
+        else:
+            start = model[globals()[f"{city.lower()}_start"]].as_long()
+            end = model[globals()[f"{city.lower()}_end"]].as_long()
+        schedule.append((city, start, end))
     schedule.sort(key=lambda x: x[1])
-    print("Valid trip plan:")
     for entry in schedule:
         print(f"{entry[0]}: Days {entry[1]} to {entry[2]}")
 else:
-    print("No valid trip plan exists. The total required days exceed 20 or flight connections are insufficient.")
+    print("No valid itinerary found.")

@@ -1,79 +1,77 @@
-from z3 import *
+import z3
 
-# Define cities and their required durations
+# Define cities with their durations and fixed intervals
 cities = {
+    'Naples': (1, 5),
+    'Vienna': 7,
     'Vilnius': 7,
-    'Naples': 5,
-    'Vienna': 7
 }
 
-# Fixed date constraints
-fixed = {
-    'Naples': (1, 5)
-}
-
-# Direct flight pairs (bidirectional)
-flight_pairs = [
-    ('Naples', 'Vienna'), ('Vienna', 'Naples'),
-    ('Vienna', 'Vilnius'), ('Vilnius', 'Vienna')
+flight_routes = [
+    ('Naples', 'Vienna'),
+    ('Vienna', 'Vilnius'),
 ]
 
-# Build direct_flights dictionary (one-directional)
-direct_flights = {city: [] for city in cities}
-for a, b in flight_pairs:
-    if a in cities and b in cities:
-        direct_flights[a].append(b)
+solver = z3.Solver()
 
-# Create solver instance
-s = Solver()
-
-# Create start and end day variables for each city
-start = {city: Int(f'start_{city}') for city in cities}
-end = {city: Int(f'end_{city}') for city in cities}
-
-# Add duration constraints
+# Create variables for non-fixed cities
+city_vars = {}
+fixed_cities = ['Naples']
 for city in cities:
-    s.add(end[city] == start[city] + cities[city] - 1)
+    if city in fixed_cities:
+        s, e = cities[city]
+        city_vars[city] = (z3.IntVal(s), z3.IntVal(e))
+    else:
+        duration = cities[city]
+        start = z3.Int(f'start_{city}')
+        end = z3.Int(f'end_{city}')
+        solver.add(end == start + duration - 1)
+        solver.add(start >= 1, end <= 17)
+        city_vars[city] = (start, end)
 
-# Apply fixed date constraints
-for city, (fixed_start, fixed_end) in fixed.items():
-    s.add(start[city] == fixed_start)
-    s.add(end[city] == fixed_end)
+# Total days constraint accounting for overlaps
+total_days = sum((end - start + 1) for (start, end) in city_vars.values())
 
-# All stays must be within 1-17 days
-for city in cities:
-    s.add(start[city] >= 1)
-    s.add(end[city] <= 17)
+# Calculate overlaps between connected cities
+overlap_pairs = []
+for a, b in flight_routes:
+    a_s, a_e = city_vars[a]
+    b_s, b_e = city_vars[b]
+    overlap = z3.If(z3.And(a_s <= b_e, b_s <= a_e),
+                    z3.Min(a_e, b_e) - z3.Max(a_s, b_s) + 1,
+                    0)
+    overlap_pairs.append(overlap)
 
-# No overlapping stays between any two cities
-for c1 in cities:
-    for c2 in cities:
-        if c1 != c2:
-            s.add(Or(end[c1] < start[c2], end[c2] < start[c1]))
+solver.add(total_days - sum(overlap_pairs) == 17)
 
-# Flight connectivity constraints using order variables
-order = {city: Int(f'order_{city}') for city in cities}
-for city in cities:
-    s.add(order[city] >= 1, order[city] <= len(cities))
+# Cities without direct flights must not overlap or be consecutive
+all_cities = list(cities.keys())
+flight_pairs = set()
+for a, b in flight_routes:
+    flight_pairs.add((a, b))
+    flight_pairs.add((b, a))
 
-# All order values must be distinct
-s.add(Distinct([order[city] for city in cities]))
+for a in all_cities:
+    for b in all_cities:
+        if a == b or (a, b) in flight_pairs:
+            continue
+        a_s, a_e = city_vars[a]
+        b_s, b_e = city_vars[b]
+        solver.add(z3.Or(b_e < a_s, a_e + 1 < b_s))
 
-# Ensure consecutive cities in order have direct flight from current to next
-for c1 in cities:
-    for c2 in cities:
-        if c1 != c2:
-            s.add(Implies(order[c1] + 1 == order[c2], Or([c2 in direct_flights[c1]])))
-
-# Check for satisfiability
-if s.check() == sat:
-    m = s.model()
+# Find and print solution
+if solver.check() == z3.sat:
+    model = solver.model()
     schedule = []
-    for city in cities:
-        schedule.append((city, m.eval(start[city]).as_long(), m.eval(end[city]).as_long()))
+    for city in all_cities:
+        s = model.evaluate(city_vars[city][0])
+        e = model.evaluate(city_vars[city][1])
+        s_val = s.as_long() if isinstance(s, z3.IntNumRef) else cities[city][0]
+        e_val = e.as_long() if isinstance(e, z3.IntNumRef) else cities[city][1]
+        schedule.append((city, s_val, e_val))
     schedule.sort(key=lambda x: x[1])
-    print("Valid trip plan:")
+    print("Valid itinerary:")
     for entry in schedule:
         print(f"{entry[0]}: Days {entry[1]} to {entry[2]}")
 else:
-    print("No valid trip plan exists. Check if total required days exceed 17, fixed dates overlap, or flight connections are insufficient.")
+    print("No valid itinerary found.")

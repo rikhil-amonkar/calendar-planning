@@ -1,274 +1,170 @@
-from z3 import Solver, Int, IntVector, Distinct, And, Or, If, sat
+from z3 import *
 
-# -----------------------------------------------------------------------------
-# City definitions, planned durations and event windows.
-#
-# We have 9 cities:
-# 0: Naples     – planned stay: 3 days.
-#         Event: Meet a friend in Naples between day 18 and day 20.
-#
-# 1: Valencia   – planned stay: 5 days.
-#
-# 2: Stuttgart  – planned stay: 2 days.
-#
-# 3: Split      – planned stay: 5 days.
-#
-# 4: Venice     – planned stay: 5 days.
-#         Event: Attend a conference in Venice between day 6 and day 10.
-#
-# 5: Amsterdam  – planned stay: 4 days.
-#
-# 6: Nice       – planned stay: 2 days.
-#         Event: Meet your friends in Nice between day 23 and day 24.
-#
-# 7: Barcelona  – planned stay: 2 days.
-#         Event: Attend a workshop in Barcelona between day 5 and day 6.
-#
-# 8: Porto      – planned stay: 4 days.
-#
-# Total planned days = 3+5+2+5+5+4+2+2+4 = 32.
-# Since the trip starts in the first city (full duration) and each flight (between cities)
-# costs 1 day, the effective trip duration will be:
-#       32 - (9-1) = 32 - 8 = 24 days.
-# -----------------------------------------------------------------------------
+# Cities indexed as follows:
+# 0: Naples
+# 1: Valencia
+# 2: Stuttgart
+# 3: Split
+# 4: Venice
+# 5: Amsterdam
+# 6: Nice
+# 7: Barcelona
+# 8: Porto
+city_names = ["Naples", "Valencia", "Stuttgart", "Split", "Venice",
+              "Amsterdam", "Nice", "Barcelona", "Porto"]
 
-cities = ["Naples", "Valencia", "Stuttgart", "Split", "Venice", 
-          "Amsterdam", "Nice", "Barcelona", "Porto"]
-durations = [3, 5, 2, 5, 5, 4, 2, 2, 4]
+# Required day counts in each city.
+# Naples: 3, Valencia: 5, Stuttgart: 2, Split: 5, Venice: 5,
+# Amsterdam: 4, Nice: 2, Barcelona: 2, Porto: 4.
+req = [3, 5, 2, 5, 5, 4, 2, 2, 4]
 
-# -----------------------------------------------------------------------------
-# Allowed direct flights (we assume bidirectional, so both orders count):
+# Allowed direct flights.
+# All pairs are bidirectional unless otherwise noted.
+allowed_flights = [
+    (4, 6), (6, 4),         # Venice and Nice
+    (0, 5), (5, 0),         # Naples and Amsterdam
+    (7, 6), (6, 7),         # Barcelona and Nice
+    (5, 6), (6, 5),         # Amsterdam and Nice
+    (2, 1), (1, 2),         # Stuttgart and Valencia
+    (2, 8), (8, 2),         # Stuttgart and Porto
+    (3, 2), (2, 3),         # Split and Stuttgart
+    (3, 0), (0, 3),         # Split and Naples
+    (1, 5), (5, 1),         # Valencia and Amsterdam
+    (7, 8), (8, 7),         # Barcelona and Porto
+    (1, 0), (0, 1),         # Valencia and Naples
+    (4, 5), (5, 4),         # Venice and Amsterdam
+    (7, 0), (0, 7),         # Barcelona and Naples
+    (7, 1), (1, 7),         # Barcelona and Valencia
+    (3, 5), (5, 3),         # Split and Amsterdam
+    (7, 4), (4, 7),         # Barcelona and Venice
+    (2, 5), (5, 2),         # Stuttgart and Amsterdam
+    (0, 6), (6, 0),         # Naples and Nice
+    (4, 2), (2, 4),         # Venice and Stuttgart
+    (3, 7), (7, 3),         # Split and Barcelona
+    (8, 6), (6, 8),         # Porto and Nice
+    (7, 2), (2, 7),         # Barcelona and Stuttgart
+    (4, 0), (0, 4),         # Venice and Naples
+    (8, 5), (5, 8),         # Porto and Amsterdam
+    (8, 1), (1, 8),         # Porto and Valencia
+    (2, 0), (0, 2),         # Stuttgart and Naples
+    (7, 5), (5, 7)          # Barcelona and Amsterdam
+]
+
+# Total number of days in the itinerary.
+DAYS = 24
+
+# Since the travel plan "base days" are 24, and if on a flight day you get
+# an extra count for the departure city, the total day-count equals 24 + (#flights).
+# Our required total count is sum(req) = 3+5+2+5+5+4+2+2+4 = 32.
+# Thus the number of flights must be: 32 - 24 = 8.
 #
-# Venice and Nice             -> (Venice, Nice)               : (4,6)
-# Naples and Amsterdam        -> (Naples, Amsterdam)          : (0,5)
-# Barcelona and Nice          -> (Barcelona, Nice)            : (7,6)
-# Amsterdam and Nice          -> (Amsterdam, Nice)            : (5,6)
-# Stuttgart and Valencia      -> (Stuttgart, Valencia)        : (2,1)
-# Stuttgart and Porto         -> (Stuttgart, Porto)           : (2,8)
-# Split and Stuttgart         -> (Split, Stuttgart)           : (3,2)
-# Split and Naples            -> (Split, Naples)              : (3,0)
-# Valencia and Amsterdam      -> (Valencia, Amsterdam)        : (1,5)
-# Barcelona and Porto         -> (Barcelona, Porto)           : (7,8)
-# Valencia and Naples         -> (Valencia, Naples)           : (1,0)
-# Venice and Amsterdam        -> (Venice, Amsterdam)          : (4,5)
-# Barcelona and Naples        -> (Barcelona, Naples)          : (7,0)
-# Barcelona and Valencia      -> (Barcelona, Valencia)        : (7,1)
-# Split and Amsterdam         -> (Split, Amsterdam)           : (3,5)
-# Barcelona and Venice        -> (Barcelona, Venice)          : (7,4)
-# Stuttgart and Amsterdam     -> (Stuttgart, Amsterdam)       : (2,5)
-# Naples and Nice             -> (Naples, Nice)               : (0,6)
-# Venice and Stuttgart        -> (Venice, Stuttgart)          : (4,2)
-# Split and Barcelona         -> (Split, Barcelona)           : (3,7)
-# Porto and Nice              -> (Porto, Nice)                : (8,6)
-# Barcelona and Stuttgart     -> (Barcelona, Stuttgart)       : (7,2)
-# Venice and Naples           -> (Venice, Naples)             : (4,0)
-# Porto and Amsterdam         -> (Porto, Amsterdam)           : (8,5)
-# Porto and Valencia          -> (Porto, Valencia)            : (8,1)
-# Stuttgart and Naples        -> (Stuttgart, Naples)          : (2,0)
-# Barcelona and Amsterdam     -> (Barcelona, Amsterdam)       : (7,5)
-# -----------------------------------------------------------------------------
+# And since each flight corresponds to switching the "base city" (and so a new segment),
+# we will have 9 segments visiting 9 distinct cities.
 
-allowed_flight_pairs = {
-    (4, 6),   # Venice - Nice
-    (0, 5),   # Naples - Amsterdam
-    (7, 6),   # Barcelona - Nice
-    (5, 6),   # Amsterdam - Nice
-    (2, 1),   # Stuttgart - Valencia
-    (2, 8),   # Stuttgart - Porto
-    (3, 2),   # Split - Stuttgart
-    (3, 0),   # Split - Naples
-    (1, 5),   # Valencia - Amsterdam
-    (7, 8),   # Barcelona - Porto
-    (1, 0),   # Valencia - Naples
-    (4, 5),   # Venice - Amsterdam
-    (7, 0),   # Barcelona - Naples
-    (7, 1),   # Barcelona - Valencia
-    (3, 5),   # Split - Amsterdam
-    (7, 4),   # Barcelona - Venice
-    (2, 5),   # Stuttgart - Amsterdam
-    (0, 6),   # Naples - Nice
-    (4, 2),   # Venice - Stuttgart
-    (3, 7),   # Split - Barcelona
-    (8, 6),   # Porto - Nice
-    (7, 2),   # Barcelona - Stuttgart
-    (4, 0),   # Venice - Naples
-    (8, 5),   # Porto - Amsterdam
-    (8, 1),   # Porto - Valencia
-    (2, 0),   # Stuttgart - Naples
-    (7, 5)    # Barcelona - Amsterdam
-}
+# Create Z3 variables.
+# c[d] is the "base city" for day d (0-indexed, corresponding to day d+1).
+c = [Int(f"c_{d}") for d in range(DAYS)]
+# flight[d] is True when on day d (d>=1) a flight occurs (i.e. c[d] != c[d-1]).
+flight = [Bool(f"flight_{d}") for d in range(DAYS)]
+# isSeg[d] is True if day d is the start of a new segment (day 0 always, and any day with flight).
+isSeg = [Bool(f"seg_{d}") for d in range(DAYS)]
 
-def flight_allowed(a, b):
-    return ((a, b) in allowed_flight_pairs) or ((b, a) in allowed_flight_pairs)
-
-# -----------------------------------------------------------------------------
-# Create the Z3 solver and define decision variables.
-#
-# pos[i] : the city (an integer 0..8) visited at itinerary position i (i = 0,...,8).
-# They must be a permutation of [0,..,8].
-#
-# S[i]   : the arrival day at the city visited at position i.
-# The trip starts at day 1: S[0] == 1.
-# For the first city, we use the full planned duration.
-# For every subsequent city, a flight day is taken so the effective stay is (duration - 1).
-#
-# The trip end day is given by:
-#    S[8] + effective_duration(last city) == 24,
-# where effective_duration = durations[c] if visited first; otherwise durations[c] - 1.
-# -----------------------------------------------------------------------------
-
-n = 9
 s = Solver()
 
-# Itinerary (permutation of the city indices 0..8)
-pos = IntVector('pos', n)
-s.add(Distinct(pos))
-for i in range(n):
-    s.add(And(pos[i] >= 0, pos[i] < n))
+# Each day's base city must be one of our 9 cities.
+for d in range(DAYS):
+    s.add(And(c[d] >= 0, c[d] < 9))
 
-# Arrival day for each visited city.
-S_days = IntVector('S', n)
-s.add(S_days[0] == 1)
-for i in range(n):
-    s.add(S_days[i] >= 1)
+# Day 0 is automatically the start of a segment.
+s.add(isSeg[0] == True)
 
-# Sequential arrival day constraints.
-# For the first city (position 0): effective duration = durations[city].
-# For each subsequent city i (i>=1): S_days[i] = S_days[i-1] + (durations[pos[i-1]] - 1).
+# For days 1 .. 23, define flight indicator and if flight occurs, the flight must be allowed.
+for d in range(1, DAYS):
+    s.add(flight[d] == (c[d] != c[d-1]))
+    s.add(isSeg[d] == flight[d])
+    # If a flight occurs, then (c[d-1], c[d]) must be an allowed flight.
+    s.add(Implies(flight[d],
+                  Or([And(c[d-1] == frm, c[d] == to) for (frm, to) in allowed_flights])
+                 )
+         )
 
-# Position 1:
-s.add(
-    S_days[1] ==
-    If(pos[0] == 0, durations[0],
-    If(pos[0] == 1, durations[1],
-    If(pos[0] == 2, durations[2],
-    If(pos[0] == 3, durations[3],
-    If(pos[0] == 4, durations[4],
-    If(pos[0] == 5, durations[5],
-    If(pos[0] == 6, durations[6],
-    If(pos[0] == 7, durations[7],
-    /* else: */ durations[8]))))))) 
-)
+# Exactly 8 flights must occur.
+s.add(Sum([If(flight[d], 1, 0) for d in range(1, DAYS)]) == 8)
 
-for i in range(2, n):
-    s.add(
-        S_days[i] == S_days[i-1] +
-        If(pos[i-1] == 0, durations[0] - 1,
-        If(pos[i-1] == 1, durations[1] - 1,
-        If(pos[i-1] == 2, durations[2] - 1,
-        If(pos[i-1] == 3, durations[3] - 1,
-        If(pos[i-1] == 4, durations[4] - 1,
-        If(pos[i-1] == 5, durations[5] - 1,
-        If(pos[i-1] == 6, durations[6] - 1,
-        If(pos[i-1] == 7, durations[7] - 1,
-        /* else: */ durations[8] - 1))))))))
-    )
+# The cities at the start of each segment (day 0 and each day when a flight occurs)
+# must be distinct (ensuring that we visit 9 different cities).
+for d1 in range(DAYS):
+    for d2 in range(d1+1, DAYS):
+        s.add(Implies(And(isSeg[d1], isSeg[d2]), c[d1] != c[d2]))
 
-# Trip end constraint: For the last city at position n-1, effective duration depends on its position:
-# if first city then durations[city] else durations[city] - 1.
-trip_end = Int("trip_end")
-last_eff = If(n == 1,
-              If(pos[n-1]==0, durations[0],
-              If(pos[n-1]==1, durations[1],
-              If(pos[n-1]==2, durations[2],
-              If(pos[n-1]==3, durations[3],
-              If(pos[n-1]==4, durations[4],
-              If(pos[n-1]==5, durations[5],
-              If(pos[n-1]==6, durations[6],
-              If(pos[n-1]==7, durations[7],
-              durations[8]))))))),
-              # Otherwise if not first, effective duration = planned - 1.
-              If(pos[n-1]==0, durations[0] - 1,
-              If(pos[n-1]==1, durations[1] - 1,
-              If(pos[n-1]==2, durations[2] - 1,
-              If(pos[n-1]==3, durations[3] - 1,
-              If(pos[n-1]==4, durations[4] - 1,
-              If(pos[n-1]==5, durations[5] - 1,
-              If(pos[n-1]==6, durations[6] - 1,
-              If(pos[n-1]==7, durations[7] - 1,
-              durations[8] - 1))))))))
-s.add(trip_end == S_days[n-1] + last_eff)
-s.add(trip_end == 24)
+# (Optional) Enforce that each city appears at least once in the plan.
+for city in range(9):
+    s.add(Or([c[d] == city for d in range(DAYS)]))
 
-# -----------------------------------------------------------------------------
-# Flight connectivity constraints: 
-# For each pair of consecutive cities in the itinerary, there must be a direct flight.
-# -----------------------------------------------------------------------------
-for i in range(n - 1):
-    possible = []
-    for a in range(n):
-        for b in range(n):
-            if flight_allowed(a, b):
-                possible.append(And(pos[i] == a, pos[i+1] == b))
-    s.add(Or(possible))
+# Compute the "day contribution" for each city.
+# On day 0, the traveler is in city c[0].
+# For day d>=1:
+#   - if no flight: only c[d] gets count 1,
+#   - if flight occurs: both c[d-1] (departure) and c[d] (arrival) get count 1.
+counts = [Int(f"count_{city}") for city in range(9)]
+for city in range(9):
+    base = If(c[0] == city, 1, 0)
+    contribs = []
+    for d in range(1, DAYS):
+        contrib = If(flight[d],
+                     If(c[d-1] == city, 1, 0) + If(c[d] == city, 1, 0),
+                     If(c[d] == city, 1, 0))
+        contribs.append(contrib)
+    s.add(counts[city] == base + Sum(contribs))
+    s.add(counts[city] == req[city])
 
-# -----------------------------------------------------------------------------
-# Event constraints:
-# For each city with an event, we constrain its arrival day considering
-# the effective stay interval, which is:
-#   - If the city is the first in the itinerary, effective duration = durations[city].
-#     Interval = [S, S + durations[city] - 1].
-#   - Otherwise, effective duration = durations[city] - 1.
-#     Interval = [S, S + (durations[city]-1) - 1] = [S, S + durations[city] - 2].
-#
-# (a) Naples (city 0), meet friend between day 18 and day 20.
-#     Constraint: S <= 20 and S + (eff_duration - 1) >= 18.
-# (b) Venice (city 4), conference between day 6 and day 10.
-#     Constraint: S <= 10 and S + (eff_duration - 1) >= 6.
-# (c) Nice (city 6), meet friends between day 23 and day 24.
-#     Constraint: S <= 24 and S + (eff_duration - 1) >= 23.
-# (d) Barcelona (city 7), workshop between day 5 and day 6.
-#     Constraint: S <= 6 and S + (eff_duration - 1) >= 5.
-# -----------------------------------------------------------------------------
-for i in range(n):
-    # For city 'Naples' (index 0)
-    if_cond = (pos[i] == 0)
-    s.add(If(if_cond,
-             And( S_days[i] <= 20,
-                  If(i == 0, S_days[i] + durations[0] - 1,
-                      S_days[i] + (durations[0] - 1) - 1) >= 18),
-             True))
-    
-    # For city 'Venice' (index 4)
-    if_cond = (pos[i] == 4)
-    s.add(If(if_cond,
-             And( S_days[i] <= 10,
-                  If(i == 0, S_days[i] + durations[4] - 1,
-                      S_days[i] + (durations[4] - 1) - 1) >= 6),
-             True))
-    
-    # For city 'Nice' (index 6)
-    if_cond = (pos[i] == 6)
-    s.add(If(if_cond,
-             And( S_days[i] <= 24,
-                  If(i == 0, S_days[i] + durations[6] - 1,
-                      S_days[i] + (durations[6] - 1) - 1) >= 23),
-             True))
-    
-    # For city 'Barcelona' (index 7)
-    if_cond = (pos[i] == 7)
-    s.add(If(if_cond,
-             And( S_days[i] <= 6,
-                  If(i == 0, S_days[i] + durations[7] - 1,
-                      S_days[i] + (durations[7] - 1) - 1) >= 5),
-             True))
+# Define helper function for "inCityOnDay".
+# On day d:
+#  - If d == 0: the traveler is in city c[0].
+#  - For d >= 1:
+#       If flight occurs on that day, the traveler is in either c[d-1] or c[d].
+#       Otherwise, the traveler is in c[d].
+def inCityOnDay(d, target):
+    if d == 0:
+        return c[0] == target
+    return If(flight[d],
+              Or(c[d-1] == target, c[d] == target),
+              c[d] == target)
 
-# -----------------------------------------------------------------------------
-# Solve the scheduling problem.
-# -----------------------------------------------------------------------------
+# Additional scheduling constraints:
+
+# 1. In Naples (city 0), meet a friend between day 18 and day 20 (i.e. days 18..20, indices 17..19).
+friend_naples = [inCityOnDay(d, 0) for d in range(17, 20)]
+s.add(Or(friend_naples))
+
+# 2. In Venice (city 4), attend a conference on day 6 and day 10.
+s.add(inCityOnDay(5, 4))  # day6: index 5
+s.add(inCityOnDay(9, 4))  # day10: index 9
+
+# 3. In Barcelona (city 7), attend a workshop between day 5 and day 6 (indices 4 and 5).
+workshop_barcelona = [inCityOnDay(d, 7) for d in range(4, 6)]
+s.add(Or(workshop_barcelona))
+
+# 4. In Nice (city 6), meet your friends between day 23 and day 24 (indices 22 and 23).
+friends_nice = [inCityOnDay(d, 6) for d in range(22, 24)]
+s.add(Or(friends_nice))
+
+# At this point, we have encoded:
+# - The day counts for each city, forcing exactly 8 flights (9 segments),
+# - All flights must be allowed,
+# - And extra event constraints (friend meeting, conference, workshop, tour meeting).
+
+# Check for a solution.
 if s.check() == sat:
     m = s.model()
-    itinerary = [m.evaluate(pos[i]).as_long() for i in range(n)]
-    arrival = [m.evaluate(S_days[i]).as_long() for i in range(n)]
-    end_day  = m.evaluate(trip_end)
-    
-    print("Trip Itinerary:")
-    for i in range(n):
-        city = cities[itinerary[i]]
-        # Effective duration: if first city -> full duration, else (planned - 1).
-        effective = durations[itinerary[i]] if i == 0 else durations[itinerary[i]] - 1
-        departure = arrival[i] + effective - 1
-        print(f" Position {i+1}: {city:10s} | Arrival: Day {arrival[i]:2d} | Departure: Day {departure:2d}")
-    print(f"Trip ends on day: {end_day}")
+    print("Found a valid itinerary:")
+    for d in range(DAYS):
+        day_info = f"Day {d+1:2d}: In {city_names[m[c[d]].as_long()]}"
+        if d >= 1 and m.evaluate(flight[d]):
+            day_info += f" (Flight: {city_names[m[c[d-1]].as_long()]} -> {city_names[m[c[d]].as_long()]})"
+        print(day_info)
+    print("\nCity day counts:")
+    for city in range(9):
+        print(f"{city_names[city]}: {m.evaluate(counts[city])}")
 else:
-    print("No valid trip plan could be found.")
+    print("No solution found")

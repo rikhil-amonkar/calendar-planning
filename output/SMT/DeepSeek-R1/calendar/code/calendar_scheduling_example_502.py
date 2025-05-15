@@ -1,47 +1,44 @@
-from z3 import Solver, Int, Or, sat
+import z3
 
-solver = Solver()
-start = Int('start')
+solver = z3.Solver()
+S = z3.Int('S')
 
-# Define time constraints (in minutes since 9:00)
-min_time = 0           # 9:00
-max_time = 450         # 16:30 (latest start for 30min meeting)
-solver.add(start >= min_time, start <= max_time)
+# Work hours: 9:00 (0) to 17:00 (480 minutes)
+solver.add(S >= 0)
+solver.add(S + 30 <= 480)
 
-# Jack's preference: meeting must end by 12:30 (210 minutes)
-solver.add(start + 30 <= 210)
+# Jack's constraints: meeting must end by 12:30 (210 minutes from 9:00)
+solver.add(S + 30 <= 210)
 
-# Jack's busy periods (minutes since 9:00)
-jack_busy = [
+# Jack's blocked intervals (minutes since 9:00)
+jack_blocks = [
     (30, 90),    # 9:30-10:30
     (120, 150),  # 11:00-11:30
-    (210, 240),  # 12:30-13:00
-    (300, 330),  # 14:00-14:30
-    (420, 450)   # 16:00-16:30
+    (210, 240),  # 12:30-13:00 (irrelevant due to preference)
+    (300, 330),  # 14:00-14:30 (irrelevant)
+    (420, 450)   # 16:00-16:30 (irrelevant)
 ]
 
-# Charlotte's busy periods (minutes since 9:00)
-charlotte_busy = [
+# Charlotte's blocked intervals (minutes since 9:00)
+charlotte_blocks = [
     (30, 60),    # 9:30-10:00
     (90, 180),   # 10:30-12:00
-    (210, 270),  # 12:30-13:30
-    (300, 420)   # 14:00-16:00
+    (210, 270),  # 12:30-13:30 (irrelevant)
+    (300, 420)   # 14:00-16:00 (irrelevant)
 ]
 
-# Add constraints for Jack's busy periods
-for (busy_start, busy_end) in jack_busy:
-    solver.add(Or(start + 30 <= busy_start, start >= busy_end))
+# Add constraints for all blocked intervals (relevant ones enforced via S constraints)
+for start, end in jack_blocks + charlotte_blocks:
+    solver.add(z3.Or(S + 30 <= start, S >= end))
 
-# Add constraints for Charlotte's busy periods
-for (busy_start, busy_end) in charlotte_busy:
-    solver.add(Or(start + 30 <= busy_start, start >= busy_end))
-
-# Check for solution
-if solver.check() == sat:
-    m = solver.model()
-    start_min = m[start].as_long()
-    hours = 9 + start_min // 60
-    minutes = start_min % 60
-    print(f"Meeting starts at {hours:02d}:{minutes:02d}")
+if solver.check() == z3.sat:
+    model = solver.model()
+    start_minutes = model[S].as_long()
+    start_h = 9 + start_minutes // 60
+    start_m = start_minutes % 60
+    end_minutes = start_minutes + 30
+    end_h = 9 + end_minutes // 60
+    end_m = end_minutes % 60
+    print(f"Monday\n{start_h}:{start_m:02d}\n{end_h}:{end_m:02d}")
 else:
-    print("No valid time found")
+    print("No solution found")
