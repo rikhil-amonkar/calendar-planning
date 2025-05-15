@@ -11,6 +11,7 @@ client = OpenAI(api_key=key)
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True, help="")
 parser.add_argument('--model', required=True, help="")
+parser.add_argument('--output', choices=['plan', 'python', 'z3'], required=True, help="")
 args = parser.parse_args()
 
 def evaluate_calendar(constraints, pred_dict):
@@ -61,7 +62,7 @@ def evaluate_trip(constraints, pred_dict):
     for a, b in zip(segments, segments[1:]):
         if a["end"] != b["start"]:
             #print(f"Constraint violated: gap/overlap between {a} and {b}")
-            return False, {"coverage": (a, b)}
+            return False, {"gap/overlap": (a, b)}
 
     # 2) check each place's stay duration
     for seg in segments:
@@ -73,8 +74,8 @@ def evaluate_trip(constraints, pred_dict):
                 return False, {"stay_days": {seg["place"]: required}}
 
     # 3) check event_ranges (must fall entirely within the visit segment)
-    for ev in constraints.get("event_ranges", []):
-        place = ev["place"]
+    for ev in constraints.get("city_day_ranges", []):
+        place = ev["city"]
         container = next((s for s in segments if s["place"] == place), None)
         if not container:
             print(f"Constraint violated: no segment for {place}")
@@ -189,7 +190,13 @@ for task in tasks:
         continue
         
     # Directory with formatted outputs
-    output_dir = f"../output/SMT/{model}/{task}/formatted_output"
+    if args.output == "plan":
+        pass # TODO: fill in the path
+    elif args.output == "python":
+        pass # TODO: fill in the path
+    elif args.output == "z3":
+        output_dir = f"../output/SMT/{model}/{task}/formatted_output"
+        report_path = f"../output/SMT/{model}/{task}/report.json"
     
     total_count = 0
     no_error_count = 0
@@ -198,11 +205,12 @@ for task in tasks:
     example_result = {}
     # Process each file
     for filename in os.listdir(output_dir):
+        print(output_dir)
         with open(os.path.join(output_dir, filename), 'r') as f:
             output_data = json.load(f)
             
         example_id = filename.replace('.json', '')
-        #print(f"Processing example {example_id}")
+        print(f"Processing example {example_id}")
         status = ""
         violated_constraint = {}
                 
@@ -212,7 +220,7 @@ for task in tasks:
         total_count += 1
         if entry.get("has_error"):
             status = "Error"
-        elif not pred_dict:
+        elif "itinerary" in pred_dict and not pred_dict["itinerary"] or not pred_dict:
             no_error_count += 1
             status = "No plan"
         else:
@@ -247,5 +255,5 @@ for task in tasks:
     print("No error examples:", no_error_count)
     print("Has plan examples:", has_plan_count)
     print("Correct examples:", correct_count)
-    with open(f"../output/SMT/{model}/{task}/report.json", "w") as f:
+    with open(report_path, "w") as f:
         json.dump(report_data, f, indent=4)
