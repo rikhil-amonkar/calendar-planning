@@ -1,54 +1,87 @@
-from z3 import *
+import z3
 
-def main():
-    day = Variable('day')  # 0 for Monday, 1 for Tuesday, 2 for Wednesday
-    t = Variable('t')      # start time in minutes from 9:00
-
-    # Define available intervals for each person
-    available = [
-        # Ryan's blocked intervals
+def solve_scheduling():
+    day_options = ["Monday", "Tuesday", "Wednesday"]
+    day = z3.Int("day", "0 to 2")
+    
+    # Convert busy intervals to minutes since 9:00
+    ryan_intervals = [
         # Monday
-        (150, 180), (660, 690), (780, 810), (1050, 1080), (1500, 1530), (1950, 1980),
+        (30, 60),   # 9:30-10:00
+        (90, 120),  # 11:00-12:00
+        (150, 180), # 13:00-13:30
+        (270, 300), # 15:30-16:00
         # Tuesday
-        (690, 750), (1500, 1530), (1950, 1980),
+        (150, 180), # 11:30-12:30
+        (270, 300), # 15:30-16:00
         # Wednesday
-        (780, 810), (1500, 1530), (2010, 2100), (2340, 2400),
-        # Adam's blocked intervals
-        # Monday
-        (0, 90), (150, 180), (300, 330), (750, 780), (1050, 1080), (1500, 1500), (1800, 1980),
-        # Tuesday
-        (0, 30), (150, 180), (300, 330), (750, 780), (1050, 1080), (1500, 1500), (1800, 1950),
-        # Wednesday
-        (0, 30), (150, 180), (300, 330), (750, 780), (1050, 1080), (1500, 1500), (1800, 1950)
+        (60, 90),   # 12:00-13:00
+        (270, 300), # 15:30-16:00
+        (330, 360)  # 16:30-17:00
     ]
-
-    # Create constraints for each available interval
-    for interval in available:
-        model.add_constraint(t >= interval[0])
-        model.add_constraint(t <= interval[1])
-
-    # Ryan's constraint: day != 2 (Wednesday)
-    model.add_constraint(day != 2)
-
-    # Adam's constraints: day cannot be Monday before 14:30 (1500 minutes), Tuesday, or Wednesday
-    model.add_constraint(day != 0)
-    model.add_constraint(day != 1)
-    model.add_constraint(day != 2)
-
+    adam_intervals = [
+        # Monday
+        (0, 90),     # 9:00-10:30
+        (90, 210),   # 11:00-13:30
+        (240, 360),  # 14:00-17:00
+        # Tuesday
+        (0, 60),     # 9:00-10:00
+        (90, 210),   # 10:30-15:30
+        (240, 360),  # 16:00-17:00
+        # Wednesday
+        (0, 30),     # 9:00-9:30
+        (60, 90),    # 10:00-11:00
+        (90, 150),   # 11:30-14:30
+        (180, 210),  # 15:00-15:30
+        (240, 270)   # 16:00-16:30
+    ]
+    
+    max_time = 1080        # 17:00
+    earliest_start = 0     # 9:00
+    latest_start = 480     # 16:00
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for each interval
+    for a, b in ryan_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in adam_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure the meeting does not occur on Wednesday
+    ctx.add(day != 2)
+    
+    # Ensure the meeting starts no later than 14:30 on Monday and 10:30 on Tuesday
+    ctx.add((day == 0) & (s <= 240))  # Monday: latest 14:30
+    ctx.add((day == 1) & (s <= 150))  # Tuesday: latest 10:30
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= earliest_start)
+    ctx.add(s + 30 <= max_time)
+    
     # Solve the problem
-    result = model.solve()
+    result = ctx.solve()
+    
     if result:
-        print("Possible solution: day =", result[day].numerator())
-        print("t =", result[t].numerator())
-        print("Convert t to time:", time(t))
+        # Convert s to time string
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 30
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        day_str = day_options[result.model[day]]
+        return (day_str, start_time, end_time)
     else:
-        print("No solution.")
+        return None
 
-def time(t):
-    # Convert minutes back to hours:minutes
-    hours = t // 60
-    minutes = t % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-if __name__ == "__main__":
-    main()
+solve_scheduling()

@@ -1,65 +1,56 @@
-from z3 import *
+import z3
 
-# Define the start and end times in minutes (9:00 is 0, 17:00 is 1020)
-start = 0
-end = 1020
+def solve_scheduling():
+    day_options = ["Monday", "Tuesday"]
+    day = z3.Int("day", "0 to 1")
+    
+    # Convert busy intervals to minutes since 9:00
+    harold_monday = [(0, 60), (210, 60 + 300)]  # 9:00-10:00, 10:30-17:00
+    harold_tuesday = [(0, 30), (210, 270), (330, 450), (690, 780), (960, 1050)]  # 9:00-9:30, 10:30-11:30, 12:30-13:30, 14:30-15:30, 16:00-17:00
+    
+    max_time = 1080  # 17:00
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Constraints for Harold's schedule
+    # Monday constraints
+    ctx.add((s >= 0) & (s + 30 <= 60))  # Before 9:00-10:00
+    ctx.add((s >= 210) & (s + 30 <= 300))  # 10:30-17:00
+    
+    # Tuesday constraints
+    ctx.add((day == 1) & (s >= 0) & (s + 30 <= 30))  # 9:00-9:30
+    ctx.add((day == 1) & (s >= 210) & (s + 30 <= 270))  # 10:30-11:30
+    ctx.add((day == 1) & (s >= 330) & (s + 30 <= 450))  # 12:30-13:30
+    ctx.add((day == 1) & (s >= 690) & (s + 30 <= 780))  # 14:30-15:30
+    ctx.add((day == 1) & (s >= 960) & (s + 30 <= 1050))  # 16:00-17:00
+    
+    # Harold's preferences
+    # Prefer Tuesday
+    ctx.add((s + 30) <= 1080)  # Meeting must end by 17:00, which is always true as duration is 30
+    ctx.add(day >= 0 & day <= 1)  # Day can be either Monday or Tuesday
+    ctx.add(day == 1)  # Prefer to meet on Tuesday
+    ctx.add((s <= 480))  # Prefer to meet before 14:30 on Tuesday
+    
+    # Solve the problem
+    result = ctx.solve()
+    
+    if result:
+        # Convert day and s to time strings
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 30
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        day_str = day_options[result.model[day]]
+        return (day_str, start_time, end_time)
+    else:
+        return None
 
-# Convert blocked times to minutes
-# Harold's blocked times on Monday
-harold_monday_block1_start = 600   # 10:00
-harold_monday_block1_end = 630    # 10:30
-harold_monday_block2_start = 690   # 11:00
-harold_monday_block2_end = 1020   # 17:00
-
-# Harold's blocked times on Tuesday
-harold_tuesday_block1_start = 0     # 9:00
-harold_tuesday_block1_end = 30     # 9:30
-harold_tuesday_block2_start = 660   # 11:00
-harold_tuesday_block2_end = 690    # 11:30
-harold_tuesday_block3_start = 750   # 12:30
-harold_tuesday_block3_end = 780    # 13:00
-harold_tuesday_block4_start = 870   # 14:30
-harold_tuesday_block4_end = 990    # 16:30
-harold_tuesday_block5_start = 1020   # 17:00
-
-# Meeting duration is 30 minutes
-meeting_duration = 30
-
-# Define the variable t
-t = Variable('t')
-
-# Constraints for Harold
-# On Monday:
-# Meeting cannot be scheduled during his busy blocks
-s.add(t < harold_monday_block1_start)
-s.add(t >= harold_monday_block1_end)
-s.add(t < harold_monday_block2_start)
-s.add(t >= harold_monday_block2_end)
-
-# On Tuesday:
-# Meeting cannot be scheduled during his busy blocks
-s.add(t < harold_tuesday_block1_start)
-s.add(t >= harold_tuesday_block1_end)
-s.add(t < harold_tuesday_block2_start)
-s.add(t >= harold_tuesday_block2_end)
-s.add(t < harold_tuesday_block3_start)
-s.add(t >= harold_tuesday_block3_end)
-s.add(t < harold_tuesday_block4_start)
-s.add(t >= harold_tuesday_block4_end)
-s.add(t < harold_tuesday_block5_start)
-s.add(t >= harold_tuesday_block5_end)
-
-# Additionally, Harold wants to avoid meetings on Monday and prefers Tuesday before 14:30 (870 minutes)
-# So, the meeting must be on Tuesday and before 870 minutes (14:30)
-s.add(t >= harold_tuesday_block1_end)  # t >= 30 (9:30)
-s.add(t <= harold_tuesday_block4_start - meeting_duration)  # t <= 870 - 30 = 840 (14:00)
-
-# Solve the problem
-s.solve()
-
-# If a solution exists, print it
-if s.model():
-    t_val = s.model()[t]
-    print(f"The meeting can be scheduled at {t_val // 60}:{t_val % 60}")
-else:
-    print("No solution found")
+solve_scheduling()

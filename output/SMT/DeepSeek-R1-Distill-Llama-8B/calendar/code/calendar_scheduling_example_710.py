@@ -1,67 +1,78 @@
-from z3 import *
+import z3
 
-# Define the start and end times in minutes (9:00 is 0, 17:00 is 1020)
-start = 0
-end = 1020
+def solve_scheduling():
+    day_options = ["Monday", "Tuesday", "Wednesday"]
+    day = z3.Int("day", "0 to 2")
+    
+    # Convert busy intervals to minutes since 9:00
+    cheryl_intervals = [
+        # Monday
+        (0, 30),          # 9:00-9:30
+        (90, 150),        # 11:30-13:00
+        (210, 240),       # 15:30-16:00
+    ]
+    cheryl_tuesday = [
+        (180, 210)         # 15:00-15:30
+    ]
+    
+    kyle_intervals = [
+        # Monday
+        (0, 1080),          # 9:00-17:00
+        # Tuesday
+        (30, 1080),          # 9:30-17:00
+        # Wednesday
+        (0, 30),            # 9:00-9:30
+        (60, 180),          # 10:00-13:00
+        (210, 240),         # 13:30-14:00
+        (270, 1080)         # 14:30-17:00
+    ]
+    
+    max_time = 1080        # 17:00
+    earliest_start = 0     # 9:00
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for Cheryl's schedule
+    for a, b in cheryl_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in cheryl_tuesday:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Add constraints for Kyle's schedule
+    for a, b in kyle_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure Cheryl is not meeting on Wednesday
+    ctx.add(day != 2)
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= earliest_start)
+    ctx.add(s + 30 <= max_time)
+    
+    # Solve the problem
+    result = ctx.solve()
+    
+    if result:
+        # Convert day and s to time strings
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 30
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        day_str = day_options[result.model[day]]
+        return (day_str, start_time, end_time)
+    else:
+        return None
 
-# Convert blocked times to minutes
-# Cheryl's blocked times on Monday
-cheryl_block1_start = 0    # 9:00
-cheryl_block1_end = 30     # 9:30
-cheryl_block2_start = 660   # 11:30
-cheryl_block2_end = 780    # 13:00
-cheryl_block3_start = 990   # 16:30
-cheryl_block3_end = 1020   # 17:00
-
-# Kyle's blocked times
-kyle_block1_start = 0      # 9:00
-kyle_block1_end = 1020     # 17:00
-kyle_block2_start = 0      # 9:00
-kyle_block2_end = 30       # 9:30
-kyle_block3_start = 60      # 10:00
-kyle_block3_end = 210      # 12:30
-kyle_block4_start = 330     # 13:30
-kyle_block4_end = 390      # 14:30
-kyle_block5_start = 450     # 15:00
-kyle_block5_end = 1020     # 17:00
-
-# Meeting duration is 30 minutes
-meeting_duration = 30
-
-# Define the variable t
-t = Variable('t')
-
-# Constraints for Cheryl
-s.add(t < cheryl_block1_start)
-s.add(t >= cheryl_block1_end)
-s.add(t < cheryl_block2_start)
-s.add(t >= cheryl_block2_end)
-s.add(t < cheryl_block3_start)
-s.add(t >= cheryl_block3_end)
-
-# Constraints for Kyle
-s.add(t < kyle_block1_start)
-s.add(t >= kyle_block1_end)
-s.add(t < kyle_block2_start)
-s.add(t >= kyle_block2_end)
-s.add(t < kyle_block3_start)
-s.add(t >= kyle_block3_end)
-s.add(t < kyle_block4_start)
-s.add(t >= kyle_block4_end)
-s.add(t < kyle_block5_start)
-s.add(t >= kyle_block5_end)
-
-# Ensure the meeting starts by 16:00 (960 minutes) and ends by 16:30 (990 minutes)
-s.add(t <= 960 - meeting_duration)
-s.add(t >= 0)
-s.add(t <= 960)
-
-# Solve the problem
-s.solve()
-
-# If a solution exists, print it
-if s.model():
-    t_val = s.model()[t]
-    print(f"The meeting can be scheduled at {t_val // 60}:{t_val % 60}")
-else:
-    print("No solution found")
+solve_scheduling()
