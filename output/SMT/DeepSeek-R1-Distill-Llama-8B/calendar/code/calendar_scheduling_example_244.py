@@ -1,40 +1,79 @@
-from z3 import *
+import z3
 
-def main():
-    t = Variable('t')  # start time in minutes from 9:00
-
-    # Define available intervals for each person
-    available = [
-        # Walter is available the entire day
-        (0, 480),
-        # Cynthia's blocked intervals
-        (0, 30), (210, 240), (690, 750), (1980, 2010), (2100, 2400),
-        # Ann's blocked intervals
-        (600, 660), (1170, 1200), (1500, 1530), (1800, 1980),
-        # Catherine's blocked intervals
-        (0, 690), (750, 1050), (1950, 2100), (2400, 2700),
-        # Kyle's blocked intervals
-        (0, 30), (210, 330), (420, 450), (750, 780), (1050, 1170), (1500, 1530), (1800, 1950)
+def solve_scheduling():
+    day = "Monday"
+    # Convert busy intervals to minutes since 9:00
+    cynthia_intervals = [
+        (0, 30),          # 9:00-9:30
+        (60, 90),         # 10:00-10:30
+        (210, 240),       # 13:30-14:30
+        (300, 360)        # 15:00-16:00
     ]
-
-    # Create constraints for each available interval
-    for interval in available:
-        model.add_constraint(t >= interval[0])
-        model.add_constraint(t <= interval[1])
-
+    ann_intervals = [
+        (60, 90),         # 10:00-11:00
+        (180, 210),       # 13:00-13:30
+        (240, 270),       # 14:00-15:00
+        (300, 360)        # 16:00-16:30
+    ]
+    catherine_intervals = [
+        (0, 150),         # 9:00-11:30
+        (150, 180),       # 12:30-13:30
+        (240, 360)        # 14:30-17:00
+    ]
+    kyle_intervals = [
+        (0, 30),          # 9:00-9:30
+        (60, 150),        # 10:00-11:30
+        (90, 120),        # 12:00-12:30
+        (180, 210),       # 13:00-14:30
+        (300, 360)        # 15:00-16:00
+    ]
+    
+    max_time = 1080        # 17:00
+    earliest_start = 0     # 9:00
+    latest_start = 480     # 16:00
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for each interval
+    for a, b in cynthia_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in ann_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in catherine_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in kyle_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= earliest_start)
+    ctx.add(s + 30 <= max_time)
+    
     # Solve the problem
-    result = model.solve()
+    result = ctx.solve()
+    
     if result:
-        print("Possible solution: t =", result[t].numerator())
-        print("Convert t to time:", time(t))
+        # Convert s to time string
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 30
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        return (day, start_time, end_time)
     else:
-        print("No solution.")
+        return None
 
-def time(t):
-    # Convert minutes back to hours:minutes
-    hours = t // 60
-    minutes = t % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-if __name__ == "__main__":
-    main()
+solve_scheduling()

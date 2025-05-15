@@ -2,54 +2,43 @@ import z3
 
 def schedule_meeting():
     solver = z3.Solver()
-    t = z3.Int('t')
-    
-    # Work hours constraint: 9:00 to 17:00 (540 to 1020 minutes)
-    solver.add(t >= 540)  # 9:00 AM
-    solver.add(t <= 990)  # 4:30 PM (meeting ends by 5:00 PM)
-    
-    # Busy intervals in minutes (start, end)
-    busy_intervals = [
-        # Doris
-        (540, 660),  # 9:00-11:00
-        (810, 840),  # 13:30-14:00
-        (960, 990),  # 16:00-16:30
-        # Theresa
-        (600, 720),  # 10:00-12:00
-        # Terry
-        (570, 600),  # 9:30-10:00
-        (690, 720),  # 11:30-12:00
-        (750, 780),  # 12:30-13:00
-        (810, 840),  # 13:30-14:00
-        (870, 900),  # 14:30-15:00
-        (930, 1020), # 15:30-17:00
-        # Carolyn
-        (540, 630),  # 9:00-10:30
-        (660, 690),  # 11:00-11:30
-        (720, 780),  # 12:00-13:00
-        (810, 870),  # 13:30-14:30
-        (900, 1020), # 15:00-17:00
-        # Kyle
-        (540, 570),  # 9:00-9:30
-        (690, 720),  # 11:30-12:00
-        (750, 780),  # 12:30-13:00
-        (870, 1020)  # 14:30-17:00
-    ]
-    
-    # Add constraints for each busy interval
-    for s, e in busy_intervals:
-        solver.add(z3.Or(t + 30 <= s, t >= e))
-    
-    # Solve the constraints
+    S = z3.Int('S')  # Start time in minutes since midnight
+
+    # Work hours constraint: 9:00 (540) to 17:00 (1020)
+    # Meeting duration is 30 minutes, so latest start time is 1020 - 30 = 990 (16:30)
+    solver.add(S >= 540)  # 9:00 AM
+    solver.add(S <= 990)  # 16:30 to allow for 30-minute meeting
+
+    # Blocked intervals for each participant in minutes since midnight
+    blocked = {
+        'Doris': [(540, 660), (810, 840), (960, 990)],
+        'Theresa': [(600, 720)],
+        'Terry': [(570, 600), (690, 720), (750, 780), (810, 840), (870, 900), (930, 1020)],
+        'Carolyn': [(540, 630), (660, 690), (720, 780), (810, 870), (900, 1020)],
+        'Kyle': [(540, 570), (690, 720), (750, 780), (870, 1020)]
+    }
+
+    # Add constraints for each blocked interval
+    for person, intervals in blocked.items():
+        for start_block, end_block in intervals:
+            # Meeting ends before the blocked interval starts OR starts after the blocked interval ends
+            solver.add(z3.Or(S >= end_block, S + 30 <= start_block))
+
+    # Check for solution
     if solver.check() == z3.sat:
         model = solver.model()
-        start_time = model[t].as_long()
-        # Convert start time back to hours:minutes format
-        hours = start_time // 60
-        minutes = start_time % 60
-        end_hours = (start_time + 30) // 60
-        end_minutes = (start_time + 30) % 60
-        print(f"Meeting can be scheduled from {hours:02d}:{minutes:02d} to {end_hours:02d}:{end_minutes:02d}")
+        start = model[S].as_long()
+        end = start + 30
+
+        # Convert minutes to HH:MM format
+        def to_time(minutes):
+            hours = minutes // 60
+            mins = minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        print(f"Day: Monday")
+        print(f"Start time: {to_time(start)}")
+        print(f"End time: {to_time(end)}")
     else:
         print("No solution found.")
 
