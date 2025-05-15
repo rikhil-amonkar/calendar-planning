@@ -1,90 +1,87 @@
 from z3 import *
 
 def find_meeting_time():
-    # Initialize the solver with optimization
-    opt = Optimize()
-    
-    # Meeting duration is 30 minutes
-    meeting_duration = 30
-    
-    # Work hours are from 9:00 to 17:00 (480 minutes total, from 0 to 480)
-    start_time = 0  # 9:00 AM as 0 minutes
-    end_time = 480   # 17:00 PM as 480 minutes (8 hours * 60 minutes)
-    
-    # Define the meeting start time and day
-    meeting_start = Int('meeting_start')
-    meeting_day = Int('meeting_day')  # 0=Monday, 1=Tuesday
-    
-    # Day must be Monday or Tuesday
-    opt.add(Or(meeting_day == 0, meeting_day == 1))
-    
-    # Meeting must be within work hours
-    opt.add(meeting_start >= start_time)
-    opt.add(meeting_start + meeting_duration <= end_time)
-    
-    # Margaret's busy slots (day: list of (start, end) in minutes from 9:00)
+    # Define the work hours
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 17 * 60   # 17:00 in minutes
+    meeting_duration = 30  # 30 minutes
+
+    # Margaret's busy slots in minutes since 9:00
     margaret_busy = {
-        0: [(10*60+30, 11*60), (11*60+30, 12*60), (13*60, 13*60+30), (15*60, 17*60)],  # Monday
-        1: [(12*60, 12*60+30)]  # Tuesday
+        'Monday': [
+            (90, 120),   # 10:30-11:00
+            (150, 180),  # 11:30-12:00
+            (240, 270),  # 13:00-13:30
+            (360, 480)   # 15:00-17:00
+        ],
+        'Tuesday': [
+            (180, 210)  # 12:00-12:30
+        ]
     }
-    
-    # Alexis's busy slots
+
+    # Alexis's busy slots in minutes since 9:00
     alexis_busy = {
-        0: [(9*60+30, 11*60+30), (12*60+30, 13*60), (14*60, 17*60)],  # Monday
-        1: [(9*60, 9*60+30), (10*60, 10*60+30), (14*60, 16*60+30)]    # Tuesday
+        'Monday': [
+            (30, 150),   # 9:30-11:30
+            (180, 210),  # 12:30-13:00
+            (300, 480)   # 14:00-17:00
+        ],
+        'Tuesday': [
+            (0, 30),     # 9:00-9:30
+            (60, 90),    # 10:00-10:30
+            (300, 450)   # 14:00-16:30
+        ]
     }
-    
-    # Margaret's preferences:
-    # 1. Don't want to meet on Monday (high penalty)
-    # 2. On Tuesday, prefer after 14:30 (low penalty)
-    
-    # Define penalty variables
-    penalty = Int('penalty')
-    opt.add(penalty >= 0)
-    
-    # Penalties for undesired times
-    monday_penalty = If(meeting_day == 0, 100, 0)
-    tuesday_early_penalty = If(And(meeting_day == 1, meeting_start < (14*60+30)), 50, 0)
-    
-    # Total penalty
-    opt.add(penalty == monday_penalty + tuesday_early_penalty)
-    
-    # Function to add no-overlap constraints
-    def add_busy_constraints(day, busy_slots):
-        for slot_start, slot_end in busy_slots:
-            opt.add(Implies(meeting_day == day,
-                          Or(meeting_start + meeting_duration <= slot_start,
-                             meeting_start >= slot_end)))
-    
-    # Add constraints for each possible day
-    for day in [0, 1]:
-        # Margaret's constraints
-        add_busy_constraints(day, margaret_busy[day])
-        # Alexis's constraints
-        add_busy_constraints(day, alexis_busy[day])
-    
-    # We want to minimize the penalty (prefer Tuesday after 14:30)
-    opt.minimize(penalty)
-    
-    # Also prefer earlier times among equally preferred options
-    opt.minimize(meeting_start)
-    
-    # Check for solution
-    if opt.check() == sat:
-        m = opt.model()
-        day = m[meeting_day].as_long()
-        start_min = m[meeting_start].as_long()
+
+    # Create a Z3 solver instance
+    s = Solver()
+
+    # The meeting day (0: Monday, 1: Tuesday)
+    day = Int('day')
+    s.add(day >= 0, day <= 1)
+
+    # The meeting start time (in minutes since 9:00)
+    meeting_start = Int('meeting_start')
+    s.add(meeting_start >= 0)
+    s.add(meeting_start + meeting_duration <= work_end - work_start)
+
+    # Function to check if a time slot overlaps with any busy slot
+    def is_free(time, busy_slots):
+        return And([Or(time + meeting_duration <= start, time >= end) for start, end in busy_slots])
+
+    # Constraints for each day
+    day_constraints = []
+    days = ['Monday', 'Tuesday']
+    for d in range(2):
+        day_name = days[d]
+        # Margaret does not want to meet on Monday and before 14:30 on Tuesday
+        if day_name == 'Monday':
+            continue  # Skip Monday
+        elif day_name == 'Tuesday':
+            margaret_free = And(is_free(meeting_start, margaret_busy[day_name]), meeting_start >= 330)  # 14:30 is 330 minutes
         
-        # Convert to readable time
-        days = ["Monday", "Tuesday"]
-        hours = 9 + start_min // 60
-        minutes = start_min % 60
-        end_min = start_min + meeting_duration
-        end_h = 9 + end_min // 60
-        end_m = end_min % 60
+        # Alexis's free slots for the day
+        alexis_free = is_free(meeting_start, alexis_busy[day_name])
         
-        print(f"Optimal meeting time: {days[day]} {hours:02d}:{minutes:02d}-{end_h:02d}:{end_m:02d}")
+        # Combined constraint for the day
+        day_constraints.append(And(day == d, margaret_free, alexis_free))
+
+    # Add the disjunction of all day constraints
+    s.add(Or(*day_constraints))
+
+    # Check if a solution exists
+    if s.check() == sat:
+        m = s.model()
+        day_val = m[day].as_long()
+        start_minutes = m[meeting_start].as_long()
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + meeting_duration
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        day_name = days[day_val]
+        print(f"{day_name}, {start_hour:02d}:{start_minute:02d} to {end_hour:02d}:{end_minute:02d}")
     else:
-        print("No suitable time slot found")
+        print("No suitable meeting time found.")
 
 find_meeting_time()

@@ -1,87 +1,76 @@
-from z3 import *
+import z3
 
-# Define cities and their required durations
+# Define cities with their durations and fixed intervals
 cities = {
-    'Manchester': 3,
-    'Istanbul': 7,
-    'Venice': 7,
-    'Krakow': 6,
-    'Lyon': 2
-}
-
-# Fixed date constraints
-fixed = {
     'Manchester': (1, 3),
-    'Venice': (3, 9)
+    'Venice': (3, 9),
+    'Istanbul': 7,
+    'Krakow': 6,
+    'Lyon': 2,
 }
 
-# Direct flight pairs (bidirectional)
-flight_pairs = [
-    ('Manchester', 'Venice'), ('Venice', 'Manchester'),
-    ('Manchester', 'Istanbul'), ('Istanbul', 'Manchester'),
-    ('Venice', 'Istanbul'), ('Istanbul', 'Venice'),
-    ('Istanbul', 'Krakow'), ('Krakow', 'Istanbul'),
-    ('Venice', 'Lyon'), ('Lyon', 'Venice'),
-    ('Lyon', 'Istanbul'), ('Istanbul', 'Lyon'),
-    ('Manchester', 'Krakow'), ('Krakow', 'Manchester')
+flight_routes = [
+    ('Manchester', 'Venice'),
+    ('Manchester', 'Istanbul'),
+    ('Venice', 'Istanbul'),
+    ('Istanbul', 'Krakow'),
+    ('Venice', 'Lyon'),
+    ('Lyon', 'Istanbul'),
+    ('Manchester', 'Krakow'),
 ]
 
-# Build direct_flights dictionary (one-directional)
-direct_flights = {city: [] for city in cities}
-for a, b in flight_pairs:
-    if a in cities and b in cities:
-        direct_flights[a].append(b)
+solver = z3.Solver()
 
-# Create solver instance
-s = Solver()
-
-# Create start and end day variables for each city
-start = {city: Int(f'start_{city}') for city in cities}
-end = {city: Int(f'end_{city}') for city in cities}
-
-# Add duration constraints
+# Create variables for non-fixed cities
+city_vars = {}
+fixed_cities = ['Manchester', 'Venice']
 for city in cities:
-    s.add(end[city] == start[city] + cities[city] - 1)
+    if city in fixed_cities:
+        s, e = cities[city]
+        city_vars[city] = (z3.IntVal(s), z3.IntVal(e))
+    else:
+        duration = cities[city]
+        start = z3.Int(f'start_{city}')
+        end = z3.Int(f'end_{city}')
+        solver.add(end == start + duration - 1)
+        solver.add(start >= 1, end <= 21)
+        city_vars[city] = (start, end)
 
-# Apply fixed date constraints
-for city, (fixed_start, fixed_end) in fixed.items():
-    s.add(start[city] == fixed_start)
-    s.add(end[city] == fixed_end)
+# Total days constraint
+total_days = sum((end - start + 1) for (start, end) in city_vars.values())
+solver.add(total_days == 21)
 
-# All stays must be within 1-21 days
-for city in cities:
-    s.add(start[city] >= 1)
-    s.add(end[city] <= 21)
+# Flight constraints
+flight_pairs = set()
+for a, b in flight_routes:
+    flight_pairs.add((a, b))
+    flight_pairs.add((b, a))
 
-# No overlapping stays between any two cities
-for c1 in cities:
-    for c2 in cities:
-        if c1 != c2:
-            s.add(Or(end[c1] < start[c2], end[c2] < start[c1]))
+all_cities = list(cities.keys())
+for a in all_cities:
+    for b in all_cities:
+        if a == b:
+            continue
+        a_s, a_e = city_vars[a]
+        b_s, b_e = city_vars[b]
+        if (a, b) not in flight_pairs:
+            # No flight between a and b: cannot overlap and cannot be consecutive
+            solver.add(z3.Not(z3.And(a_s <= b_e, b_s <= a_e)))  # No overlap
+            solver.add(z3.Not(z3.Or(b_s == a_e + 1, a_s == b_e + 1)))  # No consecutive
 
-# Flight connectivity constraints using order variables
-order = {city: Int(f'order_{city}') for city in cities}
-for city in cities:
-    s.add(order[city] >= 1, order[city] <= len(cities))
-
-# All order values must be distinct
-s.add(Distinct([order[city] for city in cities]))
-
-# Ensure consecutive cities in order have direct flight from current to next
-for c1 in cities:
-    for c2 in cities:
-        if c1 != c2:
-            s.add(Implies(order[c1] + 1 == order[c2], Or([c2 in direct_flights[c1]])))
-
-# Check for satisfiability
-if s.check() == sat:
-    m = s.model()
+# Check solution
+if solver.check() == z3.sat:
+    model = solver.model()
     schedule = []
-    for city in cities:
-        schedule.append((city, m.eval(start[city]).as_long(), m.eval(end[city]).as_long()))
+    for city in all_cities:
+        s = model.evaluate(city_vars[city][0])
+        e = model.evaluate(city_vars[city][1])
+        s_val = s.as_long() if isinstance(s, z3.IntNumRef) else city_vars[city][0].as_long()
+        e_val = e.as_long() if isinstance(e, z3.IntNumRef) else city_vars[city][1].as_long()
+        schedule.append((city, s_val, e_val))
     schedule.sort(key=lambda x: x[1])
-    print("Valid trip plan:")
+    print("Valid itinerary:")
     for entry in schedule:
         print(f"{entry[0]}: Days {entry[1]} to {entry[2]}")
 else:
-    print("No valid trip plan exists. Check if total required days exceed 21, fixed dates overlap, or flight connections are insufficient.")
+    print("No valid itinerary found.")

@@ -1,118 +1,96 @@
 from z3 import *
 
-def plan_trip():
-    # Initialize solver
-    s = Solver()
-
-    # Cities
-    cities = ['Copenhagen', 'Geneva', 'Mykonos', 'Naples', 'Prague', 
-              'Dubrovnik', 'Athens', 'Santorini', 'Brussels', 'Munich']
-    city_indices = {city: idx for idx, city in enumerate(cities)}
-    
-    # Days (1-28)
-    days = 28
-    day_range = range(1, days + 1)
-    
-    # Create variables: city_day[i][j] is True if in city i on day j
-    city_day = [[Bool(f'city_{i}_day_{j}') for j in day_range] for i in range(len(cities))]
-    
-    # Constraints
-    
-    # 1. Each day must be in exactly one city
-    for day in day_range:
-        s.add(ExactlyOne([city_day[i][day-1] for i in range(len(cities))))
-    
-    # 2. Stay durations
-    stay_durations = {
-        'Copenhagen': 5,
-        'Geneva': 3,
+def solve_trip_planning():
+    # Cities and their codes for easier reference
+    cities = {
+        'Copenhagen': 0,
+        'Geneva': 1,
         'Mykonos': 2,
-        'Naples': 4,
-        'Prague': 2,
-        'Dubrovnik': 3,
-        'Athens': 4,
-        'Santorini': 5,
-        'Brussels': 4,
-        'Munich': 5
+        'Naples': 3,
+        'Prague': 4,
+        'Dubrovnik': 5,
+        'Athens': 6,
+        'Santorini': 7,
+        'Brussels': 8,
+        'Munich': 9
+    }
+    city_names = {v: k for k, v in cities.items()}
+    
+    # Direct flights: adjacency list
+    direct_flights = {
+        0: [1, 3, 4, 5, 6, 7, 8, 9],  # Copenhagen
+        1: [0, 2, 3, 4, 5, 6, 7, 8, 9],  # Geneva
+        2: [1, 3, 6, 9],  # Mykonos
+        3: [0, 1, 2, 5, 6, 7, 8, 9],  # Naples
+        4: [0, 1, 6, 8, 9],  # Prague
+        5: [0, 1, 3, 6, 9],  # Dubrovnik
+        6: [0, 1, 2, 3, 4, 5, 7, 8, 9],  # Athens
+        7: [0, 1, 3, 6],  # Santorini
+        8: [0, 1, 3, 4, 6, 9],  # Brussels
+        9: [0, 1, 2, 3, 4, 5, 6, 8]  # Munich
     }
     
-    for city, duration in stay_durations.items():
-        idx = city_indices[city]
-        # Total days in city must equal duration
-        s.add(Sum([If(city_day[idx][day-1], 1, 0) for day in day_range]) == duration)
-    
-    # 3. Fixed events
-    # Friend in Copenhagen between day 11-15
-    copenhagen_idx = city_indices['Copenhagen']
-    s.add(Or([city_day[copenhagen_idx][d] for d in range(10, 15)]))
-    
-    # Conference in Mykonos between day 27-28
-    mykonos_idx = city_indices['Mykonos']
-    s.add(And(city_day[mykonos_idx][26], city_day[mykonos_idx][27]))
-    
-    # Relatives in Naples between day 5-8
-    naples_idx = city_indices['Naples']
-    s.add(Or([city_day[naples_idx][d] for d in range(4, 8)]))
-    
-    # Workshop in Athens between day 8-11
-    athens_idx = city_indices['Athens']
-    s.add(Or([city_day[athens_idx][d] for d in range(7, 11)]))
-    
-    # 4. Flight connections (direct flights)
-    connections = {
-        'Copenhagen': ['Dubrovnik', 'Brussels', 'Naples', 'Athens', 'Geneva', 'Santorini', 'Munich'],
-        'Geneva': ['Prague', 'Athens', 'Mykonos', 'Naples', 'Santorini', 'Dubrovnik', 'Brussels', 'Munich'],
-        'Mykonos': ['Geneva', 'Naples', 'Munich', 'Athens'],
-        'Naples': ['Dubrovnik', 'Mykonos', 'Copenhagen', 'Athens', 'Munich', 'Geneva', 'Santorini'],
-        'Prague': ['Geneva', 'Athens', 'Brussels', 'Munich', 'Copenhagen'],
-        'Dubrovnik': ['Copenhagen', 'Naples', 'Athens', 'Geneva', 'Munich'],
-        'Athens': ['Geneva', 'Dubrovnik', 'Santorini', 'Naples', 'Mykonos', 'Prague', 'Brussels', 'Munich', 'Copenhagen'],
-        'Santorini': ['Geneva', 'Athens', 'Copenhagen', 'Naples'],
-        'Brussels': ['Copenhagen', 'Naples', 'Prague', 'Athens', 'Munich', 'Geneva'],
-        'Munich': ['Mykonos', 'Naples', 'Dubrovnik', 'Brussels', 'Athens', 'Geneva', 'Copenhagen', 'Prague']
+    # Required days in each city
+    required_days = {
+        0: 5,  # Copenhagen
+        1: 3,  # Geneva
+        2: 2,  # Mykonos
+        3: 4,  # Naples
+        4: 2,  # Prague
+        5: 3,  # Dubrovnik
+        6: 4,  # Athens
+        7: 5,  # Santorini
+        8: 4,  # Brussels
+        9: 5   # Munich
     }
     
-    # 5. Transition constraints - can only move between connected cities
-    for day in range(1, days):
-        for from_city in cities:
-            from_idx = city_indices[from_city]
-            for to_city in cities:
-                to_idx = city_indices[to_city]
-                if to_city not in connections[from_city] and from_city != to_city:
-                    s.add(Implies(And(city_day[from_idx][day-1], city_day[to_idx][day]),
-                          False))
+    # Create Z3 variables: day[i] is the city on day i+1 (days 1..28)
+    days = [Int(f'day_{i}') for i in range(28)]
     
-    # 6. Stay must be consecutive days (simplified)
-    for city, duration in stay_durations.items():
-        idx = city_indices[city]
-        # At least one sequence of 'duration' consecutive days in this city
-        s.add(Or([And([city_day[idx][d] for d in range(day, day+duration)])
-                for day in range(days - duration + 1)]))
+    s = Solver()
     
-    # Solve
+    # Constraint: each day's city must be one of the 10 cities
+    for day in days:
+        s.add(Or([day == c for c in cities.values()]))
+    
+    # Constraint: meet friend in Copenhagen between days 11-15 (days 10-14 in 0-based)
+    for i in range(10, 15):
+        s.add(days[i] == 0)
+    
+    # Constraint: conference in Mykonos between days 27-28 (days 26-27 in 0-based)
+    s.add(days[26] == 2)
+    s.add(days[27] == 2)
+    
+    # Constraint: visit relatives in Naples between days 5-8 (days 4-7 in 0-based)
+    for i in range(4, 8):
+        s.add(days[i] == 3)
+    
+    # Constraint: workshop in Athens between days 8-11 (days 7-10 in 0-based)
+    for i in range(7, 11):
+        s.add(days[i] == 6)
+    
+    # Constraint: flights between consecutive days must be direct or same city
+    for i in range(27):
+        current_city = days[i]
+        next_city = days[i+1]
+        s.add(Or(next_city == current_city, 
+                 And(next_city != current_city, 
+                     Or([next_city == dest for dest in direct_flights[current_city]]))))
+    
+    # Constraint: total days in each city must match required_days
+    for city in cities.values():
+        total_days = Sum([If(day == city, 1, 0) for day in days])
+        s.add(total_days == required_days[city])
+    
+    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
-        # Create day-by-day itinerary
-        itinerary = []
-        for day in day_range:
-            for i, city in enumerate(cities):
-                if is_true(m.eval(city_day[i][day-1])):
-                    itinerary.append((day, city))
-                    break
-        
-        # Print itinerary
-        print("28-Day European Trip Itinerary:")
-        for day, city in itinerary:
-            print(f"Day {day}: {city}")
-        
-        # Print flight transitions
-        print("\nFlight Transitions:")
-        prev_city = None
-        for day, city in itinerary:
-            if prev_city and prev_city != city:
-                print(f"Day {day}: Fly from {prev_city} to {city}")
-            prev_city = city
+        schedule = [m[day].as_long() for day in days]
+        # Print the schedule
+        print("Day\tCity")
+        for i in range(28):
+            print(f"{i+1}\t{city_names[schedule[i]]}")
     else:
-        print("No valid itinerary found")
+        print("No valid trip plan found.")
 
-plan_trip()
+solve_trip_planning()

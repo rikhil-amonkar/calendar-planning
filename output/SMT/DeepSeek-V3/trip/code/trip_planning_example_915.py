@@ -1,107 +1,82 @@
 from z3 import *
 
-def plan_trip():
-    # Initialize solver
-    s = Solver()
-
-    # Cities
-    cities = ['Bucharest', 'Venice', 'Prague', 'Frankfurt', 'Zurich', 'Florence', 'Tallinn']
-    city_indices = {city: idx for idx, city in enumerate(cities)}
-    
-    # Days (1-26)
-    days = 26
-    day_range = range(1, days + 1)
-    
-    # Create variables: city_day[i][j] is True if in city i on day j
-    city_day = [[Bool(f'city_{i}_day_{j}') for j in day_range] for i in range(len(cities))]
-    
-    # Constraints
-    
-    # 1. Each day must be in exactly one city
-    for day in day_range:
-        s.add(ExactlyOne([city_day[i][day-1] for i in range(len(cities))))
-    
-    # 2. Stay durations
-    stay_durations = {
-        'Bucharest': 3,
-        'Venice': 5,
-        'Prague': 4,
-        'Frankfurt': 5,
-        'Zurich': 5,
+def solve_trip_planning():
+    # Cities and their codes
+    cities = {
+        'Bucharest': 0,
+        'Venice': 1,
+        'Prague': 2,
+        'Frankfurt': 3,
+        'Zurich': 4,
         'Florence': 5,
-        'Tallinn': 5
+        'Tallinn': 6
+    }
+    city_names = {v: k for k, v in cities.items()}
+    
+    # Direct flight connections
+    direct_flights = {
+        0: [1, 2, 3, 4],  # Bucharest
+        1: [0, 3, 4],  # Venice
+        2: [0, 3, 4, 5, 6],  # Prague
+        3: [0, 1, 2, 4, 5, 6],  # Frankfurt
+        4: [0, 1, 2, 3, 5, 6],  # Zurich
+        5: [2, 3, 4],  # Florence
+        6: [2, 3, 4]  # Tallinn
     }
     
-    for city, duration in stay_durations.items():
-        idx = city_indices[city]
-        # Total days in city must equal duration
-        s.add(Sum([If(city_day[idx][day-1], 1, 0) for day in day_range]) == duration)
-    
-    # 3. Fixed events
-    # Wedding in Venice between day 22-26
-    venice_idx = city_indices['Venice']
-    s.add(And([city_day[venice_idx][d] for d in range(21, 26)]))  # Days 22-26
-    
-    # Annual show in Frankfurt between day 12-16
-    frankfurt_idx = city_indices['Frankfurt']
-    s.add(Or([city_day[frankfurt_idx][d] for d in range(11, 16)]))  # Days 12-16
-    
-    # Friends in Tallinn between day 8-12
-    tallinn_idx = city_indices['Tallinn']
-    s.add(Or([city_day[tallinn_idx][d] for d in range(7, 12)]))  # Days 8-12
-    
-    # 4. Flight connections (direct flights)
-    connections = {
-        'Prague': ['Tallinn', 'Zurich', 'Florence', 'Bucharest', 'Frankfurt'],
-        'Frankfurt': ['Bucharest', 'Venice', 'Tallinn', 'Zurich', 'Florence', 'Prague'],
-        'Bucharest': ['Frankfurt', 'Prague', 'Zurich'],
-        'Zurich': ['Prague', 'Florence', 'Frankfurt', 'Venice', 'Bucharest', 'Tallinn'],
-        'Florence': ['Prague', 'Frankfurt', 'Zurich'],
-        'Tallinn': ['Prague', 'Frankfurt', 'Zurich'],
-        'Venice': ['Frankfurt', 'Zurich']
+    # Required days in each city
+    required_days = {
+        0: 3,  # Bucharest
+        1: 5,  # Venice
+        2: 4,  # Prague
+        3: 5,  # Frankfurt
+        4: 5,  # Zurich
+        5: 5,  # Florence
+        6: 5   # Tallinn
     }
     
-    # 5. Transition constraints - can only move between connected cities
-    for day in range(1, days):
-        for from_city in cities:
-            from_idx = city_indices[from_city]
-            for to_city in cities:
-                to_idx = city_indices[to_city]
-                if to_city not in connections[from_city] and from_city != to_city:
-                    s.add(Implies(And(city_day[from_idx][day-1], city_day[to_idx][day]),
-                          False))
+    # Create Z3 variables for each day
+    days = [Int(f'day_{i}') for i in range(26)]
+    s = Solver()
     
-    # 6. Stay must be consecutive days (simplified)
-    for city, duration in stay_durations.items():
-        idx = city_indices[city]
-        # At least one sequence of 'duration' consecutive days in this city
-        s.add(Or([And([city_day[idx][d] for d in range(day, day+duration)])
-                for day in range(days - duration + 1)]))
+    # Each day must be one of the cities
+    for day in days:
+        s.add(Or([day == c for c in cities.values()]))
     
-    # Solve
+    # Event constraints
+    # Wedding in Venice (days 22-26)
+    for i in range(21, 26):
+        s.add(days[i] == 1)
+    
+    # Annual show in Frankfurt (days 12-16)
+    for i in range(11, 16):
+        s.add(days[i] == 3)
+    
+    # Meet friends in Tallinn (days 8-12)
+    for i in range(7, 12):
+        s.add(days[i] == 6)
+    
+    # Flight constraints between consecutive days
+    for i in range(25):
+        current = days[i]
+        next_day = days[i+1]
+        s.add(Or(next_day == current, 
+               And(next_day != current, 
+                   Or([next_day == dest for dest in direct_flights[current]]))))
+    
+    # Total days in each city must match requirements
+    for city in cities.values():
+        total = Sum([If(day == city, 1, 0) for day in days])
+        s.add(total == required_days[city])
+    
+    # Solve and print schedule
     if s.check() == sat:
         m = s.model()
-        # Create day-by-day itinerary
-        itinerary = []
-        for day in day_range:
-            for i, city in enumerate(cities):
-                if is_true(m.eval(city_day[i][day-1])):
-                    itinerary.append((day, city))
-                    break
-        
-        # Print itinerary
-        print("26-Day European Trip Itinerary:")
-        for day, city in itinerary:
-            print(f"Day {day}: {city}")
-        
-        # Print flight transitions
-        print("\nFlight Transitions:")
-        prev_city = None
-        for day, city in itinerary:
-            if prev_city and prev_city != city:
-                print(f"Day {day}: Fly from {prev_city} to {city}")
-            prev_city = city
+        schedule = [m[day].as_long() for day in days]
+        print("Day\tCity")
+        for i in range(26):
+            print(f"{i+1}\t{city_names[schedule[i]]}")
     else:
-        print("No valid itinerary found")
+        print("No valid trip plan found.")
 
-plan_trip()
+solve_trip_planning()

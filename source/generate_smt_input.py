@@ -81,6 +81,10 @@ for model_name in args.model:
             print(f"Running example: {id}")
             prompt = "Given the following scheduling problem:\n"
             prompt += f"{example['prompt_0shot']}\n"
+            if task == "calendar":
+                prompt += "You solution should always have three things: the day to meet, the start time, and the end time.\n"
+            if task == "trip":
+                prompt += "Note that if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.\n"
             prompt += "Write a Python program that solves it using the Z3 solver. Alway surround your final code with ```python\nYOUR_CODE\n```.\n"
             while True:
                 try:

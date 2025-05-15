@@ -1,61 +1,39 @@
-from z3 import Optimize, Int, Or, sat
+import z3
 
-opt = Optimize()
-start = Int('start')
-duration = 30  # 30 minutes
+solver = z3.Optimize()
+S = z3.Int('S')
 
-# Convert time constraints to minutes since 9:00 (0-480)
-opt.add(start >= 0, start + duration <= 480)
+# Total work hours on Monday: 9:00 (0) to 17:00 (480 minutes)
+solver.add(S >= 0)
+solver.add(S + 30 <= 480)
 
-# Stephanie's busy periods (minutes since 9:00)
-stephanie_busy = [
-    (120, 150),  # 11:00-11:30
-    (330, 360)   # 14:30-15:00
+# Define blocked intervals in minutes since 9:00
+blocked_intervals = [
+    # Stephanie's blocks
+    (120, 150), (330, 360),
+    # Joe's blocks
+    (0, 30), (60, 180), (210, 240), (300, 480),
+    # Diana's blocks
+    (0, 90), (150, 180), (240, 300), (330, 390), (420, 480),
+    # Deborah's blocks
+    (0, 60), (90, 180), (210, 240), (270, 300), (330, 390), (420, 450)
 ]
-for (s, e) in stephanie_busy:
-    opt.add(Or(start + duration <= s, start >= e))
 
-# Joe's busy periods
-joe_busy = [
-    (0, 30),     # 9:00-9:30
-    (60, 180),   # 10:00-12:00
-    (210, 240),  # 12:30-13:00
-    (300, 480)   # 14:00-17:00
-]
-for (s, e) in joe_busy:
-    opt.add(Or(start + duration <= s, start >= e))
+# Add constraints that meeting doesn't overlap with any blocked time
+for start, end in blocked_intervals:
+    solver.add(z3.Or(S + 30 <= start, S >= end))
 
-# Diana's busy periods
-diana_busy = [
-    (0, 90),     # 9:00-10:30
-    (150, 180),  # 11:30-12:00
-    (240, 300),  # 13:00-14:00
-    (330, 390),  # 14:30-15:30
-    (420, 480)   # 16:00-17:00
-]
-for (s, e) in diana_busy:
-    opt.add(Or(start + duration <= s, start >= e))
+# Find earliest possible meeting time
+solver.minimize(S)
 
-# Deborah's busy periods
-deborah_busy = [
-    (0, 60),     # 9:00-10:00
-    (90, 180),   # 10:30-12:00
-    (210, 240),  # 12:30-13:00
-    (270, 300),  # 13:30-14:00
-    (330, 390),  # 14:30-15:30
-    (420, 450)   # 16:00-16:30
-]
-for (s, e) in deborah_busy:
-    opt.add(Or(start + duration <= s, start >= e))
-
-# Find earliest possible time
-opt.minimize(start)
-
-if opt.check() == sat:
-    m = opt.model()
-    start_min = m[start].as_long()
-    hours = 9 + start_min // 60
-    minutes = start_min % 60
-    print(f"Meeting starts on Monday at {hours:02d}:{minutes:02d}")
+if solver.check() == z3.sat:
+    model = solver.model()
+    start_minutes = model[S].as_long()
+    start_h = 9 + start_minutes // 60
+    start_m = start_minutes % 60
+    end_minutes = start_minutes + 30
+    end_h = 9 + end_minutes // 60
+    end_m = end_minutes % 60
+    print(f"Monday\n{start_h}:{start_m:02d}\n{end_h}:{end_m:02d}")
 else:
-    print("No valid time found")
+    print("No solution found")

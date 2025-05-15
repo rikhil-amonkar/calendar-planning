@@ -1,76 +1,43 @@
-from z3 import Optimize, Int, Or, sat
+import z3
 
-opt = Optimize()
-start = Int('start')
-duration = 30  # 30 minutes
+solver = z3.Optimize()
+S = z3.Int('S')
 
-# Convert time constraints to minutes since 9:00 (0-480)
-opt.add(start >= 0, start + duration <= 480)
+# Total work hours on Monday: 9:00 (0) to 17:00 (480 minutes)
+solver.add(S >= 0)
+solver.add(S + 30 <= 480)
 
-# Megan's busy periods (minutes since 9:00)
-megan_busy = [
-    (0, 30),    # 9:00-9:30
-    (60, 120),  # 10:00-11:00
-    (180, 210)  # 12:00-12:30
+# Define all blocked intervals in minutes since 9:00
+blocked_intervals = [
+    # Megan's blocks
+    (0, 30), (60, 120), (180, 210),
+    # Christine's blocks
+    (0, 30), (150, 180), (240, 300), (390, 420),
+    # Sara's blocks
+    (150, 180), (330, 360),
+    # Bruce's blocks
+    (30, 60), (90, 180), (210, 300), (330, 360), (390, 420),
+    # Kathryn's blocks
+    (60, 330), (420, 450),
+    # Billy's blocks
+    (0, 30), (120, 150), (180, 300), (330, 390)
 ]
-for (s, e) in megan_busy:
-    opt.add(Or(start + duration <= s, start >= e))
 
-# Christine's busy periods
-christine_busy = [
-    (0, 30),     # 9:00-9:30
-    (150, 180),  # 11:30-12:00
-    (240, 300),  # 13:00-14:00
-    (390, 420)   # 15:30-16:30
-]
-for (s, e) in christine_busy:
-    opt.add(Or(start + duration <= s, start >= e))
+# Add constraints to avoid all blocked intervals
+for start, end in blocked_intervals:
+    solver.add(z3.Or(S + 30 <= start, S >= end))
 
-# Sara's busy periods
-sara_busy = [
-    (150, 180),  # 11:30-12:00
-    (270, 300)   # 14:30-15:00
-]
-for (s, e) in sara_busy:
-    opt.add(Or(start + duration <= s, start >= e))
+# Find the earliest possible time
+solver.minimize(S)
 
-# Bruce's busy periods
-bruce_busy = [
-    (30, 60),    # 9:30-10:00
-    (90, 180),   # 10:30-12:00
-    (210, 300),  # 12:30-14:00
-    (270, 300),  # 14:30-15:00
-    (390, 450)   # 15:30-16:30
-]
-for (s, e) in bruce_busy:
-    opt.add(Or(start + duration <= s, start >= e))
-
-# Kathryn's busy periods
-kathryn_busy = [
-    (60, 390),   # 10:00-15:30
-    (420, 450)   # 16:00-16:30
-]
-for (s, e) in kathryn_busy:
-    opt.add(Or(start + duration <= s, start >= e))
-
-# Billy's busy periods
-billy_busy = [
-    (0, 30),     # 9:00-9:30
-    (120, 150),  # 11:00-11:30
-    (180, 300),  # 12:00-14:00
-    (270, 330)   # 14:30-15:30
-]
-for (s, e) in billy_busy:
-    opt.add(Or(start + duration <= s, start >= e))
-
-# Find earliest possible time
-opt.minimize(start)
-
-if opt.check() == sat:
-    m = opt.model()
-    start_min = m[start].as_long()
-    hours = 9 + start_min // 60
-    minutes = start_min % 60
-    print(f"Meeting starts on Monday at {hours:02d}:{minutes:02d}")
+if solver.check() == z3.sat:
+    model = solver.model()
+    start_minutes = model[S].as_long()
+    start_h = 9 + start_minutes // 60
+    start_m = start_minutes % 60
+    end_minutes = start_minutes + 30
+    end_h = 9 + end_minutes // 60
+    end_m = end_minutes % 60
+    print(f"Monday\n{start_h}:{start_m:02d}\n{end_h}:{end_m:02d}")
 else:
-    print("No valid time found")
+    print("No solution found")

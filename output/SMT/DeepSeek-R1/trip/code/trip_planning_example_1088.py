@@ -1,92 +1,91 @@
 from z3 import *
 
-# Define cities and their required durations
-cities = {
-    'Reykjavik': 2,
-    'Oslo': 5,
-    'Stuttgart': 5,
-    'Split': 3,
-    'Geneva': 2,
-    'Porto': 3,
-    'Tallinn': 5,
-    'Stockholm': 3
+# Cities encoding
+Reykjavik, Oslo, Stuttgart, Split, Geneva, Porto, Tallinn, Stockholm = 0, 1, 2, 3, 4, 5, 6, 7
+city_names = {
+    0: 'Reykjavik',
+    1: 'Oslo',
+    2: 'Stuttgart',
+    3: 'Split',
+    4: 'Geneva',
+    5: 'Porto',
+    6: 'Tallinn',
+    7: 'Stockholm'
 }
 
-# Fixed dates
-fixed = {
-    'Reykjavik': (1, 2),
-    'Porto': (19, 21)
+# Required days per city
+required_days = {
+    Reykjavik: 2,
+    Oslo: 5,
+    Stuttgart: 5,
+    Split: 3,
+    Geneva: 2,
+    Porto: 3,
+    Tallinn: 5,
+    Stockholm: 3
 }
 
-# Direct flights (bidirectional)
-direct_flights = {
-    'Reykjavik': ['Stuttgart', 'Stockholm', 'Tallinn', 'Oslo'],
-    'Oslo': ['Stockholm', 'Stuttgart', 'Split', 'Geneva', 'Porto', 'Tallinn', 'Reykjavik'],
-    'Stuttgart': ['Porto', 'Stockholm', 'Reykjavik', 'Split'],
-    'Split': ['Stuttgart', 'Oslo', 'Geneva', 'Stockholm'],
-    'Geneva': ['Oslo', 'Porto', 'Split', 'Stockholm'],
-    'Porto': ['Stuttgart', 'Geneva', 'Oslo'],
-    'Tallinn': ['Reykjavik', 'Oslo'],
-    'Stockholm': ['Oslo', 'Stuttgart', 'Reykjavik', 'Split', 'Geneva']
-}
+# Direct flights (each pair is bidirectional)
+direct_flights = [
+    (Reykjavik, Stuttgart), (Stuttgart, Reykjavik),
+    (Reykjavik, Stockholm), (Stockholm, Reykjavik),
+    (Reykjavik, Tallinn), (Tallinn, Reykjavik),
+    (Stockholm, Oslo), (Oslo, Stockholm),
+    (Stuttgart, Porto), (Porto, Stuttgart),
+    (Oslo, Split), (Split, Oslo),
+    (Stockholm, Stuttgart), (Stuttgart, Stockholm),
+    (Reykjavik, Oslo), (Oslo, Reykjavik),
+    (Oslo, Geneva), (Geneva, Oslo),
+    (Stockholm, Split), (Split, Stockholm),
+    (Split, Stuttgart), (Stuttgart, Split),
+    (Tallinn, Oslo), (Oslo, Tallinn),
+    (Stockholm, Geneva), (Geneva, Stockholm),
+    (Oslo, Porto), (Porto, Oslo),
+    (Geneva, Porto), (Porto, Geneva),
+    (Geneva, Split), (Split, Geneva)
+]
 
-# Create solver
+# Create Z3 variables for each day (0-based, days 0-20 correspond to days 1-21)
+days = [Int(f'day_{i}') for i in range(21)]
+
 s = Solver()
 
-# Create start and end day variables for each city
-start = {city: Int(f'start_{city}') for city in cities}
-end = {city: Int(f'end_{city}') for city in cities}
+# Constraint: Days 0 and 1 (days 1 and 2) must be Reykjavik
+s.add(days[0] == Reykjavik)
+s.add(days[1] == Reykjavik)
 
-# Add duration constraints
-for city in cities:
-    s.add(end[city] == start[city] + cities[city] - 1)
+# Constraint: Days 18, 19, 20 (days 19-21) must be Porto
+s.add(days[18] == Porto)
+s.add(days[19] == Porto)
+s.add(days[20] == Porto)
 
-# Fixed dates
-s.add(start['Reykjavik'] == 1)
-s.add(end['Reykjavik'] == 2)
-s.add(start['Porto'] == 19)
-s.add(end['Porto'] == 21)
+# Friend meeting in Stockholm between day 2 and 4 (indices 1-3)
+# At least one of days 2 or 3 (days 3 or 4) must be Stockholm
+s.add(Or(days[2] == Stockholm, days[3] == Stockholm))
 
-# Stockholm must be between day 2 and 4
-s.add(start['Stockholm'] <= 4)
-s.add(end['Stockholm'] >= 2)
+# Constraints for consecutive days
+for i in range(20):
+    current = days[i]
+    next_day = days[i+1]
+    # Either stay in the same city or fly directly
+    s.add(Or(
+        current == next_day,
+        Or([And(current == a, next_day == b) for (a, b) in direct_flights])
+    ))
 
-# All cities have positive start days and end <= 21
-for city in cities:
-    s.add(start[city] >= 1)
-    s.add(end[city] <= 21)
+# Compute total days for each city
+for city in range(8):
+    count_list = Sum([If(days[i] == city, 1, 0) for i in range(21)])
+    count_flights = Sum([If(And(days[i] != days[i+1], Or(days[i] == city, days[i+1] == city)), 1, 0) for i in range(20)])
+    total = count_list + count_flights
+    s.add(total == required_days[city])
 
-# Cities' stays do not overlap
-for c1 in cities:
-    for c2 in cities:
-        if c1 != c2:
-            s.add(Or(end[c1] < start[c2], end[c2] < start[c1]))
-
-# Flights between consecutive cities (based on start days)
-# Determine the order of cities by start day
-# For each pair of cities (c1, c2), if c1 is before c2, there must be a flight from c1 to c2 or vice versa
-# This is a simplified approach and may not cover all cases, but it's a starting point
-
-# Create a list of cities sorted by start day
-order = sorted(cities.keys(), key=lambda x: start[x])
-
-# Ensure consecutive cities in the order have direct flights
-for i in range(len(order) - 1):
-    current = order[i]
-    next_city = order[i+1]
-    s.add(Or([current == c for c in direct_flights.get(next_city, [])] + [next_city == c for c in direct_flights.get(current, [])]))
-
-# Check if the solution is satisfiable
+# Solve the model
 if s.check() == sat:
-    m = s.model()
+    model = s.model()
+    schedule = [model.evaluate(days[i]).as_long() for i in range(21)]
     # Print the schedule
-    schedule = []
-    for city in cities:
-        schedule.append((city, m.eval(start[city]), m.eval(end[city]))
-    # Sort by start day
-    schedule.sort(key=lambda x: x[1])
-    print("Trip plan:")
-    for entry in schedule:
-        print(f"{entry[0]}: Days {entry[1]} to {entry[2]}")
+    for idx, city_num in enumerate(schedule, 1):
+        print(f'Day {idx}: {city_names[city_num]}')
 else:
-    print("No valid trip plan exists.")
+    print("No valid schedule found.")

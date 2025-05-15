@@ -1,105 +1,80 @@
 from z3 import *
 
-def plan_trip():
-    # Initialize solver
-    s = Solver()
-
-    # Cities
-    cities = ['Amsterdam', 'Edinburgh', 'Brussels', 'Vienna', 'Berlin', 'Reykjavik']
-    city_indices = {city: idx for idx, city in enumerate(cities)}
-    
-    # Days (1-23)
-    days = 23
-    day_range = range(1, days + 1)
-    
-    # Create variables: city_day[i][j] is True if in city i on day j
-    city_day = [[Bool(f'city_{i}_day_{j}') for j in day_range] for i in range(len(cities))]
-    
-    # Constraints
-    
-    # 1. Each day must be in exactly one city
-    for day in day_range:
-        s.add(ExactlyOne([city_day[i][day-1] for i in range(len(cities))))
-    
-    # 2. Stay durations
-    stay_durations = {
-        'Amsterdam': 4,
-        'Edinburgh': 5,
-        'Brussels': 5,
-        'Vienna': 5,
+def solve_trip_planning():
+    # Cities and their codes for easier reference
+    cities = {
+        'Amsterdam': 0,
+        'Edinburgh': 1,
+        'Brussels': 2,
+        'Vienna': 3,
         'Berlin': 4,
         'Reykjavik': 5
     }
+    city_names = {v: k for k, v in cities.items()}
     
-    for city, duration in stay_durations.items():
-        idx = city_indices[city]
-        # Total days in city must equal duration
-        s.add(Sum([If(city_day[idx][day-1], 1, 0) for day in day_range]) == duration)
-    
-    # 3. Fixed events
-    # Relatives in Amsterdam between day 5-8
-    amsterdam_idx = city_indices['Amsterdam']
-    s.add(Or([city_day[amsterdam_idx][d] for d in range(4, 8)]))  # Days 5-8
-    
-    # Friend in Berlin between day 16-19
-    berlin_idx = city_indices['Berlin']
-    s.add(Or([city_day[berlin_idx][d] for d in range(15, 19)]))  # Days 16-19
-    
-    # Workshop in Reykjavik between day 12-16
-    reykjavik_idx = city_indices['Reykjavik']
-    s.add(Or([city_day[reykjavik_idx][d] for d in range(11, 16)]))  # Days 12-16
-    
-    # 4. Flight connections (direct flights)
-    connections = {
-        'Amsterdam': ['Berlin', 'Edinburgh', 'Vienna', 'Reykjavik'],
-        'Edinburgh': ['Berlin', 'Amsterdam', 'Brussels'],
-        'Brussels': ['Berlin', 'Edinburgh', 'Vienna', 'Reykjavik'],
-        'Vienna': ['Berlin', 'Brussels', 'Amsterdam', 'Reykjavik'],
-        'Berlin': ['Edinburgh', 'Amsterdam', 'Vienna', 'Brussels', 'Reykjavik'],
-        'Reykjavik': ['Vienna', 'Amsterdam', 'Brussels', 'Berlin']
+    # Direct flights: adjacency list
+    direct_flights = {
+        0: [1, 3, 4, 5],  # Amsterdam
+        1: [0, 2, 4],  # Edinburgh
+        2: [1, 3, 4, 5],  # Brussels
+        3: [0, 2, 4, 5],  # Vienna
+        4: [0, 1, 2, 3, 5],  # Berlin
+        5: [0, 2, 3, 4]  # Reykjavik
     }
     
-    # 5. Transition constraints - can only move between connected cities
-    for day in range(1, days):
-        for from_city in cities:
-            from_idx = city_indices[from_city]
-            for to_city in cities:
-                to_idx = city_indices[to_city]
-                if to_city not in connections[from_city] and from_city != to_city:
-                    s.add(Implies(And(city_day[from_idx][day-1], city_day[to_idx][day]),
-                          False))
+    # Required days in each city
+    required_days = {
+        0: 4,  # Amsterdam
+        1: 5,  # Edinburgh
+        2: 5,  # Brussels
+        3: 5,  # Vienna
+        4: 4,  # Berlin
+        5: 5   # Reykjavik
+    }
     
-    # 6. Stay must be consecutive days (simplified)
-    for city, duration in stay_durations.items():
-        idx = city_indices[city]
-        # At least one sequence of 'duration' consecutive days in this city
-        s.add(Or([And([city_day[idx][d] for d in range(day, day+duration)])
-                for day in range(days - duration + 1)]))
+    # Create Z3 variables: day[i] is the city on day i+1 (days 1..23)
+    days = [Int(f'day_{i}') for i in range(23)]
     
-    # Solve
+    s = Solver()
+    
+    # Constraint: each day's city must be one of the 6 cities
+    for day in days:
+        s.add(Or([day == c for c in cities.values()]))
+    
+    # Constraint: visit relatives in Amsterdam between days 5-8 (days 4-7 in 0-based)
+    for i in range(4, 8):
+        s.add(days[i] == 0)
+    
+    # Constraint: meet friend in Berlin between days 16-19 (days 15-18 in 0-based)
+    for i in range(15, 19):
+        s.add(days[i] == 4)
+    
+    # Constraint: workshop in Reykjavik between days 12-16 (days 11-15 in 0-based)
+    for i in range(11, 16):
+        s.add(days[i] == 5)
+    
+    # Constraint: flights between consecutive days must be direct or same city
+    for i in range(22):
+        current_city = days[i]
+        next_city = days[i+1]
+        s.add(Or(next_city == current_city, 
+                 And(next_city != current_city, 
+                     Or([next_city == dest for dest in direct_flights[current_city]]))))
+    
+    # Constraint: total days in each city must match required_days
+    for city in cities.values():
+        total_days = Sum([If(day == city, 1, 0) for day in days])
+        s.add(total_days == required_days[city])
+    
+    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
-        # Create day-by-day itinerary
-        itinerary = []
-        for day in day_range:
-            for i, city in enumerate(cities):
-                if is_true(m.eval(city_day[i][day-1])):
-                    itinerary.append((day, city))
-                    break
-        
-        # Print itinerary
-        print("23-Day European Trip Itinerary:")
-        for day, city in itinerary:
-            print(f"Day {day}: {city}")
-        
-        # Print flight transitions
-        print("\nFlight Transitions:")
-        prev_city = None
-        for day, city in itinerary:
-            if prev_city and prev_city != city:
-                print(f"Day {day}: Fly from {prev_city} to {city}")
-            prev_city = city
+        schedule = [m[day].as_long() for day in days]
+        # Print the schedule
+        print("Day\tCity")
+        for i in range(23):
+            print(f"{i+1}\t{city_names[schedule[i]]}")
     else:
-        print("No valid itinerary found")
+        print("No valid trip plan found.")
 
-plan_trip()
+solve_trip_planning()

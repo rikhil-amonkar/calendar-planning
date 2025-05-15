@@ -1,103 +1,101 @@
 from z3 import *
 
-# Define cities and their required days
-cities = {
-    0: 'Warsaw',
-    1: 'Porto',
-    2: 'Naples',
-    3: 'Brussels',
-    4: 'Split',
-    5: 'Reykjavik',
-    6: 'Amsterdam',
-    7: 'Lyon',
-    8: 'Helsinki',
-    9: 'Valencia'
+# Define the cities and their durations
+cities = ['Warsaw', 'Porto', 'Naples', 'Brussels', 'Split', 'Reykjavik', 'Amsterdam', 'Lyon', 'Helsinki', 'Valencia']
+durations = {
+    'Warsaw': 3,
+    'Porto': 5,
+    'Naples': 4,
+    'Brussels': 3,
+    'Split': 3,
+    'Reykjavik': 5,
+    'Amsterdam': 4,
+    'Lyon': 3,
+    'Helsinki': 4,
+    'Valencia': 2
 }
 
-required_days = {
-    0: 3,
-    1: 5,
-    2: 4,
-    3: 3,
-    4: 3,
-    5: 5,
-    6: 4,
-    7: 3,
-    8: 4,
-    9: 2
+# Define direct flights between cities
+flights = {
+    'Amsterdam': ['Warsaw', 'Lyon', 'Naples', 'Reykjavik', 'Split', 'Helsinki', 'Valencia'],
+    'Helsinki': ['Brussels', 'Warsaw', 'Split', 'Naples', 'Reykjavik'],
+    'Reykjavik': ['Brussels', 'Warsaw', 'Helsinki'],
+    'Warsaw': ['Split', 'Brussels', 'Naples', 'Valencia'],
+    'Porto': ['Brussels', 'Amsterdam', 'Lyon', 'Warsaw', 'Valencia'],
+    'Naples': ['Valencia', 'Brussels', 'Split'],
+    'Brussels': ['Lyon', 'Valencia'],
+    'Split': ['Lyon', 'Brussels'],
+    'Lyon': ['Split'],
+    'Valencia': ['Lyon']
 }
 
-# Define allowed transitions between cities
-allowed_transitions = [
-    (6, 0), (8, 3), (8, 0), (5, 3), (6, 7), (6, 2), (6, 5), (6, 4), (6, 9),
-    (7, 4), (0, 4), (8, 4), (3, 7), (1, 7), (5, 0), (3, 9), (9, 7),
-    (1, 0), (0, 9), (0, 3), (0, 2), (2, 9), (2, 4), (8, 2), (8, 5),
-    (6, 8), (1, 9), (0, 3), (6, 2)
-]
+# Create variables for each city's start and end days
+start = {city: Int(city + '_start') for city in cities}
+end = {city: Int(city + '_end') for city in cities}
 
-# Build neighbors dictionary
-neighbors = {}
-for a, b in allowed_transitions:
-    if a not in neighbors:
-        neighbors[a] = []
-    neighbors[a].append(b)
-
-# Create day variables
-days = [Int(f"day_{i}") for i in range(27)]
-
+# Create solver
 solver = Solver()
 
-# Add domain constraints for each day
-for i in range(27):
-    solver.add(days[i] >= 0)
-    solver.add(days[i] <= 9)
+# Add duration constraints for each city
+for city in cities:
+    solver.add(end[city] == start[city] + durations[city] - 1)
 
-# Add specific day constraints
-# Porto between day 1 and day 5
-for i in range(5):
-    solver.add(Or(days[i] == 1))
-solver.add(days[0] == 1)  # At least one day in Porto during days 1-5
+# Add fixed constraints for specific cities
+solver.add(start['Porto'] >= 1)
+solver.add(end['Porto'] <= 5)
+solver.add(start['Amsterdam'] >= 5)
+solver.add(end['Amsterdam'] <= 8)
+solver.add(start['Helsinki'] >= 8)
+solver.add(end['Helsinki'] <= 11)
+solver.add(start['Naples'] >= 17)
+solver.add(end['Naples'] <= 20)
+solver.add(start['Brussels'] >= 20)
+solver.add(end['Brussels'] <= 22)
 
-# Naples on days 17 and 20
-solver.add(days[16] == 2)
-solver.add(days[19] == 2)
+# Ensure the entire trip covers exactly 27 days
+solver.add(end['Valencia'] == 27)
 
-# Brussels between day 20 and day 22
-solver.add(Or([days[i] == 3 for i in [19, 20, 21]]))
-solver.add(Or(days[19] == 3, days[20] == 3, days[21] == 3))
+# Create 'next' variables to model the sequence of cities
+next_city = {city: String(city + '_next') for city in cities}
 
-# Amsterdam between day 5 and day 8
-for i in range(4, 8):
-    solver.add(Or(days[i] == 6))
-solver.add(Or(days[4] == 6, days[5] == 6, days[6] == 6, days[7] == 6))
+# Each city must have a next city that is different
+for city in cities:
+    solver.add(Or([next_city[city] == c for c in cities if c != city]))
 
-# Helsinki between day 8 and day 11
-for i in range(8, 12):
-    solver.add(Or(days[i] == 8))
-solver.add(Or(days[8] == 8, days[9] == 8, days[10] == 8, days[11] == 8))
-
-# Add transition constraints
-for i in range(26):
-    a = days[i]
-    b = days[i+1]
-    for city in neighbors:
-        if city == a:
+# For each possible pair of cities (A, B), if B is the next city after A,
+# then A's end day must be B's start day, and there must be a flight from A to B
+for a in cities:
+    for b in cities:
+        if a == b:
             continue
-        # If current day is 'city', next day must be in its neighbors
-        solver.add(Implies(a == city, Or([b == neighbor for neighbor in neighbors.get(city, [])])))
+        solver.add(
+            Implies(
+                next_city[a] == b,
+                And(
+                    end[a] == start[b],
+                    b in flights.get(a, [])
+                )
+            )
+        )
 
-# Add count constraints for each city
-for c in required_days:
-    solver.add(PbEq([(days[i] == c, 1) for i in range(27)], required_days[c]))
+# Ensure that the sequence starts with Porto and ends with Valencia
+solver.add(next_city['Porto'] != 'Porto')  # Porto is not the last city
+solver.add(next_city['Valencia'] == 'Valencia')  # Valencia has no next city
 
 # Solve the problem
 result = solver.check()
 
 if result == sat:
     model = solver.model()
-    print("Trip Plan:")
-    for i in range(27):
-        day = model[days[i]].as_long()
-        print(f"Day {i+1}: {cities[day]}")
+    itinerary = []
+    current_city = 'Porto'
+    while current_city != 'Valencia':
+        next_c = model[next_city[current_city]]
+        itinerary.append((current_city, model[start[current_city]], model[end[current_city]]))
+        current_city = next_c
+    itinerary.append((current_city, model[start[current_city]], model[end[current_city]]))
+    
+    for city_info in itinerary:
+        print(f"City: {city_info[0]}, Start Day: {city_info[1]}, End Day: {city_info[2]}")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

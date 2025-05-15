@@ -1,22 +1,16 @@
-from z3 import *
+import z3
 
-# Define cities and their required durations
+# Define cities with their durations and fixed intervals where applicable
 cities = {
     'Hamburg': 7,
     'Munich': 6,
-    'Manchester': 2,
-    'Lyon': 2,
+    'Manchester': (2, (19, 20)),
+    'Lyon': (2, (13, 14)),
     'Split': 7
 }
 
-# Fixed date constraints
-fixed = {
-    'Manchester': (19, 20),
-    'Lyon': (13, 14)
-}
-
-# Direct flight pairs (include directional flights)
-flight_pairs = [
+# Directed flight connections (from, to)
+directed_flights = [
     ('Split', 'Munich'),
     ('Munich', 'Split'),
     ('Munich', 'Manchester'),
@@ -31,58 +25,106 @@ flight_pairs = [
     ('Munich', 'Lyon'),
     ('Hamburg', 'Split'),
     ('Split', 'Hamburg'),
-    ('Manchester', 'Split')  # Unidirectional flight
+    ('Manchester', 'Split')
 ]
 
-# Build direct_flights dictionary (one-directional)
-direct_flights = {city: [] for city in cities}
-for a, b in flight_pairs:
-    if a in cities and b in cities:
-        direct_flights[a].append(b)
+# Initialize solver
+solver = z3.Solver()
 
-# Create solver instance
-s = Solver()
+# Create variables for non-fixed cities
+hamburg_start = z3.Int('hamburg_start')
+hamburg_end = z3.Int('hamburg_end')
+munich_start = z3.Int('munich_start')
+munich_end = z3.Int('munich_end')
+split_start = z3.Int('split_start')
+split_end = z3.Int('split_end')
 
-# Create start and end day variables for each city
-start = {city: Int(f'start_{city}') for city in cities}
-end = {city: Int(f'end_{city}') for city in cities}
+# Duration constraints
+solver.add(hamburg_end == hamburg_start + 7 - 1)
+solver.add(munich_end == munich_start + 6 - 1)
+solver.add(split_end == split_start + 7 - 1)
 
-# Add duration constraints
-for city in cities:
-    s.add(end[city] == start[city] + cities[city] - 1)
+# Fixed cities' intervals
+manchester_start, manchester_end = 19, 20
+lyon_start, lyon_end = 13, 14
 
-# Apply fixed date constraints
-for city, (fixed_start, fixed_end) in fixed.items():
-    s.add(start[city] == fixed_start)
-    s.add(end[city] == fixed_end)
+# All intervals must be within 1-20
+solver.add(hamburg_start >= 1, hamburg_end <= 20)
+solver.add(munich_start >= 1, munich_end <= 20)
+solver.add(split_start >= 1, split_end <= 20)
 
-# All stays must be within 1-20 days
-for city in cities:
-    s.add(start[city] >= 1)
-    s.add(end[city] <= 20)
+# Collect all cities with their start/end variables
+all_cities = [
+    ('Hamburg', hamburg_start, hamburg_end),
+    ('Munich', munich_start, munich_end),
+    ('Split', split_start, split_end),
+    ('Lyon', lyon_start, lyon_end),
+    ('Manchester', manchester_start, manchester_end)
+]
 
-# No overlapping stays between any two cities
-for c1 in cities:
-    for c2 in cities:
-        if c1 != c2:
-            s.add(Or(end[c1] < start[c2], end[c2] < start[c1]))
+# Ensure trip starts on day 1 and ends on day 20
+solver.add(z3.Or(
+    hamburg_start == 1,
+    munich_start == 1,
+    split_start == 1,
+    lyon_start == 1
+))
+solver.add(z3.Or(
+    hamburg_end == 20,
+    munich_end == 20,
+    split_end == 20,
+    lyon_end == 20,
+    manchester_end == 20
+))
 
-# Ensure consecutive cities in schedule order have direct flight from current to next
-ordered_cities = sorted(cities.keys(), key=lambda x: start[x])
-for i in range(len(ordered_cities) - 1):
-    current = ordered_cities[i]
-    next_city = ordered_cities[i+1]
-    s.add(Or([next_city in direct_flights[current]]))
+# Flight connection constraints between consecutive cities
+for i in range(len(all_cities)):
+    city_a, a_start, a_end = all_cities[i]
+    for j in range(len(all_cities)):
+        if i == j:
+            continue
+        city_b, b_start, b_end = all_cities[j]
+        # If city_a ends when city_b starts, enforce flight exists
+        solver.add(z3.Implies(
+            a_end == b_start,
+            z3.BoolVal((city_a, city_b) in directed_flights)
+        ))
 
-# Check for satisfiability
-if s.check() == sat:
-    m = s.model()
+# Special constraints for fixed cities
+# Manchester must be preceded by a city ending on 19
+solver.add(z3.Or(
+    hamburg_end == 19,
+    munich_end == 19,
+    split_end == 19
+))
+# Lyon must be preceded by a city ending on 13
+solver.add(z3.Or(
+    hamburg_end == 13,
+    munich_end == 13,
+    split_end == 13
+))
+# Lyon must be followed by a city starting on 14
+solver.add(z3.Or(
+    munich_start == 14,
+    split_start == 14,
+    hamburg_start == 14
+))
+
+# Check solution
+if solver.check() == z3.sat:
+    model = solver.model()
     schedule = []
-    for city in cities:
-        schedule.append((city, m.eval(start[city]).as_long(), m.eval(end[city]).as_long()))
+    for city, start, end in all_cities:
+        if city in ['Manchester', 'Lyon']:
+            s, e = start, end
+        else:
+            s = model[start].as_long()
+            e = model[end].as_long()
+        schedule.append((city, s, e))
+    # Sort by start day
     schedule.sort(key=lambda x: x[1])
-    print("Valid trip plan:")
+    print("Valid itinerary:")
     for entry in schedule:
         print(f"{entry[0]}: Days {entry[1]} to {entry[2]}")
 else:
-    print("No valid trip plan exists. Check if total required days exceed 20 or flight connections are insufficient.")
+    print("No valid itinerary found.")

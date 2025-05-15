@@ -1,38 +1,36 @@
-from z3 import Solver, Int, Or, And, Implies, sat
+import z3
 
-solver = Solver()
-day = Int('day')
-start_time = Int('start_time')
+solver = z3.Solver()
+S = z3.Int('S')
 
-# Day must be Tuesday (1) to avoid Monday
-solver.add(day == 1)
+# Work hours: Monday 9:00 (0) to Tuesday 17:00 (960 minutes)
+solver.add(z3.Or(
+    z3.And(S >= 0, S + 30 <= 480),   # Monday
+    z3.And(S >= 480, S + 30 <= 960)  # Tuesday
+))
 
-# Time constraints (minutes since 9:00)
-solver.add(start_time >= 0, start_time <= 450)  # 9:00-16:30 (max start for 30min meeting)
+# Harold's preferences: avoid Monday and Tuesday before 14:30 (810 minutes from Monday 9:00)
+solver.add(S >= 810)  # Forces Tuesday after 14:30
 
-# Harold's preferences: Tuesday after 14:30 (330 minutes)
-solver.add(start_time >= 330)
-
-# Harold's Tuesday busy periods (minutes since 9:00)
-busy_periods = [
-    (0, 30),     # 9:00-9:30
-    (90, 150),   # 10:30-11:30
-    (210, 270),  # 12:30-13:30
-    (330, 390),  # 14:30-15:30
-    (420, 480)   # 16:00-17:00
+# Harold's blocked intervals (minutes since Monday 9:00)
+harold_blocks = [
+    (0, 60), (90, 480),              # Monday
+    (480, 510), (570, 630), (690, 750), (810, 870), (900, 960)  # Tuesday
 ]
 
-# Add constraints to avoid overlapping with Harold's busy times
-for (busy_start, busy_end) in busy_periods:
-    solver.add(Or(start_time + 30 <= busy_start, start_time >= busy_end))
+for start, end in harold_blocks:
+    solver.add(z3.Or(S + 30 <= start, S >= end))
 
-# Jeffrey has no constraints
-
-if solver.check() == sat:
-    m = solver.model()
-    t = m[start_time].as_long()
-    hours = 9 + t // 60
-    minutes = t % 60
-    print(f"Meeting starts on Tuesday at {hours:02d}:{minutes:02d}")
+if solver.check() == z3.sat:
+    model = solver.model()
+    start_total = model[S].as_long()
+    day = "Monday" if start_total < 480 else "Tuesday"
+    start_on_day = start_total - (480 if day == "Tuesday" else 0)
+    start_h = 9 + start_on_day // 60
+    start_m = start_on_day % 60
+    end_on_day = start_on_day + 30
+    end_h = 9 + end_on_day // 60
+    end_m = end_on_day % 60
+    print(f"{day}\n{start_h}:{start_m:02d}\n{end_h}:{end_m:02d}")
 else:
-    print("No valid time found")
+    print("No solution found")

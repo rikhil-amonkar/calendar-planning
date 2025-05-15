@@ -1,51 +1,52 @@
-from z3 import Optimize, Int, Or, sat
+import z3
 
-opt = Optimize()
-start = Int('start')
-duration = 60  # 1 hour
+solver = z3.Optimize()
+S = z3.Int('S')
 
-# Convert time constraints to minutes since 9:00 (0-480)
-opt.add(start >= 0, start + duration <= 480)  # Must fit within 9:00-17:00
+# Work hours on Monday: 9:00 (0) to 17:00 (480 minutes)
+solver.add(S >= 0)
+solver.add(S + 60 <= 480)
 
-# Pamela's constraint: meeting must end by 14:30 (330 minutes from 9:00)
-opt.add(start + duration <= 330)
+# Pamela's constraint: meeting must end by 14:30 (330 minutes)
+solver.add(S + 60 <= 330)
 
-# Anthony's busy periods (minutes since 9:00)
-anthony_busy = [
+# Anthony's blocked intervals (minutes since 9:00)
+anthony_blocks = [
     (30, 60),    # 9:30-10:00
     (180, 240),  # 12:00-13:00
     (420, 450)   # 16:00-16:30 (irrelevant due to Pamela's constraint)
 ]
-for (s, e) in anthony_busy:
-    opt.add(Or(start + duration <= s, start >= e))
 
-# Pamela's busy periods
-pamela_busy = [
+# Pamela's blocked intervals
+pamela_blocks = [
     (30, 60),    # 9:30-10:00
     (450, 480)   # 16:30-17:00 (irrelevant)
 ]
-for (s, e) in pamela_busy:
-    opt.add(Or(start + duration <= s, start >= e))
 
-# Zachary's busy periods
-zachary_busy = [
+# Zachary's blocked intervals
+zachary_blocks = [
     (0, 150),    # 9:00-11:30
     (180, 210),  # 12:00-12:30
     (240, 270),  # 13:00-13:30
-    (330, 360),  # 14:30-15:00 (irrelevant)
+    (330, 360),  # 14:30-15:00 (irrelevant due to Pamela's constraint)
     (420, 480)   # 16:00-17:00 (irrelevant)
 ]
-for (s, e) in zachary_busy:
-    opt.add(Or(start + duration <= s, start >= e))
+
+# Add constraints for all blocked intervals
+for start, end in anthony_blocks + pamela_blocks + zachary_blocks:
+    solver.add(z3.Or(S >= end, S + 60 <= start))
 
 # Find earliest possible time
-opt.minimize(start)
+solver.minimize(S)
 
-if opt.check() == sat:
-    m = opt.model()
-    start_min = m[start].as_long()
-    hours = 9 + start_min // 60
-    minutes = start_min % 60
-    print(f"Meeting starts on Monday at {hours:02d}:{minutes:02d}")
+if solver.check() == z3.sat:
+    model = solver.model()
+    start_minutes = model[S].as_long()
+    start_h = 9 + start_minutes // 60
+    start_m = start_minutes % 60
+    end_minutes = start_minutes + 60
+    end_h = 9 + end_minutes // 60
+    end_m = end_minutes % 60
+    print(f"Monday\n{start_h}:{start_m:02d}\n{end_h}:{end_m:02d}")
 else:
-    print("No valid time found")
+    print("No solution found")
