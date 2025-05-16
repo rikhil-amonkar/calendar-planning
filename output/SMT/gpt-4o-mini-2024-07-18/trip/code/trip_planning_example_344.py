@@ -1,69 +1,66 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 20
-cities = ["Valencia", "Athens", "Naples", "Zurich"]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "Valencia": 6,
-    "Athens": 6,
-    "Naples": 5,
-    "Zurich": 6
-}
-
-# Constraints for specific events
-relatives_days = list(range(1, 7))  # Athens (Day 1 to Day 6)
-wedding_days = list(range(16, 21))   # Naples (Day 16 to Day 20)
-
-# Define direct flights between the cities
-flights = {
-    "Valencia": ["Naples", "Athens"],
-    "Athens": ["Naples", "Zurich", "Valencia"],
-    "Naples": ["Valencia", "Athens", "Zurich"],
-    "Zurich": ["Naples", "Athens", "Valencia"]
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day
-# trip[day] will indicate the city to be visited on that day
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Days in each city
+cities = {
+    'Valencia': Int('days_in_valencia'),
+    'Athens': Int('days_in_athens'),
+    'Naples': Int('days_in_naples'),
+    'Zurich': Int('days_in_zurich'),
+}
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Total days
+total_days = 20
 
-# Count the days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Constraints on days in cities
+solver.add(cities['Valencia'] == 6)
+solver.add(cities['Athens'] == 6)
+solver.add(cities['Naples'] == 5)
+solver.add(cities['Zurich'] == 6)
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days sum
+solver.add(Sum([cities[city] for city in cities]) == total_days)
 
-# Visiting relatives in Athens between Day 1 and Day 6
-for day in range(6):
-    solver.add(trip[day] == cities.index("Athens"))
+# Daily city assignments (1-4 representing each city)
+# 1. Valencia
+# 2. Athens
+# 3. Naples
+# 4. Zurich
+days = [Int('day_%d' % i) for i in range(total_days)]
 
-# Wedding in Naples from Day 16 to Day 20
-for day in range(15, 20):
-    solver.add(trip[day] == cities.index("Naples"))
+# Constraints for attending events
+# Visiting relatives in Athens (day 1 to day 6)
+for i in range(6):
+    solver.add(days[i] == 2)  # Athens on days 1-6
 
-# Define direct flight connections between cities
-for day in range(total_days - 1):
-    curr_city_index = trip[day]
-    next_city_index = trip[day + 1]
-    curr_city = cities[curr_city_index]
-    next_city = cities[next_city_index]
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([And(curr_city_index == cities.index(curr_city), next_city_index == cities.index(next_city_city))
-                    for next_city_city in flights[curr_city]]))
+# Wedding in Naples (day 16 to day 20)
+for i in range(16, 20):
+    solver.add(days[i] == 3)  # Naples on days 16-20
 
-# Solve the problem
+# Flight connections constraints (ensuring direct flights)
+# Direct flights between cities
+direct_flights = [
+    (1, 3),  # Valencia to Naples
+    (1, 2),  # Valencia to Athens
+    (2, 3),  # Athens to Naples
+    (4, 3),  # Zurich to Naples
+    (2, 4),  # Athens to Zurich
+    (4, 1),  # Zurich to Valencia
+]
+
+# Make sure the transitions respect the available direct flights
+for i in range(total_days):
+    for src, dst in direct_flights:
+        solver.add(If(days[i] == src, days[i] == dst, True))
+
+# Solve the scheduling problem
 if solver.check() == sat:
     model = solver.model()
-    for day in range(total_days):
-        print(f"Day {day + 1}: {cities[model[trip[day]].as_long()]}")
+    print("Schedule:")
+    for i in range(total_days):
+        city_code = model[days[i]].as_long()
+        print(f"Day {i+1}: City code {city_code} (1=Valencia, 2=Athens, 3=Naples, 4=Zurich)")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

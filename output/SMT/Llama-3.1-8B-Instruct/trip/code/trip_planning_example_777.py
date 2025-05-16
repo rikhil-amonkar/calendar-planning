@@ -1,54 +1,75 @@
 from z3 import *
 
-def schedule_trip():
-    # Define the cities
-    cities = ['Dublin', 'Helsinki', 'Riga', 'Reykjavik', 'Vienna', 'Tallinn']
+# Define the cities
+cities = ['Dublin', 'Helsinki', 'Riga', 'Reykjavik', 'Vienna', 'Tallinn']
 
-    # Define the days
-    days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+# Define the days
+days = range(1, 16)
 
-    # Define the direct flights
-    direct_flights = {
-        ('Helsinki', 'Riga'): 1,
-        ('Riga', 'Tallinn'): 1,
-        ('Vienna', 'Helsinki'): 1,
-        ('Riga', 'Dublin'): 1,
-        ('Vienna', 'Riga'): 1,
-        ('Reykjavik', 'Vienna'): 1,
-        ('Helsinki', 'Dublin'): 1,
-        ('Tallinn', 'Dublin'): 1,
-        ('Reykjavik', 'Helsinki'): 1,
-        ('Reykjavik', 'Dublin'): 1,
-        ('Helsinki', 'Tallinn'): 1,
-        ('Vienna', 'Dublin'): 1,
-    }
+# Define the direct flights
+flights = {
+    ('Helsinki', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Riga', 'Tallinn'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Vienna', 'Helsinki'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Riga', 'Dublin'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Vienna', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Reykjavik', 'Vienna'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Helsinki', 'Dublin'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Tallinn', 'Dublin'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Reykjavik', 'Helsinki'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Reykjavik', 'Dublin'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Helsinki', 'Tallinn'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ('Vienna', 'Dublin'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+}
 
-    # Define the constraints
-    constraints = []
+# Define the constraints
+solver = Solver()
+
+# Define the variables
+x = {city: [Bool(f'{city}_day_{day}') for day in days] for city in cities}
+
+# Constraints for meeting friends
+for day in [3, 4, 5]:
+    solver.add(Not(x['Helsinki'][day]))
+
+# Constraints for visiting relatives
+for day in [7, 8, 9, 10, 11]:
+    solver.add(Not(x['Tallinn'][day]))
+
+# Constraints for staying in each city
+for city in cities:
     for day in days:
-        for city1 in cities:
-            for city2 in cities:
-                if city1!= city2:
-                    constraints.append(Not(And(day >= 1, day <= 15, city1 in cities, city2 in cities, (city1, city2) in direct_flights)))
+        if city == 'Dublin' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Helsinki' and (day >= 1 and day <= 3):
+            solver.add(x[city][day])
+        elif city == 'Riga' and (day >= 1 and day <= 3):
+            solver.add(x[city][day])
+        elif city == 'Reykjavik' and (day >= 1 and day <= 2):
+            solver.add(x[city][day])
+        elif city == 'Vienna' and (day >= 1 and day <= 2):
+            solver.add(x[city][day])
+        elif city == 'Tallinn' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
 
-    # Define the solver
-    solver = Solver()
+# Constraints for annual show
+for day in [2, 3]:
+    solver.add(Not(x['Vienna'][day]))
 
-    # Add the constraints to the solver
-    solver.add(constraints)
+# Constraints for direct flights
+for (city1, city2), days in flights.items():
+    for day in days:
+        solver.add(Implies(x[city1][day], x[city2][day]))
 
-    # Solve the solver
-    result = solver.check()
-
-    # If the solver found a solution, print the trip plan
-    if result == sat:
-        model = solver.model()
-        trip_plan = []
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    trip_plan = {}
+    for city in cities:
+        trip_plan[city] = []
         for day in days:
-            trip_plan.append(model[('city', day).as_long()])
-        print(trip_plan)
-    else:
-        print("No solution found")
-
-# Example usage
-schedule_trip()
+            if model[x[city][day]]:
+                trip_plan[city].append(day)
+    print(trip_plan)
+else:
+    print("No solution exists")

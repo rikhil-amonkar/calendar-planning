@@ -1,84 +1,76 @@
 from z3 import *
 
-# Define work hours and meeting duration
-work_start = 9 * 60  # Work starts at 9:00 AM (in minutes)
-work_end = 17 * 60   # Work ends at 5:00 PM (in minutes)
-meeting_duration = 30  # Meeting duration in minutes
+# Create a Z3 solver instance
+solver = Solver()
 
-# Define busy times for each participant (in minutes from midnight)
-busy_times = {
-    "Margaret": {
-        "Monday": [
-            (10 * 60 + 30, 11 * 60),  # 10:30 to 11:00
-            (11 * 60 + 30, 12 * 60),   # 11:30 to 12:00
-            (13 * 60, 13 * 60 + 30),   # 1:00 to 1:30
-            (15 * 60, 17 * 60)          # 3:00 to 5:00
-        ],
-        "Tuesday": [
-            (12 * 60, 12 * 60 + 30)    # 12:00 to 12:30
-        ]
+# Define work hours in minutes from midnight
+work_start = 9 * 60  # 9:00 AM
+work_end = 17 * 60   # 5:00 PM
+
+# Define existing busy schedules for Margaret and Alexis
+schedules = {
+    'Margaret': {
+        'Monday': [(10 * 60 + 30, 11 * 60), (11 * 60 + 30, 12 * 60), (13 * 60, 13 * 60 + 30), (15 * 60, 17 * 60)],
+        'Tuesday': [(12 * 60, 12 * 60 + 30)]
     },
-    "Alexis": {
-        "Monday": [
-            (9 * 60 + 30, 11 * 60 + 30), # 9:30 to 11:30
-            (12 * 60 + 30, 13 * 60),      # 12:30 to 1:00
-            (14 * 60, 17 * 60)             # 2:00 to 5:00
-        ],
-        "Tuesday": [
-            (9 * 60, 9 * 60 + 30),        # 9:00 to 9:30
-            (10 * 60, 10 * 60 + 30),      # 10:00 to 10:30
-            (14 * 60, 16 * 60 + 30)       # 2:00 to 4:30
-        ]
+    'Alexis': {
+        'Monday': [(9 * 60 + 30, 11 * 60 + 30), (12 * 60 + 30, 13 * 60), (14 * 60, 17 * 60)],
+        'Tuesday': [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (14 * 60, 16 * 60 + 30)]
     }
 }
 
-# Initialize the Z3 solver
-solver = Solver()
-
-# Variable for the start time of the meeting and the day
+# Define variables for meeting start and end times (in minutes) and the day
+day = Int('day')  # 0 for Monday, 1 for Tuesday
 start_time = Int('start_time')
-day = String('day')  # Day of the week (Monday or Tuesday)
+end_time = Int('end_time')
 
-# Constraints: the meeting must occur during work hours
+# Meeting duration
+meeting_duration = 30  # in minutes
+
+# Constraints to ensure meeting duration is half an hour
+solver.add(end_time == start_time + meeting_duration)
+
+# Ensure the meeting is within work hours
 solver.add(start_time >= work_start)
-solver.add(start_time + meeting_duration <= work_end)
+solver.add(end_time <= work_end)
 
-# Function to add busy time constraints for each participant based on the day
-def add_busy_constraints(participant, busy_times):
-    if day in busy_times:
-        for busy_start, busy_end in busy_times[day]:
-            solver.add(Or(start_time + meeting_duration <= busy_start, start_time >= busy_end))
+# Constraints for valid meeting days (0 = Monday, 1 = Tuesday)
+solver.add(Or(day == 0, day == 1))  # Allow meeting only on Monday or Tuesday
 
-# Check available times on Monday and Tuesday
-meeting_days = ["Monday", "Tuesday"]
-meeting_time_found = False
+# Function to add busy time constraints for each schedule
+def add_busy_constraints(day_key, busy_times):
+    for busy_start, busy_end in busy_times[day_key]:
+        solver.add(Or(start_time < busy_start, end_time > busy_end))
 
-for meeting_day in meeting_days:
-    # Clear existing constraints for the day variable
-    solver.push()
-    
-    # Assign the current day for the meeting
-    solver.add(day == meeting_day)
-
-    # Add busy constraints for both participants
-    add_busy_constraints("Margaret", busy_times["Margaret"])
-    add_busy_constraints("Alexis", busy_times["Alexis"])
-    
-    # Add Margaret's preference: avoid meetings before 14:30 on Tuesday
-    if meeting_day == "Tuesday":
+# Ensure the meeting does not overlap with either Margaret's or Alexis's busy schedules
+for day_index, day_name in enumerate(['Monday', 'Tuesday']):
+    if day_index == 0:  # Monday
+        solver.add(day == day_index)  # If meeting is scheduled on Monday
+        add_busy_constraints(day_name, schedules['Margaret'])
+        add_busy_constraints(day_name, schedules['Alexis'])
+        # Margaret does not want to meet on Monday before 14:30
         solver.add(start_time >= (14 * 60 + 30))  # 14:30 in minutes
+    else:  # Tuesday
+        solver.add(day == day_index)  # If meeting is scheduled on Tuesday
+        add_busy_constraints(day_name, schedules['Margaret'])
+        add_busy_constraints(day_name, schedules['Alexis'])
 
-    # Check for a solution
-    if solver.check() == sat:
-        model = solver.model()
-        meeting_start = model[start_time].as_long()
-        meeting_end = meeting_start + meeting_duration
-        print(f"Meeting can be scheduled on {meeting_day} from {meeting_start // 60:02}:{meeting_start % 60:02} to {meeting_end // 60:02}:{meeting_end % 60:02}")
-        meeting_time_found = True
-        break  # Exit the loop upon finding the earliest meeting time
-    
-    # Pop the last constraints to check the next day
-    solver.pop()
+# Solve the constraints
+if solver.check() == sat:
+    model = solver.model()
 
-if not meeting_time_found:
-    print("No available time found for the meeting.")
+    start = model[start_time].as_long()
+    end = model[end_time].as_long()
+    meeting_day = model[day].as_long()
+
+    # Convert back to standard time for output
+    start_hour = start // 60
+    start_minute = start % 60
+    end_hour = end // 60
+    end_minute = end % 60
+
+    day_name = ["Monday", "Tuesday"][meeting_day]
+
+    print(f"SOLUTION: Meeting on {day_name} from {start_hour:02}:{start_minute:02} to {end_hour:02}:{end_minute:02}")
+else:
+    print("No available time slot found.")

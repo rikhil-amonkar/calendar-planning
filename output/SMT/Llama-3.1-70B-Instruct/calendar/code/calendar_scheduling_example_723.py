@@ -1,67 +1,62 @@
 from z3 import *
 
-# Define the time slots
-start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60  # 17:00 in minutes
-meeting_duration = 30  # 0.5 hours in minutes
+# Define the variables
+Arthur = Int('Arthur')
+Michael = Int('Michael')
+Day = Int('Day')
+StartTime = Int('StartTime')
+EndTime = Int('EndTime')
 
-# Define the existing schedules for Arthur and Michael
-arthur_schedule_monday = [(11 * 60, 11 * 60 + 30), (13 * 60 + 30, 14 * 60), (15 * 60, 15 * 60 + 30)]
-arthur_schedule_tuesday = [(13 * 60, 13 * 60 + 30), (16 * 60, 16 * 60 + 30)]
-arthur_schedule_wednesday = [(10 * 60, 10 * 60 + 30), (11 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (14 * 60, 14 * 60 + 30), (16 * 60, 16 * 60 + 30)]
+# Define the constraints
+s = Solver()
 
-michael_schedule_monday = [(9 * 60, 12 * 60), (12 * 60 + 30, 13 * 60), (14 * 60, 14 * 60 + 30), (15 * 60, 17 * 60)]
-michael_schedule_tuesday = [(9 * 60 + 30, 11 * 60 + 30), (12 * 60, 13 * 60 + 30), (14 * 60, 15 * 60 + 30)]
-michael_schedule_wednesday = [(10 * 60, 12 * 60 + 30), (13 * 60, 13 * 60 + 30)]
+# Existing schedule of Arthur
+ArthurConstraints = [Arthur!= 11*60, Arthur!= 13*60 + 30, Arthur!= 15*60, 
+                     Arthur!= 13*60, Arthur!= 16*60, 
+                     Arthur!= 10*60, Arthur!= 11*60, Arthur!= 12*60, 
+                     Arthur!= 14*60, Arthur!= 16*60]
 
-# Create a Z3 solver
-solver = Solver()
+# Existing schedule of Michael
+MichaelConstraints = [Michael!= 9*60, Michael!= 12*60 + 30, Michael!= 14*60, 
+                      Michael!= 15*60, 
+                      Michael!= 9*60 + 30, Michael!= 12*60, 
+                      Michael!= 14*60, 
+                      Michael!= 10*60, Michael!= 13*60]
 
-# Create Z3 variables to represent the day and start time of the meeting
-meeting_day = Int('meeting_day')  # 0 for Monday, 1 for Tuesday, 2 for Wednesday
-meeting_start = Int('meeting_start')
+# Meeting duration
+s.add(EndTime - StartTime == 30)
 
-# Add constraints to ensure the meeting day is either Monday, Tuesday or Wednesday
-solver.add(And(meeting_day >= 0, meeting_day <= 2))
+# Work hours
+s.add(StartTime >= 9*60)
+s.add(StartTime < 17*60)
 
-# Add constraints to ensure the meeting start time is within the work hours
-solver.add(And(meeting_start >= start_time, meeting_start <= end_time - meeting_duration))
+# Day constraints
+s.add(Day >= 1)  # Monday
+s.add(Day <= 3)  # Wednesday
 
-# Add constraints to avoid Arthur's schedule on Monday
-for start, end in arthur_schedule_monday:
-    solver.add(Or(Not(And(meeting_day == 0, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 0)))
+# Arthur's availability
+ArthurAvailable = [10*60, 12*60, 13*60 + 30, 15*60 + 30, 16*60 + 30, 
+                   9*60, 11*60 + 30, 12*60 + 30, 13*60 + 60, 14*60 + 30, 
+                   9*60, 12*60 + 30, 13*60 + 60, 14*60 + 60]
+s.add(Or([StartTime == a for a in ArthurAvailable]))
 
-# Add constraints to avoid Arthur's schedule on Tuesday
-solver.add(Not(meeting_day == 1))
+# Michael's availability
+MichaelAvailable = [12*60, 13*60, 14*60 + 30, 
+                    11*60 + 30, 13*60 + 30, 15*60 + 30, 
+                    12*60 + 30, 13*60 + 60]
+s.add(Or([StartTime == m for m in MichaelAvailable]))
 
-# Add constraints to avoid Arthur's schedule on Wednesday
-for start, end in arthur_schedule_wednesday:
-    solver.add(Or(Not(And(meeting_day == 2, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 2)))
+# Arthur can not meet on Tuesday
+s.add(Day!= 2)
 
-# Add constraints to avoid Michael's schedule on Monday
-for start, end in michael_schedule_monday:
-    solver.add(Or(Not(And(meeting_day == 0, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 0)))
+# Find the earliest time
+s.add(StartTime < 1000)  # Large number
 
-# Add constraints to avoid Michael's schedule on Tuesday
-for start, end in michael_schedule_tuesday:
-    solver.add(Or(Not(And(meeting_day == 1, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 1)))
-
-# Add constraints to avoid Michael's schedule on Wednesday
-for start, end in michael_schedule_wednesday:
-    solver.add(Or(Not(And(meeting_day == 2, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 2)))
-
-# Add constraint to schedule the meeting at the earliest availability
-min_start_time = Int('min_start_time')
-solver.add(min_start_time == meeting_start)
-solver.minimize(min_start_time)
-
-# Check if the solver can find a solution
-if solver.check() == sat:
-    # Get the solution
-    model = solver.model()
-    meeting_day_value = model[meeting_day].as_long()
-    meeting_start_time = model[meeting_start].as_long()
-    day = ["Monday", "Tuesday", "Wednesday"][meeting_day_value]
-    print(f"Meeting can be scheduled on {day} from {meeting_start_time // 60}:{meeting_start_time % 60:02} to {(meeting_start_time + meeting_duration) // 60}:{(meeting_start_time + meeting_duration) % 60:02}")
+# Solve the constraints
+if s.check() == sat:
+    m = s.model()
+    print("Day to meet:", m[Day].as_long())
+    print("Start time:", m[StartTime].as_long()/60, ":", m[StartTime].as_long()%60)
+    print("End time:", m[EndTime].as_long()/60, ":", m[EndTime].as_long()%60)
 else:
     print("No solution found")

@@ -1,79 +1,81 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 21
-cities = ["Oslo", "Stuttgart", "Reykjavik", "Split", "Geneva", "Porto", "Tallinn", "Stockholm"]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "Oslo": 5,
-    "Stuttgart": 5,
-    "Reykjavik": 2,
-    "Split": 3,
-    "Geneva": 2,
-    "Porto": 3,
-    "Tallinn": 5,
-    "Stockholm": 3
-}
-
-# Constraints for specific events
-conference_days = [1, 2]  # Reykjavik
-workshop_days = [19, 20, 21]  # Porto
-friend_meeting_days = [2, 3, 4]  # Stockholm
-
-# Define direct flights between the cities
-flights = {
-    "Reykjavik": ["Stuttgart", "Stockholm", "Tallinn", "Oslo"],
-    "Stuttgart": ["Porto", "Stockholm"],
-    "Oslo": ["Split", "Geneva", "Porto", "Stuttgart"],
-    "Split": ["Stuttgart", "Stockholm"],
-    "Tallinn": ["Oslo"],
-    "Stockholm": ["Geneva", "Split", "Oslo"],
-    "Geneva": ["Porto", "Split"],
-    "Porto": []
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day
-# trip[day] will indicate the city to be visited on that day
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Days in each city
+days_in_oslo = Int('days_in_oslo')
+days_in_stuttgart = Int('days_in_stuttgart')
+days_in_reykjavik = Int('days_in_reykjavik')
+days_in_split = Int('days_in_split')
+days_in_geneva = Int('days_in_geneva')
+days_in_porto = Int('days_in_porto')
+days_in_tallinn = Int('days_in_tallinn')
+days_in_stockholm = Int('days_in_stockholm')
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Total days
+total_days = 21
 
-# Constraint for city stays
-# Create a dictionary to count days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Constraints on days in cities
+solver.add(days_in_oslo == 5)
+solver.add(days_in_stuttgart == 5)
+solver.add(days_in_reykjavik == 2)
+solver.add(days_in_split == 3)
+solver.add(days_in_geneva == 2)
+solver.add(days_in_porto == 3)
+solver.add(days_in_tallinn == 5)
+solver.add(days_in_stockholm == 3)
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days sum
+solver.add(days_in_oslo + days_in_stuttgart + days_in_reykjavik +
+           days_in_split + days_in_geneva + days_in_porto +
+           days_in_tallinn + days_in_stockholm == total_days)
 
-# Conference in Reykjavik on Day 1 and Day 2
-solver.add(trip[0] == cities.index("Reykjavik"))
-solver.add(trip[1] == cities.index("Reykjavik"))
+# Daily city assignments (1-8 representing each city)
+# 1. Reykjavik
+# 2. Stuttgart
+# 3. Split
+# 4. Geneva
+# 5. Porto
+# 6. Tallinn
+# 7. Stockholm
+# 8. Oslo
+days = [Int('day_%d' % i) for i in range(21)]
 
-# Workshop in Porto between Day 19 and Day 21
-solver.add(And(trip[18] == cities.index("Porto"), trip[19] == cities.index("Porto"), trip[20] == cities.index("Porto")))
+# Constraints to represent attending conference and workshop
+# Days 1 and 2 in Reykjavik
+solver.add(days[0] == 1)
+solver.add(days[1] == 1)
 
-# Meeting a friend in Stockholm between Day 2 and Day 4
-for day in range(2, 5):
-    solver.add(trip[day] == cities.index("Stockholm"))
+# Days 19-21 in Porto
+solver.add(days[18] == 5)
+solver.add(days[19] == 5)
+solver.add(days[20] == 5)
 
-# Define direct flight connections
-for day in range(total_days - 1):
-    curr_city = trip[day]
-    next_city = trip[day + 1]
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([And(curr_city == cities.index(city), next_city == cities.index(next_city_city)) for city in cities for next_city_city in flights[cities[city]]]))
+# Meeting a friend in Stockholm (days 2 and 4)
+solver.add(days[1] == 7)
+solver.add(days[2] == 7)
+solver.add(days[3] == 7)
 
-# All variables must be the same city count for trips
+# Constraints for direct flights between cities
+direct_flights = [
+    (1, 8), (1, 2), (1, 7), (1, 6), # Reykjavik can reach Oslo, Stuttgart, Stockholm, Tallinn
+    (7, 8), (7, 2), (2, 5), (8, 3), # Stockholm and Stuttgart to Oslo, Porto; Oslo to Split
+    (1, 8), (8, 4), (7, 4), # flights connecting between Reykjavik and Oslo; Geneva and Stockholm
+    (3, 2), (6, 8), (7, 4), (4, 5) # More cities connections
+]
+
+# Define variable constraints for direct flights
+for i in range(21):
+    for src, dst in direct_flights:
+        solver.add(If(days[i] == src, days[i] == dst, True))
+
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    for day in range(total_days):
-        print(f"Day {day + 1}: {cities[model[trip[day]].as_long()]}")
+    print("Schedule:")
+    for i in range(21):
+        city = model[days[i]].as_long()
+        print(f"Day {i+1}: City {city}")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

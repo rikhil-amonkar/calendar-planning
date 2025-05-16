@@ -1,102 +1,67 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, adam_schedule, john_schedule, stephanie_schedule, anna_schedule, anna_avoid_before):
-    # Create Z3 variables for the meeting time
-    adam_meeting = Int('adam_meeting')
-    john_meeting = Int('john_meeting')
-    stephanie_meeting = Int('stephanie_meeting')
-    anna_meeting = Int('anna_meeting')
+# Define the variables
+day = [Monday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+adam_schedule = [(14, 15)]
+john_schedule = [(13, 13, 30), (14, 14, 30), (15, 30, 16), (16, 30, 17)]
+stephanie_schedule = [(9, 30, 10), (10, 30, 11), (11, 30, 16), (16, 30, 17)]
+anna_schedule = [(9, 30, 10), (12, 12, 30), (13, 15, 30), (16, 30, 17)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(adam_meeting >= start_time, adam_meeting <= end_time),
-        And(john_meeting >= start_time, john_meeting <= end_time),
-        And(stephanie_meeting >= start_time, stephanie_meeting <= end_time),
-        And(anna_meeting >= start_time, anna_meeting <= end_time),
-        meeting_start == adam_meeting,
-        meeting_end == adam_meeting + duration,
-        meeting_start == john_meeting,
-        meeting_end == john_meeting + duration,
-        meeting_start == stephanie_meeting,
-        meeting_end == stephanie_meeting + duration,
-        meeting_start == anna_meeting,
-        meeting_end == anna_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 0.5
 
-    # Define the constraints for Adam's schedule
-    adam_constraints = []
-    for start, end in adam_schedule:
-        adam_constraints.extend([
-            Not(And(adam_meeting >= start, adam_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(adam_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for John's schedule
-    john_constraints = []
-    for start, end in john_schedule:
-        john_constraints.extend([
-            Not(And(john_meeting >= start, john_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(john_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the constraints for Stephanie's schedule
-    stephanie_constraints = []
-    for start, end in stephanie_schedule:
-        stephanie_constraints.extend([
-            Not(And(stephanie_meeting >= start, stephanie_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(stephanie_constraints)
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration * 2)  # Convert meeting duration to hours
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Define the constraints for Anna's schedule
-    anna_constraints = []
-    for start, end in anna_schedule:
-        anna_constraints.extend([
-            Not(And(anna_meeting >= start, anna_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(anna_constraints)
+# Add constraints for Adam's schedule
+for start, end in adam_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the constraint for Anna not meeting on Monday before 14:30
-    anna_avoid_before_constraints = [
-        Not(And(anna_meeting >= 0, anna_meeting < 14 * 60 + 30)),
-    ]
-    constraints.extend(anna_avoid_before_constraints)
+# Add constraints for John's schedule
+for start, end in john_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the solver
-    solver = Solver()
+# Add constraints for Stephanie's schedule
+for start, end in stephanie_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Add the constraints to the solver
-    solver.add(constraints)
+# Add constraints for Anna's schedule
+for start, end in anna_schedule:
+    if start < 14, 30:
+        solver.add(start_var > 14, 30)  # Anna would rather not meet on Monday before 14:30
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Solve the solver
-    result = solver.check()
+# Define the objective function
+solver.minimize(end_var - start_var)
 
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[adam_meeting].as_long()} - {model[meeting_end].as_long()}")
-    else:
-        print("No solution found")
-
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 30  # 30 minutes
-adam_schedule = [(14 * 60, 15 * 60)]
-john_schedule = [(13 * 60, 13 * 60 + 30), (14 * 60, 14 * 60 + 30), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]
-stephanie_schedule = [(9 * 60 + 30, 10 * 60), (10 * 60 + 30, 11 * 60), (11 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]
-anna_schedule = [(9 * 60 + 30, 10 * 60), (12 * 60, 12 * 60 + 30), (13 * 60, 15 * 60 + 30), (16 * 60 + 30, 17 * 60)]
-anna_avoid_before = True
-
-schedule_meeting(start_time, end_time, duration, adam_schedule, john_schedule, stephanie_schedule, anna_schedule, anna_avoid_before)
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

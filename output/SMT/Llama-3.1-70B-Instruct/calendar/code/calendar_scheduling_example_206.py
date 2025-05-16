@@ -1,50 +1,65 @@
 from z3 import *
 
-# Define the time slots
-start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60  # 17:00 in minutes
-meeting_duration = 30  # 0.5 hours in minutes
+# Define the participants and their schedules
+participants = ['Shirley', 'Jacob', 'Stephen', 'Margaret', 'Mason']
+schedules = {
+    'Shirley': [(10*60 + 30, 11*60), (12*60, 12*60 + 30)],
+    'Jacob': [(9*60, 9*60 + 30), (10*60, 10*60 + 30), (11*60, 11*60 + 30), (12*60 + 30, 13*60 + 30), (14*60 + 30, 15*60)],
+    'Stephen': [(11*60 + 30, 12*60), (12*60 + 30, 13*60)],
+    'Margaret': [(9*60, 9*60 + 30), (10*60 + 30, 12*60 + 30), (13*60, 13*60 + 30), (15*60, 15*60 + 30), (16*60 + 30, 17*60)],
+    'Mason': [(9*60, 10*60), (10*60 + 30, 11*60), (11*60 + 30, 12*60 + 30), (13*60, 13*60 + 30), (14*60, 14*60 + 30), (16*60 + 30, 17*60)],
+}
 
-# Define the existing schedules for Shirley, Jacob, Stephen, Margaret and Mason
-shirley_schedule = [(10 * 60 + 30, 11 * 60), (12 * 60, 12 * 60 + 30)]
-jacob_schedule = [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (11 * 60, 11 * 60 + 30), (12 * 60 + 30, 13 * 60 + 30), (14 * 60 + 30, 15 * 60)]
-stephen_schedule = [(11 * 60 + 30, 12 * 60), (12 * 60 + 30, 13 * 60)]
-margaret_schedule = [(9 * 60, 9 * 60 + 30), (10 * 60 + 30, 12 * 60 + 30), (13 * 60, 13 * 60 + 30), (15 * 60, 15 * 60 + 30), (16 * 60 + 30, 17 * 60)]
-mason_schedule = [(9 * 60, 10 * 60), (10 * 60 + 30, 11 * 60), (11 * 60 + 30, 12 * 60 + 30), (13 * 60, 13 * 60 + 30), (14 * 60, 14 * 60 + 30), (16 * 60 + 30, 17 * 60)]
+# Define the meeting duration
+meeting_duration = 30
+
+# Define the work hours
+work_hours = (9*60, 17*60)
+
+# Create Z3 variables
+day = Int('day')
+start_time = Int('start_time')
+end_time = Int('end_time')
+
+# Create Z3 constraints
+constraints = [
+    # Meeting duration constraint
+    end_time - start_time == meeting_duration,
+    
+    # Work hours constraint
+    And(start_time >= work_hours[0], end_time <= work_hours[1]),
+    
+    # Day constraint (in this case, Monday)
+    day == 0,  # 0 represents Monday
+    
+    # Schedule constraints for each participant
+    Or([And(Or([And(start_time < schedule[0], end_time <= schedule[0]),
+                 And(start_time >= schedule[1], end_time > schedule[1]) 
+                ])) for participant in participants for schedule in schedules[participant]]),
+    
+    # Additional constraint for Margaret
+    start_time >= 14*60 + 30,
+]
 
 # Create a Z3 solver
 solver = Solver()
 
-# Create a Z3 variable to represent the start time of the meeting
-meeting_start = Int('meeting_start')
-
-# Add constraints to ensure the meeting start time is within the work hours
-solver.add(And(meeting_start >= start_time, meeting_start <= end_time - meeting_duration))
-
-# Add constraints to avoid everyone's schedule
-for start, end in shirley_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-for start, end in jacob_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-for start, end in stephen_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-for start, end in margaret_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-for start, end in mason_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-# Add constraint to prefer not to meet before 14:30 for Margaret
-solver.add(Or(meeting_start >= 14 * 60 + 30, meeting_start + meeting_duration <= 14 * 60 + 30))
+# Add the constraints to the solver
+for constraint in constraints:
+    solver.add(constraint)
 
 # Check if the solver can find a solution
 if solver.check() == sat:
     # Get the solution
     model = solver.model()
-    meeting_start_time = model[meeting_start].as_long()
-    print(f"Meeting can be scheduled from {meeting_start_time // 60}:{meeting_start_time % 60:02} to {(meeting_start_time + meeting_duration) // 60}:{(meeting_start_time + meeting_duration) % 60:02}")
+    solution = (model[day].as_long(), model[start_time].as_long(), model[end_time].as_long())
+    
+    # Convert the solution to a human-readable format
+    day_map = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday'}
+    solution_day = day_map[solution[0]]
+    solution_start_time = f"{solution[1] // 60}:{solution[1] % 60:02d}"
+    solution_end_time = f"{solution[2] // 60}:{solution[2] % 60:02d}"
+    
+    print(f"Solution: {solution_day}, {solution_start_time}, {solution_end_time}")
 else:
-    print("No solution found")
+    print("No solution found.")
