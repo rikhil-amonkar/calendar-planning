@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 15\n    cities = {\n        'Stuttgart': {'duration': 5, 'workshop': (11, 15)},\n        'Manchester': {'duration': 7, 'wedding': (1, 7)},\n        'Madrid': {'duration': 4},\n        'Vienna': {'duration': 2}\n    }\n    \n    direct_flights = {\n        'Vienna': ['Stuttgart', 'Manchester', 'Madrid'],\n        'Stuttgart': ['Vienna', 'Manchester'],\n        'Manchester': ['Vienna', 'Stuttgart', 'Madrid'],\n        'Madrid': ['Vienna', 'Manchester']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    \n    # Fixed events\n    # Wedding in Manchester from day 1 to 7\n    itinerary.append({'day_range': f'Day 1-7', 'place': 'Manchester'})\n    current_day = 8\n    last_city = 'Manchester'\n    \n    # Next, we need to fit Stuttgart workshop (must be between day 11-15)\n    # Since current_day is 8 after Manchester, we have days 8-10 to fit other cities before Stuttgart\n    \n    # Possible cities to visit between Manchester and Stuttgart: Vienna or Madrid (since direct flights exist)\n    # We have 3 days (8-10) before Stuttgart must start by day 11\n    \n    # Try to fit Vienna (2 days) and Madrid (4 days)\n    # Since we have only 3 days, we can only fit Vienna (2 days) and leave 1 day for travel or adjust\n    \n    # Option 1: Go to Vienna for 2 days (days 8-9), then to Stuttgart (must start by day 11)\n    # Flight from Manchester to Vienna is possible\n    if 'Vienna' in direct_flights[last_city]:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Vienna'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Vienna\"][\"duration\"] - 1}', 'place': 'Vienna'})\n        current_day += cities[\"Vienna\"][\"duration\"]\n        last_city = 'Vienna'\n    \n    # Now, we need to go to Stuttgart (must be there by day 11)\n    # Current_day is 10 after Vienna (8-9), so we can fly to Stuttgart on day 10\n    if 'Stuttgart' in direct_flights[last_city]:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Stuttgart'})\n        # Stuttgart must be from day 11-15, but we have day 10 now\n        # So we stay in Stuttgart from day 10-14 (5 days)\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Stuttgart\"][\"duration\"] - 1}', 'place': 'Stuttgart'})\n        current_day += cities[\"Stuttgart\"][\"duration\"]\n        last_city = 'Stuttgart'\n    \n    # Check if all days are accounted for\n    if current_day > total_days:\n        # Adjust if needed (though in this case it fits)\n        pass\n    \n    # Now, check if Madrid is visited\n    # Madrid hasn't been visited yet, and we have no days left, so this plan doesn't work\n    \n    # Alternative plan: Go to Madrid first from Manchester\n    # Reset itinerary\n    itinerary = []\n    itinerary.append({'day_range': f'Day 1-7', 'place': 'Manchester'})\n    current_day = 8\n    last_city = 'Manchester'\n    \n    # Try Madrid for 4 days (but we only have 3 days before Stuttgart)\n    # Not possible\n    \n    # Another option: Go to Stuttgart directly from Manchester after wedding\n    if 'Stuttgart' in direct_flights[last_city]:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Stuttgart'})\n        # Stay in Stuttgart from day 8-12 (5 days)\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Stuttgart\"][\"duration\"] - 1}', 'place': 'Stuttgart'})\n        current_day += cities[\"Stuttgart\"][\"duration\"]\n        last_city = 'Stuttgart'\n    \n    # Now, we have days 13-15 left (3 days)\n    # Need to fit Vienna (2 days) and Madrid (4 days)\n    # Can only fit Vienna\n    if 'Vienna' in direct_flights[last_city]:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Vienna'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Vienna\"][\"duration\"] - 1}', 'place': 'Vienna'})\n        current_day += cities[\"Vienna\"][\"duration\"]\n        last_city = 'Vienna'\n    \n    # Now, we have day 15 left, but Madrid requires 4 days - not possible\n    # So Madrid cannot be visited in this plan\n    \n    # Final check: If Madrid is not visited, try to fit it somewhere else\n    # Reset and try another approach\n    itinerary = []\n    itinerary.append({'day_range': f'Day 1-7', 'place': 'Manchester'})\n    current_day = 8\n    last_city = 'Manchester'\n    \n    # Go to Madrid first (but need 4 days, and Stuttgart must start by day 11)\n    if 'Madrid' in direct_flights[last_city]:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Madrid'})\n        # Stay in Madrid for 3 days (8-10) to reach Stuttgart by day 11\n        adjusted_madrid_days = min(cities[\"Madrid\"][\"duration\"], 11 - current_day)\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + adjusted_madrid_days - 1}', 'place': 'Madrid'})\n        current_day += adjusted_madrid_days\n        last_city = 'Madrid'\n    \n    # Now, fly to Stuttgart by day 11\n    if 'Stuttgart' in direct_flights[last_city]:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Stuttgart'})\n        # Stay in Stuttgart for 5 days (11-15)\n        stuttgart_start = max(current_day, 11)\n        stuttgart_end = stuttgart_start + cities[\"Stuttgart\"][\"duration\"] - 1\n        if stuttgart_end > total_days:\n            stuttgart_end = total_days\n        itinerary.append({'day_range': f'Day {stuttgart_start}-{stuttgart_end}', 'place': 'Stuttgart'})\n        current_day = stuttgart_end + 1\n        last_city = 'Stuttgart'\n    \n    # Now, check if Vienna is visited\n    # Vienna not visited yet, but no days left\n    \n    # Since Madrid was only partially visited, this plan is not optimal\n    \n    # Final plan: Accept that Madrid cannot be fully visited, or adjust Vienna\n    # Best possible plan is to visit Manchester, Stuttgart, and Vienna\n    \n    # Reset to the first working plan\n    itinerary = []\n    itinerary.append({'day_range': f'Day 1-7', 'place': 'Manchester'})\n    current_day = 8\n    last_city = 'Manchester'\n    \n    # Fly to Vienna\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Vienna'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Vienna'})\n    current_day += 2\n    last_city = 'Vienna'\n    \n    # Fly to Stuttgart\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': last_city, 'to': 'Stuttgart'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Stuttgart'})\n    current_day += 5\n    \n    # Output the itinerary\n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_288"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_min(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef min_to_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\nparticipants = {\n    \"Jacqueline\": {\n        \"busy\": [\n            (\"9:00\", \"9:30\"),\n            (\"11:00\", \"11:30\"),\n            (\"12:30\", \"13:00\"),\n            (\"15:30\", \"16:00\")\n        ]\n    },\n    \"Harold\": {\n        \"busy\": [\n            (\"10:00\", \"10:30\"),\n            (\"13:00\", \"13:30\"),\n            (\"15:00\", \"17:00\")\n        ],\n        \"constraint\": lambda start, end: end <= time_to_min(\"13:00\")\n    },\n    \"Arthur\": {\n        \"busy\": [\n            (\"9:00\", \"9:30\"),\n            (\"10:00\", \"12:30\"),\n            (\"14:30\", \"15:00\"),\n            (\"15:30\", \"17:00\")\n        ]\n    },\n    \"Kelly\": {\n        \"busy\": [\n            (\"9:00\", \"9:30\"),\n            (\"10:00\", \"11:00\"),\n            (\"11:30\", \"12:30\"),\n            (\"14:00\", \"15:00\"),\n            (\"15:30\", \"16:00\")\n        ]\n    }\n}\n\n# Convert busy times to minutes\nfor person in participants.values():\n    person[\"busy\"] = [(time_to_min(s), time_to_min(e)) for s, e in person[\"busy\"]]\n\n# Check time slots from 9:00 to 12:30 (last possible start time to finish by 13:00)\nfor start_min in range(time_to_min(\"9:00\"), time_to_min(\"12:30\") + 1, 30):\n    end_min = start_min + 30\n    valid = True\n    \n    for person_name, data in participants.items():\n        # Check Harold's time constraint\n        if person_name == \"Harold\" and not data[\"constraint\"](start_min, end_min):\n            valid = False\n            break\n        \n        # Check busy periods\n        for busy_start, busy_end in data[\"busy\"]:\n            if busy_start < end_min and busy_end > start_min:\n                valid = False\n                break\n        if not valid:\n            break\n    \n    if valid:\n        start_time = min_to_time(start_min)\n        end_time = min_to_time(end_min)\n        print(f\"Monday:{start_time}:{end_time}\")\n        exit()\n\n# If no slot found (though problem states there is a solution)\nprint(\"No valid time found\")\n'''",
+            "count": "calendar_scheduling_example_173"
+        }
+    ]
+}

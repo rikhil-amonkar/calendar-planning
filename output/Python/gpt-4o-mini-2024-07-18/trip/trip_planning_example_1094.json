@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Stockholm"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Stockholm"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define trip constraints\n    total_days = 16\n    itinerary = []\n\n    # Define constraints\n    constraints = {\n        \"Vienna\": {\"days\": 4},\n        \"Barcelona\": {\"days\": 2},\n        \"Edinburgh\": {\"days\": 4, \"meet_friend_days\": (12, 15)},\n        \"Krakow\": {\"days\": 3},\n        \"Riga\": {\"days\": 4},\n        \"Hamburg\": {\"days\": 2, \"conference_days\": (10, 11)},\n        \"Paris\": {\"days\": 2, \"wedding_days\": (1, 2)},\n        \"Stockholm\": {\"days\": 2, \"relatives_days\": (15, 16)},\n    }\n\n    # Initialize day counter\n    current_day = 1\n    \n    # Visit Paris for the wedding (Day 1-2)\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + 1}\", \"place\": \"Paris\"})\n    current_day += 2\n    \n    # Visit Hamburg for the conference (Day 10-11)\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + 1}\", \"place\": \"Hamburg\"})\n    current_day += 2\n    \n    # Go to Vienna (Day 3-6)\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + constraints['Vienna']['days'] - 1}\", \"place\": \"Vienna\"})\n    current_day += constraints['Vienna']['days']\n    \n    # Visit Krakow (Day 7-9)\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + constraints['Krakow']['days'] - 1}\", \"place\": \"Krakow\"})\n    current_day += constraints['Krakow']['days']\n    \n    # Visit Barcelona (Day 10-11) after Hamburg\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + constraints['Barcelona']['days'] - 1}\", \"place\": \"Barcelona\"})\n    current_day += constraints['Barcelona']['days']\n    \n    # Go to Edinburgh for friends meeting (Day 12-15)\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + constraints['Edinburgh']['days'] - 1}\", \"place\": \"Edinburgh\"})\n    current_day += constraints['Edinburgh']['days']\n    \n    # Finally, visit Riga (Day 13-16)\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + constraints['Riga']['days'] - 1}\", \"place\": \"Riga\"})\n    current_day += constraints['Riga']['days']\n    \n    # Visit Stockholm (Day 15-16) last to meet relatives\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + constraints['Stockholm']['days'] - 1}\", \"place\": \"Stockholm\"})\n    \n    # Format output\n    return json.dumps(itinerary, indent=2)\n\nif __name__ == \"__main__\":\n    result = create_itinerary()\n    print(result)\n```",
+            "count": "trip_planning_example_1094"
+        }
+    ]
+}

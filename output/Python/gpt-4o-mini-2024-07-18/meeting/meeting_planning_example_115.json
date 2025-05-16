@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina",
+                        "person": "Carol",
+                        "start_time": "11:30",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jessica",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Carol",
+                        "start_time": "11:30",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jessica",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Constants for travel time between districts in minutes\nTRAVEL_TIMES = {\n    ('Richmond', 'Pacific Heights'): 10,\n    ('Richmond', 'Marina'): 9,\n    ('Pacific Heights', 'Richmond'): 12,\n    ('Pacific Heights', 'Marina'): 6,\n    ('Marina', 'Richmond'): 11,\n    ('Marina', 'Pacific Heights'): 7,\n}\n\n# Meeting constraints\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\njessica_start = datetime.strptime(\"15:30\", \"%H:%M\")\njessica_end = datetime.strptime(\"16:45\", \"%H:%M\")\ncarol_start = datetime.strptime(\"11:30\", \"%H:%M\")\ncarol_end = datetime.strptime(\"15:00\", \"%H:%M\")\nmeet_jessica_duration = timedelta(minutes=45)\nmeet_carol_duration = timedelta(minutes=60)\n\n# Function to compute the itinerary\ndef compute_itinerary():\n    itinerary = []\n    current_time = arrival_time\n\n    # Schedule meeting with Carol at Marina\n    travel_to_marina = TRAVEL_TIMES[('Richmond', 'Marina')]\n    arrive_at_marina = current_time + timedelta(minutes=travel_to_marina)\n\n    if arrive_at_marina < carol_start:\n        # Wait until Carol is available\n        current_time = carol_start\n\n    # Schedule meeting with Carol from current_time\n    meet_carol_start = current_time\n    meet_carol_end = meet_carol_start + meet_carol_duration\n\n    if meet_carol_end > carol_end:\n        # Adjust if meeting with Carol extends beyond her availability\n        meet_carol_end = carol_end\n\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Marina\",\n        \"person\": \"Carol\",\n        \"start_time\": meet_carol_start.strftime(\"%H:%M\"),\n        \"end_time\": meet_carol_end.strftime(\"%H:%M\"),\n    })\n\n    # Update current time after meeting with Carol\n    current_time = meet_carol_end\n\n    # Travel to Pacific Heights to meet Jessica\n    travel_to_pacific_heights = TRAVEL_TIMES[('Marina', 'Pacific Heights')]\n    arrive_at_pacific_heights = current_time + timedelta(minutes=travel_to_pacific_heights)\n\n    if arrive_at_pacific_heights < jessica_start:\n        # Wait until Jessica is available\n        current_time = jessica_start\n    else:\n        current_time = arrive_at_pacific_heights\n\n    # Schedule meeting with Jessica\n    meet_jessica_start = current_time\n    meet_jessica_end = meet_jessica_start + meet_jessica_duration\n\n    if meet_jessica_end > jessica_end:\n        # Adjust if meeting with Jessica extends beyond her availability\n        meet_jessica_end = jessica_end\n\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Pacific Heights\",\n        \"person\": \"Jessica\",\n        \"start_time\": meet_jessica_start.strftime(\"%H:%M\"),\n        \"end_time\": meet_jessica_end.strftime(\"%H:%M\"),\n    })\n\n    return {\"itinerary\": itinerary}\n\n# Get the optimal meeting schedule\noptimal_schedule = compute_itinerary()\n\n# Output the result as a JSON-formatted dictionary\nprint(json.dumps(optimal_schedule, indent=2))\n```",
+            "count": "meeting_planning_example_115"
+        }
+    ]
+}

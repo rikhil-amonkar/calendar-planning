@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{11:00",
+                "end_time": "11:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{13:00",
+                "end_time": "13:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nimport datetime\n\ndef find_meeting_time():\n    possible_days = ['Monday', 'Tuesday', 'Wednesday']\n    meeting_duration = datetime.timedelta(minutes=30)\n    work_start = datetime.time(9, 0)\n    work_end = datetime.time(17, 0)\n\n    jennifer_busy = {\n        'Monday': [\n            (datetime.time(9, 0), datetime.time(11, 0)),\n            (datetime.time(11, 30), datetime.time(13, 0)),\n            (datetime.time(13, 30), datetime.time(14, 30)),\n            (datetime.time(15, 0), datetime.time(17, 0))\n        ],\n        'Tuesday': [\n            (datetime.time(9, 0), datetime.time(11, 30)),\n            (datetime.time(12, 0), datetime.time(17, 0))\n        ],\n        'Wednesday': [\n            (datetime.time(9, 0), datetime.time(11, 30)),\n            (datetime.time(12, 0), datetime.time(12, 30)),\n            (datetime.time(13, 0), datetime.time(14, 0)),\n            (datetime.time(14, 30), datetime.time(16, 0)),\n            (datetime.time(16, 30), datetime.time(17, 0))\n        ]\n    }\n\n    john_unavailable_days = ['Tuesday', 'Wednesday']\n    john_avoid_monday_after = datetime.time(14, 30)\n\n    for day in possible_days:\n        if day in john_unavailable_days:\n            continue\n\n        busy = jennifer_busy.get(day, [])\n        free_slots = []\n\n        current_start = work_start\n        for interval in busy:\n            if current_start < interval[0]:\n                free_slots.append((current_start, interval[0]))\n            current_start = interval[1]\n        if current_start < work_end:\n            free_slots.append((current_start, work_end))\n\n        for slot_start, slot_end in free_slots:\n            if day == 'Monday':\n                latest_end = datetime.datetime.combine(datetime.date.today(), john_avoid_monday_after)\n                slot_end_time = datetime.datetime.combine(datetime.date.today(), slot_end)\n                if slot_end_time > latest_end:\n                    slot_end = john_avoid_monday_after\n\n            slot_duration = datetime.datetime.combine(datetime.date.today(), slot_end) - datetime.datetime.combine(datetime.date.today(), slot_start)\n            if slot_duration >= meeting_duration:\n                meeting_end = (datetime.datetime.combine(datetime.date.today(), slot_start) + meeting_duration).time()\n                if day == 'Monday' and meeting_end > john_avoid_monday_after:\n                    continue\n                return (day, slot_start.strftime(\"%H:%M\"), meeting_end.strftime(\"%H:%M\"))\n\n    return None\n\nresult = find_meeting_time()\nif result:\n    day, start, end = result\n    print(f\"{day} {start}:{end}\")\nelse:\n    print(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_776"
+        }
+    ]
+}

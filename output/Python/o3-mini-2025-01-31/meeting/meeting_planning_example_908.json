@@ -1,0 +1,143 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Betty",
+                        "start_time": "10:06",
+                        "end_time": "10:21"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Brian",
+                        "start_time": "10:40",
+                        "end_time": "11:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joseph",
+                        "start_time": "11:31",
+                        "end_time": "13:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "13:11",
+                        "end_time": "14:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Lisa",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Patricia",
+                        "start_time": "16:34",
+                        "end_time": "18:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "William",
+                        "start_time": "18:47",
+                        "end_time": "19:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "20:10",
+                        "end_time": "21:55"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Betty",
+                        "start_time": "10:06",
+                        "end_time": "10:21"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Brian",
+                        "start_time": "10:40",
+                        "end_time": "11:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joseph",
+                        "start_time": "11:31",
+                        "end_time": "13:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "13:11",
+                        "end_time": "14:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Lisa",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Patricia",
+                        "start_time": "16:34",
+                        "end_time": "18:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "William",
+                        "start_time": "18:47",
+                        "end_time": "19:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "20:10",
+                        "end_time": "21:55"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\n\n# Convert time in minutes to \"H:MM\" string (24-hour format, no leading zero for hour)\ndef minutes_to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Travel times dictionary between locations (in minutes)\ntravel_times = {\n    (\"Financial District\", \"Fisherman's Wharf\"): 10,\n    (\"Financial District\", \"Presidio\"): 22,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Haight-Ashbury\"): 19,\n    (\"Financial District\", \"Russian Hill\"): 11,\n    (\"Financial District\", \"The Castro\"): 20,\n    (\"Financial District\", \"Marina District\"): 15,\n    (\"Financial District\", \"Richmond District\"): 21,\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Financial District\", \"Sunset District\"): 30,\n\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Fisherman's Wharf\", \"Haight-Ashbury\"): 22,\n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n    (\"Fisherman's Wharf\", \"The Castro\"): 27,\n    (\"Fisherman's Wharf\", \"Marina District\"): 9,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n    (\"Fisherman's Wharf\", \"Union Square\"): 13,\n    (\"Fisherman's Wharf\", \"Sunset District\"): 27,\n\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Bayview\"): 31,\n    (\"Presidio\", \"Haight-Ashbury\"): 15,\n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Presidio\", \"The Castro\"): 21,\n    (\"Presidio\", \"Marina District\"): 11,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Presidio\", \"Sunset District\"): 15,\n\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Bayview\", \"Presidio\"): 32,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Russian Hill\"): 23,\n    (\"Bayview\", \"The Castro\"): 19,\n    (\"Bayview\", \"Marina District\"): 27,\n    (\"Bayview\", \"Richmond District\"): 25,\n    (\"Bayview\", \"Union Square\"): 18,\n    (\"Bayview\", \"Sunset District\"): 23,\n\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    (\"Haight-Ashbury\", \"Fisherman's Wharf\"): 23,\n    (\"Haight-Ashbury\", \"Presidio\"): 15,\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n    (\"Haight-Ashbury\", \"The Castro\"): 6,\n    (\"Haight-Ashbury\", \"Marina District\"): 17,\n    (\"Haight-Ashbury\", \"Richmond District\"): 10,\n    (\"Haight-Ashbury\", \"Union Square\"): 19,\n    (\"Haight-Ashbury\", \"Sunset District\"): 15,\n\n    (\"Russian Hill\", \"Financial District\"): 11,\n    (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n    (\"Russian Hill\", \"Presidio\"): 14,\n    (\"Russian Hill\", \"Bayview\"): 23,\n    (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n    (\"Russian Hill\", \"The Castro\"): 21,\n    (\"Russian Hill\", \"Marina District\"): 7,\n    (\"Russian Hill\", \"Richmond District\"): 14,\n    (\"Russian Hill\", \"Union Square\"): 10,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n\n    (\"The Castro\", \"Financial District\"): 21,\n    (\"The Castro\", \"Fisherman's Wharf\"): 24,\n    (\"The Castro\", \"Presidio\"): 20,\n    (\"The Castro\", \"Bayview\"): 19,\n    (\"The Castro\", \"Haight-Ashbury\"): 6,\n    (\"The Castro\", \"Russian Hill\"): 18,\n    (\"The Castro\", \"Marina District\"): 21,\n    (\"The Castro\", \"Richmond District\"): 16,\n    (\"The Castro\", \"Union Square\"): 19,\n    (\"The Castro\", \"Sunset District\"): 17,\n\n    (\"Marina District\", \"Financial District\"): 17,\n    (\"Marina District\", \"Fisherman's Wharf\"): 10,\n    (\"Marina District\", \"Presidio\"): 10,\n    (\"Marina District\", \"Bayview\"): 27,\n    (\"Marina District\", \"Haight-Ashbury\"): 16,\n    (\"Marina District\", \"Russian Hill\"): 8,\n    (\"Marina District\", \"The Castro\"): 22,\n    (\"Marina District\", \"Richmond District\"): 11,\n    (\"Marina District\", \"Union Square\"): 16,\n    (\"Marina District\", \"Sunset District\"): 19,\n\n    (\"Richmond District\", \"Financial District\"): 22,\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n    (\"Richmond District\", \"Presidio\"): 7,\n    (\"Richmond District\", \"Bayview\"): 27,\n    (\"Richmond District\", \"Haight-Ashbury\"): 10,\n    (\"Richmond District\", \"Russian Hill\"): 13,\n    (\"Richmond District\", \"The Castro\"): 16,\n    (\"Richmond District\", \"Marina District\"): 9,\n    (\"Richmond District\", \"Union Square\"): 21,\n    (\"Richmond District\", \"Sunset District\"): 11,\n\n    (\"Union Square\", \"Financial District\"): 9,\n    (\"Union Square\", \"Fisherman's Wharf\"): 15,\n    (\"Union Square\", \"Presidio\"): 24,\n    (\"Union Square\", \"Bayview\"): 15,\n    (\"Union Square\", \"Haight-Ashbury\"): 18,\n    (\"Union Square\", \"Russian Hill\"): 13,\n    (\"Union Square\", \"The Castro\"): 17,\n    (\"Union Square\", \"Marina District\"): 18,\n    (\"Union Square\", \"Richmond District\"): 20,\n    (\"Union Square\", \"Sunset District\"): 27,\n\n    (\"Sunset District\", \"Financial District\"): 30,\n    (\"Sunset District\", \"Fisherman's Wharf\"): 29,\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Sunset District\", \"Bayview\"): 22,\n    (\"Sunset District\", \"Haight-Ashbury\"): 15,\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"The Castro\"): 17,\n    (\"Sunset District\", \"Marina District\"): 21,\n    (\"Sunset District\", \"Richmond District\"): 12,\n    (\"Sunset District\", \"Union Square\"): 30\n}\n\n# Define meeting constraints for each friend.\n# Times are converted to minutes from midnight.\nmeeting_constraints = [\n    {\n        \"person\": \"Mark\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": 8*60 + 15,    # 8:15\n        \"avail_end\": 10*60,          # 10:00\n        \"min_duration\": 30\n    },\n    {\n        \"person\": \"Stephanie\",\n        \"location\": \"Presidio\",\n        \"avail_start\": 12*60 + 15,   # 12:15\n        \"avail_end\": 15*60,          # 15:00\n        \"min_duration\": 75\n    },\n    {\n        \"person\": \"Betty\",\n        \"location\": \"Bayview\",\n        \"avail_start\": 7*60 + 15,    # 7:15\n        \"avail_end\": 20*60 + 30,     # 20:30\n        \"min_duration\": 15\n    },\n    {\n        \"person\": \"Lisa\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": 15*60 + 30,   # 15:30\n        \"avail_end\": 18*60 + 30,     # 18:30\n        \"min_duration\": 45\n    },\n    {\n        \"person\": \"William\",\n        \"location\": \"Russian Hill\",\n        \"avail_start\": 18*60 + 45,   # 18:45\n        \"avail_end\": 20*60,          # 20:00\n        \"min_duration\": 60\n    },\n    {\n        \"person\": \"Brian\",\n        \"location\": \"The Castro\",\n        \"avail_start\": 9*60 + 15,    # 9:15\n        \"avail_end\": 13*60 + 15,     # 13:15\n        \"min_duration\": 30\n    },\n    {\n        \"person\": \"Joseph\",\n        \"location\": \"Marina District\",\n        \"avail_start\": 10*60 + 45,   # 10:45\n        \"avail_end\": 15*60,          # 15:00\n        \"min_duration\": 90\n    },\n    {\n        \"person\": \"Ashley\",\n        \"location\": \"Richmond District\",\n        \"avail_start\": 9*60 + 45,    # 9:45\n        \"avail_end\": 11*60 + 15,     # 11:15\n        \"min_duration\": 45\n    },\n    {\n        \"person\": \"Patricia\",\n        \"location\": \"Union Square\",\n        \"avail_start\": 16*60 + 30,   # 16:30\n        \"avail_end\": 20*60,          # 20:00\n        \"min_duration\": 120\n    },\n    {\n        \"person\": \"Karen\",\n        \"location\": \"Sunset District\",\n        \"avail_start\": 16*60 + 30,   # 16:30\n        \"avail_end\": 22*60,          # 22:00\n        \"min_duration\": 105\n    },\n]\n\n# Global variable to keep track of the best itinerary (max number of meetings)\nbest_itinerary = []\n\n# Backtracking search for the optimal meeting schedule\ndef search(current_time, current_location, remaining_meetings, itinerary):\n    global best_itinerary\n    # Update best itinerary if this itinerary has more meetings\n    if len(itinerary) > len(best_itinerary):\n        best_itinerary = itinerary.copy()\n    \n    # Try scheduling each remaining meeting\n    for i, meeting in enumerate(remaining_meetings):\n        # Get travel time from current_location to meeting location.\n        key = (current_location, meeting[\"location\"])\n        if key not in travel_times:\n            continue\n        travel_time = travel_times[key]\n        arrival_time = current_time + travel_time\n        # Meeting can only start when both you have arrived and the friend is available.\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"min_duration\"]\n        # Check if meeting can finish before friend's availability ends.\n        if meeting_end <= meeting[\"avail_end\"]:\n            # Add meeting to itinerary\n            meeting_record = {\n                \"action\": \"meet\",\n                \"location\": meeting[\"location\"],\n                \"person\": meeting[\"person\"],\n                \"start_time\": minutes_to_time_str(meeting_start),\n                \"end_time\": minutes_to_time_str(meeting_end)\n            }\n            new_itinerary = itinerary + [meeting_record]\n            # Recurse with the updated state; remove this meeting from remaining.\n            new_remaining = remaining_meetings[:i] + remaining_meetings[i+1:]\n            search(meeting_end, meeting[\"location\"], new_remaining, new_itinerary)\n\ndef main():\n    # Starting point: Financial District at 9:00 (9*60 minutes)\n    start_time = 9 * 60  # 9:00 in minutes\n    start_location = \"Financial District\"\n    \n    # Start recursive search\n    search(start_time, start_location, meeting_constraints, [])\n    \n    # Create output dictionary following the required JSON structure.\n    output = {\"itinerary\": best_itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == '__main__':\n    main()",
+            "count": "meeting_planning_example_908"
+        }
+    ]
+}

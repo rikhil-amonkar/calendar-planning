@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_itinerary():\n    # Input parameters\n    total_days = 18\n    cities = {\n        'Tallinn': {'days': 2, 'constraints': []},\n        'Bucharest': {'days': 4, 'constraints': [{'start': 1, 'end': 4}]},\n        'Seville': {'days': 5, 'constraints': [{'start': 8, 'end': 12}]},\n        'Stockholm': {'days': 5, 'constraints': []},\n        'Munich': {'days': 5, 'constraints': [{'start': 4, 'end': 8}]},\n        'Milan': {'days': 2, 'constraints': []}\n    }\n    \n    direct_flights = {\n        'Milan': ['Stockholm', 'Munich', 'Seville'],\n        'Stockholm': ['Milan', 'Munich', 'Tallinn'],\n        'Munich': ['Stockholm', 'Bucharest', 'Seville', 'Milan', 'Tallinn'],\n        'Bucharest': ['Munich'],\n        'Seville': ['Munich', 'Milan'],\n        'Tallinn': ['Stockholm', 'Munich']\n    }\n    \n    # Generate all possible permutations of cities\n    city_names = list(cities.keys())\n    possible_orders = permutations(city_names)\n    \n    valid_itineraries = []\n    \n    for order in possible_orders:\n        itinerary = []\n        current_day = 1\n        valid = True\n        \n        # Check if Bucharest is visited between day 1 and 4\n        bucharest_pos = order.index('Bucharest')\n        bucharest_start = current_day\n        for i in range(bucharest_pos):\n            bucharest_start += cities[order[i]]['days']\n        bucharest_end = bucharest_start + cities['Bucharest']['days'] - 1\n        if not (1 <= bucharest_start <= 4 and 1 <= bucharest_end <= 4):\n            valid = False\n        \n        # Check if Munich is visited between day 4 and 8\n        munich_pos = order.index('Munich')\n        munich_start = current_day\n        for i in range(munich_pos):\n            munich_start += cities[order[i]]['days']\n        munich_end = munich_start + cities['Munich']['days'] - 1\n        if not (4 <= munich_start <= 8 and 4 <= munich_end <= 8):\n            valid = False\n        \n        # Check if Seville is visited between day 8 and 12\n        seville_pos = order.index('Seville')\n        seville_start = current_day\n        for i in range(seville_pos):\n            seville_start += cities[order[i]]['days']\n        seville_end = seville_start + cities['Seville']['days'] - 1\n        if not (8 <= seville_start <= 12 and 8 <= seville_end <= 12):\n            valid = False\n        \n        # Check flight connections\n        for i in range(len(order) - 1):\n            from_city = order[i]\n            to_city = order[i + 1]\n            if to_city not in direct_flights[from_city]:\n                valid = False\n                break\n        \n        if valid:\n            # Build itinerary\n            day = 1\n            for i, city in enumerate(order):\n                days = cities[city]['days']\n                itinerary.append({\n                    'day_range': f'Day {day}-{day + days - 1}',\n                    'place': city\n                })\n                day += days\n                if i < len(order) - 1:\n                    itinerary.append({\n                        'flying': f'Day {day - 1}-{day - 1}',\n                        'from': city,\n                        'to': order[i + 1]\n                    })\n            \n            # Check total days\n            total_itinerary_days = sum(cities[city]['days'] for city in order)\n            if total_itinerary_days == total_days:\n                valid_itineraries.append(itinerary)\n    \n    return valid_itineraries[0] if valid_itineraries else []\n\nitinerary = find_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_664"
+        }
+    ]
+}

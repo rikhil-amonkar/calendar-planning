@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joshua",
+                        "start_time": "10:30",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Kimberly",
+                        "start_time": "15:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "16:03",
+                        "end_time": "16:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Betty",
+                        "start_time": "16:57",
+                        "end_time": "17:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Daniel",
+                        "start_time": "18:30",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Elizabeth",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joshua",
+                        "start_time": "10:30",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Kimberly",
+                        "start_time": "15:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "16:03",
+                        "end_time": "16:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Betty",
+                        "start_time": "16:57",
+                        "end_time": "17:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Daniel",
+                        "start_time": "18:30",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Elizabeth",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I need to solve this problem where I have to create a Python program that calculates the optimal meeting schedule based on the given constraints. Let me break down the problem and think through how to approach it step by step.\n\nFirst, I'll read through the problem statement carefully. The user wants to meet as many friends as possible in San Francisco, starting from Union Square at 9:00 AM. There are nine friends, each located in different districts with specific time windows and minimum meeting durations. The goal is to find the best schedule that allows meeting the maximum number of friends, considering travel times between locations.\n\nI notice that the problem provides travel times between various districts. These travel times are symmetric, meaning the time from A to B is the same as from B to A. However, I should confirm this by checking a few entries. For example, Union Square to Presidio is 24 minutes, and Presidio to Union Square is 22 minutes. Oh, they are not the same. So, the travel times are directional and not symmetric. This is an important point because it affects the route calculations.\n\nNext, I'll list out the friends with their details:\n\n1. **Kimberly**: Presidio, 3:30 PM to 4:00 PM, 15 minutes.\n2. **Elizabeth**: Alamo Square, 7:15 PM to 8:15 PM, 15 minutes.\n3. **Joshua**: Marina District, 10:30 AM to 2:15 PM, 45 minutes.\n4. **Sandra**: Financial District, 7:30 PM to 8:15 PM, 45 minutes.\n5. **Kenneth**: Nob Hill, 12:45 PM to 9:45 PM, 30 minutes.\n6. **Betty**: Sunset District, 2:00 PM to 7:00 PM, 60 minutes.\n7. **Deborah**: Chinatown, 5:15 PM to 8:30 PM, 15 minutes.\n8. **Barbara**: Russian Hill, 5:30 PM to 9:15 PM, 120 minutes.\n9. **Steven**: North Beach, 5:45 PM to 8:45 PM, 90 minutes.\n10. **Daniel**: Haight-Ashbury, 6:30 PM to 6:45 PM, 15 minutes.\n\nWait, that's ten friends, but the problem statement says nine. Let me recount. Yes, it's nine friends, from Kimberly to Daniel.\n\nNow, the approach to solve this problem involves several steps:\n\n1. **Model the Travel Times**: Represent the travel times in a data structure, probably a dictionary where the keys are tuples of (from_location, to_location) and the values are the travel times in minutes.\n\n2. **Model the Friends' Availability**: Create a list of dictionaries, each containing the friend's name, location, start time, end time, and required meeting duration. The times should be converted into minutes since midnight for easier calculations.\n\n3. **Generate Permutations**: Since the order in which we meet the friends matters, we need to consider all possible permutations of the friends. This will allow us to evaluate every possible meeting order to find the optimal schedule.\n\n4. **Simulate Each Permutation**: For each permutation, simulate the day starting from Union Square at 9:00 AM. Calculate the travel time to the first friend's location, check if the meeting can fit within their available time window, and proceed to the next friend, updating the current time and location accordingly.\n\n5. **Check Feasibility**: For each friend in the permutation, ensure that the arrival time plus the required meeting duration does not exceed their end time. If it does, this permutation is not feasible, and we move to the next one.\n\n6. **Track the Best Schedule**: Keep track of the permutation that allows meeting the maximum number of friends. If multiple permutations allow meeting the same number of friends, any of them can be chosen as the optimal solution.\n\n7. **Convert Times Back to HH:MM Format**: Once the optimal schedule is determined, convert the start and end times from minutes since midnight back to the HH:MM format for the output.\n\n8. **Output the Result**: Format the result as a JSON object with the itinerary, including the action, location, person, start time, and end time for each meeting.\n\nNow, let's think about potential challenges and how to address them:\n\n- **Computational Complexity**: Generating all permutations of nine friends results in 9! = 362,880 permutations. This is computationally intensive, but for a one-time calculation, it's manageable. However, for larger numbers of friends, a more optimized approach would be necessary.\n\n- **Time Constraints**: Each meeting has a specific time window and duration. Ensuring that the meeting fits within the friend's availability is crucial. We need to calculate arrival times accurately, considering travel durations.\n\n- **Data Structures**: Using dictionaries for travel times and friends' details will make it easier to access and manipulate the data during the simulation.\n\n- **Edge Cases**: Some friends have very short time windows (e.g., Daniel is only available from 6:30 PM to 6:45 PM). Missing such a window would make it impossible to meet them. Similarly, friends with longer durations (e.g., Barbara requires 120 minutes) need to be scheduled carefully to fit within their availability.\n\n- **Optimization**: Since the goal is to meet as many friends as possible, the algorithm should prioritize permutations that allow meeting the maximum number of friends, even if it means shorter meetings with others.\n\nWith these considerations in mind, I'll proceed to outline the steps in code:\n\n1. **Define Travel Times**: Create a dictionary `travel_times` where each key is a tuple of two locations, and the value is the travel time in minutes.\n\n2. **Define Friends' Details**: Create a list `friends` where each element is a dictionary containing the friend's name, location, start time (in minutes since midnight), end time, and required duration.\n\n3. **Convert Times**: Ensure all times are in minutes since midnight for easier calculations. For example, 9:00 AM is 540 minutes.\n\n4. **Generate Permutations**: Use `itertools.permutations` to generate all possible orders of meeting the friends.\n\n5. **Simulate Each Permutation**: For each permutation:\n   - Start at Union Square at 540 minutes (9:00 AM).\n   - For each friend in the permutation:\n     - Calculate travel time from the current location to the friend's location.\n     - Determine the arrival time.\n     - Check if the friend is available at the arrival time and if the meeting can fit within their time window.\n     - If feasible, add the meeting to the itinerary and update the current time and location.\n     - If not feasible, break out of the current permutation and try the next one.\n   \n6. **Track the Best Itinerary**: Keep track of the itinerary that includes the maximum number of friends. If a new permutation results in meeting more friends, update the best itinerary.\n\n7. **Convert Times to HH:MM Format**: Once the best itinerary is determined, convert the start and end times from minutes since midnight back to the HH:MM format.\n\n8. **Output the Result**: Format the result as a JSON object with the itinerary details.\n\nPotential optimizations to consider:\n\n- **Prune Impossible Permutations Early**: If a permutation starts with a friend whose meeting cannot be scheduled (e.g., due to time constraints), it can be discarded early to save computation time.\n\n- **Sort Friends by Availability**: Prioritize friends with tighter schedules earlier in the permutation to increase the chances of meeting them.\n\nHowever, given the problem constraints and the manageable number of permutations, a brute-force approach is feasible.\n\nNow, I'll proceed to write the Python code that implements this logic.\n</think>\n\n```python\nimport itertools\nimport json\n\ntravel_times = {\n    ('Union Square', 'Presidio'): 24,\n    ('Union Square', 'Alamo Square'): 15,\n    ('Union Square', 'Marina District'): 18,\n    ('Union Square', 'Financial District'): 9,\n    ('Union Square', 'Nob Hill'): 9,\n    ('Union Square', 'Sunset District'): 27,\n    ('Union Square', 'Chinatown'): 7,\n    ('Union Square', 'Russian Hill'): 13,\n    ('Union Square', 'North Beach'): 10,\n    ('Union Square', 'Haight-Ashbury'): 18,\n    ('Presidio', 'Union Square'): 22,\n    ('Presidio', 'Alamo Square'): 19,\n    ('Presidio', 'Marina District'): 11,\n    ('Presidio', 'Financial District'): 23,\n    ('Presidio', 'Nob Hill'): 18,\n    ('Presidio', 'Sunset District'): 15,\n    ('Presidio', 'Chinatown'): 21,\n    ('Presidio', 'Russian Hill'): 14,\n    ('Presidio', 'North Beach'): 18,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Alamo Square', 'Union Square'): 14,\n    ('Alamo Square', 'Presidio'): 17,\n    ('Alamo Square', 'Marina District'): 15,\n    ('Alamo Square', 'Financial District'): 17,\n    ('Alamo Square', 'Nob Hill'): 11,\n    ('Alamo Square', 'Sunset District'): 16,\n    ('Alamo Square', 'Chinatown'): 15,\n    ('Alamo Square', 'Russian Hill'): 13,\n    ('Alamo Square', 'North Beach'): 15,\n    ('Alamo Square', 'Haight-Ashbury'): 5,\n    ('Marina District', 'Union Square'): 16,\n    ('Marina District', 'Presidio'): 10,\n    ('Marina District', 'Alamo Square'): 15,\n    ('Marina District', 'Financial District'): 17,\n    ('Marina District', 'Nob Hill'): 12,\n    ('Marina District', 'Sunset District'): 19,\n    ('Marina District', 'Chinatown'): 15,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Marina District', 'North Beach'): 11,\n    ('Marina District', 'Haight-Ashbury'): 16,\n    ('Financial District', 'Union Square'): 9,\n    ('Financial District', 'Presidio'): 22,\n    ('Financial District', 'Alamo Square'): 17,\n    ('Financial District', 'Marina District'): 15,\n    ('Financial District', 'Nob Hill'): 8,\n    ('Financial District', 'Sunset District'): 30,\n    ('Financial District', 'Chinatown'): 5,\n    ('Financial District', 'Russian Hill'): 11,\n    ('Financial District', 'North Beach'): 7,\n    ('Financial District', 'Haight-Ashbury'): 19,\n    ('Nob Hill', 'Union Square'): 7,\n    ('Nob Hill', 'Presidio'): 17,\n    ('Nob Hill', 'Alamo Square'): 11,\n    ('Nob Hill', 'Marina District'): 11,\n    ('Nob Hill', 'Financial District'): 9,\n    ('Nob Hill', 'Sunset District'): 24,\n    ('Nob Hill', 'Chinatown'): 6,\n    ('Nob Hill', 'Russian Hill'): 5,\n    ('Nob Hill', 'North Beach'): 8,\n    ('Nob Hill', 'Haight-Ashbury'): 13,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Presidio'): 16,\n    ('Sunset District', 'Alamo Square'): 17,\n    ('Sunset District', 'Marina District'): 21,\n    ('Sunset District', 'Financial District'): 30,\n    ('Sunset District', 'Nob Hill'): 27,\n    ('Sunset District', 'Chinatown'): 30,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Sunset District', 'North Beach'): 28,\n    ('Sunset District', 'Haight-Ashbury'): 15,\n    ('Chinatown', 'Union Square'): 7,\n    ('Chinatown', 'Presidio'): 19,\n    ('Chinatown', 'Alamo Square'): 17,\n    ('Chinatown', 'Marina District'): 12,\n    ('Chinatown', 'Financial District'): 5,\n    ('Chinatown', 'Nob Hill'): 9,\n    ('Chinatown', 'Sunset District'): 29,\n    ('Chinatown', 'Russian Hill'): 7,\n    ('Chinatown', 'North Beach'): 3,\n    ('Chinatown', 'Haight-Ashbury'): 19,\n    ('Russian Hill', 'Union Square'): 10,\n    ('Russian Hill', 'Presidio'): 14,\n    ('Russian Hill', 'Alamo Square'): 15,\n    ('Russian Hill', 'Marina District'): 7,\n    ('Russian Hill', 'Financial District'): 11,\n    ('Russian Hill', 'Nob Hill'): 5,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Russian Hill', 'Chinatown'): 9,\n    ('Russian Hill', 'North Beach'): 5,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n    ('North Beach', 'Union Square'): 7,\n    ('North Beach', 'Presidio'): 17,\n    ('North Beach', 'Alamo Square'): 16,\n    ('North Beach', 'Marina District'): 9,\n    ('North Beach', 'Financial District'): 8,\n    ('North Beach', 'Nob Hill'): 7,\n    ('North Beach', 'Sunset District'): 27,\n    ('North Beach', 'Chinatown'): 6,\n    ('North Beach', 'Russian Hill'): 4,\n    ('North Beach', 'Haight-Ashbury'): 18,\n    ('Haight-Ashbury', 'Union Square'): 19,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Alamo Square'): 5,\n    ('Haight-Ashbury', 'Marina District'): 17,\n    ('Haight-Ashbury', 'Financial District'): 21,\n    ('Haight-Ashbury', 'Nob Hill'): 15,\n    ('Haight-Ashbury', 'Sunset District'): 15,\n    ('Haight-Ashbury', 'Chinatown'): 19,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Haight-Ashbury', 'North Beach'): 19,\n}\n\nfriends = [\n    {\n        'name': 'Kimberly',\n        'location': 'Presidio',\n        'start_time': 15 * 60 + 30,  # 3:30 PM\n        'end_time': 16 * 60 + 0,     # 4:00 PM\n        'duration': 15\n    },\n    {\n        'name': 'Elizabeth',\n        'location': 'Alamo Square',\n        'start_time': 19 * 60 + 15,  # 7:15 PM\n        'end_time': 20 * 60 + 15,    # 8:15 PM\n        'duration': 15\n    },\n    {\n        'name': 'Joshua',\n        'location': 'Marina District',\n        'start_time': 10 * 60 + 30,  # 10:30 AM\n        'end_time': 14 * 60 + 15,    # 2:15 PM\n        'duration': 45\n    },\n    {\n        'name': 'Sandra',\n        'location': 'Financial District',\n        'start_time': 19 * 60 + 30,  # 7:30 PM\n        'end_time': 20 * 60 + 15,    # 8:15 PM\n        'duration': 45\n    },\n    {\n        'name': 'Kenneth',\n        'location': 'Nob Hill',\n        'start_time': 12 * 60 + 45,  # 12:45 PM\n        'end_time': 21 * 60 + 45,    # 9:45 PM\n        'duration': 30\n    },\n    {\n        'name': 'Betty',\n        'location': 'Sunset District',\n        'start_time': 14 * 60 + 0,   # 2:00 PM\n        'end_time': 19 * 60 + 0,     # 7:00 PM\n        'duration': 60\n    },\n    {\n        'name': 'Deborah',\n        'location': 'Chinatown',\n        'start_time': 17 * 60 + 15,  # 5:15 PM\n        'end_time': 20 * 60 + 30,    # 8:30 PM\n        'duration': 15\n    },\n    {\n        'name': 'Barbara',\n        'location': 'Russian Hill',\n        'start_time': 17 * 60 + 30,  # 5:30 PM\n        'end_time': 21 * 60 + 15,    # 9:15 PM\n        'duration': 120\n    },\n    {\n        'name': 'Steven',\n        'location': 'North Beach',\n        'start_time': 17 * 60 + 45,  # 5:45 PM\n        'end_time': 20 * 60 + 45,    # 8:45 PM\n        'duration': 90\n    },\n    {\n        'name': 'Daniel',\n        'location': 'Haight-Ashbury',\n        'start_time': 18 * 60 + 30,  # 6:30 PM\n        'end_time': 18 * 60 + 45,    # 6:45 PM\n        'duration': 15\n    },\n]\n\ndef convert_minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nbest_itinerary = []\nmax_met = 0\n\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_location = 'Union Square'\n    itinerary = []\n    for friend in perm:\n        travel_time = travel_times.get((current_location, friend['location']), None)\n        if travel_time is None:\n            break\n        arrival_time = current_time + travel_time\n        meeting_start = max(arrival_time, friend['start_time'])\n        meeting_end = meeting_start + friend['duration']\n        if meeting_end > friend['end_time']:\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': convert_minutes_to_time(meeting_start),\n            'end_time': convert_minutes_to_time(meeting_end)\n        })\n        current_time = meeting_end\n        current_location = friend['location']\n    if len(itinerary) > max_met:\n        max_met = len(itinerary)\n        best_itinerary = itinerary\n\noutput = {\n    \"itinerary\": best_itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_912"
+        }
+    ]
+}

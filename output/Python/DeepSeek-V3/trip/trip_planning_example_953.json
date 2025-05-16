@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_itinerary():\n    # Cities and their required days\n    cities = {\n        'Salzburg': 4,\n        'Stockholm': 2,\n        'Venice': 5,\n        'Frankfurt': 4,\n        'Florence': 4,\n        'Barcelona': 2,\n        'Stuttgart': 3\n    }\n    \n    # Direct flight connections\n    connections = {\n        'Barcelona': ['Frankfurt', 'Florence', 'Stockholm', 'Venice', 'Stuttgart'],\n        'Frankfurt': ['Barcelona', 'Florence', 'Salzburg', 'Stockholm', 'Stuttgart', 'Venice'],\n        'Florence': ['Barcelona', 'Frankfurt'],\n        'Stockholm': ['Barcelona', 'Frankfurt', 'Stuttgart'],\n        'Venice': ['Barcelona', 'Stuttgart', 'Frankfurt'],\n        'Stuttgart': ['Barcelona', 'Stockholm', 'Frankfurt', 'Venice'],\n        'Salzburg': ['Frankfurt']\n    }\n    \n    # Venice must be days 1-5\n    itinerary = []\n    itinerary.append({'day_range': 'Day 1-5', 'place': 'Venice'})\n    remaining_cities = cities.copy()\n    del remaining_cities['Venice']\n    current_day = 6\n    current_city = 'Venice'\n    \n    # Function to check if all cities are visited\n    def all_visited(visited):\n        return all(city in visited for city in cities.keys())\n    \n    # Function to find next possible city\n    def find_next_city(current_city, remaining_cities, connections):\n        for city in remaining_cities:\n            if city in connections[current_city]:\n                return city\n        return None\n    \n    # Build itinerary\n    visited = ['Venice']\n    while not all_visited(visited) and current_day <= 18:\n        next_city = find_next_city(current_city, remaining_cities, connections)\n        if next_city is None:\n            # No direct flight, find a path via other cities\n            for city in remaining_cities:\n                for perm in permutations(connections[current_city], 2):\n                    if perm[1] in connections[perm[0]] and city in connections[perm[1]]:\n                        # Add intermediate city\n                        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': perm[0]})\n                        current_day += 0  # Flight takes 0 days\n                        itinerary.append({'day_range': f'Day {current_day}-{current_day}', 'place': perm[0]})\n                        current_day += 0  # Just passing through\n                        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': perm[0], 'to': city})\n                        current_city = city\n                        visited.append(city)\n                        del remaining_cities[city]\n                        break\n                else:\n                    continue\n                break\n            else:\n                break\n        else:\n            itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n            current_day += 0  # Flight takes 0 days\n            days_to_spend = remaining_cities[next_city]\n            end_day = current_day + days_to_spend - 1\n            if end_day > 18:\n                days_to_spend = 18 - current_day + 1\n                end_day = 18\n            itinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': next_city})\n            current_day = end_day + 1\n            current_city = next_city\n            visited.append(next_city)\n            del remaining_cities[next_city]\n    \n    # Check if all cities are visited\n    if not all_visited(visited):\n        # Try to fit remaining cities\n        for city in cities:\n            if city not in visited:\n                if city in connections[current_city]:\n                    days_to_spend = cities[city]\n                    end_day = current_day + days_to_spend - 1\n                    if end_day > 18:\n                        continue\n                    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': city})\n                    itinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': city})\n                    current_day = end_day + 1\n                    current_city = city\n                    visited.append(city)\n    \n    return itinerary\n\ndef main():\n    itinerary = find_itinerary()\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_953"
+        }
+    ]
+}

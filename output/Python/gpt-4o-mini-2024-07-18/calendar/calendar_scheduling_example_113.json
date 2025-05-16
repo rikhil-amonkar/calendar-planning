@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport datetime\n\n# Define participant schedules\nschedules = {\n    'Bradley': [(datetime.time(9, 30), datetime.time(10, 0)),\n                (datetime.time(12, 30), datetime.time(13, 0)),\n                (datetime.time(13, 30), datetime.time(14, 0)),\n                (datetime.time(15, 30), datetime.time(16, 0))],\n    'Teresa': [(datetime.time(10, 30), datetime.time(11, 0)),\n               (datetime.time(12, 0), datetime.time(12, 30)),\n               (datetime.time(13, 0), datetime.time(13, 30)),\n               (datetime.time(14, 30), datetime.time(15, 0))],\n    'Elizabeth': [(datetime.time(9, 0), datetime.time(9, 30)),\n                  (datetime.time(10, 30), datetime.time(11, 30)),\n                  (datetime.time(13, 0), datetime.time(13, 30)),\n                  (datetime.time(14, 30), datetime.time(15, 0)),\n                  (datetime.time(15, 30), datetime.time(17, 0))],\n    'Christian': [(datetime.time(9, 0), datetime.time(9, 30)),\n                  (datetime.time(10, 30), datetime.time(17, 0))]\n}\n\n# Define the meeting duration\nmeeting_duration = datetime.timedelta(minutes=30)\n\n# Define work hours\nwork_start = datetime.time(9, 0)\nwork_end = datetime.time(17, 0)\n\n# Find available time slots\ndef find_meeting_time(schedules, duration):\n    # Create a full day schedule based on work hours\n    all_meeting_times = []\n\n    current_time = datetime.datetime.combine(datetime.date.today(), work_start)\n    end_of_day = datetime.datetime.combine(datetime.date.today(), work_end)\n\n    while current_time + duration <= end_of_day:\n        temp_time = current_time.time()\n        is_available = True\n        \n        for busy_times in schedules.values():\n            for start, end in busy_times:\n                if start <= temp_time < end or start < (current_time + duration).time() <= end:\n                    is_available = False\n                    break\n            if not is_available:\n                break\n        \n        if is_available:\n            all_meeting_times.append((temp_time, (current_time + duration).time()))\n        \n        current_time += datetime.timedelta(minutes=30)  # Increment by 30 minutes\n    \n    return all_meeting_times\n\n# Get available slots\navailable_slots = find_meeting_time(schedules, meeting_duration)\n\n# Assume first available slot is chosen\nif available_slots:\n    chosen_time = available_slots[0]\n    print(f'{{{chosen_time[0].strftime(\"%H:%M\")}:{chosen_time[1].strftime(\"%H:%M\")}}}')\n    print('Monday')\n```",
+            "count": "calendar_scheduling_example_113"
+        }
+    ]
+}

@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    cities = {\n        'Venice': {'duration': 3},\n        'Reykjavik': {'duration': 2},\n        'Munich': {'duration': 3, 'fixed': (4, 6)},\n        'Santorini': {'duration': 3, 'fixed': (8, 10)},\n        'Manchester': {'duration': 3},\n        'Porto': {'duration': 3},\n        'Bucharest': {'duration': 5},\n        'Tallinn': {'duration': 4},\n        'Valencia': {'duration': 2, 'fixed': (14, 15)},\n        'Vienna': {'duration': 5}\n    }\n\n    direct_flights = [\n        ('Bucharest', 'Manchester'),\n        ('Munich', 'Venice'),\n        ('Santorini', 'Manchester'),\n        ('Vienna', 'Reykjavik'),\n        ('Venice', 'Santorini'),\n        ('Munich', 'Porto'),\n        ('Valencia', 'Vienna'),\n        ('Manchester', 'Vienna'),\n        ('Porto', 'Vienna'),\n        ('Venice', 'Manchester'),\n        ('Santorini', 'Vienna'),\n        ('Munich', 'Manchester'),\n        ('Munich', 'Reykjavik'),\n        ('Bucharest', 'Valencia'),\n        ('Venice', 'Vienna'),\n        ('Bucharest', 'Vienna'),\n        ('Porto', 'Manchester'),\n        ('Munich', 'Vienna'),\n        ('Valencia', 'Porto'),\n        ('Munich', 'Bucharest'),\n        ('Tallinn', 'Munich'),\n        ('Santorini', 'Bucharest'),\n        ('Munich', 'Valencia')\n    ]\n\n    # Create flight graph\n    flight_graph = {city: set() for city in cities}\n    for a, b in direct_flights:\n        flight_graph[a].add(b)\n        flight_graph[b].add(a)\n\n    # Fixed events\n    fixed_events = []\n    for city, info in cities.items():\n        if 'fixed' in info:\n            start, end = info['fixed']\n            fixed_events.append((start, end, city))\n\n    # Sort fixed events by start day\n    fixed_events.sort()\n\n    # Generate possible sequences that respect fixed events\n    remaining_cities = [city for city in cities if 'fixed' not in cities[city]]\n    possible_sequences = permutations(remaining_cities)\n\n    best_itinerary = None\n    best_days_used = float('inf')\n\n    for sequence in possible_sequences:\n        # Build full sequence with fixed events\n        full_sequence = []\n        seq_ptr = 0\n        fixed_ptr = 0\n        current_day = 1\n        valid = True\n        itinerary = []\n\n        while current_day <= 24 and (seq_ptr < len(sequence) or fixed_ptr < len(fixed_events)):\n            # Check if next is fixed event\n            if fixed_ptr < len(fixed_events):\n                next_fixed_start, next_fixed_end, fixed_city = fixed_events[fixed_ptr]\n                if current_day >= next_fixed_start:\n                    # Must do fixed event now\n                    if current_day != next_fixed_start:\n                        valid = False\n                        break\n                    if itinerary:\n                        last_city = itinerary[-1]['place'] if 'place' in itinerary[-1] else itinerary[-1]['to']\n                        if last_city != fixed_city and (last_city not in flight_graph or fixed_city not in flight_graph[last_city]):\n                            valid = False\n                            break\n                        if last_city != fixed_city:\n                            itinerary.append({\n                                'flying': f'Day {current_day}-{current_day}',\n                                'from': last_city,\n                                'to': fixed_city\n                            })\n                    itinerary.append({\n                        'day_range': f'Day {next_fixed_start}-{next_fixed_end}',\n                        'place': fixed_city\n                    })\n                    current_day = next_fixed_end + 1\n                    fixed_ptr += 1\n                    continue\n\n            # Do next in sequence\n            if seq_ptr < len(sequence):\n                next_city = sequence[seq_ptr]\n                duration = cities[next_city]['duration']\n                if itinerary:\n                    last_city = itinerary[-1]['place'] if 'place' in itinerary[-1] else itinerary[-1]['to']\n                    if last_city != next_city and (last_city not in flight_graph or next_city not in flight_graph[last_city]):\n                        valid = False\n                        break\n                    if last_city != next_city:\n                        itinerary.append({\n                            'flying': f'Day {current_day}-{current_day}',\n                            'from': last_city,\n                            'to': next_city\n                        })\n                        current_day += 1\n                        if current_day > 24:\n                            valid = False\n                            break\n                itinerary.append({\n                    'day_range': f'Day {current_day}-{current_day + duration - 1}',\n                    'place': next_city\n                })\n                current_day += duration\n                seq_ptr += 1\n            else:\n                break\n\n        if not valid:\n            continue\n\n        # Check if all cities are visited\n        visited_cities = set()\n        for item in itinerary:\n            if 'place' in item:\n                visited_cities.add(item['place'])\n            elif 'to' in item:\n                visited_cities.add(item['to'])\n\n        if len(visited_cities) == len(cities) and current_day <= 25:\n            days_used = current_day - 1\n            if days_used < best_days_used:\n                best_days_used = days_used\n                best_itinerary = itinerary\n\n    # Output the best itinerary found\n    if best_itinerary:\n        print(json.dumps(best_itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1511"
+        }
+    ]
+}

@@ -1,0 +1,108 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Sarah",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "13:58",
+                        "end_time": "15:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "16:07",
+                        "end_time": "16:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Kenneth",
+                        "start_time": "16:59",
+                        "end_time": "17:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Thomas",
+                        "start_time": "19:25",
+                        "end_time": "19:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "19:48",
+                        "end_time": "20:03"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Kenneth",
+                        "start_time": "11:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Sarah",
+                        "start_time": "12:04",
+                        "end_time": "13:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "13:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:52",
+                        "end_time": "16:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Thomas",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "20:00",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef time_to_minutes(t):\n    hours = int(t)\n    minutes = int(round((t - hours) * 100))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\ntravel_times = {\n    'Nob Hill': {'Embarcadero':9, 'The Castro':17, 'Haight-Ashbury':13, 'Union Square':7, 'North Beach':8, 'Pacific Heights':8, 'Chinatown':6, 'Golden Gate Park':17, 'Marina District':11, 'Russian Hill':5},\n    'Embarcadero': {'Nob Hill':10, 'The Castro':25, 'Haight-Ashbury':21, 'Union Square':10, 'North Beach':5, 'Pacific Heights':11, 'Chinatown':7, 'Golden Gate Park':25, 'Marina District':12, 'Russian Hill':8},\n    'The Castro': {'Nob Hill':16, 'Embarcadero':22, 'Haight-Ashbury':6, 'Union Square':19, 'North Beach':20, 'Pacific Heights':16, 'Chinatown':22, 'Golden Gate Park':11, 'Marina District':21, 'Russian Hill':18},\n    'Haight-Ashbury': {'Nob Hill':15, 'Embarcadero':20, 'The Castro':6, 'Union Square':19, 'North Beach':19, 'Pacific Heights':12, 'Chinatown':19, 'Golden Gate Park':7, 'Marina District':17, 'Russian Hill':17},\n    'Union Square': {'Nob Hill':9, 'Embarcadero':11, 'The Castro':17, 'Haight-Ashbury':18, 'North Beach':10, 'Pacific Heights':15, 'Chinatown':7, 'Golden Gate Park':22, 'Marina District':18, 'Russian Hill':13},\n    'North Beach': {'Nob Hill':7, 'Embarcadero':6, 'The Castro':23, 'Haight-Ashbury':18, 'Union Square':7, 'Pacific Heights':8, 'Chinatown':6, 'Golden Gate Park':22, 'Marina District':9, 'Russian Hill':4},\n    'Pacific Heights': {'Nob Hill':8, 'Embarcadero':10, 'The Castro':16, 'Haight-Ashbury':11, 'Union Square':12, 'North Beach':9, 'Chinatown':11, 'Golden Gate Park':15, 'Marina District':6, 'Russian Hill':7},\n    'Chinatown': {'Nob Hill':9, 'Embarcadero':5, 'The Castro':22, 'Haight-Ashbury':19, 'Union Square':7, 'North Beach':3, 'Pacific Heights':10, 'Golden Gate Park':23, 'Marina District':12, 'Russian Hill':7},\n    'Golden Gate Park': {'Nob Hill':20, 'Embarcadero':25, 'The Castro':13, 'Haight-Ashbury':7, 'Union Square':22, 'North Beach':23, 'Pacific Heights':16, 'Chinatown':23, 'Marina District':16, 'Russian Hill':19},\n    'Marina District': {'Nob Hill':12, 'Embarcadero':14, 'The Castro':22, 'Haight-Ashbury':16, 'Union Square':16, 'North Beach':11, 'Pacific Heights':7, 'Chinatown':15, 'Golden Gate Park':18, 'Russian Hill':8},\n    'Russian Hill': {'Nob Hill':5, 'Embarcadero':8, 'The Castro':21, 'Haight-Ashbury':17, 'Union Square':10, 'North Beach':5, 'Pacific Heights':7, 'Chinatown':9, 'Golden Gate Park':21, 'Marina District':7}\n}\n\nfriends = [\n    {'name': 'Mary', 'location': 'Embarcadero', 'start': time_to_minutes(20.0), 'end': time_to_minutes(21.25), 'duration': 75},\n    {'name': 'Joseph', 'location': 'Haight-Ashbury', 'start': time_to_minutes(20.0), 'end': time_to_minutes(22.0), 'duration': 120},\n    {'name': 'David', 'location': 'Marina District', 'start': time_to_minutes(20.0), 'end': time_to_minutes(21.0), 'duration': 60},\n    {'name': 'Thomas', 'location': 'North Beach', 'start': time_to_minutes(19.25), 'end': time_to_minutes(19.75), 'duration': 15},\n    {'name': 'Mark', 'location': 'Golden Gate Park', 'start': time_to_minutes(17.5), 'end': time_to_minutes(21.5), 'duration': 120},\n    {'name': 'Daniel', 'location': 'Pacific Heights', 'start': time_to_minutes(13.75), 'end': time_to_minutes(20.5), 'duration': 15},\n    {'name': 'Karen', 'location': 'Russian Hill', 'start': time_to_minutes(13.25), 'end': time_to_minutes(18.5), 'duration': 120},\n    {'name': 'Sarah', 'location': 'Union Square', 'start': time_to_minutes(11.75), 'end': time_to_minutes(14.5), 'duration': 90},\n    {'name': 'Kenneth', 'location': 'The Castro', 'start': time_to_minutes(11.25), 'end': time_to_minutes(19.25), 'duration': 30},\n    {'name': 'Richard', 'location': 'Chinatown', 'start': time_to_minutes(8.0), 'end': time_to_minutes(18.75), 'duration': 30}\n]\n\nfriends.sort(key=lambda x: x['end'])\n\nitinerary = []\ncurrent_location = 'Nob Hill'\ncurrent_time = 9 * 60  # 9:00 AM in minutes\n\nfor friend in friends:\n    if current_location not in travel_times or friend['location'] not in travel_times[current_location]:\n        continue  # Skip if no travel time exists\n    travel_duration = travel_times[current_location][friend['location']]\n    arrival_time = current_time + travel_duration\n    earliest_start = max(arrival_time, friend['start'])\n    latest_start = friend['end'] - friend['duration']\n    \n    if earliest_start > latest_start:\n        continue  # Can't meet this friend\n    \n    start_time = earliest_start\n    end_time = start_time + friend['duration']\n    \n    if end_time > friend['end']:\n        continue  # Doesn't fit\n    \n    itinerary.append({\n        'action': 'meet',\n        'location': friend['location'],\n        'person': friend['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    \n    current_time = end_time\n    current_location = friend['location']\n\nprint(json.dumps({'itinerary': itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_934"
+        }
+    ]
+}

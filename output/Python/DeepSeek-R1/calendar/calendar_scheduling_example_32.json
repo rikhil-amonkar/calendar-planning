@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{9:00",
+                "end_time": "9:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{9:00",
+                "end_time": "9:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    return f\"{m // 60:02}:{m % 60:02}\"\n\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nduration = 30\n\nparticipants = {\n    \"Emily\": [\n        (time_to_minutes(\"10:00\"), time_to_minutes(\"10:30\")),\n        (time_to_minutes(\"11:30\"), time_to_minutes(\"12:30\")),\n        (time_to_minutes(\"14:00\"), time_to_minutes(\"15:00\")),\n        (time_to_minutes(\"16:00\"), time_to_minutes(\"16:30\"))\n    ],\n    \"Melissa\": [\n        (time_to_minutes(\"09:30\"), time_to_minutes(\"10:00\")),\n        (time_to_minutes(\"14:30\"), time_to_minutes(\"15:00\"))\n    ],\n    \"Frank\": [\n        (time_to_minutes(\"10:00\"), time_to_minutes(\"10:30\")),\n        (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n        (time_to_minutes(\"12:30\"), time_to_minutes(\"13:00\")),\n        (time_to_minutes(\"13:30\"), time_to_minutes(\"14:30\")),\n        (time_to_minutes(\"15:00\"), time_to_minutes(\"16:00\")),\n        (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n    ]\n}\n\nfor start in range(work_start, work_end - duration + 1, 15):\n    end = start + duration\n    if start >= time_to_minutes(\"09:30\"):  # Frank's constraint\n        continue\n    \n    conflict = False\n    # Check Emily's schedule\n    for s, e in participants[\"Emily\"]:\n        if not (end <= s or start >= e):\n            conflict = True\n            break\n    if conflict:\n        continue\n    \n    # Check Melissa's schedule\n    for s, e in participants[\"Melissa\"]:\n        if not (end <= s or start >= e):\n            conflict = True\n            break\n    if conflict:\n        continue\n    \n    # Check Frank's schedule\n    for s, e in participants[\"Frank\"]:\n        if not (end <= s or start >= e):\n            conflict = True\n            break\n    if conflict:\n        continue\n    \n    # Found valid slot\n    print(f\"Monday:{minutes_to_time(start)}:{minutes_to_time(end)}\")\n    exit()\n\n# Fallback if no slot found (though problem states solution exists)\nprint(\"No valid slot found\")\n'''",
+            "count": "calendar_scheduling_example_32"
+        }
+    ]
+}

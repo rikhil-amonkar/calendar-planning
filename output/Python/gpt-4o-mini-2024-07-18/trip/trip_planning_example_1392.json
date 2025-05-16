@@ -1,0 +1,85 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 21-24",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 25-26",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 27-28",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Parameters\n    days_total = 24\n    cities = {\n        'Naples': {'stay': 3, 'meet_friends': (18, 20)},\n        'Valencia': {'stay': 5},\n        'Stuttgart': {'stay': 2},\n        'Split': {'stay': 5},\n        'Venice': {'stay': 5, 'conference_days': [6, 10]},\n        'Amsterdam': {'stay': 4},\n        'Nice': {'stay': 2, 'meet_friends': (23, 24)},\n        'Barcelona': {'stay': 2, 'workshop_days': [5, 6]},\n        'Porto': {'stay': 4}\n    }\n\n    flights = {\n        'Venice': ['Nice', 'Amsterdam', 'Stuttgart'],\n        'Naples': ['Amsterdam', 'Nice', 'Valencia', 'Split', 'Barcelona'],\n        'Barcelona': ['Nice', 'Porto', 'Valencia', 'Venice', 'Stuttgart', 'Amsterdam'],\n        'Amsterdam': ['Nice', 'Valencia', 'Stuttgart', 'Naples', 'Split'],\n        'Stuttgart': ['Valencia', 'Porto', 'Split', 'Naples', 'Venice', 'Amsterdam'],\n        'Split': ['Stuttgart', 'Naples', 'Barcelona', 'Amsterdam'],\n        'Valencia': ['Amsterdam', 'Naples', 'Barcelona', 'Stuttgart'],\n        'Nice': ['Amsterdam', 'Venice', 'Barcelona', 'Porto', 'Naples'],\n        'Porto': ['Nice', 'Barcelona', 'Stuttgart', 'Amsterdam', 'Valencia']\n    }\n\n    # Itinerary construction\n    itinerary = []\n    current_day = 1\n\n    # Valencia for 5 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Valencia'})\n    current_day += 5\n\n    # Stuttgart for 2 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Valencia', 'to': 'Stuttgart'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Stuttgart'})\n    current_day += 2\n\n    # Venice for 5 days (with conferences on days 6 and 10)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Stuttgart', 'to': 'Venice'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Venice'})\n    current_day += 5\n\n    # Split for 5 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Venice', 'to': 'Split'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Split'})\n    current_day += 5\n\n    # Naples for 3 days (meet friend days 18-20)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Split', 'to': 'Naples'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Naples'})\n    current_day += 3\n\n    # Amsterdam for 4 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Naples', 'to': 'Amsterdam'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Amsterdam'})\n    current_day += 4\n\n    # Barcelona for 2 days (with a workshop on days 5 and 6)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Amsterdam', 'to': 'Barcelona'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Barcelona'})\n    current_day += 2\n\n    # Nice for 2 days (meet friends on days 23 and 24)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Barcelona', 'to': 'Nice'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Nice'})\n    \n    # Convert to JSON\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    print(calculate_itinerary())\n```",
+            "count": "trip_planning_example_1392"
+        }
+    ]
+}

@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jeffrey",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Deborah",
+                        "start_time": "13:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Margaret",
+                        "start_time": "16:30",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Ronald",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "19:33",
+                        "end_time": "19:48"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jeffrey",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Deborah",
+                        "start_time": "13:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Margaret",
+                        "start_time": "16:30",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Ronald",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "19:33",
+                        "end_time": "19:48"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef main():\n    # Define travel times in minutes between locations\n    travel_times = {\n        \"Nob Hill\": {\"Richmond District\":14, \"Financial District\":9, \"North Beach\":8, \"The Castro\":17, \"Golden Gate Park\":17},\n        \"Richmond District\": {\"Nob Hill\":17, \"Financial District\":22, \"North Beach\":17, \"The Castro\":16, \"Golden Gate Park\":9},\n        \"Financial District\": {\"Nob Hill\":8, \"Richmond District\":21, \"North Beach\":7, \"The Castro\":23, \"Golden Gate Park\":23},\n        \"North Beach\": {\"Nob Hill\":7, \"Richmond District\":18, \"Financial District\":8, \"The Castro\":22, \"Golden Gate Park\":22},\n        \"The Castro\": {\"Nob Hill\":16, \"Richmond District\":16, \"Financial District\":20, \"North Beach\":20, \"Golden Gate Park\":11},\n        \"Golden Gate Park\": {\"Nob Hill\":20, \"Richmond District\":7, \"Financial District\":26, \"North Beach\":24, \"The Castro\":13}\n    }\n    \n    # Meeting constraints as input variables.\n    # Times are expressed in minutes since midnight.\n    meetings = [\n        {\n            \"person\": \"Jeffrey\",\n            \"location\": \"Golden Gate Park\",\n            \"avail_start\": 11 * 60 + 15,  # 11:15\n            \"avail_end\": 14 * 60 + 30,    # 14:30\n            \"duration\": 120             # minutes\n        },\n        {\n            \"person\": \"Deborah\",\n            \"location\": \"The Castro\",\n            \"avail_start\": 13 * 60 + 45,  # 13:45\n            \"avail_end\": 21 * 60 + 15,    # 21:15\n            \"duration\": 90\n        },\n        {\n            \"person\": \"Margaret\",\n            \"location\": \"Financial District\",\n            \"avail_start\": 16 * 60 + 30,  # 16:30\n            \"avail_end\": 20 * 60 + 15,    # 20:15\n            \"duration\": 75\n        },\n        {\n            \"person\": \"Ronald\",\n            \"location\": \"North Beach\",\n            \"avail_start\": 18 * 60 + 30,  # 18:30\n            \"avail_end\": 19 * 60 + 30,    # 19:30\n            \"duration\": 45\n        },\n        {\n            \"person\": \"Emily\",\n            \"location\": \"Richmond District\",\n            \"avail_start\": 19 * 60,       # 19:00\n            \"avail_end\": 21 * 60,         # 21:00\n            \"duration\": 15\n        }\n    ]\n    \n    # Starting parameters\n    current_location = \"Nob Hill\"\n    current_time = 9 * 60    # 9:00 in minutes\n\n    itinerary = []\n\n    # Define order based on computed optimal route: Jeffrey, Deborah, Margaret, Ronald, Emily.\n    for meeting in meetings:\n        target_location = meeting[\"location\"]\n        # Get travel time from current location to target location\n        if current_location == target_location:\n            travel = 0\n        else:\n            travel = travel_times[current_location][target_location]\n            \n        # Update time with travel\n        current_time += travel\n        \n        # Wait if arriving earlier than available start time\n        meeting_start = max(current_time, meeting[\"avail_start\"])\n        \n        # Schedule meeting for the required duration\n        meeting_end = meeting_start + meeting[\"duration\"]\n        \n        # Update itinerary with this meeting details\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": target_location,\n            \"person\": meeting[\"person\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location after meeting\n        current_time = meeting_end\n        current_location = target_location\n\n    # Build resulting JSON dictionary\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_433"
+        }
+    ]
+}

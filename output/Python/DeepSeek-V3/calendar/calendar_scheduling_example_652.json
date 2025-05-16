@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days\n    work_hours_start = 9 * 60  # 9:00 in minutes\n    work_hours_end = 17 * 60   # 17:00 in minutes\n    days = ['Monday', 'Tuesday']\n    \n    # Define participants' busy slots in minutes since midnight\n    jesse_busy = {\n        'Monday': [(13 * 60 + 30, 14 * 60), (14 * 60 + 30, 15 * 60)],\n        'Tuesday': [(9 * 60, 9 * 60 + 30), (13 * 60, 13 * 60 + 30), (14 * 60, 15 * 60)]\n    }\n    \n    lawrence_busy = {\n        'Monday': [(9 * 60, 17 * 60)],  # Entire day busy\n        'Tuesday': [\n            (9 * 60 + 30, 10 * 60 + 30),\n            (11 * 60 + 30, 12 * 60 + 30),\n            (13 * 60, 13 * 60 + 30),\n            (14 * 60 + 30, 15 * 60),\n            (15 * 60 + 30, 16 * 60 + 30)\n        ]\n    }\n    \n    # Lawrence cannot meet on Tuesday after 16:30\n    lawrence_additional_constraint = {\n        'Tuesday': (16 * 60 + 30, work_hours_end)\n    }\n    \n    meeting_duration = 30  # minutes\n    \n    # Iterate through each day\n    for day in days:\n        # Skip Monday for Lawrence since he's busy all day\n        if day == 'Monday':\n            continue\n        \n        # Combine all busy slots for both participants\n        all_busy = jesse_busy[day] + lawrence_busy[day]\n        \n        # Add Lawrence's additional constraint if applicable\n        if day in lawrence_additional_constraint:\n            all_busy.append(lawrence_additional_constraint[day])\n        \n        # Sort all busy slots by start time\n        all_busy.sort()\n        \n        # Check for available slots\n        prev_end = work_hours_start\n        for busy_start, busy_end in all_busy:\n            if busy_start > prev_end:\n                available_start = prev_end\n                available_end = busy_start\n                if available_end - available_start >= meeting_duration:\n                    # Found a suitable slot\n                    start_h = available_start // 60\n                    start_m = available_start % 60\n                    end_h = (available_start + meeting_duration) // 60\n                    end_m = (available_start + meeting_duration) % 60\n                    return day, f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n            prev_end = max(prev_end, busy_end)\n        \n        # Check after the last busy slot\n        if work_hours_end - prev_end >= meeting_duration:\n            start_h = prev_end // 60\n            start_m = prev_end % 60\n            end_h = (prev_end + meeting_duration) // 60\n            end_m = (prev_end + meeting_duration) % 60\n            return day, f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n    \n    return None, None\n\nday, time_slot = find_meeting_time()\nprint(f\"{day}: {time_slot}\")\n```",
+            "count": "calendar_scheduling_example_652"
+        }
+    ]
+}

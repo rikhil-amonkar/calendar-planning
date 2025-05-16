@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Kenneth",
+                        "start_time": "11:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Sarah",
+                        "start_time": "12:04",
+                        "end_time": "13:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "13:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:52",
+                        "end_time": "16:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Thomas",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "20:00",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    \"Nob Hill\": {\n        \"Embarcadero\": 9,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 13,\n        \"Union Square\": 7,\n        \"North Beach\": 8,\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Golden Gate Park\": 17,\n        \"Marina District\": 11,\n        \"Russian Hill\": 5\n    },\n    \"Embarcadero\": {\n        \"Nob Hill\": 10,\n        \"The Castro\": 25,\n        \"Haight-Ashbury\": 21,\n        \"Union Square\": 10,\n        \"North Beach\": 5,\n        \"Pacific Heights\": 11,\n        \"Chinatown\": 7,\n        \"Golden Gate Park\": 25,\n        \"Marina District\": 12,\n        \"Russian Hill\": 8\n    },\n    \"The Castro\": {\n        \"Nob Hill\": 16,\n        \"Embarcadero\": 22,\n        \"Haight-Ashbury\": 6,\n        \"Union Square\": 19,\n        \"North Beach\": 20,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 22,\n        \"Golden Gate Park\": 11,\n        \"Marina District\": 21,\n        \"Russian Hill\": 18\n    },\n    \"Haight-Ashbury\": {\n        \"Nob Hill\": 15,\n        \"Embarcadero\": 20,\n        \"The Castro\": 6,\n        \"Union Square\": 19,\n        \"North Beach\": 19,\n        \"Pacific Heights\": 12,\n        \"Chinatown\": 19,\n        \"Golden Gate Park\": 7,\n        \"Marina District\": 17,\n        \"Russian Hill\": 17\n    },\n    \"Union Square\": {\n        \"Nob Hill\": 9,\n        \"Embarcadero\": 11,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 18,\n        \"North Beach\": 10,\n        \"Pacific Heights\": 15,\n        \"Chinatown\": 7,\n        \"Golden Gate Park\": 22,\n        \"Marina District\": 18,\n        \"Russian Hill\": 13\n    },\n    \"North Beach\": {\n        \"Nob Hill\": 7,\n        \"Embarcadero\": 6,\n        \"The Castro\": 23,\n        \"Haight-Ashbury\": 18,\n        \"Union Square\": 7,\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Golden Gate Park\": 22,\n        \"Marina District\": 9,\n        \"Russian Hill\": 4\n    },\n    \"Pacific Heights\": {\n        \"Nob Hill\": 8,\n        \"Embarcadero\": 10,\n        \"The Castro\": 16,\n        \"Haight-Ashbury\": 11,\n        \"Union Square\": 12,\n        \"North Beach\": 9,\n        \"Chinatown\": 11,\n        \"Golden Gate Park\": 15,\n        \"Marina District\": 6,\n        \"Russian Hill\": 7\n    },\n    \"Chinatown\": {\n        \"Nob Hill\": 9,\n        \"Embarcadero\": 5,\n        \"The Castro\": 22,\n        \"Haight-Ashbury\": 19,\n        \"Union Square\": 7,\n        \"North Beach\": 3,\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 23,\n        \"Marina District\": 12,\n        \"Russian Hill\": 7\n    },\n    \"Golden Gate Park\": {\n        \"Nob Hill\": 20,\n        \"Embarcadero\": 25,\n        \"The Castro\": 13,\n        \"Haight-Ashbury\": 7,\n        \"Union Square\": 22,\n        \"North Beach\": 23,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 23,\n        \"Marina District\": 16,\n        \"Russian Hill\": 19\n    },\n    \"Marina District\": {\n        \"Nob Hill\": 12,\n        \"Embarcadero\": 14,\n        \"The Castro\": 22,\n        \"Haight-Ashbury\": 16,\n        \"Union Square\": 16,\n        \"North Beach\": 11,\n        \"Pacific Heights\": 7,\n        \"Chinatown\": 15,\n        \"Golden Gate Park\": 18,\n        \"Russian Hill\": 8\n    },\n    \"Russian Hill\": {\n        \"Nob Hill\": 5,\n        \"Embarcadero\": 8,\n        \"The Castro\": 21,\n        \"Haight-Ashbury\": 17,\n        \"Union Square\": 10,\n        \"North Beach\": 5,\n        \"Pacific Heights\": 7,\n        \"Chinatown\": 9,\n        \"Golden Gate Park\": 21,\n        \"Marina District\": 7\n    }\n}\n\n# Friend data: name, location, available_start, available_end, min_duration\nfriends = [\n    (\"Mary\", \"Embarcadero\", \"20:00\", \"21:15\", 75),\n    (\"Kenneth\", \"The Castro\", \"11:15\", \"19:15\", 30),\n    (\"Joseph\", \"Haight-Ashbury\", \"20:00\", \"22:00\", 120),\n    (\"Sarah\", \"Union Square\", \"11:45\", \"14:30\", 90),\n    (\"Thomas\", \"North Beach\", \"19:15\", \"19:45\", 15),\n    (\"Daniel\", \"Pacific Heights\", \"13:45\", \"20:30\", 15),\n    (\"Richard\", \"Chinatown\", \"8:00\", \"18:45\", 30),\n    (\"Mark\", \"Golden Gate Park\", \"17:30\", \"21:30\", 120),\n    (\"David\", \"Marina District\", \"20:00\", \"21:00\", 60),\n    (\"Karen\", \"Russian Hill\", \"13:15\", \"18:30\", 120)\n]\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef get_possible_schedules():\n    # Filter friends that are impossible to meet (available time < min duration)\n    possible_friends = [f for f in friends if time_to_minutes(f[3]) - time_to_minutes(f[2]) >= f[4]]\n    \n    # We'll try to meet as many friends as possible in priority order\n    # Priority is given to friends with earliest availability and longest required duration\n    possible_friends.sort(key=lambda x: (time_to_minutes(x[2]), reverse=False)\n    possible_friends.sort(key=lambda x: x[4], reverse=True)\n    \n    best_schedule = []\n    max_meetings = 0\n    \n    # Try different orders to find the best possible schedule\n    for order in permutations(possible_friends, min(5, len(possible_friends))):\n        current_location = \"Nob Hill\"\n        current_time = time_to_minutes(\"9:00\")\n        schedule = []\n        \n        for friend in order:\n            name, location, avail_start, avail_end, min_duration = friend\n            travel_time = travel_times[current_location].get(location, float('inf'))\n            \n            # Calculate earliest possible start time at new location\n            earliest_arrival = current_time + travel_time\n            avail_start_min = time_to_minutes(avail_start)\n            avail_end_min = time_to_minutes(avail_end)\n            \n            # Can we meet this friend?\n            start_time = max(earliest_arrival, avail_start_min)\n            end_time = start_time + min_duration\n            \n            if end_time <= avail_end_min:\n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": location,\n                    \"person\": name,\n                    \"start_time\": minutes_to_time(start_time),\n                    \"end_time\": minutes_to_time(end_time)\n                })\n                current_location = location\n                current_time = end_time\n        \n        if len(schedule) > max_meetings or (len(schedule) == max_meetings and len(schedule) > 0 and time_to_minutes(schedule[-1][\"end_time\"]) > current_time):\n            best_schedule = schedule\n            max_meetings = len(schedule)\n    \n    return best_schedule\n\ndef main():\n    optimal_schedule = get_possible_schedules()\n    result = {\n        \"itinerary\": optimal_schedule\n    }\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_934"
+        }
+    ]
+}

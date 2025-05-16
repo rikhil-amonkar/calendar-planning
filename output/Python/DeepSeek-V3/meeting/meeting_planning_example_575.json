@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "William",
+                        "start_time": "13:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Robert",
+                        "start_time": "14:15",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Mark",
+                        "start_time": "15:19",
+                        "end_time": "16:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Linda",
+                        "start_time": "16:57",
+                        "end_time": "17:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Elizabeth",
+                        "start_time": "17:42",
+                        "end_time": "19:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Rebecca",
+                        "start_time": "19:42",
+                        "end_time": "20:42"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "William",
+                        "start_time": "13:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Robert",
+                        "start_time": "14:15",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Mark",
+                        "start_time": "15:19",
+                        "end_time": "16:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Linda",
+                        "start_time": "16:57",
+                        "end_time": "17:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Elizabeth",
+                        "start_time": "17:42",
+                        "end_time": "19:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Rebecca",
+                        "start_time": "19:42",
+                        "end_time": "20:42"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    \"\"\"Convert time string 'H:MM' to minutes since midnight.\"\"\"\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    \"\"\"Convert minutes since midnight to time string 'H:MM'.\"\"\"\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Travel times dictionary: {from_location: {to_location: minutes}}\ntravel_times = {\n    'The Castro': {\n        'Presidio': 20,\n        'Sunset District': 17,\n        'Haight-Ashbury': 6,\n        'Mission District': 7,\n        'Golden Gate Park': 11,\n        'Russian Hill': 18\n    },\n    'Presidio': {\n        'The Castro': 21,\n        'Sunset District': 15,\n        'Haight-Ashbury': 15,\n        'Mission District': 26,\n        'Golden Gate Park': 12,\n        'Russian Hill': 14\n    },\n    'Sunset District': {\n        'The Castro': 17,\n        'Presidio': 16,\n        'Haight-Ashbury': 15,\n        'Mission District': 24,\n        'Golden Gate Park': 11,\n        'Russian Hill': 24\n    },\n    'Haight-Ashbury': {\n        'The Castro': 6,\n        'Presidio': 15,\n        'Sunset District': 15,\n        'Mission District': 11,\n        'Golden Gate Park': 7,\n        'Russian Hill': 17\n    },\n    'Mission District': {\n        'The Castro': 7,\n        'Presidio': 25,\n        'Sunset District': 24,\n        'Haight-Ashbury': 12,\n        'Golden Gate Park': 17,\n        'Russian Hill': 15\n    },\n    'Golden Gate Park': {\n        'The Castro': 13,\n        'Presidio': 11,\n        'Sunset District': 10,\n        'Haight-Ashbury': 7,\n        'Mission District': 17,\n        'Russian Hill': 19\n    },\n    'Russian Hill': {\n        'The Castro': 21,\n        'Presidio': 14,\n        'Sunset District': 23,\n        'Haight-Ashbury': 17,\n        'Mission District': 16,\n        'Golden Gate Park': 21\n    }\n}\n\n# Friend constraints\nfriends = [\n    {\n        'name': 'Rebecca',\n        'location': 'Presidio',\n        'available_start': '18:15',\n        'available_end': '20:45',\n        'min_duration': 60\n    },\n    {\n        'name': 'Linda',\n        'location': 'Sunset District',\n        'available_start': '15:30',\n        'available_end': '19:45',\n        'min_duration': 30\n    },\n    {\n        'name': 'Elizabeth',\n        'location': 'Haight-Ashbury',\n        'available_start': '17:15',\n        'available_end': '19:30',\n        'min_duration': 105\n    },\n    {\n        'name': 'William',\n        'location': 'Mission District',\n        'available_start': '13:15',\n        'available_end': '19:30',\n        'min_duration': 30\n    },\n    {\n        'name': 'Robert',\n        'location': 'Golden Gate Park',\n        'available_start': '14:15',\n        'available_end': '21:30',\n        'min_duration': 45\n    },\n    {\n        'name': 'Mark',\n        'location': 'Russian Hill',\n        'available_start': '10:00',\n        'available_end': '21:15',\n        'min_duration': 75\n    }\n]\n\ndef calculate_schedule(start_time, current_location, remaining_friends, visited, current_schedule):\n    if not remaining_friends:\n        return current_schedule\n    \n    best_schedule = None\n    max_meetings = 0\n    \n    for friend in remaining_friends:\n        # Calculate travel time\n        travel_time = travel_times[current_location][friend['location']]\n        arrival_time = start_time + travel_time\n        \n        # Check if we can meet this friend\n        available_start = time_to_minutes(friend['available_start'])\n        available_end = time_to_minutes(friend['available_end'])\n        \n        # Determine meeting window\n        meeting_start = max(arrival_time, available_start)\n        meeting_end = min(meeting_start + friend['min_duration'], available_end)\n        \n        if meeting_end - meeting_start >= friend['min_duration']:\n            new_visited = visited.copy()\n            new_visited.add(friend['name'])\n            \n            new_schedule = current_schedule.copy()\n            new_schedule.append({\n                'action': 'meet',\n                'location': friend['location'],\n                'person': friend['name'],\n                'start_time': minutes_to_time(meeting_start),\n                'end_time': minutes_to_time(meeting_end)\n            })\n            \n            next_remaining = [f for f in remaining_friends if f['name'] not in new_visited]\n            result_schedule = calculate_schedule(\n                meeting_end,\n                friend['location'],\n                next_remaining,\n                new_visited,\n                new_schedule\n            )\n            \n            if result_schedule and len(result_schedule) > max_meetings:\n                max_meetings = len(result_schedule)\n                best_schedule = result_schedule\n    \n    return best_schedule\n\n# Start at The Castro at 9:00 AM (540 minutes)\ninitial_time = time_to_minutes('9:00')\ninitial_location = 'The Castro'\n\n# Try all permutations to find the best schedule\nbest_schedule = None\nmax_meetings = 0\n\n# We'll try a subset of permutations to make it computationally feasible\nfrom itertools import islice\nfor perm in islice(permutations(friends), 1000):  # Limit permutations for practicality\n    schedule = calculate_schedule(initial_time, initial_location, perm, set(), [])\n    if schedule and len(schedule) > max_meetings:\n        max_meetings = len(schedule)\n        best_schedule = schedule\n\nif not best_schedule:\n    # Fallback to meeting as many as possible in order\n    best_schedule = calculate_schedule(initial_time, initial_location, friends, set(), [])\n\n# Prepare the output\noutput = {\n    \"itinerary\": best_schedule if best_schedule else []\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_575"
+        }
+    ]
+}

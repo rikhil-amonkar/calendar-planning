@@ -1,0 +1,66 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nimport itertools\n\n# Define the locations and travel times\nlocations = {\n    \"Chinatown\": {},\n    \"Mission District\": {},\n    \"Alamo Square\": {},\n    \"Pacific Heights\": {},\n    \"Union Square\": {},\n    \"Golden Gate Park\": {},\n    \"Sunset District\": {},\n    \"Presidio\": {}\n}\n\ntravel_times = {\n    (\"Chinatown\", \"Mission District\"): 18,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Pacific Heights\"): 10,\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Chinatown\", \"Golden Gate Park\"): 23,\n    (\"Chinatown\", \"Sunset District\"): 29,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Mission District\", \"Chinatown\"): 16,\n    (\"Mission District\", \"Alamo Square\"): 11,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"Union Square\"): 15,\n    (\"Mission District\", \"Golden Gate Park\"): 17,\n    (\"Mission District\", \"Sunset District\"): 24,\n    (\"Mission District\", \"Presidio\"): 25,\n    (\"Alamo Square\", \"Chinatown\"): 16,\n    (\"Alamo Square\", \"Mission District\"): 10,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Presidio\"): 18,\n    (\"Pacific Heights\", \"Chinatown\"): 11,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n    (\"Pacific Heights\", \"Union Square\"): 12,\n    (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n    (\"Pacific Heights\", \"Sunset District\"): 21,\n    (\"Pacific Heights\", \"Presidio\"): 11,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Mission District\"): 14,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Union Square\", \"Pacific Heights\"): 15,\n    (\"Union Square\", \"Golden Gate Park\"): 22,\n    (\"Union Square\", \"Sunset District\"): 26,\n    (\"Union Square\", \"Presidio\"): 24,\n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n    (\"Golden Gate Park\", \"Alamo Square\"): 10,\n    (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n    (\"Golden Gate Park\", \"Union Square\"): 22,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Sunset District\", \"Chinatown\"): 30,\n    (\"Sunset District\", \"Mission District\"): 24,\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"Sunset District\", \"Pacific Heights\"): 21,\n    (\"Sunset District\", \"Union Square\"): 30,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Mission District\"): 26,\n    (\"Presidio\", \"Alamo Square\"): 18,\n    (\"Presidio\", \"Pacific Heights\"): 11,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Sunset District\"): 15\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"Mission District\", \"person\": \"David\", \"start_time\": 8, \"end_time\": 19.75, \"duration\": 45},\n    {\"location\": \"Alamo Square\", \"person\": \"Kenneth\", \"start_time\": 14, \"end_time\": 19.75, \"duration\": 120},\n    {\"location\": \"Pacific Heights\", \"person\": \"John\", \"start_time\": 17, \"end_time\": 20, \"duration\": 15},\n    {\"location\": \"Union Square\", \"person\": \"Charles\", \"start_time\": 21.75, \"end_time\": 22.75, \"duration\": 60},\n    {\"location\": \"Golden Gate Park\", \"person\": \"Deborah\", \"start_time\": 7, \"end_time\": 18.25, \"duration\": 90},\n    {\"location\": \"Sunset District\", \"person\": \"Karen\", \"start_time\": 17.75, \"end_time\": 21.25, \"duration\": 15},\n    {\"location\": \"Presidio\", \"person\": \"Carol\", \"start_time\": 8.25, \"end_time\": 9.25, \"duration\": 30}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Chinatown\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_609"
+        }
+    ]
+}

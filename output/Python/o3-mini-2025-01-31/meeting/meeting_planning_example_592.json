@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "9:30",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mark",
+                        "start_time": "14:08",
+                        "end_time": "14:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Sandra",
+                        "start_time": "14:43",
+                        "end_time": "14:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Carol",
+                        "start_time": "18:15",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "James",
+                        "start_time": "20:00",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "9:30",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mark",
+                        "start_time": "14:08",
+                        "end_time": "14:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Sandra",
+                        "start_time": "14:43",
+                        "end_time": "14:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Carol",
+                        "start_time": "18:15",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "James",
+                        "start_time": "20:00",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper: format minutes since midnight to H:MM (24-hour, no leading zero for hours)\ndef format_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Travel times in minutes as provided\ntravel_times = {\n    \"North Beach\": {\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Mission District\": 18,\n        \"Golden Gate Park\": 22,\n        \"Nob Hill\": 7,\n    },\n    \"Pacific Heights\": {\n        \"North Beach\": 9,\n        \"Chinatown\": 11,\n        \"Union Square\": 12,\n        \"Mission District\": 15,\n        \"Golden Gate Park\": 15,\n        \"Nob Hill\": 8,\n    },\n    \"Chinatown\": {\n        \"North Beach\": 3,\n        \"Pacific Heights\": 10,\n        \"Union Square\": 7,\n        \"Mission District\": 18,\n        \"Golden Gate Park\": 23,\n        \"Nob Hill\": 8,\n    },\n    \"Union Square\": {\n        \"North Beach\": 10,\n        \"Pacific Heights\": 15,\n        \"Chinatown\": 7,\n        \"Mission District\": 14,\n        \"Golden Gate Park\": 22,\n        \"Nob Hill\": 9,\n    },\n    \"Mission District\": {\n        \"North Beach\": 17,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 16,\n        \"Union Square\": 15,\n        \"Golden Gate Park\": 17,\n        \"Nob Hill\": 12,\n    },\n    \"Golden Gate Park\": {\n        \"North Beach\": 24,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 23,\n        \"Union Square\": 22,\n        \"Mission District\": 17,\n        \"Nob Hill\": 20,\n    },\n    \"Nob Hill\": {\n        \"North Beach\": 8,\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Mission District\": 13,\n        \"Golden Gate Park\": 17,\n    },\n}\n\n# Meeting constraints for each friend\n# Times are in minutes from midnight.\nmeetings = {\n    \"James\": {\n        \"location\": \"Pacific Heights\",\n        \"available_start\": 20 * 60,    # 20:00 -> 1200\n        \"available_end\": 22 * 60,      # 22:00 -> 1320\n        \"min_duration\": 120,\n    },\n    \"Robert\": {\n        \"location\": \"Chinatown\",\n        \"available_start\": 12 * 60 + 15,  # 12:15 -> 735\n        \"available_end\": 16 * 60 + 45,      # 16:45 -> 1005\n        \"min_duration\": 90,\n    },\n    \"Jeffrey\": {\n        \"location\": \"Union Square\",\n        \"available_start\": 9 * 60 + 30,   # 9:30 -> 570\n        \"available_end\": 15 * 60 + 30,      # 15:30 -> 930\n        \"min_duration\": 120,\n    },\n    \"Carol\": {\n        \"location\": \"Mission District\",\n        \"available_start\": 18 * 60 + 15,   # 18:15 -> 1095\n        \"available_end\": 21 * 60 + 15,      # 21:15 -> 1275\n        \"min_duration\": 15,\n    },\n    \"Mark\": {\n        \"location\": \"Golden Gate Park\",\n        \"available_start\": 11 * 60 + 30,  # 11:30 -> 690\n        \"available_end\": 17 * 60 + 45,      # 17:45 -> 1065\n        \"min_duration\": 15,\n    },\n    \"Sandra\": {\n        \"location\": \"Nob Hill\",\n        \"available_start\": 8 * 60,       # 8:00 -> 480\n        \"available_end\": 15 * 60 + 30,      # 15:30 -> 930\n        \"min_duration\": 15,\n    },\n}\n\n# Starting conditions\nstart_location = \"North Beach\"\nstart_time = 9 * 60  # 9:00 -> 540 minutes\n\n# Function to get travel time between two locations\ndef get_travel_time(from_loc, to_loc):\n    # travel_times dict might not be symmetric; use provided value from from_loc to to_loc.\n    return travel_times[from_loc][to_loc]\n\n# Simulate an itinerary given an order of meeting names.\n# Returns a tuple (itinerary_list, finish_time) if feasible, otherwise (None, None)\ndef simulate_itinerary(order):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for person in order:\n        m = meetings[person]\n        meeting_location = m[\"location\"]\n\n        # Get travel time from current location to meeting location\n        travel = get_travel_time(current_location, meeting_location)\n        arrival_time = current_time + travel\n\n        # Determine meeting start: cannot start before available_start.\n        meeting_start = max(arrival_time, m[\"available_start\"])\n        meeting_end = meeting_start + m[\"min_duration\"]\n\n        # Check if meeting can finish before available_end.\n        if meeting_end > m[\"available_end\"]:\n            return None, None\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting_location,\n            \"person\": person,\n            \"start_time\": format_time(meeting_start),\n            \"end_time\": format_time(meeting_end),\n        })\n\n        # Update current time and location.\n        current_time = meeting_end\n        current_location = meeting_location\n\n    return itinerary, current_time\n\n# We want to choose the itinerary that meets the maximum number of friends.\n# Since there are only 6 friends, we try all possible orders.\nbest_itinerary = None\nmax_meetings = 0\nbest_end_time = None\n\nfriends = list(meetings.keys())\n# Consider all permutations of friends.\nfor order in itertools.permutations(friends):\n    itinerary, finish_time = simulate_itinerary(order)\n    if itinerary is not None:\n        count = len(itinerary)\n        # For optimization, if same count choose the one with earliest finish_time.\n        if count > max_meetings or (count == max_meetings and (best_end_time is None or finish_time < best_end_time)):\n            max_meetings = count\n            best_itinerary = itinerary\n            best_end_time = finish_time\n\n# If no itinerary is found, return an empty itinerary.\nif best_itinerary is None:\n    result = {\"itinerary\": []}\nelse:\n    result = {\"itinerary\": best_itinerary}\n\n# Output the result as JSON.\nprint(json.dumps(result, indent=2))\n    \nif __name__ == \"__main__\":\n    pass",
+            "count": "meeting_planning_example_592"
+        }
+    ]
+}

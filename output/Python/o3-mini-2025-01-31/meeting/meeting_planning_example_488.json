@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport copy\n\n# Helper function: convert time string \"H:MM\" to minutes from midnight\ndef time_to_minutes(time_str):\n    parts = time_str.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\n# Helper function: convert minutes from midnight to \"H:MM\" (24-hour format, no leading zero for hour)\ndef minutes_to_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Travel times in minutes dictionary between locations\ntravel_times = {\n    \"Pacific Heights\": {\n        \"Nob Hill\": 8,\n        \"Russian Hill\": 7,\n        \"The Castro\": 16,\n        \"Sunset District\": 21,\n        \"Haight-Ashbury\": 11\n    },\n    \"Nob Hill\": {\n        \"Pacific Heights\": 8,\n        \"Russian Hill\": 5,\n        \"The Castro\": 17,\n        \"Sunset District\": 25,\n        \"Haight-Ashbury\": 13\n    },\n    \"Russian Hill\": {\n        \"Pacific Heights\": 7,\n        \"Nob Hill\": 5,\n        \"The Castro\": 21,\n        \"Sunset District\": 23,\n        \"Haight-Ashbury\": 17\n    },\n    \"The Castro\": {\n        \"Pacific Heights\": 16,\n        \"Nob Hill\": 16,\n        \"Russian Hill\": 18,\n        \"Sunset District\": 17,\n        \"Haight-Ashbury\": 6\n    },\n    \"Sunset District\": {\n        \"Pacific Heights\": 21,\n        \"Nob Hill\": 27,\n        \"Russian Hill\": 24,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 15\n    },\n    \"Haight-Ashbury\": {\n        \"Pacific Heights\": 12,\n        \"Nob Hill\": 15,\n        \"Russian Hill\": 17,\n        \"The Castro\": 6,\n        \"Sunset District\": 15\n    }\n}\n\n# Define the meeting constraints as a list of friend dicts\n# Times in minutes from midnight.\nfriends = [\n    {\n        \"name\": \"Ronald\",\n        \"location\": \"Nob Hill\",\n        \"avail_start\": time_to_minutes(\"10:00\"),\n        \"avail_end\": time_to_minutes(\"17:00\"),\n        \"min_meeting\": 105\n    },\n    {\n        \"name\": \"Sarah\",\n        \"location\": \"Russian Hill\",\n        \"avail_start\": time_to_minutes(\"7:15\"),\n        \"avail_end\": time_to_minutes(\"9:30\"),\n        \"min_meeting\": 45\n    },\n    {\n        \"name\": \"Helen\",\n        \"location\": \"The Castro\",\n        \"avail_start\": time_to_minutes(\"13:30\"),\n        \"avail_end\": time_to_minutes(\"17:00\"),\n        \"min_meeting\": 120\n    },\n    {\n        \"name\": \"Joshua\",\n        \"location\": \"Sunset District\",\n        \"avail_start\": time_to_minutes(\"14:15\"),\n        \"avail_end\": time_to_minutes(\"19:30\"),\n        \"min_meeting\": 90\n    },\n    {\n        \"name\": \"Margaret\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": time_to_minutes(\"10:15\"),\n        \"avail_end\": time_to_minutes(\"22:00\"),\n        \"min_meeting\": 60\n    }\n]\n\n# Starting conditions\nstart_location = \"Pacific Heights\"\nstart_time = time_to_minutes(\"9:00\")\n\n# We'll perform a recursive search over all possible orders (subsets) of meetings that satisfy constraints.\nbest_itinerary = []\nmax_meetings = 0\n\ndef search(current_location, current_time, remaining_friends, itinerary):\n    global best_itinerary, max_meetings\n\n    # Update best if current itinerary has more meetings\n    if len(itinerary) > max_meetings:\n        max_meetings = len(itinerary)\n        best_itinerary = copy.deepcopy(itinerary)\n    \n    # Try to meet each remaining friend in turn \n    for i, friend in enumerate(remaining_friends):\n        # Determine travel time from current location to friend's location\n        if current_location not in travel_times or friend[\"location\"] not in travel_times[current_location]:\n            continue\n        t_travel = travel_times[current_location][friend[\"location\"]]\n        arrival_time = current_time + t_travel\n        # Wait until the friend's availability start if arrived early\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        meeting_end = meeting_start + friend[\"min_meeting\"]\n        # Check if meeting can finish before friend's avail_end.\n        if meeting_end <= friend[\"avail_end\"]:\n            # Create meeting event\n            meeting_event = {\n                \"action\": \"meet\",\n                \"location\": friend[\"location\"],\n                \"person\": friend[\"name\"],\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            }\n            new_itinerary = itinerary + [meeting_event]\n            # Build new remaining friends list\n            new_remaining = remaining_friends[:i] + remaining_friends[i+1:]\n            # Recurse from friend's location and meeting_end as the new time\n            search(friend[\"location\"], meeting_end, new_remaining, new_itinerary)\n\n# Start the recursive search from starting location and time with all friends available\nsearch(start_location, start_time, friends, [])\n\n# Prepare the result in the required JSON format.\nresult = {\"itinerary\": best_itinerary}\n\n# Output the result as JSON.\nprint(json.dumps(result, indent=2))",
+            "count": "meeting_planning_example_488"
+        }
+    ]
+}

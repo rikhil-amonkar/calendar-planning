@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, work_hours_start, work_hours_end, meeting_duration):\n    # Convert time strings to minutes since midnight for easier calculation\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n    \n    # Convert minutes back to time string\n    def minutes_to_time(minutes):\n        hh = minutes // 60\n        mm = minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n    \n    work_start = time_to_minutes(work_hours_start)\n    work_end = time_to_minutes(work_hours_end)\n    \n    # Initialize the free slots as the entire work day\n    free_slots = [(work_start, work_end)]\n    \n    # Function to subtract busy slots from free slots\n    def subtract_busy_slots(free_slots, busy_start, busy_end):\n        new_free_slots = []\n        for slot_start, slot_end in free_slots:\n            if busy_start >= slot_end or busy_end <= slot_start:\n                new_free_slots.append((slot_start, slot_end))\n            else:\n                if slot_start < busy_start:\n                    new_free_slots.append((slot_start, busy_start))\n                if slot_end > busy_end:\n                    new_free_slots.append((busy_end, slot_end))\n        return new_free_slots\n    \n    # Process each participant's schedule\n    for schedule in participants_schedules:\n        for busy_start, busy_end in schedule:\n            busy_start_min = time_to_minutes(busy_start)\n            busy_end_min = time_to_minutes(busy_end)\n            free_slots = subtract_busy_slots(free_slots, busy_start_min, busy_end_min)\n    \n    # Find the first free slot that can accommodate the meeting\n    meeting_duration_min = meeting_duration * 60\n    for slot_start, slot_end in free_slots:\n        if slot_end - slot_start >= meeting_duration_min:\n            meeting_end = slot_start + meeting_duration_min\n            return minutes_to_time(slot_start), minutes_to_time(meeting_end)\n    \n    return None, None\n\n# Define the participants' schedules\nparticipants_schedules = [\n    [],  # Walter has no meetings\n    [(\"09:00\", \"09:30\"), (\"10:00\", \"10:30\"), (\"13:30\", \"14:30\"), (\"15:00\", \"16:00\")],  # Cynthia\n    [(\"10:00\", \"11:00\"), (\"13:00\", \"13:30\"), (\"14:00\", \"15:00\"), (\"16:00\", \"16:30\")],  # Ann\n    [(\"09:00\", \"11:30\"), (\"12:30\", \"13:30\"), (\"14:30\", \"17:00\")],  # Catherine\n    [(\"09:00\", \"09:30\"), (\"10:00\", \"11:30\"), (\"12:00\", \"12:30\"), (\"13:00\", \"14:30\"), (\"15:00\", \"16:00\")],  # Kyle\n]\n\n# Find the meeting time\nmeeting_start, meeting_end = find_meeting_time(\n    participants_schedules=participants_schedules,\n    work_hours_start=\"09:00\",\n    work_hours_end=\"17:00\",\n    meeting_duration=0.5\n)\n\n# Output the result\nprint(f\"{meeting_start}:{meeting_end}:Monday\")\n```",
+            "count": "calendar_scheduling_example_244"
+        }
+    ]
+}

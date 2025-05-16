@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "13:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Brian",
+                        "start_time": "15:00",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "15:40",
+                        "end_time": "17:40"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "Okay, I need to solve this problem where I have to write a Python program to schedule meetings in San Francisco based on given constraints. The goal is to maximize the number of meetings while respecting each person's availability and required meeting time.\n\nFirst, I'll start by understanding the input parameters. There are travel distances between various locations, which I'll need to use to calculate the time it takes to travel between them. The constraints specify when each person is available and how long they can meet.\n\nI think using a priority queue (min-heap) would be a good approach here. This way, I can always consider the earliest possible meetings first, which helps in maximizing the number of meetings scheduled.\n\nI'll begin by converting the travel times into a structured format, probably a nested dictionary where each location points to another location with the corresponding travel time in minutes. This will make it easier to look up travel times during the scheduling process.\n\nNext, I'll read the people's data and convert their availability times into minutes since midnight. This will facilitate time calculations and comparisons.\n\nThen, I'll initialize a priority queue. For each person, I'll calculate the earliest possible start time for a meeting and add it to the queue if it fits within their availability window.\n\nOnce the priority queue is set up, I'll start extracting meetings. For each meeting, I'll check if it can be scheduled given the current time. If it can, I'll add it to the schedule and update the current end time. After scheduling a meeting, I'll check if any subsequent meetings can be added to the queue.\n\nAfter all possible meetings are scheduled, I'll convert the schedule into the required JSON format and output it.\n\nI need to ensure that the times are formatted correctly in 24-hour format without leading zeros. Also, the program must compute the schedule dynamically based on the constraints, not hardcode any meetings.\n\nI should also handle cases where a meeting can't be scheduled immediately by putting it back into the priority queue. This way, the algorithm can revisit the meeting later if an earlier slot becomes available.\n\nFinally, I'll test the code to make sure it runs independently and outputs valid JSON when executed.\n</think>\n\nSOLUTION:\n\n```python\nimport heapq\n\ndef format_time(minutes):\n    hours = minutes // 60\n    minutes = minutes % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\ndef to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\n# Read travel times\ntravel_times = {\n    'Financial District': {\n        'Golden Gate Park': 23,\n        'Chinatown': 5,\n        'Union Square': 9,\n        'Fisherman's Wharf': 10,\n        'Pacific Heights': 13,\n        'North Beach': 7,\n    },\n    'Golden Gate Park': {\n        'Financial District': 26,\n        'Chinatown': 23,\n        'Union Square': 22,\n        'Fisherman's Wharf': 24,\n        'Pacific Heights': 16,\n        'North Beach': 24,\n    },\n    'Chinatown': {\n        'Financial District': 5,\n        'Golden Gate Park': 23,\n        'Union Square': 7,\n        'Fisherman's Wharf': 8,\n        'Pacific Heights': 10,\n        'North Beach': 3,\n    },\n    'Union Square': {\n        'Financial District': 9,\n        'Golden Gate Park': 22,\n        'Chinatown': 7,\n        'Fisherman's Wharf': 15,\n        'Pacific Heights': 15,\n        'North Beach': 10,\n    },\n    'Fisherman's Wharf': {\n        'Financial District': 11,\n        'Golden Gate Park': 25,\n        'Chinatown': 12,\n        'Union Square': 13,\n        'Pacific Heights': 12,\n        'North Beach': 6,\n    },\n    'Pacific Heights': {\n        'Financial District': 13,\n        'Golden Gate Park': 15,\n        'Chinatown': 11,\n        'Union Square': 12,\n        'Fisherman's Wharf': 13,\n        'North Beach': 9,\n    },\n    'North Beach': {\n        'Financial District': 8,\n        'Golden Gate Park': 22,\n        'Chinatown': 6,\n        'Union Square': 7,\n        'Fisherman's Wharf': 5,\n        'Pacific Heights': 8,\n    }\n}\n\n# Read people data and convert times to minutes\npeople = [\n    {\n        'name': 'Stephanie',\n        'location': 'Golden Gate Park',\n        'availability_start': '11:00',\n        'availability_end': '15:00',\n        'required_time': 105\n    },\n    {\n        'name': 'Karen',\n        'location': 'Chinatown',\n        'availability_start': '13:45',\n        'availability_end': '16:30',\n        'required_time': 15\n    },\n    {\n        'name': 'Brian',\n        'location': 'Union Square',\n        'availability_start': '15:00',\n        'availability_end': '17:15',\n        'required_time': 30\n    },\n    {\n        'name': 'Rebecca',\n        'location': 'Fisherman's Wharf',\n        'availability_start': '8:00',\n        'availability_end': '11:15',\n        'required_time': 30\n    },\n    {\n        'name': 'Joseph',\n        'location': 'Pacific Heights',\n        'availability_start': '8:15',\n        'availability_end': '9:30',\n        'required_time': 60\n    },\n    {\n        'name': 'Steven',\n        'location': 'North Beach',\n        'availability_start': '14:30',\n        'availability_end': '20:45',\n        'required_time': 120\n    }\n]\n\nfor person in people:\n    person['availability_start'] = to_minutes(person['availability_start'])\n    person['availability_end'] = to_minutes(person['availability_end'])\n\n# Initialize priority queue\npriority_queue = []\n\nfor person in people:\n    from_loc = 'Financial District'\n    to_loc = person['location']\n    arrival_time = 540 + travel_times[from_loc][to_loc]\n    avail_start = person['availability_start']\n    avail_end = person['availability_end']\n    required = person['required_time']\n    \n    earliest_start = max(arrival_time, avail_start)\n    latest_start = avail_end - required\n    \n    if earliest_start <= latest_start:\n        heapq.heappush(priority_queue, (earliest_start, earliest_start + required, person))\n\nschedule = []\ncurrent_end = 540  # 9:00 AM in minutes\n\nwhile priority_queue:\n    start_min, end_min, person = heapq.heappop(priority_queue)\n    \n    # Check if this meeting can be scheduled\n    if start_min >= current_end:\n        # Check if the meeting ends before the person's availability end\n        if end_min <= person['availability_end']:\n            # Add to schedule\n            schedule.append({\n                'action': 'meet',\n                'location': person['location'],\n                'person': person['name'],\n                'start_time': format_time(start_min),\n                'end_time': format_time(end_min)\n            })\n            current_end = end_min\n            \n            # Check for more possible meetings\n            for p in people:\n                from_loc = 'Financial District'\n                to_loc = p['location']\n                arrival_time = 540 + travel_times[from_loc][to_loc]\n                avail_start = p['availability_start']\n                avail_end = p['availability_end']\n                required = p['required_time']\n                \n                earliest_start = max(arrival_time, avail_start)\n                latest_start = avail_end - required\n                \n                if earliest_start <= latest_start:\n                    if earliest_start >= current_end:\n                        heapq.heappush(priority_queue, (earliest_start, earliest_start + required, p))\n    else:\n        # This meeting can't be scheduled now, put it back into the queue\n        heapq.heappush(priority_queue, (start_min, end_min, person))\n\n# Convert the schedule to the required format\nitinerary = []\nfor meeting in schedule:\n    location = meeting['location']\n    person = meeting['person']\n    start = meeting['start_time']\n    end = meeting['end_time']\n    itinerary.append({\n        'action': 'meet',\n        'location': location,\n        'person': person,\n        'start_time': start,\n        'end_time': end\n    })\n\n# Convert itinerary to JSON\nimport json\nprint(json.dumps({\n    \"itinerary\": itinerary\n}))\n```",
+            "count": "meeting_planning_example_502"
+        }
+    ]
+}

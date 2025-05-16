@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Meeting duration in minutes\nmeeting_duration = timedelta(minutes=30)\n\n# Work hours for Tuesday (since Margaret does not want Monday)\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Constraint: The meeting must finish before 14:30 on Tuesday.\nlatest_meeting_end = datetime.strptime(\"14:30\", \"%H:%M\")\n\n# Define busy intervals for each participant on Tuesday (start, end)\n# Times are given as strings in HH:MM format.\n# Margaret's schedule on Tuesday\nmargaret_busy = [\n    (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\"))\n]\n\n# Alexis's schedule on Tuesday\nalexis_busy = [\n    (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n    (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n    (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))\n]\n\ndef get_free_slots(busy_slots, start, end):\n    \"\"\"Return a list of free time intervals (start, end) given a sorted busy_slots.\"\"\"\n    free_slots = []\n    current = start\n    for busy in sorted(busy_slots):\n        busy_start, busy_end = busy\n        if busy_start > current:\n            free_slots.append((current, busy_start))\n        current = max(current, busy_end)\n    if current < end:\n        free_slots.append((current, end))\n    return free_slots\n\n# Get free slots for each participant within work hours but also considering Margaret's constraint for Tuesday.\nmargaret_free = get_free_slots(margaret_busy, work_start, work_end)\nalexis_free = get_free_slots(alexis_busy, work_start, work_end)\n\n# We further restrict the free slots for both to end before the latest_meeting_end\ndef restrict_slots(slots, limit):\n    restricted = []\n    for start, end in slots:\n        slot_end = min(end, limit)\n        if start < slot_end:\n            restricted.append((start, slot_end))\n    return restricted\n\nmargaret_free = restrict_slots(margaret_free, latest_meeting_end)\nalexis_free = restrict_slots(alexis_free, latest_meeting_end)\n\ndef find_intersection_slot(slots1, slots2, duration):\n    for s1, e1 in slots1:\n        for s2, e2 in slots2:\n            # Find the intersection of these two slots\n            start = max(s1, s2)\n            end = min(e1, e2)\n            if end - start >= duration:\n                return start, start + duration\n    return None\n\nmeeting_time = find_intersection_slot(margaret_free, alexis_free, meeting_duration)\n\nif meeting_time:\n    start_time, end_time = meeting_time\n    # Format the output in HH:MM:HH:MM and specify day as Tuesday\n    output = f\"Tuesday {start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}\"\n    print(output)\nelse:\n    print(\"No available meeting slot satisfies all constraints.\")\n'''",
+            "count": "calendar_scheduling_example_629"
+        }
+    ]
+}

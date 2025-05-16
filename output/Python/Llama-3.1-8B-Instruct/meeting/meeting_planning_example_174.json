@@ -1,0 +1,30 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nimport datetime\nfrom itertools import product\n\ndef calculate_travel_time(distance, start_time):\n    travel_time = distance / 60\n    end_time = start_time + datetime.timedelta(minutes=travel_time)\n    return end_time\n\ndef generate_schedules(locations, travel_times, constraints):\n    schedules = []\n    for start_time in [datetime.datetime.strptime('09:00', '%H:%M')]:\n        for person in constraints:\n            for time in constraints[person]:\n                if time[0] >= start_time and time[1] >= start_time + datetime.timedelta(minutes=constraints[person][time]):\n                    for location in locations:\n                        if location!='Nob Hill':\n                            for other_time in constraints:\n                                if other_time!= person:\n                                    for other_location in locations:\n                                        if other_location!='Nob Hill' and other_location!= location:\n                                            for travel in travel_times:\n                                                if travel[0] == location and travel[1] == other_location:\n                                                    schedule = {\n                                                        \"action\": \"meet\",\n                                                        \"location\": location,\n                                                        \"person\": person,\n                                                        \"start_time\": start_time.strftime('%H:%M'),\n                                                        \"end_time\": (start_time + datetime.timedelta(minutes=travel[2])).strftime('%H:%M')\n                                                    }\n                                                    if other_location == 'Pacific Heights':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 8.5)).strftime('%H:%M')\n                                                    elif other_location == 'Mission District':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 12.5)).strftime('%H:%M')\n                                                    else:\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2])).strftime('%H:%M')\n                                                    schedules.append(schedule)\n    return schedules\n\ndef find_optimal_schedule(schedules):\n    optimal_schedule = []\n    for schedule in schedules:\n        if len(optimal_schedule) == 0 or len(schedule) > len(optimal_schedule):\n            optimal_schedule = schedule\n    return optimal_schedule\n\ndef main():\n    locations = ['Nob Hill', 'Pacific Heights', 'Mission District']\n    travel_times = [\n        ['Nob Hill', 'Pacific Heights', 8],\n        ['Nob Hill', 'Mission District', 13],\n        ['Pacific Heights', 'Nob Hill', 8],\n        ['Pacific Heights', 'Mission District', 15],\n        ['Mission District', 'Nob Hill', 12],\n        ['Mission District', 'Pacific Heights', 16]\n    ]\n    constraints = {\n        'Thomas': {'15:30-19:15': 75},\n        'Kenneth': {'12:00-15:45': 45}\n    }\n    schedules = generate_schedules(locations, travel_times, constraints)\n    optimal_schedule = find_optimal_schedule(schedules)\n    print(json.dumps({'itinerary': optimal_schedule}))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_174"
+        }
+    ]
+}

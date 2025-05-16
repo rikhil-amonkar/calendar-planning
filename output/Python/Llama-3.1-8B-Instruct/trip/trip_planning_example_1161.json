@@ -1,0 +1,50 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Mykonos': 4,\n            'Krakow': 5,\n            'Vilnius': 2,\n            'Helsinki': 2,\n            'Dubrovnik': 3,\n            'Oslo': 2,\n            'Madrid': 5,\n            'Paris': 2\n        }\n        self.flights = {\n            ('Oslo', 'Krakow'): 1,\n            ('Oslo', 'Paris'): 1,\n            ('Paris', 'Madrid'): 1,\n            ('Helsinki', 'Vilnius'): 1,\n            ('Oslo', 'Madrid'): 1,\n            ('Oslo', 'Helsinki'): 1,\n            ('Helsinki', 'Krakow'): 1,\n            ('Dubrovnik', 'Helsinki'): 1,\n            ('Dubrovnik', 'Madrid'): 1,\n            ('Oslo', 'Dubrovnik'): 1,\n            ('Krakow', 'Paris'): 1,\n            ('Madrid', 'Mykonos'): 1,\n            ('Oslo', 'Vilnius'): 1,\n            ('Krakow', 'Vilnius'): 1,\n            ('Helsinki', 'Paris'): 1,\n            ('Vilnius', 'Paris'): 1,\n            ('Helsinki', 'Madrid'): 1\n        }\n\n    def generate_itinerary(self, days, constraints):\n        # Sort cities by duration in descending order\n        sorted_cities = sorted(constraints, key=lambda x: self.cities[x], reverse=True)\n\n        # Initialize the optimal itinerary\n        optimal_itinerary = []\n\n        # Iterate over cities to find the optimal itinerary\n        for i, city in enumerate(sorted_cities):\n            days_in_city = self.cities[city]\n            if i == 0:\n                days_left = days - days_in_city\n                optimal_itinerary.append({'day_range': f'Day 1-{days_in_city}', 'place': city})\n            else:\n                if (sorted_cities[i-1], city) in self.flights:\n                    days_left -= 1\n                    optimal_itinerary.append({'flying': f'Day {days_left+1}-{days_left+1}', 'from': sorted_cities[i-1], 'to': city})\n                days_left -= days_in_city\n                optimal_itinerary.append({'day_range': f'Day {days_left+1}-{days_left+days_in_city}', 'place': city})\n\n        # Add annual show constraint\n        for i, item in enumerate(optimal_itinerary):\n            if 'Dubrovnik' in item['place'] and days_in_city == 3 and 2 <= days_left + days_in_city <= 4:\n                optimal_itinerary[i]['day_range'] = f'Day {days_left+1}-{days}'\n\n        # Add relatives constraint\n        for i, item in enumerate(optimal_itinerary):\n            if 'Mykonos' in item['place'] and days_in_city == 4 and 15 <= days_left + days_in_city <= 18:\n                optimal_itinerary[i]['day_range'] = f'Day {days_left+1}-{days}'\n\n        # Add meeting constraint\n        for i, item in enumerate(optimal_itinerary):\n            if 'Oslo' in item['place'] and days_in_city == 2 and 1 <= days_left + days_in_city <= 2:\n                optimal_itinerary[i]['day_range'] = f'Day {days_left+1}-{days}'\n\n        return optimal_itinerary\n\n    def plan_trip(self):\n        constraints = ['Mykonos', 'Krakow', 'Vilnius', 'Helsinki', 'Dubrovnik', 'Oslo', 'Madrid', 'Paris']\n        days = 18\n        itinerary = self.generate_itinerary(days, constraints)\n        return json.dumps(itinerary, indent=4)\n\nif __name__ == '__main__':\n    trip_planner = TripPlanner()\n    print(trip_planner.plan_trip())\n```",
+            "count": "trip_planning_example_1161"
+        }
+    ]
+}

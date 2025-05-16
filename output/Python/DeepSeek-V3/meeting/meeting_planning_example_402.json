@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "9:16",
+                        "end_time": "9:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "17:00",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joseph",
+                        "start_time": "18:15",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Sarah",
+                        "start_time": "19:04",
+                        "end_time": "20:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Robert",
+                        "start_time": "21:06",
+                        "end_time": "21:21"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "9:16",
+                        "end_time": "9:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "17:00",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joseph",
+                        "start_time": "18:15",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Sarah",
+                        "start_time": "19:04",
+                        "end_time": "20:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Robert",
+                        "start_time": "21:06",
+                        "end_time": "21:21"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Travel times dictionary: {from_location: {to_location: minutes}}\ntravel_times = {\n    \"Golden Gate Park\": {\n        \"Haight-Ashbury\": 7,\n        \"Sunset District\": 10,\n        \"Marina District\": 16,\n        \"Financial District\": 26,\n        \"Union Square\": 22\n    },\n    \"Haight-Ashbury\": {\n        \"Golden Gate Park\": 7,\n        \"Sunset District\": 15,\n        \"Marina District\": 17,\n        \"Financial District\": 21,\n        \"Union Square\": 17\n    },\n    \"Sunset District\": {\n        \"Golden Gate Park\": 11,\n        \"Haight-Ashbury\": 15,\n        \"Marina District\": 21,\n        \"Financial District\": 30,\n        \"Union Square\": 30\n    },\n    \"Marina District\": {\n        \"Golden Gate Park\": 18,\n        \"Haight-Ashbury\": 16,\n        \"Sunset District\": 19,\n        \"Financial District\": 17,\n        \"Union Square\": 16\n    },\n    \"Financial District\": {\n        \"Golden Gate Park\": 23,\n        \"Haight-Ashbury\": 19,\n        \"Sunset District\": 31,\n        \"Marina District\": 15,\n        \"Union Square\": 9\n    },\n    \"Union Square\": {\n        \"Golden Gate Park\": 22,\n        \"Haight-Ashbury\": 18,\n        \"Sunset District\": 26,\n        \"Marina District\": 18,\n        \"Financial District\": 9\n    }\n}\n\n# Correcting the typo in Marina District key\ntravel_times[\"Marina District\"] = travel_times.pop(\"Marina District\")\n\n# Friends data: name, location, available_start, available_end, min_duration\nfriends = [\n    (\"Sarah\", \"Haight-Ashbury\", \"17:00\", \"21:30\", 105),\n    (\"Patricia\", \"Sunset District\", \"17:00\", \"19:45\", 45),\n    (\"Matthew\", \"Marina District\", \"9:15\", \"12:00\", 15),\n    (\"Joseph\", \"Financial District\", \"14:15\", \"18:45\", 30),\n    (\"Robert\", \"Union Square\", \"10:15\", \"21:45\", 15)\n]\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes(\"9:00\")\n    current_location = \"Golden Gate Park\"\n    schedule = []\n    met_friends = set()\n    \n    for friend in order:\n        name, location, avail_start, avail_end, min_duration = friend\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        avail_start_min = time_to_minutes(avail_start)\n        avail_end_min = time_to_minutes(avail_end)\n        \n        # Calculate possible meeting window\n        meeting_start = max(arrival_time, avail_start_min)\n        meeting_end = min(meeting_start + min_duration, avail_end_min)\n        \n        if meeting_end - meeting_start >= min_duration:\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": name,\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            })\n            met_friends.add(name)\n            current_time = meeting_end\n            current_location = location\n        else:\n            # Try to meet at end of their availability\n            meeting_end = avail_end_min\n            meeting_start = max(avail_start_min, meeting_end - min_duration)\n            if meeting_start >= arrival_time and meeting_end - meeting_start >= min_duration:\n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": location,\n                    \"person\": name,\n                    \"start_time\": minutes_to_time(meeting_start),\n                    \"end_time\": minutes_to_time(meeting_end)\n                })\n                met_friends.add(name)\n                current_time = meeting_end\n                current_location = location\n    \n    return schedule, len(met_friends)\n\n# Generate all possible orders of meeting friends\nall_orders = permutations(friends)\n\nbest_schedule = []\nmax_met = 0\n\n# Try all possible orders to find the best schedule\nfor order in all_orders:\n    schedule, num_met = calculate_schedule(order)\n    if num_met > max_met or (num_met == max_met and len(schedule) > len(best_schedule)):\n        best_schedule = schedule\n        max_met = num_met\n\n# After finding the best schedule, check if we can add more meetings by revisiting\n# For simplicity, we'll just return the best found schedule\n\noutput = {\n    \"itinerary\": best_schedule\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_402"
+        }
+    ]
+}

@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Karen",
+                        "start_time": "9:25",
+                        "end_time": "9:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "10:06",
+                        "end_time": "11:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Betty",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Karen",
+                        "start_time": "9:25",
+                        "end_time": "9:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "10:06",
+                        "end_time": "11:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Betty",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\ndef main():\n    def format_time(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours}:{mins:02d}\"\n    \n    friends = [\n        {\n            'name': 'Betty',\n            'location': 'Embarcadero',\n            'start': 19 * 60 + 45,\n            'end': 21 * 60 + 45,\n            'duration': 15\n        },\n        {\n            'name': 'Karen',\n            'location': 'Fisherman\\'s Wharf',\n            'start': 8 * 60 + 45,\n            'end': 15 * 60,\n            'duration': 30\n        },\n        {\n            'name': 'Anthony',\n            'location': 'Financial District',\n            'start': 9 * 60 + 15,\n            'end': 21 * 60 + 30,\n            'duration': 105\n        }\n    ]\n    \n    travel_times = {\n        'Bayview': {\n            'Embarcadero': 19,\n            'Fisherman\\'s Wharf': 25,\n            'Financial District': 19\n        },\n        'Embarcadero': {\n            'Bayview': 21,\n            'Fisherman\\'s Wharf': 6,\n            'Financial District': 5\n        },\n        'Fisherman\\'s Wharf': {\n            'Bayview': 26,\n            'Embarcadero': 8,\n            'Financial District': 11\n        },\n        'Financial District': {\n            'Bayview': 19,\n            'Embarcadero': 4,\n            'Fisherman\\'s Wharf': 10\n        }\n    }\n    \n    for perm in itertools.permutations(friends):\n        current_time = 9 * 60\n        current_location = 'Bayview'\n        itinerary = []\n        possible = True\n        \n        for friend in perm:\n            to_loc = friend['location']\n            travel = travel_times[current_location].get(to_loc)\n            if travel is None:\n                possible = False\n                break\n            arrival = current_time + travel\n            start = max(arrival, friend['start'])\n            latest_start = friend['end'] - friend['duration']\n            if start > latest_start:\n                possible = False\n                break\n            end = start + friend['duration']\n            itinerary.append({\n                'action': 'meet',\n                'location': to_loc,\n                'person': friend['name'],\n                'start_time': format_time(start),\n                'end_time': format_time(end)\n            })\n            current_time = end\n            current_location = to_loc\n        \n        if possible:\n            print(json.dumps({'itinerary': itinerary}, indent=2))\n            return\n    \n    print(json.dumps({'itinerary': []}))\n\nif __name__ == '__main__':\n    main()",
+            "count": "meeting_planning_example_263"
+        }
+    ]
+}

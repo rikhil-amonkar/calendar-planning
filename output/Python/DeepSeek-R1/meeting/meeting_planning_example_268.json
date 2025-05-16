@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "16:45",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "18:45",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "18:45",
+                        "end_time": "19:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "19:59",
+                        "end_time": "20:59"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nfrom itertools import permutations\n\ndef to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nfriends = [\n    {\n        'name': 'Timothy',\n        'location': 'Alamo Square',\n        'available_start': to_minutes('12:00'),\n        'available_end': to_minutes('16:15'),\n        'min_duration': 105,\n    },\n    {\n        'name': 'Joseph',\n        'location': 'Russian Hill',\n        'available_start': to_minutes('16:45'),\n        'available_end': to_minutes('21:30'),\n        'min_duration': 60,\n    },\n    {\n        'name': 'Mark',\n        'location': 'Presidio',\n        'available_start': to_minutes('18:45'),\n        'available_end': to_minutes('21:00'),\n        'min_duration': 60,\n    },\n]\n\ntravel_times = {\n    'Golden Gate Park': {'Alamo Square': 10, 'Presidio': 11, 'Russian Hill': 19},\n    'Alamo Square': {'Golden Gate Park': 9, 'Presidio': 18, 'Russian Hill': 13},\n    'Presidio': {'Golden Gate Park': 12, 'Alamo Square': 18, 'Russian Hill': 14},\n    'Russian Hill': {'Golden Gate Park': 21, 'Alamo Square': 15, 'Presidio': 14},\n}\n\ndef simulate_schedule(perm, start_time, start_loc, travel):\n    current_time = start_time\n    current_loc = start_loc\n    itinerary = []\n    total_wait = 0\n    for f in perm:\n        travel_time = travel[current_loc].get(f['location'], 0)\n        arrival = current_time + travel_time\n        avail_start = f['available_start']\n        avail_end = f['available_end']\n        duration = f['min_duration']\n        start = max(arrival, avail_start)\n        if start + duration > avail_end:\n            return None, None\n        wait = max(0, avail_start - arrival)\n        total_wait += wait\n        itinerary.append({\n            'loc': f['location'],\n            'person': f['name'],\n            'start': start,\n            'end': start + duration\n        })\n        current_time = start + duration\n        current_loc = f['location']\n    return itinerary, total_wait\n\nstart_min = to_minutes('9:00')\nstart_loc = 'Golden Gate Park'\ntimothy = next(f for f in friends if f['name'] == 'Timothy')\nothers = [f for f in friends if f['name'] != 'Timothy']\nvalid_perms = []\n\nfor p in permutations(others):\n    valid_perms.append([timothy] + list(p))\n\nbest = None\nmax_met = 0\nmin_wait = float('inf')\n\nfor perm in valid_perms:\n    itinerary, wait = simulate_schedule(perm, start_min, start_loc, travel_times)\n    if itinerary:\n        met = len(itinerary)\n        if met > max_met or (met == max_met and wait < min_wait):\n            max_met = met\n            min_wait = wait\n            best = itinerary\n\noutput = {\"itinerary\": []}\nif best:\n    for entry in best:\n        output[\"itinerary\"].append({\n            \"action\": \"meet\",\n            \"location\": entry['loc'],\n            \"person\": entry['person'],\n            \"start_time\": to_time_str(entry['start']),\n            \"end_time\": to_time_str(entry['end'])\n        })\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_268"
+        }
+    ]
+}

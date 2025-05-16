@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define participants' busy times\nbusy_times = {\n    'Kathleen': [(datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\"))],\n    'Carolyn': [(datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\"))],\n    'Cheryl': [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n               (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n               (datetime.strptime(\"12:30\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n               (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    'Virginia': [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n                 (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                 (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n                 (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\")),\n                 (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    'Angela': [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n               (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n               (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n               (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n               (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))],\n}\n\n# Meeting constraints\nmeeting_duration = timedelta(minutes=30)\nworking_hours_start = datetime.strptime(\"09:00\", \"%H:%M\")\nworking_hours_end = datetime.strptime(\"17:00\", \"%H:%M\")\nroger_pref_start_time = datetime.strptime(\"12:30\", \"%H:%M\")\n\n# Function to find free time slots\ndef find_free_time_slots(busy_times):\n    busy_slots = []\n\n    for times in busy_times.values():\n        busy_slots.extend(times)\n\n    busy_slots.sort()\n\n    free_slots = []\n    last_end_time = working_hours_start\n\n    for start, end in busy_slots:\n        if last_end_time < start:\n            free_slots.append((last_end_time, start))\n        last_end_time = max(last_end_time, end)\n\n    if last_end_time < working_hours_end:\n        free_slots.append((last_end_time, working_hours_end))\n\n    return free_slots\n\n# Find free time slots for the group\nfree_slots = find_free_time_slots(busy_times)\n\n# Find a suitable time slot for the meeting\nfor start, end in free_slots:\n    if start >= roger_pref_start_time and (end - start) >= meeting_duration:\n        meeting_start_time = start\n        meeting_end_time = start + meeting_duration\n        break\n\n# Output the meeting time and day\nday_of_week = \"Monday\"\nprint(f\"{meeting_start_time.strftime('%H:%M')}:{meeting_end_time.strftime('%H:%M')}, {day_of_week}\")\n```",
+            "count": "calendar_scheduling_example_476"
+        }
+    ]
+}

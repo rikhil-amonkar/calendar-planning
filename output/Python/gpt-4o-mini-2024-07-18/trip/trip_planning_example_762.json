@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Berlin"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Trip constraints\n    total_days = 13\n    cities = {\n        \"Dublin\": {\"stay\": 3, \"meet_window\": (7, 9)},\n        \"Madrid\": {\"stay\": 2, \"family_visit\": (2, 3)},\n        \"Oslo\": {\"stay\": 3},\n        \"London\": {\"stay\": 2},\n        \"Vilnius\": {\"stay\": 3},\n        \"Berlin\": {\"stay\": 5, \"wedding_window\": (3, 7)},\n    }\n    \n    # Flight connections\n    flights = {\n        \"London\": [\"Madrid\", \"Oslo\", \"Dublin\", \"Berlin\"],\n        \"Madrid\": [\"London\", \"Oslo\", \"Dublin\", \"Berlin\"],\n        \"Oslo\": [\"Madrid\", \"London\", \"Vilnius\", \"Dublin\", \"Berlin\"],\n        \"Dublin\": [\"Madrid\", \"London\", \"Oslo\", \"Berlin\"],\n        \"Vilnius\": [\"Oslo\", \"Berlin\"],\n        \"Berlin\": [\"Madrid\", \"Oslo\", \"London\", \"Dublin\", \"Vilnius\"],\n    }\n\n    # Plan the itinerary\n    itinerary = []\n    current_day = 1\n    \n    # Visit Madrid first for family\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Madrid'})\n    current_day += 2  # 2 days in Madrid\n    \n    # Next, fly to Dublin where we meet friends\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Madrid', 'to': 'Dublin'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Dublin'})\n    current_day += 3  # 3 days in Dublin\n\n    # Next visit London\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Dublin', 'to': 'London'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'London'})\n    current_day += 2  # 2 days in London\n    \n    # Now fly to Oslo\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'London', 'to': 'Oslo'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Oslo'})\n    current_day += 3  # 3 days in Oslo\n\n    # Next, head to Vilnius\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Oslo', 'to': 'Vilnius'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Vilnius'})\n    current_day += 3  # 3 days in Vilnius\n\n    # Finally, fly to Berlin for the wedding\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vilnius', 'to': 'Berlin'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Berlin'})\n    \n    # Produce JSON output\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_762"
+        }
+    ]
+}

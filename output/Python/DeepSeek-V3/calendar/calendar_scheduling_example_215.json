@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedule, duration, work_hours_start, work_hours_end):\n    # Convert all time slots to minutes since start of the day\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n    \n    def minutes_to_time(minutes):\n        hh = minutes // 60\n        mm = minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n    \n    work_start = time_to_minutes(work_hours_start)\n    work_end = time_to_minutes(work_hours_end)\n    \n    # Initialize the free slots as the entire work day\n    free_slots = [(work_start, work_end)]\n    \n    # Process each participant's busy slots\n    for participant, busy_slots in participants_schedule.items():\n        participant_busy = []\n        for slot in busy_slots:\n            start, end = map(time_to_minutes, slot.split(':'))\n            participant_busy.append((start, end))\n        \n        # Merge overlapping or adjacent busy slots for the participant\n        participant_busy.sort()\n        merged_busy = []\n        for start, end in participant_busy:\n            if not merged_busy:\n                merged_busy.append((start, end))\n            else:\n                last_start, last_end = merged_busy[-1]\n                if start <= last_end:\n                    merged_busy[-1] = (last_start, max(last_end, end))\n                else:\n                    merged_busy.append((start, end))\n        \n        # Subtract busy slots from free slots\n        new_free_slots = []\n        for free_start, free_end in free_slots:\n            current_start = free_start\n            for busy_start, busy_end in merged_busy:\n                if busy_start >= free_end:\n                    break\n                if busy_end <= current_start:\n                    continue\n                if busy_start > current_start:\n                    new_free_slots.append((current_start, busy_start))\n                current_start = max(current_start, busy_end)\n            if current_start < free_end:\n                new_free_slots.append((current_start, free_end))\n        free_slots = new_free_slots\n    \n    # Find the earliest slot that fits the duration\n    duration_min = time_to_minutes(duration)\n    for slot_start, slot_end in free_slots:\n        if slot_end - slot_start >= duration_min:\n            return (minutes_to_time(slot_start), minutes_to_time(slot_start + duration_min))\n    return None\n\n# Define the participants' schedules\nparticipants_schedule = {\n    'Steven': [],\n    'Roy': [],\n    'Cynthia': ['9:30:10:30', '11:30:12:00', '13:00:13:30', '15:00:16:00'],\n    'Lauren': ['9:00:9:30', '10:30:11:00', '11:30:12:00', '13:00:13:30', '14:00:14:30', '15:00:15:30', '16:00:17:00'],\n    'Robert': ['10:30:11:00', '11:30:12:00', '12:30:13:30', '14:00:16:00']\n}\n\n# Define meeting parameters\nmeeting_duration = '0:30'  # half an hour\nwork_hours_start = '9:00'\nwork_hours_end = '17:00'\nday_of_week = 'Monday'\n\n# Find the meeting time\nmeeting_time = find_meeting_time(participants_schedule, meeting_duration, work_hours_start, work_hours_end)\n\n# Output the result\nif meeting_time:\n    start_time, end_time = meeting_time\n    print(f\"{{{start_time}:{end_time}}} {day_of_week}\")\nelse:\n    print(\"No suitable time found.\")\n```",
+            "count": "calendar_scheduling_example_215"
+        }
+    ]
+}

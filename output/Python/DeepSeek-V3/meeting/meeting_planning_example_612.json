@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "9:16",
+                        "end_time": "10:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "George",
+                        "start_time": "10:23",
+                        "end_time": "11:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Emily",
+                        "start_time": "12:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "14:21",
+                        "end_time": "16:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "16:17",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Andrew",
+                        "start_time": "20:15",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "9:16",
+                        "end_time": "10:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "George",
+                        "start_time": "10:23",
+                        "end_time": "11:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Emily",
+                        "start_time": "12:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "14:45",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "15:57",
+                        "end_time": "17:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Margaret",
+                        "start_time": "21:30",
+                        "end_time": "22:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef calculate_schedule():\n    # Define travel times as a dictionary of dictionaries\n    travel_times = {\n        'Alamo Square': {\n            'Russian Hill': 13,\n            'Presidio': 18,\n            'Chinatown': 16,\n            'Sunset District': 16,\n            'The Castro': 8,\n            'Embarcadero': 17,\n            'Golden Gate Park': 9\n        },\n        'Russian Hill': {\n            'Alamo Square': 15,\n            'Presidio': 14,\n            'Chinatown': 9,\n            'Sunset District': 23,\n            'The Castro': 21,\n            'Embarcadero': 8,\n            'Golden Gate Park': 21\n        },\n        'Presidio': {\n            'Alamo Square': 18,\n            'Russian Hill': 14,\n            'Chinatown': 21,\n            'Sunset District': 15,\n            'The Castro': 21,\n            'Embarcadero': 20,\n            'Golden Gate Park': 12\n        },\n        'Chinatown': {\n            'Alamo Square': 17,\n            'Russian Hill': 7,\n            'Presidio': 19,\n            'Sunset District': 29,\n            'The Castro': 22,\n            'Embarcadero': 5,\n            'Golden Gate Park': 23\n        },\n        'Sunset District': {\n            'Alamo Square': 17,\n            'Russian Hill': 24,\n            'Presidio': 16,\n            'Chinatown': 30,\n            'The Castro': 17,\n            'Embarcadero': 31,\n            'Golden Gate Park': 11\n        },\n        'The Castro': {\n            'Alamo Square': 8,\n            'Russian Hill': 18,\n            'Presidio': 20,\n            'Chinatown': 20,\n            'Sunset District': 17,\n            'Embarcadero': 22,\n            'Golden Gate Park': 11\n        },\n        'Embarcadero': {\n            'Alamo Square': 19,\n            'Russian Hill': 8,\n            'Presidio': 20,\n            'Chinatown': 7,\n            'Sunset District': 30,\n            'The Castro': 25,\n            'Golden Gate Park': 25\n        },\n        'Golden Gate Park': {\n            'Alamo Square': 10,\n            'Russian Hill': 19,\n            'Presidio': 11,\n            'Chinatown': 23,\n            'Sunset District': 10,\n            'The Castro': 13,\n            'Embarcadero': 25\n        }\n    }\n\n    # Define friends' availability and meeting requirements\n    friends = {\n        'Emily': {\n            'location': 'Russian Hill',\n            'start': '12:15',\n            'end': '14:15',\n            'duration': 105\n        },\n        'Mark': {\n            'location': 'Presidio',\n            'start': '14:45',\n            'end': '19:30',\n            'duration': 60\n        },\n        'Deborah': {\n            'location': 'Chinatown',\n            'start': '7:30',\n            'end': '15:30',\n            'duration': 45\n        },\n        'Margaret': {\n            'location': 'Sunset District',\n            'start': '21:30',\n            'end': '22:30',\n            'duration': 60\n        },\n        'George': {\n            'location': 'The Castro',\n            'start': '7:30',\n            'end': '14:15',\n            'duration': 60\n        },\n        'Andrew': {\n            'location': 'Embarcadero',\n            'start': '20:15',\n            'end': '22:00',\n            'duration': 75\n        },\n        'Steven': {\n            'location': 'Golden Gate Park',\n            'start': '11:15',\n            'end': '21:15',\n            'duration': 105\n        }\n    }\n\n    # Initial state\n    current_location = 'Alamo Square'\n    current_time = time_to_minutes('9:00')\n    itinerary = []\n\n    # We'll try to meet friends in different orders to find the best schedule\n    friend_names = ['Deborah', 'George', 'Steven', 'Emily', 'Mark', 'Andrew', 'Margaret']\n    best_itinerary = None\n    best_meetings = 0\n\n    # Try all possible orders (permutations) of meeting friends\n    for order in permutations(friend_names):\n        temp_itinerary = []\n        temp_location = current_location\n        temp_time = current_time\n        meetings = 0\n\n        for name in order:\n            friend = friends[name]\n            location = friend['location']\n            start_window = time_to_minutes(friend['start'])\n            end_window = time_to_minutes(friend['end'])\n            duration = friend['duration']\n\n            # Calculate travel time\n            travel_time = travel_times[temp_location][location]\n\n            # Earliest we can arrive at location\n            arrival_time = temp_time + travel_time\n\n            # Check if we can meet within the friend's window\n            meeting_start = max(arrival_time, start_window)\n            meeting_end = meeting_start + duration\n\n            if meeting_end <= end_window:\n                # Add meeting to itinerary\n                temp_itinerary.append({\n                    'action': 'meet',\n                    'location': location,\n                    'person': name,\n                    'start_time': minutes_to_time(meeting_start),\n                    'end_time': minutes_to_time(meeting_end)\n                })\n                meetings += 1\n                temp_location = location\n                temp_time = meeting_end\n\n        # Check if this order is better than previous best\n        if meetings > best_meetings:\n            best_meetings = meetings\n            best_itinerary = temp_itinerary\n        elif meetings == best_meetings and best_itinerary is None:\n            best_itinerary = temp_itinerary\n\n    # After trying all orders, return the best itinerary found\n    return {'itinerary': best_itinerary}\n\nif __name__ == \"__main__\":\n    schedule = calculate_schedule()\n    print(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_612"
+        }
+    ]
+}

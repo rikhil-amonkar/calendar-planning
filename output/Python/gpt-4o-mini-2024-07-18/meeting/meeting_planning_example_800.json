@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "9:10",
+                        "end_time": "9:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Brian",
+                        "start_time": "9:47",
+                        "end_time": "10:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joseph",
+                        "start_time": "15:41",
+                        "end_time": "16:56"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "20:32",
+                        "end_time": "21:02"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "9:10",
+                        "end_time": "9:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "12:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Brian",
+                        "start_time": "14:10",
+                        "end_time": "14:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joseph",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "20:36",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "21:14",
+                        "end_time": "21:29"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    'Union Square': {\n        'The Castro': 17,\n        'North Beach': 10,\n        'Embarcadero': 11,\n        'Alamo Square': 15,\n        'Nob Hill': 9,\n        'Presidio': 24,\n        'Fisherman\\'s Wharf': 15,\n        'Mission District': 14,\n        'Haight-Ashbury': 18,\n    },\n    'The Castro': {\n        'Union Square': 19,\n        'North Beach': 20,\n        'Embarcadero': 22,\n        'Alamo Square': 8,\n        'Nob Hill': 16,\n        'Presidio': 20,\n        'Fisherman\\'s Wharf': 24,\n        'Mission District': 7,\n        'Haight-Ashbury': 6,\n    },\n    'North Beach': {\n        'Union Square': 7,\n        'The Castro': 23,\n        'Embarcadero': 6,\n        'Alamo Square': 16,\n        'Nob Hill': 7,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 5,\n        'Mission District': 18,\n        'Haight-Ashbury': 18,\n    },\n    'Embarcadero': {\n        'Union Square': 10,\n        'The Castro': 25,\n        'North Beach': 5,\n        'Alamo Square': 19,\n        'Nob Hill': 10,\n        'Presidio': 20,\n        'Fisherman\\'s Wharf': 6,\n        'Mission District': 20,\n        'Haight-Ashbury': 21,\n    },\n    'Alamo Square': {\n        'Union Square': 14,\n        'The Castro': 8,\n        'North Beach': 15,\n        'Embarcadero': 16,\n        'Nob Hill': 11,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 19,\n        'Mission District': 10,\n        'Haight-Ashbury': 5,\n    },\n    'Nob Hill': {\n        'Union Square': 7,\n        'The Castro': 17,\n        'North Beach': 8,\n        'Embarcadero': 9,\n        'Alamo Square': 11,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 10,\n        'Mission District': 13,\n        'Haight-Ashbury': 13,\n    },\n    'Presidio': {\n        'Union Square': 22,\n        'The Castro': 21,\n        'North Beach': 18,\n        'Embarcadero': 20,\n        'Alamo Square': 19,\n        'Nob Hill': 18,\n        'Fisherman\\'s Wharf': 19,\n        'Mission District': 26,\n        'Haight-Ashbury': 15,\n    },\n    'Fisherman\\'s Wharf': {\n        'Union Square': 13,\n        'The Castro': 27,\n        'North Beach': 6,\n        'Embarcadero': 8,\n        'Alamo Square': 21,\n        'Nob Hill': 11,\n        'Presidio': 17,\n        'Mission District': 22,\n        'Haight-Ashbury': 22,\n    },\n    'Mission District': {\n        'Union Square': 15,\n        'The Castro': 7,\n        'North Beach': 17,\n        'Embarcadero': 19,\n        'Alamo Square': 11,\n        'Nob Hill': 12,\n        'Presidio': 25,\n        'Fisherman\\'s Wharf': 22,\n        'Haight-Ashbury': 12,\n    },\n    'Haight-Ashbury': {\n        'Union Square': 19,\n        'The Castro': 6,\n        'North Beach': 19,\n        'Embarcadero': 20,\n        'Alamo Square': 5,\n        'Nob Hill': 15,\n        'Presidio': 15,\n        'Fisherman\\'s Wharf': 23,\n        'Mission District': 11,\n    },\n}\n\n# Meeting constraints\nmeetings = {\n    'Melissa': {'location': 'The Castro', 'start_time': '20:15', 'end_time': '21:15', 'duration': 30},\n    'Kimberly': {'location': 'North Beach', 'start_time': '07:00', 'end_time': '10:30', 'duration': 15},\n    'Joseph': {'location': 'Embarcadero', 'start_time': '15:30', 'end_time': '19:30', 'duration': 75},\n    'Barbara': {'location': 'Alamo Square', 'start_time': '20:45', 'end_time': '21:45', 'duration': 15},\n    'Kenneth': {'location': 'Nob Hill', 'start_time': '12:15', 'end_time': '17:15', 'duration': 105},\n    'Joshua': {'location': 'Presidio', 'start_time': '16:30', 'end_time': '18:15', 'duration': 105},\n    'Brian': {'location': 'Fisherman\\'s Wharf', 'start_time': '09:30', 'end_time': '15:30', 'duration': 45},\n    'Steven': {'location': 'Mission District', 'start_time': '19:00', 'end_time': '20:30', 'duration': 90},\n    'Betty': {'location': 'Haight-Ashbury', 'start_time': '19:00', 'end_time': '20:30', 'duration': 90},\n}\n\ndef time_in_minutes(time_str):\n    \"\"\" Convert HH:MM time format to minutes since midnight. \"\"\"\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    \"\"\" Convert minutes since midnight back to HH:MM time format. \"\"\"\n    hours = minutes // 60\n    minutes = minutes % 60\n    return f\"{hours}:{minutes:02}\"\n\ndef schedule_meetings():\n    start_time = time_in_minutes('9:00')\n    itinerary = []\n\n    # Meeting order based on constraints\n    meetings_order = [\n        ('Kimberly', 'North Beach'),\n        ('Brian', 'Fisherman\\'s Wharf'),\n        ('Joseph', 'Embarcadero'),\n        ('Kenneth', 'Nob Hill'),\n        ('Joshua', 'Presidio'),\n        ('Melissa', 'The Castro'),\n        ('Barbara', 'Alamo Square'),\n        ('Steven', 'Mission District'),\n        ('Betty', 'Haight-Ashbury')\n    ]\n\n    current_time = start_time\n\n    for person, location in meetings_order:\n        meeting_info = meetings[person]\n        meeting_start = time_in_minutes(meeting_info['start_time'])\n        meeting_end = time_in_minutes(meeting_info['end_time'])\n\n        if current_time < meeting_start:\n            current_time = meeting_start\n\n        # Calculate travel time to the location\n        travel_time = travel_times['Union Square'].get(location, 0)\n        current_time += travel_time\n\n        # Check if we can fit this meeting\n        if current_time + meeting_info['duration'] <= meeting_end:\n            # Schedule the meeting\n            meeting_start_time = current_time\n            meeting_end_time = current_time + meeting_info['duration']\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": minutes_to_time(meeting_start_time),\n                \"end_time\": minutes_to_time(meeting_end_time),\n            })\n            current_time = meeting_end_time  # Update the current time to after the meeting\n\n            # Return to Union Square after meeting\n            travel_back_time = travel_times[location]['Union Square']\n            current_time += travel_back_time\n\n    return {'itinerary': itinerary}\n\n# Generate meeting schedule\noptimal_schedule = schedule_meetings()\n\n# Output the result in JSON format\nprint(json.dumps(optimal_schedule, indent=2))\n```",
+            "count": "meeting_planning_example_800"
+        }
+    ]
+}

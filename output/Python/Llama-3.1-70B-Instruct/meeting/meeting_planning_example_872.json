@@ -1,0 +1,79 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Jason",
+                        "start_time": "9:21",
+                        "end_time": "10:36"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kenneth",
+                        "start_time": "10:39",
+                        "end_time": "11:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "11:18",
+                        "end_time": "12:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Kimberly",
+                        "start_time": "12:47",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Jessica",
+                        "start_time": "14:12",
+                        "end_time": "15:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Brian",
+                        "start_time": "15:47",
+                        "end_time": "16:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Stephanie",
+                        "start_time": "16:57",
+                        "end_time": "18:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Steven",
+                        "start_time": "18:51",
+                        "end_time": "19:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Karen",
+                        "start_time": "21:00",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_travel_time(origin, destination, travel_times):\n    return travel_times.get((origin, destination), 0)\n\ndef calculate_meeting_time(person, start_time, duration):\n    end_time = (start_time + duration) % 24\n    if end_time < start_time:\n        end_time += 24\n    return f\"{int(start_time):02d}:{int((start_time % 1) * 60):02d}\", f\"{int(end_time):02d}:{int((end_time % 1) * 60):02d}\"\n\ndef plan_meeting(person, location, start_time, duration, travel_times, current_location, current_time):\n    travel_time = calculate_travel_time(current_location, location, travel_times)\n    meeting_start_time, meeting_end_time = calculate_meeting_time(person, current_time + travel_time, duration / 60)\n    return {\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": meeting_start_time,\n        \"end_time\": meeting_end_time\n    }\n\ndef main():\n    travel_times = {\n        (\"Presidio\", \"Haight-Ashbury\"): 15,\n        (\"Presidio\", \"Nob Hill\"): 18,\n        (\"Presidio\", \"Russian Hill\"): 14,\n        (\"Presidio\", \"North Beach\"): 18,\n        (\"Presidio\", \"Chinatown\"): 21,\n        (\"Presidio\", \"Union Square\"): 22,\n        (\"Presidio\", \"Embarcadero\"): 20,\n        (\"Presidio\", \"Financial District\"): 23,\n        (\"Presidio\", \"Marina District\"): 11,\n        (\"Haight-Ashbury\", \"Presidio\"): 15,\n        (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n        (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n        (\"Haight-Ashbury\", \"North Beach\"): 19,\n        (\"Haight-Ashbury\", \"Chinatown\"): 19,\n        (\"Haight-Ashbury\", \"Union Square\"): 19,\n        (\"Haight-Ashbury\", \"Embarcadero\"): 20,\n        (\"Haight-Ashbury\", \"Financial District\"): 21,\n        (\"Haight-Ashbury\", \"Marina District\"): 17,\n        (\"Nob Hill\", \"Presidio\"): 17,\n        (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n        (\"Nob Hill\", \"Russian Hill\"): 5,\n        (\"Nob Hill\", \"North Beach\"): 8,\n        (\"Nob Hill\", \"Chinatown\"): 6,\n        (\"Nob Hill\", \"Union Square\"): 7,\n        (\"Nob Hill\", \"Embarcadero\"): 9,\n        (\"Nob Hill\", \"Financial District\"): 9,\n        (\"Nob Hill\", \"Marina District\"): 11,\n        (\"Russian Hill\", \"Presidio\"): 14,\n        (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n        (\"Russian Hill\", \"Nob Hill\"): 5,\n        (\"Russian Hill\", \"North Beach\"): 5,\n        (\"Russian Hill\", \"Chinatown\"): 9,\n        (\"Russian Hill\", \"Union Square\"): 10,\n        (\"Russian Hill\", \"Embarcadero\"): 8,\n        (\"Russian Hill\", \"Financial District\"): 11,\n        (\"Russian Hill\", \"Marina District\"): 7,\n        (\"North Beach\", \"Presidio\"): 17,\n        (\"North Beach\", \"Haight-Ashbury\"): 18,\n        (\"North Beach\", \"Nob Hill\"): 7,\n        (\"North Beach\", \"Russian Hill\"): 4,\n        (\"North Beach\", \"Chinatown\"): 6,\n        (\"North Beach\", \"Union Square\"): 7,\n        (\"North Beach\", \"Embarcadero\"): 6,\n        (\"North Beach\", \"Financial District\"): 8,\n        (\"North Beach\", \"Marina District\"): 9,\n        (\"Chinatown\", \"Presidio\"): 19,\n        (\"Chinatown\", \"Haight-Ashbury\"): 19,\n        (\"Chinatown\", \"Nob Hill\"): 9,\n        (\"Chinatown\", \"Russian Hill\"): 7,\n        (\"Chinatown\", \"North Beach\"): 3,\n        (\"Chinatown\", \"Union Square\"): 7,\n        (\"Chinatown\", \"Embarcadero\"): 5,\n        (\"Chinatown\", \"Financial District\"): 5,\n        (\"Chinatown\", \"Marina District\"): 12,\n        (\"Union Square\", \"Presidio\"): 24,\n        (\"Union Square\", \"Haight-Ashbury\"): 18,\n        (\"Union Square\", \"Nob Hill\"): 9,\n        (\"Union Square\", \"Russian Hill\"): 13,\n        (\"Union Square\", \"North Beach\"): 10,\n        (\"Union Square\", \"Chinatown\"): 7,\n        (\"Union Square\", \"Embarcadero\"): 11,\n        (\"Union Square\", \"Financial District\"): 9,\n        (\"Union Square\", \"Marina District\"): 18,\n        (\"Embarcadero\", \"Presidio\"): 20,\n        (\"Embarcadero\", \"Haight-Ashbury\"): 21,\n        (\"Embarcadero\", \"Nob Hill\"): 10,\n        (\"Embarcadero\", \"Russian Hill\"): 8,\n        (\"Embarcadero\", \"North Beach\"): 5,\n        (\"Embarcadero\", \"Chinatown\"): 7,\n        (\"Embarcadero\", \"Union Square\"): 10,\n        (\"Embarcadero\", \"Financial District\"): 5,\n        (\"Embarcadero\", \"Marina District\"): 12,\n        (\"Financial District\", \"Presidio\"): 22,\n        (\"Financial District\", \"Haight-Ashbury\"): 19,\n        (\"Financial District\", \"Nob Hill\"): 8,\n        (\"Financial District\", \"Russian Hill\"): 11,\n        (\"Financial District\", \"North Beach\"): 7,\n        (\"Financial District\", \"Chinatown\"): 5,\n        (\"Financial District\", \"Union Square\"): 9,\n        (\"Financial District\", \"Embarcadero\"): 4,\n        (\"Financial District\", \"Marina District\"): 15,\n        (\"Marina District\", \"Presidio\"): 10,\n        (\"Marina District\", \"Haight-Ashbury\"): 16,\n        (\"Marina District\", \"Nob Hill\"): 12,\n        (\"Marina District\", \"Russian Hill\"): 8,\n        (\"Marina District\", \"North Beach\"): 11,\n        (\"Marina District\", \"Chinatown\"): 15,\n        (\"Marina District\", \"Union Square\"): 16,\n        (\"Marina District\", \"Embarcadero\"): 14,\n        (\"Marina District\", \"Financial District\"): 17\n    }\n\n    meetings = [\n        {\"person\": \"Mark\", \"location\": \"Marina District\", \"start_time\": 10.25, \"end_time\": 13, \"duration\": 75},\n        {\"person\": \"Jason\", \"location\": \"Chinatown\", \"start_time\": 8.25, \"end_time\": 11.75, \"duration\": 75},\n        (\"Financial District\", \"Presidio\"): 22,\n        (\"Financial District\", \"Haight-Ashbury\"): 19,\n        (\"Financial District\", \"Nob Hill\"): 8,\n        (\"Financial District\", \"Russian Hill\"): 11,\n        (\"Financial District\", \"North Beach\"): 7,\n        (\"Financial District\", \"Chinatown\"): 5,\n        (\"Financial District\", \"Union Square\"): 9,\n        (\"Financial District\", \"Embarcadero\"): 4,\n        (\"Financial District\", \"Marina District\"): 15,\n        (\"Marina District\", \"Presidio\"): 10,\n        (\"Marina District\", \"Haight-Ashbury\"): 16,\n        (\"Marina District\", \"Nob Hill\"): 12,\n        (\"Marina District\", \"Russian Hill\"): 8,\n        (\"Marina District\", \"North Beach\"): 11,\n        (\"Marina District\", \"Chinatown\"): 15,\n        (\"Marina District\", \"Union Square\"): 16,\n        (\"Marina District\", \"Embarcadero\"): 14,\n        (\"Marina District\", \"Financial District\"): 17\n    ]\n\n    meetings = [\n        {\"person\": \"Mark\", \"location\": \"Marina District\", \"start_time\": 10.25, \"end_time\": 13, \"duration\": 75},\n        {\"person\": \"Jason\", \"location\": \"Chinatown\", \"start_time\": 8.25, \"end_time\": 11.75, \"duration\": 75},\n        {\"person\": \"Steven\", \"location\": \"Financial District\", \"start_time\": 7.25, \"end_time\": 21.25, \"duration\": 60},\n        {\"person\": \"Kimberly\", \"location\": \"Embarcadero\", \"start_time\": 9.75, \"end_time\": 19.5, \"duration\": 75},\n        {\"person\": \"Kenneth\", \"location\": \"North Beach\", \"start_time\": 9.75, \"end_time\": 21, \"duration\": 30},\n        {\"person\": \"Stephanie\", \"location\": \"Union Square\", \"start_time\": 14.75, \"end_time\": 18.75, \"duration\": 105},\n        {\"person\": \"Brian\", \"location\": \"Russian Hill\", \"start_time\": 15.5, \"end_time\": 21.75, \"duration\": 60},\n        {\"person\": \"Jessica\", \"location\": \"Nob Hill\", \"start_time\": 13.75, \"end_time\": 21, \"duration\": 90},\n        {\"person\": \"Karen\", \"location\": \"Haight-Ashbury\", \"start_time\": 21, \"end_time\": 21.75, \"duration\": 45}\n    ]\n\n    itinerary = []\n    current_location = \"Presidio\"\n    current_time = 9\n\n    # Sort meetings by start time\n    meetings.sort(key=lambda x: x[\"start_time\"])\n\n    for meeting in meetings:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"], travel_times)\n        if current_time + travel_time < meeting[\"start_time\"]:\n            current_time = meeting[\"start_time\"] - travel_time\n        itinerary.append(plan_meeting(meeting[\"person\"], meeting[\"location\"], current_time + travel_time, meeting[\"duration\"], travel_times, current_location, current_time))\n        current_location = meeting[\"location\"]\n        current_time += travel_time + meeting[\"duration\"] / 60\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_872"
+        }
+    ]
+}

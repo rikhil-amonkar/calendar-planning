@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 9-14",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-14",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 15\n    cities = {\n        'Paris': 6,\n        'Madrid': 7,\n        'Bucharest': 2,\n        'Seville': 3\n    }\n    \n    # Constraints\n    madrid_show_days = (1, 7)\n    bucharest_relatives_days = (14, 15)\n    \n    # Direct flights\n    direct_flights = {\n        'Paris': ['Bucharest', 'Seville', 'Madrid'],\n        'Madrid': ['Bucharest', 'Paris', 'Seville'],\n        'Bucharest': ['Paris', 'Madrid'],\n        'Seville': ['Paris', 'Madrid']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    \n    # Assign Madrid first due to the show constraint (Day 1-7)\n    current_day = 1\n    madrid_days = min(7, cities['Madrid'])\n    itinerary.append({\n        'day_range': f'Day {current_day}-{current_day + madrid_days - 1}',\n        'place': 'Madrid'\n    })\n    current_day += madrid_days\n    cities['Madrid'] -= madrid_days\n    \n    # Next, assign Bucharest for relatives (Day 14-15)\n    # We need to reach Bucharest by Day 14\n    remaining_days_before_bucharest = 14 - current_day\n    \n    # Assign other cities before Bucharest\n    remaining_cities = {city: days for city, days in cities.items() if days > 0 and city != 'Bucharest'}\n    \n    # Try to assign Paris and Seville before Bucharest\n    while remaining_days_before_bucharest > 0 and sum(remaining_cities.values()) > 0:\n        for city in list(remaining_cities.keys()):\n            if remaining_cities[city] > 0:\n                # Check if we can fly from Madrid to this city\n                if 'Madrid' in direct_flights and city in direct_flights['Madrid']:\n                    max_days = min(remaining_cities[city], remaining_days_before_bucharest)\n                    if max_days > 0:\n                        itinerary.append({\n                            'flying': f'Day {current_day}-{current_day}',\n                            'from': 'Madrid',\n                            'to': city\n                        })\n                        itinerary.append({\n                            'day_range': f'Day {current_day + 1}-{current_day + max_days}',\n                            'place': city\n                        })\n                        current_day += max_days + 1\n                        remaining_cities[city] -= max_days\n                        remaining_days_before_bucharest = 14 - current_day\n    \n    # Assign Bucharest for relatives (Day 14-15)\n    if cities['Bucharest'] > 0:\n        # Find the last city before Bucharest\n        last_city = itinerary[-1]['place'] if itinerary and 'place' in itinerary[-1] else 'Madrid'\n        if 'Bucharest' in direct_flights.get(last_city, []):\n            itinerary.append({\n                'flying': f'Day {14 - cities[\"Bucharest\"]}-{14 - cities[\"Bucharest\"]}',\n                'from': last_city,\n                'to': 'Bucharest'\n            })\n            itinerary.append({\n                'day_range': f'Day {14 - cities[\"Bucharest\"] + 1}-15',\n                'place': 'Bucharest'\n            })\n    \n    # After Bucharest, check if there are remaining days for other cities\n    # But in this case, all days should be allocated\n    \n    # Verify all cities are visited with correct days\n    # If not, adjust (this is a simplified approach)\n    \n    # Final check to ensure all days are allocated\n    # This is a simplified solution and may need more complex logic for all cases\n    \n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_361"
+        }
+    ]
+}

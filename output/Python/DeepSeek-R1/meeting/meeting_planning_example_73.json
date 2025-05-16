@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Barbara",
+                        "start_time": "9:07",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Barbara",
+                        "start_time": "9:07",
+                        "end_time": "10:07"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nfrom datetime import datetime, timedelta\nimport json\n\n# Input parameters\nuser_arrival = datetime.strptime(\"9:00\", \"%H:%M\")\ntravel_time_to_pacific = timedelta(minutes=7)\nbarbara_available_start = datetime.strptime(\"7:15\", \"%H:%M\")\nbarbara_available_end = datetime.strptime(\"22:00\", \"%H:%M\")\nmin_meeting = 60\n\n# Calculate earliest possible arrival at Pacific Heights\nearliest_arrival = user_arrival + travel_time_to_pacific\nmeeting_start = max(earliest_arrival, barbara_available_start)\nmeeting_end = barbara_available_end\n\n# Check if meeting duration meets minimum requirement\nduration = (meeting_end - meeting_start).total_seconds() // 60\nitinerary = []\nif duration >= min_meeting:\n    start_time = f\"{meeting_start.hour}:{meeting_start.minute:02d}\"\n    end_time = f\"{meeting_end.hour}:{meeting_end.minute:02d}\"\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Pacific Heights\",\n        \"person\": \"Barbara\",\n        \"start_time\": start_time,\n        \"end_time\": end_time\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}))\n```",
+            "count": "meeting_planning_example_73"
+        }
+    ]
+}

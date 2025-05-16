@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Function to check if a time slot is free for all participants\ndef is_time_free(start_time, end_time, schedules):\n    for schedule in schedules:\n        for busy_start, busy_end in schedule:\n            if (start_time < busy_end) and (end_time > busy_start):\n                return False\n    return True\n\n# Define the busy schedules of each participant as lists of tuples (start, end)\nschedules = [\n    [(9, 0), (9, 30)],   # Megan\n    [(9, 0), (9, 30)],   # Christine\n    [],                  # Gabriel\n    [(11, 30), (12, 0)], # Sara\n    [(9, 30), (10, 0)],  # Bruce\n    [(10, 0), (15, 30)], # Kathryn\n    [(9, 0), (9, 30)],   # Billy\n    [(11, 0), (11, 30)], # Billy\n    [(12, 0), (14, 0)],  # Billy\n    [(14, 30), (15, 30)] # Billy\n]\n\n# Meeting duration in minutes\nmeeting_duration = 30\nmeeting_start_time = 9  # 9 AM\nmeeting_end_time = 17   # 5 PM\n\n# Convert hour and minute into total minutes for easier calculation\ndef to_minutes(hour, minute):\n    return hour * 60 + minute\n\n# Generate available time slots\navailable_slots = []\nfor hour in range(meeting_start_time, meeting_end_time):\n    for minute in [0, 30]:  # Checking the start of each half hour\n        start_time = to_minutes(hour, minute)\n        end_time = start_time + meeting_duration\n        \n        if end_time <= to_minutes(meeting_end_time, 0):  # Make sure end time is within work hours\n            if is_time_free(start_time, end_time, schedules):\n                available_slots.append((hour, minute))\n\n# Choose the first available slot\nif available_slots:\n    proposed_time = available_slots[0]\n    proposed_start = f\"{proposed_time[0]:02}:{proposed_time[1]:02}\"\n    proposed_end = f\"{proposed_time[0]:02}:{(proposed_time[1] + meeting_duration) % 60:02}\"\n    day_of_week = \"Monday\"\n    print(f\"{proposed_start}:{proposed_end} - {day_of_week}\")\n```",
+            "count": "calendar_scheduling_example_446"
+        }
+    ]
+}

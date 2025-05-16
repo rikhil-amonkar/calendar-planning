@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport datetime\n\n# Define participants' schedules\ndanielle_schedule = [(9, 0, 10, 0), (10, 30, 11, 0), (14, 30, 15, 0), (15, 30, 16, 0), (16, 30, 17, 0)]\nbruce_schedule = [(11, 0, 11, 30), (12, 30, 13, 0), (14, 0, 14, 30), (15, 30, 16, 0)]\neric_schedule = [(9, 0, 9, 30), (10, 0, 11, 0), (11, 30, 13, 0), (14, 30, 15, 30)]\n\n# Define work hours and meeting duration\nwork_start = (9, 0)\nwork_end = (17, 0)\nmeeting_duration = 1  # in hours\n\n# Function to convert schedule to a set of free time intervals\ndef get_free_time_slots(start, end, schedules):\n    free_slots = []\n    current_start = start\n\n    for meeting in sorted(schedules):\n        if current_start < meeting[:2]:\n            free_slots.append((current_start, meeting[:2]))\n        current_start = max(current_start, meeting[2:])\n\n    if current_start < end:\n        free_slots.append((current_start, end))\n\n    return free_slots\n\n# Get free time slots for each participant\ndanielle_free = get_free_time_slots(work_start, work_end, danielle_schedule)\nbruce_free = get_free_time_slots(work_start, work_end, bruce_schedule)\neric_free = get_free_time_slots(work_start, work_end, eric_schedule)\n\n# Find overlapping time slots that accommodate all participants\ndef find_meeting_time(danielle_free, bruce_free, eric_free, duration):\n    for d_start, d_end in danielle_free:\n        for b_start, b_end in bruce_free:\n            for e_start, e_end in eric_free:\n                start_time = max(d_start, b_start, e_start)\n                end_time = start_time + duration\n                \n                if end_time <= d_end and end_time <= b_end and end_time <= e_end:\n                    return start_time, end_time\n\n# Check for overlapping time and calculate\nmeeting_time = find_meeting_time(danielle_free, bruce_free, eric_free, meeting_duration)\n\nif meeting_time:\n    meeting_start = meeting_time[0]\n    meeting_end = meeting_time[1]\n    day_of_week = \"Monday\"\n    \n    # Format the output time\n    output = f\"{meeting_start[0]:02}:{meeting_start[1]:02}:{meeting_end[0]:02}:{meeting_end[1]:02} - {day_of_week}\"\n    print(output)\n```",
+            "count": "calendar_scheduling_example_91"
+        }
+    ]
+}

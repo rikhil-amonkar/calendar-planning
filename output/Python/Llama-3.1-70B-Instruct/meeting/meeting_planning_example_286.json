@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Carol",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Rebecca",
+                        "start_time": "11:30",
+                        "end_time": "13:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Carol",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Karen",
+                        "start_time": "12:45",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Rebecca",
+                        "start_time": "14:58",
+                        "end_time": "16:58"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel distances in minutes\ntravel_distances = {\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Bayview'): 15,\n    ('Union Square', 'Sunset District'): 26,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Bayview'): 15,\n    ('Mission District', 'Sunset District'): 24,\n    ('Bayview', 'Union Square'): 17,\n    ('Bayview', 'Mission District'): 13,\n    ('Bayview', 'Sunset District'): 23,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Mission District'): 24,\n    ('Sunset District', 'Bayview'): 22\n}\n\n# Define meeting constraints\nmeetings = [\n    {'person': 'Rebecca', 'location': 'Mission District','start_time': '11:30', 'end_time': '20:15','min_duration': 120},\n    {'person': 'Karen', 'location': 'Bayview','start_time': '12:45', 'end_time': '15:00','min_duration': 120},\n    {'person': 'Carol', 'location': 'Sunset District','start_time': '10:15', 'end_time': '11:45','min_duration': 30}\n]\n\n# Define arrival time\narrival_time = '09:00'\n\n# Define current location and time\ncurrent_location = 'Union Square'\ncurrent_time = datetime.strptime(arrival_time, '%H:%M')\n\n# Initialize itinerary\nitinerary = []\n\n# Function to calculate end time\ndef calculate_end_time(start_time, duration):\n    return (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=duration)).strftime('%H:%M')\n\n# Function to check if meeting can be scheduled\ndef can_schedule_meeting(meeting):\n    global current_time\n    global current_location\n    travel_time = travel_distances.get((current_location, meeting['location']), float('inf'))\n    meeting_start_time = datetime.strptime(meeting['start_time'], '%H:%M')\n    if current_time + timedelta(minutes=travel_time) <= meeting_start_time:\n        return True\n    return False\n\n# Function to schedule meeting\ndef schedule_meeting(meeting):\n    global current_time\n    global current_location\n    global itinerary\n    travel_time = travel_distances.get((current_location, meeting['location']), float('inf'))\n    current_time += timedelta(minutes=travel_time)\n    current_location = meeting['location']\n    meeting_end_time = calculate_end_time(meeting['start_time'], meeting['min_duration'])\n    itinerary.append({\n        'action':'meet',\n        'location': meeting['location'],\n        'person': meeting['person'],\n  'start_time': meeting['start_time'],\n        'end_time': meeting_end_time\n    })\n    current_time = datetime.strptime(meeting_end_time, '%H:%M')\n\n# Sort meetings by start time\nmeetings.sort(key=lambda x: x['start_time'])\n\n# Schedule meetings\nfor meeting in meetings:\n    if can_schedule_meeting(meeting):\n        schedule_meeting(meeting)\n\n# Print itinerary as JSON\nprint('SOLUTION:')\nprint(json.dumps({'itinerary': itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_286"
+        }
+    ]
+}

@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "9:00",
+                        "end_time": "9:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:20",
+                        "end_time": "9:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:24",
+                        "end_time": "9:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nfrom itertools import permutations\n\n# Define travel distances in minutes\ntravel_times = {\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Sunset District\", \"Mission District\"): 24,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Russian Hill\"): 13,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Mission District\"): 10,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"Alamo Square\"): 15,\n    (\"Russian Hill\", \"Golden Gate Park\"): 21,\n    (\"Russian Hill\", \"Mission District\"): 16,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Alamo Square\"): 10,\n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n    (\"Mission District\", \"Sunset District\"): 24,\n    (\"Mission District\", \"Alamo Square\"): 11,\n    (\"Mission District\", \"Russian Hill\"): 15,\n    (\"Mission District\", \"Golden Gate Park\"): 17,\n}\n\n# Define participant availability and required time\nparticipants = {\n    \"Charles\": {\"location\": \"Alamo Square\", \"available\": (datetime.strptime(\"18:00\", \"%H:%M\"), datetime.strptime(\"20:45\", \"%H:%M\")), \"min_time\": 90},\n    \"Margaret\": {\"location\": \"Russian Hill\", \"available\": (datetime.strptime(\"9:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")), \"min_time\": 30},\n    \"Daniel\": {\"location\": \"Golden Gate Park\", \"available\": (datetime.strptime(\"8:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")), \"min_time\": 15},\n    \"Stephanie\": {\"location\": \"Mission District\", \"available\": (datetime.strptime(\"20:30\", \"%H:%M\"), datetime.strptime(\"22:00\", \"%H:%M\")), \"min_time\": 90},\n}\n\n# Define the initial time at Sunset District\nstart_time = datetime.strptime(\"9:00\", \"%H:%M\")\nitinerary = []\n\n# Create a function to schedule meetings\ndef schedule_meetings():\n    global itinerary\n    current_time = start_time\n    locations_to_visit = list(participants.keys())\n    \n    # Order participants for scheduling based on ending time of their availability\n    locations_to_visit.sort(key=lambda x: participants[x][\"available\"][1])\n    \n    # Loop through each schedule option and check constraints\n    for perm in permutations(locations_to_visit):\n        temp_time = current_time\n        temp_itinerary = []\n        is_valid_schedule = True\n        \n        for person in perm:\n            loc = participants[person][\"location\"]\n            visit_start, visit_end = participants[person][\"available\"]\n            min_duration = timedelta(minutes=participants[person][\"min_time\"])\n            \n            # Travel time to the location\n            if temp_time < visit_start:\n                temp_time = visit_start\n            \n            travel_time = travel_times.get((current_time.strftime(\"%H:%M\"), loc)) or travel_times.get((loc, current_time.strftime(\"%H:%M\")))\n            if travel_time:\n                temp_time += timedelta(minutes=travel_time)\n            \n            # Calculate end time for meeting\n            meeting_end_time = temp_time + min_duration\n            \n            # Check if the meeting can fit in the participant's available time\n            if meeting_end_time <= visit_end:\n                temp_itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": loc,\n                    \"person\": person,\n                    \"start_time\": temp_time.strftime(\"%H:%M\"),\n                    \"end_time\": meeting_end_time.strftime(\"%H:%M\"),\n                })\n                temp_time = meeting_end_time + timedelta(minutes=5)  # Add 5 mins to transition to the next meeting\n            else:\n                is_valid_schedule = False\n                break\n        \n        if is_valid_schedule and len(temp_itinerary) > len(itinerary):\n            itinerary = temp_itinerary\n\nschedule_meetings()\n\n# Convert the result to the required JSON format\nresult = {\n    \"itinerary\": itinerary\n}\n\n# Output the result as JSON\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_372"
+        }
+    ]
+}

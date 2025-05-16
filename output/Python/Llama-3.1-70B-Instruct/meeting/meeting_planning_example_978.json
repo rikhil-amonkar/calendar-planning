@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Lisa",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "John",
+                        "start_time": "13:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:00",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Lisa",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joshua",
+                        "start_time": "11:19",
+                        "end_time": "11:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "11:49",
+                        "end_time": "12:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "12:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "John",
+                        "start_time": "14:07",
+                        "end_time": "14:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:00",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "19:07",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel distances in minutes\ntravel_distances = {\n    ('Embarcadero', 'Fisherman\\'s Wharf'): 6,\n    ('Embarcadero', 'Financial District'): 5,\n    ('Embarcadero', 'Russian Hill'): 8,\n    ('Embarcadero', 'Marina District'): 12,\n    ('Embarcadero', 'Richmond District'): 21,\n    ('Embarcadero', 'Pacific Heights'): 11,\n    ('Embarcadero', 'Haight-Ashbury'): 21,\n    ('Embarcadero', 'Presidio'): 20,\n    ('Embarcadero', 'Nob Hill'): 10,\n    ('Embarcadero', 'The Castro'): 25,\n    ('Fisherman\\'s Wharf', 'Embarcadero'): 8,\n    ('Fisherman\\'s Wharf', 'Financial District'): 11,\n    ('Fisherman\\'s Wharf', 'Russian Hill'): 7,\n    ('Fisherman\\'s Wharf', 'Marina District'): 9,\n    ('Fisherman\\'s Wharf', 'Richmond District'): 18,\n    ('Fisherman\\'s Wharf', 'Pacific Heights'): 12,\n    ('Fisherman\\'s Wharf', 'Haight-Ashbury'): 22,\n    ('Fisherman\\'s Wharf', 'Presidio'): 17,\n    ('Fisherman\\'s Wharf', 'Nob Hill'): 11,\n    ('Fisherman\\'s Wharf', 'The Castro'): 27,\n    ('Financial District', 'Embarcadero'): 4,\n    ('Financial District', 'Fisherman\\'s Wharf'): 10,\n    ('Financial District', 'Russian Hill'): 11,\n    ('Financial District', 'Marina District'): 15,\n    ('Financial District', 'Richmond District'): 21,\n    ('Financial District', 'Pacific Heights'): 13,\n    ('Financial District', 'Haight-Ashbury'): 19,\n    ('Financial District', 'Presidio'): 22,\n    ('Financial District', 'Nob Hill'): 8,\n    ('Financial District', 'The Castro'): 20,\n    ('Russian Hill', 'Embarcadero'): 8,\n    ('Russian Hill', 'Fisherman\\'s Wharf'): 7,\n    ('Russian Hill', 'Financial District'): 11,\n    ('Russian Hill', 'Marina District'): 7,\n    ('Russian Hill', 'Richmond District'): 14,\n    ('Russian Hill', 'Pacific Heights'): 7,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n    ('Russian Hill', 'Presidio'): 14,\n    ('Russian Hill', 'Nob Hill'): 5,\n    ('Russian Hill', 'The Castro'): 21,\n    ('Marina District', 'Embarcadero'): 14,\n    ('Marina District', 'Fisherman\\'s Wharf'): 10,\n    ('Marina District', 'Financial District'): 17,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Marina District', 'Richmond District'): 11,\n    ('Marina District', 'Pacific Heights'): 7,\n    ('Marina District', 'Haight-Ashbury'): 16,\n    ('Marina District', 'Presidio'): 10,\n    ('Marina District', 'Nob Hill'): 12,\n    ('Marina District', 'The Castro'): 22,\n    ('Richmond District', 'Embarcadero'): 19,\n    ('Richmond District', 'Fisherman\\'s Wharf'): 18,\n    ('Richmond District', 'Financial District'): 22,\n    ('Richmond District', 'Russian Hill'): 13,\n    ('Richmond District', 'Marina District'): 9,\n    ('Richmond District', 'Pacific Heights'): 10,\n    ('Richmond District', 'Haight-Ashbury'): 10,\n    ('Richmond District', 'Presidio'): 7,\n    ('Richmond District', 'Nob Hill'): 17,\n    ('Richmond District', 'The Castro'): 16,\n    ('Pacific Heights', 'Embarcadero'): 10,\n    ('Pacific Heights', 'Fisherman\\'s Wharf'): 13,\n    ('Pacific Heights', 'Financial District'): 13,\n    ('Pacific Heights', 'Russian Hill'): 7,\n    ('Pacific Heights', 'Marina District'): 6,\n    ('Pacific Heights', 'Richmond District'): 12,\n    ('Pacific Heights', 'Haight-Ashbury'): 11,\n    ('Pacific Heights', 'Presidio'): 11,\n    ('Pacific Heights', 'Nob Hill'): 8,\n    ('Pacific Heights', 'The Castro'): 16,\n    ('Haight-Ashbury', 'Embarcadero'): 20,\n    ('Haight-Ashbury', 'Fisherman\\'s Wharf'): 23,\n    ('Haight-Ashbury', 'Financial District'): 21,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Haight-Ashbury', 'Marina District'): 17,\n    ('Haight-Ashbury', 'Richmond District'): 10,\n    ('Haight-Ashbury', 'Pacific Heights'): 12,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Nob Hill'): 15,\n    ('Haight-Ashbury', 'The Castro'): 6,\n    ('Presidio', 'Embarcadero'): 20,\n    ('Presidio', 'Fisherman\\'s Wharf'): 19,\n    ('Presidio', 'Financial District'): 23,\n    ('Presidio', 'Russian Hill'): 14,\n    ('Presidio', 'Marina District'): 11,\n    ('Presidio', 'Richmond District'): 7,\n    ('Presidio', 'Pacific Heights'): 11,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Presidio', 'Nob Hill'): 18,\n    ('Presidio', 'The Castro'): 21,\n    ('Nob Hill', 'Embarcadero'): 9,\n    ('Nob Hill', 'Fisherman\\'s Wharf'): 10,\n    ('Nob Hill', 'Financial District'): 9,\n    ('Nob Hill', 'Russian Hill'): 5,\n    ('Nob Hill', 'Marina District'): 11,\n    ('Nob Hill', 'Richmond District'): 14,\n    ('Nob Hill', 'Pacific Heights'): 8,\n    ('Nob Hill', 'Haight-Ashbury'): 13,\n    ('Nob Hill', 'Presidio'): 17,\n    ('Nob Hill', 'The Castro'): 17,\n    ('The Castro', 'Embarcadero'): 22,\n    ('The Castro', 'Fisherman\\'s Wharf'): 24,\n    ('The Castro', 'Financial District'): 21,\n    ('The Castro', 'Russian Hill'): 18,\n    ('The Castro', 'Marina District'): 21,\n    ('The Castro', 'Richmond District'): 16,\n    ('The Castro', 'Pacific Heights'): 16,\n    ('The Castro', 'Haight-Ashbury'): 6,\n    ('The Castro', 'Presidio'): 20,\n    ('The Castro', 'Nob Hill'): 16\n}\n\n# Define meeting constraints\nmeetings = [\n    {'person': 'Stephanie', 'location': 'Fisherman\\'s Wharf','start_time': '15:30', 'end_time': '22:00','min_duration': 30},\n    {'person': 'Lisa', 'location': 'Financial District','start_time': '10:45', 'end_time': '17:15','min_duration': 15},\n    {'person': 'Melissa', 'location': 'Russian Hill','start_time': '17:00', 'end_time': '21:45','min_duration': 120},\n    {'person': 'Betty', 'location': 'Marina District','start_time': '10:45', 'end_time': '14:15','min_duration': 60},\n    {'person': 'Sarah', 'location': 'Richmond District','start_time': '16:15', 'end_time': '19:30','min_duration': 105},\n    {'person': 'Daniel', 'location': 'Pacific Heights','start_time': '18:30', 'end_time': '21:45','min_duration': 60},\n    {'person': 'Joshua', 'location': 'Haight-Ashbury','start_time': '09:00', 'end_time': '15:30','min_duration': 15},\n    {'person': 'Joseph', 'location': 'Presidio','start_time': '07:00', 'end_time': '13:00','min_duration': 45},\n    {'person': 'Andrew', 'location': 'Nob Hill','start_time': '19:45', 'end_time': '22:00','min_duration': 105},\n    {'person': 'John', 'location': 'The Castro','start_time': '13:15', 'end_time': '19:45','min_duration': 45}\n]\n\n# Define arrival time\narrival_time = '09:00'\n\n# Define current location and time\ncurrent_location = 'Embarcadero'\ncurrent_time = datetime.strptime(arrival_time, '%H:%M')\n\n# Initialize itinerary\nitinerary = []\n\n# Function to calculate end time\ndef calculate_end_time(start_time, duration):\n    return (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=duration)).strftime('%H:%M')\n\n# Function to check if meeting can be scheduled\ndef can_schedule_meeting(meeting):\n    global current_time\n    global current_location\n    travel_time = travel_distances.get((current_location, meeting['location']), float('inf'))\n    meeting_start_time = datetime.strptime(meeting['start_time'], '%H:%M')\n    if current_time + timedelta(minutes=travel_time) <= meeting_start_time:\n        return True\n    return False\n\n# Function to schedule meeting\ndef schedule_meeting(meeting):\n    global current_time\n    global current_location\n    global itinerary\n    travel_time = travel_distances.get((current_location, meeting['location']), float('inf'))\n    current_time += timedelta(minutes=travel_time)\n    current_location = meeting['location']\n    meeting_end_time = calculate_end_time(meeting['start_time'], meeting['min_duration'])\n    itinerary.append({\n        'action':'meet',\n        'location': meeting['location'],\n        'person': meeting['person'],\n      'start_time': meeting['start_time'],\n        'end_time': meeting_end_time\n    })\n    current_time = datetime.strptime(meeting_end_time, '%H:%M')\n\n# Sort meetings by start time\nmeetings.sort(key=lambda x: x['start_time'])\n\n# Schedule meetings\nfor meeting in meetings:\n    if can_schedule_meeting(meeting):\n        schedule_meeting(meeting)\n\n# Print itinerary as JSON\nprint('SOLUTION:')\nprint(json.dumps({'itinerary': itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_978"
+        }
+    ]
+}

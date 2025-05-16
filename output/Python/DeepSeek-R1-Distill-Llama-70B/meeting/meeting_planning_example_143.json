@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mark",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Karen",
+                        "start_time": "18:45",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mark",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Karen",
+                        "start_time": "18:45",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I need to solve this problem where I have to create a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I'll start by understanding the input parameters. The user is starting at North Beach at 9:00 AM. There are two friends to meet: Karen at Pacific Heights and Mark at Embarcadero. Each meeting has a specific duration and time window.\n\nI notice that the travel times between the locations are provided in both directions. This is important because the time it takes to go from North Beach to Pacific Heights might be different from Pacific Heights to North Beach.\n\nNext, I'll outline the constraints:\n- Karen is available from 6:45 PM to 8:15 PM and needs at least 90 minutes.\n- Mark is available from 1:00 PM to 5:45 PM and needs at least 120 minutes.\n\nThe user starts at North Beach, so the first decision is whether to go to Pacific Heights first or Embarcadero first. Since the user wants to meet as many friends as possible, I need to check both possibilities.\n\nI'll consider the travel times:\n- From North Beach to Pacific Heights: 8 minutes.\n- From North Beach to Embarcadero: 6 minutes.\n\nIf the user goes to Pacific Heights first, they can arrive by 9:08 AM. However, Karen isn't available until 6:45 PM, so there's a long wait. This might not be efficient.\n\nAlternatively, going to Embarcadero first arrives by 9:06 AM. Mark is available starting at 1:00 PM, so there's some time to kill, but it's more feasible than waiting until evening.\n\nI need to calculate the earliest possible meeting times and ensure that the meetings fit within the friends' availability. Also, I should consider the travel times between locations after the first meeting to see if the second meeting can be accommodated.\n\nI'll simulate both scenarios:\n1. Meet Mark first at Embarcadero, then go to Pacific Heights.\n2. Meet Karen first at Pacific Heights, then go to Embarcadero.\n\nFor the first scenario:\n- Start at North Beach at 9:00 AM.\n- Travel to Embarcadero: 6 minutes. Arrive at 9:06 AM.\n- Wait until Mark is available at 1:00 PM.\n- Meet Mark for 120 minutes until 3:00 PM.\n- Travel to Pacific Heights: 10 minutes. Arrive at 3:10 PM.\n- Wait until Karen is available at 6:45 PM.\n- Meet Karen for 90 minutes until 8:15 PM.\n\nThis schedule allows meeting both friends.\n\nFor the second scenario:\n- Start at North Beach at 9:00 AM.\n- Travel to Pacific Heights: 8 minutes. Arrive at 9:08 AM.\n- Wait until Karen is available at 6:45 PM.\n- Meet Karen for 90 minutes until 8:15 PM.\n- Travel to Embarcadero: 10 minutes. Arrive at 8:25 PM.\n- Mark is no longer available, so this scenario only allows meeting Karen.\n\nClearly, the first scenario is better as it allows meeting both friends.\n\nI'll structure the Python program to generate all possible permutations of the friends and simulate each schedule, checking the feasibility of each meeting considering travel times and availability. The program will then select the optimal schedule that meets the most friends.\n\nThe program will use itertools.permutations to generate all possible meeting orders. For each permutation, it will simulate the day, starting at North Beach, and calculate the arrival and meeting times. If a meeting fits within the friend's availability, it's added to the itinerary. The program keeps track of the best itinerary that includes the most meetings.\n\nFinally, the program will output the best itinerary in the specified JSON format.\n</think>\n\n```python\nimport itertools\nimport json\n\ntravel_times = {\n    ('North Beach', 'Pacific Heights'): 8,\n    ('North Beach', 'Embarcadero'): 6,\n    ('Pacific Heights', 'North Beach'): 9,\n    ('Pacific Heights', 'Embarcadero'): 10,\n    ('Embarcadero', 'North Beach'): 5,\n    ('Embarcadero', 'Pacific Heights'): 11,\n}\n\nfriends = [\n    {\n        'name': 'Karen',\n        'location': 'Pacific Heights',\n        'start': 1125,  # 18:45 (6:45 PM)\n        'end': 1230,    # 20:30 (8:30 PM)\n        'duration': 90\n    },\n    {\n        'name': 'Mark',\n        'location': 'Embarcadero',\n        'start': 780,   # 13:00 (1:00 PM)\n        'end': 1085,   # 17:45 (5:45 PM)\n        'duration': 120\n    }\n]\n\ndef minutes_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours}:{mins:02d}\"\n\nbest_itinerary = []\nmax_meetings = 0\n\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_location = 'North Beach'\n    itinerary = []\n    \n    for friend in perm:\n        travel = travel_times.get((current_location, friend['location']), None)\n        if travel is None:\n            continue\n        \n        arrival = current_time + travel\n        meeting_start = max(arrival, friend['start'])\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > friend['end']:\n            continue\n        \n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        current_time = meeting_end\n        current_location = friend['location']\n    \n    if len(itinerary) > max_meetings:\n        max_meetings = len(itinerary)\n        best_itinerary = itinerary\n\noutput = {\n    \"itinerary\": best_itinerary\n}\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_143"
+        }
+    ]
+}

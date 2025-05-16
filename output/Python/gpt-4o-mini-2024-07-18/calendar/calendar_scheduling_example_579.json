@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Function to convert time in string format to datetime\ndef str_to_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\n# Function to find meeting time\ndef find_meeting_time(participant1_schedule, participant2_schedule, meeting_duration, work_hours):\n    work_start = str_to_time(work_hours[0])\n    work_end = str_to_time(work_hours[1])\n    meeting_duration = timedelta(minutes=meeting_duration)\n\n    current_time = work_start\n    while current_time + meeting_duration <= work_end:\n        meeting_start = current_time\n        meeting_end = current_time + meeting_duration\n\n        # Check if the meeting conflicts with participant 1's schedule\n        conflict1 = any(start < meeting_end and end > meeting_start for start, end in participant1_schedule)\n        # Check if the meeting conflicts with participant 2's schedule\n        conflict2 = any(start < meeting_end and end > meeting_start for start, end in participant2_schedule)\n\n        if not conflict1 and not conflict2:\n            return f\"{meeting_start.strftime('%H:%M')}:{meeting_end.strftime('%H:%M')} on Monday\"\n\n        current_time += timedelta(minutes=30)  # Increment time by 30 min\n\n    return \"No available time found\"\n\n# Existing schedules for both participants\nchristine_schedule = [(str_to_time(\"11:00\"), str_to_time(\"11:30\")),\n                      (str_to_time(\"15:00\"), str_to_time(\"15:30\"))]\n\nhelen_schedule = [(str_to_time(\"9:30\"), str_to_time(\"10:30\")),\n                  (str_to_time(\"11:00\"), str_to_time(\"11:30\")),\n                  (str_to_time(\"12:00\"), str_to_time(\"12:30\")),\n                  (str_to_time(\"13:30\"), str_to_time(\"16:00\")),\n                  (str_to_time(\"16:30\"), str_to_time(\"17:00\"))]\n\n# Define meeting duration and work hours\nmeeting_duration = 30  # in minutes\nwork_hours = (\"09:00\", \"17:00\")\n\n# Find suitable meeting time\nmeeting_time = find_meeting_time(christine_schedule, helen_schedule, meeting_duration, work_hours)\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_579"
+        }
+    ]
+}

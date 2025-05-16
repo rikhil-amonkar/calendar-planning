@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{12:00",
+                "end_time": "12:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{12:00",
+                "end_time": "12:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n    merged = [list(sorted_intervals[0])]\n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        if current[0] <= last[1]:\n            merged[-1][1] = max(last[1], current[1])\n        else:\n            merged.append(list(current))\n    return merged\n\ndef minutes_to_time(minutes):\n    hours = 9 + minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define busy intervals in minutes since 9:00\nmichael_busy = [(30, 90), (360, 390), (420, 450)]\narthur_busy = [(0, 180), (240, 360), (390, 420), (450, 480)]\nbusy = michael_busy + arthur_busy\n\nmerged = merge_intervals(busy)\n\nfree_intervals = []\nprev_end = 0\nfor start, end in merged:\n    if start > prev_end:\n        free_intervals.append((prev_end, start))\n    prev_end = max(prev_end, end)\nif prev_end < 480:\n    free_intervals.append((prev_end, 480))\n\n# Find the first suitable slot\nmeeting_duration = 30\nproposed_slot = None\nfor slot in free_intervals:\n    start, end = slot\n    if end - start >= meeting_duration:\n        proposed_slot = (start, start + meeting_duration)\n        break\n\n# Format the output\nstart_time = minutes_to_time(proposed_slot[0])\nend_time = minutes_to_time(proposed_slot[1])\nprint(f\"Monday {start_time}:{end_time}\")\n'''",
+            "count": "calendar_scheduling_example_82"
+        }
+    ]
+}

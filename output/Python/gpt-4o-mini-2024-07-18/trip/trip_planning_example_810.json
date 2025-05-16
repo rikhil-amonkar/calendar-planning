@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the constraints and parameters\n    itinerary = []\n    \n    # Day 1-3: Berlin (Conference on Day 1 and Day 3)\n    itinerary.append({'day_range': 'Day 1-3', 'place': 'Berlin'})\n    \n    # Day 3-4: Barcelona (Workshop between Day 3 and Day 4)\n    # Travel from Berlin to Barcelona on Day 3\n    itinerary.append({'flying': 'Day 3-3', 'from': 'Berlin', 'to': 'Barcelona'})\n    itinerary.append({'day_range': 'Day 3-4', 'place': 'Barcelona'})\n    \n    # Day 4-6: Lyon (Wedding between Day 4 and Day 5)\n    # Travel from Barcelona to Lyon on Day 4\n    itinerary.append({'flying': 'Day 4-4', 'from': 'Barcelona', 'to': 'Lyon'})\n    itinerary.append({'day_range': 'Day 4-6', 'place': 'Lyon'})\n    \n    # Day 6-11: Nice (5 days)\n    # Travel from Lyon to Nice on Day 6\n    itinerary.append({'flying': 'Day 6-6', 'from': 'Lyon', 'to': 'Nice'})\n    itinerary.append({'day_range': 'Day 6-11', 'place': 'Nice'})\n    \n    # Day 11-16: Athens (5 days)\n    # Travel from Nice to Athens on Day 11\n    itinerary.append({'flying': 'Day 11-11', 'from': 'Nice', 'to': 'Athens'})\n    itinerary.append({'day_range': 'Day 11-16', 'place': 'Athens'})\n    \n    # Day 16-20: Stockholm (5 days)\n    # Travel from Athens to Stockholm on Day 16\n    itinerary.append({'flying': 'Day 16-16', 'from': 'Athens', 'to': 'Stockholm'})\n    itinerary.append({'day_range': 'Day 16-20', 'place': 'Stockholm'})\n    \n    # Day 20-23: Vilnius (4 days, but we have only 20 days, hence adjust)\n    # Instead of staying for 4 days in Vilnius, we will adjust it to 2 earlier days.\n    # We find 2 days from the end of the trip for Vilnius after Stockholm.\n    itinerary.append({'flying': 'Day 20-20', 'from': 'Stockholm', 'to': 'Vilnius'})\n    itinerary.append({'day_range': 'Day 20-23', 'place': 'Vilnius'})\n    \n    # Create final output with a maximum of 20 days\n    # We can give up 2 days of Vilnius from the total of 20 days travel\n    itinerary = itinerary[:14]\n    \n    # Output as JSON\n    return json.dumps(itinerary, indent=4)\n\n# Run the function and print the JSON output\nif __name__ == \"__main__\":\n    print(plan_trip())\n```",
+            "count": "trip_planning_example_810"
+        }
+    ]
+}

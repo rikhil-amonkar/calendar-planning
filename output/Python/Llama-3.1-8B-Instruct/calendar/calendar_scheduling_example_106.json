@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "11:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(schedules, meeting_duration):\n    # Define the work hours and day\n    work_hours = [(9, 17)]\n    work_day = \"Monday\"\n\n    # Initialize the start time\n    start_time = (9, 0)\n\n    # Iterate over each hour\n    while start_time[0] < 17:\n        # Check if the time is available for all participants\n        if all(start_time not in schedule[work_day] for schedule in schedules):\n            # Check if the meeting duration fits in the available time\n            end_time = (start_time[0] + meeting_duration // 60, start_time[1] + meeting_duration % 60)\n            if end_time <= (17, 0):\n                # Return the meeting time and day\n                return f\"{start_time[0]:02d}:{start_time[1]:02d}-{end_time[0]:02d}:{end_time[1]:02d} on {work_day}\"\n\n        # Move to the next hour\n        start_time = (start_time[0] + 1, 0)\n\n    # If no available time is found, return a message\n    return \"No available time found\"\n\n# Define the schedules\nschedules = [\n    {\n        \"Monday\": [(12, 30), (13, 30), (14, 30), (15, 0), (16, 30), (17, 0)]\n    },\n    {},\n    {\n        \"Monday\": [(9, 0), (10, 0), (11, 30), (11, 59), (13, 0), (14, 0), (14, 30), (16, 0), (16, 30), (17, 0)]\n    },\n    {\n        \"Monday\": [(9, 0), (9, 30), (11, 0), (11, 30), (13, 0), (14, 0), (14, 30), (16, 0), (16, 30), (17, 0)]\n    }\n]\n\n# Define the meeting duration\nmeeting_duration = 60\n\n# Find the meeting time\nmeeting_time = find_meeting_time(schedules, meeting_duration)\n\n# Print the meeting time\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_106"
+        }
+    ]
+}

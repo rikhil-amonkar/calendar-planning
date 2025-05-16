@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef minutes_to_time_str(total_minutes):\n    # Convert minutes since midnight to H:MM format with no leading zero for hour.\n    hours = total_minutes // 60\n    minutes = total_minutes % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef add_minutes(time_str, mins):\n    # time_str expected in H:MM, convert to minutes since midnight, add mins, and convert back.\n    hours, minutes = map(int, time_str.split(':'))\n    total = hours * 60 + minutes + mins\n    return minutes_to_time_str(total)\n\ndef compute_schedule():\n    # Define the travel times (in minutes)\n    travel_times = {\n        (\"North Beach\", \"Union Square\"): 7,\n        (\"North Beach\", \"Russian Hill\"): 4,\n        (\"Union Square\", \"North Beach\"): 10,\n        (\"Union Square\", \"Russian Hill\"): 13,\n        (\"Russian Hill\", \"North Beach\"): 5,\n        (\"Russian Hill\", \"Union Square\"): 11\n    }\n    \n    # Constraints and fixed parameters\n    arrival_location = \"North Beach\"\n    arrival_time = \"9:00\"  # 9:00 AM arrival at North Beach\n\n    # Emily constraints\n    emily_location = \"Union Square\"\n    emily_avail_start = \"16:00\"  # 4:00 PM\n    emily_avail_end   = \"17:15\"  # 5:15 PM\n    emily_min_duration = 45   # minutes\n\n    # Margaret constraints\n    margaret_location = \"Russian Hill\"\n    margaret_avail_start = \"19:00\"  # 7:00 PM\n    margaret_avail_end   = \"21:00\"  # 9:00 PM\n    margaret_min_duration = 120  # minutes\n\n    # Calculate departure from North Beach to meet Emily\n    # We need to arrive at Emily's location at or just after her available start.\n    # Travel time from North Beach to Union Square is:\n    travel_nb_to_us = travel_times[(arrival_location, emily_location)]\n    # To arrive at exactly 16:00, we leave North Beach at:\n    # Convert 16:00 to minutes\n    emily_start_minutes = int(emily_avail_start.split(':')[0]) * 60 + int(emily_avail_start.split(':')[1])\n    departure_from_nb_minutes = emily_start_minutes - travel_nb_to_us\n    departure_from_nb = minutes_to_time_str(departure_from_nb_minutes)\n    \n    # Meeting with Emily: start exactly at 16:00 and meet for 45 minutes.\n    emily_meeting_start = emily_avail_start\n    emily_meeting_end = add_minutes(emily_meeting_start, emily_min_duration)\n    \n    # After meeting Emily, travel from Union Square to Russian Hill.\n    travel_us_to_rh = travel_times[(emily_location, margaret_location)]\n    # Calculate arrival at Russian Hill if we left immediately after Emily meeting:\n    arrival_rh_if_direct = add_minutes(emily_meeting_end, travel_us_to_rh)\n    # But Margaret is only available starting at 19:00.\n    # So the meeting with Margaret will start at max(arrival time, margaret_avail_start)\n    # In our case, arrival_rh_if_direct is likely before 19:00.\n    margaret_meeting_start = margaret_avail_start\n    margaret_meeting_end = add_minutes(margaret_meeting_start, margaret_min_duration)\n    \n    # Check if this schedule respects Margaret's availability window.\n    # margaret_meeting_end must be <= margaret_avail_end.\n    # Convert times to minutes to check.\n    margaret_meeting_end_minutes = int(margaret_meeting_end.split(':')[0]) * 60 + int(margaret_meeting_end.split(':')[1])\n    margaret_avail_end_minutes = int(margaret_avail_end.split(':')[0]) * 60 + int(margaret_avail_end.split(':')[1])\n    \n    if margaret_meeting_end_minutes > margaret_avail_end_minutes:\n        raise ValueError(\"Cannot schedule Margaret's meeting within her availability window given travel constraints.\")\n    \n    # Build itinerary as list of meeting actions.\n    itinerary = []\n    \n    # Meeting with Emily at Union Square.\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": emily_location,\n        \"person\": \"Emily\",\n        \"start_time\": emily_meeting_start,\n        \"end_time\": emily_meeting_end\n    })\n    \n    # Meeting with Margaret at Russian Hill.\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": margaret_location,\n        \"person\": \"Margaret\",\n        \"start_time\": margaret_meeting_start,\n        \"end_time\": margaret_meeting_end\n    })\n    \n    # Create final schedule JSON dictionary.\n    schedule = {\n        \"itinerary\": itinerary\n    }\n    \n    return schedule\n\nif __name__ == '__main__':\n    schedule = compute_schedule()\n    print(json.dumps(schedule, indent=2))\n",
+            "count": "meeting_planning_example_170"
+        }
+    ]
+}

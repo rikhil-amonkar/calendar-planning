@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "9:10",
+                        "end_time": "9:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Brian",
+                        "start_time": "9:30",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "12:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joseph",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "20:36",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "21:14",
+                        "end_time": "21:29"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "9:10",
+                        "end_time": "9:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "12:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Brian",
+                        "start_time": "14:10",
+                        "end_time": "14:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joseph",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "20:36",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "21:14",
+                        "end_time": "21:29"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import timedelta\n\n# Utility functions to convert between minutes and time string in 24-hour format.\ndef minutes_to_timestr(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Define travel times between locations (in minutes)\n# Only entries required for our chosen itinerary.\ntravel_times = {\n    (\"Union Square\", \"North Beach\"): 10,\n    (\"North Beach\", \"Fisherman's Wharf\"): 5,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Nob Hill\", \"Embarcadero\"): 9,\n    (\"Embarcadero\", \"Haight-Ashbury\"): 21,\n    (\"Haight-Ashbury\", \"The Castro\"): 6,\n    (\"The Castro\", \"Alamo Square\"): 8\n}\n\n# Meeting constraints stored as dictionaries.\n# Times are in minutes from midnight.\nmeetings = [\n    {\n        \"person\": \"Kimberly\",\n        \"location\": \"North Beach\",\n        \"avail_start\": 7 * 60,      # 7:00 = 420 minutes\n        \"avail_end\": 10 * 60 + 30,    # 10:30 = 630 minutes\n        \"duration\": 15\n    },\n    {\n        \"person\": \"Brian\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": 9 * 60 + 30,   # 9:30 = 570 minutes\n        \"avail_end\": 15 * 60 + 30,    # 15:30 = 930 minutes\n        \"duration\": 45\n    },\n    {\n        \"person\": \"Kenneth\",\n        \"location\": \"Nob Hill\",\n        \"avail_start\": 12 * 60 + 15,  # 12:15 = 735 minutes\n        \"avail_end\": 17 * 60 + 15,    # 17:15 = 1035 minutes\n        \"duration\": 105\n    },\n    {\n        \"person\": \"Joseph\",\n        \"location\": \"Embarcadero\",\n        \"avail_start\": 15 * 60 + 30,  # 15:30 = 930 minutes\n        \"avail_end\": 19 * 60 + 30,    # 19:30 = 1170 minutes\n        \"duration\": 75\n    },\n    # In the evening we choose Betty over Steven since Betty, Melissa and Barbara can be chained.\n    {\n        \"person\": \"Betty\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": 19 * 60,       # 19:00 = 1140 minutes\n        \"avail_end\": 20 * 60 + 30,     # 20:30 = 1230 minutes\n        \"duration\": 90\n    },\n    {\n        \"person\": \"Melissa\",\n        \"location\": \"The Castro\",\n        \"avail_start\": 20 * 60 + 15,   # 20:15 = 1215 minutes\n        \"avail_end\": 21 * 60 + 15,     # 21:15 = 1275 minutes\n        \"duration\": 30\n    },\n    {\n        \"person\": \"Barbara\",\n        \"location\": \"Alamo Square\",\n        \"avail_start\": 20 * 60 + 45,   # 20:45 = 1245 minutes\n        \"avail_end\": 21 * 60 + 45,     # 21:45 = 1305 minutes\n        \"duration\": 15\n    }\n]\n\n# Our chosen itinerary order is:\n# Start at Union Square at 9:00, then visits:\n# 1. Kimberly at North Beach\n# 2. Brian at Fisherman's Wharf\n# 3. Kenneth at Nob Hill\n# 4. Joseph at Embarcadero\n# 5. Betty at Haight-Ashbury\n# 6. Melissa at The Castro\n# 7. Barbara at Alamo Square\n\n# Starting point and time\ncurrent_location = \"Union Square\"\ncurrent_time = 9 * 60  # 9:00 AM is 540 minutes after midnight\n\nitinerary = []\n\nfor meeting in meetings:\n    destination = meeting[\"location\"]\n    # Get travel time from current_location to destination.\n    travel_key = (current_location, destination)\n    if travel_key not in travel_times:\n        # If not found in our travel_times dictionary, assume a default large travel time.\n        travel_duration = 30\n    else:\n        travel_duration = travel_times[travel_key]\n    # Travel to destination\n    current_time += travel_duration\n\n    # Meeting can only start after arrival and not before person's available start time.\n    meeting_start = max(current_time, meeting[\"avail_start\"])\n    \n    # Check if meeting can be completed before the person's availability ends.\n    meeting_end = meeting_start + meeting[\"duration\"]\n    if meeting_end > meeting[\"avail_end\"]:\n        # If this meeting cannot be scheduled within the available window, skip it.\n        # For the purpose of this program, we assume all meetings can be scheduled\n        continue\n\n    # Record the meeting event.\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": destination,\n        \"person\": meeting[\"person\"],\n        \"start_time\": minutes_to_timestr(meeting_start),\n        \"end_time\": minutes_to_timestr(meeting_end)\n    })\n    \n    # Update current_time and current_location\n    current_time = meeting_end\n    current_location = destination\n\n# Create the output dictionary.\noutput = {\n    \"itinerary\": itinerary\n}\n\n# Output result as JSON\nprint(json.dumps(output, indent=2))\n  \nif __name__ == '__main__':\n    pass",
+            "count": "meeting_planning_example_800"
+        }
+    ]
+}

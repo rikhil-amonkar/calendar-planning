@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 27-30",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 35-37",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 41-44",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 45-47",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 48-51",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 52-53",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Dublin': {'duration': 5, 'fixed_range': (11, 15), 'visited': False},\n            'Krakow': {'duration': 4, 'fixed_range': None, 'visited': False},\n            'Istanbul': {'duration': 3, 'fixed_range': (9, 11), 'visited': False},\n            'Venice': {'duration': 3, 'fixed_range': None, 'visited': False},\n            'Naples': {'duration': 4, 'fixed_range': None, 'visited': False},\n            'Brussels': {'duration': 2, 'fixed_range': None, 'visited': False},\n            'Mykonos': {'duration': 4, 'fixed_range': (1, 4), 'visited': False},\n            'Frankfurt': {'duration': 3, 'fixed_range': (15, 17), 'visited': False},\n        }\n        self.direct_flights = [\n            ('Dublin', 'Brussels'), ('Mykonos', 'Naples'), ('Venice', 'Istanbul'), \n            ('Frankfurt', 'Krakow'), ('Naples', 'Dublin'), ('Krakow', 'Brussels'), \n            ('Naples', 'Istanbul'), ('Naples', 'Brussels'), ('Istanbul', 'Frankfurt'), \n            ('Brussels', 'Frankfurt'), ('Istanbul', 'Krakow'), ('Istanbul', 'Brussels'), \n            ('Venice', 'Frankfurt'), ('Naples', 'Frankfurt'), ('Dublin', 'Krakow'), \n            ('Venice', 'Brussels'), ('Naples', 'Venice'), ('Istanbul', 'Dublin'), \n            ('Venice', 'Dublin'), ('Dublin', 'Frankfurt')\n        ]\n        self.itinerary = []\n        self.current_day = 1\n\n    def plan_trip(self):\n        # Plan fixed ranges first\n        for city, info in self.cities.items():\n            if info['fixed_range']:\n                self.plan_fixed_range(city, info['fixed_range'], info['duration'])\n\n        # Plan remaining cities\n        while any(not info['visited'] for info in self.cities.values()):\n            for city, info in self.cities.items():\n                if not info['visited']:\n                    self.plan_city(city, info['duration'])\n                    break\n\n    def plan_fixed_range(self, city, day_range, duration):\n        start_day, end_day = day_range\n        if start_day > self.current_day:\n            self.plan_gap(start_day - self.current_day)\n        self.plan_city(city, duration)\n        self.current_day += duration\n\n    def plan_city(self, city, duration):\n        self.cities[city]['visited'] = True\n        self.itinerary.append({'day_range': f'Day {self.current_day}-{self.current_day + duration - 1}', 'place': city})\n        self.current_day += duration\n\n    def plan_gap(self, days):\n        self.itinerary.append({'flying': f'Day {self.current_day}-{self.current_day}', 'from': 'None', 'to': 'None'})\n        self.current_day += days\n\n    def plan_transition(self, from_city, to_city):\n        self.itinerary.append({'flying': f'Day {self.current_day}-{self.current_day}', 'from': from_city, 'to': to_city})\n\n    def print_itinerary(self):\n        print(json.dumps(self.itinerary, indent=4))\n\n\nif __name__ == '__main__':\n    planner = TripPlanner()\n    planner.plan_trip()\n    planner.print_itinerary()\n```",
+            "count": "trip_planning_example_1167"
+        }
+    ]
+}

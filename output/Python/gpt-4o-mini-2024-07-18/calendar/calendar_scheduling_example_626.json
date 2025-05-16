@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the meeting duration in hours\nmeeting_duration = timedelta(hours=1)\n\n# Define the work hours and days\nwork_hours_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_hours_end = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Define participant schedules\npatricia_schedule = {\n    \"Monday\": [\n        (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n        (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n        (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n        (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\")),\n        (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))\n    ],\n    \"Tuesday\": [\n        (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n        (datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n        (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n        (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))\n    ]\n}\n\njesse_schedule = {\n    \"Monday\": [\n        (work_hours_start, work_hours_end)  # Blocked all day\n    ],\n    \"Tuesday\": [\n        (datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n        (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n        (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")),\n        (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n        (datetime.strptime(\"15:30\", \"%H:%M\"), work_hours_end)  # Blocked until the end of day\n    ]\n}\n\ndef find_open_time(schedules, work_start, work_end, duration):\n    for day in schedules.keys():\n        busy_times = schedules[day]\n        available_start = work_start\n\n        for busy_start, busy_end in busy_times:\n            if available_start + duration <= busy_start:\n                return day, available_start, available_start + duration\n            available_start = max(available_start, busy_end)\n\n        if available_start + duration <= work_end:\n            return day, available_start, available_start + duration\n\n    return None, None, None\n\n# Find available time slots\nday, start_time, end_time = find_open_time(patricia_schedule['Monday'], work_hours_start, work_hours_end, meeting_duration)\nif day is None:\n    day, start_time, end_time = find_open_time(patricia_schedule['Tuesday'], work_hours_start, work_hours_end, meeting_duration)\n\n# Output results\nif day:\n    print(f\"{start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')} - {day}\")\n```",
+            "count": "calendar_scheduling_example_626"
+        }
+    ]
+}

@@ -1,0 +1,122 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "11:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Elizabeth",
+                        "start_time": "12:11",
+                        "end_time": "13:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Anthony",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "14:56",
+                        "end_time": "16:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Brian",
+                        "start_time": "16:44",
+                        "end_time": "18:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Ashley",
+                        "start_time": "18:32",
+                        "end_time": "20:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kimberly",
+                        "start_time": "20:07",
+                        "end_time": "20:52"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "11:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Elizabeth",
+                        "start_time": "12:11",
+                        "end_time": "13:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Brian",
+                        "start_time": "13:34",
+                        "end_time": "15:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Anthony",
+                        "start_time": "15:12",
+                        "end_time": "15:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Ashley",
+                        "start_time": "15:53",
+                        "end_time": "17:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Deborah",
+                        "start_time": "17:42",
+                        "end_time": "18:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kimberly",
+                        "start_time": "18:57",
+                        "end_time": "19:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "20:00",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary\ntravel_times = {\n    'Bayview': {\n        'North Beach': 22,\n        'Fisherman\\'s Wharf': 25,\n        'Haight-Ashbury': 19,\n        'Nob Hill': 20,\n        'Golden Gate Park': 22,\n        'Union Square': 18,\n        'Alamo Square': 16,\n        'Presidio': 32,\n        'Chinatown': 19,\n        'Pacific Heights': 23\n    },\n    'North Beach': {\n        'Bayview': 25,\n        'Fisherman\\'s Wharf': 5,\n        'Haight-Ashbury': 18,\n        'Nob Hill': 7,\n        'Golden Gate Park': 22,\n        'Union Square': 7,\n        'Alamo Square': 16,\n        'Presidio': 17,\n        'Chinatown': 6,\n        'Pacific Heights': 8\n    },\n    'Fisherman\\'s Wharf': {\n        'Bayview': 26,\n        'North Beach': 6,\n        'Haight-Ashbury': 22,\n        'Nob Hill': 11,\n        'Golden Gate Park': 25,\n        'Union Square': 13,\n        'Alamo Square': 21,\n        'Presidio': 17,\n        'Chinatown': 12,\n        'Pacific Heights': 12\n    },\n    'Haight-Ashbury': {\n        'Bayview': 18,\n        'North Beach': 19,\n        'Fisherman\\'s Wharf': 23,\n        'Nob Hill': 15,\n        'Golden Gate Park': 7,\n        'Union Square': 19,\n        'Alamo Square': 5,\n        'Presidio': 15,\n        'Chinatown': 19,\n        'Pacific Heights': 12\n    },\n    'Nob Hill': {\n        'Bayview': 19,\n        'North Beach': 8,\n        'Fisherman\\'s Wharf': 10,\n        'Haight-Ashbury': 13,\n        'Golden Gate Park': 17,\n        'Union Square': 7,\n        'Alamo Square': 11,\n        'Presidio': 17,\n        'Chinatown': 6,\n        'Pacific Heights': 8\n    },\n    'Golden Gate Park': {\n        'Bayview': 23,\n        'North Beach': 23,\n        'Fisherman\\'s Wharf': 24,\n        'Haight-Ashbury': 7,\n        'Nob Hill': 20,\n        'Union Square': 22,\n        'Alamo Square': 9,\n        'Presidio': 11,\n        'Chinatown': 23,\n        'Pacific Heights': 16\n    },\n    'Union Square': {\n        'Bayview': 15,\n        'North Beach': 10,\n        'Fisherman\\'s Wharf': 15,\n        'Haight-Ashbury': 18,\n        'Nob Hill': 9,\n        'Golden Gate Park': 22,\n        'Alamo Square': 15,\n        'Presidio': 24,\n        'Chinatown': 7,\n        'Pacific Heights': 15\n    },\n    'Alamo Square': {\n        'Bayview': 16,\n        'North Beach': 15,\n        'Fisherman\\'s Wharf': 19,\n        'Haight-Ashbury': 5,\n        'Nob Hill': 11,\n        'Golden Gate Park': 9,\n        'Union Square': 14,\n        'Presidio': 17,\n        'Chinatown': 15,\n        'Pacific Heights': 10\n    },\n    'Presidio': {\n        'Bayview': 31,\n        'North Beach': 18,\n        'Fisherman\\'s Wharf': 19,\n        'Haight-Ashbury': 15,\n        'Nob Hill': 18,\n        'Golden Gate Park': 12,\n        'Union Square': 22,\n        'Alamo Square': 19,\n        'Chinatown': 21,\n        'Pacific Heights': 11\n    },\n    'Chinatown': {\n        'Bayview': 20,\n        'North Beach': 3,\n        'Fisherman\\'s Wharf': 8,\n        'Haight-Ashbury': 19,\n        'Nob Hill': 9,\n        'Golden Gate Park': 23,\n        'Union Square': 7,\n        'Alamo Square': 17,\n        'Presidio': 19,\n        'Pacific Heights': 10\n    },\n    'Pacific Heights': {\n        'Bayview': 22,\n        'North Beach': 9,\n        'Fisherman\\'s Wharf': 13,\n        'Haight-Ashbury': 11,\n        'Nob Hill': 8,\n        'Golden Gate Park': 15,\n        'Union Square': 12,\n        'Alamo Square': 10,\n        'Presidio': 11,\n        'Chinatown': 11\n    }\n}\n\n# Friend data\nfriends = [\n    {'name': 'Brian', 'location': 'North Beach', 'start': 13.0, 'end': 19.0, 'duration': 1.5},\n    {'name': 'Richard', 'location': 'Fisherman\\'s Wharf', 'start': 11.0, 'end': 12.75, 'duration': 1.0},\n    {'name': 'Ashley', 'location': 'Haight-Ashbury', 'start': 15.0, 'end': 20.5, 'duration': 1.5},\n    {'name': 'Elizabeth', 'location': 'Nob Hill', 'start': 11.75, 'end': 18.5, 'duration': 1.25},\n    {'name': 'Jessica', 'location': 'Golden Gate Park', 'start': 20.0, 'end': 21.75, 'duration': 1.75},\n    {'name': 'Deborah', 'location': 'Union Square', 'start': 17.5, 'end': 22.0, 'duration': 1.0},\n    {'name': 'Kimberly', 'location': 'Alamo Square', 'start': 17.5, 'end': 21.25, 'duration': 0.75},\n    {'name': 'Matthew', 'location': 'Presidio', 'start': 8.25, 'end': 9.0, 'duration': 0.25},\n    {'name': 'Kenneth', 'location': 'Chinatown', 'start': 13.75, 'end': 19.5, 'duration': 1.75},\n    {'name': 'Anthony', 'location': 'Pacific Heights', 'start': 14.25, 'end': 16.0, 'duration': 0.5}\n]\n\ndef time_to_float(time_str):\n    hours, minutes = map(float, time_str.split(':'))\n    return hours + minutes / 60\n\ndef float_to_time(time_float):\n    hours = int(time_float)\n    minutes = int((time_float - hours) * 60)\n    return f\"{hours}:{minutes:02d}\"\n\ndef calculate_schedule():\n    current_location = 'Bayview'\n    current_time = 9.0\n    itinerary = []\n    \n    # First meeting with Matthew at Presidio\n    travel_time = travel_times[current_location]['Presidio'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[7]['end'] - friends[7]['duration']:\n        start_time = max(arrival_time, friends[7]['start'])\n        end_time = start_time + friends[7]['duration']\n        if end_time <= friends[7]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Presidio',\n                'person': 'Matthew',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Presidio'\n            current_time = end_time\n    \n    # Next meeting with Richard at Fisherman's Wharf\n    travel_time = travel_times[current_location]['Fisherman\\'s Wharf'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[1]['end'] - friends[1]['duration']:\n        start_time = max(arrival_time, friends[1]['start'])\n        end_time = start_time + friends[1]['duration']\n        if end_time <= friends[1]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Fisherman\\'s Wharf',\n                'person': 'Richard',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Fisherman\\'s Wharf'\n            current_time = end_time\n    \n    # Next meeting with Elizabeth at Nob Hill\n    travel_time = travel_times[current_location]['Nob Hill'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[3]['end'] - friends[3]['duration']:\n        start_time = max(arrival_time, friends[3]['start'])\n        end_time = start_time + friends[3]['duration']\n        if end_time <= friends[3]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Nob Hill',\n                'person': 'Elizabeth',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Nob Hill'\n            current_time = end_time\n    \n    # Next meeting with Anthony at Pacific Heights\n    travel_time = travel_times[current_location]['Pacific Heights'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[9]['end'] - friends[9]['duration']:\n        start_time = max(arrival_time, friends[9]['start'])\n        end_time = start_time + friends[9]['duration']\n        if end_time <= friends[9]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Pacific Heights',\n                'person': 'Anthony',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Pacific Heights'\n            current_time = end_time\n    \n    # Next meeting with Kenneth at Chinatown\n    travel_time = travel_times[current_location]['Chinatown'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[8]['end'] - friends[8]['duration']:\n        start_time = max(arrival_time, friends[8]['start'])\n        end_time = start_time + friends[8]['duration']\n        if end_time <= friends[8]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Chinatown',\n                'person': 'Kenneth',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Chinatown'\n            current_time = end_time\n    \n    # Next meeting with Brian at North Beach\n    travel_time = travel_times[current_location]['North Beach'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[0]['end'] - friends[0]['duration']:\n        start_time = max(arrival_time, friends[0]['start'])\n        end_time = start_time + friends[0]['duration']\n        if end_time <= friends[0]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'North Beach',\n                'person': 'Brian',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'North Beach'\n            current_time = end_time\n    \n    # Next meeting with Ashley at Haight-Ashbury\n    travel_time = travel_times[current_location]['Haight-Ashbury'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[2]['end'] - friends[2]['duration']:\n        start_time = max(arrival_time, friends[2]['start'])\n        end_time = start_time + friends[2]['duration']\n        if end_time <= friends[2]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Haight-Ashbury',\n                'person': 'Ashley',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Haight-Ashbury'\n            current_time = end_time\n    \n    # Next meeting with Kimberly at Alamo Square\n    travel_time = travel_times[current_location]['Alamo Square'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[6]['end'] - friends[6]['duration']:\n        start_time = max(arrival_time, friends[6]['start'])\n        end_time = start_time + friends[6]['duration']\n        if end_time <= friends[6]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Alamo Square',\n                'person': 'Kimberly',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Alamo Square'\n            current_time = end_time\n    \n    # Next meeting with Deborah at Union Square\n    travel_time = travel_times[current_location]['Union Square'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[5]['end'] - friends[5]['duration']:\n        start_time = max(arrival_time, friends[5]['start'])\n        end_time = start_time + friends[5]['duration']\n        if end_time <= friends[5]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Union Square',\n                'person': 'Deborah',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n            current_location = 'Union Square'\n            current_time = end_time\n    \n    # Final meeting with Jessica at Golden Gate Park\n    travel_time = travel_times[current_location]['Golden Gate Park'] / 60\n    arrival_time = current_time + travel_time\n    if arrival_time <= friends[4]['end'] - friends[4]['duration']:\n        start_time = max(arrival_time, friends[4]['start'])\n        end_time = start_time + friends[4]['duration']\n        if end_time <= friends[4]['end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': 'Golden Gate Park',\n                'person': 'Jessica',\n                'start_time': float_to_time(start_time),\n                'end_time': float_to_time(end_time)\n            })\n    \n    return itinerary\n\ndef main():\n    itinerary = calculate_schedule()\n    result = {'itinerary': itinerary}\n    print(json.dumps(result, indent=2))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_952"
+        }
+    ]
+}

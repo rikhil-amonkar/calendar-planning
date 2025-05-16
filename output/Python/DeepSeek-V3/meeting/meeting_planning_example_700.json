@@ -1,0 +1,80 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "11:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "17:00",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Laura",
+                        "start_time": "19:16",
+                        "end_time": "20:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "20:42",
+                        "end_time": "20:57"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "11:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Mary",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "18:26",
+                        "end_time": "19:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    'Presidio': {\n        'Pacific Heights': 11,\n        'Golden Gate Park': 12,\n        'Fisherman\\'s Wharf': 19,\n        'Marina District': 11,\n        'Alamo Square': 19,\n        'Sunset District': 15,\n        'Nob Hill': 18,\n        'North Beach': 18\n    },\n    'Pacific Heights': {\n        'Presidio': 11,\n        'Golden Gate Park': 15,\n        'Fisherman\\'s Wharf': 13,\n        'Marina District': 6,\n        'Alamo Square': 10,\n        'Sunset District': 21,\n        'Nob Hill': 8,\n        'North Beach': 9\n    },\n    'Golden Gate Park': {\n        'Presidio': 11,\n        'Pacific Heights': 16,\n        'Fisherman\\'s Wharf': 24,\n        'Marina District': 16,\n        'Alamo Square': 9,\n        'Sunset District': 10,\n        'Nob Hill': 20,\n        'North Beach': 23\n    },\n    'Fisherman\\'s Wharf': {\n        'Presidio': 17,\n        'Pacific Heights': 12,\n        'Golden Gate Park': 25,\n        'Marina District': 9,\n        'Alamo Square': 21,\n        'Sunset District': 27,\n        'Nob Hill': 11,\n        'North Beach': 6\n    },\n    'Marina District': {\n        'Presidio': 10,\n        'Pacific Heights': 7,\n        'Golden Gate Park': 18,\n        'Fisherman\\'s Wharf': 10,\n        'Alamo Square': 15,\n        'Sunset District': 19,\n        'Nob Hill': 12,\n        'North Beach': 11\n    },\n    'Alamo Square': {\n        'Presidio': 17,\n        'Pacific Heights': 10,\n        'Golden Gate Park': 9,\n        'Fisherman\\'s Wharf': 19,\n        'Marina District': 15,\n        'Sunset District': 16,\n        'Nob Hill': 11,\n        'North Beach': 15\n    },\n    'Sunset District': {\n        'Presidio': 16,\n        'Pacific Heights': 21,\n        'Golden Gate Park': 11,\n        'Fisherman\\'s Wharf': 29,\n        'Marina District': 21,\n        'Alamo Square': 17,\n        'Nob Hill': 27,\n        'North Beach': 28\n    },\n    'Nob Hill': {\n        'Presidio': 17,\n        'Pacific Heights': 8,\n        'Golden Gate Park': 17,\n        'Fisherman\\'s Wharf': 10,\n        'Marina District': 11,\n        'Alamo Square': 11,\n        'Sunset District': 24,\n        'North Beach': 8\n    },\n    'North Beach': {\n        'Presidio': 17,\n        'Pacific Heights': 8,\n        'Golden Gate Park': 22,\n        'Fisherman\\'s Wharf': 5,\n        'Marina District': 9,\n        'Alamo Square': 16,\n        'Sunset District': 27,\n        'Nob Hill': 7\n    }\n}\n\n# Friend constraints\nfriends = {\n    'Kevin': {\n        'location': 'Pacific Heights',\n        'available_start': '7:15',\n        'available_end': '8:45',\n        'min_duration': 90,\n        'met': False\n    },\n    'Michelle': {\n        'location': 'Golden Gate Park',\n        'available_start': '20:00',\n        'available_end': '21:00',\n        'min_duration': 15,\n        'met': False\n    },\n    'Emily': {\n        'location': 'Fisherman\\'s Wharf',\n        'available_start': '16:15',\n        'available_end': '19:00',\n        'min_duration': 30,\n        'met': False\n    },\n    'Mark': {\n        'location': 'Marina District',\n        'available_start': '18:15',\n        'available_end': '19:45',\n        'min_duration': 75,\n        'met': False\n    },\n    'Barbara': {\n        'location': 'Alamo Square',\n        'available_start': '17:00',\n        'available_end': '19:00',\n        'min_duration': 120,\n        'met': False\n    },\n    'Laura': {\n        'location': 'Sunset District',\n        'available_start': '19:00',\n        'available_end': '21:15',\n        'min_duration': 75,\n        'met': False\n    },\n    'Mary': {\n        'location': 'Nob Hill',\n        'available_start': '17:30',\n        'available_end': '19:00',\n        'min_duration': 45,\n        'met': False\n    },\n    'Helen': {\n        'location': 'North Beach',\n        'available_start': '11:00',\n        'available_end': '12:15',\n        'min_duration': 45,\n        'met': False\n    }\n}\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef can_meet(friend, current_time, current_location):\n    loc = friend['location']\n    travel_time = travel_times[current_location][loc]\n    arrival_time = current_time + travel_time\n    \n    available_start = time_to_minutes(friend['available_start'])\n    available_end = time_to_minutes(friend['available_end'])\n    min_duration = friend['min_duration']\n    \n    if arrival_time > available_end:\n        return False\n    \n    start_time = max(arrival_time, available_start)\n    end_time = min(start_time + min_duration, available_end)\n    \n    if end_time - start_time >= min_duration:\n        return (start_time, end_time)\n    return False\n\ndef find_best_schedule():\n    current_time = time_to_minutes('9:00')\n    current_location = 'Presidio'\n    itinerary = []\n    remaining_friends = {name: data for name, data in friends.items() if not data['met']}\n    \n    # Try to meet Helen first (only available in morning)\n    if 'Helen' in remaining_friends:\n        helen = remaining_friends['Helen']\n        meeting = can_meet(helen, current_time, current_location)\n        if meeting:\n            start, end = meeting\n            itinerary.append({\n                'action': 'meet',\n                'location': helen['location'],\n                'person': 'Helen',\n                'start_time': minutes_to_time(start),\n                'end_time': minutes_to_time(end)\n            })\n            current_time = end\n            current_location = helen['location']\n            del remaining_friends['Helen']\n    \n    # Try to meet Barbara first in the afternoon (longest duration)\n    if 'Barbara' in remaining_friends:\n        barbara = remaining_friends['Barbara']\n        meeting = can_meet(barbara, current_time, current_location)\n        if meeting:\n            start, end = meeting\n            itinerary.append({\n                'action': 'meet',\n                'location': barbara['location'],\n                'person': 'Barbara',\n                'start_time': minutes_to_time(start),\n                'end_time': minutes_to_time(end)\n            })\n            current_time = end\n            current_location = barbara['location']\n            del remaining_friends['Barbara']\n    \n    # Try to meet Mary (short duration, same time as Barbara)\n    if 'Mary' in remaining_friends:\n        mary = remaining_friends['Mary']\n        meeting = can_meet(mary, current_time, current_location)\n        if meeting:\n            start, end = meeting\n            itinerary.append({\n                'action': 'meet',\n                'location': mary['location'],\n                'person': 'Mary',\n                'start_time': minutes_to_time(start),\n                'end_time': minutes_to_time(end)\n            })\n            current_time = end\n            current_location = mary['location']\n            del remaining_friends['Mary']\n    \n    # Try to meet Emily\n    if 'Emily' in remaining_friends:\n        emily = remaining_friends['Emily']\n        meeting = can_meet(emily, current_time, current_location)\n        if meeting:\n            start, end = meeting\n            itinerary.append({\n                'action': 'meet',\n                'location': emily['location'],\n                'person': 'Emily',\n                'start_time': minutes_to_time(start),\n                'end_time': minutes_to_time(end)\n            })\n            current_time = end\n            current_location = emily['location']\n            del remaining_friends['Emily']\n    \n    # Try to meet Mark\n    if 'Mark' in remaining_friends:\n        mark = remaining_friends['Mark']\n        meeting = can_meet(mark, current_time, current_location)\n        if meeting:\n            start, end = meeting\n            itinerary.append({\n                'action': 'meet',\n                'location': mark['location'],\n                'person': 'Mark',\n                'start_time': minutes_to_time(start),\n                'end_time': minutes_to_time(end)\n            })\n            current_time = end\n            current_location = mark['location']\n            del remaining_friends['Mark']\n    \n    # Try to meet Laura\n    if 'Laura' in remaining_friends:\n        laura = remaining_friends['Laura']\n        meeting = can_meet(laura, current_time, current_location)\n        if meeting:\n            start, end = meeting\n            itinerary.append({\n                'action': 'meet',\n                'location': laura['location'],\n                'person': 'Laura',\n                'start_time': minutes_to_time(start),\n                'end_time': minutes_to_time(end)\n            })\n            current_time = end\n            current_location = laura['location']\n            del remaining_friends['Laura']\n    \n    # Try to meet Michelle last\n    if 'Michelle' in remaining_friends:\n        michelle = remaining_friends['Michelle']\n        meeting = can_meet(michelle, current_time, current_location)\n        if meeting:\n            start, end = meeting\n            itinerary.append({\n                'action': 'meet',\n                'location': michelle['location'],\n                'person': 'Michelle',\n                'start_time': minutes_to_time(start),\n                'end_time': minutes_to_time(end)\n            })\n            current_time = end\n            current_location = michelle['location']\n            del remaining_friends['Michelle']\n    \n    return {'itinerary': itinerary}\n\n# Calculate and output the schedule\nschedule = find_best_schedule()\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_700"
+        }
+    ]
+}

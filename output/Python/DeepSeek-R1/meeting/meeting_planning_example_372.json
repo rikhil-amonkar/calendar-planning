@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:24",
+                        "end_time": "9:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:0",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:0"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:24",
+                        "end_time": "9:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\ndef main():\n    travel_time = {\n        'Sunset District': {'Alamo Square':17, 'Russian Hill':24, 'Golden Gate Park':11, 'Mission District':24},\n        'Alamo Square': {'Sunset District':16, 'Russian Hill':13, 'Golden Gate Park':9, 'Mission District':10},\n        'Russian Hill': {'Sunset District':23, 'Alamo Square':15, 'Golden Gate Park':21, 'Mission District':16},\n        'Golden Gate Park': {'Sunset District':10, 'Alamo Square':10, 'Russian Hill':19, 'Mission District':17},\n        'Mission District': {'Sunset District':24, 'Alamo Square':11, 'Russian Hill':15, 'Golden Gate Park':17}\n    }\n\n    friends = [\n        {'name':'Charles', 'location':'Alamo Square', 'start_time':18*60, 'end_time':20*60+45, 'duration':90},\n        {'name':'Margaret', 'location':'Russian Hill', 'start_time':9*60, 'end_time':16*60, 'duration':30},\n        {'name':'Daniel', 'location':'Golden Gate Park', 'start_time':8*60, 'end_time':13*60+30, 'duration':15},\n        {'name':'Stephanie', 'location':'Mission District', 'start_time':20*60+30, 'end_time':22*60, 'duration':90}\n    ]\n\n    best_count = 0\n    best_itinerary = []\n    current_location = 'Sunset District'\n    start_time = 9 * 60  # 9:00 AM\n\n    for perm in itertools.permutations(friends):\n        itinerary = []\n        ct = start_time\n        cl = current_location\n        valid = True\n        temp_count = 0\n\n        for f in perm:\n            try:\n                tt = travel_time[cl][f['location']]\n            except KeyError:\n                valid = False\n                break\n            arrival = ct + tt\n            earliest_start = max(arrival, f['start_time'])\n            latest_start = f['end_time'] - f['duration']\n            if earliest_start > latest_start:\n                valid = False\n                break\n            meeting_end = earliest_start + f['duration']\n            itinerary.append({\n                'friend': f,\n                'start': earliest_start,\n                'end': meeting_end,\n                'location': f['location']\n            })\n            ct = meeting_end\n            cl = f['location']\n            temp_count += 1\n\n        if valid and temp_count > best_count:\n            best_count = temp_count\n            best_itinerary = itinerary\n        elif valid and temp_count == best_count and best_itinerary:\n            if ct < best_itinerary[-1]['end']:\n                best_itinerary = itinerary\n\n    formatted = []\n    for event in best_itinerary:\n        sh = event['start'] // 60\n        sm = event['start'] % 60\n        eh = event['end'] // 60\n        em = event['end'] % 60\n        start_str = f\"{sh}:{sm:02d}\".replace(\":00\", \":0\").replace(\":0\", \":\") if sm ==0 else f\"{sh}:{sm:02d}\"\n        end_str = f\"{eh}:{em:02d}\".replace(\":00\", \":0\").replace(\":0\", \":\") if em ==0 else f\"{eh}:{em:02d}\"\n        formatted.append({\n            \"action\": \"meet\",\n            \"location\": event['friend']['location'],\n            \"person\": event['friend']['name'],\n            \"start_time\": f\"{sh}:{sm:02d}\".replace(':00', ':0'),\n            \"end_time\": f\"{eh}:{em:02d}\".replace(':00', ':0')\n        })\n\n    print(json.dumps({\"itinerary\": formatted}, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_372"
+        }
+    ]
+}

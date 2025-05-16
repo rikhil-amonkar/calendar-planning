@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, day, work_hours_start, work_hours_end, duration_minutes):\n    # Convert all time slots to minutes since start of the day for easier calculation\n    start_work = work_hours_start[0] * 60 + work_hours_start[1]\n    end_work = work_hours_end[0] * 60 + work_hours_end[1]\n    \n    # Initialize the list of busy intervals for all participants\n    busy_intervals = []\n    \n    for schedule in participants_schedules:\n        for block in schedule:\n            start_block = block[0][0] * 60 + block[0][1]\n            end_block = block[1][0] * 60 + block[1][1]\n            busy_intervals.append((start_block, end_block))\n    \n    # Sort all busy intervals by start time\n    busy_intervals.sort()\n    \n    # Find the earliest available slot\n    current_time = start_work\n    available_slot_end = current_time + duration_minutes\n    \n    for start, end in busy_intervals:\n        if start > current_time:\n            if available_slot_end <= start:\n                # Found a suitable slot\n                break\n            else:\n                current_time = end\n                available_slot_end = current_time + duration_minutes\n        else:\n            if current_time < end:\n                current_time = end\n                available_slot_end = current_time + duration_minutes\n    \n    # Check if the slot is within work hours\n    if available_slot_end <= end_work:\n        # Convert back to HH:MM format\n        start_hh = current_time // 60\n        start_mm = current_time % 60\n        end_hh = available_slot_end // 60\n        end_mm = available_slot_end % 60\n        return f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\"\n    else:\n        return None\n\n# Define participants' schedules in HH:MM format\ndiane_schedule = [\n    [(9, 30), (10, 0)],\n    [(14, 30), (15, 0)]\n]\njack_schedule = [\n    [(13, 30), (14, 0)],\n    [(14, 30), (15, 0)]\n]\neugene_schedule = [\n    [(9, 0), (10, 0)],\n    [(10, 30), (11, 30)],\n    [(12, 0), (14, 30)],\n    [(15, 0), (16, 30)]\n]\npatricia_schedule = [\n    [(9, 30), (10, 30)],\n    [(11, 0), (12, 0)],\n    [(12, 30), (14, 0)],\n    [(15, 0), (16, 30)]\n]\n\nparticipants_schedules = [diane_schedule, jack_schedule, eugene_schedule, patricia_schedule]\nday = \"Monday\"\nwork_hours_start = (9, 0)\nwork_hours_end = (17, 0)\nduration_minutes = 30\n\n# Find the meeting time\nmeeting_time = find_meeting_time(participants_schedules, day, work_hours_start, work_hours_end, duration_minutes)\n\n# Output the result\nprint(f\"{meeting_time}:{day}\")\n```",
+            "count": "calendar_scheduling_example_103"
+        }
+    ]
+}

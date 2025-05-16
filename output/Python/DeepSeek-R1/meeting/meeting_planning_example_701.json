@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Daniel",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "12:0",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kevin",
+                        "start_time": "13:41",
+                        "end_time": "14:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Betty",
+                        "start_time": "14:31",
+                        "end_time": "15:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Steven",
+                        "start_time": "16:30",
+                        "end_time": "18:0"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Lisa",
+                        "start_time": "19:15",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Daniel",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kevin",
+                        "start_time": "13:41",
+                        "end_time": "14:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Betty",
+                        "start_time": "14:31",
+                        "end_time": "15:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Steven",
+                        "start_time": "16:30",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Lisa",
+                        "start_time": "19:15",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef format_time(mins):\n    hours = mins // 60\n    minutes = mins % 60\n    return f\"{hours}:{minutes:02d}\"\n\ntravel_times = {\n    'Mission District': {'The Castro':7, 'Nob Hill':12, 'Presidio':25, 'Marina District':19, 'Pacific Heights':16, 'Golden Gate Park':17, 'Chinatown':16, 'Richmond District':20},\n    'The Castro': {'Mission District':7, 'Nob Hill':16, 'Presidio':20, 'Marina District':21, 'Pacific Heights':16, 'Golden Gate Park':11, 'Chinatown':22, 'Richmond District':16},\n    'Nob Hill': {'Mission District':13, 'The Castro':17, 'Presidio':17, 'Marina District':11, 'Pacific Heights':8, 'Golden Gate Park':17, 'Chinatown':6, 'Richmond District':14},\n    'Presidio': {'Mission District':26, 'The Castro':21, 'Nob Hill':18, 'Marina District':11, 'Pacific Heights':11, 'Golden Gate Park':12, 'Chinatown':21, 'Richmond District':7},\n    'Marina District': {'Mission District':20, 'The Castro':22, 'Nob Hill':12, 'Presidio':10, 'Pacific Heights':7, 'Golden Gate Park':18, 'Chinatown':15, 'Richmond District':11},\n    'Pacific Heights': {'Mission District':15, 'The Castro':16, 'Nob Hill':8, 'Presidio':11, 'Marina District':6, 'Golden Gate Park':15, 'Chinatown':11, 'Richmond District':12},\n    'Golden Gate Park': {'Mission District':17, 'The Castro':13, 'Nob Hill':20, 'Presidio':11, 'Marina District':16, 'Pacific Heights':16, 'Chinatown':23, 'Richmond District':7},\n    'Chinatown': {'Mission District':17, 'The Castro':22, 'Nob Hill':9, 'Presidio':19, 'Marina District':12, 'Pacific Heights':10, 'Golden Gate Park':23, 'Richmond District':20},\n    'Richmond District': {'Mission District':20, 'The Castro':16, 'Nob Hill':17, 'Presidio':7, 'Marina District':9, 'Pacific Heights':10, 'Golden Gate Park':9, 'Chinatown':20}\n}\n\nfriends = [\n    {'name': 'Lisa', 'location': 'The Castro', 'start': 1155, 'end': 1290, 'duration': 120},\n    {'name': 'Daniel', 'location': 'Nob Hill', 'start': 495, 'end': 660, 'duration': 15},\n    {'name': 'Elizabeth', 'location': 'Presidio', 'start': 1290, 'end': 1335, 'duration': 45},\n    {'name': 'Steven', 'location': 'Marina District', 'start': 990, 'end': 1245, 'duration': 90},\n    {'name': 'Timothy', 'location': 'Pacific Heights', 'start': 720, 'end': 1080, 'duration': 90},\n    {'name': 'Kevin', 'location': 'Chinatown', 'start': 720, 'end': 1140, 'duration': 30},\n    {'name': 'Betty', 'location': 'Richmond District', 'start': 795, 'end': 945, 'duration': 30},\n    {'name': 'Ashley', 'location': 'Golden Gate Park', 'start': 1245, 'end': 1305, 'duration': 60}\n]\n\nbest_count = 0\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Mission District'\n    current_time = 540\n    itinerary = []\n    scheduled = set()\n    for friend in perm:\n        if friend['name'] in scheduled:\n            continue\n        to_loc = friend['location']\n        travel_time = travel_times[current_location].get(to_loc, float('inf'))\n        arrival = current_time + travel_time\n        start = max(arrival, friend['start'])\n        end = start + friend['duration']\n        if end > friend['end']:\n            continue\n        itinerary.append({\n            'action': 'meet',\n            'location': to_loc,\n            'person': friend['name'],\n            'start_time': format_time(start).replace(':0', ':') if format_time(start).endswith(':00') else format_time(start).lstrip('0'),\n            'end_time': format_time(end).replace(':0', ':') if format_time(end).endswith(':00') else format_time(end).lstrip('0')\n        })\n        scheduled.add(friend['name'])\n        current_time = end\n        current_location = to_loc\n    if len(scheduled) > best_count:\n        best_count = len(scheduled)\n        best_itinerary = itinerary\n\nprint(json.dumps({'itinerary': best_itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_701"
+        }
+    ]
+}

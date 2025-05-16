@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time():\n    # Define participants' availability\n    cheryl_availability = {\n        \"Monday\": [(9, 0), (17, 0)],\n        \"Tuesday\": [(9, 0), (17, 0)],\n        \"Wednesday\": [(9, 0), (17, 0)],\n        \"Thursday\": [(9, 0), (17, 0)],\n    }\n    \n    james_availability = {\n        \"Monday\": [(9, 30), (10, 30), (11, 0), (12, 30), (13, 0), (14, 30), (15, 30), (16, 30), (17, 0)],\n        \"Tuesday\": [(9, 0), (11, 0), (11, 30), (12, 30), (15, 30), (16, 0), (17, 0)],\n        \"Wednesday\": [(10, 0), (11, 0), (12, 0), (13, 0), (16, 0), (16, 30), (17, 0)],\n        \"Thursday\": [(9, 30), (11, 30), (12, 0), (12, 30), (13, 0), (13, 30), (14, 0), (14, 30), (16, 30), (17, 0)],\n    }\n\n    meeting_duration = timedelta(minutes=30)\n\n    for day in [\"Monday\", \"Tuesday\", \"Thursday\"]:  # Excluding Wednesday\n        available_slots = []\n        \n        # Cheryl's available time\n        cheryl_start, cheryl_end = cheryl_availability[day][0]\n        cheryl_start_time = datetime.now().replace(hour=cheryl_start, minute=cheryl_end, second=0)\n\n        # Generate free slots for James on that day\n        james_intervals = []\n        last_end_time = cheryl_start_time\n\n        for start_hour, start_minute in james_availability[day]:\n            current_start_time = datetime.now().replace(hour=start_hour, minute=start_minute, second=0)\n            if current_start_time >= last_end_time + meeting_duration:\n                available_slots.append((last_end_time, current_start_time))\n            last_end_time = current_start_time\n\n        # End of day (Cheryl's available time)\n        end_of_day = datetime.now().replace(hour=17, minute=0, second=0)\n        if end_of_day >= last_end_time + meeting_duration:\n            available_slots.append((last_end_time, end_of_day))\n\n        # Look for a suitable slot of at least 30 mins for both\n        for start, end in available_slots:\n            if end - start >= meeting_duration:\n                proposed_start_time = start\n                proposed_end_time = proposed_start_time + meeting_duration\n                return f\"{proposed_start_time.strftime('%H:%M')}:{proposed_end_time.strftime('%H:%M')} {day}\"\n\n# Call the function to find a meeting time\nprint(find_meeting_time())\n```",
+            "count": "calendar_scheduling_example_826"
+        }
+    ]
+}

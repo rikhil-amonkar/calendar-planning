@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kevin",
+                        "start_time": "9:17",
+                        "end_time": "10:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Kimberly",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Thomas",
+                        "start_time": "19:38",
+                        "end_time": "20:23"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kevin",
+                        "start_time": "9:17",
+                        "end_time": "10:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Kimberly",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Thomas",
+                        "start_time": "19:38",
+                        "end_time": "20:23"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\ndef time_to_min(timestr):\n    hours, mins = map(int, timestr.split(':'))\n    return hours * 60 + mins\n\nfriends = [\n    {\n        'name': 'Kevin',\n        'location': 'Alamo Square',\n        'start': time_to_min('8:15'),\n        'end': time_to_min('21:30'),\n        'duration': 75\n    },\n    {\n        'name': 'Kimberly',\n        'location': 'Russian Hill',\n        'start': time_to_min('8:45'),\n        'end': time_to_min('12:30'),\n        'duration': 30\n    },\n    {\n        'name': 'Joseph',\n        'location': 'Presidio',\n        'start': time_to_min('18:30'),\n        'end': time_to_min('19:15'),\n        'duration': 45\n    },\n    {\n        'name': 'Thomas',\n        'location': 'Financial District',\n        'start': time_to_min('19:00'),\n        'end': time_to_min('21:45'),\n        'duration': 45\n    }\n]\n\ntravel_time = {\n    'Sunset District': {'Alamo Square':17,'Russian Hill':24,'Presidio':16,'Financial District':30},\n    'Alamo Square': {'Sunset District':16,'Russian Hill':13,'Presidio':18,'Financial District':17},\n    'Russian Hill': {'Sunset District':23,'Alamo Square':15,'Presidio':14,'Financial District':11},\n    'Presidio': {'Sunset District':15,'Alamo Square':18,'Russian Hill':14,'Financial District':23},\n    'Financial District': {'Sunset District':31,'Alamo Square':17,'Russian Hill':10,'Presidio':22}\n}\n\nbest_itinerary = []\nmax_met = 0\nbest_end = float('inf')\n\nfor perm in itertools.permutations(friends):\n    current_loc = 'Sunset District'\n    current_time = 540\n    itinerary = []\n    valid = True\n    \n    for f in perm:\n        try:\n            tt = travel_time[current_loc][f['location']]\n        except KeyError:\n            valid = False\n            break\n        arrive = current_time + tt\n        earliest_start = max(arrive, f['start'])\n        latest_start = f['end'] - f['duration']\n        \n        if earliest_start > latest_start:\n            valid = False\n            break\n        \n        end_time = earliest_start + f['duration']\n        itinerary.append({\n            'friend': f,\n            'start': earliest_start,\n            'end': end_time\n        })\n        current_time = end_time\n        current_loc = f['location']\n    \n    if valid:\n        num = len(itinerary)\n        if num > max_met or (num == max_met and current_time < best_end):\n            max_met = num\n            best_itinerary = itinerary\n            best_end = current_time\n\ndef min_to_time(m):\n    return f\"{m//60}:{m%60:02d}\".replace(':0', ':') if m%60 ==0 else f\"{m//60}:{m%60:02d}\"\n\noutput = {\"itinerary\": []}\nfor item in best_itinerary:\n    f = item['friend']\n    output['itinerary'].append({\n        \"action\": \"meet\",\n        \"location\": f['location'],\n        \"person\": f['name'],\n        \"start_time\": min_to_time(item['start']),\n        \"end_time\": min_to_time(item['end'])\n    })\n\nprint(json.dumps(output, indent=2))",
+            "count": "meeting_planning_example_391"
+        }
+    ]
+}

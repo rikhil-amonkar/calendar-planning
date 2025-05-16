@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Carol",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Karen",
+                        "start_time": "12:45",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Rebecca",
+                        "start_time": "14:58",
+                        "end_time": "16:58"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Carol",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Karen",
+                        "start_time": "12:45",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Rebecca",
+                        "start_time": "14:58",
+                        "end_time": "16:58"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times in minutes\ntravel_times = {\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Bayview'): 15,\n    ('Union Square', 'Sunset District'): 26,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Bayview'): 15,\n    ('Mission District', 'Sunset District'): 24,\n    ('Bayview', 'Union Square'): 17,\n    ('Bayview', 'Mission District'): 13,\n    ('Bayview', 'Sunset District'): 23,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Mission District'): 24,\n    ('Sunset District', 'Bayview'): 22\n}\n\n# Friend constraints\nfriends = {\n    'Rebecca': {\n        'location': 'Mission District',\n        'available_start': (11, 30),\n        'available_end': (20, 15),\n        'min_duration': 120\n    },\n    'Karen': {\n        'location': 'Bayview',\n        'available_start': (12, 45),\n        'available_end': (15, 0),\n        'min_duration': 120\n    },\n    'Carol': {\n        'location': 'Sunset District',\n        'available_start': (10, 15),\n        'available_end': (11, 45),\n        'min_duration': 30\n    }\n}\n\ndef time_to_minutes(time_tuple):\n    return time_tuple[0] * 60 + time_tuple[1]\n\ndef minutes_to_time(minutes):\n    return (minutes // 60, minutes % 60)\n\ndef format_time(time_tuple):\n    return f\"{time_tuple[0]}:{time_tuple[1]:02d}\"\n\ndef get_travel_time(from_loc, to_loc):\n    return travel_times.get((from_loc, to_loc), float('inf'))\n\ndef is_schedule_valid(schedule):\n    current_location = 'Union Square'\n    current_time = time_to_minutes((9, 0))\n    \n    for friend in schedule:\n        friend_info = friends[friend]\n        location = friend_info['location']\n        travel_time = get_travel_time(current_location, location)\n        \n        arrival_time = current_time + travel_time\n        available_start = time_to_minutes(friend_info['available_start'])\n        available_end = time_to_minutes(friend_info['available_end'])\n        min_duration = friend_info['min_duration']\n        \n        if arrival_time > available_end:\n            return False\n        \n        start_time = max(arrival_time, available_start)\n        end_time = start_time + min_duration\n        \n        if end_time > available_end:\n            return False\n        \n        current_time = end_time\n        current_location = location\n    \n    return True\n\ndef calculate_total_meeting_time(schedule):\n    total = 0\n    for friend in schedule:\n        total += friends[friend]['min_duration']\n    return total\n\ndef generate_itinerary(schedule):\n    itinerary = []\n    current_location = 'Union Square'\n    current_time = time_to_minutes((9, 0))\n    \n    for friend in schedule:\n        friend_info = friends[friend]\n        location = friend_info['location']\n        travel_time = get_travel_time(current_location, location)\n        \n        arrival_time = current_time + travel_time\n        available_start = time_to_minutes(friend_info['available_start'])\n        available_end = time_to_minutes(friend_info['available_end'])\n        min_duration = friend_info['min_duration']\n        \n        start_time = max(arrival_time, available_start)\n        end_time = start_time + min_duration\n        \n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": location,\n            \"person\": friend,\n            \"start_time\": format_time(minutes_to_time(start_time)),\n            \"end_time\": format_time(minutes_to_time(end_time))\n        })\n        \n        current_time = end_time\n        current_location = location\n    \n    return itinerary\n\ndef find_optimal_schedule():\n    friend_names = list(friends.keys())\n    best_schedule = None\n    best_time = 0\n    \n    for perm in permutations(friend_names):\n        if is_schedule_valid(perm):\n            total_time = calculate_total_meeting_time(perm)\n            if total_time > best_time:\n                best_time = total_time\n                best_schedule = perm\n    \n    return best_schedule\n\noptimal_schedule = find_optimal_schedule()\nif optimal_schedule:\n    itinerary = generate_itinerary(optimal_schedule)\n    result = {\"itinerary\": itinerary}\nelse:\n    result = {\"itinerary\": []}\n\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_286"
+        }
+    ]
+}

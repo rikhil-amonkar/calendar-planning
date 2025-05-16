@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Rebecca",
+                        "start_time": "9:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "James",
+                        "start_time": "11:05",
+                        "end_time": "12:35"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Sarah",
+                        "start_time": "12:54",
+                        "end_time": "14:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Melissa",
+                        "start_time": "14:49",
+                        "end_time": "16:19"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Amanda",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Rebecca",
+                        "start_time": "9:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "James",
+                        "start_time": "11:05",
+                        "end_time": "12:35"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Sarah",
+                        "start_time": "12:54",
+                        "end_time": "14:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Melissa",
+                        "start_time": "14:49",
+                        "end_time": "16:19"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Amanda",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Input parameters\ntravel_times = {\n    'The Castro': {\n        'Bayview': 19,\n        'Pacific Heights': 16,\n        'Alamo Square': 8,\n        'Fisherman\\'s Wharf': 24,\n        'Golden Gate Park': 11\n    },\n    'Bayview': {\n        'The Castro': 20,\n        'Pacific Heights': 23,\n        'Alamo Square': 16,\n        'Fisherman\\'s Wharf': 25,\n        'Golden Gate Park': 22\n    },\n    'Pacific Heights': {\n        'The Castro': 16,\n        'Bayview': 22,\n        'Alamo Square': 10,\n        'Fisherman\\'s Wharf': 13,\n        'Golden Gate Park': 15\n    },\n    'Alamo Square': {\n        'The Castro': 8,\n        'Bayview': 16,\n        'Pacific Heights': 10,\n        'Fisherman\\'s Wharf': 19,\n        'Golden Gate Park': 9\n    },\n    'Fisherman\\'s Wharf': {\n        'The Castro': 26,\n        'Bayview': 26,\n        'Pacific Heights': 12,\n        'Alamo Square': 20,\n        'Golden Gate Park': 25\n    },\n    'Golden Gate Park': {\n        'The Castro': 13,\n        'Bayview': 23,\n        'Pacific Heights': 16,\n        'Alamo Square': 10,\n        'Fisherman\\'s Wharf': 24\n    }\n}\n\npeople = {\n    'Rebecca': {\n        'location': 'Bayview',\n        'start': time_to_minutes('9:00'),\n        'end': time_to_minutes('12:45'),\n        'duration': 90\n    },\n    'Amanda': {\n        'location': 'Pacific Heights',\n        'start': time_to_minutes('18:30'),\n        'end': time_to_minutes('21:45'),\n        'duration': 90\n    },\n    'James': {\n        'location': 'Alamo Square',\n        'start': time_to_minutes('9:45'),\n        'end': time_to_minutes('21:15'),\n        'duration': 90\n    },\n    'Sarah': {\n        'location': 'Fisherman\\'s Wharf',\n        'start': time_to_minutes('8:00'),\n        'end': time_to_minutes('21:30'),\n        'duration': 90\n    },\n    'Melissa': {\n        'location': 'Golden Gate Park',\n        'start': time_to_minutes('9:00'),\n        'end': time_to_minutes('18:45'),\n        'duration': 90\n    }\n}\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes('9:00')\n    current_location = 'The Castro'\n    schedule = []\n    \n    for person in order:\n        info = people[person]\n        location = info['location']\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        # Calculate meeting window\n        meeting_start = max(arrival_time, info['start'])\n        meeting_end = meeting_start + info['duration']\n        \n        if meeting_end > info['end']:\n            return None  # Not enough time to meet\n        \n        schedule.append({\n            'person': person,\n            'location': location,\n            'start_time': meeting_start,\n            'end_time': meeting_end,\n            'travel_time': travel_time\n        })\n        \n        current_time = meeting_end\n        current_location = location\n    \n    return schedule\n\ndef evaluate_schedule(schedule):\n    if not schedule:\n        return 0\n    # Count number of people met\n    return len(schedule)\n\nbest_schedule = None\nbest_score = 0\n\n# Try all possible orders of meeting people\nfor order in permutations(people.keys()):\n    schedule = calculate_schedule(order)\n    score = evaluate_schedule(schedule)\n    if score > best_score:\n        best_score = score\n        best_schedule = schedule\n\n# Convert to output format\nif best_schedule:\n    itinerary = []\n    for meeting in best_schedule:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting['location'],\n            \"person\": meeting['person'],\n            \"start_time\": minutes_to_time(meeting['start_time']),\n            \"end_time\": minutes_to_time(meeting['end_time'])\n        })\n    output = {\"itinerary\": itinerary}\nelse:\n    output = {\"itinerary\": []}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_468"
+        }
+    ]
+}

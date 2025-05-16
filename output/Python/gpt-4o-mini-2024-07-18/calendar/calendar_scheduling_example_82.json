@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(participants_schedules, meeting_duration, work_hours, day_of_week):\n    # Convert meeting duration to timedelta\n    meeting_duration = timedelta(minutes=meeting_duration)\n    \n    # Generate the available time slots based on work hours\n    start_work = datetime.strptime(work_hours[0], \"%H:%M\")\n    end_work = datetime.strptime(work_hours[1], \"%H:%M\")\n    \n    # Initialize available time slots\n    available_slots = [(start_work, end_work)]\n    \n    # Iterate through each participant's schedule\n    for schedule in participants_schedules:\n        new_available_slots = []\n        for start, end in available_slots:\n            slot_start = start\n            while slot_start < end:\n                slot_end = slot_start + meeting_duration\n                if slot_end > end:\n                    break\n                if not any(start < slot_end and slot_start < end for start, end in schedule):\n                    new_available_slots.append((slot_start, slot_end))\n                slot_start += timedelta(minutes=1)  # Increment slot start by 1 minute\n        available_slots = new_available_slots\n    \n    # Return the first available slot\n    if available_slots:\n        start_time, end_time = available_slots[0]\n        return f\"{start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}\", day_of_week\n    return None\n\n# Existing schedules\nmichael_schedule = [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n                    (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\")),\n                    (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))]\n\neric_schedule = []  # Eric is available all day\n\narthur_schedule = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n                   (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n                   (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n                   (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n\n# Participants' schedules\nparticipants_schedules = [michael_schedule, eric_schedule, arthur_schedule]\n\n# Meeting duration and work hours\nmeeting_duration = 30  # in minutes\nwork_hours = [\"09:00\", \"17:00\"]\nday_of_week = \"Monday\"\n\n# Find meeting time\nmeeting_time = find_meeting_time(participants_schedules, meeting_duration, work_hours, day_of_week)\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_82"
+        }
+    ]
+}

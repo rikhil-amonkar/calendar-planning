@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Define working hours for Monday in minutes (9:00 to 17:00)\nwork_start = 9 * 60    # 9:00 in minutes\nwork_end = 17 * 60     # 17:00 in minutes\n\n# Meeting duration in minutes (30 minutes)\nmeeting_duration = 30\n\n# Busy intervals for each participant given in minutes from midnight.\n# Each tuple is (start_minute, end_minute)\n# Monday: 9:00 = 540, 17:00 = 1020\nparticipants_busy = {\n    \"John\": [(11 * 60 + 30, 12 * 60), (14 * 60, 14 * 60 + 30)],\n    \"Megan\": [(12 * 60, 12 * 60 + 30), (14 * 60, 15 * 60), (15 * 60 + 30, 16 * 60)],\n    \"Brandon\": [],\n    \"Kimberly\": [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (11 * 60, 14 * 60 + 30),\n                  (15 * 60, 16 * 60), (16 * 60 + 30, 17 * 60)],\n    \"Sean\": [(10 * 60, 11 * 60), (11 * 60 + 30, 14 * 60), (15 * 60, 15 * 60 + 30)],\n    \"Lori\": [(9 * 60, 9 * 60 + 30), (10 * 60 + 30, 12 * 60), (13 * 60, 14 * 60 + 30),\n             (16 * 60, 16 * 60 + 30)]\n}\n\ndef invert_busy_intervals(busy_intervals, start, end):\n    \"\"\"\n    Given a list of busy intervals (start, end) and the overall working time boundaries,\n    return a list of free intervals. It is assumed that busy_intervals do not overlap.\n    \"\"\"\n    free_intervals = []\n    current = start\n    for interval in sorted(busy_intervals):\n        busy_start, busy_end = interval\n        if busy_start > current:\n            free_intervals.append((current, busy_start))\n        current = max(current, busy_end)\n    if current < end:\n        free_intervals.append((current, end))\n    return free_intervals\n\n# Get free intervals for each participant\nparticipants_free = {}\nfor person, busy in participants_busy.items():\n    # Merge busy intervals with working hours boundary\n    free = invert_busy_intervals(busy, work_start, work_end)\n    participants_free[person] = free\n\ndef intersect_intervals(int1, int2):\n    \"\"\"\n    Intersect two lists of intervals.\n    Each interval is a tuple (start, end). Return the intersected intervals.\n    \"\"\"\n    i, j = 0, 0\n    result = []\n    while i < len(int1) and j < len(int2):\n        start = max(int1[i][0], int2[j][0])\n        end = min(int1[i][1], int2[j][1])\n        if start < end:\n            result.append((start, end))\n        # advance the interval which ends earlier\n        if int1[i][1] < int2[j][1]:\n            i += 1\n        else:\n            j += 1\n    return result\n\n# Compute the overall intersection of free intervals across all participants.\nall_free = [(work_start, work_end)]\nfor free in participants_free.values():\n    all_free = intersect_intervals(all_free, free)\n\n# Find a free interval that can fit a meeting of the required duration.\nmeeting_time = None\nfor interval in all_free:\n    start, end = interval\n    if end - start >= meeting_duration:\n        meeting_time = (start, start + meeting_duration)\n        break\n\nif meeting_time:\n    # Convert minutes back to HH:MM format.\n    start_minutes, end_minutes = meeting_time\n    start_time = f\"{start_minutes // 60:02d}:{start_minutes % 60:02d}\"\n    end_time = f\"{end_minutes // 60:02d}:{end_minutes % 60:02d}\"\n    # For this task, the meeting is on Monday.\n    day = \"Monday\"\n    print(f\"{day} {start_time}:{end_time}\")\nelse:\n    print(\"No possible meeting time found.\")\n'''",
+            "count": "calendar_scheduling_example_337"
+        }
+    ]
+}

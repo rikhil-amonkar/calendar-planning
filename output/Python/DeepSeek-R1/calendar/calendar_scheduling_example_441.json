@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{11:00",
+                "end_time": "11:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{11:00",
+                "end_time": "11:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\nparticipants = {\n    \"Joan\": [(\"11:30\", \"12:00\"), (\"14:30\", \"15:00\")],\n    \"Megan\": [(\"9:00\", \"10:00\"), (\"14:00\", \"14:30\"), (\"16:00\", \"16:30\")],\n    \"Austin\": [],\n    \"Betty\": [(\"9:30\", \"10:00\"), (\"11:30\", \"12:00\"), (\"13:30\", \"14:00\"), (\"16:00\", \"16:30\")],\n    \"Judith\": [(\"9:00\", \"11:00\"), (\"12:00\", \"13:00\"), (\"14:00\", \"15:00\")],\n    \"Terry\": [(\"9:30\", \"10:00\"), (\"11:30\", \"12:30\"), (\"13:00\", \"14:00\"), (\"15:00\", \"15:30\"), (\"16:00\", \"17:00\")],\n    \"Kathryn\": [(\"9:30\", \"10:00\"), (\"10:30\", \"11:00\"), (\"11:30\", \"13:00\"), (\"14:00\", \"16:00\"), (\"16:30\", \"17:00\")]\n}\n\nwork_start = time_to_minutes(\"9:00\")\nwork_end = time_to_minutes(\"17:00\")\nduration = 30\n\nfor start in range(work_start, work_end - duration + 1, 15):\n    end = start + duration\n    slot_ok = True\n    for person, meetings in participants.items():\n        for meet_start, meet_end in meetings:\n            meet_start_m = time_to_minutes(meet_start)\n            meet_end_m = time_to_minutes(meet_end)\n            if not (end <= meet_start_m or start >= meet_end_m):\n                slot_ok = False\n                break\n        if not slot_ok:\n            break\n    if slot_ok:\n        start_time = minutes_to_time(start)\n        end_time = minutes_to_time(end)\n        print(f\"Monday {start_time}:{end_time}\")\n        exit()\n\nprint(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_441"
+        }
+    ]
+}

@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    total_days = 29\n    cities = {\n        'Frankfurt': 4,\n        'Salzburg': 5,\n        'Athens': 5,\n        'Reykjavik': 5,\n        'Bucharest': 3,\n        'Valencia': 2,\n        'Vienna': 5,\n        'Amsterdam': 3,\n        'Stockholm': 3,\n        'Riga': 3\n    }\n    constraints = [\n        {'city': 'Athens', 'day_range': (14, 18)},\n        {'city': 'Valencia', 'day_range': (5, 6)},\n        {'city': 'Vienna', 'day_range': (6, 10)},\n        {'city': 'Stockholm', 'day_range': (1, 3)},\n        {'city': 'Riga', 'day_range': (18, 20)}\n    ]\n    \n    # Direct flights\n    direct_flights = {\n        'Valencia': ['Frankfurt', 'Athens', 'Bucharest', 'Vienna', 'Amsterdam'],\n        'Vienna': ['Bucharest', 'Riga', 'Frankfurt', 'Athens', 'Stockholm', 'Amsterdam', 'Reykjavik', 'Valencia'],\n        'Athens': ['Valencia', 'Bucharest', 'Riga', 'Frankfurt', 'Stockholm', 'Vienna', 'Amsterdam', 'Reykjavik'],\n        'Riga': ['Frankfurt', 'Bucharest', 'Vienna', 'Amsterdam', 'Stockholm', 'Athens'],\n        'Stockholm': ['Athens', 'Vienna', 'Amsterdam', 'Riga', 'Frankfurt', 'Reykjavik'],\n        'Amsterdam': ['Bucharest', 'Frankfurt', 'Reykjavik', 'Stockholm', 'Valencia', 'Vienna', 'Riga', 'Athens'],\n        'Frankfurt': ['Valencia', 'Riga', 'Amsterdam', 'Salzburg', 'Vienna', 'Bucharest', 'Stockholm', 'Athens', 'Reykjavik'],\n        'Bucharest': ['Vienna', 'Athens', 'Amsterdam', 'Valencia', 'Frankfurt', 'Riga'],\n        'Reykjavik': ['Amsterdam', 'Frankfurt', 'Athens', 'Stockholm', 'Vienna'],\n        'Salzburg': ['Frankfurt']\n    }\n    \n    # Pre-process constraints to assign mandatory days\n    mandatory_days = {}\n    for day in range(1, total_days + 1):\n        mandatory_days[day] = None\n    for constraint in constraints:\n        start, end = constraint['day_range']\n        for day in range(start, end + 1):\n            mandatory_days[day] = constraint['city']\n    \n    # Assign remaining days to cities\n    remaining_cities = {city: duration for city, duration in cities.items()}\n    for day, city in mandatory_days.items():\n        if city is not None:\n            remaining_cities[city] -= 1\n    \n    # Generate all possible city orders that satisfy constraints\n    city_list = list(remaining_cities.keys())\n    possible_orders = permutations(city_list)\n    \n    # Find a valid itinerary\n    itinerary = []\n    for order in possible_orders:\n        temp_itinerary = []\n        current_city = None\n        remaining_days = remaining_cities.copy()\n        day = 1\n        valid = True\n        \n        while day <= total_days:\n            if mandatory_days[day] is not None:\n                city = mandatory_days[day]\n                if current_city == city:\n                    pass\n                elif current_city is None or city in direct_flights[current_city]:\n                    if current_city is not None:\n                        temp_itinerary.append({'flying': f'Day {day}-{day}', 'from': current_city, 'to': city})\n                    current_city = city\n                else:\n                    valid = False\n                    break\n                remaining_days[city] -= 1\n                day += 1\n            else:\n                if current_city is None:\n                    # Start with Stockholm (since it has day 1-3 constraint)\n                    current_city = 'Stockholm'\n                    temp_itinerary.append({'day_range': f'Day {day}-{day + remaining_days[current_city] - 1}', 'place': current_city})\n                    day += remaining_days[current_city]\n                    remaining_days[current_city] = 0\n                else:\n                    found = False\n                    for city in order:\n                        if remaining_days[city] > 0 and city in direct_flights[current_city]:\n                            temp_itinerary.append({'flying': f'Day {day}-{day}', 'from': current_city, 'to': city})\n                            current_city = city\n                            stay_days = remaining_days[city]\n                            temp_itinerary.append({'day_range': f'Day {day + 1}-{day + stay_days}', 'place': city})\n                            day += stay_days + 1\n                            remaining_days[city] = 0\n                            found = True\n                            break\n                    if not found:\n                        valid = False\n                        break\n        \n        if valid and all(v == 0 for v in remaining_days.values()):\n            itinerary = temp_itinerary\n            break\n    \n    # Post-process to merge consecutive stays and add mandatory days\n    final_itinerary = []\n    i = 0\n    while i < len(itinerary):\n        entry = itinerary[i]\n        if 'place' in entry:\n            start_day = int(entry['day_range'].split('-')[0].split(' ')[1])\n            end_day = int(entry['day_range'].split('-')[1])\n            place = entry['place']\n            # Check if next entries are the same place\n            while i + 1 < len(itinerary) and 'place' in itinerary[i+1] and itinerary[i+1]['place'] == place:\n                next_entry = itinerary[i+1]\n                next_end_day = int(next_entry['day_range'].split('-')[1])\n                end_day = next_end_day\n                i += 1\n            final_itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': place})\n        else:\n            final_itinerary.append(entry)\n        i += 1\n    \n    print(json.dumps(final_itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1432"
+        }
+    ]
+}

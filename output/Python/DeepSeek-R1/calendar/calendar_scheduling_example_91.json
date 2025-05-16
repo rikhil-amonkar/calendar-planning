@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{13:00",
+                "end_time": "14:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time):\n    hours, minutes = map(int, time.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nduration = 60\n\nbusy = {\n    \"Danielle\": [(540, 600), (630, 660), (870, 900), (930, 960), (990, 1020)],\n    \"Bruce\": [(660, 690), (750, 780), (840, 870), (930, 960)],\n    \"Eric\": [(540, 570), (600, 660), (690, 780), (870, 930)]\n}\n\nfor start in range(work_start, work_end - duration + 1):\n    end = start + duration\n    if end > work_end:\n        continue\n    all_free = True\n    for person in busy:\n        for (s, e) in busy[person]:\n            if not (end <= s or start >= e):\n                all_free = False\n                break\n        if not all_free:\n            break\n    if all_free:\n        print(f\"{minutes_to_time(start)}-{minutes_to_time(end)}\")\n        print(\"Monday\")\n        exit()\n\nprint(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_91"
+        }
+    ]
+}

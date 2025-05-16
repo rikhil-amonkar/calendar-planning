@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "13:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the meeting duration and the work hours\nMEETING_DURATION = timedelta(minutes=30)\nWORK_START = datetime.strptime(\"09:00\", \"%H:%M\")\nWORK_END = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Define the participants' schedules\nschedules = {\n    \"Doris\": [(WORK_START, WORK_START + timedelta(hours=2)), \n              (WORK_START + timedelta(hours=4), WORK_START + timedelta(hours=4, minutes=30))],\n    \"Theresa\": [(WORK_START + timedelta(hours=1), WORK_START + timedelta(hours=3))],\n    \"Christian\": [(WORK_START, WORK_END)],\n    \"Terry\": [(WORK_START + timedelta(minutes=30), WORK_START + timedelta(hours=1)),\n              (WORK_START + timedelta(hours=1, minutes=30), WORK_START + timedelta(hours=1, minutes=30)),\n              (WORK_START + timedelta(hours=2, minutes=30), WORK_END)],\n    \"Carolyn\": [(WORK_START, WORK_START + timedelta(hours=1, minutes=30)),\n                (WORK_START + timedelta(hours=1), WORK_START + timedelta(hours=2)),\n                (WORK_START + timedelta(hours=2, minutes=30), WORK_END)],\n    \"Kyle\": [(WORK_START, WORK_START + timedelta(minutes=30)),\n             (WORK_START + timedelta(hours=1, minutes=30), WORK_START + timedelta(hours=2)),\n             (WORK_START + timedelta(hours=5), WORK_END)],\n}\n\n# Find free slots for all participants\ndef find_free_slots(schedules):\n    all_free_slots = []\n    for name, slots in schedules.items():\n        free_slots = []\n        current_start = WORK_START\n        \n        for start, end in sorted(slots):\n            if current_start < start:\n                free_slots.append((current_start, start))\n            current_start = max(current_start, end)\n        \n        if current_start < WORK_END:\n            free_slots.append((current_start, WORK_END))\n        \n        all_free_slots.append(free_slots)\n    \n    return all_free_slots\n\ndef find_common_slot(all_free_slots):\n    common_slots = set(all_free_slots[0])  # Start with the first participant's slots\n    for free_slots in all_free_slots[1:]:\n        common_slots.intersection_update(set(free_slots))\n    \n    return list(common_slots)\n\nfree_slots = find_free_slots(schedules)\ncommon_slots = find_common_slot(free_slots)\n\n# Check for a suitable slot for the meeting\ndef get_meeting_time(common_slots):\n    for start, end in common_slots:\n        if end - start >= MEETING_DURATION:\n            meeting_start = start\n            meeting_end = meeting_start + MEETING_DURATION\n            return meeting_start.strftime(\"%H:%M\"), meeting_end.strftime(\"%H:%M\")\n    return None\n\nmeeting_time = get_meeting_time(common_slots)\n\n# Output the result\nif meeting_time:\n    print(f\"Time Range: {{{meeting_time[0]}:{meeting_time[1]}}}, Day: Monday\")\nelse:\n    print(\"No available time found for scheduling the meeting.\")\n\n```",
+            "count": "calendar_scheduling_example_398"
+        }
+    ]
+}

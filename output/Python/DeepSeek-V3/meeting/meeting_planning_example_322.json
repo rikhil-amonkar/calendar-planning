@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Michelle",
+                        "start_time": "9:30",
+                        "end_time": "9:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "George",
+                        "start_time": "10:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Robert",
+                        "start_time": "11:19",
+                        "end_time": "11:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "William",
+                        "start_time": "18:30",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times in minutes\ntravel_times = {\n    'Sunset District': {\n        'Russian Hill': 24,\n        'Chinatown': 30,\n        'Presidio': 16,\n        'Fisherman\\'s Wharf': 29\n    },\n    'Russian Hill': {\n        'Sunset District': 23,\n        'Chinatown': 9,\n        'Presidio': 14,\n        'Fisherman\\'s Wharf': 7\n    },\n    'Chinatown': {\n        'Sunset District': 29,\n        'Russian Hill': 7,\n        'Presidio': 19,\n        'Fisherman\\'s Wharf': 8\n    },\n    'Presidio': {\n        'Sunset District': 15,\n        'Russian Hill': 14,\n        'Chinatown': 21,\n        'Fisherman\\'s Wharf': 19\n    },\n    'Fisherman\\'s Wharf': {\n        'Sunset District': 27,\n        'Russian Hill': 7,\n        'Chinatown': 12,\n        'Presidio': 17\n    }\n}\n\n# Person constraints\npeople = {\n    'William': {\n        'location': 'Russian Hill',\n        'available_start': '18:30',\n        'available_end': '20:45',\n        'min_duration': 105\n    },\n    'Michelle': {\n        'location': 'Chinatown',\n        'available_start': '8:15',\n        'available_end': '14:00',\n        'min_duration': 15\n    },\n    'George': {\n        'location': 'Presidio',\n        'available_start': '10:30',\n        'available_end': '18:45',\n        'min_duration': 30\n    },\n    'Robert': {\n        'location': 'Fisherman\\'s Wharf',\n        'available_start': '9:00',\n        'available_end': '13:45',\n        'min_duration': 30\n    }\n}\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef calculate_schedule(order):\n    current_location = 'Sunset District'\n    current_time = time_to_minutes('9:00')\n    schedule = []\n    \n    for person in order:\n        info = people[person]\n        location = info['location']\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        available_start = time_to_minutes(info['available_start'])\n        available_end = time_to_minutes(info['available_end'])\n        min_duration = info['min_duration']\n        \n        # Calculate meeting window\n        start_time = max(arrival_time, available_start)\n        end_time = min(start_time + min_duration, available_end)\n        \n        if end_time - start_time < min_duration:\n            return None  # Not enough time to meet\n        \n        schedule.append({\n            'action': 'meet',\n            'location': location,\n            'person': person,\n            'start_time': minutes_to_time(start_time),\n            'end_time': minutes_to_time(end_time)\n        })\n        \n        current_time = end_time\n        current_location = location\n    \n    return schedule\n\ndef evaluate_schedule(schedule):\n    if not schedule:\n        return -1\n    total_meetings = len(schedule)\n    total_time = sum(time_to_minutes(m['end_time']) - time_to_minutes(m['start_time']) for m in schedule)\n    return (total_meetings, total_time)\n\n# Generate all possible orders of meetings\nall_orders = permutations(people.keys())\nbest_schedule = None\nbest_score = (-1, -1)\n\nfor order in all_orders:\n    schedule = calculate_schedule(order)\n    score = evaluate_schedule(schedule)\n    if score > best_score:\n        best_score = score\n        best_schedule = schedule\n\n# Prepare output\noutput = {\n    \"itinerary\": best_schedule\n} if best_schedule else {\"itinerary\": []}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_322"
+        }
+    ]
+}

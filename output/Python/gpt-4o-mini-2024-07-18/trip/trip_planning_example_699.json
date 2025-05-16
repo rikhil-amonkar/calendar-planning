@@ -1,0 +1,42 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define trip constraints\n    constraints = {\n        \"days_total\": 16,\n        \"mykonos\": {\"days\": 3, \"start_day\": 13},\n        \"reykjavik\": {\"days\": 2, \"wedding_days\": (9, 10)},\n        \"dublin\": {\"days\": 5, \"show_days\": (2, 6)},\n        \"london\": {\"days\": 5},\n        \"helsinki\": {\"days\": 4},\n        \"hamburg\": {\"days\": 2, \"friends_days\": (1, 2)},\n    }\n\n    itinerary = []\n    current_day = 1\n    \n    # Day 1-2: Hamburg (Meeting friends)\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Hamburg'})\n    current_day += 2\n\n    # Day 3-7: Dublin (Annual show)\n    itinerary.append({'day_range': 'Day 3-7', 'place': 'Dublin'})\n    current_day += 5\n\n    # Day 8: Travel to Reykjavik\n    itinerary.append({'flying': 'Day 8', 'from': 'Dublin', 'to': 'Reykjavik'})\n\n    # Day 8-10: Reykjavik (Wedding)\n    itinerary.append({'day_range': 'Day 8-10', 'place': 'Reykjavik'})\n    current_day += 2\n\n    # Day 11: Travel to London\n    itinerary.append({'flying': 'Day 11', 'from': 'Reykjavik', 'to': 'London'})\n\n    # Day 11-15: London\n    itinerary.append({'day_range': 'Day 11-15', 'place': 'London'})\n    current_day += 5\n\n    # Day 16: Travel to Mykonos\n    itinerary.append({'flying': 'Day 16', 'from': 'London', 'to': 'Mykonos'})\n\n    # Day 16: Mykonos\n    itinerary.append({'day_range': 'Day 16-16', 'place': 'Mykonos'})\n\n    # Validate that the total number of days is correct\n    assert current_day - 1 == constraints[\"days_total\"], \"Total days do not match\"\n\n    # Prepare the output in JSON format\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = create_itinerary()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_699"
+        }
+    ]
+}

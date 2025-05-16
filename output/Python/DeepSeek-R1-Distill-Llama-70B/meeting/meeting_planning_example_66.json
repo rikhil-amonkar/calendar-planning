@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I'm trying to solve this meeting scheduling problem. Let me see what the problem is asking for.\n\nFirst, the user is visiting San Francisco and wants to meet as many friends as possible. The constraints include travel times between locations and the availability of each friend. The goal is to write a Python program that computes the optimal schedule.\n\nLooking at the input parameters, there are only two locations: Nob Hill and Presidio. The user starts at Nob Hill at 9:00 AM. There's only one friend, Robert, who is at Presidio from 11:15 AM to 5:45 PM, and the meeting needs to be at least 120 minutes long.\n\nSo, the problem seems straightforward because there's only one friend to meet. But I need to make sure that the travel time is considered and that the meeting fits within Robert's availability.\n\nFirst, I'll need to define the travel times. From Nob Hill to Presidio, it's 17 minutes, and from Presidio back to Nob Hill, it's 18 minutes. But since the user only needs to meet Robert once, the return travel time might not be necessary unless they need to come back, but the problem doesn't specify that.\n\nNext, I'll convert the start and end times into minutes to make calculations easier. The user arrives at 9:00 AM, which is 540 minutes. Robert is available from 11:15 AM (675 minutes) to 5:45 PM (1065 minutes).\n\nThe meeting needs to be at least 120 minutes. So, the earliest the user can arrive at Presidio is 9:00 AM + 17 minutes = 9:17 AM (557 minutes). But Robert isn't available until 11:15 AM. So, the earliest possible start time is 11:15 AM.\n\nThe latest the meeting can start is 5:45 PM - 120 minutes = 4:45 PM (1020 minutes). So, the meeting can start anytime between 11:15 AM and 4:45 PM.\n\nI need to check if the meeting can fit within this window. Since the meeting duration is 120 minutes, the earliest start is 11:15 AM, ending at 1:15 PM. The latest start is 4:45 PM, ending at 6:45 PM, which is within Robert's availability.\n\nSo, the optimal schedule is to meet Robert at Presidio from 11:15 AM to 1:15 PM.\n\nI'll structure the code to reflect this. It will calculate the travel time, determine the earliest possible meeting time, and ensure it fits within the availability window. Then, it will output the schedule in the required JSON format.\n</think>\n\n```python\nimport json\n\ndef time_to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\ndef minutes_to_time(mins):\n    hours = mins // 60\n    mins = mins % 60\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    ('Nob Hill', 'Presidio'): 17,\n    ('Presidio', 'Nob Hill'): 18\n}\n\nfriends = [\n    {\n        'name': 'Robert',\n        'location': 'Presidio',\n        'available_start': '11:15',\n        'available_end': '17:45',\n        'required_duration': 120\n    }\n]\n\ncurrent_time = 540  # 9:00 AM in minutes\ncurrent_location = 'Nob Hill'\n\nitinerary = []\n\n# Calculate travel time to Presidio\ntravel = travel_times.get((current_location, friends[0]['location']), None)\nif travel is not None:\n    arrival_time = current_time + travel\n    avail_start = time_to_minutes(friends[0]['available_start'])\n    avail_end = time_to_minutes(friends[0]['available_end'])\n    \n    # Calculate earliest possible start time\n    start_time = max(arrival_time, avail_start)\n    end_time = start_time + friends[0]['required_duration']\n    \n    if end_time <= avail_end:\n        itinerary.append({\n            'action': 'meet',\n            'location': friends[0]['location'],\n            'person': friends[0]['name'],\n            'start_time': minutes_to_time(start_time),\n            'end_time': minutes_to_time(end_time)\n        })\n\nresult = {'itinerary': itinerary}\nprint(json.dumps(result))\n```",
+            "count": "meeting_planning_example_66"
+        }
+    ]
+}

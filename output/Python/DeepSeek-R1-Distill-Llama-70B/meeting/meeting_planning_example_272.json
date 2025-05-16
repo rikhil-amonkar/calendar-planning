@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, so I need to solve this problem where I have to create a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and travel times between locations.\n\nFirst, I'll read the problem statement carefully. The user arrives at Russian Hill at 9:00 AM. There are three friends to meet:\n\n1. Patricia at Nob Hill from 6:30 PM to 9:45 PM for at least 90 minutes.\n2. Ashley at Mission District from 8:30 PM to 9:15 PM for at least 45 minutes.\n3. Timothy at Embarcadero from 9:45 AM to 5:45 PM for at least 120 minutes.\n\nThe travel times between the locations are provided, and I need to make sure the schedule accounts for these times.\n\nOkay, so the approach here is similar to the previous problem. I need to generate all possible permutations of the friends and check which permutation allows meeting the maximum number of friends without violating any constraints.\n\nI'll start by setting up the travel times in a dictionary. Each location will have another dictionary mapping to the travel time to other locations. This makes it easy to look up travel times between any two locations.\n\nNext, I'll define the friends' data. Each friend has a name, location, start time, end time, and the minimum duration required for the meeting. I'll convert their time windows from HH:MM format to minutes since midnight for easier calculations.\n\nNow, the main part is to try all possible orders of meeting the friends. Since there are three friends, there are 3! = 6 permutations. For each permutation, I'll simulate the schedule:\n\n1. Start at Russian Hill at 9:00 AM (540 minutes).\n2. For each friend in the permutation:\n   - Calculate the travel time from the current location to the friend's location.\n   - Determine the earliest possible arrival time.\n   - Check if the meeting can fit within the friend's available time window.\n   - If yes, add this meeting to the itinerary and update the current time and location.\n   - If no, break this permutation as it's not feasible.\n3. Keep track of the best itinerary, which is the one with the most friends met.\n\nOnce all permutations are evaluated, the best itinerary is the one that includes the maximum number of friends.\n\nI also need to handle time conversions properly. When calculating start and end times for meetings, I'll convert minutes back to HH:MM format without leading zeros for hours.\n\nFinally, I'll output the result as a JSON-formatted dictionary with the itinerary.\n\nTesting this approach, I think it should work. Each permutation is checked, and the best possible schedule is selected based on the number of friends met. If multiple permutations yield the same number of friends, the first one encountered is chosen, but since we're trying to maximize, it should handle ties appropriately.\n\nI should also make sure that the code is self-contained and runs independently, as per the user's instructions. No external libraries are needed beyond standard ones like itertools and json.\n\nAlright, I think I'm ready to write the code now.\n</think>\n\n```python\nimport itertools\nimport json\n\n# Travel times in minutes between locations\ntravel_times = {\n    'Russian Hill': {\n        'Nob Hill': 5,\n        'Mission District': 16,\n        'Embarcadero': 8,\n    },\n    'Nob Hill': {\n        'Russian Hill': 5,\n        'Mission District': 13,\n        'Embarcadero': 9,\n    },\n    'Mission District': {\n        'Russian Hill': 15,\n        'Nob Hill': 12,\n        'Embarcadero': 19,\n    },\n    'Embarcadero': {\n        'Russian Hill': 8,\n        'Nob Hill': 10,\n        'Mission District': 20,\n    }\n}\n\n# Friends' data\nfriends = [\n    {\n        'name': 'Patricia',\n        'location': 'Nob Hill',\n        'start': '18:30',\n        'end': '21:45',\n        'duration': 90,\n    },\n    {\n        'name': 'Ashley',\n        'location': 'Mission District',\n        'start': '20:30',\n        'end': '21:15',\n        'duration': 45,\n    },\n    {\n        'name': 'Timothy',\n        'location': 'Embarcadero',\n        'start': '9:45',\n        'end': '17:45',\n        'duration': 120,\n    },\n]\n\nbest_itinerary = []\n\n# Convert time strings to minutes\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\n# Try all possible permutations of friends\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM in minutes\n    current_location = 'Russian Hill'\n    temp_itinerary = []\n    \n    for friend in perm:\n        # Convert friend's time window to minutes\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        \n        # Get travel time from current_location to friend's location\n        if current_location not in travel_times or friend['location'] not in travel_times[current_location]:\n            break  # No path available\n        \n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        \n        # Determine meeting start time\n        meeting_start = max(arrival, start)\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > end:\n            break  # Cannot meet this friend\n        \n        # Add to temporary itinerary\n        temp_itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': f\"{meeting_start // 60}:{meeting_start % 60:02d}\",\n            'end_time': f\"{meeting_end // 60}:{meeting_end % 60:02d}\"\n        })\n        \n        # Update current time and location\n        current_time = meeting_end\n        current_location = friend['location']\n    \n    # Update best itinerary if this permutation is better\n    if len(temp_itinerary) > len(best_itinerary):\n        best_itinerary = temp_itinerary\n\n# Prepare the result\nresult = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the result as JSON\nprint(json.dumps(result))\n```",
+            "count": "meeting_planning_example_272"
+        }
+    ]
+}

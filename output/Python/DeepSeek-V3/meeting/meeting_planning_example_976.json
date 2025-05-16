@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Brian",
+                        "start_time": "12:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Thomas",
+                        "start_time": "13:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Nancy",
+                        "start_time": "14:45",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Jessica",
+                        "start_time": "16:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Charles",
+                        "start_time": "18:47",
+                        "end_time": "20:32"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Thomas",
+                        "start_time": "13:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Nancy",
+                        "start_time": "14:45",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Brian",
+                        "start_time": "15:09",
+                        "end_time": "16:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Jessica",
+                        "start_time": "16:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Mary",
+                        "start_time": "18:37",
+                        "end_time": "19:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "19:52",
+                        "end_time": "21:52"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary: travel_times[from][to] = minutes\ntravel_times = {\n    'Embarcadero': {\n        'Bayview': 21, 'Chinatown': 7, 'Alamo Square': 19, 'Nob Hill': 10, 'Presidio': 20,\n        'Union Square': 10, 'The Castro': 25, 'North Beach': 5, 'Fisherman\\'s Wharf': 6, 'Marina District': 12\n    },\n    'Bayview': {\n        'Embarcadero': 19, 'Chinatown': 19, 'Alamo Square': 16, 'Nob Hill': 20, 'Presidio': 32,\n        'Union Square': 18, 'The Castro': 19, 'North Beach': 22, 'Fisherman\\'s Wharf': 25, 'Marina District': 27\n    },\n    'Chinatown': {\n        'Embarcadero': 5, 'Bayview': 20, 'Alamo Square': 17, 'Nob Hill': 9, 'Presidio': 19,\n        'Union Square': 7, 'The Castro': 22, 'North Beach': 3, 'Fisherman\\'s Wharf': 8, 'Marina District': 12\n    },\n    'Alamo Square': {\n        'Embarcadero': 16, 'Bayview': 16, 'Chinatown': 15, 'Nob Hill': 11, 'Presidio': 17,\n        'Union Square': 14, 'The Castro': 8, 'North Beach': 15, 'Fisherman\\'s Wharf': 19, 'Marina District': 15\n    },\n    'Nob Hill': {\n        'Embarcadero': 9, 'Bayview': 19, 'Chinatown': 6, 'Alamo Square': 11, 'Presidio': 17,\n        'Union Square': 7, 'The Castro': 17, 'North Beach': 8, 'Fisherman\\'s Wharf': 10, 'Marina District': 11\n    },\n    'Presidio': {\n        'Embarcadero': 20, 'Bayview': 31, 'Chinatown': 21, 'Alamo Square': 19, 'Nob Hill': 18,\n        'Union Square': 22, 'The Castro': 21, 'North Beach': 18, 'Fisherman\\'s Wharf': 19, 'Marina District': 11\n    },\n    'Union Square': {\n        'Embarcadero': 11, 'Bayview': 15, 'Chinatown': 7, 'Alamo Square': 15, 'Nob Hill': 9,\n        'Presidio': 24, 'The Castro': 17, 'North Beach': 10, 'Fisherman\\'s Wharf': 15, 'Marina District': 18\n    },\n    'The Castro': {\n        'Embarcadero': 22, 'Bayview': 19, 'Chinatown': 22, 'Alamo Square': 8, 'Nob Hill': 16,\n        'Presidio': 20, 'Union Square': 19, 'North Beach': 20, 'Fisherman\\'s Wharf': 24, 'Marina District': 21\n    },\n    'North Beach': {\n        'Embarcadero': 6, 'Bayview': 25, 'Chinatown': 6, 'Alamo Square': 16, 'Nob Hill': 7,\n        'Presidio': 17, 'Union Square': 7, 'The Castro': 23, 'Fisherman\\'s Wharf': 5, 'Marina District': 9\n    },\n    'Fisherman\\'s Wharf': {\n        'Embarcadero': 8, 'Bayview': 26, 'Chinatown': 12, 'Alamo Square': 21, 'Nob Hill': 11,\n        'Presidio': 17, 'Union Square': 13, 'The Castro': 27, 'North Beach': 6, 'Marina District': 9\n    },\n    'Marina District': {\n        'Embarcadero': 14, 'Bayview': 27, 'Chinatown': 15, 'Alamo Square': 15, 'Nob Hill': 12,\n        'Presidio': 10, 'Union Square': 16, 'The Castro': 22, 'North Beach': 11, 'Fisherman\\'s Wharf': 10\n    }\n}\n\n# Friend constraints\nfriends = [\n    {'name': 'Matthew', 'location': 'Bayview', 'start': '19:15', 'end': '22:00', 'min_duration': 120},\n    {'name': 'Karen', 'location': 'Chinatown', 'start': '19:15', 'end': '21:15', 'min_duration': 90},\n    {'name': 'Sarah', 'location': 'Alamo Square', 'start': '20:00', 'end': '21:45', 'min_duration': 105},\n    {'name': 'Jessica', 'location': 'Nob Hill', 'start': '16:30', 'end': '18:45', 'min_duration': 120},\n    {'name': 'Stephanie', 'location': 'Presidio', 'start': '7:30', 'end': '10:15', 'min_duration': 60},\n    {'name': 'Mary', 'location': 'Union Square', 'start': '16:45', 'end': '21:30', 'min_duration': 60},\n    {'name': 'Charles', 'location': 'The Castro', 'start': '16:30', 'end': '22:00', 'min_duration': 105},\n    {'name': 'Nancy', 'location': 'North Beach', 'start': '14:45', 'end': '20:00', 'min_duration': 15},\n    {'name': 'Thomas', 'location': 'Fisherman\\'s Wharf', 'start': '13:30', 'end': '19:00', 'min_duration': 30},\n    {'name': 'Brian', 'location': 'Marina District', 'start': '12:15', 'end': '18:00', 'min_duration': 60}\n]\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef get_available_slots(friend, current_time):\n    friend_start = time_to_minutes(friend['start'])\n    friend_end = time_to_minutes(friend['end'])\n    min_duration = friend['min_duration']\n    \n    latest_start = friend_end - min_duration\n    available_start = max(current_time, friend_start)\n    \n    if available_start > latest_start:\n        return None\n    \n    return {\n        'start': available_start,\n        'end': min(available_start + min_duration, friend_end)\n    }\n\ndef calculate_schedule():\n    current_location = 'Embarcadero'\n    current_time = time_to_minutes('9:00')\n    itinerary = []\n    remaining_friends = friends.copy()\n    \n    # Try to meet Stephanie first since she's available early\n    stephanie = next(f for f in remaining_friends if f['name'] == 'Stephanie')\n    if current_time <= time_to_minutes(stephanie['end']):\n        travel_time = travel_times[current_location][stephanie['location']]\n        arrival_time = current_time + travel_time\n        slot = get_available_slots(stephanie, arrival_time)\n        if slot:\n            itinerary.append({\n                'action': 'meet',\n                'location': stephanie['location'],\n                'person': stephanie['name'],\n                'start_time': minutes_to_time(slot['start']),\n                'end_time': minutes_to_time(slot['end'])\n            })\n            current_location = stephanie['location']\n            current_time = slot['end']\n            remaining_friends.remove(stephanie)\n    \n    # Sort remaining friends by earliest availability\n    remaining_friends.sort(key=lambda x: time_to_minutes(x['start']))\n    \n    for friend in remaining_friends:\n        travel_time = travel_times[current_location][friend['location']]\n        arrival_time = current_time + travel_time\n        slot = get_available_slots(friend, arrival_time)\n        if slot:\n            itinerary.append({\n                'action': 'meet',\n                'location': friend['location'],\n                'person': friend['name'],\n                'start_time': minutes_to_time(slot['start']),\n                'end_time': minutes_to_time(slot['end'])\n            })\n            current_location = friend['location']\n            current_time = slot['end']\n    \n    return itinerary\n\ndef main():\n    itinerary = calculate_schedule()\n    result = {'itinerary': itinerary}\n    print(json.dumps(result, indent=2))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_976"
+        }
+    ]
+}

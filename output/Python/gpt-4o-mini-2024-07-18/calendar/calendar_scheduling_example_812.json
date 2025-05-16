@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, time, timedelta\n\n# Define work hours and meeting duration\nwork_start = time(9, 0)\nwork_end = time(17, 0)\nmeeting_duration = timedelta(minutes=30)\n\n# Define existing schedules\nmary_schedule = {\n    'Tuesday': [(time(10, 0), time(10, 30)), (time(15, 30), time(16, 0))],\n    'Wednesday': [(time(9, 30), time(10, 0)), (time(15, 0), time(15, 30))],\n    'Thursday': [(time(9, 0), time(10, 0)), (time(10, 30), time(11, 30))],\n}\n\nalexis_schedule = {\n    'Monday': [(time(9, 0), time(10, 0)), (time(10, 30), time(12, 0)), (time(12, 30), time(16, 30))],\n    'Tuesday': [(time(9, 0), time(10, 0)), (time(10, 30), time(11, 30)), (time(12, 0), time(15, 30)), (time(16, 0), time(17, 0))],\n    'Wednesday': [(time(9, 0), time(11, 0)), (time(11, 30), time(17, 0))],\n    'Thursday': [(time(10, 0), time(12, 0)), (time(14, 0), time(14, 30)), (time(15, 30), time(16, 0)), (time(16, 30), time(17, 0))],\n}\n\n# Function to find time slot for meeting\ndef find_meeting_time(mary_schedule, alexis_schedule, meeting_duration):\n    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']\n    for day in days:\n        mary_busy_times = mary_schedule.get(day, [])\n        alexis_busy_times = alexis_schedule.get(day, [])\n        \n        # All busy times combined\n        busy_times = mary_busy_times + alexis_busy_times\n        \n        # Sorting busy times\n        busy_times.sort()\n        \n        # Find available time slots\n        last_end_time = work_start\n        for start, end in busy_times:\n            if last_end_time + meeting_duration <= start:\n                return f'{last_end_time.strftime(\"%H:%M\")}:{(last_end_time + meeting_duration).strftime(\"%H:%M\")} {day}'\n            last_end_time = max(last_end_time, end)\n        \n        # Check after last busy time until end of work hours\n        if last_end_time + meeting_duration <= work_end:\n            return f'{last_end_time.strftime(\"%H:%M\")}:{(last_end_time + meeting_duration).strftime(\"%H:%M\")} {day}'\n\n# Get the proposed meeting time\nproposed_time = find_meeting_time(mary_schedule, alexis_schedule, meeting_duration)\nprint(proposed_time)\n```",
+            "count": "calendar_scheduling_example_812"
+        }
+    ]
+}

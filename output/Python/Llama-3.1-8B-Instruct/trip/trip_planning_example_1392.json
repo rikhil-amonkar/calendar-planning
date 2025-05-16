@@ -1,0 +1,89 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 9-9",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 14-14",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 23-23",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 27-27",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom collections import defaultdict\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Naples': 3,\n            'Valencia': 5,\n            'Stuttgart': 2,\n            'Split': 5,\n            'Venice': 5,\n            'Amsterdam': 4,\n            'Nice': 2,\n            'Barcelona': 2,\n            'Porto': 4\n        }\n        self.flights = {\n            ('Venice', 'Nice'): 1,\n            ('Naples', 'Amsterdam'): 1,\n            ('Barcelona', 'Nice'): 1,\n            ('Amsterdam', 'Nice'): 1,\n            ('Stuttgart', 'Valencia'): 1,\n            ('Stuttgart', 'Porto'): 1,\n            ('Split', 'Stuttgart'): 1,\n            ('Split', 'Naples'): 1,\n            ('Valencia', 'Amsterdam'): 1,\n            ('Barcelona', 'Porto'): 1,\n            ('Valencia', 'Naples'): 1,\n            ('Venice', 'Amsterdam'): 1,\n            ('Barcelona', 'Naples'): 1,\n            ('Barcelona', 'Valencia'): 1,\n            ('Split', 'Amsterdam'): 1,\n            ('Barcelona', 'Venice'): 1,\n            ('Stuttgart', 'Amsterdam'): 1,\n            ('Naples', 'Nice'): 1,\n            ('Venice', 'Stuttgart'): 1,\n            ('Split', 'Barcelona'): 1,\n            ('Porto', 'Nice'): 1,\n            ('Barcelona', 'Stuttgart'): 1,\n            ('Venice', 'Naples'): 1,\n            ('Porto', 'Amsterdam'): 1,\n            ('Porto', 'Valencia'): 1,\n            ('Stuttgart', 'Naples'): 1,\n            ('Barcelona', 'Amsterdam'): 1\n        }\n        self.conference = {'Venice': (6, 10)}\n        self.meeting = {'Naples': (18, 20), 'Nice': (23, 24)}\n        self.workshop = {'Barcelona': (5, 6)}\n\n    def plan_trip(self):\n        trip = []\n        days = 0\n        current_city = None\n        for city, duration in self.cities.items():\n            if city in self.conference:\n                start_day, end_day = self.conference[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            elif city in self.meeting:\n                start_day, end_day = self.meeting[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            elif city in self.workshop:\n                start_day, end_day = self.workshop[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            else:\n                if current_city is not None:\n                    for flight, duration in self.flights.items():\n                        if flight[0] == current_city:\n                            trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                            days += 1\n                trip.append({'day_range': f'Day {days}-{days + duration - 1}', 'place': city})\n                days += duration\n                current_city = city\n        if current_city is not None:\n            for flight, duration in self.flights.items():\n                if flight[0] == current_city:\n                    trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                    days += 1\n        return trip\n\n    def output_json(self, trip):\n        return json.dumps(trip, indent=4)\n\ndef main():\n    planner = TripPlanner()\n    trip = planner.plan_trip()\n    print(planner.output_json(trip))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1392"
+        }
+    ]
+}

@@ -1,0 +1,105 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 22-26",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 27-28",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 29-33",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 34-38",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 39-42",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 43-44",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 27-28",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input constraints\n    days_total = 28\n    cities_constraints = {\n        'Copenhagen': {'duration': 5, 'friends_meeting': (11, 15)},\n        'Geneva': {'duration': 3},\n        'Mykonos': {'duration': 2, 'conference_days': (27, 28)},\n        'Naples': {'duration': 4, 'relatives_visit': (5, 8)},\n        'Prague': {'duration': 2},\n        'Dubrovnik': {'duration': 3},\n        'Athens': {'duration': 4, 'workshop_days': (8, 11)},\n        'Santorini': {'duration': 5},\n        'Brussels': {'duration': 4},\n        'Munich': {'duration': 5},\n    }\n    \n    # States of the trip\n    itinerary = []\n    current_day = 1\n\n    # Helper function to add a portion to the itinerary\n    def add_to_itinerary(days, city):\n        nonlocal current_day\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + days - 1}', 'place': city})\n        current_day += days\n\n    # Itinerary computation based on constraints\n    # Starting from Copenhagen, since it's the first defined city in constraints\n    add_to_itinerary(cities_constraints['Copenhagen']['duration'], 'Copenhagen')\n    \n    # Visit Naples between days 5-8 for relatives\n    add_to_itinerary(cities_constraints['Naples']['duration'], 'Naples')\n\n    # After Naples, attend a workshop in Athens from days 8-11\n    add_to_itinerary(cities_constraints['Athens']['duration'], 'Athens')\n    \n    # Then head to Dubrovnik for 3 days\n    add_to_itinerary(cities_constraints['Dubrovnik']['duration'], 'Dubrovnik')\n    \n    # After Dubrovnik, we can visit Prague for 2 days\n    add_to_itinerary(cities_constraints['Prague']['duration'], 'Prague')\n    \n    # Now go to Geneva for 3 days\n    add_to_itinerary(cities_constraints['Geneva']['duration'], 'Geneva')\n\n    # Meet the friend in Copenhagen\n    add_to_itinerary(5, 'Copenhagen')  # 5 days, to accommodate friend visit\n    \n    # After Copenhagen, go to Mykonos. This is before the conference.\n    add_to_itinerary(cities_constraints['Mykonos']['duration'], 'Mykonos')\n    \n    # Now, go to Santorini for 5 days\n    add_to_itinerary(cities_constraints['Santorini']['duration'], 'Santorini')\n    \n    # Finally, go back to Munich for 5 days\n    add_to_itinerary(cities_constraints['Munich']['duration'], 'Munich')\n    \n    # Visit Brussels for the last 4 days\n    add_to_itinerary(cities_constraints['Brussels']['duration'], 'Brussels')\n\n    # Add the mandatory conference days\n    add_to_itinerary(2, 'Mykonos')  # Days 27-28 in Mykonos for conference\n\n    return itinerary\n\n# Get the computed itinerary\nitinerary = compute_itinerary()\n\n# Output itinerary as a JSON-formatted dictionary\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_1487"
+        }
+    ]
+}

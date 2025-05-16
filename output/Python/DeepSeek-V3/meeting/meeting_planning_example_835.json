@@ -1,0 +1,122 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "9:22",
+                        "end_time": "9:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "10:14",
+                        "end_time": "10:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "11:15",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "14:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "16:24",
+                        "end_time": "16:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Ronald",
+                        "start_time": "17:24",
+                        "end_time": "18:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "18:41",
+                        "end_time": "20:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "20:51",
+                        "end_time": "22:51"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "9:30",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "10:38",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "11:35",
+                        "end_time": "12:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "15:24",
+                        "end_time": "17:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Ronald",
+                        "start_time": "17:51",
+                        "end_time": "18:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Steven",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    \"Pacific Heights\": {\n        \"Golden Gate Park\": 15,\n        \"The Castro\": 16,\n        \"Bayview\": 22,\n        \"Marina District\": 6,\n        \"Union Square\": 12,\n        \"Sunset District\": 21,\n        \"Alamo Square\": 10,\n        \"Financial District\": 13,\n        \"Mission District\": 15\n    },\n    \"Golden Gate Park\": {\n        \"Pacific Heights\": 16,\n        \"The Castro\": 13,\n        \"Bayview\": 23,\n        \"Marina District\": 16,\n        \"Union Square\": 22,\n        \"Sunset District\": 10,\n        \"Alamo Square\": 9,\n        \"Financial District\": 26,\n        \"Mission District\": 17\n    },\n    \"The Castro\": {\n        \"Pacific Heights\": 16,\n        \"Golden Gate Park\": 11,\n        \"Bayview\": 19,\n        \"Marina District\": 21,\n        \"Union Square\": 19,\n        \"Sunset District\": 17,\n        \"Alamo Square\": 8,\n        \"Financial District\": 21,\n        \"Mission District\": 7\n    },\n    \"Bayview\": {\n        \"Pacific Heights\": 23,\n        \"Golden Gate Park\": 22,\n        \"The Castro\": 19,\n        \"Marina District\": 27,\n        \"Union Square\": 18,\n        \"Sunset District\": 23,\n        \"Alamo Square\": 16,\n        \"Financial District\": 19,\n        \"Mission District\": 13\n    },\n    \"Marina District\": {\n        \"Pacific Heights\": 7,\n        \"Golden Gate Park\": 18,\n        \"The Castro\": 22,\n        \"Bayview\": 27,\n        \"Union Square\": 16,\n        \"Sunset District\": 19,\n        \"Alamo Square\": 15,\n        \"Financial District\": 17,\n        \"Mission District\": 20\n    },\n    \"Union Square\": {\n        \"Pacific Heights\": 15,\n        \"Golden Gate Park\": 22,\n        \"The Castro\": 17,\n        \"Bayview\": 15,\n        \"Marina District\": 18,\n        \"Sunset District\": 27,\n        \"Alamo Square\": 15,\n        \"Financial District\": 9,\n        \"Mission District\": 14\n    },\n    \"Sunset District\": {\n        \"Pacific Heights\": 21,\n        \"Golden Gate Park\": 11,\n        \"The Castro\": 17,\n        \"Bayview\": 22,\n        \"Marina District\": 21,\n        \"Union Square\": 30,\n        \"Alamo Square\": 17,\n        \"Financial District\": 30,\n        \"Mission District\": 25\n    },\n    \"Alamo Square\": {\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 9,\n        \"The Castro\": 8,\n        \"Bayview\": 16,\n        \"Marina District\": 15,\n        \"Union Square\": 14,\n        \"Sunset District\": 16,\n        \"Financial District\": 17,\n        \"Mission District\": 10\n    },\n    \"Financial District\": {\n        \"Pacific Heights\": 13,\n        \"Golden Gate Park\": 23,\n        \"The Castro\": 20,\n        \"Bayview\": 19,\n        \"Marina District\": 15,\n        \"Union Square\": 9,\n        \"Sunset District\": 30,\n        \"Alamo Square\": 17,\n        \"Mission District\": 17\n    },\n    \"Mission District\": {\n        \"Pacific Heights\": 16,\n        \"Golden Gate Park\": 17,\n        \"The Castro\": 7,\n        \"Bayview\": 14,\n        \"Marina District\": 19,\n        \"Union Square\": 15,\n        \"Sunset District\": 24,\n        \"Alamo Square\": 11,\n        \"Financial District\": 15\n    }\n}\n\n# Friend data: name -> (location, start, end, min_duration)\nfriends = {\n    \"Helen\": (\"Golden Gate Park\", \"9:30\", \"12:15\", 45),\n    \"Steven\": (\"The Castro\", \"20:15\", \"22:00\", 105),\n    \"Deborah\": (\"Bayview\", \"8:30\", \"12:00\", 30),\n    \"Matthew\": (\"Marina District\", \"9:15\", \"14:15\", 45),\n    \"Joseph\": (\"Union Square\", \"14:15\", \"18:45\", 120),\n    \"Ronald\": (\"Sunset District\", \"16:00\", \"20:45\", 60),\n    \"Robert\": (\"Alamo Square\", \"18:30\", \"21:15\", 120),\n    \"Rebecca\": (\"Financial District\", \"14:45\", \"16:15\", 30),\n    \"Elizabeth\": (\"Mission District\", \"18:30\", \"21:00\", 120)\n}\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef can_schedule(current_time, travel_time, friend_start, friend_end, min_duration):\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(friend_start))\n    end_time = start_time + min_duration\n    return end_time <= time_to_minutes(friend_end)\n\ndef find_best_schedule():\n    best_schedule = []\n    max_meetings = 0\n    \n    # Try all possible orders of meeting friends (limited to 5 friends for performance)\n    for friend_order in permutations(['Helen', 'Deborah', 'Matthew', 'Joseph', 'Rebecca', 'Ronald', 'Robert', 'Elizabeth', 'Steven'], 5):\n        current_location = \"Pacific Heights\"\n        current_time = time_to_minutes(\"9:00\")\n        schedule = []\n        \n        for friend in friend_order:\n            location, start, end, min_duration = friends[friend]\n            travel_time = travel_times[current_location][location]\n            \n            if can_schedule(current_time, travel_time, start, end, min_duration):\n                arrival_time = current_time + travel_time\n                start_time = max(arrival_time, time_to_minutes(start))\n                end_time = start_time + min_duration\n                \n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": location,\n                    \"person\": friend,\n                    \"start_time\": minutes_to_time(start_time),\n                    \"end_time\": minutes_to_time(end_time)\n                })\n                \n                current_location = location\n                current_time = end_time\n        \n        # Check if we can fit Steven (must meet last)\n        if \"Steven\" not in [x[\"person\"] for x in schedule]:\n            friend = \"Steven\"\n            location, start, end, min_duration = friends[friend]\n            travel_time = travel_times[current_location][location]\n            \n            if can_schedule(current_time, travel_time, start, end, min_duration):\n                arrival_time = current_time + travel_time\n                start_time = max(arrival_time, time_to_minutes(start))\n                end_time = start_time + min_duration\n                \n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": location,\n                    \"person\": friend,\n                    \"start_time\": minutes_to_time(start_time),\n                    \"end_time\": minutes_to_time(end_time)\n                })\n        \n        if len(schedule) > max_meetings:\n            max_meetings = len(schedule)\n            best_schedule = schedule\n    \n    return best_schedule\n\n# Find a feasible schedule (not necessarily optimal due to complexity)\ndef find_feasible_schedule():\n    current_location = \"Pacific Heights\"\n    current_time = time_to_minutes(\"9:00\")\n    schedule = []\n    \n    # Meet Deborah first (earliest availability)\n    friend = \"Deborah\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Helen next\n    friend = \"Helen\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Matthew\n    friend = \"Matthew\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Joseph\n    friend = \"Joseph\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Rebecca\n    friend = \"Rebecca\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Ronald\n    friend = \"Ronald\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Robert\n    friend = \"Robert\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Elizabeth\n    friend = \"Elizabeth\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": friend,\n        \"start_time\": minutes_to_time(start_time),\n        \"end_time\": minutes_to_time(end_time)\n    })\n    current_location = location\n    current_time = end_time\n    \n    # Meet Steven\n    friend = \"Steven\"\n    location, start, end, min_duration = friends[friend]\n    travel_time = travel_times[current_location][location]\n    arrival_time = current_time + travel_time\n    start_time = max(arrival_time, time_to_minutes(start))\n    end_time = start_time + min_duration\n    if end_time <= time_to_minutes(end):\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": location,\n            \"person\": friend,\n            \"start_time\": minutes_to_time(start_time),\n            \"end_time\": minutes_to_time(end_time)\n        })\n    \n    return schedule\n\nschedule = find_feasible_schedule()\noutput = {\"itinerary\": schedule}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_835"
+        }
+    ]
+}

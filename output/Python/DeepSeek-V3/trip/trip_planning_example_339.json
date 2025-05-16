@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 9-15",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 17-23",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 2-8",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 17\n    cities = {\n        'Riga': 7,\n        'Budapest': 7,\n        'Paris': 4,\n        'Warsaw': 2\n    }\n    wedding_in_riga = (11, 17)\n    warsaw_show = (1, 2)\n    direct_flights = {\n        'Warsaw': ['Budapest', 'Riga', 'Paris'],\n        'Budapest': ['Warsaw', 'Paris'],\n        'Paris': ['Budapest', 'Warsaw', 'Riga'],\n        'Riga': ['Warsaw', 'Paris']\n    }\n\n    # Initialize itinerary\n    itinerary = []\n\n    # Day 1-2: Warsaw for the show\n    current_day = 1\n    end_day = warsaw_show[1]\n    itinerary.append({\n        'day_range': f'Day {current_day}-{end_day}',\n        'place': 'Warsaw'\n    })\n    current_day = end_day + 1\n\n    # Next destination after Warsaw (must be a city with direct flight from Warsaw)\n    remaining_cities = {k: v for k, v in cities.items() if k != 'Warsaw'}\n    possible_next = [city for city in direct_flights['Warsaw'] if city in remaining_cities]\n\n    # We need to ensure Riga is visited during wedding days (11-17)\n    # So Riga must be last city (since wedding is towards the end)\n    # So after Warsaw, we can go to Budapest or Paris\n\n    # Try Budapest next\n    next_city = 'Budapest'\n    if next_city in possible_next:\n        # Fly to Budapest\n        itinerary.append({\n            'flying': f'Day {current_day}-{current_day}',\n            'from': 'Warsaw',\n            'to': 'Budapest'\n        })\n        current_day += 1\n\n        # Stay in Budapest for 7 days\n        stay_days = cities['Budapest']\n        end_day = current_day + stay_days - 1\n        itinerary.append({\n            'day_range': f'Day {current_day}-{end_day}',\n            'place': 'Budapest'\n        })\n        current_day = end_day + 1\n\n        # Next from Budapest (can go to Paris)\n        next_city = 'Paris'\n        if next_city in direct_flights['Budapest']:\n            # Fly to Paris\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': 'Budapest',\n                'to': 'Paris'\n            })\n            current_day += 1\n\n            # Stay in Paris for 4 days\n            stay_days = cities['Paris']\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': 'Paris'\n            })\n            current_day = end_day + 1\n\n            # Finally fly to Riga for wedding\n            if 'Riga' in direct_flights['Paris']:\n                # Fly to Riga\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': 'Paris',\n                    'to': 'Riga'\n                })\n                current_day += 1\n\n                # Stay in Riga for 7 days (must cover days 11-17)\n                stay_days = cities['Riga']\n                end_day = current_day + stay_days - 1\n                itinerary.append({\n                    'day_range': f'Day {current_day}-{end_day}',\n                    'place': 'Riga'\n                })\n\n    # Verify the itinerary covers all constraints\n    # Check if Riga covers wedding days (11-17)\n    riga_visit = None\n    for item in itinerary:\n        if item.get('place') == 'Riga':\n            riga_visit = item['day_range']\n            break\n\n    if riga_visit:\n        start, end = map(int, riga_visit.split('Day ')[1].split('-'))\n        if not (start <= wedding_in_riga[0] and end >= wedding_in_riga[1]):\n            # If not, try alternative path: Warsaw -> Paris -> Budapest -> Riga\n            itinerary = []\n\n            # Day 1-2: Warsaw\n            current_day = 1\n            end_day = warsaw_show[1]\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': 'Warsaw'\n            })\n            current_day = end_day + 1\n\n            # Fly to Paris\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': 'Warsaw',\n                'to': 'Paris'\n            })\n            current_day += 1\n\n            # Stay in Paris for 4 days\n            stay_days = cities['Paris']\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': 'Paris'\n            })\n            current_day = end_day + 1\n\n            # Fly to Budapest\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': 'Paris',\n                'to': 'Budapest'\n            })\n            current_day += 1\n\n            # Stay in Budapest for 7 days\n            stay_days = cities['Budapest']\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': 'Budapest'\n            })\n            current_day = end_day + 1\n\n            # Fly to Riga\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': 'Budapest',\n                'to': 'Riga'\n            })\n            current_day += 1\n\n            # Stay in Riga for 7 days\n            stay_days = cities['Riga']\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': 'Riga'\n            })\n\n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_339"
+        }
+    ]
+}

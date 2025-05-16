@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Joseph",
+                        "start_time": "11:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "15:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Laura",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Joseph",
+                        "start_time": "11:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "15:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Laura",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input data\ntravel_times = {\n    'Fisherman\\'s Wharf': {\n        'The Castro': 26,\n        'Golden Gate Park': 25,\n        'Embarcadero': 8,\n        'Russian Hill': 7,\n        'Nob Hill': 11,\n        'Alamo Square': 20,\n        'North Beach': 6\n    },\n    'The Castro': {\n        'Fisherman\\'s Wharf': 24,\n        'Golden Gate Park': 11,\n        'Embarcadero': 22,\n        'Russian Hill': 18,\n        'Nob Hill': 16,\n        'Alamo Square': 8,\n        'North Beach': 20\n    },\n    'Golden Gate Park': {\n        'Fisherman\\'s Wharf': 24,\n        'The Castro': 13,\n        'Embarcadero': 25,\n        'Russian Hill': 19,\n        'Nob Hill': 20,\n        'Alamo Square': 10,\n        'North Beach': 24\n    },\n    'Embarcadero': {\n        'Fisherman\\'s Wharf': 6,\n        'The Castro': 25,\n        'Golden Gate Park': 25,\n        'Russian Hill': 8,\n        'Nob Hill': 10,\n        'Alamo Square': 19,\n        'North Beach': 5\n    },\n    'Russian Hill': {\n        'Fisherman\\'s Wharf': 7,\n        'The Castro': 21,\n        'Golden Gate Park': 21,\n        'Embarcadero': 8,\n        'Nob Hill': 5,\n        'Alamo Square': 15,\n        'North Beach': 5\n    },\n    'Nob Hill': {\n        'Fisherman\\'s Wharf': 11,\n        'The Castro': 17,\n        'Golden Gate Park': 17,\n        'Embarcadero': 9,\n        'Russian Hill': 5,\n        'Alamo Square': 11,\n        'North Beach': 8\n    },\n    'Alamo Square': {\n        'Fisherman\\'s Wharf': 19,\n        'The Castro': 8,\n        'Golden Gate Park': 9,\n        'Embarcadero': 17,\n        'Russian Hill': 13,\n        'Nob Hill': 11,\n        'North Beach': 15\n    },\n    'North Beach': {\n        'Fisherman\\'s Wharf': 5,\n        'The Castro': 22,\n        'Golden Gate Park': 22,\n        'Embarcadero': 6,\n        'Russian Hill': 4,\n        'Nob Hill': 7,\n        'Alamo Square': 16\n    }\n}\n\nfriends = [\n    {\n        'name': 'Laura',\n        'location': 'The Castro',\n        'start': '19:45',\n        'end': '21:30',\n        'duration': 105\n    },\n    {\n        'name': 'Daniel',\n        'location': 'Golden Gate Park',\n        'start': '21:15',\n        'end': '21:45',\n        'duration': 15\n    },\n    {\n        'name': 'William',\n        'location': 'Embarcadero',\n        'start': '7:00',\n        'end': '9:00',\n        'duration': 90\n    },\n    {\n        'name': 'Karen',\n        'location': 'Russian Hill',\n        'start': '14:30',\n        'end': '19:45',\n        'duration': 30\n    },\n    {\n        'name': 'Stephanie',\n        'location': 'Nob Hill',\n        'start': '7:30',\n        'end': '9:30',\n        'duration': 45\n    },\n    {\n        'name': 'Joseph',\n        'location': 'Alamo Square',\n        'start': '11:30',\n        'end': '12:45',\n        'duration': 15\n    },\n    {\n        'name': 'Kimberly',\n        'location': 'North Beach',\n        'start': '15:45',\n        'end': '19:15',\n        'duration': 30\n    }\n]\n\ndef get_possible_meetings(current_time, current_location, remaining_friends, visited):\n    possible = []\n    for friend in remaining_friends:\n        if friend['name'] in visited:\n            continue\n        \n        travel_time = travel_times[current_location][friend['location']]\n        arrival_time = current_time + travel_time\n        \n        start_window = time_to_minutes(friend['start'])\n        end_window = time_to_minutes(friend['end'])\n        \n        meeting_start = max(arrival_time, start_window)\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end <= end_window:\n            possible.append((friend, meeting_start, meeting_end))\n    \n    return possible\n\ndef find_best_schedule(current_time, current_location, remaining_friends, visited, schedule):\n    if not remaining_friends or len(visited) == len(remaining_friends):\n        return schedule\n    \n    best_schedule = schedule.copy()\n    max_meetings = len(schedule)\n    \n    possible_meetings = get_possible_meetings(current_time, current_location, remaining_friends, visited)\n    \n    for meeting in possible_meetings:\n        friend, meeting_start, meeting_end = meeting\n        new_visited = visited.copy()\n        new_visited.add(friend['name'])\n        new_schedule = schedule.copy()\n        new_schedule.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        updated_schedule = find_best_schedule(\n            meeting_end,\n            friend['location'],\n            remaining_friends,\n            new_visited,\n            new_schedule\n        )\n        \n        if len(updated_schedule) > max_meetings:\n            best_schedule = updated_schedule\n            max_meetings = len(updated_schedule)\n    \n    return best_schedule\n\ndef main():\n    start_time = time_to_minutes('9:00')\n    start_location = 'Fisherman\\'s Wharf'\n    \n    # Filter out friends that can't be met due to time constraints\n    possible_friends = []\n    for friend in friends:\n        travel_time = travel_times[start_location][friend['location']]\n        arrival_time = start_time + travel_time\n        start_window = time_to_minutes(friend['start'])\n        end_window = time_to_minutes(friend['end'])\n        \n        if arrival_time <= end_window and (arrival_time + friend['duration']) <= end_window:\n            possible_friends.append(friend)\n    \n    best_schedule = find_best_schedule(start_time, start_location, possible_friends, set(), [])\n    \n    result = {\n        \"itinerary\": best_schedule\n    }\n    \n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_604"
+        }
+    ]
+}

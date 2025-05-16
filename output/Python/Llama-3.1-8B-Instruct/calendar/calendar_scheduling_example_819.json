@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Thursday",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_available_time(start_time, end_time, schedules):\n    available_time = []\n    for time in [start_time + timedelta(hours=i) for i in range((end_time - start_time).seconds // 3600 + 1)]:\n        time_str = time.strftime('%H:%M')\n        if all(time_str not in schedule for schedule in schedules.values()):\n            available_time.append(time_str)\n    return available_time\n\ndef schedule_meeting(meeting_duration, start_time, end_time, schedules):\n    available_times = []\n    for day in [start_time + timedelta(days=i) for i in range((end_time - start_time).days + 1)]:\n        if day.strftime('%A')!= 'Monday' and day.strftime('%A')!= 'Tuesday' and day.strftime('%A')!= 'Wednesday':  # Ruth is busy on Monday, Tuesday, Wednesday\n            if day.strftime('%A')!= 'Thursday' or day.hour >= 11:  # Julie would like to avoid more meetings on Thursday before 11:30\n                available_times.extend(find_available_time(day, day + timedelta(hours=17), schedules))\n    \n    if available_times:\n        best_time = max(available_times, key=lambda x: x.split(':')[-1])\n        best_start_time = datetime.strptime(best_time, '%H:%M')\n        best_end_time = best_start_time + timedelta(hours=meeting_duration)\n        return best_start_time.strftime('%H:%M'), best_end_time.strftime('%H:%M'), best_start_time.strftime('%A')\n    else:\n        return None, None, None\n\n# Define the schedules\nschedules = {\n    'Julie': [],\n    'Ruth': [['09:00', '17:00'], ['09:00', '17:00'], ['09:00', '17:00'], ['09:00', '11:00'], ['11:30', '14:30'], ['15:00', '17:00']]\n}\n\n# Define the meeting duration and start time\nmeeting_duration = 0.5\nstart_time = datetime.strptime('09:00', '%H:%M').replace(year=2024, month=7, day=29)\nend_time = start_time + timedelta(days=4)\n\n# Find the available time\nstart_time_str, end_time_str, day_of_week = schedule_meeting(meeting_duration, start_time, end_time, schedules)\n\n# Print the result\nif start_time_str and end_time_str:\n    print(f\"Day: {day_of_week}, Time: {start_time_str}:{end_time_str}\")\nelse:\n    print(\"No available time found.\")\n```",
+            "count": "calendar_scheduling_example_819"
+        }
+    ]
+}

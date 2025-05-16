@@ -1,0 +1,28 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Input parameters\n    total_days = 12\n    naples_days = 3\n    seville_days = 4\n    milan_days = 7\n    seville_show_start = 9\n    seville_show_end = 12\n    \n    # Direct flights available\n    direct_flights = {\n        'Milan': ['Seville'],\n        'Naples': ['Milan'],\n        'Seville': ['Milan']\n    }\n    \n    # Validate total days\n    if (naples_days + seville_days + milan_days) != total_days:\n        return {\"error\": \"Total days do not add up to 12\"}\n    \n    # Determine the itinerary\n    itinerary = []\n    \n    # Seville show is from day 9 to 12, so must be in Seville during that time\n    # So Seville must be the last city\n    # We need to fit Naples and Milan before day 9\n    \n    # Option 1: Start with Naples\n    # Naples can only fly to Milan\n    # Then Milan can fly to Seville\n    \n    # Calculate days for Naples and Milan before Seville\n    days_before_seville = seville_show_start - 1\n    \n    # Assign Naples first\n    naples_end = naples_days\n    itinerary.append({'day_range': f'Day 1-{naples_end}', 'place': 'Naples'})\n    \n    # Fly to Milan\n    fly_day = naples_end\n    itinerary.append({'flying': f'Day {fly_day}-{fly_day}', 'from': 'Naples', 'to': 'Milan'})\n    \n    # Calculate remaining days for Milan before Seville\n    milan_before_seville = days_before_seville - naples_end\n    if milan_before_seville < 0:\n        return {\"error\": \"Cannot fit Milan before Seville show\"}\n    \n    milan_end = fly_day + milan_before_seville\n    itinerary.append({'day_range': f'Day {fly_day + 1}-{milan_end}', 'place': 'Milan'})\n    \n    # Fly to Seville\n    fly_day = milan_end\n    itinerary.append({'flying': f'Day {fly_day}-{fly_day}', 'from': 'Milan', 'to': 'Seville'})\n    \n    # Stay in Seville for the remaining days\n    seville_start = fly_day + 1\n    seville_end = total_days\n    itinerary.append({'day_range': f'Day {seville_start}-{seville_end}', 'place': 'Seville'})\n    \n    # Verify all constraints are met\n    # Check Naples days\n    naples_actual = 0\n    for entry in itinerary:\n        if 'place' in entry and entry['place'] == 'Naples':\n            start, end = map(int, entry['day_range'].split('-')[0].replace('Day ', '').split('-')[0]), \\\n                         map(int, entry['day_range'].split('-')[1].replace('Day ', '').split('-')[0])\n            naples_actual += end - start + 1\n    if naples_actual != naples_days:\n        return {\"error\": \"Naples days constraint not met\"}\n    \n    # Check Seville days\n    seville_actual = 0\n    for entry in itinerary:\n        if 'place' in entry and entry['place'] == 'Seville':\n            start, end = map(int, entry['day_range'].split('-')[0].replace('Day ', '').split('-')[0]), \\\n                         map(int, entry['day_range'].split('-')[1].replace('Day ', '').split('-')[0])\n            seville_actual += end - start + 1\n    if seville_actual != seville_days:\n        return {\"error\": \"Seville days constraint not met\"}\n    \n    # Check Milan days\n    milan_actual = 0\n    for entry in itinerary:\n        if 'place' in entry and entry['place'] == 'Milan':\n            start, end = map(int, entry['day_range'].split('-')[0].replace('Day ', '').split('-')[0]), \\\n                         map(int, entry['day_range'].split('-')[1].replace('Day ', '').split('-')[0])\n            milan_actual += end - start + 1\n    if milan_actual != milan_days:\n        return {\"error\": \"Milan days constraint not met\"}\n    \n    # Check Seville show days\n    seville_show_ok = False\n    for entry in itinerary:\n        if 'place' in entry and entry['place'] == 'Seville':\n            start, end = map(int, entry['day_range'].split('-')[0].replace('Day ', '').split('-')[0]), \\\n                         map(int, entry['day_range'].split('-')[1].replace('Day ', '').split('-')[0])\n            if start <= seville_show_start and end >= seville_show_end:\n                seville_show_ok = True\n    if not seville_show_ok:\n        return {\"error\": \"Seville show days constraint not met\"}\n    \n    return itinerary\n\n# Execute the planning\nitinerary = plan_trip()\n\n# Output as JSON\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_113"
+        }
+    ]
+}

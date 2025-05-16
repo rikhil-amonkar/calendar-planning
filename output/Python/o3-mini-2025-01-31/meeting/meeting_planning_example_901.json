@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Emily",
+                        "start_time": "9:15",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Linda",
+                        "start_time": "11:26",
+                        "end_time": "11:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Anthony",
+                        "start_time": "11:52",
+                        "end_time": "13:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "13:54",
+                        "end_time": "14:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Paul",
+                        "start_time": "14:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "William",
+                        "start_time": "17:30",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Kimberly",
+                        "start_time": "19:52",
+                        "end_time": "21:07"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Emily",
+                        "start_time": "9:15",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Linda",
+                        "start_time": "11:26",
+                        "end_time": "11:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Anthony",
+                        "start_time": "11:52",
+                        "end_time": "13:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "13:54",
+                        "end_time": "14:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Paul",
+                        "start_time": "14:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "William",
+                        "start_time": "17:30",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Kimberly",
+                        "start_time": "19:52",
+                        "end_time": "21:07"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport sys\n\n# Utility functions to convert between \"H:MM\" and minutes since midnight\ndef time_to_minutes(t):\n    # t is a string in \"H:MM\" (24-hour format, no leading zeros assumed)\n    parts = t.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(m):\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Define travel times as a nested dictionary: travel_times[from_location][to_location] = minutes\ntravel_times = {\n    \"Russian Hill\": {\n        \"Pacific Heights\": 7,\n        \"North Beach\": 5,\n        \"Golden Gate Park\": 21,\n        \"Embarcadero\": 8,\n        \"Haight-Ashbury\": 17,\n        \"Fisherman's Wharf\": 7,\n        \"Mission District\": 16,\n        \"Alamo Square\": 15,\n        \"Bayview\": 23,\n        \"Richmond District\": 14,\n    },\n    \"Pacific Heights\": {\n        \"Russian Hill\": 7,\n        \"North Beach\": 9,\n        \"Golden Gate Park\": 15,\n        \"Embarcadero\": 10,\n        \"Haight-Ashbury\": 11,\n        \"Fisherman's Wharf\": 13,\n        \"Mission District\": 15,\n        \"Alamo Square\": 10,\n        \"Bayview\": 22,\n        \"Richmond District\": 12,\n    },\n    \"North Beach\": {\n        \"Russian Hill\": 4,\n        \"Pacific Heights\": 8,\n        \"Golden Gate Park\": 22,\n        \"Embarcadero\": 6,\n        \"Haight-Ashbury\": 18,\n        \"Fisherman's Wharf\": 5,\n        \"Mission District\": 18,\n        \"Alamo Square\": 16,\n        \"Bayview\": 25,\n        \"Richmond District\": 18,\n    },\n    \"Golden Gate Park\": {\n        \"Russian Hill\": 19,\n        \"Pacific Heights\": 16,\n        \"North Beach\": 23,\n        \"Embarcadero\": 25,\n        \"Haight-Ashbury\": 7,\n        \"Fisherman's Wharf\": 24,\n        \"Mission District\": 17,\n        \"Alamo Square\": 9,\n        \"Bayview\": 23,\n        \"Richmond District\": 7,\n    },\n    \"Embarcadero\": {\n        \"Russian Hill\": 8,\n        \"Pacific Heights\": 11,\n        \"North Beach\": 5,\n        \"Golden Gate Park\": 25,\n        \"Haight-Ashbury\": 21,\n        \"Fisherman's Wharf\": 6,\n        \"Mission District\": 20,\n        \"Alamo Square\": 19,\n        \"Bayview\": 21,\n        \"Richmond District\": 21,\n    },\n    \"Haight-Ashbury\": {\n        \"Russian Hill\": 17,\n        \"Pacific Heights\": 12,\n        \"North Beach\": 19,\n        \"Golden Gate Park\": 7,\n        \"Embarcadero\": 20,\n        \"Fisherman's Wharf\": 23,\n        \"Mission District\": 11,\n        \"Alamo Square\": 5,\n        \"Bayview\": 18,\n        \"Richmond District\": 10,\n    },\n    \"Fisherman's Wharf\": {\n        \"Russian Hill\": 7,\n        \"Pacific Heights\": 12,\n        \"North Beach\": 6,\n        \"Golden Gate Park\": 25,\n        \"Embarcadero\": 8,\n        \"Haight-Ashbury\": 22,\n        \"Mission District\": 22,\n        \"Alamo Square\": 21,\n        \"Bayview\": 26,\n        \"Richmond District\": 18,\n    },\n    \"Mission District\": {\n        \"Russian Hill\": 15,\n        \"Pacific Heights\": 16,\n        \"North Beach\": 17,\n        \"Golden Gate Park\": 17,\n        \"Embarcadero\": 19,\n        \"Haight-Ashbury\": 12,\n        \"Fisherman's Wharf\": 22,\n        \"Alamo Square\": 11,\n        \"Bayview\": 14,\n        \"Richmond District\": 20,\n    },\n    \"Alamo Square\": {\n        \"Russian Hill\": 13,\n        \"Pacific Heights\": 10,\n        \"North Beach\": 15,\n        \"Golden Gate Park\": 9,\n        \"Embarcadero\": 16,\n        \"Haight-Ashbury\": 5,\n        \"Fisherman's Wharf\": 19,\n        \"Mission District\": 10,\n        \"Bayview\": 16,\n        \"Richmond District\": 11,\n    },\n    \"Bayview\": {\n        \"Russian Hill\": 23,\n        \"Pacific Heights\": 23,\n        \"North Beach\": 22,\n        \"Golden Gate Park\": 22,\n        \"Embarcadero\": 19,\n        \"Haight-Ashbury\": 19,\n        \"Fisherman's Wharf\": 25,\n        \"Mission District\": 13,\n        \"Alamo Square\": 16,\n        \"Richmond District\": 25,\n    },\n    \"Richmond District\": {\n        \"Russian Hill\": 13,\n        \"Pacific Heights\": 10,\n        \"North Beach\": 17,\n        \"Golden Gate Park\": 9,\n        \"Embarcadero\": 19,\n        \"Haight-Ashbury\": 10,\n        \"Fisherman's Wharf\": 18,\n        \"Mission District\": 20,\n        \"Alamo Square\": 13,\n        \"Bayview\": 27,\n    }\n}\n\n# Define meeting constraints data\n# Each meeting: name, location, avail_start, avail_end, min_duration\nmeetings = [\n    {\n        \"person\": \"Emily\",\n        \"location\": \"Pacific Heights\",\n        \"avail_start\": time_to_minutes(\"9:15\"),\n        \"avail_end\": time_to_minutes(\"13:45\"),\n        \"min_duration\": 120,\n    },\n    {\n        \"person\": \"Helen\",\n        \"location\": \"North Beach\",\n        \"avail_start\": time_to_minutes(\"13:45\"),\n        \"avail_end\": time_to_minutes(\"18:45\"),\n        \"min_duration\": 30,\n    },\n    {\n        \"person\": \"Kimberly\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": time_to_minutes(\"18:45\"),\n        \"avail_end\": time_to_minutes(\"21:15\"),\n        \"min_duration\": 75,\n    },\n    {\n        \"person\": \"James\",\n        \"location\": \"Embarcadero\",\n        \"avail_start\": time_to_minutes(\"10:30\"),\n        \"avail_end\": time_to_minutes(\"11:30\"),\n        \"min_duration\": 30,\n    },\n    {\n        \"person\": \"Linda\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": time_to_minutes(\"7:30\"),\n        \"avail_end\": time_to_minutes(\"19:15\"),\n        \"min_duration\": 15,\n    },\n    {\n        \"person\": \"Paul\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": time_to_minutes(\"14:45\"),\n        \"avail_end\": time_to_minutes(\"18:45\"),\n        \"min_duration\": 90,\n    },\n    {\n        \"person\": \"Anthony\",\n        \"location\": \"Mission District\",\n        \"avail_start\": time_to_minutes(\"8:00\"),\n        \"avail_end\": time_to_minutes(\"14:45\"),\n        \"min_duration\": 105,\n    },\n    {\n        \"person\": \"Nancy\",\n        \"location\": \"Alamo Square\",\n        \"avail_start\": time_to_minutes(\"8:30\"),\n        \"avail_end\": time_to_minutes(\"13:45\"),\n        \"min_duration\": 120,\n    },\n    {\n        \"person\": \"William\",\n        \"location\": \"Bayview\",\n        \"avail_start\": time_to_minutes(\"17:30\"),\n        \"avail_end\": time_to_minutes(\"20:30\"),\n        \"min_duration\": 120,\n    },\n    {\n        \"person\": \"Margaret\",\n        \"location\": \"Richmond District\",\n        \"avail_start\": time_to_minutes(\"15:15\"),\n        \"avail_end\": time_to_minutes(\"18:15\"),\n        \"min_duration\": 45,\n    }\n]\n\n# Starting point and time\nstart_location = \"Russian Hill\"\nstart_time = time_to_minutes(\"9:00\")\n\n# Global best result: maximum number of meetings scheduled\nbest_schedule = []\nbest_count = 0\n\ndef dfs(current_time, current_location, remaining, schedule):\n    global best_schedule, best_count\n\n    # Update best schedule if current schedule has more meetings\n    if len(schedule) > best_count:\n        best_count = len(schedule)\n        best_schedule = schedule.copy()\n    # Try each remaining meeting\n    for i, meeting in enumerate(remaining):\n        # Get travel time from current location to meeting location\n        # It is possible that current_location equals meeting location? But in our case, start might be different.\n        travel = travel_times.get(current_location, {}).get(meeting[\"location\"], None)\n        if travel is None:\n            continue  # no route available\n        # Earliest arrival time at meeting location\n        arrival_time = current_time + travel\n        # The meeting can only start when the friend is available\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"min_duration\"]\n        # Check if meeting can be completed within available window\n        if meeting_end <= meeting[\"avail_end\"]:\n            # Proceed with this meeting scheduled\n            new_schedule = schedule.copy()\n            new_schedule.append({\n                \"action\": \"meet\",\n                \"location\": meeting[\"location\"],\n                \"person\": meeting[\"person\"],\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            })\n            new_remaining = remaining[:i] + remaining[i+1:]\n            dfs(meeting_end, meeting[\"location\"], new_remaining, new_schedule)\n\n# Run DFS from starting state\ndfs(start_time, start_location, meetings, [])\n\n# Prepare the result in the required JSON format\nresult = {\"itinerary\": best_schedule}\n\n# Output JSON formatted result\nprint(json.dumps(result, indent=2))\n    \nif __name__ == '__main__':\n    sys.exit(0)",
+            "count": "meeting_planning_example_901"
+        }
+    ]
+}

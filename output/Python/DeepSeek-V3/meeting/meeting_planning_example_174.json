@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef compute_schedule():\n    # Input parameters\n    arrival_time = parse_time(\"9:00\")\n    arrival_location = \"Nob Hill\"\n    \n    # Friend constraints\n    thomas_available_start = parse_time(\"15:30\")\n    thomas_available_end = parse_time(\"19:15\")\n    thomas_location = \"Pacific Heights\"\n    thomas_min_duration = timedelta(minutes=75)\n    \n    kenneth_available_start = parse_time(\"12:00\")\n    kenneth_available_end = parse_time(\"15:45\")\n    kenneth_location = \"Mission District\"\n    kenneth_min_duration = timedelta(minutes=45)\n    \n    # Travel times in minutes\n    travel_times = {\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Nob Hill\", \"Mission District\"): 13,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"Mission District\"): 15,\n        (\"Mission District\", \"Nob Hill\"): 12,\n        (\"Mission District\", \"Pacific Heights\"): 16\n    }\n    \n    # Possible schedules\n    possible_schedules = []\n    \n    # Option 1: Meet Kenneth first, then Thomas\n    # Travel to Kenneth\n    travel_to_kenneth = timedelta(minutes=travel_times[(arrival_location, kenneth_location)])\n    meet_kenneth_start = max(arrival_time + travel_to_kenneth, kenneth_available_start)\n    meet_kenneth_end = meet_kenneth_start + kenneth_min_duration\n    if meet_kenneth_end <= kenneth_available_end:\n        # Travel to Thomas\n        travel_to_thomas = timedelta(minutes=travel_times[(kenneth_location, thomas_location)])\n        meet_thomas_start = max(meet_kenneth_end + travel_to_thomas, thomas_available_start)\n        meet_thomas_end = meet_thomas_start + thomas_min_duration\n        if meet_thomas_end <= thomas_available_end:\n            possible_schedules.append([\n                {\"action\": \"meet\", \"location\": kenneth_location, \"person\": \"Kenneth\", \n                 \"start_time\": format_time(meet_kenneth_start), \"end_time\": format_time(meet_kenneth_end)},\n                {\"action\": \"meet\", \"location\": thomas_location, \"person\": \"Thomas\", \n                 \"start_time\": format_time(meet_thomas_start), \"end_time\": format_time(meet_thomas_end)}\n            ])\n    \n    # Option 2: Meet Thomas first, then Kenneth (if possible)\n    # Travel to Thomas\n    travel_to_thomas = timedelta(minutes=travel_times[(arrival_location, thomas_location)])\n    meet_thomas_start = max(arrival_time + travel_to_thomas, thomas_available_start)\n    meet_thomas_end = meet_thomas_start + thomas_min_duration\n    if meet_thomas_end <= thomas_available_end:\n        # Travel to Kenneth\n        travel_to_kenneth = timedelta(minutes=travel_times[(thomas_location, kenneth_location)])\n        meet_kenneth_start = max(meet_thomas_end + travel_to_kenneth, kenneth_available_start)\n        meet_kenneth_end = meet_kenneth_start + kenneth_min_duration\n        if meet_kenneth_end <= kenneth_available_end:\n            possible_schedules.append([\n                {\"action\": \"meet\", \"location\": thomas_location, \"person\": \"Thomas\", \n                 \"start_time\": format_time(meet_thomas_start), \"end_time\": format_time(meet_thomas_end)},\n                {\"action\": \"meet\", \"location\": kenneth_location, \"person\": \"Kenneth\", \n                 \"start_time\": format_time(meet_kenneth_start), \"end_time\": format_time(meet_kenneth_end)}\n            ])\n    \n    # Select the best schedule (most meetings, then earliest completion)\n    if not possible_schedules:\n        return {\"itinerary\": []}\n    \n    best_schedule = max(possible_schedules, key=lambda s: (len(s), -parse_time(s[-1][\"end_time\"]).timestamp()))\n    \n    return {\"itinerary\": best_schedule}\n\nif __name__ == \"__main__\":\n    schedule = compute_schedule()\n    print(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_174"
+        }
+    ]
+}

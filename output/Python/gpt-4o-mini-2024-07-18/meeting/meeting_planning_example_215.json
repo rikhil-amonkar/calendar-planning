@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "16:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Jessica",
+                        "start_time": "16:45",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "18:30",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "16:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Jessica",
+                        "start_time": "16:45",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "18:30",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times\ntravel_times = {\n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Bayview\", \"Richmond District\"): 25,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Embarcadero\", \"Richmond District\"): 21,\n    (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n    (\"Richmond District\", \"Bayview\"): 26,\n    (\"Richmond District\", \"Embarcadero\"): 19,\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n}\n\n# Meeting constraints\nmeetings = {\n    \"Jessica\": {\"location\": \"Embarcadero\", \"start\": \"16:45\", \"end\": \"19:00\", \"duration\": 30},\n    \"Sandra\": {\"location\": \"Richmond District\", \"start\": \"18:30\", \"end\": \"21:45\", \"duration\": 120},\n    \"Jason\": {\"location\": \"Fisherman's Wharf\", \"start\": \"16:00\", \"end\": \"16:45\", \"duration\": 30},\n}\n\n# Start time upon arrival at Bayview\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\nschedule = []\n\ndef can_schedule_meeting(start_time, end_time):\n    return start_time >= arrival_time and end_time <= datetime.strptime(\"21:45\", \"%H:%M\")\n\n# Schedule meetings\ndef schedule_meetings():\n    global arrival_time\n    \n    # Meeting with Jason first\n    jason_start = datetime.strptime(meetings[\"Jason\"][\"start\"], \"%H:%M\")\n    jason_end = jason_start + timedelta(minutes=meetings[\"Jason\"][\"duration\"])\n    travel_time_to_jason = travel_times[(\"Bayview\", \"Fisherman's Wharf\")]\n    \n    if can_schedule_meeting(jason_start, jason_end):\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Fisherman's Wharf\",\n            \"person\": \"Jason\",\n            \"start_time\": jason_start.strftime(\"%H:%M\"),\n            \"end_time\": jason_end.strftime(\"%H:%M\")\n        })\n        arrival_time = jason_end + timedelta(minutes=travel_times[(\"Fisherman's Wharf\", \"Embarcadero\")])\n        \n        # Meeting with Jessica next\n        jessica_start = max(arrival_time, datetime.strptime(meetings[\"Jessica\"][\"start\"], \"%H:%M\"))\n        jessica_end = jessica_start + timedelta(minutes=meetings[\"Jessica\"][\"duration\"])\n        \n        travel_time_to_jessica = travel_times[(\"Fisherman's Wharf\", \"Embarcadero\")]\n        \n        if jessica_start + timedelta(minutes=travel_time_to_jessica) <= datetime.strptime(meetings[\"Jessica\"][\"end\"], \"%H:%M\"):\n            arrival_time = jessica_start + timedelta(minutes=travel_time_to_jessica)\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": \"Embarcadero\",\n                \"person\": \"Jessica\",\n                \"start_time\": jessica_start.strftime(\"%H:%M\"),\n                \"end_time\": jessica_end.strftime(\"%H:%M\")\n            })\n            arrival_time = jessica_end + timedelta(minutes=travel_times[(\"Embarcadero\", \"Richmond District\")])\n            \n            # Meeting with Sandra next\n            sandra_start = max(arrival_time, datetime.strptime(meetings[\"Sandra\"][\"start\"], \"%H:%M\"))\n            sandra_end = sandra_start + timedelta(minutes=meetings[\"Sandra\"][\"duration\"])\n            \n            travel_time_to_sandra = travel_times[(\"Richmond District\", \"Bayview\")]\n            \n            if sandra_start + timedelta(minutes=travel_time_to_sandra) <= datetime.strptime(meetings[\"Sandra\"][\"end\"], \"%H:%M\"):\n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": \"Richmond District\",\n                    \"person\": \"Sandra\",\n                    \"start_time\": sandra_start.strftime(\"%H:%M\"),\n                    \"end_time\": sandra_end.strftime(\"%H:%M\")\n                })\n\nschedule_meetings()\n\n# JSON formatted output\noutput = {\"itinerary\": schedule}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_215"
+        }
+    ]
+}

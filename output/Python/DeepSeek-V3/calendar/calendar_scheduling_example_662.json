@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time(gary_schedule, david_schedule, work_hours_start, work_hours_end, meeting_duration, days):\n    for day in days:\n        # Initialize available time for the day\n        available_start = work_hours_start\n        available_end = work_hours_end\n        \n        # Get blocked times for Gary and David on the current day\n        gary_blocked = gary_schedule.get(day, [])\n        david_blocked = david_schedule.get(day, [])\n        \n        # Combine and sort all blocked times\n        all_blocked = gary_blocked + david_blocked\n        all_blocked.sort()\n        \n        # Merge overlapping or adjacent blocked times\n        merged_blocked = []\n        for start, end in all_blocked:\n            if not merged_blocked:\n                merged_blocked.append((start, end))\n            else:\n                last_start, last_end = merged_blocked[-1]\n                if start <= last_end:\n                    # Overlapping or adjacent, merge them\n                    new_start = min(last_start, start)\n                    new_end = max(last_end, end)\n                    merged_blocked[-1] = (new_start, new_end)\n                else:\n                    merged_blocked.append((start, end))\n        \n        # Find available slots\n        current_time = available_start\n        for start, end in merged_blocked:\n            if current_time < start:\n                # Check if the slot is long enough\n                if (start - current_time) >= meeting_duration:\n                    return day, (current_time, current_time + meeting_duration)\n            current_time = max(current_time, end)\n        \n        # Check the remaining time after the last blocked slot\n        if (available_end - current_time) >= meeting_duration:\n            return day, (current_time, current_time + meeting_duration)\n    \n    return None, None\n\n# Define work hours and meeting duration\nwork_hours_start = 9.0  # 9:00\nwork_hours_end = 17.0    # 17:00\nmeeting_duration = 1.0   # 1 hour\n\n# Define schedules\ngary_schedule = {\n    'Monday': [(9.5, 10.0), (11.0, 13.0), (14.0, 14.5), (16.5, 17.0)],\n    'Tuesday': [(9.0, 9.5), (10.5, 11.0), (14.5, 16.0)]\n}\n\ndavid_schedule = {\n    'Monday': [(9.0, 9.5), (10.0, 13.0), (14.5, 16.5)],\n    'Tuesday': [(9.0, 9.5), (10.0, 10.5), (11.0, 12.5), (13.0, 14.5), (15.0, 16.0), (16.5, 17.0)]\n}\n\n# Days to consider\ndays = ['Monday', 'Tuesday']\n\n# Find meeting time\nday, time_slot = find_meeting_time(gary_schedule, david_schedule, work_hours_start, work_hours_end, meeting_duration, days)\n\nif day and time_slot:\n    start_hour = int(time_slot[0])\n    start_min = int((time_slot[0] - start_hour) * 60)\n    end_hour = int(time_slot[1])\n    end_min = int((time_slot[1] - end_hour) * 60)\n    print(f\"{day}: {start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\")\nelse:\n    print(\"No suitable time found.\")\n```",
+            "count": "calendar_scheduling_example_662"
+        }
+    ]
+}

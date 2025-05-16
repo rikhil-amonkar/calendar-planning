@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Stockholm"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I'm trying to help this user with their trip planning problem. They want to visit 7 European cities in 15 days, and they have specific constraints on how many days they want to stay in each city and certain events they need to attend. The challenge is to create an optimal itinerary using direct flights between the cities.\n\nFirst, I'll start by listing out all the cities and the number of days they want to stay in each. The cities are Riga, Frankfurt, Amsterdam, Vilnius, London, Stockholm, and Bucharest. The durations are 2, 3, 2, 5, 2, 3, and 4 days respectively.\n\nNext, I need to consider the events they need to attend:\n- Meet a friend in Amsterdam between day 2 and 3.\n- Attend a workshop in Vilnius between day 7 and 11.\n- Attend a wedding in Stockholm between day 13 and 15.\n\nSo, I need to ensure that the itinerary aligns with these time frames.\n\nThen, I look at the flight connections provided. It's crucial to ensure that each city can be reached from the previous one via a direct flight. For example, London connects to Amsterdam and Bucharest, Vilnius connects to Frankfurt, and so on.\n\nI'll start by scheduling the events first since they have fixed time slots. Amsterdam needs to be visited around days 2-3, Vilnius around days 7-11, and Stockholm around days 13-15.\n\nI'll begin with London as the starting point since it connects well to multiple cities. From London, I can fly to Amsterdam, which fits the friend meeting on days 2-3. After Amsterdam, I need to get to Vilnius by day 7. Looking at the connections, Amsterdam can fly to Vilnius directly.\n\nAfter spending 5 days in Vilnius, the next destination should be Frankfurt, which connects back to ensure we can reach Stockholm later. From Frankfurt, we can go to Riga, which then connects to Stockholm for the wedding.\n\nFinally, from Stockholm, we can fly to Bucharest to spend the remaining days.\n\nI need to make sure the transitions between cities happen on the same day, so the last day in one city is the flight day, and the first day in the next city starts immediately.\n\nPutting it all together, the itinerary starts in London, moves to Amsterdam, then Vilnius, Frankfurt, Riga, Stockholm, and ends in Bucharest, ensuring all events are attended and flight connections are valid.\n</think>\n\n```python\nimport json\n\n# Define the cities and their required durations\ncities = {\n    'Riga': 2,\n    'Frankfurt': 3,\n    'Amsterdam': 2,\n    'Vilnius': 5,\n    'London': 2,\n    'Stockholm': 3,\n    'Bucharest': 4\n}\n\n# Define flight connections\nflight_connections = {\n    'London': {'Amsterdam', 'Bucharest'},\n    'Vilnius': {'Frankfurt'},\n    'Riga': {'Vilnius', 'Stockholm', 'Frankfurt', 'Bucharest'},\n    'Frankfurt': {'Stockholm', 'Riga', 'Bucharest'},\n    'Amsterdam': {'Stockholm', 'Frankfurt', 'Riga', 'Vilnius', 'Bucharest'},\n    'Stockholm': {'Bucharest'},\n    'Bucharest': {'Riga'}\n}\n\nitinerary = []\n\n# Start with London\ncurrent_day = 1\nend_day = current_day + cities['London'] - 1\nitinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': 'London'})\ncurrent_day = end_day + 1\n\n# Fly to Amsterdam\nflight_day = 2\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'London', 'to': 'Amsterdam'})\n\n# Stay in Amsterdam\nstart_day = flight_day\nend_day = start_day + cities['Amsterdam'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Amsterdam'})\ncurrent_day = end_day + 1\n\n# Fly to Vilnius\nflight_day = 4\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Amsterdam', 'to': 'Vilnius'})\n\n# Stay in Vilnius\nstart_day = flight_day\nend_day = start_day + cities['Vilnius'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Vilnius'})\ncurrent_day = end_day + 1\n\n# Fly to Frankfurt\nflight_day = 9\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Vilnius', 'to': 'Frankfurt'})\n\n# Stay in Frankfurt\nstart_day = flight_day\nend_day = start_day + cities['Frankfurt'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Frankfurt'})\ncurrent_day = end_day + 1\n\n# Fly to Riga\nflight_day = 12\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Frankfurt', 'to': 'Riga'})\n\n# Stay in Riga\nstart_day = flight_day\nend_day = start_day + cities['Riga'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Riga'})\ncurrent_day = end_day + 1\n\n# Fly to Stockholm\nflight_day = 14\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Riga', 'to': 'Stockholm'})\n\n# Stay in Stockholm\nstart_day = flight_day\nend_day = start_day + cities['Stockholm'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Stockholm'})\ncurrent_day = end_day + 1\n\n# Fly to Bucharest\nflight_day = 17\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Stockholm', 'to': 'Bucharest'})\n\n# Stay in Bucharest\nstart_day = flight_day\nend_day = start_day + cities['Bucharest'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Bucharest'})\ncurrent_day = end_day + 1\n\n# Output the itinerary\nprint(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_993"
+        }
+    ]
+}

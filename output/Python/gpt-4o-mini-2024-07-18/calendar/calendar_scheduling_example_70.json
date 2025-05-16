@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Participants' schedules in the time range for Monday\ndenise_schedule = [\n    (datetime.strptime('12:00', '%H:%M'), datetime.strptime('12:30', '%H:%M')),\n    (datetime.strptime('15:30', '%H:%M'), datetime.strptime('16:00', '%H:%M'))\n]\n\nangela_schedule = []  # No meetings for Angela\n\nnatalie_schedule = [\n    (datetime.strptime('09:00', '%H:%M'), datetime.strptime('11:30', '%H:%M')),\n    (datetime.strptime('12:00', '%H:%M'), datetime.strptime('13:00', '%H:%M')),\n    (datetime.strptime('14:00', '%H:%M'), datetime.strptime('14:30', '%H:%M')),\n    (datetime.strptime('15:00', '%H:%M'), datetime.strptime('17:00', '%H:%M'))\n]\n\n# Meeting duration\nmeeting_duration = timedelta(minutes=30)\n\n# Define work hours\nwork_start = datetime.strptime('09:00', '%H:%M')\nwork_end = datetime.strptime('17:00', '%H:%M')\n\n# Function to find the earliest meeting time\ndef find_meeting_time(denise_schedule, angela_schedule, natalie_schedule, work_start, work_end, meeting_duration):\n    all_schedules = denise_schedule + angela_schedule + natalie_schedule\n    all_schedules.sort()  # Sort all schedules by start time\n\n    current_time = work_start\n    while current_time + meeting_duration <= work_end:\n        if all(not (start < current_time + meeting_duration and end > current_time) for start, end in all_schedules):\n            return current_time.strftime('%H:%M:%H:%M'), 'Monday'\n        current_time += timedelta(minutes=30)  # Increment time by 30 minutes\n\n    return None, None\n\n# Get the proposed meeting time\nproposed_time, day_of_week = find_meeting_time(denise_schedule, angela_schedule, natalie_schedule, work_start, work_end, meeting_duration)\n\n# Final output\nif proposed_time:\n    print(f\"{proposed_time} {day_of_week}\")\n```\n",
+            "count": "calendar_scheduling_example_70"
+        }
+    ]
+}

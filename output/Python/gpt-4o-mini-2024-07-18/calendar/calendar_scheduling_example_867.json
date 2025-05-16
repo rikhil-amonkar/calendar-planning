@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Thursday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the schedules\nbetty_busy_times = {\n    \"Monday\": [(10, 30), (13, 30), (15, 0), (16, 0)],\n    \"Tuesday\": [(9, 0), (11, 30), (12, 30), (13, 30), (16, 30)],\n    \"Wednesday\": [(9, 30), (13, 0), (14, 0)],\n    \"Thursday\": [(9, 30), (11, 30), (14, 0), (15, 0), (16, 30)]\n}\n\nscott_busy_times = {\n    \"Monday\": [(9, 30), (15, 0), (16, 0)],\n    \"Tuesday\": [(9, 0), (10, 0), (11, 30), (12, 30), (14, 0), (16, 0)],\n    \"Wednesday\": [(9, 30), (13, 0), (14, 0), (15, 0), (16, 0)],\n    \"Thursday\": [(9, 0), (10, 0), (11, 0), (12, 30), (15, 0), (16, 30)]\n}\n\n# Duration of the meeting in minutes\nmeeting_duration = 30\n\n# Define working days and constraints\nworking_days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\nbetty_constraints = {\"Monday\": False, \"Tuesday\": \"15:00\", \"Thursday\": \"15:00\"}\nscott_constraints = {\"Wednesday\": \"avoid\"}\n\n# Function to check for available time slots\ndef is_time_available(day, start_hour, start_minute):\n    end_hour = start_hour + (start_minute + meeting_duration) // 60\n    end_minute = (start_minute + meeting_duration) % 60\n    if end_hour >= 17:  \n        return False\n    \n    for start, end in betty_busy_times.get(day, []):\n        if (start_hour < end) and (start < end_hour or (start == end_hour and start_minute < end_minute)):\n            return False\n            \n    for start, end in scott_busy_times.get(day, []):\n        if (start_hour < end) and (start < end_hour or (start == end_hour and start_minute < end_minute)):\n            return False\n    \n    return True\n\n# Find suitable time\nproposed_time = None\nfor day in working_days:\n    if not betty_constraints[day]:  # Betty isn't available on Monday\n        continue\n    for hour in range(9, 17):\n        for minute in [0, 30]:\n            if is_time_available(day, hour, minute):\n                proposed_time = f\"{day}, {hour:02}:{minute:02}:{hour:02}:{minute+meeting_duration:02}\"\n                break\n        if proposed_time:\n            break\n    if proposed_time:\n        break\n\nprint(proposed_time)\n```",
+            "count": "calendar_scheduling_example_867"
+        }
+    ]
+}

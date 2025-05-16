@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "9:23",
+                        "end_time": "10:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Nancy",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Jeffrey",
+                        "start_time": "12:47",
+                        "end_time": "13:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "16:45",
+                        "end_time": "17:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "9:23",
+                        "end_time": "10:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Nancy",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Jeffrey",
+                        "start_time": "12:47",
+                        "end_time": "13:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "16:45",
+                        "end_time": "17:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    if time_str.endswith('AM') or time_str.endswith('PM'):\n        time_str, period = time_str[:-2].strip(), time_str[-2:]\n        hours, minutes = map(int, time_str.split(':'))\n        if period == 'PM' and hours != 12:\n            hours += 12\n        elif period == 'AM' and hours == 12:\n            hours = 0\n    else:\n        hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Travel times in minutes\ntravel_times = {\n    'Bayview': {\n        'Russian Hill': 23,\n        'Alamo Square': 16,\n        'North Beach': 21,\n        'Financial District': 19\n    },\n    'Russian Hill': {\n        'Bayview': 23,\n        'Alamo Square': 15,\n        'North Beach': 5,\n        'Financial District': 11\n    },\n    'Alamo Square': {\n        'Bayview': 16,\n        'Russian Hill': 13,\n        'North Beach': 15,\n        'Financial District': 17\n    },\n    'North Beach': {\n        'Bayview': 22,\n        'Russian Hill': 4,\n        'Alamo Square': 16,\n        'Financial District': 8\n    },\n    'Financial District': {\n        'Bayview': 19,\n        'Russian Hill': 10,\n        'Alamo Square': 17,\n        'North Beach': 7\n    }\n}\n\n# Constraints\nconstraints = {\n    'Joseph': {\n        'location': 'Russian Hill',\n        'start': time_to_minutes('8:30AM'),\n        'end': time_to_minutes('7:15PM'),\n        'duration': 60\n    },\n    'Nancy': {\n        'location': 'Alamo Square',\n        'start': time_to_minutes('11:00AM'),\n        'end': time_to_minutes('4:00PM'),\n        'duration': 90\n    },\n    'Jason': {\n        'location': 'North Beach',\n        'start': time_to_minutes('4:45PM'),\n        'end': time_to_minutes('9:45PM'),\n        'duration': 15\n    },\n    'Jeffrey': {\n        'location': 'Financial District',\n        'start': time_to_minutes('10:30AM'),\n        'end': time_to_minutes('3:45PM'),\n        'duration': 45\n    }\n}\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes('9:00AM')\n    current_location = 'Bayview'\n    schedule = []\n    met_people = set()\n    \n    for person in order:\n        if person in met_people:\n            continue\n        info = constraints[person]\n        location = info['location']\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        # Calculate meeting window\n        meeting_start = max(arrival_time, info['start'])\n        meeting_end = meeting_start + info['duration']\n        \n        if meeting_end > info['end']:\n            continue  # Can't meet this person\n        \n        # Add to schedule\n        schedule.append({\n            'person': person,\n            'location': location,\n            'start_time': meeting_start,\n            'end_time': meeting_end,\n            'duration': info['duration']\n        })\n        \n        met_people.add(person)\n        current_time = meeting_end\n        current_location = location\n    \n    return schedule, len(met_people)\n\ndef find_optimal_schedule():\n    people = list(constraints.keys())\n    best_schedule = []\n    max_meetings = 0\n    \n    # Try all possible orders of meeting people\n    for order in permutations(people):\n        schedule, count = calculate_schedule(order)\n        if count > max_meetings or (count == max_meetings and len(best_schedule) == 0):\n            best_schedule = schedule\n            max_meetings = count\n        elif count == max_meetings:\n            # Prefer schedules that end earlier\n            if schedule[-1]['end_time'] < best_schedule[-1]['end_time']:\n                best_schedule = schedule\n    \n    return best_schedule\n\ndef format_schedule(schedule):\n    itinerary = []\n    for meeting in schedule:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting['location'],\n            \"person\": meeting['person'],\n            \"start_time\": minutes_to_time(meeting['start_time']),\n            \"end_time\": minutes_to_time(meeting['end_time'])\n        })\n    return {\"itinerary\": itinerary}\n\noptimal_schedule = find_optimal_schedule()\nresult = format_schedule(optimal_schedule)\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_368"
+        }
+    ]
+}

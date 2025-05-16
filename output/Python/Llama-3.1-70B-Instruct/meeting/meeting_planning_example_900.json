@@ -1,0 +1,143 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Emily",
+                        "start_time": "19:00",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Karen",
+                        "start_time": "30:15",
+                        "end_time": "30:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Elizabeth",
+                        "start_time": "35:45",
+                        "end_time": "37:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "47:45",
+                        "end_time": "25:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Steven",
+                        "start_time": "64:00",
+                        "end_time": "40:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Brian",
+                        "start_time": "71:30",
+                        "end_time": "24:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "James",
+                        "start_time": "87:00",
+                        "end_time": "41:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Rebecca",
+                        "start_time": "98:00",
+                        "end_time": "27:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Matthew",
+                        "start_time": "116:45",
+                        "end_time": "45:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "William",
+                        "start_time": "136:30",
+                        "end_time": "42:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Emily",
+                        "start_time": "11:15",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Karen",
+                        "start_time": "11:45",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "13:00",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "James",
+                        "start_time": "14:31",
+                        "end_time": "16:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Steven",
+                        "start_time": "16:38",
+                        "end_time": "17:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Matthew",
+                        "start_time": "17:29",
+                        "end_time": "18:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "William",
+                        "start_time": "18:33",
+                        "end_time": "20:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Brian",
+                        "start_time": "20:30",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_travel_time(origin, destination, travel_times):\n    return travel_times.get((origin, destination), 0)\n\ndef calculate_meeting_time(person, start_time, duration):\n    end_time = (start_time + duration) % 24\n    if end_time < start_time:\n        end_time += 24\n    return f\"{int(start_time):02d}:{int((start_time % 1) * 60):02d}\", f\"{int(end_time):02d}:{int((end_time % 1) * 60):02d}\"\n\ndef plan_meeting(person, location, start_time, duration, travel_times, current_location, current_time):\n    travel_time = calculate_travel_time(current_location, location, travel_times)\n    meeting_start_time, meeting_end_time = calculate_meeting_time(person, current_time + travel_time, duration / 60)\n    return {\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": meeting_start_time,\n        \"end_time\": meeting_end_time\n    }\n\ndef main():\n    travel_times = {\n        (\"Richmond District\", \"The Castro\"): 16,\n        (\"Richmond District\", \"Nob Hill\"): 17,\n        (\"Richmond District\", \"Marina District\"): 9,\n        (\"Richmond District\", \"Pacific Heights\"): 10,\n        (\"Richmond District\", \"Haight-Ashbury\"): 10,\n        (\"Richmond District\", \"Mission District\"): 20,\n        (\"Richmond District\", \"Chinatown\"): 20,\n        (\"Richmond District\", \"Russian Hill\"): 13,\n        (\"Richmond District\", \"Alamo Square\"): 13,\n        (\"Richmond District\", \"Bayview\"): 27,\n        (\"The Castro\", \"Richmond District\"): 16,\n        (\"The Castro\", \"Nob Hill\"): 16,\n        (\"The Castro\", \"Marina District\"): 21,\n        (\"The Castro\", \"Pacific Heights\"): 16,\n        (\"The Castro\", \"Haight-Ashbury\"): 6,\n        (\"The Castro\", \"Mission District\"): 7,\n        (\"The Castro\", \"Chinatown\"): 22,\n        (\"The Castro\", \"Russian Hill\"): 18,\n        (\"The Castro\", \"Alamo Square\"): 8,\n        (\"The Castro\", \"Bayview\"): 19,\n        (\"Nob Hill\", \"Richmond District\"): 14,\n        (\"Nob Hill\", \"The Castro\"): 17,\n        (\"Nob Hill\", \"Marina District\"): 11,\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n        (\"Nob Hill\", \"Mission District\"): 13,\n        (\"Nob Hill\", \"Chinatown\"): 6,\n        (\"Nob Hill\", \"Russian Hill\"): 5,\n        (\"Nob Hill\", \"Alamo Square\"): 11,\n        (\"Nob Hill\", \"Bayview\"): 19,\n        (\"Marina District\", \"Richmond District\"): 11,\n        (\"Marina District\", \"The Castro\"): 22,\n        (\"Marina District\", \"Nob Hill\"): 12,\n        (\"Marina District\", \"Pacific Heights\"): 7,\n        (\"Marina District\", \"Haight-Ashbury\"): 16,\n        (\"Marina District\", \"Mission District\"): 20,\n        (\"Marina District\", \"Chinatown\"): 15,\n        (\"Marina District\", \"Russian Hill\"): 8,\n        (\"Marina District\", \"Alamo Square\"): 15,\n        (\"Marina District\", \"Bayview\"): 27,\n        (\"Pacific Heights\", \"Richmond District\"): 12,\n        (\"Pacific Heights\", \"The Castro\"): 16,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"Marina District\"): 6,\n        (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n        (\"Pacific Heights\", \"Mission District\"): 15,\n        (\"Pacific Heights\", \"Chinatown\"): 11,\n        (\"Pacific Heights\", \"Russian Hill\"): 7,\n        (\"Pacific Heights\", \"Alamo Square\"): 10,\n        (\"Pacific Heights\", \"Bayview\"): 22,\n        (\"Haight-Ashbury\", \"Richmond District\"): 10,\n        (\"Haight-Ashbury\", \"The Castro\"): 6,\n        (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n        (\"Haight-Ashbury\", \"Marina District\"): 17,\n        (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n        (\"Haight-Ashbury\", \"Mission District\"): 11,\n        (\"Haight-Ashbury\", \"Chinatown\"): 19,\n        (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n        (\"Haight-Ashbury\", \"Alamo Square\"): 5,\n        (\"Haight-Ashbury\", \"Bayview\"): 18,\n        (\"Mission District\", \"Richmond District\"): 20,\n        (\"Mission District\", \"The Castro\"): 7,\n        (\"Mission District\", \"Nob Hill\"): 12,\n        (\"Mission District\", \"Marina District\"): 19,\n        (\"Mission District\", \"Pacific Heights\"): 16,\n        (\"Mission District\", \"Haight-Ashbury\"): 12,\n        (\"Mission District\", \"Chinatown\"): 16,\n        (\"Mission District\", \"Russian Hill\"): 15,\n        (\"Mission District\", \"Alamo Square\"): 11,\n        (\"Mission District\", \"Bayview\"): 14,\n        (\"Chinatown\", \"Richmond District\"): 20,\n        (\"Chinatown\", \"The Castro\"): 22,\n        (\"Chinatown\", \"Nob Hill\"): 9,\n        (\"Chinatown\", \"Marina District\"): 12,\n        (\"Chinatown\", \"Pacific Heights\"): 10,\n        (\"Chinatown\", \"Haight-Ashbury\"): 19,\n        (\"Chinatown\", \"Mission District\"): 17,\n        (\"Chinatown\", \"Russian Hill\"): 7,\n        (\"Chinatown\", \"Alamo Square\"): 17,\n        (\"Chinatown\", \"Bayview\"): 20,\n        (\"Russian Hill\", \"Richmond District\"): 14,\n        (\"Russian Hill\", \"The Castro\"): 21,\n        (\"Russian Hill\", \"Nob Hill\"): 5,\n        (\"Russian Hill\", \"Marina District\"): 7,\n        (\"Russian Hill\", \"Pacific Heights\"): 7,\n        (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n        (\"Russian Hill\", \"Mission District\"): 16,\n        (\"Russian Hill\", \"Chinatown\"): 9,\n        (\"Russian Hill\", \"Alamo Square\"): 15,\n        (\"Russian Hill\", \"Bayview\"): 23,\n        (\"Alamo Square\", \"Richmond District\"): 11,\n        (\"Alamo Square\", \"The Castro\"): 8,\n        (\"Alamo Square\", \"Nob Hill\"): 11,\n        (\"Alamo Square\", \"Marina District\"): 15,\n        (\"Alamo Square\", \"Pacific Heights\"): 10,\n        (\"Alamo Square\", \"Haight-Ashbury\"): 5,\n        (\"Alamo Square\", \"Mission District\"): 10,\n        (\"Alamo Square\", \"Chinatown\"): 15,\n        (\"Alamo Square\", \"Russian Hill\"): 13,\n        (\"Alamo Square\", \"Bayview\"): 16,\n        (\"Bayview\", \"Richmond District\"): 25,\n        (\"Bayview\", \"The Castro\"): 19,\n        (\"Bayview\", \"Nob Hill\"): 20,\n        (\"Bayview\", \"Marina District\"): 27,\n        (\"Bayview\", \"Pacific Heights\"): 23,\n        (\"Bayview\", \"Haight-Ashbury\"): 19,\n        (\"Bayview\", \"Mission District\"): 13,\n        (\"Bayview\", \"Chinatown\"): 19,\n        (\"Bayview\", \"Russian Hill\"): 23,\n        (\"Bayview\", \"Alamo Square\"): 16\n    }\n\n    meetings = [\n        {\"person\": \"Elizabeth\", \"location\": \"Alamo Square\", \"start_time\": 13, \"end_time\": 17.25, \"duration\": 120},\n        {\"person\": \"Emily\", \"location\": \"Pacific Heights\", \"start_time\": 11.25, \"end_time\": 19.75, \"duration\": 15},\n        {\"person\": \"Karen\", \"location\": \"Haight-Ashbury\", \"start_time\": 11.75, \"end_time\": 17.5, \"duration\": 30},\n        {\"person\": \"Stephanie\", \"location\": \"Mission District\", \"start_time\": 13, \"end_time\": 15.75, \"duration\": 75},\n        {\"person\": \"Brian\", \"location\": \"Marina District\", \"start_time\": 14.25, \"end_time\": 22, \"duration\": 30},\n        {\"person\": \"Rebecca\", \"location\": \"Nob Hill\", \"start_time\": 15.25, \"end_time\": 19.25, \"duration\": 105},\n        {\"person\": \"James\", \"location\": \"Chinatown\", \"start_time\": 14.5, \"end_time\": 19, \"duration\": 120},\n        {\"person\": \"Steven\", \"location\": \"Russian Hill\", \"start_time\": 14, \"end_time\": 20, \"duration\": 30},\n        {\"person\": \"Matthew\", \"location\": \"The Castro\", \"start_time\": 16.5, \"end_time\": 20, \"duration\": 45},\n        {\"person\": \"William\", \"location\": \"Bayview\", \"start_time\": 18.25, \"end_time\": 20.25, \"duration\": 90}\n    ]\n\n    itinerary = []\n    current_location = \"Richmond District\"\n    current_time = 9\n\n    # Sort meetings by start time\n    meetings.sort(key=lambda x: x[\"start_time\"])\n\n    for meeting in meetings:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"], travel_times)\n        if current_time + travel_time < meeting[\"start_time\"]:\n            current_time = meeting[\"start_time\"] - travel_time\n        itinerary.append(plan_meeting(meeting[\"person\"], meeting[\"location\"], current_time + travel_time, meeting[\"duration\"], travel_times, current_location, current_time))\n        current_location = meeting[\"location\"]\n        current_time += travel_time + meeting[\"duration\"] / 60\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_900"
+        }
+    ]
+}

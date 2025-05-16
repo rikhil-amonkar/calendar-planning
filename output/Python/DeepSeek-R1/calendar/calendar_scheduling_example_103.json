@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{16:30",
+                "end_time": "17:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    work_start = 9 * 60\n    work_end = 17 * 60\n    duration = 30\n\n    # Convert blocked times to minutes since midnight\n    blocked = {\n        'Diane': [(570, 600), (870, 900)],\n        'Jack': [(810, 840), (870, 900)],\n        'Eugene': [(540, 600), (630, 690), (720, 870), (900, 990)],\n        'Patricia': [(570, 630), (660, 720), (750, 840), (900, 990)]\n    }\n\n    # Check every possible 30-minute slot\n    for start in range(work_start, work_end - duration + 1):\n        end = start + duration\n        # Check if slot is fully within work hours\n        if end > work_end:\n            continue\n        # Check all participants' availability\n        available = True\n        for person, blocks in blocked.items():\n            for s, e in blocks:\n                if not (end <= s or start >= e):\n                    available = False\n                    break\n            if not available:\n                break\n        if available:\n            # Convert back to HH:MM format\n            def to_time(mins):\n                return f\"{mins//60:02d}:{mins%60:02d}\"\n            return f\"Monday {to_time(start)}-{to_time(end)}\"\n    return \"No time found\"\n\nprint(find_meeting_time())\n'''",
+            "count": "calendar_scheduling_example_103"
+        }
+    ]
+}

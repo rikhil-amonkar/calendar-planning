@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 18-23",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 10-16",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 16-21",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Trip parameters\n    trip_days = 21\n    cities = {\n        \"Manchester\": {\"days\": 3, \"events\": [\"wedding\"]},\n        \"Istanbul\": {\"days\": 7, \"events\": []},\n        \"Venice\": {\"days\": 7, \"events\": [\"workshop\"]},\n        \"Krakow\": {\"days\": 6, \"events\": []},\n        \"Lyon\": {\"days\": 2, \"events\": []},\n    }\n    \n    # Flight connections (direct flights)\n    flights = {\n        \"Manchester\": [\"Venice\", \"Istanbul\", \"Krakow\"],\n        \"Istanbul\": [\"Manchester\", \"Venice\", \"Krakow\", \"Lyon\"],\n        \"Venice\": [\"Manchester\", \"Istanbul\", \"Lyon\"],\n        \"Krakow\": [\"Istanbul\", \"Manchester\"],\n        \"Lyon\": [\"Istanbul\", \"Venice\"]\n    }\n    \n    itinerary = []\n    current_day = 1\n    # Visit Manchester\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Manchester\"][\"days\"] - 1}', 'place': 'Manchester'})\n    current_day += cities[\"Manchester\"][\"days\"]\n    \n    # Travel to Venice for workshop\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Manchester', 'to': 'Venice'})\n    # Visit Venice\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Venice\"][\"days\"] - 1}', 'place': 'Venice'})\n    current_day += cities[\"Venice\"][\"days\"]\n    \n    # Travel to Istanbul\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Venice', 'to': 'Istanbul'})\n    # Visit Istanbul\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Istanbul\"][\"days\"] - 1}', 'place': 'Istanbul'})\n    current_day += cities[\"Istanbul\"][\"days\"]\n    \n    # Travel to Krakow\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Istanbul', 'to': 'Krakow'})\n    # Visit Krakow\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Krakow\"][\"days\"] - 1}', 'place': 'Krakow'})\n    current_day += cities[\"Krakow\"][\"days\"]\n    \n    # Travel to Lyon\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Krakow', 'to': 'Lyon'})\n    # Visit Lyon\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Lyon\"][\"days\"] - 1}', 'place': 'Lyon'})\n    \n    # Return JSON formatted itinerary\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    print(calculate_itinerary())\n```",
+            "count": "trip_planning_example_587"
+        }
+    ]
+}

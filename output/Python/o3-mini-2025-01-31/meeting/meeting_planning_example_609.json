@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "10:20",
+                        "end_time": "11:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:00",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "17:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\nfrom datetime import timedelta, datetime\n\ndef time_to_minutes(t):\n    # t in format \"H:MM\", 24-hour format, no leading zero required.\n    parts = t.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(m):\n    # returns time string in H:MM format, no leading zero for hours.\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# Define travel times dictionary (in minutes)\ntravel_times = {\n    (\"Chinatown\", \"Mission District\"): 18,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Pacific Heights\"): 10,\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Chinatown\", \"Golden Gate Park\"): 23,\n    (\"Chinatown\", \"Sunset District\"): 29,\n    (\"Chinatown\", \"Presidio\"): 19,\n    \n    (\"Mission District\", \"Chinatown\"): 16,\n    (\"Mission District\", \"Alamo Square\"): 11,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"Union Square\"): 15,\n    (\"Mission District\", \"Golden Gate Park\"): 17,\n    (\"Mission District\", \"Sunset District\"): 24,\n    (\"Mission District\", \"Presidio\"): 25,\n    \n    (\"Alamo Square\", \"Chinatown\"): 16,\n    (\"Alamo Square\", \"Mission District\"): 10,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Presidio\"): 18,\n    \n    (\"Pacific Heights\", \"Chinatown\"): 11,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n    (\"Pacific Heights\", \"Union Square\"): 12,\n    (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n    (\"Pacific Heights\", \"Sunset District\"): 21,\n    (\"Pacific Heights\", \"Presidio\"): 11,\n    \n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Mission District\"): 14,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Union Square\", \"Pacific Heights\"): 15,\n    (\"Union Square\", \"Golden Gate Park\"): 22,\n    (\"Union Square\", \"Sunset District\"): 26,\n    (\"Union Square\", \"Presidio\"): 24,\n    \n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n    (\"Golden Gate Park\", \"Alamo Square\"): 10,\n    (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n    (\"Golden Gate Park\", \"Union Square\"): 22,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    \n    (\"Sunset District\", \"Chinatown\"): 30,\n    (\"Sunset District\", \"Mission District\"): 24,\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"Sunset District\", \"Pacific Heights\"): 21,\n    (\"Sunset District\", \"Union Square\"): 30,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Sunset District\", \"Presidio\"): 16,\n    \n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Mission District\"): 26,\n    (\"Presidio\", \"Alamo Square\"): 18,\n    (\"Presidio\", \"Pacific Heights\"): 11,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Sunset District\"): 15,\n}\n\n# Meeting constraints for each friend:\n# Each entry: person, location, availability start, availability end, meeting duration (in minutes)\nmeetings = [\n    {\"person\": \"David\", \"location\": \"Mission District\", \"avail_start\": \"8:00\", \"avail_end\": \"19:45\", \"duration\": 45},\n    {\"person\": \"Deborah\", \"location\": \"Golden Gate Park\", \"avail_start\": \"7:00\", \"avail_end\": \"18:15\", \"duration\": 90},\n    {\"person\": \"Kenneth\", \"location\": \"Alamo Square\", \"avail_start\": \"14:00\", \"avail_end\": \"19:45\", \"duration\": 120},\n    {\"person\": \"John\", \"location\": \"Pacific Heights\", \"avail_start\": \"17:00\", \"avail_end\": \"20:00\", \"duration\": 15},\n    {\"person\": \"Karen\", \"location\": \"Sunset District\", \"avail_start\": \"17:45\", \"avail_end\": \"21:15\", \"duration\": 15},\n    {\"person\": \"Charles\", \"location\": \"Union Square\", \"avail_start\": \"21:45\", \"avail_end\": \"22:45\", \"duration\": 60},\n    {\"person\": \"Carol\", \"location\": \"Presidio\", \"avail_start\": \"8:15\", \"avail_end\": \"9:15\", \"duration\": 30},\n]\n\n# To maximize the number of friends met, we will try an order that allows as many meetings as possible.\n# After analysis, Carol's availability window is too early (before we can reach her from Chinatown),\n# so we exclude Carol if not feasible.\n# We'll order the meetings by their availability start time (except Carol which will likely be skipped).\ndef compute_schedule():\n    # Starting point: Arrive at Chinatown at 9:00\n    current_location = \"Chinatown\"\n    current_time = time_to_minutes(\"9:00\")\n    \n    itinerary = []\n    \n    # Define the order manually based on optimization analysis:\n    # We'll attempt to schedule: David, Deborah, Kenneth, John, Karen, Charles, then try Carol at the end.\n    order = [\"David\", \"Deborah\", \"Kenneth\", \"John\", \"Karen\", \"Charles\", \"Carol\"]\n    meetings_ordered = []\n    for name in order:\n        for mt in meetings:\n            if mt[\"person\"] == name:\n                meetings_ordered.append(mt)\n                break\n\n    for meeting in meetings_ordered:\n        # Check travel time from current location to meeting location\n        key = (current_location, meeting[\"location\"])\n        if key in travel_times:\n            travel_time = travel_times[key]\n        else:\n            # If not defined, assume symmetric travel (should be defined actually)\n            key = (meeting[\"location\"], current_location)\n            travel_time = travel_times.get(key, 0)\n        # Compute arrival time at meeting location\n        arrival_time = current_time + travel_time\n        \n        # Convert meeting availability times to minutes\n        avail_start = time_to_minutes(meeting[\"avail_start\"])\n        avail_end   = time_to_minutes(meeting[\"avail_end\"])\n        \n        # The meeting can start only after arrival and avail_start\n        meeting_start = max(arrival_time, avail_start)\n        meeting_end = meeting_start + meeting[\"duration\"]\n        \n        # Check if meeting end is within availability window\n        if meeting_end > avail_end:\n            # Cannot schedule this meeting; skip it.\n            # Debug: print(\"Skipping meeting with\", meeting[\"person\"])\n            continue\n        \n        # Append meeting to itinerary with formatted times\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"person\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location for next travel\n        current_time = meeting_end\n        current_location = meeting[\"location\"]\n    \n    return {\"itinerary\": itinerary}\n\ndef main():\n    schedule = compute_schedule()\n    # Output the result as JSON formatted string.\n    print(json.dumps(schedule, indent=2))\n\nif __name__ == '__main__':\n    main()",
+            "count": "meeting_planning_example_609"
+        }
+    ]
+}

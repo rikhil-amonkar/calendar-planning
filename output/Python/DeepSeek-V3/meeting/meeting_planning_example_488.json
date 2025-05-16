@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Input parameters\nstart_location = \"Pacific Heights\"\nstart_time = \"9:00\"\n\nfriends = [\n    {\"name\": \"Ronald\", \"location\": \"Nob Hill\", \"available_start\": \"10:00\", \"available_end\": \"17:00\", \"min_duration\": 105},\n    {\"name\": \"Sarah\", \"location\": \"Russian Hill\", \"available_start\": \"7:15\", \"available_end\": \"9:30\", \"min_duration\": 45},\n    {\"name\": \"Helen\", \"location\": \"The Castro\", \"available_start\": \"13:30\", \"available_end\": \"17:00\", \"min_duration\": 120},\n    {\"name\": \"Joshua\", \"location\": \"Sunset District\", \"available_start\": \"14:15\", \"available_end\": \"19:30\", \"min_duration\": 90},\n    {\"name\": \"Margaret\", \"location\": \"Haight-Ashbury\", \"available_start\": \"10:15\", \"available_end\": \"22:00\", \"min_duration\": 60}\n]\n\n# Travel times in minutes (from -> to)\ntravel_times = {\n    \"Pacific Heights\": {\n        \"Nob Hill\": 8,\n        \"Russian Hill\": 7,\n        \"The Castro\": 16,\n        \"Sunset District\": 21,\n        \"Haight-Ashbury\": 11\n    },\n    \"Nob Hill\": {\n        \"Pacific Heights\": 8,\n        \"Russian Hill\": 5,\n        \"The Castro\": 17,\n        \"Sunset District\": 25,\n        \"Haight-Ashbury\": 13\n    },\n    \"Russian Hill\": {\n        \"Pacific Heights\": 7,\n        \"Nob Hill\": 5,\n        \"The Castro\": 21,\n        \"Sunset District\": 23,\n        \"Haight-Ashbury\": 17\n    },\n    \"The Castro\": {\n        \"Pacific Heights\": 16,\n        \"Nob Hill\": 16,\n        \"Russian Hill\": 18,\n        \"Sunset District\": 17,\n        \"Haight-Ashbury\": 6\n    },\n    \"Sunset District\": {\n        \"Pacific Heights\": 21,\n        \"Nob Hill\": 27,\n        \"Russian Hill\": 24,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 15\n    },\n    \"Haight-Ashbury\": {\n        \"Pacific Heights\": 12,\n        \"Nob Hill\": 15,\n        \"Russian Hill\": 17,\n        \"The Castro\": 6,\n        \"Sunset District\": 15\n    }\n}\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes(start_time)\n    current_location = start_location\n    schedule = []\n    met_friends = set()\n    \n    for friend_name in order:\n        friend = next(f for f in friends if f[\"name\"] == friend_name)\n        \n        # Calculate travel time\n        travel_time = travel_times[current_location][friend[\"location\"]]\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet this friend\n        available_start = time_to_minutes(friend[\"available_start\"])\n        available_end = time_to_minutes(friend[\"available_end\"])\n        \n        # Adjust meeting time to fit within availability\n        meeting_start = max(arrival_time, available_start)\n        meeting_end = meeting_start + friend[\"min_duration\"]\n        \n        if meeting_end > available_end:\n            return None  # Can't meet this friend with required duration\n        \n        # Add to schedule\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        met_friends.add(friend[\"name\"])\n        current_time = meeting_end\n        current_location = friend[\"location\"]\n    \n    return schedule if len(met_friends) == len(order) else None\n\n# Generate all possible meeting orders and find the best one\nbest_schedule = None\nmax_meetings = 0\n\n# Try all possible permutations of friends (up to 5! = 120 possibilities)\nfor friend_order in permutations([f[\"name\"] for f in friends]):\n    schedule = calculate_schedule(friend_order)\n    if schedule and len(schedule) > max_meetings:\n        best_schedule = schedule\n        max_meetings = len(schedule)\n    elif schedule and len(schedule) == max_meetings:\n        # Prefer schedules that end earlier\n        if not best_schedule or time_to_minutes(schedule[-1][\"end_time\"]) < time_to_minutes(best_schedule[-1][\"end_time\"]):\n            best_schedule = schedule\n\n# Output the result\nresult = {\"itinerary\": best_schedule} if best_schedule else {\"itinerary\": []}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_488"
+        }
+    ]
+}

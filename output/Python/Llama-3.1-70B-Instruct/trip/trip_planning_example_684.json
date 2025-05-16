@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 24-28",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    visited_cities = set()\n    city_stay = {}\n\n    # Initialize city_stay dictionary\n    for city, stay in constraints.items():\n        city_stay[city] = stay\n\n    # Visit Amsterdam\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Amsterdam\"] - 1}', 'place': 'Amsterdam'})\n    visited_cities.add('Amsterdam')\n    current_day += city_stay[\"Amsterdam\"]\n\n    # Visit Edinburgh\n    if 'Edinburgh' in direct_flights['Amsterdam']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Amsterdam', 'to': 'Edinburgh'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Edinburgh\"] - 1}', 'place': 'Edinburgh'})\n        visited_cities.add('Edinburgh')\n        current_day += city_stay[\"Edinburgh\"]\n    else:\n        raise Exception(\"No direct flight from Amsterdam to Edinburgh\")\n\n    # Visit Brussels\n    if 'Brussels' in direct_flights['Edinburgh']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Edinburgh', 'to': 'Brussels'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Brussels\"] - 1}', 'place': 'Brussels'})\n        visited_cities.add('Brussels')\n        current_day += city_stay[\"Brussels\"]\n    else:\n        raise Exception(\"No direct flight from Edinburgh to Brussels\")\n\n    # Visit Vienna\n    if 'Vienna' in direct_flights['Brussels']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Brussels', 'to': 'Vienna'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Vienna\"] - 1}', 'place': 'Vienna'})\n        visited_cities.add('Vienna')\n        current_day += city_stay[\"Vienna\"]\n    else:\n        raise Exception(\"No direct flight from Brussels to Vienna\")\n\n    # Visit Berlin\n    if 'Berlin' in direct_flights['Vienna']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vienna', 'to': 'Berlin'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Berlin\"] - 1}', 'place': 'Berlin'})\n        visited_cities.add('Berlin')\n        current_day += city_stay[\"Berlin\"]\n    else:\n        raise Exception(\"No direct flight from Vienna to Berlin\")\n\n    # Visit Reykjavik\n    if 'Reykjavik' in direct_flights['Berlin']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Berlin', 'to': 'Reykjavik'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Reykjavik\"] - 1}', 'place': 'Reykjavik'})\n        visited_cities.add('Reykjavik')\n        current_day += city_stay[\"Reykjavik\"]\n    else:\n        raise Exception(\"No direct flight from Berlin to Reykjavik\")\n\n    # Check if all cities are visited\n    for city in constraints:\n        if city not in visited_cities:\n            raise Exception(f\"City {city} is not visited\")\n\n    return trip_plan\n\ndef main():\n    constraints = {\n        \"Amsterdam\": 4,\n        \"Edinburgh\": 5,\n        \"Brussels\": 5,\n        \"Vienna\": 5,\n        \"Berlin\": 4,\n        \"Reykjavik\": 5\n    }\n\n    direct_flights = {\n        \"Edinburgh\": [\"Berlin\", \"Amsterdam\", \"Brussels\"],\n        \"Amsterdam\": [\"Berlin\", \"Edinburgh\", \"Reykjavik\", \"Vienna\"],\n        \"Vienna\": [\"Berlin\", \"Brussels\", \"Reykjavik\"],\n        \"Berlin\": [\"Brussels\", \"Reykjavik\", \"Edinburgh\", \"Amsterdam\"],\n        \"Brussels\": [\"Vienna\", \"Reykjavik\", \"Edinburgh\", \"Amsterdam\"],\n        \"Reykjavik\": [\"Vienna\", \"Berlin\", \"Amsterdam\", \"Brussels\"]\n    }\n\n    trip_plan = calculate_trip_plan(constraints, direct_flights)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_684"
+        }
+    ]
+}

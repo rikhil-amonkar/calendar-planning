@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import time\n\ndef find_meeting_time(terry_busy, frances_busy, days, duration_minutes=30):\n    work_start = time(9, 0)\n    work_end = time(17, 0)\n    \n    for day in days:\n        if day == \"Tuesday\":\n            continue  # Frances prefers to avoid meetings on Tuesday\n            \n        # Get all busy intervals for Terry and Frances on the current day\n        terry_day = terry_busy.get(day, [])\n        frances_day = frances_busy.get(day, [])\n        \n        # Combine and sort all busy intervals\n        all_busy = terry_day + frances_day\n        all_busy.sort()\n        \n        # Check gaps between busy intervals\n        prev_end = work_start\n        for busy_start, busy_end in all_busy:\n            if busy_start > prev_end:\n                gap_duration = (busy_start.hour * 60 + busy_start.minute) - (prev_end.hour * 60 + prev_end.minute)\n                if gap_duration >= duration_minutes:\n                    return day, prev_end, time(prev_end.hour, prev_end.minute + duration_minutes)\n            prev_end = max(prev_end, busy_end)\n        \n        # Check gap after last busy interval\n        if prev_end < work_end:\n            gap_duration = (work_end.hour * 60 + work_end.minute) - (prev_end.hour * 60 + prev_end.minute)\n            if gap_duration >= duration_minutes:\n                return day, prev_end, time(prev_end.hour, prev_end.minute + duration_minutes)\n    \n    return None\n\ndef main():\n    terry_busy = {\n        \"Monday\": [(time(10, 30), time(11, 0)), (time(12, 30), time(14, 0)), (time(15, 0), time(17, 0))],\n        \"Tuesday\": [(time(9, 30), time(10, 0)), (time(10, 30), time(11, 0)), (time(14, 0), time(14, 30)), (time(16, 0), time(16, 30))],\n        \"Wednesday\": [(time(9, 30), time(10, 30)), (time(11, 0), time(12, 0)), (time(13, 0), time(13, 30)), (time(15, 0), time(16, 0)), (time(16, 30), time(17, 0))],\n        \"Thursday\": [(time(9, 30), time(10, 0)), (time(12, 0), time(12, 30)), (time(13, 0), time(14, 30)), (time(16, 0), time(16, 30))],\n        \"Friday\": [(time(9, 0), time(11, 30)), (time(12, 0), time(12, 30)), (time(13, 30), time(16, 0)), (time(16, 30), time(17, 0))]\n    }\n    \n    frances_busy = {\n        \"Monday\": [(time(9, 30), time(11, 0)), (time(11, 30), time(13, 0)), (time(14, 0), time(14, 30)), (time(15, 0), time(16, 0))],\n        \"Tuesday\": [(time(9, 0), time(9, 30)), (time(10, 0), time(10, 30)), (time(11, 0), time(12, 0)), (time(13, 0), time(14, 30)), (time(15, 30), time(16, 30))],\n        \"Wednesday\": [(time(9, 30), time(10, 0)), (time(10, 30), time(11, 0)), (time(11, 30), time(16, 0)), (time(16, 30), time(17, 0))],\n        \"Thursday\": [(time(11, 0), time(12, 30)), (time(14, 30), time(17, 0))],\n        \"Friday\": [(time(9, 30), time(10, 30)), (time(11, 0), time(12, 30)), (time(13, 0), time(16, 0)), (time(16, 30), time(17, 0))]\n    }\n    \n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n    result = find_meeting_time(terry_busy, frances_busy, days)\n    \n    if result:\n        day, start, end = result\n        print(f\"{day}, {start.hour:02d}:{start.minute:02d}:{end.hour:02d}:{end.minute:02d}\")\n    else:\n        print(\"No suitable time found.\")\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "calendar_scheduling_example_935"
+        }
+    ]
+}

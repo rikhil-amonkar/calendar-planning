@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Daniel",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Daniel",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef minutes_to_time_str(total_minutes):\n    # Convert minutes since midnight to H:MM format without leading zero for hour.\n    hours = total_minutes // 60\n    minutes = total_minutes % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef main():\n    # Input parameters (all times in minutes since midnight)\n    \n    # Arrival at Russian Hill at 9:00AM -> 9*60 = 540 minutes\n    arrival_russian_hill = 9 * 60  # 540\n    \n    # Daniel will be at Richmond District from 7:00PM (19:00) to 8:15PM (20:15)\n    daniel_available_start = 19 * 60      # 1140 minutes\n    daniel_available_end = 20 * 60 + 15     # 1215 minutes\n    \n    # Travel times in minutes\n    travel_rh_to_rd = 14   # Russian Hill to Richmond District\n    travel_rd_to_rh = 13   # Richmond District to Russian Hill\n    \n    # To maximize meeting time with Daniel (minimum 75 minutes) and meet his constraints:\n    # We need to arrive exactly at his available starting time.\n    # So compute the departure time from Russian Hill:\n    departure_from_russian_hill = daniel_available_start - travel_rh_to_rd  # 1140 - 14 = 1126 minutes\n    \n    # Check that departure time is after arrival time\n    if departure_from_russian_hill < arrival_russian_hill:\n        raise ValueError(\"Not enough time to depart from Russian Hill based on arrival time!\")\n    \n    # The meeting with Daniel will be scheduled starting at daniel_available_start\n    # and must last at least 75 minutes. In Daniel's time window from 19:00 to 20:15,\n    # there are exactly 75 minutes available.\n    meeting_duration = daniel_available_end - daniel_available_start\n    if meeting_duration < 75:\n        raise ValueError(\"Meeting duration does not meet the minimum required time!\")\n    \n    # Compute times as strings.\n    departure_time_str = minutes_to_time_str(departure_from_russian_hill)\n    meeting_start_str = minutes_to_time_str(daniel_available_start)\n    meeting_end_str = minutes_to_time_str(daniel_available_end)\n    \n    # Create itinerary:\n    # Although travel periods are important for planning, the problem instruction requests\n    # \"meet\" actions be included in the output JSON.\n    # Hence, we include only the meeting with Daniel.\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Richmond District\",\n            \"person\": \"Daniel\",\n            \"start_time\": meeting_start_str,\n            \"end_time\": meeting_end_str\n        }\n    ]\n    \n    # Construct the final schedule dictionary.\n    schedule = {\n        \"itinerary\": itinerary\n    }\n    \n    # Output the result as JSON.\n    print(json.dumps(schedule, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_91"
+        }
+    ]
+}

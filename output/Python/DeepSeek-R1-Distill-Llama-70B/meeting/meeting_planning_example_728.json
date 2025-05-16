@@ -1,0 +1,122 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Elizabeth",
+                        "start_time": "10:00",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "11:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "15:00",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "16:30",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Helen",
+                        "start_time": "17:27",
+                        "end_time": "19:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ashley",
+                        "start_time": "19:36",
+                        "end_time": "20:21"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "23:45",
+                        "end_time": "24:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Elizabeth",
+                        "start_time": "10:00",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "11:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "15:22",
+                        "end_time": "17:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:18",
+                        "end_time": "17:48"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Helen",
+                        "start_time": "18:12",
+                        "end_time": "19:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ashley",
+                        "start_time": "20:21",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I'm trying to solve this problem where I need to write a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I need to understand the problem thoroughly. The user starts at the Marina District at 9:00 AM and wants to meet several friends located in different districts. Each friend has specific time windows during which they're available, and each meeting requires a minimum duration. The challenge is to find a schedule that allows meeting the maximum number of friends without overlapping meetings and considering the travel times between locations.\n\nI'll start by listing out all the input parameters. The travel times between each pair of districts are given, and there are constraints for each friend, including their location, available start and end times, and the minimum meeting duration.\n\nNext, I need to think about how to model this problem. It seems like a scheduling problem where I have to consider all possible sequences of meetings, ensuring that each meeting starts after the previous one ends, including travel time, and fits within the friend's availability. This sounds like a classic backtracking problem where I explore all possible valid schedules and choose the one that meets the most friends.\n\nI'll need to represent the travel times in a data structure that allows quick lookups. A dictionary where the keys are tuples of locations (e.g., ('Marina District', 'Mission District')) and the values are the travel times in minutes would work well.\n\nFor the friends, I'll create a list of dictionaries, each containing the friend's name, location, start time, end time, and required meeting duration. The times are in minutes past midnight to make calculations easier.\n\nThe backtracking function will recursively explore each possible next meeting. For each friend not yet met, it calculates the earliest possible start time considering travel from the current location and the friend's availability. If it's feasible to meet the friend within their available window, the function adds the meeting to the itinerary and proceeds to the next friend.\n\nI also need to handle time conversions between minutes past midnight and HH:MM format for the output. Helper functions will convert minutes to time strings and vice versa.\n\nTo optimize the backtracking process, I'll include a pruning step where if the current number of met friends plus the remaining possible friends doesn't exceed the best count found so far, the function stops exploring that path. This helps reduce the number of unnecessary recursive calls.\n\nOnce the backtracking completes, the best itinerary found is converted into the required JSON format and printed.\n\nI need to ensure that all constraints are respected: no overlapping meetings, all travel times are accounted for, and each meeting meets the minimum duration requirement. The solution must be computed dynamically based on the input parameters, not relying on any pre-determined or hardcoded schedule.\n\nFinally, I'll test the code to make sure it runs independently and outputs valid JSON. The code should handle all edge cases, such as when it's not possible to meet a friend due to time constraints or when the best schedule doesn't include all friends.\n</think>\n\n```python\nimport json\n\n# Define travel times between locations in minutes\ntravel_times = {\n    ('Marina District', 'Mission District'): 20,\n    ('Marina District', 'Fisherman\\'s Wharf'): 10,\n    ('Marina District', 'Presidio'): 10,\n    ('Marina District', 'Union Square'): 16,\n    ('Marina District', 'Sunset District'): 19,\n    ('Marina District', 'Financial District'): 17,\n    ('Marina District', 'Haight-Ashbury'): 16,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Mission District', 'Marina District'): 19,\n    ('Mission District', 'Fisherman\\'s Wharf'): 22,\n    ('Mission District', 'Presidio'): 25,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Sunset District'): 24,\n    ('Mission District', 'Financial District'): 15,\n    ('Mission District', 'Haight-Ashbury'): 12,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Fisherman\\'s Wharf', 'Marina District'): 9,\n    ('Fisherman\\'s Wharf', 'Mission District'): 22,\n    ('Fisherman\\'s Wharf', 'Presidio'): 17,\n    ('Fisherman\\'s Wharf', 'Union Square'): 13,\n    ('Fisherman\\'s Wharf', 'Sunset District'): 27,\n    ('Fisherman\\'s Wharf', 'Financial District'): 11,\n    ('Fisherman\\'s Wharf', 'Haight-Ashbury'): 22,\n    ('Fisherman\\'s Wharf', 'Russian Hill'): 7,\n    ('Presidio', 'Marina District'): 11,\n    ('Presidio', 'Mission District'): 26,\n    ('Presidio', 'Fisherman\\'s Wharf'): 19,\n    ('Presidio', 'Union Square'): 22,\n    ('Presidio', 'Sunset District'): 15,\n    ('Presidio', 'Financial District'): 23,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Presidio', 'Russian Hill'): 14,\n    ('Union Square', 'Marina District'): 18,\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Fisherman\\'s Wharf'): 15,\n    ('Union Square', 'Presidio'): 24,\n    ('Union Square', 'Sunset District'): 27,\n    ('Union Square', 'Financial District'): 9,\n    ('Union Square', 'Haight-Ashbury'): 18,\n    ('Union Square', 'Russian Hill'): 13,\n    ('Sunset District', 'Marina District'): 21,\n    ('Sunset District', 'Mission District'): 25,\n    ('Sunset District', 'Fisherman\\'s Wharf'): 29,\n    ('Sunset District', 'Presidio'): 16,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Financial District'): 30,\n    ('Sunset District', 'Haight-Ashbury'): 15,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Financial District', 'Marina District'): 15,\n    ('Financial District', 'Mission District'): 17,\n    ('Financial District', 'Fisherman\\'s Wharf'): 10,\n    ('Financial District', 'Presidio'): 22,\n    ('Financial District', 'Union Square'): 9,\n    ('Financial District', 'Sunset District'): 30,\n    ('Financial District', 'Haight-Ashbury'): 19,\n    ('Financial District', 'Russian Hill'): 11,\n    ('Haight-Ashbury', 'Marina District'): 17,\n    ('Haight-Ashbury', 'Mission District'): 11,\n    ('Haight-Ashbury', 'Fisherman\\'s Wharf'): 23,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Union Square'): 19,\n    ('Haight-Ashbury', 'Sunset District'): 15,\n    ('Haight-Ashbury', 'Financial District'): 21,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Russian Hill', 'Marina District'): 7,\n    ('Russian Hill', 'Mission District'): 16,\n    ('Russian Hill', 'Fisherman\\'s Wharf'): 7,\n    ('Russian Hill', 'Presidio'): 14,\n    ('Russian Hill', 'Union Square'): 10,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Russian Hill', 'Financial District'): 11,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n}\n\n# Define friends with their constraints\nfriends = [\n    {'name': 'Karen', 'location': 'Mission District', 'start': 900, 'end': 1200, 'duration': 30},\n    {'name': 'Richard', 'location': 'Fisherman\\'s Wharf', 'start': 990, 'end': 1050, 'duration': 30},\n    {'name': 'Robert', 'location': 'Presidio', 'start': 1425, 'end': 1500, 'duration': 60},\n    {'name': 'Joseph', 'location': 'Union Square', 'start': 705, 'end': 930, 'duration': 120},\n    {'name': 'Helen', 'location': 'Sunset District', 'start': 990, 'end': 1305, 'duration': 105},\n    {'name': 'Elizabeth', 'location': 'Financial District', 'start': 600, 'end': 765, 'duration': 75},\n    {'name': 'Kimberly', 'location': 'Haight-Ashbury', 'start': 900, 'end': 1050, 'duration': 105},\n    {'name': 'Ashley', 'location': 'Russian Hill', 'start': 690, 'end': 1410, 'duration': 45},\n]\n\ndef convert_minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef convert_time_to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\nbest_itinerary = []\nbest_count = 0\n\ndef backtrack(current_location, current_time, met, itinerary):\n    global best_itinerary, best_count\n\n    # Prune if no better solution possible\n    remaining = len(friends) - len(met)\n    if len(met) + remaining <= best_count:\n        return\n\n    # Update best if current is better\n    if len(met) > best_count:\n        best_count = len(met)\n        best_itinerary = itinerary.copy()\n\n    # Try each possible next friend\n    for friend in friends:\n        if friend['name'] in met:\n            continue\n\n        # Calculate travel time to friend's location\n        travel = travel_times.get((current_location, friend['location']), 0)\n        arrival = current_time + travel\n\n        # Friend's availability\n        start = friend['start']\n        end = friend['end']\n        duration = friend['duration']\n\n        earliest_start = max(arrival, start)\n        latest_start = end - duration\n\n        if earliest_start > latest_start:\n            continue  # Cannot meet this friend\n\n        # Schedule the meeting\n        meeting_start = earliest_start\n        meeting_end = meeting_start + duration\n\n        # Create meeting entry\n        meeting = {\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': convert_minutes_to_time(meeting_start),\n            'end_time': convert_minutes_to_time(meeting_end)\n        }\n\n        # Update the state\n        new_met = set(met)\n        new_met.add(friend['name'])\n        new_itinerary = itinerary.copy()\n        new_itinerary.append(meeting)\n\n        # Update current location and time\n        new_location = friend['location']\n        new_time = meeting_end\n\n        # Recurse\n        backtrack(new_location, new_time, new_met, new_itinerary)\n\n# Initial call\nstart_time = 540  # 9:00 AM in minutes\nbacktrack('Marina District', start_time, set(), [])\n\n# Prepare the output\noutput = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the JSON\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_728"
+        }
+    ]
+}

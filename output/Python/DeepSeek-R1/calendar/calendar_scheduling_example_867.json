@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "{15:00",
+                "end_time": "15:30}"
+            },
+            "expected_time": {
+                "day": "Thursday",
+                "start_time": "{16:00",
+                "end_time": "16:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Define work hours and days to check\n    work_start = 9 * 60\n    work_end = 17 * 60\n    days = ['Tuesday', 'Wednesday', 'Thursday']  # Monday excluded per Betty's constraint\n    \n    # Convert schedules to minutes since midnight\n    betty_busy = {\n        'Tuesday': [(9*60, 9*60+30), (11*60+30, 12*60), (12*60+30, 13*60), (13*60+30, 14*60), (16*60+30, 17*60)],\n        'Wednesday': [(9*60+30, 10*60+30), (13*60, 13*60+30), (14*60, 14*60+30)],\n        'Thursday': [(9*60+30, 10*60), (11*60+30, 12*60), (14*60, 14*60+30), (15*60, 15*60+30), (16*60+30, 17*60)]\n    }\n    \n    scott_busy = {\n        'Tuesday': [(9*60, 9*60+30), (10*60, 11*60), (11*60+30, 12*60), (12*60+30, 13*60+30), (14*60, 15*60), (16*60, 16*60+30)],\n        'Wednesday': [(9*60+30, 12*60+30), (13*60, 13*60+30), (14*60, 14*60+30), (15*60, 15*60+30), (16*60, 16*60+30)],\n        'Thursday': [(9*60, 9*60+30), (10*60, 10*60+30), (11*60, 12*60), (12*60+30, 13*60), (15*60, 16*60), (16*60+30, 17*60)]\n    }\n\n    # Check possible days with priority order\n    for day in days:\n        # Apply Betty's time constraints\n        if day == 'Tuesday' or day == 'Thursday':\n            min_start = 15 * 60  # 15:00\n        else:\n            min_start = work_start\n        \n        # Generate free slots for both participants\n        slots = []\n        current_start = max(work_start, min_start)\n        \n        # Combine and sort all busy times\n        all_busy = sorted(betty_busy.get(day, []) + scott_busy.get(day, []), key=lambda x: x[0])\n        \n        for start, end in all_busy:\n            if current_start < start:\n                slots.append((current_start, start))\n            current_start = max(current_start, end)\n        if current_start < work_end:\n            slots.append((current_start, work_end))\n        \n        # Find first 30-minute slot\n        for slot_start, slot_end in slots:\n            if slot_end - slot_start >= 30:\n                meeting_start = slot_start\n                # Adjust for Betty's Thursday constraint\n                if day == 'Thursday' and meeting_start < 15 * 60:\n                    continue\n                return (\n                    day,\n                    f\"{meeting_start//60:02d}:{meeting_start%60:02d}:\"\n                    f\"{(meeting_start+30)//60:02d}:{(meeting_start+30)%60:02d}\"\n                )\n    \n    # Fallback to Wednesday 9:00 if no other slots (shouldn't reach here per problem statement)\n    return ('Wednesday', \"09:00:09:30\")\n\nday, time = find_meeting_time()\nprint(f\"{day} {time}\")\n'''",
+            "count": "calendar_scheduling_example_867"
+        }
+    ]
+}

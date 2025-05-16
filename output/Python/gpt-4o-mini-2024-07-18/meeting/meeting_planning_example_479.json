@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "17:19",
+                        "end_time": "19:04"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define the travel times (in minutes)\ntravel_times = {\n    (\"Embarcadero\", \"Golden Gate Park\"): 25,\n    (\"Embarcadero\", \"Haight-Ashbury\"): 21,\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Embarcadero\", \"Presidio\"): 20,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Bayview\"): 23,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Haight-Ashbury\", \"Bayview\"): 19,\n    (\"Haight-Ashbury\", \"Presidio\"): 15,\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    (\"Bayview\", \"Presidio\"): 31,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Presidio\", \"Financial District\"): 22,\n}\n\n# Meeting Constraints\nconstraints = {\n    \"Mary\": {\n        \"location\": \"Golden Gate Park\",\n        \"available_from\": \"08:45\",\n        \"available_to\": \"11:45\",\n        \"min_meeting_time\": 45\n    },\n    \"Kevin\": {\n        \"location\": \"Haight-Ashbury\",\n        \"available_from\": \"10:15\",\n        \"available_to\": \"16:15\",\n        \"min_meeting_time\": 90\n    },\n    \"Deborah\": {\n        \"location\": \"Bayview\",\n        \"available_from\": \"15:00\",\n        \"available_to\": \"19:15\",\n        \"min_meeting_time\": 120\n    },\n    \"Stephanie\": {\n        \"location\": \"Presidio\",\n        \"available_from\": \"10:00\",\n        \"available_to\": \"17:15\",\n        \"min_meeting_time\": 120\n    },\n    \"Emily\": {\n        \"location\": \"Financial District\",\n        \"available_from\": \"11:30\",\n        \"available_to\": \"21:45\",\n        \"min_meeting_time\": 105\n    },\n}\n\n# Arrival time at Embarcadero\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Convert available time strings to datetime objects\nfor key, value in constraints.items():\n    value[\"available_from\"] = datetime.strptime(value[\"available_from\"], \"%H:%M\")\n    value[\"available_to\"] = datetime.strptime(value[\"available_to\"], \"%H:%M\")\n\n# Initialize the itinerary\nitinerary = []\ncurrent_time = arrival_time\n\n# Function to calculate end time after travel and meeting\ndef add_meeting(start_time, duration):\n    return start_time + timedelta(minutes=duration)\n\n# Meeting Mary\nif current_time <= constraints[\"Mary\"][\"available_to\"] and current_time + timedelta(minutes=travel_times[(\"Embarcadero\", \"Golden Gate Park\")]) <= constraints[\"Mary\"][\"available_from\"]:\n    travel_time = travel_times[(\"Embarcadero\", \"Golden Gate Park\")]\n    current_time = add_meeting(current_time, travel_time)  # Travel to Golden Gate Park\n    meeting_start = add_meeting(current_time, 0)  # Start meeting right after arrival\n    meeting_end = add_meeting(meeting_start, constraints[\"Mary\"][\"min_meeting_time\"])\n    itinerary.append({\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Mary\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n    current_time = meeting_end  # Update current time after meeting\n\n# Meeting Kevin\nif current_time <= constraints[\"Kevin\"][\"available_to\"]:\n    travel_time = travel_times[(\"Golden Gate Park\", \"Haight-Ashbury\")]\n    current_time = add_meeting(current_time, travel_time)  # Travel to Haight-Ashbury\n    meeting_start = max(current_time, constraints[\"Kevin\"][\"available_from\"])\n    meeting_end = add_meeting(meeting_start, constraints[\"Kevin\"][\"min_meeting_time\"])\n    itinerary.append({\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Kevin\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n    current_time = meeting_end  # Update current time after meeting\n\n# Meeting Stephanie\nif current_time <= constraints[\"Stephanie\"][\"available_to\"]:\n    travel_time = travel_times[(\"Haight-Ashbury\", \"Presidio\")]\n    current_time = add_meeting(current_time, travel_time)  # Travel to Presidio\n    meeting_start = max(current_time, constraints[\"Stephanie\"][\"available_from\"])\n    meeting_end = add_meeting(meeting_start, constraints[\"Stephanie\"][\"min_meeting_time\"])\n    itinerary.append({\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Stephanie\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n    current_time = meeting_end  # Update current time after meeting\n\n# Meeting Deborah\nif current_time <= constraints[\"Deborah\"][\"available_to\"]:\n    travel_time = travel_times[(\"Presidio\", \"Bayview\")]\n    current_time = add_meeting(current_time, travel_time)  # Travel to Bayview\n    meeting_start = max(current_time, constraints[\"Deborah\"][\"available_from\"])\n    meeting_end = add_meeting(meeting_start, constraints[\"Deborah\"][\"min_meeting_time\"])\n    itinerary.append({\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Deborah\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n    current_time = meeting_end  # Update current time after meeting\n\n# Meeting Emily\nif current_time <= constraints[\"Emily\"][\"available_to\"]:\n    travel_time = travel_times[(\"Bayview\", \"Financial District\")]\n    current_time = add_meeting(current_time, travel_time)  # Travel to Financial District\n    meeting_start = max(current_time, constraints[\"Emily\"][\"available_from\"])\n    meeting_end = add_meeting(meeting_start, constraints[\"Emily\"][\"min_meeting_time\"])\n    itinerary.append({\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Emily\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n    current_time = meeting_end  # Update current time after meeting\n\n# Output the schedule as a JSON-formatted dictionary\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_479"
+        }
+    ]
+}

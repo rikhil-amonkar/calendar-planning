@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the participants' busy schedules\nbusy_times = {\n    \"Christine\": [(\"9:30\", \"10:30\"), (\"12:00\", \"12:30\"), (\"13:00\", \"13:30\"), (\"14:30\", \"15:00\"), (\"16:00\", \"16:30\")],\n    \"Janice\": [],\n    \"Bobby\": [(\"12:00\", \"12:30\"), (\"14:30\", \"15:00\")],\n    \"Elizabeth\": [(\"9:00\", \"9:30\"), (\"11:30\", \"13:00\"), (\"13:30\", \"14:00\"), (\"15:00\", \"15:30\"), (\"16:00\", \"17:00\")],\n    \"Tyler\": [(\"9:00\", \"11:00\"), (\"12:00\", \"12:30\"), (\"13:00\", \"13:30\"), (\"15:30\", \"16:00\"), (\"16:30\", \"17:00\")],\n    \"Edward\": [(\"9:00\", \"9:30\"), (\"10:00\", \"11:00\"), (\"11:30\", \"14:00\"), (\"14:30\", \"15:30\"), (\"16:00\", \"17:00\")]\n}\n\n# Define work hours and meeting duration\nwork_start = datetime.strptime(\"9:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(minutes=30)\n\n# Function to check if the time slot is free\ndef is_slot_free(start, end):\n    for busy in busy_times.values():\n        for busy_start, busy_end in busy:\n            busy_start_dt = datetime.strptime(busy_start, \"%H:%M\")\n            busy_end_dt = datetime.strptime(busy_end, \"%H:%M\")\n            if not (end <= busy_start_dt or start >= busy_end_dt):\n                return False\n    return True\n\n# Find a free time slot\ndef find_meeting_time():\n    current_time = work_start\n    while current_time + meeting_duration <= work_end:\n        if is_slot_free(current_time, current_time + meeting_duration):\n            return current_time.strftime(\"%H:%M\"), (current_time + meeting_duration).strftime(\"%H:%M\"), \"Monday\"\n        current_time += timedelta(minutes=30)  # increment in half hour intervals\n    return None, None, None\n\nstart_time, end_time, day = find_meeting_time()\nif start_time and end_time:\n    print(f\"Suggested meeting time: {{{start_time}:{end_time}}} on {day}\")\nelse:\n    print(\"No available meeting time.\")\n```",
+            "count": "calendar_scheduling_example_304"
+        }
+    ]
+}

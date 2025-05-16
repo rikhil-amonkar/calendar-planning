@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Madrid"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the trip parameters\n    trip_info = {\n        \"total_days\": 15,\n        \"cities\": {\n            \"Stuttgart\": {\"stay\": 5, \"constraints\": [\"workshop\", \"day_11_to_15\"]},\n            \"Manchester\": {\"stay\": 7, \"constraints\": [\"wedding\", \"day_1_to_7\"]},\n            \"Madrid\": {\"stay\": 4, \"constraints\": []},\n            \"Vienna\": {\"stay\": 2, \"constraints\": []}\n        },\n        \"direct_flights\": [\n            (\"Vienna\", \"Stuttgart\"),\n            (\"Manchester\", \"Vienna\"),\n            (\"Madrid\", \"Vienna\"),\n            (\"Manchester\", \"Stuttgart\"),\n            (\"Manchester\", \"Madrid\")\n        ]\n    }\n\n    # Initialize the itinerary list\n    itinerary = []\n    current_day = 1\n\n    # 1. Attend the wedding in Manchester (Day 1 to 7)\n    itinerary.append({'day_range': 'Day 1-7', 'place': 'Manchester'})\n    current_day += 7\n\n    # 2. Fly to Stuttgart (Day 8 to 12)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Manchester', 'to': 'Stuttgart'})\n    itinerary.append({'day_range': f'Day {current_day+1}-{current_day+5}', 'place': 'Stuttgart'})\n    current_day += 5\n\n    # 3. Fly to Vienna (Day 13 to 14)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Stuttgart', 'to': 'Vienna'})\n    itinerary.append({'day_range': f'Day {current_day+1}-{current_day+2}', 'place': 'Vienna'})\n    current_day += 2\n\n    # 4. Fly to Madrid (Day 15 to 15)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vienna', 'to': 'Madrid'})\n    itinerary.append({'day_range': f'Day {current_day+1}-{current_day+4}', 'place': 'Madrid'})\n\n    # Organizing final itinerary output for JSON\n    output = json.dumps(itinerary, indent=4)\n    return output\n\n# Execute the trip planning function and print the result\nprint(plan_trip())\n```",
+            "count": "trip_planning_example_288"
+        }
+    ]
+}

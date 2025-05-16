@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Melissa",
+                        "start_time": "9:25",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Melissa",
+                        "start_time": "9:25",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times between locations in minutes\ntravel_times = {\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n    (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Richmond District\"): 7,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n    (\"Richmond District\", \"Golden Gate Park\"): 9,\n    (\"Richmond District\", \"Presidio\"): 7,\n}\n\n# Constraints for meeting\nfriends = {\n    \"Melissa\": {\n        \"location\": \"Golden Gate Park\",\n        \"start\": \"08:30\",\n        \"end\": \"20:00\",\n        \"min_duration\": 15\n    },\n    \"Nancy\": {\n        \"location\": \"Presidio\",\n        \"start\": \"19:45\",\n        \"end\": \"22:00\",\n        \"min_duration\": 105\n    },\n    \"Emily\": {\n        \"location\": \"Richmond District\",\n        \"start\": \"16:45\",\n        \"end\": \"22:00\",\n        \"min_duration\": 120\n    }\n}\n\narrival_time = \"09:00\"\narrival_datetime = datetime.strptime(arrival_time, \"%H:%M\")\n\n# Find the optimal schedule\nitinerary = []\n\n# Meeting with Melissa\nmelissa_start = max(arrival_datetime + timedelta(minutes=travel_times[(\"Fisherman's Wharf\", \"Golden Gate Park\")]), \n                    datetime.strptime(friends[\"Melissa\"][\"start\"], \"%H:%M\"))\nmelissa_end = melissa_start + timedelta(minutes=friends[\"Melissa\"][\"min_duration\"])\n\nif melissa_end <= datetime.strptime(friends[\"Melissa\"][\"end\"], \"%H:%M\"):\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Golden Gate Park\",\n        \"person\": \"Melissa\",\n        \"start_time\": melissa_start.strftime(\"%H:%M\"),\n        \"end_time\": melissa_end.strftime(\"%H:%M\")\n    })\n\n# Meeting with Emily\ntravel_time_to_emily = travel_times[(\"Fisherman's Wharf\", \"Richmond District\")]\ndeparture_after_melissa = melissa_end + timedelta(minutes=travel_time_to_emily)\nemily_start = max(departure_after_melissa, \n                  datetime.strptime(friends[\"Emily\"][\"start\"], \"%H:%M\"))\nemily_end = emily_start + timedelta(minutes=friends[\"Emily\"][\"min_duration\"])\n\nif emily_end <= datetime.strptime(friends[\"Emily\"][\"end\"], \"%H:%M\"):\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Richmond District\",\n        \"person\": \"Emily\",\n        \"start_time\": emily_start.strftime(\"%H:%M\"),\n        \"end_time\": emily_end.strftime(\"%H:%M\")\n    })\n\n# Meeting with Nancy\ntravel_time_to_nancy = travel_times[(\"Richmond District\", \"Presidio\")]\ndeparture_after_emily = emily_end + timedelta(minutes=travel_time_to_nancy)\nnancy_start = max(departure_after_emily, \n                  datetime.strptime(friends[\"Nancy\"][\"start\"], \"%H:%M\"))\nnancy_end = nancy_start + timedelta(minutes=friends[\"Nancy\"][\"min_duration\"])\n\nif nancy_end <= datetime.strptime(friends[\"Nancy\"][\"end\"], \"%H:%M\"):\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Presidio\",\n        \"person\": \"Nancy\",\n        \"start_time\": nancy_start.strftime(\"%H:%M\"),\n        \"end_time\": nancy_end.strftime(\"%H:%M\")\n    })\n\n# Output the itinerary in JSON format\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_224"
+        }
+    ]
+}

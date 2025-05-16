@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\ndef time_from_str(timestr):\n    return datetime.strptime(timestr, \"%H:%M\")\n\ndef str_from_time(time_obj):\n    return time_obj.strftime(\"%H:%M\")\n\ndef find_meeting_slot():\n    # Meeting and work parameters\n    meeting_duration = timedelta(minutes=30)\n    work_day = \"Monday\"\n    work_start = time_from_str(\"09:00\")\n    work_end = time_from_str(\"17:00\")\n    \n    # Albert's calendar blocks (only Monday, in work hours)\n    # Note: Although one block is at 15:00-16:30, Albert cannot meet after 11:00.\n    # Thus, we only consider his blocks before 11:00 and adjust work_end accordingly.\n    albert_blocks = [\n        (time_from_str(\"09:00\"), time_from_str(\"10:00\")),\n        (time_from_str(\"10:30\"), time_from_str(\"12:00\")),  # This block covers after the allowed meeting time\n        (time_from_str(\"15:00\"), time_from_str(\"16:30\"))\n    ]\n    # Constraint: Albert cannot meet after 11:00.\n    latest_meeting_end = time_from_str(\"11:00\")\n    # Adjust effective work end for Albert\n    effective_work_end = min(work_end, latest_meeting_end)\n    \n    # Deborah is free all day, so we only consider Albert's schedule.\n    # For simplicity, let's calculate Albert's free intervals in [work_start, effective_work_end].\n    free_intervals = []\n    current = work_start\n\n    # We only consider the blocks that affect the interval until effective_work_end.\n    for block_start, block_end in albert_blocks:\n        # Skip blocks that start after effective_work_end, as they don't affect scheduling.\n        if block_start >= effective_work_end:\n            continue\n        # If there's free time between current time and the block start, add it.\n        if current < block_start:\n            free_interval_end = min(block_start, effective_work_end)\n            if free_interval_end - current >= meeting_duration:\n                free_intervals.append((current, free_interval_end))\n        # Move current to the later of block_end or current.\n        if block_end > current:\n            current = block_end\n        # If current passed effective_work_end, break early.\n        if current >= effective_work_end:\n            break\n\n    # Check if there is free time after the last block until effective_work_end.\n    if current < effective_work_end and (effective_work_end - current) >= meeting_duration:\n        free_intervals.append((current, effective_work_end))\n    \n    # Now, pick the first free interval that can accommodate the meeting.\n    for start, end in free_intervals:\n        if end - start >= meeting_duration:\n            meeting_start = start\n            meeting_end = meeting_start + meeting_duration\n            return work_day, meeting_start, meeting_end\n\n    return None, None, None\n\nif __name__ == \"__main__\":\n    day, start_time, end_time = find_meeting_slot()\n    if day is None:\n        print(\"No available slot found.\")\n    else:\n        # Format output as HH:MM:HH:MM and print day as well.\n        print(f\"{day}, {str_from_time(start_time)}:{str_from_time(end_time)}\")\n'''",
+            "count": "calendar_scheduling_example_544"
+        }
+    ]
+}

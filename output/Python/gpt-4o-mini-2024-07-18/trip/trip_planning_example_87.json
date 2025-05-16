@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Input Parameters\n    total_days = 7\n    riga_days = 2\n    amsterdam_days = 2\n    mykonos_days = total_days - (riga_days + amsterdam_days)  # Remaining days\n    \n    if mykonos_days < 0:\n        raise ValueError(\"The allocated days exceed the total available days.\")\n    \n    # Planning the itinerary\n    itinerary = []\n\n    # Day 1 and 2 in Riga\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Riga'})\n    itinerary.append({'flying': 'Day 2-2', 'from': 'Riga', 'to': 'Amsterdam'})\n    \n    # Day 3 and 4 in Amsterdam\n    itinerary.append({'day_range': 'Day 3-4', 'place': 'Amsterdam'})\n    itinerary.append({'flying': 'Day 4-5', 'from': 'Amsterdam', 'to': 'Mykonos'})\n    \n    # Day 5 to 7 in Mykonos\n    itinerary.append({'day_range': 'Day 5-7', 'place': 'Mykonos'})\n    \n    # Convert to JSON\n    itinerary_json = json.dumps(itinerary, indent=2)\n    \n    return itinerary_json\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_87"
+        }
+    ]
+}

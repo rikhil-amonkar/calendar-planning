@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "16:00",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "34:15",
+                        "end_time": "34:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "12:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "13:47",
+                        "end_time": "14:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_travel_time(origin, destination, travel_times):\n    return travel_times.get((origin, destination), 0)\n\ndef calculate_meeting_time(person, start_time, duration):\n    end_time = (start_time + duration) % 24\n    if end_time < start_time:\n        end_time += 24\n    return f\"{int(start_time):02d}:{int((start_time % 1) * 60):02d}\", f\"{int(end_time):02d}:{int((end_time % 1) * 60):02d}\"\n\ndef plan_meeting(person, location, start_time, duration, travel_times, current_location, current_time):\n    travel_time = calculate_travel_time(current_location, location, travel_times)\n    meeting_start_time, meeting_end_time = calculate_meeting_time(person, current_time + travel_time, duration / 60)\n    return {\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": meeting_start_time,\n        \"end_time\": meeting_end_time\n    }\n\ndef main():\n    travel_times = {\n        (\"The Castro\", \"Mission District\"): 7,\n        (\"The Castro\", \"Financial District\"): 20,\n        (\"Mission District\", \"The Castro\"): 7,\n        (\"Mission District\", \"Financial District\"): 17,\n        (\"Financial District\", \"The Castro\"): 23,\n        (\"Financial District\", \"Mission District\"): 17\n    }\n\n    meetings = [\n        {\"person\": \"Laura\", \"location\": \"Mission District\", \"start_time\": 12.25, \"end_time\": 19.75, \"duration\": 75},\n        {\"person\": \"Anthony\", \"location\": \"Financial District\", \"start_time\": 12.5, \"end_time\": 14.75, \"duration\": 30}\n    ]\n\n    itinerary = []\n    current_location = \"The Castro\"\n    current_time = 9\n\n    # Sort meetings by start time\n    meetings.sort(key=lambda x: x[\"start_time\"])\n\n    for meeting in meetings:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"], travel_times)\n        if current_time + travel_time < meeting[\"start_time\"]:\n            current_time = meeting[\"start_time\"] - travel_time\n        itinerary.append(plan_meeting(meeting[\"person\"], meeting[\"location\"], current_time + travel_time, meeting[\"duration\"], travel_times, current_location, current_time))\n        current_location = meeting[\"location\"]\n        current_time += travel_time + meeting[\"duration\"] / 60\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_144"
+        }
+    ]
+}

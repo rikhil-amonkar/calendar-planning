@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:08",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kimberly",
+                        "start_time": "16:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Patricia",
+                        "start_time": "18:00",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:08",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kimberly",
+                        "start_time": "16:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Patricia",
+                        "start_time": "18:00",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    \"\"\"Convert time string 'H:MM' to minutes since midnight.\"\"\"\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    \"\"\"Convert minutes since midnight to time string 'H:MM'.\"\"\"\n    hours = minutes // 60\n    minutes = minutes % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# Input parameters\ntravel_times = {\n    'Nob Hill': {\n        'North Beach': 8,\n        'Fisherman\\'s Wharf': 11,\n        'Bayview': 19\n    },\n    'North Beach': {\n        'Nob Hill': 7,\n        'Fisherman\\'s Wharf': 5,\n        'Bayview': 22\n    },\n    'Fisherman\\'s Wharf': {\n        'Nob Hill': 11,\n        'North Beach': 6,\n        'Bayview': 26\n    },\n    'Bayview': {\n        'Nob Hill': 20,\n        'North Beach': 21,\n        'Fisherman\\'s Wharf': 25\n    }\n}\n\nfriends = {\n    'Helen': {\n        'location': 'North Beach',\n        'available_start': '7:00',\n        'available_end': '16:45',\n        'duration': 120\n    },\n    'Kimberly': {\n        'location': 'Fisherman\\'s Wharf',\n        'available_start': '16:30',\n        'available_end': '21:00',\n        'duration': 45\n    },\n    'Patricia': {\n        'location': 'Bayview',\n        'available_start': '18:00',\n        'available_end': '21:15',\n        'duration': 120\n    }\n}\n\ncurrent_location = 'Nob Hill'\ncurrent_time = time_to_minutes('9:00')\n\n# Generate all possible meeting orders\nmeeting_orders = permutations(friends.keys())\n\nbest_schedule = None\nmax_meetings = 0\n\nfor order in meeting_orders:\n    schedule = []\n    temp_location = current_location\n    temp_time = current_time\n    meetings_scheduled = 0\n    \n    for friend_name in order:\n        friend = friends[friend_name]\n        location = friend['location']\n        travel_time = travel_times[temp_location][location]\n        arrival_time = temp_time + travel_time\n        \n        available_start = time_to_minutes(friend['available_start'])\n        available_end = time_to_minutes(friend['available_end'])\n        duration = friend['duration']\n        \n        # Calculate possible meeting window\n        meeting_start = max(arrival_time, available_start)\n        meeting_end = meeting_start + duration\n        \n        if meeting_end <= available_end:\n            schedule.append({\n                'action': 'meet',\n                'location': location,\n                'person': friend_name,\n                'start_time': minutes_to_time(meeting_start),\n                'end_time': minutes_to_time(meeting_end)\n            })\n            meetings_scheduled += 1\n            temp_location = location\n            temp_time = meeting_end\n        else:\n            break  # Can't meet this friend in this order\n    \n    if meetings_scheduled > max_meetings:\n        max_meetings = meetings_scheduled\n        best_schedule = schedule\n    elif meetings_scheduled == max_meetings and meetings_scheduled > 0:\n        # Prefer schedules that end earlier\n        if not best_schedule or temp_time < time_to_minutes(best_schedule[-1]['end_time']):\n            best_schedule = schedule\n\n# Prepare output\noutput = {\"itinerary\": best_schedule} if best_schedule else {\"itinerary\": []}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_222"
+        }
+    ]
+}

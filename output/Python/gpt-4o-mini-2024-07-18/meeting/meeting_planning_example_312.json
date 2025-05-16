@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Sarah",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Richard",
+                        "start_time": "11:45",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "13:26",
+                        "end_time": "15:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "18:15",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Sarah",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Richard",
+                        "start_time": "11:45",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "13:26",
+                        "end_time": "15:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "18:15",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Richmond District\", \"Sunset District\"): 11,\n    (\"Richmond District\", \"Haight-Ashbury\"): 10,\n    (\"Richmond District\", \"Mission District\"): 20,\n    (\"Richmond District\", \"Golden Gate Park\"): 9,\n    (\"Sunset District\", \"Richmond District\"): 12,\n    (\"Sunset District\", \"Haight-Ashbury\"): 15,\n    (\"Sunset District\", \"Mission District\"): 24,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Haight-Ashbury\", \"Richmond District\"): 10,\n    (\"Haight-Ashbury\", \"Sunset District\"): 15,\n    (\"Haight-Ashbury\", \"Mission District\"): 11,\n    (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n    (\"Mission District\", \"Richmond District\"): 20,\n    (\"Mission District\", \"Sunset District\"): 24,\n    (\"Mission District\", \"Haight-Ashbury\"): 12,\n    (\"Mission District\", \"Golden Gate Park\"): 17,\n    (\"Golden Gate Park\", \"Richmond District\"): 7,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Mission District\"): 17\n}\n\n# Meeting constraints\nconstraints = {\n    \"Sarah\": {\"location\": \"Sunset District\", \"start\": \"10:45\", \"end\": \"19:00\", \"duration\": 30},\n    \"Richard\": {\"location\": \"Haight-Ashbury\", \"start\": \"11:45\", \"end\": \"15:45\", \"duration\": 90},\n    \"Elizabeth\": {\"location\": \"Mission District\", \"start\": \"11:00\", \"end\": \"17:15\", \"duration\": 120},\n    \"Michelle\": {\"location\": \"Golden Gate Park\", \"start\": \"18:15\", \"end\": \"20:45\", \"duration\": 90},\n}\n\n# Initial time\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Function to calculate the optimal meeting schedule\ndef compute_schedule():\n    itinerary = []\n    current_time = arrival_time\n\n    # Meeting Sarah first if possible\n    if current_time < datetime.strptime(constraints[\"Sarah\"][\"start\"], \"%H:%M\"):\n        travel_time = travel_times[(\"Richmond District\", \"Sunset District\")]\n        current_time += timedelta(minutes=travel_time)\n    \n    if current_time < datetime.strptime(constraints[\"Sarah\"][\"end\"], \"%H:%M\") - timedelta(minutes=30):\n        meet_start = max(current_time, datetime.strptime(constraints[\"Sarah\"][\"start\"], \"%H:%M\"))\n        meet_end = meet_start + timedelta(minutes=constraints[\"Sarah\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": constraints[\"Sarah\"][\"location\"],\n            \"person\": \"Sarah\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": meet_end.strftime(\"%H:%M\")\n        })\n        current_time = meet_end\n        \n        # Travel to Richard\n        travel_time = travel_times[(\"Sunset District\", \"Haight-Ashbury\")]\n        current_time += timedelta(minutes=travel_time)\n    \n    # Meeting Richard next if time allows\n    if current_time < datetime.strptime(constraints[\"Richard\"][\"end\"], \"%H:%M\") - timedelta(minutes=90):\n        meet_start = max(current_time, datetime.strptime(constraints[\"Richard\"][\"start\"], \"%H:%M\"))\n        meet_end = meet_start + timedelta(minutes=constraints[\"Richard\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": constraints[\"Richard\"][\"location\"],\n            \"person\": \"Richard\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": meet_end.strftime(\"%H:%M\")\n        })\n        current_time = meet_end\n        \n        # Travel to Elizabeth\n        travel_time = travel_times[(\"Haight-Ashbury\", \"Mission District\")]\n        current_time += timedelta(minutes=travel_time)\n    \n    # Meeting Elizabeth next if time allows\n    if current_time < datetime.strptime(constraints[\"Elizabeth\"][\"end\"], \"%H:%M\") - timedelta(minutes=120):\n        meet_start = max(current_time, datetime.strptime(constraints[\"Elizabeth\"][\"start\"], \"%H:%M\"))\n        meet_end = meet_start + timedelta(minutes=constraints[\"Elizabeth\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": constraints[\"Elizabeth\"][\"location\"],\n            \"person\": \"Elizabeth\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": meet_end.strftime(\"%H:%M\")\n        })\n        current_time = meet_end\n        \n        # Travel to Michelle\n        travel_time = travel_times[(\"Mission District\", \"Golden Gate Park\")]\n        current_time += timedelta(minutes=travel_time)\n    \n    # Meeting Michelle if time allows\n    if current_time < datetime.strptime(constraints[\"Michelle\"][\"end\"], \"%H:%M\") - timedelta(minutes=90):\n        meet_start = max(current_time, datetime.strptime(constraints[\"Michelle\"][\"start\"], \"%H:%M\"))\n        meet_end = meet_start + timedelta(minutes=constraints[\"Michelle\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": constraints[\"Michelle\"][\"location\"],\n            \"person\": \"Michelle\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": meet_end.strftime(\"%H:%M\")\n        })\n    \n    return {\"itinerary\": itinerary}\n\n# Compute the schedule and output as JSON\noptimal_schedule = compute_schedule()\nprint(json.dumps(optimal_schedule, indent=2))\n```",
+            "count": "meeting_planning_example_312"
+        }
+    ]
+}

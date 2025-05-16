@@ -1,0 +1,77 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 26-27",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the cities and related constraints\n    cities = {\n        \"Istanbul\": {\"days\": 4, \"constraints\": [(1, 27)]},\n        \"Vienna\": {\"days\": 4, \"constraints\": [(1, 27), (1, 5)]},  # Must visit before Venice\n        \"Riga\": {\"days\": 2, \"constraints\": [(1, 27), (1, 4)]},  # Must visit before Brussels/or after\n        \"Brussels\": {\"days\": 2, \"constraints\": [(25, 27)]},  # Wedding days\n        \"Madrid\": {\"days\": 4, \"constraints\": [(1, 27)]},\n        \"Vilnius\": {\"days\": 4, \"constraints\": [(20, 23)]},  # Meet friends\n        \"Venice\": {\"days\": 5, \"constraints\": [(7, 11)]},  # Workshop days\n        \"Geneva\": {\"days\": 4, \"constraints\": [(1, 4)]},  # Visit relatives\n        \"Munich\": {\"days\": 5, \"constraints\": [(1, 27)]},\n        \"Reykjavik\": {\"days\": 2, \"constraints\": [(1, 27)]},\n    }\n\n    # Available direct flights\n    flight_routes = {\n        (\"Munich\", \"Vienna\"),\n        (\"Istanbul\", \"Brussels\"),\n        (\"Vienna\", \"Vilnius\"),\n        (\"Madrid\", \"Munich\"),\n        (\"Venice\", \"Brussels\"),\n        (\"Riga\", \"Brussels\"),\n        (\"Geneva\", \"Istanbul\"),\n        (\"Munich\", \"Reykjavik\"),\n        (\"Vienna\", \"Istanbul\"),\n        (\"Riga\", \"Istanbul\"),\n        (\"Reykjavik\", \"Vienna\"),\n        (\"Venice\", \"Munich\"),\n        (\"Madrid\", \"Venice\"),\n        (\"Vilnius\", \"Istanbul\"),\n        (\"Venice\", \"Vienna\"),\n        (\"Venice\", \"Istanbul\"),\n        (\"Reykjavik\", \"Madrid\"),\n        (\"Riga\", \"Munich\"),\n        (\"Munich\", \"Istanbul\"),\n        (\"Reykjavik\", \"Brussels\"),\n        (\"Vilnius\", \"Brussels\"),\n        (\"Vilnius\", \"Munich\"),\n        (\"Madrid\", \"Vienna\"),\n        (\"Vienna\", \"Riga\"),\n        (\"Geneva\", \"Vienna\"),\n        (\"Madrid\", \"Brussels\"),\n        (\"Vienna\", \"Brussels\"),\n        (\"Geneva\", \"Brussels\"),\n        (\"Geneva\", \"Madrid\"),\n        (\"Munich\", \"Brussels\"),\n        (\"Madrid\", \"Istanbul\"),\n        (\"Geneva\", \"Munich\"),\n        (\"Riga\", \"Vilnius\"),\n    }\n\n    # Calculate the itinerary\n    itinerary = []\n    day_count = 1\n\n    # Start visiting cities based on constraints\n    # Visit Geneva first due to relatives\n    if day_count <= 4:\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Geneva'})\n        day_count += 4\n\n    # Then travel to Istanbul\n    if (\"Geneva\", \"Istanbul\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Geneva', 'to': 'Istanbul'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Istanbul'})\n        day_count += 4\n\n    # Next, go to Vienna\n    if (\"Istanbul\", \"Vienna\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Istanbul', 'to': 'Vienna'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Vienna'})\n        day_count += 4\n\n    # Travel to Venice for the workshop\n    if (\"Vienna\", \"Venice\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Vienna', 'to': 'Venice'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Venice'})\n        day_count += 5\n\n    # Go to Munich next\n    if (\"Venice\", \"Munich\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Venice', 'to': 'Munich'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Munich'})\n        day_count += 5\n\n    # Next to Riga\n    if (\"Munich\", \"Riga\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Munich', 'to': 'Riga'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Riga'})\n        day_count += 2\n\n    # Then to Brussels for the wedding\n    if (\"Riga\", \"Brussels\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Riga', 'to': 'Brussels'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Brussels'})\n        day_count += 2\n\n    # Finally, visit Vilnius and then go to Madrid\n    if (\"Brussels\", \"Vilnius\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Brussels', 'to': 'Vilnius'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Vilnius'})\n        day_count += 4\n\n    # Finally, travel to Madrid\n    if (\"Vilnius\", \"Madrid\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Vilnius', 'to': 'Madrid'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Madrid'})\n        day_count += 4\n\n    # End with Brussels for the wedding\n    if (\"Madrid\", \"Brussels\") in flight_routes:\n        itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Madrid', 'to': 'Brussels'})\n        day_count += 1\n        itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Brussels'})\n        day_count += 2\n\n    # Output the result as a JSON formatted string\n    return json.dumps(itinerary, indent=4)\n\n# Run the trip planner\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_1480"
+        }
+    ]
+}

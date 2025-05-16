@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{12:00",
+                "end_time": "12:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{12:00",
+                "end_time": "12:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return (h - 9) * 60 + m\n\ndef min_to_time(m):\n    h = 9 + m // 60\n    m = m % 60\n    return f\"{h:02d}:{m:02d}\"\n\ndef get_free_intervals(busy_intervals, start=0, end=480):\n    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])\n    free = []\n    prev_end = start\n    for interval in sorted_busy:\n        current_start, current_end = interval\n        if current_start > prev_end:\n            free.append((prev_end, current_start))\n        prev_end = max(prev_end, current_end)\n    if prev_end < end:\n        free.append((prev_end, end))\n    return free\n\ndef intersect_intervals(a, b):\n    i = j = 0\n    result = []\n    while i < len(a) and j < len(b):\n        a_start, a_end = a[i]\n        b_start, b_end = b[j]\n        start = max(a_start, b_start)\n        end = min(a_end, b_end)\n        if start < end:\n            result.append((start, end))\n        if a_end < b_end:\n            i += 1\n        else:\n            j += 1\n    return result\n\ngregory_busy = [\n    (time_to_min('9:00'), time_to_min('10:00')),\n    (time_to_min('10:30'), time_to_min('11:30')),\n    (time_to_min('12:30'), time_to_min('13:00')),\n    (time_to_min('13:30'), time_to_min('14:00'))\n]\nnatalie_busy = []\nchristine_busy = [\n    (time_to_min('9:00'), time_to_min('11:30')),\n    (time_to_min('13:30'), time_to_min('17:00'))\n]\nvincent_busy = [\n    (time_to_min('9:00'), time_to_min('9:30')),\n    (time_to_min('10:30'), time_to_min('12:00')),\n    (time_to_min('12:30'), time_to_min('14:00')),\n    (time_to_min('14:30'), time_to_min('17:00'))\n]\n\ngregory_free = get_free_intervals(gregory_busy)\nnatalie_free = get_free_intervals(natalie_busy)\nchristine_free = get_free_intervals(christine_busy)\nvincent_free = get_free_intervals(vincent_busy)\n\ncommon_free = gregory_free\ncommon_free = intersect_intervals(common_free, natalie_free)\ncommon_free = intersect_intervals(common_free, christine_free)\ncommon_free = intersect_intervals(common_free, vincent_free)\n\nfor interval in common_free:\n    start, end = interval\n    if end - start >= 30:\n        start_time = min_to_time(start)\n        end_time = min_to_time(end)\n        print(f\"Monday {start_time}:{end_time}\")\n        exit()\n\nprint(\"No suitable time found.\")\n'''",
+            "count": "calendar_scheduling_example_111"
+        }
+    ]
+}

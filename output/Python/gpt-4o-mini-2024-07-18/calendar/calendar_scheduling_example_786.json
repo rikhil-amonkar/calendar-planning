@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the working hours\nworking_hours_start = datetime.strptime(\"09:00\", \"%H:%M\")\nworking_hours_end = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(minutes=30)\n\n# Define the busy schedules\nschedules = {\n    \"Monday\": [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n        (datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\")),\n    ],\n    \"Tuesday\": [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n        (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ],\n    \"Wednesday\": [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n        (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n        (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n        (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n        (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\")),\n    ],\n}\n\n# Function to check available times\ndef find_meeting_time():\n    for day, busy_times in schedules.items():\n        current_time = working_hours_start\n        while current_time + meeting_duration <= working_hours_end:\n            # Check if current_time is within any busy time\n            if not any(start <= current_time < end for start, end in busy_times):\n                # Check if current_time + meeting_duration is also not in busy times\n                if not any(start <= current_time + meeting_duration <= end for start, end in busy_times):\n                    return f\"{day}: {current_time.strftime('%H:%M')}:{(current_time + meeting_duration).strftime('%H:%M')}\"\n            current_time += timedelta(minutes=15)  # Check every 15 minutes\n\n# Get the proposed meeting time\nproposed_time = find_meeting_time()\nprint(proposed_time)\n```",
+            "count": "calendar_scheduling_example_786"
+        }
+    ]
+}

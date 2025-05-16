@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Participant schedules\ngary_schedule = {\n    \"Monday\": [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n               (datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\")),\n               (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"14:30\", \"%H:%M\")),\n               (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    \n    \"Tuesday\": [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n                (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n                (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\"))]\n}\n\ndavid_schedule = {\n    \"Monday\": [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n               (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\")),\n               (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))],\n    \n    \"Tuesday\": [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n                (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n                (datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"14:30\", \"%H:%M\")),\n                (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n                (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n}\n\n# Meeting duration\nmeeting_duration = timedelta(hours=1)\n\n# Function to find available time slot\ndef find_meeting_time(gary_schedule, david_schedule, duration):\n    days = [\"Monday\", \"Tuesday\"]\n    \n    for day in days:\n        gary_times = gary_schedule[day]\n        david_times = david_schedule[day]\n        \n        # Combine schedules and get free slots\n        blocked_times = gary_times + david_times\n        blocked_times.sort(key=lambda x: x[0]) # Sort by start time\n        \n        start_of_day = datetime.strptime(\"09:00\", \"%H:%M\")\n        end_of_day = datetime.strptime(\"17:00\", \"%H:%M\")\n        \n        # Check for free slots in between blocked times\n        last_end_time = start_of_day\n        \n        for start, end in blocked_times:\n            # If there is time between last_end_time and current start, consider it\n            if last_end_time + duration <= start:\n                return f\"{last_end_time.strftime('%H:%M')}:{(last_end_time + duration).strftime('%H:%M')} {day}\"\n            # Update last_end_time to be the end of the current blocked time\n            if end > last_end_time:\n                last_end_time = end\n                \n        # Check for time after the last blocked time until end of the day\n        if last_end_time + duration <= end_of_day:\n            return f\"{last_end_time.strftime('%H:%M')}:{(last_end_time + duration).strftime('%H:%M')} {day}\"\n    \n    return \"No available time slot found.\"\n\n# Get proposed meeting time\nproposed_time = find_meeting_time(gary_schedule, david_schedule, meeting_duration)\nprint(proposed_time)\n```",
+            "count": "calendar_scheduling_example_662"
+        }
+    ]
+}

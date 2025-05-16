@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joseph",
+                        "start_time": "18:07",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Melissa",
+                        "start_time": "20:29",
+                        "end_time": "21:44"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joseph",
+                        "start_time": "18:07",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Melissa",
+                        "start_time": "20:29",
+                        "end_time": "21:44"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\ndef min_to_time_str(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\nfriends = [\n    {\n        'name': 'Emily',\n        'location': 'Presidio',\n        'start': 16 * 60 + 15,\n        'end': 21 * 60,\n        'duration': 105\n    },\n    {\n        'name': 'Joseph',\n        'location': 'Richmond District',\n        'start': 17 * 60 + 15,\n        'end': 22 * 60,\n        'duration': 120\n    },\n    {\n        'name': 'Melissa',\n        'location': 'Financial District',\n        'start': 15 * 60 + 45,\n        'end': 21 * 60 + 45,\n        'duration': 75\n    }\n]\n\ntravel_times = {\n    'Fisherman\\'s Wharf': {\n        'Presidio': 17,\n        'Richmond District': 18,\n        'Financial District': 11\n    },\n    'Presidio': {\n        'Fisherman\\'s Wharf': 19,\n        'Richmond District': 7,\n        'Financial District': 23\n    },\n    'Richmond District': {\n        'Fisherman\\'s Wharf': 18,\n        'Presidio': 7,\n        'Financial District': 22\n    },\n    'Financial District': {\n        'Fisherman\\'s Wharf': 10,\n        'Presidio': 22,\n        'Richmond District': 21\n    }\n}\n\nbest_schedule = None\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Fisherman\\'s Wharf'\n    current_time = 540\n    schedule = []\n    valid = True\n    for friend in perm:\n        if current_location not in travel_times or friend['location'] not in travel_times[current_location]:\n            valid = False\n            break\n        travel_time = travel_times[current_location][friend['location']]\n        arrival_time = current_time + travel_time\n        start_meet = max(arrival_time, friend['start'])\n        end_meet = start_meet + friend['duration']\n        if end_meet > friend['end']:\n            valid = False\n            break\n        schedule.append((friend, start_meet, end_meet))\n        current_time = end_meet\n        current_location = friend['location']\n    if valid:\n        best_schedule = schedule\n        break\n\nif best_schedule:\n    itinerary = []\n    for entry in best_schedule:\n        friend = entry[0]\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend['location'],\n            \"person\": friend['name'],\n            \"start_time\": min_to_time_str(entry[1]),\n            \"end_time\": min_to_time_str(entry[2])\n        })\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\nelse:\n    print('{\"itinerary\": []}')",
+            "count": "meeting_planning_example_210"
+        }
+    ]
+}

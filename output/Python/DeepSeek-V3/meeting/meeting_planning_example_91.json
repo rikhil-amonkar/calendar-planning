@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Daniel",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Daniel",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef calculate_schedule():\n    # Input parameters\n    arrival_time = datetime.strptime(\"9:00\", \"%H:%M\")\n    daniel_available_start = datetime.strptime(\"19:00\", \"%H:%M\")\n    daniel_available_end = datetime.strptime(\"20:15\", \"%H:%M\")\n    required_meeting_duration = timedelta(minutes=75)\n    travel_to_richmond = timedelta(minutes=14)\n    travel_to_russian = timedelta(minutes=13)\n\n    # Calculate possible meeting window\n    latest_departure_from_russian = daniel_available_end - required_meeting_duration - travel_to_richmond\n    earliest_arrival_at_richmond = daniel_available_start + travel_to_richmond\n\n    # Check if meeting is possible\n    if latest_departure_from_russian < arrival_time or earliest_arrival_at_richmond > daniel_available_end:\n        return {\"itinerary\": []}\n\n    # Determine optimal meeting time (maximize duration)\n    meeting_start = max(daniel_available_start, arrival_time + travel_to_richmond)\n    meeting_end = min(daniel_available_end, meeting_start + required_meeting_duration)\n    \n    if meeting_end > daniel_available_end:\n        meeting_end = daniel_available_end\n        meeting_start = meeting_end - required_meeting_duration\n\n    # Build itinerary\n    itinerary = []\n    \n    # Add travel to Richmond if needed\n    if arrival_time + travel_to_richmond < meeting_start:\n        itinerary.append({\n            \"action\": \"travel\",\n            \"location\": \"Richmond District\",\n            \"person\": None,\n            \"start_time\": arrival_time.strftime(\"%-H:%M\"),\n            \"end_time\": (arrival_time + travel_to_richmond).strftime(\"%-H:%M\")\n        })\n    \n    # Add meeting with Daniel\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Richmond District\",\n        \"person\": \"Daniel\",\n        \"start_time\": meeting_start.strftime(\"%-H:%M\"),\n        \"end_time\": meeting_end.strftime(\"%-H:%M\")\n    })\n\n    # Add return travel if needed\n    if meeting_end < datetime.strptime(\"23:59\", \"%H:%M\"):\n        itinerary.append({\n            \"action\": \"travel\",\n            \"location\": \"Russian Hill\",\n            \"person\": None,\n            \"start_time\": meeting_end.strftime(\"%-H:%M\"),\n            \"end_time\": (meeting_end + travel_to_russian).strftime(\"%-H:%M\")\n        })\n\n    return {\"itinerary\": itinerary}\n\nresult = calculate_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_91"
+        }
+    ]
+}

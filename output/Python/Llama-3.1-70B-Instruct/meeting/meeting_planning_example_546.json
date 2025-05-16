@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nimport itertools\n\n# Define the locations and travel times\nlocations = {\n    \"Embarcadero\": {},\n    \"Richmond District\": {},\n    \"Union Square\": {},\n    \"Financial District\": {},\n    \"Pacific Heights\": {},\n    \"Nob Hill\": {},\n    \"Bayview\": {}\n}\n\ntravel_times = {\n    (\"Embarcadero\", \"Richmond District\"): 21,\n    (\"Embarcadero\", \"Union Square\"): 10,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    (\"Embarcadero\", \"Pacific Heights\"): 11,\n    (\"Embarcadero\", \"Nob Hill\"): 10,\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Richmond District\", \"Embarcadero\"): 19,\n    (\"Richmond District\", \"Union Square\"): 21,\n    (\"Richmond District\", \"Financial District\"): 22,\n    (\"Richmond District\", \"Pacific Heights\"): 10,\n    (\"Richmond District\", \"Nob Hill\"): 17,\n    (\"Richmond District\", \"Bayview\"): 26,\n    (\"Union Square\", \"Embarcadero\"): 11,\n    (\"Union Square\", \"Richmond District\"): 20,\n    (\"Union Square\", \"Financial District\"): 9,\n    (\"Union Square\", \"Pacific Heights\"): 15,\n    (\"Union Square\", \"Nob Hill\"): 9,\n    (\"Union Square\", \"Bayview\"): 15,\n    (\"Financial District\", \"Embarcadero\"): 4,\n    (\"Financial District\", \"Richmond District\"): 21,\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Financial District\", \"Pacific Heights\"): 13,\n    (\"Financial District\", \"Nob Hill\"): 8,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Pacific Heights\", \"Embarcadero\"): 10,\n    (\"Pacific Heights\", \"Richmond District\"): 12,\n    (\"Pacific Heights\", \"Union Square\"): 12,\n    (\"Pacific Heights\", \"Financial District\"): 13,\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"Bayview\"): 22,\n    (\"Nob Hill\", \"Embarcadero\"): 9,\n    (\"Nob Hill\", \"Richmond District\"): 14,\n    (\"Nob Hill\", \"Union Square\"): 7,\n    (\"Nob Hill\", \"Financial District\"): 9,\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    (\"Nob Hill\", \"Bayview\"): 19,\n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Bayview\", \"Richmond District\"): 25,\n    (\"Bayview\", \"Union Square\"): 17,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    (\"Bayview\", \"Nob Hill\"): 20\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"Richmond District\", \"person\": \"Kenneth\", \"start_time\": 21.25, \"end_time\": 22, \"duration\": 30},\n    {\"location\": \"Union Square\", \"person\": \"Lisa\", \"start_time\": 9, \"end_time\": 16.5, \"duration\": 45},\n    {\"location\": \"Financial District\", \"person\": \"Joshua\", \"start_time\": 12, \"end_time\": 15.25, \"duration\": 15},\n    {\"location\": \"Pacific Heights\", \"person\": \"Nancy\", \"start_time\": 8, \"end_time\": 11.5, \"duration\": 90},\n    {\"location\": \"Nob Hill\", \"person\": \"Andrew\", \"start_time\": 11.5, \"end_time\": 20.25, \"duration\": 60},\n    {\"location\": \"Bayview\", \"person\": \"John\", \"start_time\": 16.75, \"end_time\": 21.5, \"duration\": 75}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Embarcadero\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_546"
+        }
+    ]
+}

@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nimport itertools\n\n# Define travel distances in minutes\ntravel_distances = {\n    \"Chinatown\": {\n        \"Mission District\": 18,\n        \"Alamo Square\": 17,\n        \"Pacific Heights\": 10,\n        \"Union Square\": 7,\n        \"Golden Gate Park\": 23,\n        \"Sunset District\": 29,\n        \"Presidio\": 19\n    },\n    \"Mission District\": {\n        \"Chinatown\": 16,\n        \"Alamo Square\": 11,\n        \"Pacific Heights\": 16,\n        \"Union Square\": 15,\n        \"Golden Gate Park\": 17,\n        \"Sunset District\": 24,\n        \"Presidio\": 25\n    },\n    \"Alamo Square\": {\n        \"Chinatown\": 16,\n        \"Mission District\": 10,\n        \"Pacific Heights\": 10,\n        \"Union Square\": 14,\n        \"Golden Gate Park\": 9,\n        \"Sunset District\": 16,\n        \"Presidio\": 18\n    },\n    \"Pacific Heights\": {\n        \"Chinatown\": 11,\n        \"Mission District\": 15,\n        \"Alamo Square\": 10,\n        \"Union Square\": 12,\n        \"Golden Gate Park\": 15,\n        \"Sunset District\": 21,\n        \"Presidio\": 11\n    },\n    \"Union Square\": {\n        \"Chinatown\": 7,\n        \"Mission District\": 14,\n        \"Alamo Square\": 15,\n        \"Pacific Heights\": 15,\n        \"Golden Gate Park\": 22,\n        \"Sunset District\": 26,\n        \"Presidio\": 24\n    },\n    \"Golden Gate Park\": {\n        \"Chinatown\": 23,\n        \"Mission District\": 17,\n        \"Alamo Square\": 10,\n        \"Pacific Heights\": 16,\n        \"Union Square\": 22,\n        \"Sunset District\": 10,\n        \"Presidio\": 11\n    },\n    \"Sunset District\": {\n        \"Chinatown\": 30,\n        \"Mission District\": 24,\n        \"Alamo Square\": 17,\n        \"Pacific Heights\": 21,\n        \"Union Square\": 30,\n        \"Golden Gate Park\": 11,\n        \"Presidio\": 16\n    },\n    \"Presidio\": {\n        \"Chinatown\": 21,\n        \"Mission District\": 26,\n        \"Alamo Square\": 18,\n        \"Pacific Heights\": 11,\n        \"Union Square\": 22,\n        \"Golden Gate Park\": 12,\n        \"Sunset District\": 15\n    }\n}\n\n# Define meeting constraints\nconstraints = {\n    \"David\": {\"location\": \"Mission District\", \"start_time\": \"08:00\", \"end_time\": \"19:45\", \"duration\": 45},\n    \"Kenneth\": {\"location\": \"Alamo Square\", \"start_time\": \"14:00\", \"end_time\": \"19:45\", \"duration\": 120},\n    \"John\": {\"location\": \"Pacific Heights\", \"start_time\": \"17:00\", \"end_time\": \"20:00\", \"duration\": 15},\n    \"Charles\": {\"location\": \"Union Square\", \"start_time\": \"21:45\", \"end_time\": \"22:45\", \"duration\": 60},\n    \"Deborah\": {\"location\": \"Golden Gate Park\", \"start_time\": \"07:00\", \"end_time\": \"18:15\", \"duration\": 90},\n    \"Karen\": {\"location\": \"Sunset District\", \"start_time\": \"17:45\", \"end_time\": \"21:15\", \"duration\": 15},\n    \"Carol\": {\"location\": \"Presidio\", \"start_time\": \"08:15\", \"end_time\": \"09:15\", \"duration\": 30}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    if start_location == \"Chinatown\":\n        return travel_distances[\"Chinatown\"][end_location]\n    elif start_location == \"Mission District\":\n        return travel_distances[\"Mission District\"][end_location]\n    elif start_location == \"Alamo Square\":\n        return travel_distances[\"Alamo Square\"][end_location]\n    elif start_location == \"Pacific Heights\":\n        return travel_distances[\"Pacific Heights\"][end_location]\n    elif start_location == \"Union Square\":\n        return travel_distances[\"Union Square\"][end_location]\n    elif start_location == \"Golden Gate Park\":\n        return travel_distances[\"Golden Gate Park\"][end_location]\n    elif start_location == \"Sunset District\":\n        return travel_distances[\"Sunset District\"][end_location]\n    elif start_location == \"Presidio\":\n        return travel_distances[\"Presidio\"][end_location]\n\ndef check_constraint(person, start_time, end_time):\n    constraint = constraints[person]\n    if start_time >= constraint[\"start_time\"] and end_time <= constraint[\"end_time\"]:\n        return True\n    return False\n\ndef schedule_meeting(person, start_time, end_time):\n    if check_constraint(person, start_time, end_time):\n        return {\"action\": \"meet\", \"location\": constraints[person][\"location\"], \"person\": person, \"start_time\": start_time, \"end_time\": end_time}\n    return None\n\ndef generate_itinerary():\n    start_time = \"09:00\"\n    end_time = \"22:00\"\n    start_location = \"Chinatown\"\n    itinerary = []\n    \n    # Generate all possible meeting times\n    for hour in range(9, 22):\n        for minute in range(0, 60):\n            meeting_time = f\"{hour:02d}:{minute:02d}\"\n            if meeting_time >= constraints[\"David\"][\"start_time\"] and meeting_time <= constraints[\"David\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"David\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Kenneth\"][\"start_time\"] and meeting_time <= constraints[\"Kenneth\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Kenneth\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"John\"][\"start_time\"] and meeting_time <= constraints[\"John\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"John\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Charles\"][\"start_time\"] and meeting_time <= constraints[\"Charles\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Charles\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Deborah\"][\"start_time\"] and meeting_time <= constraints[\"Deborah\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Deborah\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Karen\"][\"start_time\"] and meeting_time <= constraints[\"Karen\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Karen\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Carol\"][\"start_time\"] and meeting_time <= constraints[\"Carol\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Carol\", meeting_time, meeting_time))\n    \n    # Remove duplicates and sort by start time\n    itinerary = list(set(itinerary))\n    itinerary.sort(key=lambda x: x[\"start_time\"])\n    \n    return itinerary\n\ndef optimize_itinerary(itinerary):\n    optimized_itinerary = []\n    current_location = \"Chinatown\"\n    for meeting in itinerary:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"])\n        start_time = datetime.strptime(meeting[\"start_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        end_time = datetime.strptime(meeting[\"end_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        optimized_itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": start_time.strftime(\"%H:%M\"), \"end_time\": end_time.strftime(\"%H:%M\")})\n        current_location = meeting[\"location\"]\n    return optimized_itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    optimized_itinerary = optimize_itinerary(itinerary)\n    result = {\"itinerary\": optimized_itinerary}\n    print(json.dumps(result, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_609"
+        }
+    ]
+}

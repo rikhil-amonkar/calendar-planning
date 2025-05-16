@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\n# Meeting scheduling script for Eric and Henry on Monday\n# Meeting duration is 30 minutes and meeting must be before 10:00 because Henry prefers to avoid meetings after 10:00.\n# Eric's blocked times: 12:00-13:00 and 14:00-15:00.\n# Henry's meetings: \n#   09:30-10:00, 10:30-11:00, 11:30-12:30, 13:00-13:30, 14:30-15:00, 16:00-17:00.\n# Since Henry prefers not to meet after 10:00,\n# a natural candidate is 09:00 to 09:30 on Monday, which works for both.\n\nfrom datetime import datetime, timedelta\n\ndef minutes_since_start(time_str):\n    # convert \"HH:MM\" to minutes since 00:00\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef format_time(minutes):\n    # Format minutes since midnight back to \"HH:MM\"\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Define working day boundaries (9:00 to 17:00)\nwork_start = minutes_since_start(\"09:00\")\nwork_end = minutes_since_start(\"17:00\")\n\n# Blocked intervals for Eric and Henry for Monday (in minutes)\neric_blocks = [\n    (minutes_since_start(\"12:00\"), minutes_since_start(\"13:00\")),\n    (minutes_since_start(\"14:00\"), minutes_since_start(\"15:00\"))\n]\n\nhenry_blocks = [\n    (minutes_since_start(\"09:30\"), minutes_since_start(\"10:00\")),\n    (minutes_since_start(\"10:30\"), minutes_since_start(\"11:00\")),\n    (minutes_since_start(\"11:30\"), minutes_since_start(\"12:30\")),\n    (minutes_since_start(\"13:00\"), minutes_since_start(\"13:30\")),\n    (minutes_since_start(\"14:30\"), minutes_since_start(\"15:00\")),\n    (minutes_since_start(\"16:00\"), minutes_since_start(\"17:00\"))\n]\n\n# Henry's preference: no meetings after 10:00 on Monday.\nhenry_latest = minutes_since_start(\"10:00\")\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# We must choose a start time such that the meeting finishes by min(work_end, henry_latest)\n# because of the preference for Henry.\nlatest_possible_end = min(work_end, henry_latest)  # meeting must end by 10:00\nlatest_possible_start = latest_possible_end - meeting_duration\n\ncandidate = None\n\n# We'll try time slots starting from work_start (9:00) till latest_possible_start\nfor start in range(work_start, latest_possible_start + 1):\n    end = start + meeting_duration\n    \n    # Check if this time slot is conflict free for Eric and Henry\n    conflict = False\n    \n    # Check Eric's blocks\n    for eb_start, eb_end in eric_blocks:\n        if not (end <= eb_start or start >= eb_end):\n            conflict = True\n            break\n    if conflict:\n        continue\n    \n    # Check Henry's blocks\n    for hb_start, hb_end in henry_blocks:\n        if not (end <= hb_start or start >= hb_end):\n            conflict = True\n            break\n    if conflict:\n        continue\n    \n    # Candidate slot should also end by henry_latest\n    if end > henry_latest:\n        continue\n    \n    candidate = (start, end)\n    break\n\nif candidate:\n    start_time = format_time(candidate[0])\n    end_time = format_time(candidate[1])\n    day = \"Monday\"\n    print(f\"{day} {start_time}:{end_time}\")\nelse:\n    print(\"No suitable time block found.\")\n'''",
+            "count": "calendar_scheduling_example_553"
+        }
+    ]
+}

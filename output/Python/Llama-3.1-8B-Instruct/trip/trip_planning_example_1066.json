@@ -1,0 +1,69 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-21",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 1-21",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 1-21",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 1-21",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 1-21",
+                        "place": "London"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Madrid"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import chain, combinations\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Brussels': 4,\n            'Bucharest': 3,\n            'Stuttgart': 4,\n            'Mykonos': 2,\n            'Madrid': 4,\n            'Helsinki': 5,\n            'Split': 3,\n            'London': 5\n        }\n        self.flights = {\n            ('Helsinki', 'London'): 1,\n            ('Split', 'Madrid'): 1,\n            ('Helsinki', 'Madrid'): 1,\n            ('London', 'Madrid'): 1,\n            ('Brussels', 'London'): 1,\n            ('Bucharest', 'London'): 1,\n            ('Brussels', 'Bucharest'): 1,\n            ('Bucharest', 'Madrid'): 1,\n            ('Split', 'Helsinki'): 1,\n            ('Mykonos', 'Madrid'): 1,\n            ('Stuttgart', 'London'): 1,\n            ('Helsinki', 'Brussels'): 1,\n            ('Brussels', 'Madrid'): 1,\n            ('Split', 'London'): 1,\n            ('Stuttgart', 'Split'): 1,\n            ('London', 'Mykonos'): 1\n        }\n\n    def powerset(self, iterable):\n        s = list(iterable)\n        return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))\n\n    def generate_itinerary(self, days, constraints):\n        # Generate all possible combinations of cities\n        possible_combinations = list(self.powerset(constraints))\n\n        # Filter combinations that do not meet the day constraint\n        valid_combinations = []\n        for combination in possible_combinations:\n            days_in_combination = sum(self.cities[city] for city in combination)\n            if days_in_combination <= days:\n                valid_combinations.append(combination)\n\n        # Initialize the optimal itinerary\n        optimal_itinerary = []\n\n        # Iterate over valid combinations to find the optimal itinerary\n        for combination in valid_combinations:\n            days_in_combination = sum(self.cities[city] for city in combination)\n            days_left = days - days_in_combination\n            itinerary = [{'day_range': f'Day {days_left+1}-{days_left+days_in_combination}', 'place': city} for city in combination]\n            for i in range(len(combination) - 1):\n                if (combination[i], combination[i+1]) in self.flights:\n                    days_left += 1\n                    itinerary.append({'flying': f'Day {days_left}-{days_left}', 'from': combination[i], 'to': combination[i+1]})\n            optimal_itinerary = max([optimal_itinerary, itinerary], key=lambda x: len(x))\n\n        return optimal_itinerary\n\n    def plan_trip(self):\n        constraints = ['Helsinki', 'Stuttgart', 'Mykonos', 'Madrid', 'Helsinki', 'Split', 'London']\n        days = 21\n        itinerary = self.generate_itinerary(days, constraints)\n        return json.dumps(itinerary, indent=4)\n\nif __name__ == '__main__':\n    trip_planner = TripPlanner()\n    print(trip_planner.plan_trip())\n```\n\nThis code defines a `TripPlanner` class that takes the constraints and days as input and generates the optimal itinerary. The `powerset` function generates all possible combinations of cities, and the `generate_itinerary` function filters these combinations to find the optimal itinerary. The `plan_trip` function calls `generate_itinerary` and returns the result as a JSON-formatted string.",
+            "count": "trip_planning_example_1066"
+        }
+    ]
+}

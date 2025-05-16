@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    total_days = 24\n    cities = {\n        'Naples': {'duration': 3, 'constraints': [{'type': 'meet', 'day_range': (18, 20)}]},\n        'Valencia': {'duration': 5, 'constraints': []},\n        'Stuttgart': {'duration': 2, 'constraints': []},\n        'Split': {'duration': 5, 'constraints': []},\n        'Venice': {'duration': 5, 'constraints': [{'type': 'conference', 'day_range': (6, 10)}]},\n        'Amsterdam': {'duration': 4, 'constraints': []},\n        'Nice': {'duration': 2, 'constraints': [{'type': 'meet', 'day_range': (23, 24)}]},\n        'Barcelona': {'duration': 2, 'constraints': [{'type': 'workshop', 'day_range': (5, 6)}]},\n        'Porto': {'duration': 4, 'constraints': []}\n    }\n    \n    direct_flights = {\n        'Venice': ['Nice', 'Amsterdam', 'Stuttgart', 'Naples', 'Barcelona'],\n        'Naples': ['Amsterdam', 'Nice', 'Split', 'Valencia', 'Barcelona', 'Stuttgart', 'Venice'],\n        'Barcelona': ['Nice', 'Porto', 'Valencia', 'Naples', 'Venice', 'Amsterdam', 'Stuttgart', 'Split'],\n        'Valencia': ['Stuttgart', 'Amsterdam', 'Naples', 'Porto', 'Barcelona'],\n        'Stuttgart': ['Valencia', 'Porto', 'Split', 'Amsterdam', 'Naples', 'Venice', 'Barcelona'],\n        'Split': ['Stuttgart', 'Naples', 'Amsterdam', 'Barcelona'],\n        'Amsterdam': ['Naples', 'Nice', 'Valencia', 'Venice', 'Porto', 'Stuttgart', 'Barcelona', 'Split'],\n        'Nice': ['Venice', 'Barcelona', 'Amsterdam', 'Naples', 'Porto'],\n        'Porto': ['Stuttgart', 'Barcelona', 'Nice', 'Amsterdam', 'Valencia']\n    }\n    \n    # Generate all possible permutations of cities\n    city_names = list(cities.keys())\n    all_permutations = permutations(city_names)\n    \n    def is_valid_itinerary(itinerary):\n        day = 1\n        prev_city = None\n        for city in itinerary:\n            if prev_city is not None and city not in direct_flights[prev_city]:\n                return False\n            prev_city = city\n        return True\n    \n    def check_constraints(itinerary):\n        # Simulate the itinerary day by day to check constraints\n        day = 1\n        city_days = {}\n        for city in itinerary:\n            duration = cities[city]['duration']\n            city_days[city] = (day, day + duration - 1)\n            day += duration\n        \n        # Check Venice conference (Day 6-10)\n        venice_days = city_days.get('Venice', (0, -1))\n        if not (venice_days[0] <= 6 and venice_days[1] >= 10):\n            return False\n        \n        # Check Barcelona workshop (Day 5-6)\n        barcelona_days = city_days.get('Barcelona', (0, -1))\n        if not (barcelona_days[0] <= 5 and barcelona_days[1] >= 6):\n            return False\n        \n        # Check Naples meet (Day 18-20)\n        naples_days = city_days.get('Naples', (0, -1))\n        if not (naples_days[0] <= 20 and naples_days[1] >= 18):\n            return False\n        \n        # Check Nice meet (Day 23-24)\n        nice_days = city_days.get('Nice', (0, -1))\n        if not (nice_days[0] <= 24 and nice_days[1] >= 23):\n            return False\n        \n        # Check total days\n        total = sum(cities[city]['duration'] for city in itinerary)\n        if total != total_days:\n            return False\n        \n        return True\n    \n    valid_itineraries = []\n    for perm in all_permutations:\n        if is_valid_itinerary(perm) and check_constraints(perm):\n            valid_itineraries.append(perm)\n            break  # We only need one valid itinerary\n    \n    if not valid_itineraries:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}))\n        return\n    \n    # Generate the JSON output for the first valid itinerary\n    itinerary = valid_itineraries[0]\n    output = []\n    current_day = 1\n    prev_city = None\n    \n    for city in itinerary:\n        duration = cities[city]['duration']\n        end_day = current_day + duration - 1\n        if prev_city is not None:\n            output.append({\n                'flying': f'Day {current_day-1}-{current_day-1}',\n                'from': prev_city,\n                'to': city\n            })\n        output.append({\n            'day_range': f'Day {current_day}-{end_day}',\n            'place': city\n        })\n        prev_city = city\n        current_day = end_day + 1\n    \n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1392"
+        }
+    ]
+}

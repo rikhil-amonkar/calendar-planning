@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# Input parameters\narrival_al_time = '9:00'\ntim_start_str = '20:45'\ntim_end_str = '21:30'\ntravel_to_richmond = 12\n\narrival_al_min = time_to_min(arrival_al_time)\ntim_start = time_to_min(tim_start_str)\ntim_end = time_to_min(tim_end_str)\nrequired_duration = 45\n\ndeparture_al_min = tim_start - travel_to_richmond\nitinerary = []\n\nif (tim_end - tim_start) >= required_duration and departure_al_min >= arrival_al_min:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Richmond District\",\n        \"person\": \"Timothy\",\n        \"start_time\": min_to_time(tim_start),\n        \"end_time\": min_to_time(tim_end)\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_98"
+        }
+    ]
+}

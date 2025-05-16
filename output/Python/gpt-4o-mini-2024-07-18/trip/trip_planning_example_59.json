@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 8-14",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Input parameters\n    total_days = 16\n    stay_lyon = 7\n    stay_bucharest = 7\n    stay_porto = 4\n\n    # Define the itinerary\n    itinerary = []\n\n    # Bucharest: Day 1-7\n    itinerary.append({'day_range': 'Day 1-7', 'place': 'Bucharest'})\n\n    # Travel from Bucharest to Lyon on Day 7\n    itinerary.append({'flying': 'Day 7-7', 'from': 'Bucharest', 'to': 'Lyon'})\n\n    # Lyon: Day 8-14 (7 days)\n    itinerary.append({'day_range': 'Day 8-14', 'place': 'Lyon'})\n\n    # Travel from Lyon to Porto on Day 14\n    itinerary.append({'flying': 'Day 14-14', 'from': 'Lyon', 'to': 'Porto'})\n\n    # Porto: Day 15-16 (2 days)\n    itinerary.append({'day_range': 'Day 15-16', 'place': 'Porto'})\n\n    # Fill in the remaining days in Porto to match total days\n    # Adjusting Porto to stay for 4 days\n    itinerary[-1]['day_range'] = 'Day 15-18'  # Extending to 4 days\n\n    # Prepare JSON output\n    json_output = json.dumps(itinerary, indent=4)\n    return json_output\n\nif __name__ == \"__main__\":\n    output = create_itinerary()\n    print(output)\n```",
+            "count": "trip_planning_example_59"
+        }
+    ]
+}

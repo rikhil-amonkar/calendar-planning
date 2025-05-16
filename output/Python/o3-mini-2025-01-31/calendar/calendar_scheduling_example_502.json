@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time_str):\n    \"\"\"Convert HH:MM time string to minutes from midnight.\"\"\"\n    hours, minutes = map(int, time_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    \"\"\"Convert minutes from midnight to HH:MM time string.\"\"\"\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# Define the working day hours\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\n\n# Busy schedules for the participants on Monday (in minutes)\nbusy_jack = [\n    (time_to_minutes(\"09:30\"), time_to_minutes(\"10:30\")),\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n    (time_to_minutes(\"12:30\"), time_to_minutes(\"13:00\")),\n    (time_to_minutes(\"14:00\"), time_to_minutes(\"14:30\")),\n    (time_to_minutes(\"16:00\"), time_to_minutes(\"16:30\"))\n]\n\nbusy_charlotte = [\n    (time_to_minutes(\"09:30\"), time_to_minutes(\"10:00\")),\n    (time_to_minutes(\"10:30\"), time_to_minutes(\"12:00\")),\n    (time_to_minutes(\"12:30\"), time_to_minutes(\"13:30\")),\n    (time_to_minutes(\"14:00\"), time_to_minutes(\"16:00\"))\n]\n\n# Jack prefers to avoid meetings after 12:30 on Monday,\n# so we want the meeting to finish by 12:30.\n# We'll enforce that the meeting must end by or before 12:30.\njack_preference_limit = time_to_minutes(\"12:30\")\n\ndef is_free(busy_list, start, end):\n    \"\"\"Check if the person is free between start and end (in minutes).\"\"\"\n    for busy_start, busy_end in busy_list:\n        # If the meeting overlaps with any busy interval, return False.\n        if start < busy_end and end > busy_start:\n            return False\n    return True\n\n# Try to find an available time slot that satisfies all constraints.\navailable_slot = None\n# We only consider start times where the meeting will finish by work_end.\nfor start in range(work_start, work_end - meeting_duration + 1):\n    end = start + meeting_duration\n\n    # Enforce Jack's preference: the meeting must finish by 12:30.\n    if end > jack_preference_limit:\n        continue\n\n    # Check if both Jack and Charlotte are free during this interval.\n    if is_free(busy_jack, start, end) and is_free(busy_charlotte, start, end):\n        available_slot = (start, end)\n        break\n\nif available_slot:\n    meeting_start, meeting_end = available_slot\n    # Output in the format {HH:MM:HH:MM} and include the day of the week.\n    print(\"Monday\", f\"{{{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}}}\")\nelse:\n    print(\"No available time slot found.\")\n'''",
+            "count": "calendar_scheduling_example_502"
+        }
+    ]
+}

@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-15",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 8-13",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    cities = list(constraints.keys())\n    unvisited_cities = cities.copy()\n    current_city = None\n\n    # Start with Split\n    current_city = 'Split'\n    unvisited_cities.remove(current_city)\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[current_city] - 1}', 'place': current_city})\n    current_day += constraints[current_city]\n\n    # Visit Vilnius\n    next_city = 'Vilnius'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Madrid\n    next_city = 'Madrid'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Santorini\n    next_city = 'Santorini'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    if current_day < 13:\n        trip_plan.append({'day_range': f'Day {current_day}-{12}', 'place': next_city})\n        current_day = 13\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': next_city})\n\n    return trip_plan\n\nconstraints = {\n    'Split': 5,\n    'Vilnius': 4,\n    'Santorini': 2,\n    'Madrid': 6\n}\n\ndirect_flights = [\n    ['Vilnius', 'Split'],\n    ['Split', 'Madrid'],\n    ['Madrid', 'Santorini']\n]\n\ntrip_plan = calculate_trip_plan(constraints, direct_flights)\nprint(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_275"
+        }
+    ]
+}

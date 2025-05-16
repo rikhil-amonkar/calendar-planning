@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 12-19",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 12\n    naples_days = 3\n    seville_days = 4\n    seville_event_days = 4  # From day 9 to day 12\n    milan_days = 7\n    \n    # Calculate free days\n    remaining_days = total_days - (naples_days + seville_days + seville_event_days + milan_days)\n\n    # Days in each city\n    naples = {'days': naples_days, 'place': 'Naples'}\n    milan = {'days': milan_days, 'place': 'Milan'}\n    seville = {'days': seville_days + seville_event_days, 'place': 'Seville'}\n    \n    # Itinerary plan\n    itinerary = []\n    \n    # Naples: Days 1 to 3\n    start_day = 1\n    end_day = start_day + naples['days'] - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': naples['place']})\n\n    # Travel from Naples to Milan: Day 4\n    start_day += naples['days']\n    itinerary.append({'flying': f'Day {start_day}-{start_day}', 'from': naples['place'], 'to': milan['place']})\n\n    # Milan: Days 4 to 10\n    end_day = start_day + milan['days'] - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': milan['place']})\n\n    # Travel from Milan to Seville: Day 10\n    start_day += milan['days']\n    itinerary.append({'flying': f'Day {start_day}-{start_day}', 'from': milan['place'], 'to': seville['place']})\n\n    # Seville: Days 10 to 12 (attending annual show)\n    start_day += 1\n    end_day = start_day + seville['days'] - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': seville['place']})\n\n    return json.dumps(itinerary, indent=4)\n\n# Output the itinerary as JSON\nif __name__ == \"__main__\":\n    output = calculate_itinerary()\n    print(output)\n```",
+            "count": "trip_planning_example_113"
+        }
+    ]
+}

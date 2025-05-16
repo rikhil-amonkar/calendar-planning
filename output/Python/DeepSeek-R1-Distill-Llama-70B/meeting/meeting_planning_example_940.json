@@ -1,0 +1,129 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Jessica",
+                        "start_time": "9:13",
+                        "end_time": "11:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "John",
+                        "start_time": "11:18",
+                        "end_time": "11:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "11:40",
+                        "end_time": "12:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Rebecca",
+                        "start_time": "12:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jason",
+                        "start_time": "15:45",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "18:45",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Amanda",
+                        "start_time": "20:22",
+                        "end_time": "21:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "21:29",
+                        "end_time": "22:29"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Jessica",
+                        "start_time": "9:13",
+                        "end_time": "11:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "John",
+                        "start_time": "11:18",
+                        "end_time": "11:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "11:40",
+                        "end_time": "12:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Rebecca",
+                        "start_time": "12:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jason",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "18:28",
+                        "end_time": "19:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I need to solve this problem where I have to create a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I'll start by understanding the input parameters. There are several friends, each located in different districts of San Francisco, with specific time windows during which they're available. The user starts at Union Square at 9:00 AM and wants to meet as many friends as possible.\n\nI need to process the travel times between all these locations. The data is quite extensive, so I'll organize it in a dictionary where the keys are tuples of (start, end) locations, and the values are the travel times in minutes.\n\nNext, I'll represent each friend's constraints. Each friend has a name, location, start time, end time, and the minimum meeting duration. I'll convert the times from hours to minutes since midnight for easier calculations.\n\nThe core of the solution will involve generating all possible permutations of the friends' meetings. Since there are 10 friends, this will result in 10! (3,628,800) permutations. For each permutation, I'll simulate the schedule, starting from Union Square at 9:00 AM, and calculate if it's feasible to meet each friend in the given order, considering travel times and their availability.\n\nI'll need a helper function to convert minutes back to \"H:MM\" format for the output. This function will take the total minutes and return a string representing the time in 24-hour format.\n\nFor each permutation, I'll initialize the current time and location. Then, for each friend in the permutation, I'll calculate the travel time from the current location to the friend's location. I'll check if arriving at the friend's location, after accounting for travel time, allows enough time to meet the minimum duration requirement within their available window. If feasible, I'll add this meeting to the itinerary and update the current time and location.\n\nI'll keep track of the best itinerary, which is the one with the maximum number of meetings. After evaluating all permutations, I'll output the best itinerary in the specified JSON format.\n\nI should also consider the computational complexity. With 10 friends, the permutations are manageable, but I'll need to ensure the code is optimized to handle this within a reasonable time frame. However, since this is a one-time computation, it's acceptable.\n\nFinally, I'll structure the code to read the input parameters, process them, compute the optimal schedule, and print the result in the required JSON format. I'll make sure the code is self-contained and runs independently without any additional input or explanation.\n</think>\n\n```python\nimport itertools\nimport json\n\ntravel_times = {\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Fisherman\\'s Wharf'): 15,\n    ('Union Square', 'Russian Hill'): 13,\n    ('Union Square', 'Marina District'): 18,\n    ('Union Square', 'North Beach'): 10,\n    ('Union Square', 'Chinatown'): 7,\n    ('Union Square', 'Pacific Heights'): 15,\n    ('Union Square', 'The Castro'): 17,\n    ('Union Square', 'Nob Hill'): 9,\n    ('Union Square', 'Sunset District'): 27,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Fisherman\\'s Wharf'): 22,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Mission District', 'Marina District'): 19,\n    ('Mission District', 'North Beach'): 17,\n    ('Mission District', 'Chinatown'): 16,\n    ('Mission District', 'Pacific Heights'): 16,\n    ('Mission District', 'The Castro'): 7,\n    ('Mission District', 'Nob Hill'): 12,\n    ('Mission District', 'Sunset District'): 24,\n    ('Fisherman\\'s Wharf', 'Union Square'): 13,\n    ('Fisherman\\'s Wharf', 'Mission District'): 22,\n    ('Fisherman\\'s Wharf', 'Russian Hill'): 7,\n    ('Fisherman\\'s Wharf', 'Marina District'): 9,\n    ('Fisherman\\'s Wharf', 'North Beach'): 6,\n    ('Fisherman\\'s Wharf', 'Chinatown'): 12,\n    ('Fisherman\\'s Wharf', 'Pacific Heights'): 12,\n    ('Fisherman\\'s Wharf', 'The Castro'): 27,\n    ('Fisherman\\'s Wharf', 'Nob Hill'): 11,\n    ('Fisherman\\'s Wharf', 'Sunset District'): 27,\n    ('Russian Hill', 'Union Square'): 10,\n    ('Russian Hill', 'Mission District'): 16,\n    ('Russian Hill', 'Fisherman\\'s Wharf'): 7,\n    ('Russian Hill', 'Marina District'): 7,\n    ('Russian Hill', 'North Beach'): 5,\n    ('Russian Hill', 'Chinatown'): 9,\n    ('Russian Hill', 'Pacific Heights'): 7,\n    ('Russian Hill', 'The Castro'): 21,\n    ('Russian Hill', 'Nob Hill'): 5,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Marina District', 'Union Square'): 16,\n    ('Marina District', 'Mission District'): 20,\n    ('Marina District', 'Fisherman\\'s Wharf'): 10,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Marina District', 'North Beach'): 11,\n    ('Marina District', 'Chinatown'): 15,\n    ('Marina District', 'Pacific Heights'): 7,\n    ('Marina District', 'The Castro'): 22,\n    ('Marina District', 'Nob Hill'): 12,\n    ('Marina District', 'Sunset District'): 19,\n    ('North Beach', 'Union Square'): 7,\n    ('North Beach', 'Mission District'): 18,\n    ('North Beach', 'Fisherman\\'s Wharf'): 5,\n    ('North Beach', 'Russian Hill'): 4,\n    ('North Beach', 'Marina District'): 9,\n    ('North Beach', 'Chinatown'): 6,\n    ('North Beach', 'Pacific Heights'): 8,\n    ('North Beach', 'The Castro'): 23,\n    ('North Beach', 'Nob Hill'): 7,\n    ('North Beach', 'Sunset District'): 27,\n    ('Chinatown', 'Union Square'): 7,\n    ('Chinatown', 'Mission District'): 17,\n    ('Chinatown', 'Fisherman\\'s Wharf'): 8,\n    ('Chinatown', 'Russian Hill'): 7,\n    ('Chinatown', 'Marina District'): 12,\n    ('Chinatown', 'North Beach'): 3,\n    ('Chinatown', 'Pacific Heights'): 10,\n    ('Chinatown', 'The Castro'): 22,\n    ('Chinatown', 'Nob Hill'): 9,\n    ('Chinatown', 'Sunset District'): 29,\n    ('Pacific Heights', 'Union Square'): 12,\n    ('Pacific Heights', 'Mission District'): 15,\n    ('Pacific Heights', 'Fisherman\\'s Wharf'): 13,\n    ('Pacific Heights', 'Russian Hill'): 7,\n    ('Pacific Heights', 'Marina District'): 6,\n    ('Pacific Heights', 'North Beach'): 9,\n    ('Pacific Heights', 'Chinatown'): 11,\n    ('Pacific Heights', 'The Castro'): 16,\n    ('Pacific Heights', 'Nob Hill'): 8,\n    ('Pacific Heights', 'Sunset District'): 21,\n    ('The Castro', 'Union Square'): 19,\n    ('The Castro', 'Mission District'): 7,\n    ('The Castro', 'Fisherman\\'s Wharf'): 24,\n    ('The Castro', 'Russian Hill'): 18,\n    ('The Castro', 'Marina District'): 21,\n    ('The Castro', 'North Beach'): 20,\n    ('The Castro', 'Chinatown'): 22,\n    ('The Castro', 'Pacific Heights'): 16,\n    ('The Castro', 'Nob Hill'): 16,\n    ('The Castro', 'Sunset District'): 17,\n    ('Nob Hill', 'Union Square'): 7,\n    ('Nob Hill', 'Mission District'): 13,\n    ('Nob Hill', 'Fisherman\\'s Wharf'): 10,\n    ('Nob Hill', 'Russian Hill'): 5,\n    ('Nob Hill', 'Marina District'): 11,\n    ('Nob Hill', 'North Beach'): 8,\n    ('Nob Hill', 'Chinatown'): 6,\n    ('Nob Hill', 'Pacific Heights'): 8,\n    ('Nob Hill', 'The Castro'): 17,\n    ('Nob Hill', 'Sunset District'): 24,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Mission District'): 25,\n    ('Sunset District', 'Fisherman\\'s Wharf'): 29,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Sunset District', 'Marina District'): 21,\n    ('Sunset District', 'North Beach'): 28,\n    ('Sunset District', 'Chinatown'): 30,\n    ('Sunset District', 'Pacific Heights'): 21,\n    ('Sunset District', 'The Castro'): 17,\n    ('Sunset District', 'Nob Hill'): 27,\n}\n\nfriends = [\n    {\n        'name': 'Kevin',\n        'location': 'Mission District',\n        'start': 1260,  # 21:00 (9:00 PM)\n        'end': 1365,   # 22:45 (10:45 PM)\n        'duration': 60\n    },\n    {\n        'name': 'Mark',\n        'location': 'Fisherman\\'s Wharf',\n        'start': 1170,  # 19:30 (5:30 PM)\n        'end': 1320,   # 22:00 (10:00 PM)\n        'duration': 90\n    },\n    {\n        'name': 'Jessica',\n        'location': 'Russian Hill',\n        'start': 540,   # 9:00 AM\n        'end': 900,    # 15:00 (3:00 PM)\n        'duration': 120\n    },\n    {\n        'name': 'Jason',\n        'location': 'Marina District',\n        'start': 945,   # 15:45 (3:45 PM)\n        'end': 1410,   # 23:50 (11:50 PM)\n        'duration': 120\n    },\n    {\n        'name': 'John',\n        'location': 'North Beach',\n        'start': 585,   # 9:45 AM\n        'end': 1080,   # 18:00 (6:00 PM)\n        'duration': 15\n    },\n    {\n        'name': 'Karen',\n        'location': 'Chinatown',\n        'start': 1125,  # 18:45 (6:45 PM)\n        'end': 1260,   # 21:00 (9:00 PM)\n        'duration': 75\n    },\n    {\n        'name': 'Sarah',\n        'location': 'Pacific Heights',\n        'start': 1050,  # 17:30 (5:30 PM)\n        'end': 1115,   # 18:15 (6:15 PM)\n        'duration': 45\n    },\n    {\n        'name': 'Amanda',\n        'location': 'The Castro',\n        'start': 1200,  # 20:00 (8:00 PM)\n        'end': 1290,   # 21:30 (9:30 PM)\n        'duration': 60\n    },\n    {\n        'name': 'Nancy',\n        'location': 'Nob Hill',\n        'start': 585,   # 9:45 AM\n        'end': 810,    # 13:30 (1:30 PM)\n        'duration': 45\n    },\n    {\n        'name': 'Rebecca',\n        'location': 'Sunset District',\n        'start': 570,   # 9:30 AM\n        'end': 900,    # 15:00 (3:00 PM)\n        'duration': 75\n    }\n]\n\ndef minutes_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours}:{mins:02d}\"\n\nbest_itinerary = []\nmax_meetings = 0\n\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_location = 'Union Square'\n    itinerary = []\n    \n    for friend in perm:\n        travel = travel_times.get((current_location, friend['location']), None)\n        if travel is None:\n            continue\n        \n        arrival = current_time + travel\n        meeting_start = max(arrival, friend['start'])\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > friend['end']:\n            continue\n        \n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        current_time = meeting_end\n        current_location = friend['location']\n    \n    if len(itinerary) > max_meetings:\n        max_meetings = len(itinerary)\n        best_itinerary = itinerary\n\noutput = {\n    \"itinerary\": best_itinerary\n}\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_940"
+        }
+    ]
+}

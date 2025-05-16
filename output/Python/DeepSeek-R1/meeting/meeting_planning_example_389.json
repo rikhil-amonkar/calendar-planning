@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Mary",
+                        "start_time": "13:00",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Helen",
+                        "start_time": "21:45",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Sarah",
+                        "start_time": "14:45",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Mary",
+                        "start_time": "16:48",
+                        "end_time": "18:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Helen",
+                        "start_time": "21:45",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nfrom itertools import permutations, chain, combinations\n\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    return f\"{m // 60}:{m % 60:02d}\"\n\ntravel_times = {\n    'Haight-Ashbury': {'Fisherman\\'s Wharf': 23, 'Richmond District': 10, 'Mission District': 11, 'Bayview': 18},\n    'Fisherman\\'s Wharf': {'Haight-Ashbury': 22, 'Richmond District': 18, 'Mission District': 22, 'Bayview': 26},\n    'Richmond District': {'Haight-Ashbury': 10, 'Fisherman\\'s Wharf': 18, 'Mission District': 20, 'Bayview': 26},\n    'Mission District': {'Haight-Ashbury': 12, 'Fisherman\\'s Wharf': 22, 'Richmond District': 20, 'Bayview': 15},\n    'Bayview': {'Haight-Ashbury': 19, 'Fisherman\\'s Wharf': 25, 'Richmond District': 25, 'Mission District': 13}\n}\n\nfriends_data = [\n    {'name': 'Sarah', 'location': 'Fisherman\\'s Wharf', 'window_start': '14:45', 'window_end': '17:30', 'duration': 105},\n    {'name': 'Mary', 'location': 'Richmond District', 'window_start': '13:00', 'window_end': '19:15', 'duration': 75},\n    {'name': 'Thomas', 'location': 'Bayview', 'window_start': '15:15', 'window_end': '18:45', 'duration': 120},\n    {'name': 'Helen', 'location': 'Mission District', 'window_start': '21:45', 'window_end': '22:30', 'duration': 30}\n]\n\ndef all_subsets(s):\n    return chain.from_iterable(combinations(s, r) for r in range(1, len(s)+1))\n\nbest_itinerary = []\nmax_count = 0\nmax_duration = 0\n\nfor subset in all_subsets([0, 1, 2]):\n    for perm in permutations(subset):\n        current_time = 540\n        current_loc = 'Haight-Ashbury'\n        itinerary = []\n        valid = True\n        \n        for idx in perm:\n            friend = friends_data[idx]\n            if current_loc not in travel_times or friend['location'] not in travel_times[current_loc]:\n                valid = False\n                break\n            travel = travel_times[current_loc][friend['location']]\n            arrival = current_time + travel\n            w_start = time_to_min(friend['window_start'])\n            w_end = time_to_min(friend['window_end'])\n            earliest = max(arrival, w_start)\n            latest = w_end - friend['duration']\n            if earliest > latest:\n                valid = False\n                break\n            itinerary.append({\n                'action': 'meet', 'location': friend['location'], 'person': friend['name'],\n                'start_time': min_to_time(earliest), 'end_time': min_to_time(earliest + friend['duration'])\n            })\n            current_time = earliest + friend['duration']\n            current_loc = friend['location']\n        \n        if not valid:\n            continue\n        \n        helen = friends_data[3]\n        if current_loc not in travel_times or helen['location'] not in travel_times[current_loc]:\n            helen_valid = False\n        else:\n            travel = travel_times[current_loc][helen['location']]\n            arrival = current_time + travel\n            h_start = time_to_min(helen['window_start'])\n            h_end = time_to_min(helen['window_end'])\n            earliest_h = max(arrival, h_start)\n            latest_h = h_end - helen['duration']\n            helen_valid = earliest_h <= latest_h\n            if helen_valid:\n                itinerary.append({\n                    'action': 'meet', 'location': helen['location'], 'person': helen['name'],\n                    'start_time': min_to_time(earliest_h), 'end_time': min_to_time(earliest_h + helen['duration'])\n                })\n                current_time = earliest_h + helen['duration']\n        \n        count = len(perm) + (1 if helen_valid else 0)\n        duration = sum(friends_data[i]['duration'] for i in perm) + (helen['duration'] if helen_valid else 0)\n        \n        if count > max_count or (count == max_count and duration > max_duration):\n            best_itinerary = itinerary\n            max_count = count\n            max_duration = duration\n\nprint(json.dumps({\"itinerary\": best_itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_389"
+        }
+    ]
+}

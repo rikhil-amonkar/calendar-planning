@@ -1,0 +1,38 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "12:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Friend",
+                        "start_time": "14:26",
+                        "end_time": "15:26"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "14:15",
+                        "end_time": "15:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Input parameters\narrival_time = datetime.strptime(\"9:00\", \"%H:%M\")\ntravel_time_wharf_to_nobhill = timedelta(minutes=11)\ntravel_time_nobhill_to_wharf = timedelta(minutes=11)\nken_start_time = datetime.strptime(\"14:15\", \"%H:%M\")\nken_end_time = datetime.strptime(\"19:45\", \"%H:%M\")\nmin_meeting_duration = timedelta(minutes=90)\n\n# Calculate available meeting windows\ndef compute_meeting_schedule():\n    itinerary = []\n    current_time = arrival_time\n    \n    # Check if we can meet Kenneth after arriving at Fisherman's Wharf\n    if ken_start_time - travel_time_nobhill_to_wharf >= current_time:\n        # Calculate when we can meet Kenneth considering the minimum duration\n        meeting_start = max(ken_start_time - min_meeting_duration, current_time + travel_time_wharf_to_nobhill)\n        \n        # Ensure the meeting cannot exceed Kenneth's availability\n        meeting_end = min(meeting_start + min_meeting_duration, ken_end_time)\n\n        if meeting_end > meeting_start:  # Valid meeting time found\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Nob Hill\",\n                \"person\": \"Kenneth\",\n                \"start_time\": meeting_start.strftime(\"%H:%M\"),\n                \"end_time\": meeting_end.strftime(\"%H:%M\")\n            })\n            current_time = meeting_end  # Update current time after meeting\n\n    # Consider meeting other friends; assume they can meet after Kenneth\n    # For simplicity, we assume 1 hour meeting with another friend nearby\n    if current_time + travel_time_nobhill_to_wharf <= ken_end_time:  # Still time for another meeting\n        other_meeting_start = current_time + travel_time_nobhill_to_wharf\n        other_meeting_end = other_meeting_start + timedelta(hours=1)\n        \n        if other_meeting_end <= ken_end_time:  # Ensure it fits into Kenneth's availability\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Fisherman's Wharf\",\n                \"person\": \"Friend\",\n                \"start_time\": other_meeting_start.strftime(\"%H:%M\"),\n                \"end_time\": other_meeting_end.strftime(\"%H:%M\")\n            })\n\n    return {\n        \"itinerary\": itinerary\n    }\n\n# Compute the meeting schedule\nschedule = compute_meeting_schedule()\n\n# Output result as JSON\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_6"
+        }
+    ]
+}

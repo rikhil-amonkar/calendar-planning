@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joshua",
+                        "start_time": "20:45",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joshua",
+                        "start_time": "20:45",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper function to convert time (in minutes since midnight) to H:MM string (24-hour format, no leading zero on hour)\ndef minutes_to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Convert a time string \"H:MM\" to minutes since midnight.\ndef time_str_to_minutes(time_str):\n    parts = time_str.split(':')\n    hours = int(parts[0])\n    mins = int(parts[1])\n    return hours * 60 + mins\n\n# Input parameters as variables\narrival_location = \"Sunset District\"\narrival_time_str = \"9:00\"  # arrival at Sunset District\n\n# Joshua's meeting constraints\njoshua_location = \"Golden Gate Park\"\njoshua_available_start_str = \"20:45\"  # 8:45PM in 24-hour\njoshua_available_end_str = \"21:45\"    # 9:45PM in 24-hour\nminimum_meeting_duration = 15  # in minutes\n\n# Travel times (in minutes)\ntravel_Sunset_to_GGP = 11  # from Sunset District to Golden Gate Park\ntravel_GGP_to_Sunset = 10  # from Golden Gate Park to Sunset District\n\n# Convert times to minutes since midnight for computation\narrival_time = time_str_to_minutes(arrival_time_str)\njoshua_available_start = time_str_to_minutes(joshua_available_start_str)\njoshua_available_end = time_str_to_minutes(joshua_available_end_str)\n\n# Calculate the optimal departure time from Sunset District to reach Golden Gate Park\n# We want to arrive exactly at or just in time for Joshua's availability start.\n# To ensure we arrive by joshua_available_start, we subtract the travel time.\ndeparture_time = joshua_available_start - travel_Sunset_to_GGP\n\n# Safety check: if departure time is before our arrival at Sunset District, then we set the departure time to our arrival\nif departure_time < arrival_time:\n    departure_time = arrival_time\n\n# Calculate the meeting start time at Golden Gate Park. Ideally, as soon as Joshua is available.\n# If we arrive early we would wait, so meeting start is max(arrival_at_GGP, joshua_available_start).\narrival_at_GGP = departure_time + travel_Sunset_to_GGP\nmeeting_start = max(arrival_at_GGP, joshua_available_start)\n\n# Calculate meeting end time ensuring minimum duration is met but not exceeding Joshua's availability.\nproposed_meeting_end = meeting_start + minimum_meeting_duration\nif proposed_meeting_end > joshua_available_end:\n    # If the meeting cannot be scheduled to meet the minimum duration, then there is no valid schedule.\n    itinerary = {\"itinerary\": []}\nelse:\n    meeting_end = proposed_meeting_end\n\n    # Build the itinerary. In this simple scenario, the itinerary includes the single meeting.\n    itinerary = {\n        \"itinerary\": [\n            {\n                \"action\": \"meet\",\n                \"location\": joshua_location,\n                \"person\": \"Joshua\",\n                \"start_time\": minutes_to_time_str(meeting_start),\n                \"end_time\": minutes_to_time_str(meeting_end)\n            }\n        ]\n    }\n\n# Output the result as a JSON-formatted dictionary.\nprint(json.dumps(itinerary, indent=2))",
+            "count": "meeting_planning_example_88"
+        }
+    ]
+}

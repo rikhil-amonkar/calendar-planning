@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days to consider\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    days = ['Monday', 'Tuesday']\n    \n    # Margaret's constraints (in minutes since midnight)\n    margaret_unavailable = {\n        'Monday': [\n            (10 * 60 + 30, 11 * 60 + 0),\n            (11 * 60 + 30, 12 * 60 + 0),\n            (13 * 60 + 0, 13 * 60 + 30),\n            (15 * 60 + 0, 17 * 60 + 0)\n        ],\n        'Tuesday': [\n            (12 * 60 + 0, 12 * 60 + 30)\n        ]\n    }\n    \n    # Alexis's constraints (in minutes since midnight)\n    alexis_unavailable = {\n        'Monday': [\n            (9 * 60 + 30, 11 * 60 + 30),\n            (12 * 60 + 30, 13 * 60 + 0),\n            (14 * 60 + 0, 17 * 60 + 0)\n        ],\n        'Tuesday': [\n            (9 * 60 + 0, 9 * 60 + 30),\n            (10 * 60 + 0, 10 * 60 + 30),\n            (14 * 60 + 0, 16 * 60 + 30)\n        ]\n    }\n    \n    # Margaret's preferences: not Monday, and Tuesday before 14:30\n    preferred_day = 'Tuesday'\n    margaret_preferred_start = 14 * 60 + 30  # 14:30\n    \n    meeting_duration = 30  # minutes\n    \n    # Check Tuesday first (preferred day)\n    day = preferred_day\n    # Generate available slots for Margaret and Alexis on Tuesday\n    margaret_slots = []\n    alexis_slots = []\n    \n    # Margaret's available times on Tuesday (after 14:30)\n    margaret_busy = margaret_unavailable.get(day, [])\n    margaret_busy.append((0, margaret_preferred_start))  # Block before 14:30\n    margaret_busy.sort()\n    \n    # Find Margaret's available slots\n    prev_end = work_start\n    for start, end in margaret_busy:\n        if start > prev_end:\n            margaret_slots.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        margaret_slots.append((prev_end, work_end))\n    \n    # Alexis's available times on Tuesday\n    alexis_busy = alexis_unavailable.get(day, [])\n    alexis_busy.sort()\n    \n    prev_end = work_start\n    for start, end in alexis_busy:\n        if start > prev_end:\n            alexis_slots.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        alexis_slots.append((prev_end, work_end))\n    \n    # Find overlapping slots\n    for m_start, m_end in margaret_slots:\n        for a_start, a_end in alexis_slots:\n            overlap_start = max(m_start, a_start)\n            overlap_end = min(m_end, a_end)\n            if overlap_end - overlap_start >= meeting_duration:\n                # Found a suitable slot\n                start_time = overlap_start\n                end_time = start_time + meeting_duration\n                # Format the time as HH:MM:HH:MM\n                start_str = f\"{start_time // 60:02d}:{start_time % 60:02d}\"\n                end_str = f\"{end_time // 60:02d}:{end_time % 60:02d}\"\n                print(f\"{start_str}:{end_str}\")\n                print(day)\n                return\n    \n    # If no slot found on Tuesday (shouldn't happen per problem statement)\n    print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_629"
+        }
+    ]
+}

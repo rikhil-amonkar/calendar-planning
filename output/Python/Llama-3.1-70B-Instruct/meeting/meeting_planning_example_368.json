@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "9:23",
+                        "end_time": "10:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Nancy",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Jeffrey",
+                        "start_time": "12:47",
+                        "end_time": "13:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "16:45",
+                        "end_time": "17:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define travel times between locations\ntravel_times = {\n    'Bayview': {'Russian Hill': 23, 'Alamo Square': 16, 'North Beach': 21, 'Financial District': 19},\n    'Russian Hill': {'Bayview': 23, 'Alamo Square': 15, 'North Beach': 5, 'Financial District': 11},\n    'Alamo Square': {'Bayview': 16, 'Russian Hill': 13, 'North Beach': 15, 'Financial District': 17},\n    'North Beach': {'Bayview': 22, 'Russian Hill': 4, 'Alamo Square': 16, 'Financial District': 8},\n    'Financial District': {'Bayview': 19, 'Russian Hill': 10, 'Alamo Square': 17, 'North Beach': 7}\n}\n\n# Define meeting constraints\nmeetings = {\n    'Joseph': {'location': 'Russian Hill','start_time': '08:30', 'end_time': '19:15', 'duration': 60},\n    'Nancy': {'location': 'Alamo Square','start_time': '11:00', 'end_time': '16:00', 'duration': 90},\n    'Jason': {'location': 'North Beach','start_time': '16:45', 'end_time': '21:45', 'duration': 15},\n    'Jeffrey': {'location': 'Financial District','start_time': '10:30', 'end_time': '15:45', 'duration': 45}\n}\n\ndef calculate_meeting_time(current_time, travel_time, meeting_duration):\n    meeting_start_time = add_time(current_time, travel_time)\n    meeting_end_time = add_time(meeting_start_time, meeting_duration)\n    return meeting_start_time, meeting_end_time\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef is_meeting_possible(current_time, meeting_start_time, meeting_end_time):\n    return meeting_start_time <= current_time < meeting_end_time\n\ndef plan_meetings():\n    current_time = '09:00'\n    current_location = 'Bayview'\n    itinerary = []\n\n    for person, meeting in meetings.items():\n        travel_time = travel_times[current_location][meeting['location']]\n        meeting_start_time, meeting_end_time = calculate_meeting_time(current_time, travel_time, meeting['duration'])\n        if is_meeting_possible(meeting_start_time, meeting['start_time'], meeting['end_time']):\n            itinerary.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': person,\n             'start_time': meeting_start_time,\n                'end_time': meeting_end_time\n            })\n            current_time = meeting_end_time\n            current_location = meeting['location']\n\n    return itinerary\n\ndef main():\n    itinerary = plan_meetings()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_368"
+        }
+    ]
+}

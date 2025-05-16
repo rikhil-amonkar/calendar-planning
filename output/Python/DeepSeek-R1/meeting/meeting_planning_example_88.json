@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joshua",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joshua",
+                        "start_time": "20:45",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef time_to_min(t_str):\n    h, m = map(int, t_str.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    h = m // 60\n    mi = m % 60\n    return f\"{h}:{mi:02d}\"\n\narrival_sunset = \"9:00\"\njoshua_start = \"20:45\"\njoshua_end = \"21:45\"\ntravel_to_golden = 11\nmin_duration = 15\n\narrival_sunset_min = time_to_min(arrival_sunset)\nj_start = time_to_min(joshua_start)\nj_end = time_to_min(joshua_end)\n\ndeparture = j_start - travel_to_golden\nmeeting_start = j_start\nmeeting_end = j_end\n\nif departure >= arrival_sunset_min and (meeting_end - meeting_start) >= min_duration:\n    itinerary = [{\n        \"action\": \"meet\",\n        \"location\": \"Golden Gate Park\",\n        \"person\": \"Joshua\",\n        \"start_time\": min_to_time(meeting_start),\n        \"end_time\": min_to_time(meeting_end)\n    }]\nelse:\n    itinerary = []\n\nprint(json.dumps({\"itinerary\": itinerary}))\n```",
+            "count": "meeting_planning_example_88"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time_str):\n    \"\"\"Converts a time string HH:MM into total minutes since midnight.\"\"\"\n    hours, minutes = map(int, time_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    \"\"\"Converts minutes since midnight into a time string HH:MM.\"\"\"\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define the meeting duration in minutes\nmeeting_duration = 60\n\n# Define working hours (in minutes)\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\n\n# Pamela's constraint: meeting must finish by 14:30\npamelas_latest_end = time_to_minutes(\"14:30\")\n# So meeting must start no later than:\nlatest_start = min(work_end - meeting_duration, pamelas_latest_end - meeting_duration)\n\n# Busy intervals for each participant are defined as (start, end) in minutes\nbusy_intervals = {\n    \"Anthony\": [\n        (time_to_minutes(\"09:30\"), time_to_minutes(\"10:00\")),\n        (time_to_minutes(\"12:00\"), time_to_minutes(\"13:00\")),\n        (time_to_minutes(\"16:00\"), time_to_minutes(\"16:30\")),\n    ],\n    \"Pamela\": [\n        (time_to_minutes(\"09:30\"), time_to_minutes(\"10:00\")),\n        (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n    ],\n    \"Zachary\": [\n        (time_to_minutes(\"09:00\"), time_to_minutes(\"11:30\")),\n        (time_to_minutes(\"12:00\"), time_to_minutes(\"12:30\")),\n        (time_to_minutes(\"13:00\"), time_to_minutes(\"13:30\")),\n        (time_to_minutes(\"14:30\"), time_to_minutes(\"15:00\")),\n        (time_to_minutes(\"16:00\"), time_to_minutes(\"17:00\"))\n    ]\n}\n\ndef has_conflict(start, end, intervals):\n    for interval_start, interval_end in intervals:\n        # Check if [start, end) overlaps with [interval_start, interval_end)\n        if start < interval_end and interval_start < end:\n            return True\n    return False\n\n# Function to check if a candidate meeting time is free for all participants\ndef is_time_slot_free(candidate_start):\n    candidate_end = candidate_start + meeting_duration\n    # Check that meeting fits in working hours and meets Pamela's constraint\n    if candidate_start < work_start or candidate_end > work_end:\n        return False\n    if candidate_end > pamelas_latest_end:\n        return False\n    # Check each participant's busy intervals for conflict\n    for person, intervals in busy_intervals.items():\n        if has_conflict(candidate_start, candidate_end, intervals):\n            return False\n    return True\n\n# Find the first candidate time that works from work_start up to latest_start (inclusive)\nmeeting_time = None\nfor start in range(work_start, latest_start + 1):\n    if is_time_slot_free(start):\n        meeting_time = (start, start + meeting_duration)\n        break\n\nif meeting_time:\n    start_str = minutes_to_time(meeting_time[0])\n    end_str = minutes_to_time(meeting_time[1])\n    # Output in the format HH:MM:HH:MM and the day Monday\n    print(f\"{start_str}:{end_str} Monday\")\nelse:\n    print(\"No available meeting time found on Monday.\")\n'''",
+            "count": "calendar_scheduling_example_25"
+        }
+    ]
+}

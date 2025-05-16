@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Margaret",
+                        "start_time": "9:26",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "13:48",
+                        "end_time": "14:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kimberly",
+                        "start_time": "14:15",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:47",
+                        "end_time": "16:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kenneth",
+                        "start_time": "19:30",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Margaret",
+                        "start_time": "12:52",
+                        "end_time": "13:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kimberly",
+                        "start_time": "13:47",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:19",
+                        "end_time": "15:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kenneth",
+                        "start_time": "19:30",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Richmond District': {'Marina District': 9, 'Chinatown': 20, 'Financial District': 22, 'Bayview': 26, 'Union Square': 21},\n    'Marina District': {'Richmond District': 11, 'Chinatown': 16, 'Financial District': 17, 'Bayview': 27, 'Union Square': 16},\n    'Chinatown': {'Richmond District': 20, 'Marina District': 12, 'Financial District': 5, 'Bayview': 22, 'Union Square': 7},\n    'Financial District': {'Richmond District': 21, 'Marina District': 15, 'Chinatown': 5, 'Bayview': 19, 'Union Square': 9},\n    'Bayview': {'Richmond District': 25, 'Marina District': 25, 'Chinatown': 18, 'Financial District': 19, 'Union Square': 17},\n    'Union Square': {'Richmond District': 20, 'Marina District': 18, 'Chinatown': 7, 'Financial District': 9, 'Bayview': 15}\n}\n\n# Meeting constraints\nmeeting_constraints = {\n    'Kimberly': {'location': 'Marina District','start_time': '13:15', 'end_time': '16:45','min_duration': 15},\n    'Robert': {'location': 'Chinatown','start_time': '12:15', 'end_time': '20:15','min_duration': 15},\n    'Rebecca': {'location': 'Financial District','start_time': '13:15', 'end_time': '16:45','min_duration': 75},\n    'Margaret': {'location': 'Bayview','start_time': '09:30', 'end_time': '13:30','min_duration': 30},\n    'Kenneth': {'location': 'Union Square','start_time': '19:30', 'end_time': '21:15','min_duration': 75}\n}\n\ndef calculate_meeting_schedule(travel_distances, meeting_constraints):\n    itinerary = []\n    current_time = '09:00'\n    current_location = 'Richmond District'\n\n    # Sort meeting constraints by start time\n    sorted_meetings = sorted(meeting_constraints.items(), key=lambda x: x[1]['start_time'])\n\n    for person, meeting in sorted_meetings:\n        travel_time = travel_distances[current_location][meeting['location']]\n        arrival_time = add_time(current_time, travel_time)\n\n        if arrival_time > meeting['start_time']:\n            start_time = arrival_time\n        else:\n            start_time = meeting['start_time']\n\n        end_time = add_time(start_time, meeting['min_duration'])\n\n        if end_time > meeting['end_time']:\n            end_time = meeting['end_time']\n\n        itinerary.append({\n            'action':'meet',\n            'location': meeting['location'],\n            'person': person,\n          'start_time': start_time,\n            'end_time': end_time\n        })\n\n        current_time = end_time\n        current_location = meeting['location']\n\n    return itinerary\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef main():\n    meeting_schedule = calculate_meeting_schedule(travel_distances, meeting_constraints)\n    print(json.dumps({'itinerary': meeting_schedule}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_446"
+        }
+    ]
+}

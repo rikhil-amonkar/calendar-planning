@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Elizabeth",
+                        "start_time": "15:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Margaret",
+                        "start_time": "13:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "George",
+                        "start_time": "19:45",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "10:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Ronald",
+                        "start_time": "12:06",
+                        "end_time": "14:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Margaret",
+                        "start_time": "14:22",
+                        "end_time": "15:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "15:59",
+                        "end_time": "16:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Laura",
+                        "start_time": "16:34",
+                        "end_time": "17:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Melissa",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "George",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nfrom itertools import permutations\n\n# Travel distances between locations in minutes\ntravel_times = {\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Alamo Square\"): 19,\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Presidio\", \"Sunset District\"): 15,\n    (\"Presidio\", \"Embarcadero\"): 20,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Fisherman's Wharf\", \"Alamo Square\"): 21,\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n    (\"Fisherman's Wharf\", \"Union Square\"): 13,\n    (\"Fisherman's Wharf\", \"Sunset District\"): 27,\n    (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Embarcadero\"): 16,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Chinatown\"): 15,\n    (\"Alamo Square\", \"Richmond District\"): 11,\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Financial District\", \"Sunset District\"): 30,\n    (\"Financial District\", \"Embarcadero\"): 4,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Financial District\", \"Chinatown\"): 5,\n    (\"Financial District\", \"Richmond District\"): 21,\n    (\"Union Square\", \"Sunset District\"): 27,\n    (\"Union Square\", \"Embarcadero\"): 11,\n    (\"Union Square\", \"Golden Gate Park\"): 22,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Richmond District\"): 20,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n    (\"Chinatown\", \"Richmond District\"): 20,\n}\n\n# Meeting constraints with time windows and required meeting durations\nmeetings = {\n    \"Jeffrey\": {\"location\": \"Fisherman's Wharf\", \"available\": (datetime.strptime('10:15', '%H:%M'), datetime.strptime('13:00', '%H:%M')), \"duration\": 90},\n    \"Ronald\": {\"location\": \"Alamo Square\", \"available\": (datetime.strptime('7:45', '%H:%M'), datetime.strptime('14:45', '%H:%M')), \"duration\": 120},\n    \"Jason\": {\"location\": \"Financial District\", \"available\": (datetime.strptime('10:45', '%H:%M'), datetime.strptime('16:00', '%H:%M')), \"duration\": 105},\n    \"Melissa\": {\"location\": \"Union Square\", \"available\": (datetime.strptime('17:45', '%H:%M'), datetime.strptime('18:15', '%H:%M')), \"duration\": 15},\n    \"Elizabeth\": {\"location\": \"Sunset District\", \"available\": (datetime.strptime('14:45', '%H:%M'), datetime.strptime('17:30', '%H:%M')), \"duration\": 105},\n    \"Margaret\": {\"location\": \"Embarcadero\", \"available\": (datetime.strptime('13:15', '%H:%M'), datetime.strptime('19:00', '%H:%M')), \"duration\": 90},\n    \"George\": {\"location\": \"Golden Gate Park\", \"available\": (datetime.strptime('19:00', '%H:%M'), datetime.strptime('22:00', '%H:%M')), \"duration\": 75},\n    \"Richard\": {\"location\": \"Chinatown\", \"available\": (datetime.strptime('9:30', '%H:%M'), datetime.strptime('21:00', '%H:%M')), \"duration\": 15},\n    \"Laura\": {\"location\": \"Richmond District\", \"available\": (datetime.strptime('9:45', '%H:%M'), datetime.strptime('18:00', '%H:%M')), \"duration\": 60},\n}\n\n# Starting point and schedule parameters\nstart_time = datetime.strptime('9:00', '%H:%M')\nitinerary = []\n\ndef can_meet(current_time, travel_time, meeting_start, meeting_duration):\n    return current_time + timedelta(minutes=travel_time) <= meeting_start and current_time + timedelta(minutes=travel_time + meeting_duration) <= meeting_start + timedelta(minutes=60)\n\ndef schedule_meeting(person):\n    meeting_data = meetings[person]\n    location = meeting_data[\"location\"]\n    available_start, available_end = meeting_data[\"available\"]\n    duration = meeting_data[\"duration\"]\n    \n    for i in range(10):  # Check next 10 hours\n        time_to_meet = start_time + timedelta(hours=i)\n        if (available_start <= time_to_meet <= available_end) and (time_to_meet + timedelta(minutes=duration) <= available_end):\n            travel_time = travel_times.get((start_time.strftime('%H:%M'), location), 0)\n            if can_meet(start_time, travel_time, available_start, duration):\n                return {\"action\": \"meet\", \"location\": location, \"person\": person, \n                        \"start_time\": (time_to_meet + timedelta(minutes=travel_time)).strftime('%H:%M'), \n                        \"end_time\": (time_to_meet + timedelta(minutes=travel_time + duration)).strftime('%H:%M')}\n    return None\n\nfor person in meetings:\n    meeting = schedule_meeting(person)\n    if meeting:\n        itinerary.append(meeting)\n        travel_time = travel_times.get((start_time.strftime('%H:%M'), meeting['location']), 0)\n        start_time += timedelta(minutes=travel_time + meetings[person]['duration'])\n\nresult = {\"itinerary\": itinerary}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_831"
+        }
+    ]
+}

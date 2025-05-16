@@ -1,0 +1,93 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 10-10",
+                        "place": "Meet friend in Barcelona"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 27-29",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 30-34",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 22-26",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nfrom itertools import permutations\n\n# Define the parameters\ncities = {\n    'Venice': {'days': 4, 'days_range': (1, 4)},\n    'Barcelona': {'days': 3, 'specific_days': (10, 12)},\n    'Copenhagen': {'days': 4, 'days_range': (7, 10)},\n    'Lyon': {'days': 4, 'days_range': (0, 0)},  # flexible\n    'Reykjavik': {'days': 4, 'days_range': (0, 0)},  # flexible\n    'Dubrovnik': {'days': 5, 'specific_days': (16, 20)},\n    'Athens': {'days': 2, 'days_range': (0, 0)},  # flexible\n    'Tallinn': {'days': 5, 'days_range': (0, 0)},  # flexible\n    'Munich': {'days': 3, 'days_range': (0, 0)}  # flexible\n}\n\ndirect_flights = {\n    ('Copenhagen', 'Athens'), ('Copenhagen', 'Dubrovnik'),\n    ('Munich', 'Tallinn'), ('Copenhagen', 'Munich'),\n    ('Venice', 'Munich'), ('Reykjavik', 'Athens'),\n    ('Athens', 'Dubrovnik'), ('Venice', 'Athens'),\n    ('Lyon', 'Barcelona'), ('Copenhagen', 'Reykjavik'),\n    ('Reykjavik', 'Munich'), ('Athens', 'Munich'),\n    ('Lyon', 'Munich'), ('Barcelona', 'Reykjavik'),\n    ('Venice', 'Copenhagen'), ('Barcelona', 'Dubrovnik'),\n    ('Lyon', 'Venice'), ('Dubrovnik', 'Munich'),\n    ('Barcelona', 'Athens'), ('Copenhagen', 'Barcelona'),\n    ('Venice', 'Barcelona'), ('Barcelona', 'Munich'),\n    ('Barcelona', 'Tallinn'), ('Copenhagen', 'Tallinn')\n}\n\n# Initialize variables\ntotal_days = 26\ntrip_plan = []\ncurrent_day = 1\n\n# Helper function to add to trip plan\ndef add_to_plan(day_range, place):\n    trip_plan.append({'day_range': f'Day {day_range[0]}-{day_range[1]}', 'place': place})\n\n# Create trip plan based on constraints\nadd_to_plan((1, 4), 'Venice')\ncurrent_day += 4\n\n# Stay in Lyon for 4 days\nadd_to_plan((current_day, current_day + 3), 'Lyon')\ncurrent_day += 4\n\n# Fly to Barcelona and stay for 3 days (meet friend)\nadd_to_plan((current_day, current_day + 2), 'Barcelona')\ncurrent_day += 3\n\n# Fly to Copenhagen and stay with relatives for 4 days\nadd_to_plan((current_day, current_day + 3), 'Copenhagen')\ncurrent_day += 4\n\n# Add specific day constraint\nadd_to_plan((10, 10), 'Meet friend in Barcelona')\n\n# Fly to Dubrovnik for wedding and stay for 5 days\nadd_to_plan((current_day, current_day + 4), 'Dubrovnik')\ncurrent_day += 5\n\n# Fly to Athens for 2 days\nadd_to_plan((current_day, current_day + 1), 'Athens')\ncurrent_day += 2\n\n# Fly to Reykjavik and stay for 4 days\nadd_to_plan((current_day, current_day + 3), 'Reykjavik')\ncurrent_day += 4\n\n# Fly to Munich and stay for 3 days\nadd_to_plan((current_day, current_day + 2), 'Munich')\ncurrent_day += 3\n\n# Fly to Tallinn for 5 days\nadd_to_plan((current_day, current_day + 4), 'Tallinn')\n\n# Generate output\noutput = json.dumps(trip_plan, indent=4)\nprint(output)\n```",
+            "count": "trip_planning_example_1324"
+        }
+    ]
+}

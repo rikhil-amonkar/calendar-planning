@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef main():\n    # Input parameters\n    arrival_location = \"Alamo Square\"\n    arrival_time = parse_time(\"9:00\")\n    \n    # Friend's availability\n    friend_name = \"Timothy\"\n    friend_location = \"Richmond District\"\n    friend_window_start = parse_time(\"20:45\")\n    friend_window_end = parse_time(\"21:30\")\n    required_duration = timedelta(minutes=45)\n    \n    # Travel times\n    travel_times = {\n        (\"Alamo Square\", \"Richmond District\"): timedelta(minutes=12),\n        (\"Richmond District\", \"Alamo Square\"): timedelta(minutes=13)\n    }\n    \n    # Calculate possible meeting time\n    travel_to_friend = travel_times[(arrival_location, friend_location)]\n    earliest_arrival = arrival_time + travel_to_friend\n    \n    # Check if we can make it during friend's window\n    meeting_start = max(earliest_arrival, friend_window_start)\n    meeting_end = meeting_start + required_duration\n    \n    itinerary = []\n    \n    if meeting_end <= friend_window_end:\n        # Add travel to friend\n        itinerary.append({\n            \"action\": \"travel\",\n            \"from\": arrival_location,\n            \"to\": friend_location,\n            \"start_time\": format_time(arrival_time),\n            \"end_time\": format_time(earliest_arrival)\n        })\n        \n        # Add meeting with friend\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend_location,\n            \"person\": friend_name,\n            \"start_time\": format_time(meeting_start),\n            \"end_time\": format_time(meeting_end)\n        })\n        \n        # Add return travel\n        travel_home = travel_times[(friend_location, arrival_location)]\n        home_arrival = meeting_end + travel_home\n        itinerary.append({\n            \"action\": \"travel\",\n            \"from\": friend_location,\n            \"to\": arrival_location,\n            \"start_time\": format_time(meeting_end),\n            \"end_time\": format_time(home_arrival)\n        })\n    else:\n        # Can't meet friend\n        itinerary.append({\n            \"action\": \"note\",\n            \"message\": \"Cannot meet Timothy given constraints\"\n        })\n    \n    result = {\n        \"itinerary\": itinerary\n    }\n    \n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_98"
+        }
+    ]
+}

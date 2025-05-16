@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Matthew",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Kimberly",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "15:16",
+                        "end_time": "15:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Kenneth",
+                        "start_time": "15:53",
+                        "end_time": "16:53"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "17:11",
+                        "end_time": "18:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Helen",
+                        "start_time": "19:45",
+                        "end_time": "20:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "21:15",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Russian Hill': {\n        'Presidio': 14,\n        'Chinatown': 9,\n        'Pacific Heights': 7,\n        'Richmond District': 14,\n        'Fisherman\\'s Wharf': 7,\n        'Golden Gate Park': 21,\n        'Bayview': 23\n    },\n    'Presidio': {\n        'Russian Hill': 14,\n        'Chinatown': 21,\n        'Pacific Heights': 11,\n        'Richmond District': 7,\n        'Fisherman\\'s Wharf': 19,\n        'Golden Gate Park': 12,\n        'Bayview': 31\n    },\n    'Chinatown': {\n        'Russian Hill': 7,\n        'Presidio': 19,\n        'Pacific Heights': 10,\n        'Richmond District': 20,\n        'Fisherman\\'s Wharf': 8,\n        'Golden Gate Park': 23,\n        'Bayview': 22\n    },\n    'Pacific Heights': {\n        'Russian Hill': 7,\n        'Presidio': 11,\n        'Chinatown': 11,\n        'Richmond District': 12,\n        'Fisherman\\'s Wharf': 13,\n        'Golden Gate Park': 15,\n        'Bayview': 22\n    },\n    'Richmond District': {\n        'Russian Hill': 13,\n        'Presidio': 7,\n        'Chinatown': 20,\n        'Pacific Heights': 10,\n        'Fisherman\\'s Wharf': 18,\n        'Golden Gate Park': 9,\n        'Bayview': 26\n    },\n    'Fisherman\\'s Wharf': {\n        'Russian Hill': 7,\n        'Presidio': 17,\n        'Chinatown': 12,\n        'Pacific Heights': 12,\n        'Richmond District': 18,\n        'Golden Gate Park': 25,\n        'Bayview': 26\n    },\n    'Golden Gate Park': {\n        'Russian Hill': 19,\n        'Presidio': 11,\n        'Chinatown': 23,\n        'Pacific Heights': 16,\n        'Richmond District': 7,\n        'Fisherman\\'s Wharf': 24,\n        'Bayview': 23\n    },\n    'Bayview': {\n        'Russian Hill': 23,\n        'Presidio': 31,\n        'Chinatown': 18,\n        'Pacific Heights': 23,\n        'Richmond District': 25,\n        'Fisherman\\'s Wharf': 25,\n        'Golden Gate Park': 22\n    }\n}\n\n# Constraints\nconstraints = {\n    'Matthew': {'start_time': datetime(2024, 7, 26, 11, 0), 'end_time': datetime(2024, 7, 26, 21, 0),'min_time': 90},\n    'Margaret': {'start_time': datetime(2024, 7, 26, 9, 15), 'end_time': datetime(2024, 7, 26, 18, 45),'min_time': 90},\n    'Nancy': {'start_time': datetime(2024, 7, 26, 14, 15), 'end_time': datetime(2024, 7, 26, 17, 0),'min_time': 15},\n    'Helen': {'start_time': datetime(2024, 7, 26, 19, 45), 'end_time': datetime(2024, 7, 26, 22, 0),'min_time': 60},\n    'Rebecca': {'start_time': datetime(2024, 7, 26, 21, 15), 'end_time': datetime(2024, 7, 26, 22, 15),'min_time': 60},\n    'Kimberly': {'start_time': datetime(2024, 7, 26, 13, 0), 'end_time': datetime(2024, 7, 26, 16, 30),'min_time': 120},\n    'Kenneth': {'start_time': datetime(2024, 7, 26, 14, 30), 'end_time': datetime(2024, 7, 26, 18, 0),'min_time': 60}\n}\n\n# Start time\nstart_time = datetime(2024, 7, 26, 9, 0)\n\n# Function to calculate travel time\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\n# Function to check if a meeting is possible\ndef is_meeting_possible(meeting_start_time, meeting_end_time, person):\n    person_start_time = constraints[person]['start_time']\n    person_end_time = constraints[person]['end_time']\n    min_time = constraints[person]['min_time']\n    return (meeting_start_time >= person_start_time and meeting_start_time <= person_end_time) or \\\n           (meeting_end_time >= person_start_time and meeting_end_time <= person_end_time) or \\\n           (person_start_time <= meeting_start_time and person_end_time >= meeting_end_time and meeting_end_time - meeting_start_time >= timedelta(minutes=min_time))\n\n# Function to find the optimal meeting schedule\ndef find_optimal_schedule():\n    schedule = []\n    current_time = start_time\n    while current_time < datetime(2024, 7, 26, 23, 59):\n        possible_meetings = []\n        for person in constraints:\n            if is_meeting_possible(current_time, current_time + timedelta(minutes=60), person):\n                possible_meetings.append(person)\n        if possible_meetings:\n            meeting_person = max(possible_meetings, key=lambda person: constraints[person]['min_time'])\n            meeting_time = current_time + timedelta(minutes=constraints[meeting_person]['min_time'])\n            schedule.append({'action':'meet', 'location': 'Russian Hill', 'person': meeting_person,'start_time': current_time.strftime('%H:%M'), 'end_time': meeting_time.strftime('%H:%M')})\n            current_time = meeting_time\n        else:\n            current_time += timedelta(minutes=1)\n    return schedule\n\n# Find the optimal meeting schedule\nschedule = find_optimal_schedule()\n\n# Add travel times to the schedule\nfor i in range(len(schedule) - 1):\n    start_location = schedule[i]['location']\n    end_location = schedule[i+1]['location']\n    travel_time = calculate_travel_time(start_location, end_location)\n    schedule[i]['end_time'] = (datetime.strptime(schedule[i]['end_time'], '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    schedule[i+1]['start_time'] = (datetime.strptime(schedule[i+1]['start_time'], '%H:%M') - timedelta(minutes=travel_time)).strftime('%H:%M')\n\n# Add travel time from Russian Hill to the first meeting location\nschedule[0]['start_time'] = (datetime.strptime(schedule[0]['start_time'], '%H:%M') - timedelta(minutes=calculate_travel_time('Russian Hill', schedule[0]['location']))).strftime('%H:%M')\n\n# Add travel time from the last meeting location to Russian Hill\nschedule[-1]['end_time'] = (datetime.strptime(schedule[-1]['end_time'], '%H:%M') + timedelta(minutes=calculate_travel_time(schedule[-1]['location'], 'Russian Hill'))).strftime('%H:%M')\n\n# Print the schedule as a JSON-formatted dictionary\nprint(json.dumps({'itinerary': schedule}, indent=4))\n\n```",
+            "count": "meeting_planning_example_629"
+        }
+    ]
+}

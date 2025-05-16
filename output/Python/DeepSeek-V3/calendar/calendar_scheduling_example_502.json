@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n\n    # Define busy intervals in minutes since midnight\n    jack_busy = [\n        (9 * 60 + 30, 10 * 60 + 30),\n        (11 * 60, 11 * 60 + 30),\n        (12 * 60 + 30, 13 * 60),\n        (14 * 60, 14 * 60 + 30),\n        (16 * 60, 16 * 60 + 30)\n    ]\n    charlotte_busy = [\n        (9 * 60 + 30, 10 * 60),\n        (10 * 60 + 30, 12 * 60),\n        (12 * 60 + 30, 13 * 60 + 30),\n        (14 * 60, 16 * 60)\n    ]\n\n    # Jack prefers no meetings after 12:30\n    jack_preference_cutoff = 12 * 60 + 30\n\n    # Combine and sort all busy intervals\n    all_busy = jack_busy + charlotte_busy\n    all_busy.sort()\n\n    # Find free slots by checking gaps between busy intervals\n    free_slots = []\n    previous_end = work_start\n\n    for start, end in all_busy:\n        if start > previous_end:\n            free_slots.append((previous_end, start))\n        previous_end = max(previous_end, end)\n    \n    # Check the slot after the last busy interval\n    if previous_end < work_end:\n        free_slots.append((previous_end, work_end))\n\n    # Filter slots that are at least 30 minutes and before Jack's preference cutoff\n    suitable_slots = []\n    for start, end in free_slots:\n        if end <= jack_preference_cutoff and (end - start) >= 30:\n            suitable_slots.append((start, end))\n    \n    # If no suitable slots before cutoff, check all free slots\n    if not suitable_slots:\n        for start, end in free_slots:\n            if (end - start) >= 30:\n                suitable_slots.append((start, end))\n    \n    # Select the first suitable slot\n    if suitable_slots:\n        meeting_start = suitable_slots[0][0]\n        meeting_end = meeting_start + 30\n    else:\n        return \"No suitable time found.\"\n\n    # Convert minutes back to HH:MM format\n    def minutes_to_time(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours:02d}:{mins:02d}\"\n\n    start_time = minutes_to_time(meeting_start)\n    end_time = minutes_to_time(meeting_end)\n\n    return f\"{start_time}:{end_time}\", \"Monday\"\n\n# Execute and print the result\ntime_range, day = find_meeting_time()\nprint(f\"{time_range} {day}\")\n```",
+            "count": "calendar_scheduling_example_502"
+        }
+    ]
+}

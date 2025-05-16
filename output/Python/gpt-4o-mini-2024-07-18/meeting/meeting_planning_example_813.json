@@ -1,0 +1,108 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Elizabeth",
+                        "start_time": "9:00",
+                        "end_time": "9:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Joseph",
+                        "start_time": "9:45",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joshua",
+                        "start_time": "10:45",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "12:30",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Matthew",
+                        "start_time": "14:30",
+                        "end_time": "15:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Joseph",
+                        "start_time": "9:15",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Carol",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joshua",
+                        "start_time": "11:04",
+                        "end_time": "12:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "13:10",
+                        "end_time": "14:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "14:43",
+                        "end_time": "16:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Matthew",
+                        "start_time": "17:05",
+                        "end_time": "17:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Paul",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Rebecca",
+                        "start_time": "19:41",
+                        "end_time": "20:26"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nfrom collections import defaultdict\n\nclass MeetingScheduler:\n    def __init__(self):\n        self.travel_times = {\n            ('Marina District', 'Embarcadero'): 14,\n            ('Marina District', 'Bayview'): 27,\n            ('Marina District', 'Union Square'): 16,\n            ('Marina District', 'Chinatown'): 15,\n            ('Marina District', 'Sunset District'): 19,\n            ('Marina District', 'Golden Gate Park'): 18,\n            ('Marina District', 'Financial District'): 17,\n            ('Marina District', 'Haight-Ashbury'): 16,\n            ('Marina District', 'Mission District'): 20,\n            ('Embarcadero', 'Marina District'): 12,\n            ('Embarcadero', 'Bayview'): 21,\n            ('Embarcadero', 'Union Square'): 10,\n            ('Embarcadero', 'Chinatown'): 7,\n            ('Embarcadero', 'Sunset District'): 30,\n            ('Embarcadero', 'Golden Gate Park'): 25,\n            ('Embarcadero', 'Financial District'): 5,\n            ('Embarcadero', 'Haight-Ashbury'): 21,\n            ('Embarcadero', 'Mission District'): 20,\n            ('Bayview', 'Marina District'): 27,\n            ('Bayview', 'Embarcadero'): 19,\n            ('Bayview', 'Union Square'): 18,\n            ('Bayview', 'Chinatown'): 19,\n            ('Bayview', 'Sunset District'): 23,\n            ('Bayview', 'Golden Gate Park'): 22,\n            ('Bayview', 'Financial District'): 19,\n            ('Bayview', 'Haight-Ashbury'): 19,\n            ('Bayview', 'Mission District'): 13,\n            ('Union Square', 'Marina District'): 18,\n            ('Union Square', 'Embarcadero'): 11,\n            ('Union Square', 'Bayview'): 15,\n            ('Union Square', 'Chinatown'): 7,\n            ('Union Square', 'Sunset District'): 27,\n            ('Union Square', 'Golden Gate Park'): 22,\n            ('Union Square', 'Financial District'): 9,\n            ('Union Square', 'Haight-Ashbury'): 18,\n            ('Union Square', 'Mission District'): 14,\n            ('Chinatown', 'Marina District'): 12,\n            ('Chinatown', 'Embarcadero'): 5,\n            ('Chinatown', 'Bayview'): 20,\n            ('Chinatown', 'Union Square'): 7,\n            ('Chinatown', 'Sunset District'): 29,\n            ('Chinatown', 'Golden Gate Park'): 23,\n            ('Chinatown', 'Financial District'): 5,\n            ('Chinatown', 'Haight-Ashbury'): 19,\n            ('Chinatown', 'Mission District'): 17,\n            ('Sunset District', 'Marina District'): 21,\n            ('Sunset District', 'Embarcadero'): 30,\n            ('Sunset District', 'Bayview'): 22,\n            ('Sunset District', 'Union Square'): 30,\n            ('Sunset District', 'Chinatown'): 30,\n            ('Sunset District', 'Golden Gate Park'): 11,\n            ('Sunset District', 'Financial District'): 30,\n            ('Sunset District', 'Haight-Ashbury'): 15,\n            ('Sunset District', 'Mission District'): 25,\n            ('Golden Gate Park', 'Marina District'): 16,\n            ('Golden Gate Park', 'Embarcadero'): 25,\n            ('Golden Gate Park', 'Bayview'): 23,\n            ('Golden Gate Park', 'Union Square'): 22,\n            ('Golden Gate Park', 'Chinatown'): 23,\n            ('Golden Gate Park', 'Sunset District'): 10,\n            ('Golden Gate Park', 'Financial District'): 26,\n            ('Golden Gate Park', 'Haight-Ashbury'): 7,\n            ('Golden Gate Park', 'Mission District'): 17,\n            ('Financial District', 'Marina District'): 15,\n            ('Financial District', 'Embarcadero'): 4,\n            ('Financial District', 'Bayview'): 19,\n            ('Financial District', 'Union Square'): 9,\n            ('Financial District', 'Chinatown'): 5,\n            ('Financial District', 'Sunset District'): 30,\n            ('Financial District', 'Golden Gate Park'): 23,\n            ('Financial District', 'Haight-Ashbury'): 19,\n            ('Financial District', 'Mission District'): 17,\n            ('Haight-Ashbury', 'Marina District'): 17,\n            ('Haight-Ashbury', 'Embarcadero'): 20,\n            ('Haight-Ashbury', 'Bayview'): 18,\n            ('Haight-Ashbury', 'Union Square'): 19,\n            ('Haight-Ashbury', 'Chinatown'): 19,\n            ('Haight-Ashbury', 'Sunset District'): 15,\n            ('Haight-Ashbury', 'Golden Gate Park'): 7,\n            ('Haight-Ashbury', 'Financial District'): 21,\n            ('Haight-Ashbury', 'Mission District'): 11,\n            ('Mission District', 'Marina District'): 19,\n            ('Mission District', 'Embarcadero'): 19,\n            ('Mission District', 'Bayview'): 14,\n            ('Mission District', 'Union Square'): 15,\n            ('Mission District', 'Chinatown'): 16,\n            ('Mission District', 'Sunset District'): 24,\n            ('Mission District', 'Golden Gate Park'): 17,\n            ('Mission District', 'Financial District'): 15,\n            ('Mission District', 'Haight-Ashbury'): 12,\n        }\n\n        self.meeting_requirements = {\n            \"Joshua\": {\"location\": \"Embarcadero\", \"min_time\": 105, \"available\": [datetime(2023,1,1,9,45), datetime(2023,1,1,18,0)]},\n            \"Jeffrey\": {\"location\": \"Bayview\", \"min_time\": 75, \"available\": [datetime(2023,1,1,9,45), datetime(2023,1,1,20,15)]},\n            \"Charles\": {\"location\": \"Union Square\", \"min_time\": 120, \"available\": [datetime(2023,1,1,10,45), datetime(2023,1,1,20,15)]},\n            \"Joseph\": {\"location\": \"Chinatown\", \"min_time\": 60, \"available\": [datetime(2023,1,1,7,0), datetime(2023,1,1,15,30)]},\n            \"Elizabeth\": {\"location\": \"Sunset District\", \"min_time\": 45, \"available\": [datetime(2023,1,1,9,0), datetime(2023,1,1,9,45)]},\n            \"Matthew\": {\"location\": \"Golden Gate Park\", \"min_time\": 45, \"available\": [datetime(2023,1,1,11,0), datetime(2023,1,1,19,30)]},\n            \"Carol\": {\"location\": \"Financial District\", \"min_time\": 15, \"available\": [datetime(2023,1,1,10,45), datetime(2023,1,1,11,15)]},\n            \"Paul\": {\"location\": \"Haight-Ashbury\", \"min_time\": 15, \"available\": [datetime(2023,1,1,19,15), datetime(2023,1,1,20,30)]},\n            \"Rebecca\": {\"location\": \"Mission District\", \"min_time\": 45, \"available\": [datetime(2023,1,1,17,0), datetime(2023,1,1,21,15)]},\n        }\n        \n        self.init_times()\n\n    def init_times(self):\n        self.start_time = datetime(2023, 1, 1, 9, 0)\n        self.itinerary = []\n    \n    def add_meeting(self, person, start, duration):\n        location = self.meeting_requirements[person][\"location\"]\n        end = start + timedelta(minutes=duration)\n        self.itinerary.append({\n            \"action\": \"meet\",\n            \"location\": location,\n            \"person\": person,\n            \"start_time\": start.strftime(\"%H:%M\"),\n            \"end_time\": end.strftime(\"%H:%M\"),\n        })\n    \n    def can_meet(self, person, start, duration):\n        end = start + timedelta(minutes=duration)\n        available_start, available_end = self.meeting_requirements[person][\"available\"]\n        return (available_start <= start <= available_end) and (available_start <= end <= available_end)\n\n    def schedule_meetings(self):\n        current_time = self.start_time\n        locations_visited = set()\n        \n        # Meet Elizabeth first because time is limited\n        if self.can_meet(\"Elizabeth\", current_time, 45):\n            self.add_meeting(\"Elizabeth\", current_time, 45)\n            current_time += timedelta(minutes=45)\n\n        # Meet Joseph\n        if self.can_meet(\"Joseph\", current_time, 60):\n            self.add_meeting(\"Joseph\", current_time, 60)\n            current_time += timedelta(minutes=60)\n\n        # Meet Joshua\n        if self.can_meet(\"Joshua\", current_time, 105):\n            self.add_meeting(\"Joshua\", current_time, 105)\n            current_time += timedelta(minutes=105)\n\n        # Meet Carol\n        if self.can_meet(\"Carol\", current_time, 15):\n            self.add_meeting(\"Carol\", current_time, 15)\n            current_time += timedelta(minutes=15)\n\n        # Meet Charles\n        if self.can_meet(\"Charles\", current_time, 120):\n            self.add_meeting(\"Charles\", current_time, 120)\n            current_time += timedelta(minutes=120)\n\n        # Meet Matthew\n        if self.can_meet(\"Matthew\", current_time, 45):\n            self.add_meeting(\"Matthew\", current_time, 45)\n            current_time += timedelta(minutes=45)\n\n        # Meet Rebecca\n        if self.can_meet(\"Rebecca\", current_time, 45):\n            self.add_meeting(\"Rebecca\", current_time, 45)\n            current_time += timedelta(minutes=45)\n\n        # Meet Paul\n        if self.can_meet(\"Paul\", current_time, 15):\n            self.add_meeting(\"Paul\", current_time, 15)\n\n        # Print output in the required JSON format\n        print(json.dumps({\"itinerary\": self.itinerary}, indent=2))\n\nif __name__ == '__main__':\n    scheduler = MeetingScheduler()\n    scheduler.schedule_meetings()\n```",
+            "count": "meeting_planning_example_813"
+        }
+    ]
+}

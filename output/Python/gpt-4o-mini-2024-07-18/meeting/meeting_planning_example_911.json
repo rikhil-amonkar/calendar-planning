@@ -1,0 +1,129 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "9:00",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Stephanie",
+                        "start_time": "10:46",
+                        "end_time": "12:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "David",
+                        "start_time": "12:14",
+                        "end_time": "14:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Brian",
+                        "start_time": "14:31",
+                        "end_time": "16:16"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Robert",
+                        "start_time": "16:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "James",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Sarah",
+                        "start_time": "17:00",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "17:30",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "9:16",
+                        "end_time": "10:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Stephanie",
+                        "start_time": "10:59",
+                        "end_time": "12:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Elizabeth",
+                        "start_time": "12:33",
+                        "end_time": "13:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Robert",
+                        "start_time": "13:42",
+                        "end_time": "14:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Melissa",
+                        "start_time": "14:48",
+                        "end_time": "15:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "James",
+                        "start_time": "15:25",
+                        "end_time": "17:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Sarah",
+                        "start_time": "17:37",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times (in minutes) represented as a dictionary of dictionaries\ntravel_times = {\n    \"The Castro\": {\n        \"North Beach\": 20,\n        \"Golden Gate Park\": 11,\n        \"Embarcadero\": 22,\n        \"Haight-Ashbury\": 6,\n        \"Richmond District\": 16,\n        \"Nob Hill\": 16,\n        \"Marina District\": 21,\n        \"Presidio\": 20,\n        \"Union Square\": 19,\n        \"Financial District\": 21,\n    },\n    \"North Beach\": {\n        \"The Castro\": 23,\n        \"Golden Gate Park\": 22,\n        \"Embarcadero\": 6,\n        \"Haight-Ashbury\": 18,\n        \"Richmond District\": 18,\n        \"Nob Hill\": 7,\n        \"Marina District\": 9,\n        \"Presidio\": 17,\n        \"Union Square\": 7,\n        \"Financial District\": 8,\n    },\n    \"Golden Gate Park\": {\n        \"The Castro\": 13,\n        \"North Beach\": 23,\n        \"Embarcadero\": 25,\n        \"Haight-Ashbury\": 7,\n        \"Richmond District\": 7,\n        \"Nob Hill\": 20,\n        \"Marina District\": 16,\n        \"Presidio\": 11,\n        \"Union Square\": 22,\n        \"Financial District\": 26,\n    },\n    \"Embarcadero\": {\n        \"The Castro\": 25,\n        \"North Beach\": 5,\n        \"Golden Gate Park\": 25,\n        \"Haight-Ashbury\": 21,\n        \"Richmond District\": 21,\n        \"Nob Hill\": 10,\n        \"Marina District\": 12,\n        \"Presidio\": 20,\n        \"Union Square\": 10,\n        \"Financial District\": 5,\n    },\n    \"Haight-Ashbury\": {\n        \"The Castro\": 6,\n        \"North Beach\": 19,\n        \"Golden Gate Park\": 7,\n        \"Embarcadero\": 20,\n        \"Richmond District\": 10,\n        \"Nob Hill\": 15,\n        \"Marina District\": 17,\n        \"Presidio\": 15,\n        \"Union Square\": 19,\n        \"Financial District\": 21,\n    },\n    \"Richmond District\": {\n        \"The Castro\": 16,\n        \"North Beach\": 17,\n        \"Golden Gate Park\": 9,\n        \"Embarcadero\": 19,\n        \"Haight-Ashbury\": 10,\n        \"Nob Hill\": 17,\n        \"Marina District\": 9,\n        \"Presidio\": 7,\n        \"Union Square\": 21,\n        \"Financial District\": 22,\n    },\n    \"Nob Hill\": {\n        \"The Castro\": 17,\n        \"North Beach\": 8,\n        \"Golden Gate Park\": 17,\n        \"Embarcadero\": 9,\n        \"Haight-Ashbury\": 13,\n        \"Richmond District\": 14,\n        \"Marina District\": 11,\n        \"Presidio\": 17,\n        \"Union Square\": 7,\n        \"Financial District\": 9,\n    },\n    \"Marina District\": {\n        \"The Castro\": 22,\n        \"North Beach\": 11,\n        \"Golden Gate Park\": 18,\n        \"Embarcadero\": 14,\n        \"Haight-Ashbury\": 16,\n        \"Richmond District\": 11,\n        \"Nob Hill\": 12,\n        \"Presidio\": 10,\n        \"Union Square\": 16,\n        \"Financial District\": 17,\n    },\n    \"Presidio\": {\n        \"The Castro\": 21,\n        \"North Beach\": 18,\n        \"Golden Gate Park\": 12,\n        \"Embarcadero\": 20,\n        \"Haight-Ashbury\": 15,\n        \"Richmond District\": 7,\n        \"Nob Hill\": 18,\n        \"Marina District\": 11,\n        \"Union Square\": 22,\n        \"Financial District\": 23,\n    },\n    \"Union Square\": {\n        \"The Castro\": 17,\n        \"North Beach\": 10,\n        \"Golden Gate Park\": 22,\n        \"Embarcadero\": 11,\n        \"Haight-Ashbury\": 18,\n        \"Richmond District\": 20,\n        \"Nob Hill\": 9,\n        \"Marina District\": 18,\n        \"Presidio\": 24,\n        \"Financial District\": 9,\n    },\n    \"Financial District\": {\n        \"The Castro\": 20,\n        \"North Beach\": 7,\n        \"Golden Gate Park\": 23,\n        \"Embarcadero\": 4,\n        \"Haight-Ashbury\": 19,\n        \"Richmond District\": 21,\n        \"Nob Hill\": 8,\n        \"Marina District\": 15,\n        \"Presidio\": 22,\n        \"Union Square\": 9,\n    },\n}\n\n# Schedule constraints\nconstraints = {\n    \"Steven\": {\n        \"location\": \"North Beach\",\n        \"start\": \"17:30\",\n        \"end\": \"20:30\",\n        \"duration\": 15,\n    },\n    \"Sarah\": {\n        \"location\": \"Golden Gate Park\",\n        \"start\": \"17:00\",\n        \"end\": \"19:15\",\n        \"duration\": 75,\n    },\n    \"Brian\": {\n        \"location\": \"Embarcadero\",\n        \"start\": \"14:15\",\n        \"end\": \"16:00\",\n        \"duration\": 105,\n    },\n    \"Stephanie\": {\n        \"location\": \"Haight-Ashbury\",\n        \"start\": \"10:15\",\n        \"end\": \"12:15\",\n        \"duration\": 75,\n    },\n    \"Melissa\": {\n        \"location\": \"Richmond District\",\n        \"start\": \"14:00\",\n        \"end\": \"19:30\",\n        \"duration\": 30,\n    },\n    \"Nancy\": {\n        \"location\": \"Nob Hill\",\n        \"start\": \"08:15\",\n        \"end\": \"12:45\",\n        \"duration\": 90,\n    },\n    \"David\": {\n        \"location\": \"Marina District\",\n        \"start\": \"11:15\",\n        \"end\": \"13:15\",\n        \"duration\": 120,\n    },\n    \"James\": {\n        \"location\": \"Presidio\",\n        \"start\": \"15:00\",\n        \"end\": \"18:15\",\n        \"duration\": 120,\n    },\n    \"Elizabeth\": {\n        \"location\": \"Union Square\",\n        \"start\": \"11:30\",\n        \"end\": \"21:00\",\n        \"duration\": 60,\n    },\n    \"Robert\": {\n        \"location\": \"Financial District\",\n        \"start\": \"13:15\",\n        \"end\": \"15:15\",\n        \"duration\": 45,\n    },\n}\n\n# Function to convert time string to a datetime object\ndef time_to_datetime(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\n# Function to convert datetime object to a time string\ndef datetime_to_time(dt):\n    return dt.strftime(\"%H:%M\")\n\n# Function to find the optimal meeting schedule\ndef find_optimal_schedule():\n    current_time = time_to_datetime(\"9:00\")\n    itinerary = []\n\n    # Meeting with Nancy\n    nancy_end_time = current_time + timedelta(minutes=90)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Nob Hill\",\n        \"person\": \"Nancy\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(nancy_end_time),\n    })\n    current_time = nancy_end_time + timedelta(minutes=travel_times[\"The Castro\"][\"Nob Hill\"])\n\n    # Meeting with Stephanie\n    stephanie_end_time = current_time + timedelta(minutes=75)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Haight-Ashbury\",\n        \"person\": \"Stephanie\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(stephanie_end_time),\n    })\n    current_time = stephanie_end_time + timedelta(minutes=travel_times[\"Nob Hill\"][\"Haight-Ashbury\"])\n\n    # Meeting with David\n    david_end_time = current_time + timedelta(minutes=120)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Marina District\",\n        \"person\": \"David\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(david_end_time),\n    })\n    current_time = david_end_time + timedelta(minutes=travel_times[\"Haight-Ashbury\"][\"Marina District\"])\n\n    # Meeting with Brian\n    brian_end_time = current_time + timedelta(minutes=105)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Embarcadero\",\n        \"person\": \"Brian\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(brian_end_time),\n    })\n    current_time = brian_end_time + timedelta(minutes=travel_times[\"Marina District\"][\"Embarcadero\"])\n\n    # Meeting with Robert\n    robert_end_time = current_time + timedelta(minutes=45)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Financial District\",\n        \"person\": \"Robert\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(robert_end_time),\n    })\n    current_time = robert_end_time + timedelta(minutes=travel_times[\"Embarcadero\"][\"Financial District\"])\n\n    # Meeting with James\n    # Arrive at Presidio by 15:00\n    current_time = time_to_datetime(\"15:00\")\n    james_end_time = current_time + timedelta(minutes=120)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Presidio\",\n        \"person\": \"James\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(james_end_time),\n    })\n    current_time = james_end_time + timedelta(minutes=travel_times[\"Presidio\"][\"Financial District\"])\n\n    # Meeting with Sarah\n    current_time = time_to_datetime(\"17:00\")\n    sarah_end_time = current_time + timedelta(minutes=75)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Golden Gate Park\",\n        \"person\": \"Sarah\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(sarah_end_time),\n    })\n    current_time = sarah_end_time + timedelta(minutes=travel_times[\"Golden Gate Park\"][\"Nob Hill\"])\n\n    # Meeting with Steven\n    current_time = time_to_datetime(\"17:30\")\n    steven_end_time = current_time + timedelta(minutes=15)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"North Beach\",\n        \"person\": \"Steven\",\n        \"start_time\": datetime_to_time(current_time),\n        \"end_time\": datetime_to_time(steven_end_time),\n    })\n\n    return {\"itinerary\": itinerary}\n\n# Find the optimal schedule\noptimal_schedule = find_optimal_schedule()\n\n# Output the result in JSON format\nprint(json.dumps(optimal_schedule, indent=2))\n```",
+            "count": "meeting_planning_example_911"
+        }
+    ]
+}

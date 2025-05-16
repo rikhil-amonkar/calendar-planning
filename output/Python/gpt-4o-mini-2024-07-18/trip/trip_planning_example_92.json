@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 5-12",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 12-12",
+                        "place": "Dublin"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 6-12",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Trip constraints\n    total_days = 12\n    stay_riga = 5\n    stay_vilnius = 7\n    stay_dublin = 2\n\n    # Starting from Riga\n    itinerary = []\n    \n    # Day range for Riga\n    itinerary.append({'day_range': 'Day 1-5', 'place': 'Riga'})\n    \n    # Travel day to Vilnius (Day 5)\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Riga', 'to': 'Vilnius'})\n    \n    # Day range for Vilnius\n    itinerary.append({'day_range': 'Day 5-12', 'place': 'Vilnius'})\n    \n    # Travel day to Dublin (Day 12)\n    itinerary.append({'flying': 'Day 12-12', 'from': 'Vilnius', 'to': 'Dublin'})\n    \n    # Day range for Dublin\n    itinerary.append({'day_range': 'Day 12-12', 'place': 'Dublin'})\n    \n    return itinerary\n\nif __name__ == '__main__':\n    trip_plan = compute_itinerary()\n    print(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_92"
+        }
+    ]
+}

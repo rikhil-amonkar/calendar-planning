@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Madrid"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 13\n    cities = {\n        'Seville': 2,\n        'Stuttgart': 7,\n        'Porto': 3,\n        'Madrid': 4\n    }\n    conference_days = [7, 13]\n    relatives_madrid_range = (1, 4)\n    direct_flights = {\n        'Porto': ['Stuttgart', 'Seville', 'Madrid'],\n        'Seville': ['Porto', 'Madrid'],\n        'Madrid': ['Porto', 'Seville'],\n        'Stuttgart': ['Porto']\n    }\n\n    # Initialize itinerary\n    itinerary = []\n    current_day = 1\n\n    # Must be in Madrid between day 1 and 4\n    madrid_days = min(cities['Madrid'], relatives_madrid_range[1] - relatives_madrid_range[0] + 1)\n    itinerary.append({\n        'day_range': f'Day {current_day}-{current_day + madrid_days - 1}',\n        'place': 'Madrid'\n    })\n    current_day += madrid_days\n    remaining_madrid_days = cities['Madrid'] - madrid_days\n\n    # Must be in Stuttgart on day 7\n    # Check if we can fit Seville or Porto before day 7\n    days_until_conference = 7 - current_day\n    if days_until_conference > 0:\n        # Try to fit Seville first (2 days)\n        if 'Seville' in direct_flights['Madrid'] and cities['Seville'] > 0 and days_until_conference >= cities['Seville']:\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': 'Madrid',\n                'to': 'Seville'\n            })\n            current_day += 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{current_day + cities[\"Seville\"] - 1}',\n                'place': 'Seville'\n            })\n            current_day += cities[\"Seville\"]\n            cities[\"Seville\"] = 0\n\n        # Or try to fit Porto (3 days)\n        elif 'Porto' in direct_flights['Madrid'] and cities['Porto'] > 0 and days_until_conference >= cities['Porto']:\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': 'Madrid',\n                'to': 'Porto'\n            })\n            current_day += 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{current_day + cities[\"Porto\"] - 1}',\n                'place': 'Porto'\n            })\n            current_day += cities[\"Porto\"]\n            cities[\"Porto\"] = 0\n\n    # Must be in Stuttgart on day 7\n    if current_day <= 7:\n        itinerary.append({\n            'flying': f'Day {current_day}-{current_day}',\n            'from': itinerary[-1]['place'],\n            'to': 'Stuttgart'\n        })\n        current_day += 1\n        stay_days = 7 - current_day + 1\n        itinerary.append({\n            'day_range': f'Day {current_day}-{current_day + stay_days - 1}',\n            'place': 'Stuttgart'\n        })\n        current_day += stay_days\n        cities['Stuttgart'] -= stay_days\n\n    # Now handle remaining cities after day 7\n    remaining_cities = {city: days for city, days in cities.items() if days > 0}\n    for city, days in remaining_cities.items():\n        if city == 'Stuttgart':\n            continue  # Will handle Stuttgart last\n\n        # Check if we can fly to this city from current location\n        current_location = itinerary[-1]['place']\n        if city in direct_flights.get(current_location, []):\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': current_location,\n                'to': city\n            })\n            current_day += 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{current_day + days - 1}',\n                'place': city\n            })\n            current_day += days\n        else:\n            # Need to find an intermediate city\n            intermediate_cities = set(direct_flights[current_location]) & set(direct_flights[city])\n            if intermediate_cities:\n                intermediate = intermediate_cities.pop()\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': current_location,\n                    'to': intermediate\n                })\n                current_day += 1\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': intermediate,\n                    'to': city\n                })\n                current_day += 1\n                itinerary.append({\n                    'day_range': f'Day {current_day}-{current_day + days - 1}',\n                    'place': city\n                })\n                current_day += days\n\n    # Must be in Stuttgart on day 13\n    if current_day <= 13:\n        stay_days = 13 - current_day + 1\n        current_location = itinerary[-1]['place']\n        if current_location != 'Stuttgart':\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': current_location,\n                'to': 'Stuttgart'\n            })\n            current_day += 1\n            stay_days -= 1\n        itinerary.append({\n            'day_range': f'Day {current_day}-{current_day + stay_days - 1}',\n            'place': 'Stuttgart'\n        })\n\n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = calculate_itinerary()\n    print(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_372"
+        }
+    ]
+}

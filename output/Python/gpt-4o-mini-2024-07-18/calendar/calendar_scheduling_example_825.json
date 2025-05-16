@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time():\n    # Define work hours and days\n    work_hours = {\n        'Monday': [(9, 17)],\n        'Tuesday': [(9, 17)],\n        'Wednesday': [(9, 17)],\n        'Thursday': [(9, 17)]\n    }\n\n    # Existing schedules for Laura\n    laura_busy = {\n        'Monday': [(10, 30, 11, 0), (12, 30, 13, 0), (14, 30, 15, 30), (16, 0, 17, 0)],\n        'Tuesday': [(9, 30, 10, 0), (11, 0, 11, 30), (13, 0, 13, 30), (14, 30, 15, 0), (16, 0, 17, 0)],\n        'Wednesday': [(11, 30, 12, 0), (12, 30, 13, 0), (15, 30, 16, 30)],\n        'Thursday': [(10, 30, 11, 0), (12, 0, 13, 30), (15, 0, 15, 30), (16, 0, 16, 30)]\n    }\n\n    # Existing schedules for Philip\n    philip_busy = {\n        'Monday': [(9, 0, 17, 0)],\n        'Tuesday': [(9, 0, 11, 0), (11, 30, 12, 0), (13, 0, 13, 30), (14, 0, 14, 30), (15, 0, 16, 30)],\n        'Wednesday': [(9, 0, 10, 0), (11, 0, 12, 0), (12, 30, 16, 0), (16, 30, 17, 0)],\n        'Thursday': [(9, 0, 10, 30), (11, 0, 12, 30), (13, 0, 17, 0)]\n    }\n\n    # Define meeting duration\n    meeting_duration = 1  # in hours\n\n    # Function to check if a time slot is available\n    def is_time_slot_available(day, start_hour, end_hour):\n        for start, end in laura_busy.get(day, []):\n            if not (end_hour <= start or end <= start_hour):\n                return False\n        for start, end in philip_busy.get(day, []):\n            if not (end_hour <= start or end <= start_hour):\n                return False\n        return True\n\n    # Find suitable time\n    for day, hours in work_hours.items():\n        for start_hour, end_hour in hours:\n            for hour in range(start_hour, end_hour - meeting_duration + 1):\n                if is_time_slot_available(day, hour, hour + meeting_duration):\n                    start_time = f\"{hour:02}:00\"\n                    end_time = f\"{hour + meeting_duration:02}:00\"\n                    return f\"{start_time}:{end_time} on {day}\"\n\n# Execute the function to get the meeting time\nprint(find_meeting_time())\n```",
+            "count": "calendar_scheduling_example_825"
+        }
+    ]
+}

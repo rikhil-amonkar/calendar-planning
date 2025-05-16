@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\ndef time_to_minutes(time_str):\n    # time_str is in \"HH:MM\" format\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\ndef get_free_intervals(busy_intervals, work_start, work_end):\n    # busy_intervals is a list of tuples (start, end) in minutes, assumed sorted by start time\n    free = []\n    current = work_start\n    for start, end in busy_intervals:\n        if current < start:\n            free.append((current, start))\n        current = max(current, end)\n    if current < work_end:\n        free.append((current, work_end))\n    return free\n\ndef intersect_intervals(intervals1, intervals2):\n    intersections = []\n    i, j = 0, 0\n    while i < len(intervals1) and j < len(intervals2):\n        start1, end1 = intervals1[i]\n        start2, end2 = intervals2[j]\n        # find the intersection between the two intervals\n        intersect_start = max(start1, start2)\n        intersect_end = min(end1, end2)\n        if intersect_start < intersect_end:\n            intersections.append((intersect_start, intersect_end))\n        # move to the next interval in whichever ends earlier\n        if end1 < end2:\n            i += 1\n        else:\n            j += 1\n    return intersections\n\ndef find_meeting_slot(intersections, duration):\n    # duration in minutes, find earliest intersection that fits the meeting.\n    for start, end in intersections:\n        if end - start >= duration:\n            return start, start + duration\n    return None\n\ndef main():\n    # Define constants\n    work_day = \"Monday\"\n    meeting_duration = 30  # minutes\n    work_start = time_to_minutes(\"09:00\")\n    work_end = time_to_minutes(\"17:00\")\n    \n    # Define busy schedules for Lisa and Anthony in minutes\n    lisa_busy = [\n        (time_to_minutes(\"09:00\"), time_to_minutes(\"09:30\")),\n        (time_to_minutes(\"10:30\"), time_to_minutes(\"11:00\")),\n        (time_to_minutes(\"14:00\"), time_to_minutes(\"16:00\"))\n    ]\n    \n    anthony_busy = [\n        (time_to_minutes(\"09:00\"), time_to_minutes(\"09:30\")),\n        (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n        (time_to_minutes(\"12:30\"), time_to_minutes(\"13:30\")),\n        (time_to_minutes(\"14:00\"), time_to_minutes(\"15:00\")),\n        (time_to_minutes(\"15:30\"), time_to_minutes(\"16:00\")),\n        (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n    ]\n    \n    # Compute free intervals\n    lisa_free = get_free_intervals(lisa_busy, work_start, work_end)\n    anthony_free = get_free_intervals(anthony_busy, work_start, work_end)\n    \n    # Get intersection of free intervals between Lisa and Anthony\n    common_free = intersect_intervals(lisa_free, anthony_free)\n    \n    slot = find_meeting_slot(common_free, meeting_duration)\n    \n    if slot:\n        meeting_start, meeting_end = slot\n        print(f\"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}\")\n        print(work_day)\n    else:\n        print(\"No common available slot found.\")\n\nif __name__ == '__main__':\n    main()\n'''",
+            "count": "calendar_scheduling_example_583"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{14:30",
+                "end_time": "15:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\ndef parse_schedule(schedule):\n    intervals = []\n    for s in schedule:\n        start, end = s.split('-')\n        intervals.append((parse_time(start), parse_time(end)))\n    return intervals\n\nraymond_busy = parse_schedule(['9:00-9:30', '11:30-12:00', '13:00-13:30', '15:00-15:30'])\nbilly_busy = parse_schedule(['10:00-10:30', '12:00-13:00', '16:30-17:00']) + [(parse_time('15:00'), parse_time('17:00'))]\ndonald_busy = parse_schedule(['9:00-9:30', '10:00-11:00', '12:00-13:00', '14:00-14:30', '16:00-17:00'])\n\nall_busy = raymond_busy + billy_busy + donald_busy\nall_busy.sort()\n\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    merged = [intervals[0]]\n    for current in intervals[1:]:\n        last = merged[-1]\n        if current[0] <= last[1]:\n            merged[-1] = (last[0], max(last[1], current[1]))\n        else:\n            merged.append(current)\n    return merged\n\nmerged_busy = merge_intervals(all_busy)\n\nwork_start = parse_time('9:00')\nwork_end = parse_time('17:00')\n\navailable = []\nprevious_end = work_start\nfor start, end in merged_busy:\n    if start > previous_end:\n        available.append((previous_end, start))\n    previous_end = max(previous_end, end)\nif previous_end < work_end:\n    available.append((previous_end, work_end))\n\nmeeting_duration = 30\nfor slot in available:\n    start, end = slot\n    if end - start >= meeting_duration:\n        latest_end = min(end, parse_time('15:00'))\n        if latest_end - start >= meeting_duration:\n            proposed_start = start\n            proposed_end = start + meeting_duration\n            if proposed_end <= parse_time('15:00'):\n                print(f\"{format_time(proposed_start)}-{format_time(proposed_end)}\")\n                print(\"Monday\")\n                exit()\n\nprint(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_1"
+        }
+    ]
+}

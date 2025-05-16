@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Laura",
+                        "start_time": "9:11",
+                        "end_time": "9:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "18:30",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "19:16",
+                        "end_time": "20:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Patricia",
+                        "start_time": "20:15",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Laura",
+                        "start_time": "9:11",
+                        "end_time": "9:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "18:30",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "19:16",
+                        "end_time": "20:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Patricia",
+                        "start_time": "20:15",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input data\ntravel_times = {\n    'Fisherman\\'s Wharf': {\n        'Bayview': 26,\n        'Golden Gate Park': 25,\n        'Nob Hill': 11,\n        'Marina District': 9,\n        'Embarcadero': 8\n    },\n    'Bayview': {\n        'Fisherman\\'s Wharf': 25,\n        'Golden Gate Park': 22,\n        'Nob Hill': 20,\n        'Marina District': 25,\n        'Embarcadero': 19\n    },\n    'Golden Gate Park': {\n        'Fisherman\\'s Wharf': 24,\n        'Bayview': 23,\n        'Nob Hill': 20,\n        'Marina District': 16,\n        'Embarcadero': 25\n    },\n    'Nob Hill': {\n        'Fisherman\\'s Wharf': 11,\n        'Bayview': 19,\n        'Golden Gate Park': 17,\n        'Marina District': 11,\n        'Embarcadero': 9\n    },\n    'Marina District': {\n        'Fisherman\\'s Wharf': 10,\n        'Bayview': 27,\n        'Golden Gate Park': 18,\n        'Nob Hill': 12,\n        'Embarcadero': 14\n    },\n    'Embarcadero': {\n        'Fisherman\\'s Wharf': 6,\n        'Bayview': 21,\n        'Golden Gate Park': 25,\n        'Nob Hill': 10,\n        'Marina District': 12\n    }\n}\n\npeople = [\n    {\n        'name': 'Thomas',\n        'location': 'Bayview',\n        'available_start': '15:30',\n        'available_end': '18:30',\n        'min_duration': 120\n    },\n    {\n        'name': 'Stephanie',\n        'location': 'Golden Gate Park',\n        'available_start': '18:30',\n        'available_end': '21:45',\n        'min_duration': 30\n    },\n    {\n        'name': 'Laura',\n        'location': 'Nob Hill',\n        'available_start': '8:45',\n        'available_end': '16:15',\n        'min_duration': 30\n    },\n    {\n        'name': 'Betty',\n        'location': 'Marina District',\n        'available_start': '18:45',\n        'available_end': '21:45',\n        'min_duration': 45\n    },\n    {\n        'name': 'Patricia',\n        'location': 'Embarcadero',\n        'available_start': '17:30',\n        'available_end': '22:00',\n        'min_duration': 45\n    }\n]\n\ncurrent_location = 'Fisherman\\'s Wharf'\ncurrent_time = time_to_minutes('9:00')\n\ndef get_possible_schedules():\n    # Generate all possible orders of meeting people\n    possible_orders = permutations(people)\n    valid_schedules = []\n    \n    for order in possible_orders:\n        schedule = []\n        loc = current_location\n        time = current_time\n        valid = True\n        \n        for person in order:\n            # Calculate travel time\n            travel_time = travel_times[loc][person['location']]\n            arrival_time = time + travel_time\n            \n            # Check if we can meet this person\n            available_start = time_to_minutes(person['available_start'])\n            available_end = time_to_minutes(person['available_end'])\n            \n            # Determine meeting window\n            meeting_start = max(arrival_time, available_start)\n            meeting_end = meeting_start + person['min_duration']\n            \n            if meeting_end > available_end:\n                valid = False\n                break\n            \n            # Add to schedule\n            schedule.append({\n                'person': person['name'],\n                'location': person['location'],\n                'start_time': meeting_start,\n                'end_time': meeting_end\n            })\n            \n            # Update current location and time\n            loc = person['location']\n            time = meeting_end\n        \n        if valid:\n            valid_schedules.append(schedule)\n    \n    return valid_schedules\n\ndef evaluate_schedule(schedule):\n    # Score based on number of people met and total time spent\n    return len(schedule)\n\ndef find_best_schedule():\n    schedules = get_possible_schedules()\n    if not schedules:\n        return None\n    \n    best_schedule = max(schedules, key=evaluate_schedule)\n    return best_schedule\n\nbest_schedule = find_best_schedule()\n\nif best_schedule:\n    itinerary = []\n    for meeting in best_schedule:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting['location'],\n            \"person\": meeting['person'],\n            \"start_time\": minutes_to_time(meeting['start_time']),\n            \"end_time\": minutes_to_time(meeting['end_time'])\n        })\n    \n    result = {\n        \"itinerary\": itinerary\n    }\nelse:\n    result = {\n        \"itinerary\": []\n    }\n\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_409"
+        }
+    ]
+}

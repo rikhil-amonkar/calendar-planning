@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Mary",
+                        "start_time": "13:00",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Sarah",
+                        "start_time": "14:45",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Helen",
+                        "start_time": "21:45",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Sarah",
+                        "start_time": "14:45",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Mary",
+                        "start_time": "16:48",
+                        "end_time": "18:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Helen",
+                        "start_time": "21:45",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times\ntravel_times = {\n    ('Haight-Ashbury', 'Fisherman\\'s Wharf'): 23,\n    ('Haight-Ashbury', 'Richmond District'): 10,\n    ('Haight-Ashbury', 'Mission District'): 11,\n    ('Haight-Ashbury', 'Bayview'): 18,\n    ('Fisherman\\'s Wharf', 'Haight-Ashbury'): 22,\n    ('Fisherman\\'s Wharf', 'Richmond District'): 18,\n    ('Fisherman\\'s Wharf', 'Mission District'): 22,\n    ('Fisherman\\'s Wharf', 'Bayview'): 26,\n    ('Richmond District', 'Haight-Ashbury'): 10,\n    ('Richmond District', 'Fisherman\\'s Wharf'): 18,\n    ('Richmond District', 'Mission District'): 20,\n    ('Richmond District', 'Bayview'): 26,\n    ('Mission District', 'Haight-Ashbury'): 12,\n    ('Mission District', 'Fisherman\\'s Wharf'): 22,\n    ('Mission District', 'Richmond District'): 20,\n    ('Mission District', 'Bayview'): 15,\n    ('Bayview', 'Haight-Ashbury'): 19,\n    ('Bayview', 'Fisherman\\'s Wharf'): 25,\n    ('Bayview', 'Richmond District'): 25,\n    ('Bayview', 'Mission District'): 13,\n}\n\n# Define meeting constraints\nconstraints = {\n    'Sarah': {\"location\": \"Fisherman's Wharf\", \"available_from\": \"14:45\", \"available_to\": \"17:30\", \"duration\": 105},\n    'Mary': {\"location\": \"Richmond District\", \"available_from\": \"13:00\", \"available_to\": \"19:15\", \"duration\": 75},\n    'Helen': {\"location\": \"Mission District\", \"available_from\": \"21:45\", \"available_to\": \"22:30\", \"duration\": 30},\n    'Thomas': {\"location\": \"Bayview\", \"available_from\": \"15:15\", \"available_to\": \"18:45\", \"duration\": 120},\n}\n\ndef time_to_minutes(t):\n    \"\"\"Convert time string 'H:MM' to minutes since midnight.\"\"\"\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    \"\"\"Convert minutes since midnight to time string 'H:MM'.\"\"\"\n    return f\"{m // 60}:{m % 60:02}\"\n\ndef schedule_meetings():\n    start_time = \"09:00\"\n    current_time = time_to_minutes(start_time)\n\n    itinerary = []\n    meeting_times = {}\n\n    # Meet Mary first if we can\n    if current_time <= time_to_minutes(constraints['Mary']['available_to']):\n        # Calculate travel time from Haight-Ashbury to Richmond District\n        travel_time = travel_times[('Haight-Ashbury', 'Richmond District')]\n        arrival_time = current_time + travel_time\n        \n        if arrival_time < time_to_minutes(constraints['Mary']['available_from']):\n            arrival_time = time_to_minutes(constraints['Mary']['available_from'])\n        \n        end_time = arrival_time + constraints['Mary']['duration']\n        \n        if end_time <= time_to_minutes(constraints['Mary']['available_to']):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Richmond District\",\n                \"person\": \"Mary\",\n                \"start_time\": minutes_to_time(arrival_time),\n                \"end_time\": minutes_to_time(end_time)\n            })\n            current_time = end_time\n            meeting_times['Mary'] = (arrival_time, end_time)\n\n    # Meet Sarah\n    if current_time <= time_to_minutes(constraints['Sarah']['available_to']):\n        # Calculate travel time from last location (Richmond District) to Fisherman's Wharf\n        if 'Mary' in meeting_times:\n            travel_time = travel_times[('Richmond District', 'Fisherman\\'s Wharf')]\n        else:\n            travel_time = travel_times[('Haight-Ashbury', 'Fisherman\\'s Wharf')]\n        \n        arrival_time = current_time + travel_time\n        \n        if arrival_time < time_to_minutes(constraints['Sarah']['available_from']):\n            arrival_time = time_to_minutes(constraints['Sarah']['available_from'])\n        \n        end_time = arrival_time + constraints['Sarah']['duration']\n        \n        if end_time <= time_to_minutes(constraints['Sarah']['available_to']):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Fisherman's Wharf\",\n                \"person\": \"Sarah\",\n                \"start_time\": minutes_to_time(arrival_time),\n                \"end_time\": minutes_to_time(end_time)\n            })\n            current_time = end_time\n            meeting_times['Sarah'] = (arrival_time, end_time)\n\n    # Meet Thomas\n    if current_time <= time_to_minutes(constraints['Thomas']['available_to']):\n        # Calculate travel time from last location to Bayview\n        travel_time = travel_times[('Fisherman\\'s Wharf', 'Bayview')] if 'Sarah' in meeting_times else travel_times[('Richmond District', 'Bayview')]\n        arrival_time = current_time + travel_time\n        \n        if arrival_time < time_to_minutes(constraints['Thomas']['available_from']):\n            arrival_time = time_to_minutes(constraints['Thomas']['available_from'])\n        \n        end_time = arrival_time + constraints['Thomas']['duration']\n        \n        if end_time <= time_to_minutes(constraints['Thomas']['available_to']):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Bayview\",\n                \"person\": \"Thomas\",\n                \"start_time\": minutes_to_time(arrival_time),\n                \"end_time\": minutes_to_time(end_time)\n            })\n            current_time = end_time\n            meeting_times['Thomas'] = (arrival_time, end_time)\n\n    # Finally meet Helen\n    if current_time <= time_to_minutes(constraints['Helen']['available_to']):\n        travel_time = travel_times[('Bayview', 'Mission District')] if 'Thomas' in meeting_times else travel_times[('Fisherman\\'s Wharf', 'Mission District')]\n        arrival_time = current_time + travel_time\n        \n        if arrival_time < time_to_minutes(constraints['Helen']['available_from']):\n            arrival_time = time_to_minutes(constraints['Helen']['available_from'])\n        \n        end_time = arrival_time + constraints['Helen']['duration']\n        \n        if end_time <= time_to_minutes(constraints['Helen']['available_to']):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Mission District\",\n                \"person\": \"Helen\",\n                \"start_time\": minutes_to_time(arrival_time),\n                \"end_time\": minutes_to_time(end_time)\n            })\n            current_time = end_time\n            meeting_times['Helen'] = (arrival_time, end_time)\n\n    return {\"itinerary\": itinerary}\n\n# Run the scheduler and print the result in JSON format\nresult = schedule_meetings()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_389"
+        }
+    ]
+}

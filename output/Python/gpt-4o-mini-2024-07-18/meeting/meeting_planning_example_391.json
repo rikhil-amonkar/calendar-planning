@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kevin",
+                        "start_time": "9:17",
+                        "end_time": "10:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Kimberly",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Thomas",
+                        "start_time": "19:38",
+                        "end_time": "20:23"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kevin",
+                        "start_time": "9:17",
+                        "end_time": "10:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Kimberly",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Thomas",
+                        "start_time": "19:38",
+                        "end_time": "20:23"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define the travel distances (in minutes)\ntravel_times = {\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Sunset District\", \"Financial District\"): 30,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Russian Hill\"): 13,\n    (\"Alamo Square\", \"Presidio\"): 18,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"Alamo Square\"): 15,\n    (\"Russian Hill\", \"Presidio\"): 14,\n    (\"Russian Hill\", \"Financial District\"): 11,\n    (\"Presidio\", \"Sunset District\"): 15,\n    (\"Presidio\", \"Alamo Square\"): 18,\n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Financial District\", \"Sunset District\"): 31,\n    (\"Financial District\", \"Alamo Square\"): 17,\n    (\"Financial District\", \"Russian Hill\"): 10,\n    (\"Financial District\", \"Presidio\"): 22,\n}\n\n# Define meeting constraints\nmeetings = {\n    \"Kevin\": {\n        \"location\": \"Alamo Square\",\n        \"start\": \"09:00\",\n        \"end\": \"21:30\",\n        \"min_duration\": 75\n    },\n    \"Kimberly\": {\n        \"location\": \"Russian Hill\",\n        \"start\": \"08:45\",\n        \"end\": \"12:30\",\n        \"min_duration\": 30\n    },\n    \"Joseph\": {\n        \"location\": \"Presidio\",\n        \"start\": \"18:30\",\n        \"end\": \"19:15\",\n        \"min_duration\": 45\n    },\n    \"Thomas\": {\n        \"location\": \"Financial District\",\n        \"start\": \"19:00\",\n        \"end\": \"21:45\",\n        \"min_duration\": 45\n    },\n}\n\n# Convert time strings to datetime\ndef str_to_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\n# Convert datetime to required time format\ndef time_to_str(dt):\n    return dt.strftime(\"%H:%M\")\n\n# Calculate meeting schedules\ndef schedule_meetings():\n    start_time = str_to_time(\"09:00\")\n    itinerary = []\n    \n    # Meeting Kevin\n    kevin_start = start_time + timedelta(minutes=travel_times[(\"Sunset District\", \"Alamo Square\")])\n    kevin_end = kevin_start + timedelta(minutes=meetings[\"Kevin\"][\"min_duration\"])\n\n    if kevin_end.time() <= str_to_time(meetings[\"Kevin\"][\"end\"]).time():\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Alamo Square\",\n            \"person\": \"Kevin\",\n            \"start_time\": time_to_str(kevin_start),\n            \"end_time\": time_to_str(kevin_end),\n        })\n\n    # Meeting Kimberly\n    sunset_to_russian_hill = travel_times[(\"Sunset District\", \"Russian Hill\")]\n    kimberly_start = max(str_to_time(meetings[\"Kimberly\"][\"start\"]),\n                          kevin_end + timedelta(minutes=travel_times[(\"Alamo Square\", \"Russian Hill\")]))\n    kimberly_end = kimberly_start + timedelta(minutes=meetings[\"Kimberly\"][\"min_duration\"])\n\n    if kimberly_end.time() <= str_to_time(meetings[\"Kimberly\"][\"end\"]).time():\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Russian Hill\",\n            \"person\": \"Kimberly\",\n            \"start_time\": time_to_str(kimberly_start),\n            \"end_time\": time_to_str(kimberly_end),\n        })\n\n    # Meeting Joseph\n    time_after_russian_hill = kimberly_end + timedelta(minutes=travel_times[(\"Russian Hill\", \"Presidio\")])\n    joseph_start = max(time_after_russian_hill, str_to_time(meetings[\"Joseph\"][\"start\"]))\n    joseph_end = joseph_start + timedelta(minutes=meetings[\"Joseph\"][\"min_duration\"])\n\n    if joseph_end.time() <= str_to_time(meetings[\"Joseph\"][\"end\"]).time():\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Joseph\",\n            \"start_time\": time_to_str(joseph_start),\n            \"end_time\": time_to_str(joseph_end),\n        })\n\n    # Meeting Thomas\n    time_after_joseph = joseph_end + timedelta(minutes=travel_times[(\"Presidio\", \"Financial District\")])\n    thomas_start = max(time_after_joseph, str_to_time(meetings[\"Thomas\"][\"start\"]))\n    thomas_end = thomas_start + timedelta(minutes=meetings[\"Thomas\"][\"min_duration\"])\n\n    if thomas_end.time() <= str_to_time(meetings[\"Thomas\"][\"end\"]).time():\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Financial District\",\n            \"person\": \"Thomas\",\n            \"start_time\": time_to_str(thomas_start),\n            \"end_time\": time_to_str(thomas_end),\n        })\n\n    return {\"itinerary\": itinerary}\n\n# Execute the scheduling\noptimal_schedule = schedule_meetings()\n\n# Output the result as JSON\nprint(json.dumps(optimal_schedule, indent=2))\n```",
+            "count": "meeting_planning_example_391"
+        }
+    ]
+}

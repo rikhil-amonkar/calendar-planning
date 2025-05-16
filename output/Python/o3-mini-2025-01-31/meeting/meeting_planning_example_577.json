@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "9:07",
+                        "end_time": "10:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Anthony",
+                        "start_time": "10:32",
+                        "end_time": "10:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sandra",
+                        "start_time": "14:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Stephanie",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kevin",
+                        "start_time": "20:22",
+                        "end_time": "21:37"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "9:07",
+                        "end_time": "10:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Anthony",
+                        "start_time": "10:32",
+                        "end_time": "10:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sandra",
+                        "start_time": "14:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Stephanie",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kevin",
+                        "start_time": "20:22",
+                        "end_time": "21:37"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport itertools\nimport json\n\n# Utility: convert time in minutes since midnight to \"H:MM\" string in 24-hour format (no leading zero for hour)\ndef minutes_to_time_str(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Define travel times (in minutes) as a dictionary of dictionaries.\n# Note: travel times are symmetric as given.\ntravel_times = {\n    \"Haight-Ashbury\": {\n        \"Russian Hill\": 17,\n        \"Fisherman's Wharf\": 23,\n        \"Nob Hill\": 15,\n        \"Golden Gate Park\": 7,\n        \"Alamo Square\": 5,\n        \"Pacific Heights\": 12\n    },\n    \"Russian Hill\": {\n        \"Haight-Ashbury\": 17,\n        \"Fisherman's Wharf\": 7,\n        \"Nob Hill\": 5,\n        \"Golden Gate Park\": 21,\n        \"Alamo Square\": 15,\n        \"Pacific Heights\": 7\n    },\n    \"Fisherman's Wharf\": {\n        \"Haight-Ashbury\": 22,\n        \"Russian Hill\": 7,\n        \"Nob Hill\": 11,\n        \"Golden Gate Park\": 25,\n        \"Alamo Square\": 20,\n        \"Pacific Heights\": 12\n    },\n    \"Nob Hill\": {\n        \"Haight-Ashbury\": 13,\n        \"Russian Hill\": 5,\n        \"Fisherman's Wharf\": 11,\n        \"Golden Gate Park\": 17,\n        \"Alamo Square\": 11,\n        \"Pacific Heights\": 8\n    },\n    \"Golden Gate Park\": {\n        \"Haight-Ashbury\": 7,\n        \"Russian Hill\": 19,\n        \"Fisherman's Wharf\": 24,\n        \"Nob Hill\": 20,\n        \"Alamo Square\": 10,\n        \"Pacific Heights\": 16\n    },\n    \"Alamo Square\": {\n        \"Haight-Ashbury\": 5,\n        \"Russian Hill\": 13,\n        \"Fisherman's Wharf\": 19,\n        \"Nob Hill\": 11,\n        \"Golden Gate Park\": 9,\n        \"Pacific Heights\": 10\n    },\n    \"Pacific Heights\": {\n        \"Haight-Ashbury\": 11,\n        \"Russian Hill\": 7,\n        \"Fisherman's Wharf\": 13,\n        \"Nob Hill\": 8,\n        \"Golden Gate Park\": 15,\n        \"Alamo Square\": 10\n    }\n}\n\n# Define the meeting constraints.\n# Times will be represented as minutes since midnight.\n# Convert HH:MM to minutes after midnight.\ndef time_to_minutes(time_str):\n    parts = time_str.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\n# Starting location and time.\nstart_location = \"Haight-Ashbury\"\nstart_time = time_to_minutes(\"9:00\")  # 9:00 AM -> 540 minutes\n\n# List of meetings (person, location, available start, available end, minimum duration)\nmeetings = [\n    {\n        \"person\": \"Stephanie\",\n        \"location\": \"Russian Hill\",\n        \"avail_start\": time_to_minutes(\"20:00\"),\n        \"avail_end\": time_to_minutes(\"20:45\"),\n        \"duration\": 15\n    },\n    {\n        \"person\": \"Kevin\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": time_to_minutes(\"19:15\"),\n        \"avail_end\": time_to_minutes(\"21:45\"),\n        \"duration\": 75\n    },\n    {\n        \"person\": \"Robert\",\n        \"location\": \"Nob Hill\",\n        \"avail_start\": time_to_minutes(\"7:45\"),\n        \"avail_end\": time_to_minutes(\"10:30\"),\n        \"duration\": 90\n    },\n    {\n        \"person\": \"Steven\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": time_to_minutes(\"8:30\"),\n        \"avail_end\": time_to_minutes(\"17:00\"),\n        \"duration\": 75\n    },\n    {\n        \"person\": \"Anthony\",\n        \"location\": \"Alamo Square\",\n        \"avail_start\": time_to_minutes(\"7:45\"),\n        \"avail_end\": time_to_minutes(\"19:45\"),\n        \"duration\": 15\n    },\n    {\n        \"person\": \"Sandra\",\n        \"location\": \"Pacific Heights\",\n        \"avail_start\": time_to_minutes(\"14:45\"),\n        \"avail_end\": time_to_minutes(\"21:45\"),\n        \"duration\": 45\n    }\n]\n\n# Our goal is to meet as many friends as possible.\n# We'll try different orders of meetings (permutations) and schedule them if possible.\n# Each schedule simulation:\n#   current_time: when we are ready to leave current location.\n#   current_location: our current location.\n#   For each meeting, determine travel time, earliest arrival, wait for meeting's avail_start if needed.\n#   Then meeting start = max(arrival_time, meeting availability start)\n#   Meeting end = meeting start + required duration. Must not exceed meeting availability end.\n#   If meeting cannot be scheduled, then this order is not feasible (or we record the sub-schedule count).\n# We want the schedule with the maximum number of meetings (and must use computed times).\n\ndef simulate_schedule(order):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    count = 0\n\n    for meet in order:\n        # Check travel time from current_location to meeting location\n        if current_location == meet[\"location\"]:\n            travel = 0\n        else:\n            travel = travel_times[current_location][meet[\"location\"]]\n        arrival_time = current_time + travel\n        # Wait if arrived before available start\n        meeting_start = max(arrival_time, meet[\"avail_start\"])\n        meeting_end = meeting_start + meet[\"duration\"]\n        # Check if meeting finishes within availability\n        if meeting_end > meet[\"avail_end\"]:\n            # Not feasible to schedule this meeting in order\n            return itinerary, count\n        # Add meeting to itinerary\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meet[\"location\"],\n            \"person\": meet[\"person\"],\n            \"start_time\": minutes_to_time_str(meeting_start),\n            \"end_time\": minutes_to_time_str(meeting_end)\n        })\n        # Update current time and location\n        current_time = meeting_end\n        current_location = meet[\"location\"]\n        count += 1\n    return itinerary, count\n\n# We'll search over all permutations to maximize the number of meetings scheduled.\n# Since the goal is to meet as many friends as possible, we use full order if possible;\n# but if not, we can use a partial schedule.\nall_meetings = meetings[:]  # all six\nbest_itinerary = []\nmax_count = 0\n\n# We generate all permutations of the meetings list.\nfor perm in itertools.permutations(all_meetings):\n    itinerary, count = simulate_schedule(perm)\n    # update best if count is higher\n    if count > max_count:\n        max_count = count\n        best_itinerary = itinerary\n    # Early exit if we scheduled all meetings\n    if max_count == len(all_meetings):\n        break\n\n# In our problem, Robert's meeting is hard to schedule given our starting time,\n# so the optimal number usually is less than six.\n# Now output the result in JSON format as specified.\nresult = {\n    \"itinerary\": best_itinerary\n}\n\nprint(json.dumps(result, indent=2))",
+            "count": "meeting_planning_example_577"
+        }
+    ]
+}

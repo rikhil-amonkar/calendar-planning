@@ -1,0 +1,34 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define trip parameters\n    total_days = 12\n    itinerary = []\n\n    # Days allocated for each city\n    prague_days = 2\n    berlin_days = 3\n    conference_days = [6, 8]  # Conference on day 6 and 8\n    tallinn_days = 5\n    stockholm_days = 5\n\n    # Define the schedule\n    # Starting in Prague\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Prague'})\n\n    # Travel to Berlin for 3 days\n    itinerary.append({'flying': 'Day 2-2', 'from': 'Prague', 'to': 'Berlin'})\n    itinerary.append({'day_range': 'Day 2-5', 'place': 'Berlin'})\n\n    # Add conference days in Berlin\n    # Conference on Day 6 and Day 8, need to return after tallinn\n    # Travel to Tallinn after Berlin\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Berlin', 'to': 'Tallinn'})\n    itinerary.append({'day_range': 'Day 5-10', 'place': 'Tallinn'})\n\n    # Visiting relatives in Tallinn from Day 8 to Day 12\n    # So we can allocate the last 5 days in Tallinn\n\n    # Travel to Stockholm after Tallinn\n    itinerary.append({'flying': 'Day 10-10', 'from': 'Tallinn', 'to': 'Stockholm'})\n    itinerary.append({'day_range': 'Day 10-12', 'place': 'Stockholm'})\n\n    # Consolidate into a 12 day plan\n    # The final itinerary looks like:\n    final_itinerary = []\n    day_count = 0\n    for entry in itinerary:\n        if 'day_range' in entry:\n            days = entry['day_range'].split('-')\n            start_day = int(days[0].split(' ')[1])\n            end_day = int(days[1])\n            day_count += (end_day - start_day + 1)\n            final_itinerary.append(entry)\n        elif 'flying' in entry:\n            final_itinerary.append(entry)\n\n    # Check for total days\n    assert day_count == total_days, \"Total days should sum up to 12\"\n\n    # Output the result as JSON\n    return json.dumps(final_itinerary, indent=4)\n\n# Running the trip planner and printing the JSON output\nif __name__ == \"__main__\":\n    print(plan_trip())\n```",
+            "count": "trip_planning_example_240"
+        }
+    ]
+}

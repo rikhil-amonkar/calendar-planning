@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Kenneth",
+                        "start_time": "11:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Sarah",
+                        "start_time": "12:02",
+                        "end_time": "13:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "13:47",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "14:13",
+                        "end_time": "14:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:50",
+                        "end_time": "16:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Thomas",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "20:00",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Kenneth",
+                        "start_time": "11:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Sarah",
+                        "start_time": "12:04",
+                        "end_time": "13:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "13:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:52",
+                        "end_time": "16:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Thomas",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "20:00",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport copy\n\n# Helper functions to convert between time strings (\"H:MM\") and minutes from midnight.\ndef time_to_minutes(t):\n    # Assumes t is like \"9:00\" or \"13:30\"\n    parts = t.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(m):\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Travel times dictionary as given.\ntravel_times = {\n    \"Nob Hill\": {\n        \"Embarcadero\": 9, \"The Castro\": 17, \"Haight-Ashbury\": 13, \"Union Square\": 7,\n        \"North Beach\": 8, \"Pacific Heights\": 8, \"Chinatown\": 6, \"Golden Gate Park\": 17,\n        \"Marina District\": 11, \"Russian Hill\": 5\n    },\n    \"Embarcadero\": {\n        \"Nob Hill\": 10, \"The Castro\": 25, \"Haight-Ashbury\": 21, \"Union Square\": 10,\n        \"North Beach\": 5, \"Pacific Heights\": 11, \"Chinatown\": 7, \"Golden Gate Park\": 25,\n        \"Marina District\": 12, \"Russian Hill\": 8\n    },\n    \"The Castro\": {\n        \"Nob Hill\": 16, \"Embarcadero\": 22, \"Haight-Ashbury\": 6, \"Union Square\": 17,\n        \"North Beach\": 20, \"Pacific Heights\": 16, \"Chinatown\": 22, \"Golden Gate Park\": 11,\n        \"Marina District\": 21, \"Russian Hill\": 18\n    },\n    \"Haight-Ashbury\": {\n        \"Nob Hill\": 15, \"Embarcadero\": 20, \"The Castro\": 6, \"Union Square\": 19,\n        \"North Beach\": 19, \"Pacific Heights\": 12, \"Chinatown\": 19, \"Golden Gate Park\": 7,\n        \"Marina District\": 17, \"Russian Hill\": 17\n    },\n    \"Union Square\": {\n        \"Nob Hill\": 9, \"Embarcadero\": 11, \"The Castro\": 17, \"Haight-Ashbury\": 18,\n        \"North Beach\": 10, \"Pacific Heights\": 15, \"Chinatown\": 7, \"Golden Gate Park\": 22,\n        \"Marina District\": 18, \"Russian Hill\": 13\n    },\n    \"North Beach\": {\n        \"Nob Hill\": 7, \"Embarcadero\": 6, \"The Castro\": 23, \"Haight-Ashbury\": 18,\n        \"Union Square\": 7, \"Pacific Heights\": 8, \"Chinatown\": 6, \"Golden Gate Park\": 22,\n        \"Marina District\": 9, \"Russian Hill\": 4\n    },\n    \"Pacific Heights\": {\n        \"Nob Hill\": 8, \"Embarcadero\": 10, \"The Castro\": 16, \"Haight-Ashbury\": 11,\n        \"Union Square\": 12, \"North Beach\": 9, \"Chinatown\": 11, \"Golden Gate Park\": 15,\n        \"Marina District\": 6, \"Russian Hill\": 7\n    },\n    \"Chinatown\": {\n        \"Nob Hill\": 9, \"Embarcadero\": 5, \"The Castro\": 22, \"Haight-Ashbury\": 19,\n        \"Union Square\": 7, \"North Beach\": 3, \"Pacific Heights\": 10, \"Golden Gate Park\": 23,\n        \"Marina District\": 12, \"Russian Hill\": 7\n    },\n    \"Golden Gate Park\": {\n        \"Nob Hill\": 20, \"Embarcadero\": 25, \"The Castro\": 13, \"Haight-Ashbury\": 7,\n        \"Union Square\": 22, \"North Beach\": 23, \"Pacific Heights\": 16, \"Chinatown\": 23,\n        \"Marina District\": 16, \"Russian Hill\": 19\n    },\n    \"Marina District\": {\n        \"Nob Hill\": 12, \"Embarcadero\": 14, \"The Castro\": 22, \"Haight-Ashbury\": 16,\n        \"Union Square\": 16, \"North Beach\": 11, \"Pacific Heights\": 7, \"Chinatown\": 15,\n        \"Golden Gate Park\": 18, \"Russian Hill\": 8\n    },\n    \"Russian Hill\": {\n        \"Nob Hill\": 5, \"Embarcadero\": 8, \"The Castro\": 21, \"Haight-Ashbury\": 17,\n        \"Union Square\": 10, \"North Beach\": 5, \"Pacific Heights\": 7, \"Chinatown\": 9,\n        \"Golden Gate Park\": 21, \"Marina District\": 7\n    }\n}\n\n# Friends meeting constraints data.\n# For each friend, we store: name, location, available start time, available end time, minimum meeting duration (in minutes)\nfriends = [\n    {\"name\": \"Mary\", \"location\": \"Embarcadero\", \"avail_start\": time_to_minutes(\"20:00\"), \"avail_end\": time_to_minutes(\"21:15\"), \"duration\": 75},\n    {\"name\": \"Kenneth\", \"location\": \"The Castro\", \"avail_start\": time_to_minutes(\"11:15\"), \"avail_end\": time_to_minutes(\"19:15\"), \"duration\": 30},\n    {\"name\": \"Joseph\", \"location\": \"Haight-Ashbury\", \"avail_start\": time_to_minutes(\"20:00\"), \"avail_end\": time_to_minutes(\"22:00\"), \"duration\": 120},\n    {\"name\": \"Sarah\", \"location\": \"Union Square\", \"avail_start\": time_to_minutes(\"11:45\"), \"avail_end\": time_to_minutes(\"14:30\"), \"duration\": 90},\n    {\"name\": \"Thomas\", \"location\": \"North Beach\", \"avail_start\": time_to_minutes(\"19:15\"), \"avail_end\": time_to_minutes(\"19:45\"), \"duration\": 15},\n    {\"name\": \"Daniel\", \"location\": \"Pacific Heights\", \"avail_start\": time_to_minutes(\"13:45\"), \"avail_end\": time_to_minutes(\"20:30\"), \"duration\": 15},\n    {\"name\": \"Richard\", \"location\": \"Chinatown\", \"avail_start\": time_to_minutes(\"8:00\"), \"avail_end\": time_to_minutes(\"18:45\"), \"duration\": 30},\n    {\"name\": \"Mark\", \"location\": \"Golden Gate Park\", \"avail_start\": time_to_minutes(\"17:30\"), \"avail_end\": time_to_minutes(\"21:30\"), \"duration\": 120},\n    {\"name\": \"David\", \"location\": \"Marina District\", \"avail_start\": time_to_minutes(\"20:00\"), \"avail_end\": time_to_minutes(\"21:00\"), \"duration\": 60},\n    {\"name\": \"Karen\", \"location\": \"Russian Hill\", \"avail_start\": time_to_minutes(\"13:15\"), \"avail_end\": time_to_minutes(\"18:30\"), \"duration\": 120}\n]\n\n# Global best itinerary to maximize number of meetings.\nbest_itinerary = []\n\n# DFS/backtracking to try all meeting orders that satisfy travel and availability constraints.\ndef dfs(current_time, current_loc, remaining, current_schedule):\n    global best_itinerary\n    # Update best itinerary if current schedule has more meetings than best so far.\n    if len(current_schedule) > len(best_itinerary):\n        best_itinerary = copy.deepcopy(current_schedule)\n    \n    # Try each remaining friend.\n    for i, friend in enumerate(remaining):\n        # Compute travel time from current_loc to friend's location.\n        if current_loc == friend[\"location\"]:\n            travel = 0\n        else:\n            travel = travel_times[current_loc][friend[\"location\"]]\n        arrival_time = current_time + travel\n        # The meeting can only start at the later of arrival or friend's available start.\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        meeting_end = meeting_start + friend[\"duration\"]\n        # Check if meeting can be completed before friend's available end time.\n        if meeting_end <= friend[\"avail_end\"]:\n            # Accept this meeting.\n            meeting = {\n                \"action\": \"meet\",\n                \"location\": friend[\"location\"],\n                \"person\": friend[\"name\"],\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            }\n            # Prepare new list of remaining friends.\n            new_remaining = remaining[:i] + remaining[i+1:]\n            # Continue DFS from friend's location, with time updated to meeting_end.\n            dfs(meeting_end, friend[\"location\"], new_remaining, current_schedule + [meeting])\n    # Also allow finish here (i.e. do not schedule further meetings).\n\ndef main():\n    # Starting point: Nob Hill at 9:00.\n    start_time = time_to_minutes(\"9:00\")\n    start_location = \"Nob Hill\"\n    \n    # Create a copy of friends list.\n    remaining_friends = friends[:]\n    \n    # Run DFS to compute optimal itinerary.\n    dfs(start_time, start_location, remaining_friends, [])\n    \n    # Prepare output dictionary in required JSON format.\n    output = {\"itinerary\": best_itinerary}\n    print(json.dumps(output, indent=2))\n    \nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_934"
+        }
+    ]
+}

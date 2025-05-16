@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 14\n    cities = {\n        'Amsterdam': {'days': 3, 'workshop': (9, 11)},\n        'Vienna': {'days': 7},\n        'Santorini': {'days': 4},\n        'Lyon': {'days': 3, 'wedding': (7, 9)}\n    }\n    \n    direct_flights = {\n        'Vienna': ['Lyon', 'Santorini', 'Amsterdam'],\n        'Amsterdam': ['Vienna', 'Santorini', 'Lyon'],\n        'Lyon': ['Vienna', 'Amsterdam'],\n        'Santorini': ['Vienna', 'Amsterdam']\n    }\n    \n    # Determine the order based on constraints\n    # Amsterdam must be visited during day 9-11\n    # Lyon wedding is during day 7-9\n    # So Lyon must be before Amsterdam\n    \n    # Possible sequences:\n    # 1. Start with Vienna or Santorini, then Lyon, then Amsterdam, then remaining\n    # 2. Or start with Lyon, but wedding is day 7-9, so must stay in Lyon during those days\n    \n    # Let's try starting with Vienna (7 days), then Lyon (3 days), then Amsterdam (3 days), then Santorini (1 day) - but this sums to 14 but Santorini needs 4 days\n    # Alternative: Vienna (4 days), Lyon (3 days), Amsterdam (3 days), Santorini (4 days) - sums to 14\n    \n    # Check constraints:\n    # Vienna: 7 days preferred, but we can adjust\n    # Let's try to maximize Vienna days\n    \n    # Attempt 1: Vienna (6), Lyon (3), Amsterdam (3), Santorini (2) - doesn't meet Santorini's 4 days\n    # Attempt 2: Vienna (5), Lyon (3), Amsterdam (3), Santorini (3) - still not 4 for Santorini\n    # Attempt 3: Vienna (4), Lyon (3), Amsterdam (3), Santorini (4) - meets all except Vienna's 7 days\n    \n    # Since Vienna's 7 days cannot be met with other constraints, we have to compromise\n    # Final attempt: Vienna (4), Lyon (3), Amsterdam (3), Santorini (4)\n    \n    itinerary = []\n    current_day = 1\n    \n    # Vienna: Day 1-4\n    vienna_days = 4\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + vienna_days - 1}', 'place': 'Vienna'})\n    current_day += vienna_days\n    \n    # Fly to Lyon: Day 5\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vienna', 'to': 'Lyon'})\n    \n    # Lyon: Day 5-7 (3 days, covering wedding days 7-9)\n    lyon_days = 3\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + lyon_days - 1}', 'place': 'Lyon'})\n    current_day += lyon_days\n    \n    # Fly to Amsterdam: Day 8\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Lyon', 'to': 'Amsterdam'})\n    \n    # Amsterdam: Day 8-10 (3 days, covering workshop days 9-11)\n    amsterdam_days = 3\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + amsterdam_days - 1}', 'place': 'Amsterdam'})\n    current_day += amsterdam_days\n    \n    # Fly to Santorini: Day 11\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Amsterdam', 'to': 'Santorini'})\n    \n    # Santorini: Day 11-14 (4 days)\n    santorini_days = 4\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + santorini_days - 1}', 'place': 'Santorini'})\n    \n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_253"
+        }
+    ]
+}

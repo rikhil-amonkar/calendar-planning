@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Barbara",
+                        "start_time": "9:14",
+                        "end_time": "9:59"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Barbara",
+                        "start_time": "13:15",
+                        "end_time": "14:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times between locations\ntravel_times = {\n    'Russian Hill': {'Richmond District': 14},\n    'Richmond District': {'Russian Hill': 13}\n}\n\n# Define meeting constraints\nmeetings = [\n    {'person': 'Barbara', 'location': 'Richmond District','start_time': '13:15', 'end_time': '18:15','min_time': 45}\n]\n\ndef calculate_meeting_schedule(meetings, travel_times):\n    schedule = []\n    current_time = datetime.strptime('09:00', '%H:%M')\n    current_location = 'Russian Hill'\n\n    for meeting in meetings:\n        # Calculate travel time to meeting location\n        travel_time = travel_times[current_location][meeting['location']]\n        arrival_time = current_time + timedelta(minutes=travel_time)\n\n        # Check if meeting can be attended\n        meeting_start_time = datetime.strptime(meeting['start_time'], '%H:%M')\n        meeting_end_time = datetime.strptime(meeting['end_time'], '%H:%M')\n        if arrival_time < meeting_end_time and arrival_time + timedelta(minutes=meeting['min_time']) <= meeting_end_time:\n            # Attend meeting\n            meeting_end = min(arrival_time + timedelta(minutes=meeting['min_time']), meeting_end_time)\n            schedule.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': meeting['person'],\n               'start_time': arrival_time.strftime('%H:%M'),\n                'end_time': meeting_end.strftime('%H:%M')\n            })\n            current_time = meeting_end\n            current_location = meeting['location']\n        else:\n            # Skip meeting\n            continue\n\n    return schedule\n\n# Calculate and print meeting schedule\nschedule = calculate_meeting_schedule(meetings, travel_times)\nprint(json.dumps({'itinerary': schedule}, indent=4))\n```",
+            "count": "meeting_planning_example_52"
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "12:30",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "13:17",
+                        "end_time": "14:32"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "12:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "13:47",
+                        "end_time": "14:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, '%H:%M')\n\ndef format_time(dt):\n    return dt.strftime('%-H:%M')\n\ndef calculate_schedule():\n    # Input parameters\n    travel_times = {\n        ('The Castro', 'Mission District'): 7,\n        ('The Castro', 'Financial District'): 20,\n        ('Mission District', 'The Castro'): 7,\n        ('Mission District', 'Financial District'): 17,\n        ('Financial District', 'The Castro'): 23,\n        ('Financial District', 'Mission District'): 17\n    }\n    \n    current_location = 'The Castro'\n    current_time = parse_time('9:00')\n    \n    laura_location = 'Mission District'\n    laura_start = parse_time('12:15')\n    laura_end = parse_time('19:45')\n    laura_min_duration = timedelta(minutes=75)\n    \n    anthony_location = 'Financial District'\n    anthony_start = parse_time('12:30')\n    anthony_end = parse_time('14:45')\n    anthony_min_duration = timedelta(minutes=30)\n    \n    itinerary = []\n    \n    # Calculate possible meeting with Anthony\n    # Option 1: Meet Anthony first\n    travel_to_anthony = travel_times[(current_location, anthony_location)]\n    earliest_arrival_anthony = current_time + timedelta(minutes=travel_to_anthony)\n    \n    meet_anthony_start = max(earliest_arrival_anthony, anthony_start)\n    meet_anthony_end = min(meet_anthony_start + anthony_min_duration, anthony_end)\n    \n    if meet_anthony_end <= anthony_end and (meet_anthony_end - meet_anthony_start) >= anthony_min_duration:\n        # Then try to meet Laura\n        travel_to_laura = travel_times[(anthony_location, laura_location)]\n        earliest_arrival_laura = meet_anthony_end + timedelta(minutes=travel_to_laura)\n        \n        meet_laura_start = max(earliest_arrival_laura, laura_start)\n        meet_laura_end = min(meet_laura_start + laura_min_duration, laura_end)\n        \n        if meet_laura_end <= laura_end and (meet_laura_end - meet_laura_start) >= laura_min_duration:\n            itinerary = [\n                {\n                    \"action\": \"meet\",\n                    \"location\": anthony_location,\n                    \"person\": \"Anthony\",\n                    \"start_time\": format_time(meet_anthony_start),\n                    \"end_time\": format_time(meet_anthony_end)\n                },\n                {\n                    \"action\": \"meet\",\n                    \"location\": laura_location,\n                    \"person\": \"Laura\",\n                    \"start_time\": format_time(meet_laura_start),\n                    \"end_time\": format_time(meet_laura_end)\n                }\n            ]\n            return itinerary\n    \n    # Option 2: Meet Laura first\n    travel_to_laura = travel_times[(current_location, laura_location)]\n    earliest_arrival_laura = current_time + timedelta(minutes=travel_to_laura)\n    \n    meet_laura_start = max(earliest_arrival_laura, laura_start)\n    meet_laura_end = min(meet_laura_start + laura_min_duration, laura_end)\n    \n    if meet_laura_end <= laura_end and (meet_laura_end - meet_laura_start) >= laura_min_duration:\n        # Then try to meet Anthony\n        travel_to_anthony = travel_times[(laura_location, anthony_location)]\n        earliest_arrival_anthony = meet_laura_end + timedelta(minutes=travel_to_anthony)\n        \n        meet_anthony_start = max(earliest_arrival_anthony, anthony_start)\n        meet_anthony_end = min(meet_anthony_start + anthony_min_duration, anthony_end)\n        \n        if meet_anthony_end <= anthony_end and (meet_anthony_end - meet_anthony_start) >= anthony_min_duration:\n            itinerary = [\n                {\n                    \"action\": \"meet\",\n                    \"location\": laura_location,\n                    \"person\": \"Laura\",\n                    \"start_time\": format_time(meet_laura_start),\n                    \"end_time\": format_time(meet_laura_end)\n                },\n                {\n                    \"action\": \"meet\",\n                    \"location\": anthony_location,\n                    \"person\": \"Anthony\",\n                    \"start_time\": format_time(meet_anthony_start),\n                    \"end_time\": format_time(meet_anthony_end)\n                }\n            ]\n            return itinerary\n    \n    # If both options fail, try to meet just one person\n    # Try Laura first\n    travel_to_laura = travel_times[(current_location, laura_location)]\n    earliest_arrival_laura = current_time + timedelta(minutes=travel_to_laura)\n    \n    meet_laura_start = max(earliest_arrival_laura, laura_start)\n    meet_laura_end = min(meet_laura_start + laura_min_duration, laura_end)\n    \n    if meet_laura_end <= laura_end and (meet_laura_end - meet_laura_start) >= laura_min_duration:\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": laura_location,\n                \"person\": \"Laura\",\n                \"start_time\": format_time(meet_laura_start),\n                \"end_time\": format_time(meet_laura_end)\n            }\n        ]\n        return itinerary\n    \n    # Then try Anthony\n    travel_to_anthony = travel_times[(current_location, anthony_location)]\n    earliest_arrival_anthony = current_time + timedelta(minutes=travel_to_anthony)\n    \n    meet_anthony_start = max(earliest_arrival_anthony, anthony_start)\n    meet_anthony_end = min(meet_anthony_start + anthony_min_duration, anthony_end)\n    \n    if meet_anthony_end <= anthony_end and (meet_anthony_end - meet_anthony_start) >= anthony_min_duration:\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": anthony_location,\n                \"person\": \"Anthony\",\n                \"start_time\": format_time(meet_anthony_start),\n                \"end_time\": format_time(meet_anthony_end)\n            }\n        ]\n        return itinerary\n    \n    return []\n\nresult = calculate_schedule()\noutput = {\"itinerary\": result}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_144"
+        }
+    ]
+}

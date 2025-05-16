@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 10-16",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define travel constraints and durations\n    days = 12\n    itinerary = []\n\n    # Defining cities to visit with their respective durations\n    stays = {\n        'Hamburg': 2,\n        'Zurich': 3,  # wedding day between day 1 and day 3\n        'Helsinki': 2,\n        'Bucharest': 2,\n        'Split': 7   # conferences on day 4 and day 10\n    }\n\n    # Initialize current day\n    current_day = 1\n\n    # Start with Zurich to accommodate the wedding\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Zurich\"] - 1}', 'place': 'Zurich'})\n    current_day += stays['Zurich']\n\n    # Transition to Hamburg from Zurich\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Zurich', 'to': 'Hamburg'})\n    # Now stay in Hamburg\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Hamburg\"] - 1}', 'place': 'Hamburg'})\n    current_day += stays['Hamburg']\n    \n    # Transition to Helsinki from Hamburg\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Hamburg', 'to': 'Helsinki'})\n    # Now stay in Helsinki\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Helsinki\"] - 1}', 'place': 'Helsinki'})\n    current_day += stays['Helsinki']\n\n    # Transition to Bucharest from Helsinki\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Helsinki', 'to': 'Bucharest'})\n    # Now stay in Bucharest\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Bucharest\"] - 1}', 'place': 'Bucharest'})\n    current_day += stays['Bucharest']\n\n    # Transition to Split from Bucharest\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Bucharest', 'to': 'Split'})\n    # Now stay in Split, including conference days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Split\"] - 1}', 'place': 'Split'})\n\n    # Return the complete itinerary as a JSON-formatted dictionary\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_itinerary = plan_trip()\n    print(trip_itinerary)\n```",
+            "count": "trip_planning_example_409"
+        }
+    ]
+}

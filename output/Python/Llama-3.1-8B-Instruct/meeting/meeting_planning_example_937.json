@@ -1,0 +1,72 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "David",
+                        "start_time": "9:23",
+                        "end_time": "9:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "William",
+                        "start_time": "9:54",
+                        "end_time": "10:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kimberly",
+                        "start_time": "11:13",
+                        "end_time": "12:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mary",
+                        "start_time": "14:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "15:42",
+                        "end_time": "17:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Charles",
+                        "start_time": "17:56",
+                        "end_time": "18:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Ronald",
+                        "start_time": "18:30",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nimport datetime\nfrom itertools import product\n\ndef calculate_travel_time(distance, start_time):\n    travel_time = distance / 60\n    end_time = start_time + datetime.timedelta(minutes=travel_time)\n    return end_time\n\ndef generate_schedules(locations, travel_times, constraints):\n    schedules = []\n    for start_time in [datetime.datetime.strptime('09:00', '%H:%M')]:\n        for person in constraints:\n            for time in constraints[person]:\n                if time[0] >= start_time and time[1] >= start_time + datetime.timedelta(minutes=constraints[person][time]):\n                    for location in locations:\n                        if location!='Russian Hill':\n                            for other_time in constraints:\n                                if other_time!= person:\n                                    for other_location in locations:\n                                        if other_location!='Russian Hill' and other_location!= location:\n                                            for travel in travel_times:\n                                                if travel[0] == location and travel[1] == other_location:\n                                                    schedule = {\n                                                        \"action\": \"meet\",\n                                                        \"location\": location,\n                                                        \"person\": person,\n                                                        \"start_time\": start_time.strftime('%H:%M'),\n                                                        \"end_time\": (start_time + datetime.timedelta(minutes=travel[2])).strftime('%H:%M')\n                                                    }\n                                                    if other_location == 'Sunset District':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 24)).strftime('%H:%M')\n                                                    elif other_location == 'Union Square':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 13)).strftime('%H:%M')\n                                                    elif other_location == 'Nob Hill':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 5)).strftime('%H:%M')\n                                                    elif other_location == 'Marina District':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 8)).strftime('%H:%M')\n                                                    elif other_location == 'Richmond District':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 13)).strftime('%H:%M')\n                                                    elif other_location == 'Financial District':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 11)).strftime('%H:%M')\n                                                    elif other_location == 'Embarcadero':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 8)).strftime('%H:%M')\n                                                    elif other_location == 'The Castro':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 18)).strftime('%H:%M')\n                                                    elif other_location == 'Alamo Square':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 13)).strftime('%H:%M')\n                                                    elif other_location == 'Presidio':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 14)).strftime('%H:%M')\n                                                    else:\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2])).strftime('%H:%M')\n                                                    schedules.append(schedule)\n    return schedules\n\ndef find_optimal_schedule(schedules):\n    optimal_schedule = []\n    for schedule in schedules:\n        if len(optimal_schedule) == 0 or len(schedule) > len(optimal_schedule):\n            optimal_schedule = schedule\n    return optimal_schedule\n\ndef main():\n    locations = ['Russian Hill', 'Sunset District', 'Union Square', 'Nob Hill', 'Marina District', 'Richmond District', 'Financial District', 'Embarcadero', 'The Castro', 'Alamo Square', 'Presidio']\n    travel_times = [\n        ['Russian Hill', 'Sunset District', 23],\n        ['Russian Hill', 'Union Square', 10],\n        ['Russian Hill', 'Nob Hill', 5],\n        ['Russian Hill', 'Marina District', 7],\n        ['Russian Hill', 'Richmond District', 14],\n        ['Russian Hill', 'Financial District', 11],\n        ['Russian Hill', 'Embarcadero', 8],\n        ['Russian Hill', 'The Castro', 21],\n        ['Russian Hill', 'Alamo Square', 15],\n        ['Russian Hill', 'Presidio', 14],\n        ['Sunset District', 'Russian Hill', 24],\n        ['Sunset District', 'Union Square', 30],\n        ['Sunset District', 'Nob Hill', 27],\n        ['Sunset District', 'Marina District', 21],\n        ['Sunset District', 'Richmond District', 12],\n        ['Sunset District', 'Financial District', 30],\n        ['Sunset District', 'Embarcadero', 30],\n        ['Sunset District', 'The Castro', 17],\n        ['Sunset District', 'Alamo Square', 17],\n        ['Sunset District', 'Presidio', 16],\n        ['Union Square', 'Russian Hill', 13],\n        ['Union Square', 'Sunset District', 27],\n        ['Union Square', 'Nob Hill', 9],\n        ['Union Square', 'Marina District', 18],\n        ['Union Square', 'Richmond District', 20],\n        ['Union Square', 'Financial District', 9],\n        ['Union Square', 'Embarcadero', 11],\n        ['Union Square', 'The Castro', 17],\n        ['Union Square', 'Alamo Square', 15],\n        ['Union Square', 'Presidio', 24],\n        ['Nob Hill', 'Russian Hill', 5],\n        ['Nob Hill', 'Sunset District', 24],\n        ['Nob Hill', 'Union Square', 7],\n        ['Nob Hill', 'Marina District', 11],\n        ['Nob Hill', 'Richmond District', 14],\n        ['Nob Hill', 'Financial District', 9],\n        ['Nob Hill', 'Embarcadero', 9],\n        ['Nob Hill', 'The Castro', 17],\n        ['Nob Hill', 'Alamo Square', 11],\n        ['Nob Hill', 'Presidio', 17],\n        ['Marina District', 'Russian Hill', 8],\n        ['Marina District', 'Sunset District', 19],\n        ['Marina District', 'Union Square', 16],\n        ['Marina District', 'Nob Hill', 12],\n        ['Marina District', 'Richmond District', 11],\n        ['Marina District', 'Financial District', 17],\n        ['Marina District', 'Embarcadero', 14],\n        ['Marina District', 'The Castro', 22],\n        ['Marina District', 'Alamo Square', 15],\n        ['Marina District', 'Presidio', 10],\n        ['Richmond District', 'Russian Hill', 13],\n        ['Richmond District', 'Sunset District', 11],\n        ['Richmond District', 'Union Square', 21],\n        ['Richmond District', 'Nob Hill', 17],\n        ['Richmond District', 'Marina District', 9],\n        ['Richmond District', 'Financial District', 22],\n        ['Richmond District', 'Embarcadero', 19],\n        ['Richmond District', 'The Castro', 16],\n        ['Richmond District', 'Alamo Square', 13],\n        ['Richmond District', 'Presidio', 7],\n        ['Financial District', 'Russian Hill', 11],\n        ['Financial District', 'Sunset District', 30],\n        ['Financial District', 'Union Square', 9],\n        ['Financial District', 'Nob Hill', 8],\n        ['Financial District', 'Marina District', 15],\n        ['Financial District', 'Richmond District', 21],\n        ['Financial District', 'Embarcadero', 4],\n        ['Financial District', 'The Castro', 20],\n        ['Financial District', 'Alamo Square', 17],\n        ['Financial District', 'Presidio', 22],\n        ['Embarcadero', 'Russian Hill', 8],\n        ['Embarcadero', 'Sunset District', 30],\n        ['Embarcadero', 'Union Square', 10],\n        ['Embarcadero', 'Nob Hill', 10],\n        ['Embarcadero', 'Marina District', 12],\n        ['Embarcadero', 'Richmond District', 21],\n        ['Embarcadero', 'Financial District', 5],\n        ['Embarcadero', 'The Castro', 25],\n        ['Embarcadero', 'Alamo Square', 19],\n        ['Embarcadero', 'Presidio', 20],\n        ['The Castro', 'Russian Hill', 18],\n        ['The Castro', 'Sunset District', 17],\n        ['The Castro', 'Union Square', 19],\n        ['The Castro', 'Nob Hill', 16],\n        ['The Castro', 'Marina District', 21],\n        ['The Castro', 'Richmond District', 16],\n        ['The Castro', 'Financial District', 21],\n        ['The Castro', 'Embarcadero', 22],\n        ['The Castro', 'Alamo Square', 8],\n        ['The Castro', 'Presidio', 20],\n        ['Alamo Square', 'Russian Hill', 13],\n        ['Alamo Square', 'Sunset District', 16],\n        ['Alamo Square', 'Union Square', 14],\n        ['Alamo Square', 'Nob Hill', 11],\n        ['Alamo Square', 'Marina District', 15],\n        ['Alamo Square', 'Richmond District', 11],\n        ['Alamo Square', 'Financial District', 17],\n        ['Alamo Square', 'Embarcadero', 16],\n        ['Alamo Square', 'The Castro', 8],\n        ['Alamo Square', 'Presidio', 17],\n        ['Presidio', 'Russian Hill', 14],\n        ['Presidio', 'Sunset District', 15],\n        ['Presidio', 'Union Square', 22],\n        ['Presidio', 'Nob Hill', 18],\n        ['Presidio', 'Marina District', 11],\n        ['Presidio', 'Richmond District', 7],\n        ['Presidio', 'Financial District', 23],\n        ['Presidio', 'Embarcadero', 20],\n        ['Presidio', 'The Castro', 21],\n        ['Presidio', 'Alamo Square', 19]\n    ]\n    constraints = {\n        'David': {'09:15-22:00': 15},\n        'Kenneth': {'21:15-21:45': 15},\n        'Patricia': {'15:00-19:15': 120},\n        'Mary': {'14:45-16:45': 45},\n        'Charles': {'17:15-21:00': 15},\n        'Joshua': {'14:30-17:15': 90},\n        'Ronald': {'18:15-21:45': 30},\n        'George': {'14:15-19:00': 105},\n        'Kimberly': {'09:00-14:30': 105},\n        'William': {'07:00-12:45': 60}\n    }\n    schedules = generate_schedules(locations, travel_times, constraints)\n    optimal_schedule = find_optimal_schedule(schedules)\n    print(json.dumps({'itinerary': optimal_schedule}))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_937"
+        }
+    ]
+}

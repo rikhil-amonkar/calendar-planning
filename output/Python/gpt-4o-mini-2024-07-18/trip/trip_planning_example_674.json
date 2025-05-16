@@ -1,0 +1,61 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Budapest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    itinerary = []\n    \n    # Constants for duration in days\n    HELSINKI_DAYS = 2\n    WARSAW_DAYS = 3\n    MADRID_DAYS = 4\n    SPLIT_DAYS = 4\n    REYKJAVIK_DAYS = 2\n    BUDAPEST_DAYS = 4\n\n    # Days allocated\n    total_days = 14\n    \n    # Create an itinerary based on given conditions\n    current_day = 1\n    \n    # Stay in Helsinki for 2 days (Day 1-2)\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Helsinki'})\n    \n    # Flight to Reykjavik (Day 2)\n    itinerary.append({'flying': 'Day 2', 'from': 'Helsinki', 'to': 'Reykjavik'})\n    \n    # Stay in Reykjavik for 2 days (Day 2-4)\n    itinerary.append({'day_range': 'Day 2-4', 'place': 'Reykjavik'})\n    \n    # Flight to Warsaw (Day 4)\n    itinerary.append({'flying': 'Day 4', 'from': 'Reykjavik', 'to': 'Warsaw'})\n    \n    # Stay in Warsaw for 3 days (Day 4-7)\n    itinerary.append({'day_range': 'Day 4-7', 'place': 'Warsaw'})\n    \n    # Flight to Split (Day 7)\n    itinerary.append({'flying': 'Day 7', 'from': 'Warsaw', 'to': 'Split'})\n    \n    # Stay in Split for 4 days (Day 7-11)\n    itinerary.append({'day_range': 'Day 7-11', 'place': 'Split'})\n    \n    # Flight to Budapest (Day 11)\n    itinerary.append({'flying': 'Day 11', 'from': 'Split', 'to': 'Budapest'})\n    \n    # Stay in Budapest for 4 days (Day 11-14)\n    itinerary.append({'day_range': 'Day 11-14', 'place': 'Budapest'})\n    \n    # Final flight back to Reykjavik from Budapest (not required in final output but logically derived)\n    itinerary.append({'flying': 'Day 14', 'from': 'Budapest', 'to': 'Reykjavik'})\n    \n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    result = calculate_itinerary()\n    print(result)\n```",
+            "count": "trip_planning_example_674"
+        }
+    ]
+}

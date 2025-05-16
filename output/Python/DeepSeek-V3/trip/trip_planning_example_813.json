@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Cities and their required days\n    cities = {\n        'Seville': 5,\n        'Vilnius': 3,\n        'Santorini': 2,\n        'London': 2,\n        'Stuttgart': 3,\n        'Dublin': 3,\n        'Frankfurt': 5\n    }\n    \n    # Direct flight connections\n    connections = {\n        'Frankfurt': ['Dublin', 'London', 'Vilnius', 'Stuttgart'],\n        'Dublin': ['Frankfurt', 'London', 'Seville', 'Santorini'],\n        'London': ['Frankfurt', 'Dublin', 'Santorini', 'Stuttgart'],\n        'Vilnius': ['Frankfurt'],\n        'Stuttgart': ['Frankfurt', 'London'],\n        'Seville': ['Dublin'],\n        'Santorini': ['London', 'Dublin']\n    }\n    \n    # Special constraints\n    london_friends_days = (9, 10)\n    stuttgart_relatives_days = (7, 9)\n    \n    # Generate all possible permutations of cities\n    for perm in permutations(cities.keys()):\n        itinerary = []\n        current_day = 1\n        prev_city = None\n        valid = True\n        \n        for city in perm:\n            if prev_city is not None:\n                # Check if there's a direct flight\n                if city not in connections[prev_city]:\n                    valid = False\n                    break\n                # Add flight day\n                itinerary.append({\n                    'day_range': f'Day {current_day}-{current_day}',\n                    'flying': True,\n                    'from': prev_city,\n                    'to': city\n                })\n                current_day += 1\n            \n            # Add stay in city\n            stay_days = cities[city]\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            \n            # Check special constraints\n            if city == 'London':\n                if not (current_day <= london_friends_days[0] and end_day >= london_friends_days[1]):\n                    valid = False\n                    break\n            if city == 'Stuttgart':\n                if not (current_day <= stuttgart_relatives_days[0] and end_day >= stuttgart_relatives_days[1]):\n                    valid = False\n                    break\n            \n            current_day = end_day + 1\n            prev_city = city\n        \n        # Check total days\n        if valid and (current_day - 1) == 17:\n            # Reconstruct itinerary in desired format\n            final_itinerary = []\n            for item in itinerary:\n                if 'flying' in item:\n                    final_itinerary.append({\n                        'day_range': item['day_range'],\n                        'from': item['from'],\n                        'to': item['to']\n                    })\n                else:\n                    final_itinerary.append({\n                        'day_range': item['day_range'],\n                        'place': item['place']\n                    })\n            return final_itinerary\n    \n    return None\n\ndef main():\n    itinerary = find_valid_itinerary()\n    if itinerary:\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_813"
+        }
+    ]
+}

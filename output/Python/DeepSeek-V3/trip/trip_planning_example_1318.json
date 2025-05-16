@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_itinerary():\n    # Input parameters\n    total_days = 25\n    cities = {\n        'Oslo': 2,\n        'Helsinki': 2,  # Note: Typo in city name (should be Helsinki)\n        'Edinburgh': 3,\n        'Riga': 2,\n        'Tallinn': 5,\n        'Budapest': 5,\n        'Vilnius': 5,\n        'Porto': 5,\n        'Geneva': 4\n    }\n    \n    # Correcting the typo in city name\n    cities['Helsinki'] = cities.pop('Helsinki')\n    \n    # Special constraints\n    oslo_meetup_day = (24, 25)\n    tallinn_wedding = (4, 8)\n    \n    # Direct flights (undirected graph)\n    direct_flights = {\n        'Porto': ['Oslo', 'Edinburgh', 'Geneva'],\n        'Edinburgh': ['Porto', 'Budapest', 'Geneva', 'Oslo', 'Helsinki', 'Riga'],\n        'Riga': ['Tallinn', 'Oslo', 'Helsinki', 'Vilnius', 'Edinburgh'],\n        'Tallinn': ['Riga', 'Vilnius', 'Helsinki', 'Oslo'],\n        'Vilnius': ['Helsinki', 'Tallinn', 'Oslo', 'Riga'],\n        'Helsinki': ['Vilnius', 'Budapest', 'Oslo', 'Geneva', 'Tallinn', 'Edinburgh', 'Riga'],\n        'Budapest': ['Edinburgh', 'Geneva', 'Helsinki', 'Oslo'],\n        'Geneva': ['Edinburgh', 'Porto', 'Oslo', 'Budapest', 'Helsinki'],\n        'Oslo': ['Porto', 'Riga', 'Geneva', 'Edinburgh', 'Vilnius', 'Budapest', 'Helsinki', 'Tallinn']\n    }\n    \n    # Generate all possible city orders that satisfy constraints\n    city_names = list(cities.keys())\n    \n    # We'll try permutations until we find a valid itinerary\n    for perm in permutations(city_names):\n        itinerary = []\n        current_day = 1\n        valid = True\n        \n        # Check if Tallinn is visited during wedding days\n        tallinn_pos = perm.index('Tallinn')\n        prev_cities = perm[:tallinn_pos]\n        days_before_tallinn = sum(cities[city] for city in prev_cities) + len(prev_cities) - 1\n        \n        tallinn_start = days_before_tallinn + 1\n        tallinn_end = tallinn_start + cities['Tallinn'] - 1\n        \n        if not (tallinn_start <= tallinn_wedding[1] and tallinn_end >= tallinn_wedding[0]):\n            continue\n        \n        # Check Oslo meetup\n        oslo_pos = perm.index('Oslo')\n        prev_cities = perm[:oslo_pos]\n        days_before_oslo = sum(cities[city] for city in prev_cities) + len(prev_cities) - 1\n        \n        oslo_start = days_before_oslo + 1\n        oslo_end = oslo_start + cities['Oslo'] - 1\n        \n        if not (oslo_start <= oslo_meetup_day[1] and oslo_end >= oslo_meetup_day[0]):\n            continue\n        \n        # Check flight connections\n        for i in range(len(perm)):\n            if i > 0:\n                from_city = perm[i-1]\n                to_city = perm[i]\n                if to_city not in direct_flights[from_city]:\n                    valid = False\n                    break\n                \n                # Add flight day\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': from_city,\n                    'to': to_city\n                })\n                current_day += 1\n            \n            # Add stay\n            city = perm[i]\n            stay_days = cities[city]\n            itinerary.append({\n                'day_range': f'Day {current_day}-{current_day + stay_days - 1}',\n                'place': city\n            })\n            current_day += stay_days\n        \n        if valid and current_day - 1 == total_days:\n            return itinerary\n    \n    return None\n\ndef main():\n    itinerary = find_itinerary()\n    if itinerary:\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1318"
+        }
+    ]
+}

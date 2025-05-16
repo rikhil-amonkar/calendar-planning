@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define the trip constraints and parameters\n    total_days = 25\n    cities_stay = {\n        \"Warsaw\": 4,\n        \"Venice\": 3,\n        \"Vilnius\": 3,\n        \"Salzburg\": 4,\n        \"Amsterdam\": 2,\n        \"Barcelona\": 5,\n        \"Paris\": 2,\n        \"Hamburg\": 4,\n        \"Florence\": 5,\n        \"Tallinn\": 2\n    }\n    \n    workshop_days = (1, 2)\n    wedding_days = (22, 25)\n    friends_days = (2, 6)\n    meeting_days_tallinn = (11, 12)\n    conference_days_hamburg = (19, 22)\n    \n    # List of flights between cities\n    flights = {\n        \"Paris\": [\"Venice\", \"Hamburg\", \"Vilnius\", \"Amsterdam\", \"Florence\", \"Barcelona\"],\n        \"Venice\": [\"Hamburg\", \"Warsaw\"],\n        \"Barcelona\": [\"Amsterdam\", \"Hamburg\", \"Florence\", \"Venice\", \"Tallinn\"],\n        \"Warsaw\": [\"Amsterdam\", \"Venice\", \"Hamburg\", \"Vilnius\"],\n        \"Amsterdam\": [\"Vilnius\", \"Hamburg\", \"Tallinn\", \"Barcelona\", \"Warsaw\", \"Paris\"],\n        \"Hamburg\": [\"Salzburg\", \"Barcelona\", \"Paris\"],\n        \"Salzburg\": [],\n        \"Vilnius\": [\"Warsaw\", \"Amsterdam\"],\n        \"Florence\": [\"Barcelona\", \"Amsterdam\", \"Paris\"],\n        \"Tallinn\": [\"Barcelona\", \"Warsaw\", \"Amsterdam\", \"Paris\"],\n    }\n    \n    itinerary = []\n    current_day = 1\n\n    # Day 1-2: Paris (workshop)\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Paris'})\n    current_day += 2\n\n    # Day 3-7: Barcelona (meet friends)\n    itinerary.append({'flying': 'Day 2-3', 'from': 'Paris', 'to': 'Barcelona'})\n    itinerary.append({'day_range': 'Day 3-7', 'place': 'Barcelona'})\n    current_day += 5\n    \n    # Day 8-12: Florence\n    itinerary.append({'flying': 'Day 7-8', 'from': 'Barcelona', 'to': 'Florence'})\n    itinerary.append({'day_range': 'Day 8-12', 'place': 'Florence'})\n    current_day += 5\n    \n    # Day 13-16: Venice\n    itinerary.append({'flying': 'Day 12-13', 'from': 'Florence', 'to': 'Venice'})\n    itinerary.append({'day_range': 'Day 13-16', 'place': 'Venice'})\n    current_day += 3\n    \n    # Day 17-19: Amsterdam\n    itinerary.append({'flying': 'Day 16-17', 'from': 'Venice', 'to': 'Amsterdam'})\n    itinerary.append({'day_range': 'Day 17-19', 'place': 'Amsterdam'})\n    current_day += 2\n    \n    # Day 19-21: Hamburg (conference)\n    itinerary.append({'flying': 'Day 19-19', 'from': 'Amsterdam', 'to': 'Hamburg'})\n    itinerary.append({'day_range': 'Day 19-21', 'place': 'Hamburg'})\n    current_day += 3\n    \n    # Day 22-25: Salzburg (wedding)\n    itinerary.append({'flying': 'Day 21-22', 'from': 'Hamburg', 'to': 'Salzburg'})\n    itinerary.append({'day_range': 'Day 22-25', 'place': 'Salzburg'})\n    current_day += 4\n    \n    # Day 26: Warsaw (the remaining days)\n    # We need to fit Warsaw in, we can place it between Amsterdam and Hamburg\n    # Adjusting previous entries\n    amsterdam_end_day = 19\n    itinerary.insert(4, {'flying': 'Day 18-19', 'from': 'Amsterdam', 'to': 'Warsaw'})\n    itinerary.insert(5, {'day_range': 'Day 19-22', 'place': 'Warsaw'})\n    \n    # Adding Tallinn after Barcelona\n    itinerary.append({'flying': 'Day 6-7', 'from': 'Barcelona', 'to': 'Tallinn'})\n    itinerary.append({'day_range': 'Day 7-9', 'place': 'Tallinn'})\n    \n    # Day 20-21: Vilnius\n    itinerary.append({'flying': 'Day 9-10', 'from': 'Tallinn', 'to': 'Vilnius'})\n    itinerary.append({'day_range': 'Day 10-12', 'place': 'Vilnius'})\n    \n    # Finish the allocation by checking total days equal 25\n    if current_day != total_days:\n        raise ValueError(\"Total days in the itinerary do not match expected total of 25.\")\n    \n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    print(create_itinerary())\n```",
+            "count": "trip_planning_example_1534"
+        }
+    ]
+}

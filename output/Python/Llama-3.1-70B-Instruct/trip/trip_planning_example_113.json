@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    cities = list(constraints.keys())\n    unvisited_cities = cities.copy()\n    current_city = None\n\n    # Start with Naples\n    current_city = 'Naples'\n    unvisited_cities.remove(current_city)\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[current_city] - 1}', 'place': current_city})\n    current_day += constraints[current_city]\n\n    # Visit Milan\n    next_city = 'Milan'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Seville\n    next_city = 'Seville'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    if current_day < 9:\n        trip_plan.append({'day_range': f'Day {current_day}-{8}', 'place': next_city})\n        current_day = 9\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': next_city})\n\n    return trip_plan\n\nconstraints = {\n    'Naples': 3,\n    'Seville': 4,\n    'Milan': 7\n}\n\ndirect_flights = [\n    ['Milan', 'Seville'],\n    ['Naples', 'Milan']\n]\n\ntrip_plan = calculate_trip_plan(constraints, direct_flights)\nprint(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_113"
+        }
+    ]
+}

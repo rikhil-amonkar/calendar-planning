@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "9:45",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "14:51",
+                        "end_time": "16:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "16:28",
+                        "end_time": "18:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "18:45",
+                        "end_time": "19:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "14:52",
+                        "end_time": "15:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "15:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "17:37",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "19:02",
+                        "end_time": "19:47"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper functions\ndef minutes_to_time_str(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Data: travel times (in minutes) between locations.\n# Locations: Presidio, Richmond District, North Beach, Financial District, Golden Gate Park, Union Square\ntravel_times = {\n    \"Presidio\": {\n        \"Richmond District\": 7,\n        \"North Beach\": 18,\n        \"Financial District\": 23,\n        \"Golden Gate Park\": 12,\n        \"Union Square\": 22\n    },\n    \"Richmond District\": {\n        \"Presidio\": 7,\n        \"North Beach\": 17,\n        \"Financial District\": 22,\n        \"Golden Gate Park\": 9,\n        \"Union Square\": 21\n    },\n    \"North Beach\": {\n        \"Presidio\": 17,\n        \"Richmond District\": 18,\n        \"Financial District\": 8,\n        \"Golden Gate Park\": 22,\n        \"Union Square\": 7\n    },\n    \"Financial District\": {\n        \"Presidio\": 22,\n        \"Richmond District\": 21,\n        \"North Beach\": 7,\n        \"Golden Gate Park\": 23,\n        \"Union Square\": 9\n    },\n    \"Golden Gate Park\": {\n        \"Presidio\": 11,\n        \"Richmond District\": 7,\n        \"North Beach\": 24,\n        \"Financial District\": 26,\n        \"Union Square\": 22\n    },\n    \"Union Square\": {\n        \"Presidio\": 24,\n        \"Richmond District\": 20,\n        \"North Beach\": 10,\n        \"Financial District\": 9,\n        \"Golden Gate Park\": 22\n    }\n}\n\n# Friend meeting constraints and details.\nfriends = [\n    {\n        \"name\": \"Jason\",\n        \"location\": \"Richmond District\",\n        \"avail_start\": 13 * 60,         # 13:00 = 780\n        \"avail_end\": 20 * 60 + 45,        # 20:45 = 1245\n        \"min_meeting\": 90\n    },\n    {\n        \"name\": \"Melissa\",\n        \"location\": \"North Beach\",\n        \"avail_start\": 18 * 60 + 45,      # 18:45 = 1125\n        \"avail_end\": 20 * 60 + 15,        # 20:15 = 1215\n        \"min_meeting\": 45\n    },\n    {\n        \"name\": \"Brian\",\n        \"location\": \"Financial District\",\n        \"avail_start\": 9 * 60 + 45,       # 9:45 = 585\n        \"avail_end\": 21 * 60 + 45,        # 21:45 = 1305\n        \"min_meeting\": 15\n    },\n    {\n        \"name\": \"Elizabeth\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": 8 * 60 + 45,       # 8:45 = 525\n        \"avail_end\": 21 * 60 + 30,        # 21:30 = 1290\n        \"min_meeting\": 105\n    },\n    {\n        \"name\": \"Laura\",\n        \"location\": \"Union Square\",\n        \"avail_start\": 14 * 60 + 15,      # 14:15 = 855\n        \"avail_end\": 19 * 60 + 30,        # 19:30 = 1170\n        \"min_meeting\": 75\n    }\n]\n\n# Start location and time\nstart_location = \"Presidio\"\nstart_time = 9 * 60  # 9:00 AM is 540 minutes\n\ndef compute_schedule(order):\n    \"\"\"Given an order of meetings (list of friend dicts), compute timeline if feasible.\n       Returns itinerary (list) and finish_time if feasible; otherwise returns None.\"\"\"\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    total_wait = 0  # total waiting minutes (not required for output, but could choose best schedule)\n    \n    for friend in order:\n        # Travel from current location to friend's location\n        if current_location == friend[\"location\"]:\n            travel = 0\n        else:\n            travel = travel_times[current_location][friend[\"location\"]]\n        arrival_time = current_time + travel\n        \n        # Meeting start time is the later of arrival and friend's available start\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        wait_time = meeting_start - arrival_time\n        total_wait += wait_time\n        \n        meeting_end = meeting_start + friend[\"min_meeting\"]\n        \n        # Check if meeting fits in friend's available window\n        if meeting_end > friend[\"avail_end\"]:\n            return None\n        \n        # Append meeting to itinerary (times converted to string)\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time_str(meeting_start),\n            \"end_time\": minutes_to_time_str(meeting_end)\n        })\n        \n        # Update current_time and current_location for next meeting.\n        current_time = meeting_end\n        current_location = friend[\"location\"]\n    return {\n        \"itinerary\": itinerary,\n        \"finish_time\": current_time,\n        \"total_wait\": total_wait\n    }\n\ndef main():\n    best_schedule = None\n    best_finish_time = None\n    best_wait = None\n    best_order = None\n    \n    # Iterate over all permutations of the friends\n    for perm in itertools.permutations(friends):\n        schedule = compute_schedule(perm)\n        if schedule is not None:\n            # Since we want to meet as many friends as possible, feasible schedule with all 5\n            # Between multiple feasible schedules, we pick one with minimal finish time, then minimal waiting time.\n            if best_schedule is None:\n                best_schedule = schedule\n                best_finish_time = schedule[\"finish_time\"]\n                best_wait = schedule[\"total_wait\"]\n                best_order = perm\n            else:\n                if schedule[\"finish_time\"] < best_finish_time:\n                    best_schedule = schedule\n                    best_finish_time = schedule[\"finish_time\"]\n                    best_wait = schedule[\"total_wait\"]\n                    best_order = perm\n                elif schedule[\"finish_time\"] == best_finish_time and schedule[\"total_wait\"] < best_wait:\n                    best_schedule = schedule\n                    best_finish_time = schedule[\"finish_time\"]\n                    best_wait = schedule[\"total_wait\"]\n                    best_order = perm\n\n    if best_schedule is None:\n        # If no schedule is possible for all friends, output an empty itinerary.\n        result = {\"itinerary\": []}\n    else:\n        # Only output the itinerary portion.\n        result = {\"itinerary\": best_schedule[\"itinerary\"]}\n    print(json.dumps(result, indent=2))\n    \nif __name__ == '__main__':\n    main()",
+            "count": "meeting_planning_example_423"
+        }
+    ]
+}

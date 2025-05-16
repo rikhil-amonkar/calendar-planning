@@ -1,0 +1,89 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 16-16",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 26-27",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 12-12",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define constraints\n    cities = {\n        \"Riga\": 4,\n        \"Manchester\": 5,\n        \"Bucharest\": 4,\n        \"Florence\": 4,\n        \"Vienna\": 2,\n        \"Istanbul\": 2,\n        \"Reykjavik\": 4,\n        \"Stuttgart\": 5\n    }\n\n    # Workshop constraints\n    workshop_days = list(range(16, 20))  # Days 16 to 19 in Bucharest\n    annual_show_days = [12, 13]  # Days 12 and 13 in Istanbul\n\n    # Create a schedule based on constraints\n    days = 23\n    itinerary = []\n    current_day = 1\n\n    # Visit Riga\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Riga\"] - 1}', 'place': 'Riga'})\n    current_day += cities[\"Riga\"]\n\n    # Visit Manchester\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Manchester\"] - 1}', 'place': 'Manchester'})\n    current_day += cities[\"Manchester\"]\n\n    # Go to Bucharest (workshop days must be handled)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Manchester', 'to': 'Bucharest'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Bucharest\"] - 1}', 'place': 'Bucharest'})\n    current_day += cities[\"Bucharest\"]\n\n    # Attend workshop days in Bucharest\n    for day in workshop_days:\n        if current_day != day:\n            # Shift to the correct day range if needed\n            itinerary.append({'day_range': f'Day {day}-{day}', 'place': 'Bucharest'})\n        current_day = day + 1\n\n    # Visit Florence\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Bucharest', 'to': 'Florence'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Florence\"] - 1}', 'place': 'Florence'})\n    current_day += cities[\"Florence\"]\n\n    # Visit Vienna\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Florence', 'to': 'Vienna'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Vienna\"] - 1}', 'place': 'Vienna'})\n    current_day += cities[\"Vienna\"]\n\n    # Visit Istanbul\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vienna', 'to': 'Istanbul'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Istanbul\"] - 1}', 'place': 'Istanbul'})\n    current_day += cities[\"Istanbul\"]\n\n    # Attend annual show days in Istanbul\n    for day in annual_show_days:\n        if current_day != day:\n            itinerary.append({'day_range': f'Day {day}-{day}', 'place': 'Istanbul'})\n        current_day = day + 1\n\n    # Visit Reykjavik\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Istanbul', 'to': 'Reykjavik'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Reykjavik\"] - 1}', 'place': 'Reykjavik'})\n    current_day += cities[\"Reykjavik\"]\n\n    # Visit Stuttgart\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Reykjavik', 'to': 'Stuttgart'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Stuttgart\"] - 1}', 'place': 'Stuttgart'})\n    current_day += cities[\"Stuttgart\"]\n\n    # Convert to JSON format\n    return json.dumps(itinerary, indent=4)\n\n# Run the itinerary creation function and print the output\nif __name__ == \"__main__\":\n    print(create_itinerary())\n```",
+            "count": "trip_planning_example_1009"
+        }
+    ]
+}

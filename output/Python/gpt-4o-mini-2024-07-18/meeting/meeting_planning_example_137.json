@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "9:23",
+                        "end_time": "10:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "13:53",
+                        "end_time": "14:38"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times\ntravel_times = {\n    (\"Financial District\", \"Chinatown\"): 5,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Chinatown\", \"Financial District\"): 5,\n    (\"Chinatown\", \"Golden Gate Park\"): 23,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n}\n\n# Meeting constraints\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\nkenneth_start = datetime.strptime(\"12:00\", \"%H:%M\")\nkenneth_end = datetime.strptime(\"15:00\", \"%H:%M\")\nbarbara_start = datetime.strptime(\"08:15\", \"%H:%M\")\nbarbara_end = datetime.strptime(\"19:00\", \"%H:%M\")\n\n# Meeting duration requirements\nkenneth_meet_duration = timedelta(minutes=90)\nbarbara_meet_duration = timedelta(minutes=45)\n\n# Schedule\nitinerary = []\n\n# Helper function to schedule a meeting\ndef schedule_meeting(person, location, start_time, duration):\n    end_time = start_time + duration\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": start_time.strftime(\"%H:%M\"),\n        \"end_time\": end_time.strftime(\"%H:%M\"),\n    })\n    return end_time\n\n# Visit Barbara first\n# Travel from Financial District to Golden Gate Park\ndeparture_time = arrival_time + timedelta(minutes=travel_times[(\"Financial District\", \"Golden Gate Park\")])\nif departure_time < barbara_start:\n    departure_time = barbara_start\n\n# Meeting with Barbara\nend_time_barbara = schedule_meeting(\"Barbara\", \"Golden Gate Park\", departure_time, barbara_meet_duration)\n\n# After meeting Barbara, travel to Chinatown\n# Travel from Golden Gate Park to Chinatown\ndeparture_time = end_time_barbara + timedelta(minutes=travel_times[(\"Golden Gate Park\", \"Chinatown\")])\n\n# Meeting with Kenneth\nif departure_time < kenneth_start:\n    departure_time = kenneth_start\nend_time_kenneth = schedule_meeting(\"Kenneth\", \"Chinatown\", departure_time, kenneth_meet_duration)\n\n# Convert the itinerary to JSON format\noutput = {\n    \"itinerary\": itinerary\n}\n\n# Print the JSON output\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_137"
+        }
+    ]
+}

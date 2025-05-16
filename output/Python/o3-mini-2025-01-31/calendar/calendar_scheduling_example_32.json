@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Define meeting parameters\nmeeting_duration = timedelta(minutes=30)\nday_of_week = \"Monday\"\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Define existing schedules as lists of (start, end) times for each participant (as datetime objects)\n# Times are represented relative to an arbitrary same day with date \"1900-01-01\"\ndef parse_time(t_str):\n    return datetime.strptime(t_str, \"%H:%M\")\n\n# Emily's busy times\nemily_busy = [\n    (parse_time(\"10:00\"), parse_time(\"10:30\")),\n    (parse_time(\"11:30\"), parse_time(\"12:30\")),\n    (parse_time(\"14:00\"), parse_time(\"15:00\")),\n    (parse_time(\"16:00\"), parse_time(\"16:30\"))\n]\n\n# Melissa's busy times\nmelissa_busy = [\n    (parse_time(\"09:30\"), parse_time(\"10:00\")),\n    (parse_time(\"14:30\"), parse_time(\"15:00\"))\n]\n\n# Frank's busy times\nfrank_busy = [\n    (parse_time(\"10:00\"), parse_time(\"10:30\")),\n    (parse_time(\"11:00\"), parse_time(\"11:30\")),\n    (parse_time(\"12:30\"), parse_time(\"13:00\")),\n    (parse_time(\"13:30\"), parse_time(\"14:30\")),\n    (parse_time(\"15:00\"), parse_time(\"16:00\")),\n    (parse_time(\"16:30\"), parse_time(\"17:00\"))\n]\n# Frank's extra constraint: Frank does not want any meeting on Monday after 9:30.\n# Therefore, the meeting must end by 9:30.\n\n# Combine all participants' busy schedules\nall_busy = emily_busy + melissa_busy + frank_busy\n\n# Function that checks if proposed time slot conflicts with any busy slots\ndef is_free(proposed_start, proposed_end, busy_slots):\n    for busy_start, busy_end in busy_slots:\n        # Check if proposed meeting overlaps with a busy slot\n        if proposed_start < busy_end and busy_start < proposed_end:\n            return False\n    return True\n\n# Since Frank's constraint requires the meeting to finish by 9:30,\n# we set the latest possible end time as 9:30.\nlatest_end = parse_time(\"09:30\")\n\n# We try to find a meeting time slot between work_start and latest_end\npossible_start = work_start\nmeeting_found = False\nproposed_start = None\nproposed_end = None\n\nwhile possible_start + meeting_duration <= latest_end:\n    possible_end = possible_start + meeting_duration\n    # Check if all participants are free\n    if is_free(possible_start, possible_end, all_busy):\n        proposed_start = possible_start\n        proposed_end = possible_end\n        meeting_found = True\n        break\n    possible_start += timedelta(minutes=1)\n\nif meeting_found:\n    # Format output as HH:MM:HH:MM and include day of week\n    meeting_time_str = f\"{proposed_start.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')}\"\n    print(f\"{day_of_week}, {meeting_time_str}\")\nelse:\n    print(\"No available meeting time found that meets all constraints.\")\n'''",
+            "count": "calendar_scheduling_example_32"
+        }
+    ]
+}

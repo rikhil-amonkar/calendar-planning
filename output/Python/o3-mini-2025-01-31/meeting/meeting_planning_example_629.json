@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Matthew",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Kimberly",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "15:16",
+                        "end_time": "15:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Kenneth",
+                        "start_time": "15:53",
+                        "end_time": "16:53"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "17:11",
+                        "end_time": "18:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Helen",
+                        "start_time": "19:45",
+                        "end_time": "20:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "21:15",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Matthew",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Kimberly",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "15:16",
+                        "end_time": "15:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Kenneth",
+                        "start_time": "15:53",
+                        "end_time": "16:53"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "17:11",
+                        "end_time": "18:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Helen",
+                        "start_time": "19:45",
+                        "end_time": "20:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "21:15",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom copy import deepcopy\n\n# Helper functions to convert time formats\ndef time_to_minutes(time_str):\n    # time_str format: \"H:MM\" in 24hr format (e.g., \"9:00\", \"13:30\")\n    parts = time_str.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Define travel times dictionary (in minutes)\ntravel_times = {\n    (\"Russian Hill\", \"Presidio\"): 14,\n    (\"Russian Hill\", \"Chinatown\"): 9,\n    (\"Russian Hill\", \"Pacific Heights\"): 7,\n    (\"Russian Hill\", \"Richmond District\"): 14,\n    (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n    (\"Russian Hill\", \"Golden Gate Park\"): 21,\n    (\"Russian Hill\", \"Bayview\"): 23,\n    \n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Pacific Heights\"): 11,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Bayview\"): 31,\n    \n    (\"Chinatown\", \"Russian Hill\"): 7,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Chinatown\", \"Pacific Heights\"): 10,\n    (\"Chinatown\", \"Richmond District\"): 20,\n    (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n    (\"Chinatown\", \"Golden Gate Park\"): 23,\n    (\"Chinatown\", \"Bayview\"): 22,\n    \n    (\"Pacific Heights\", \"Russian Hill\"): 7,\n    (\"Pacific Heights\", \"Presidio\"): 11,\n    (\"Pacific Heights\", \"Chinatown\"): 11,\n    (\"Pacific Heights\", \"Richmond District\"): 12,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n    (\"Pacific Heights\", \"Bayview\"): 22,\n    \n    (\"Richmond District\", \"Russian Hill\"): 13,\n    (\"Richmond District\", \"Presidio\"): 7,\n    (\"Richmond District\", \"Chinatown\"): 20,\n    (\"Richmond District\", \"Pacific Heights\"): 10,\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n    (\"Richmond District\", \"Golden Gate Park\"): 9,\n    (\"Richmond District\", \"Bayview\"): 26,\n    \n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    \n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n    (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n    (\"Golden Gate Park\", \"Richmond District\"): 7,\n    (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n    (\"Golden Gate Park\", \"Bayview\"): 23,\n    \n    (\"Bayview\", \"Russian Hill\"): 23,\n    (\"Bayview\", \"Presidio\"): 31,\n    (\"Bayview\", \"Chinatown\"): 18,\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    (\"Bayview\", \"Richmond District\"): 25,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Bayview\", \"Golden Gate Park\"): 22,\n}\n\n# Meeting constraints for each friend.\n# Times are in minutes from midnight.\nmeetings = [\n    {\n        \"person\": \"Matthew\",\n        \"location\": \"Presidio\",\n        \"avail_start\": time_to_minutes(\"11:00\"),\n        \"avail_end\": time_to_minutes(\"21:00\"),\n        \"duration\": 90\n    },\n    {\n        \"person\": \"Margaret\",\n        \"location\": \"Chinatown\",\n        \"avail_start\": time_to_minutes(\"9:15\"),\n        \"avail_end\": time_to_minutes(\"18:45\"),\n        \"duration\": 90\n    },\n    {\n        \"person\": \"Nancy\",\n        \"location\": \"Pacific Heights\",\n        \"avail_start\": time_to_minutes(\"14:15\"),\n        \"avail_end\": time_to_minutes(\"17:00\"),\n        \"duration\": 15\n    },\n    {\n        \"person\": \"Helen\",\n        \"location\": \"Richmond District\",\n        \"avail_start\": time_to_minutes(\"19:45\"),\n        \"avail_end\": time_to_minutes(\"22:00\"),\n        \"duration\": 60\n    },\n    {\n        \"person\": \"Rebecca\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": time_to_minutes(\"21:15\"),\n        \"avail_end\": time_to_minutes(\"22:15\"),\n        \"duration\": 60\n    },\n    {\n        \"person\": \"Kimberly\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": time_to_minutes(\"13:00\"),\n        \"avail_end\": time_to_minutes(\"16:30\"),\n        \"duration\": 120\n    },\n    {\n        \"person\": \"Kenneth\",\n        \"location\": \"Bayview\",\n        \"avail_start\": time_to_minutes(\"14:30\"),\n        \"avail_end\": time_to_minutes(\"18:00\"),\n        \"duration\": 60\n    }\n]\n\n# Starting conditions\nstart_location = \"Russian Hill\"\nstart_time = time_to_minutes(\"9:00\")\n\n# Global variable to store the best itinerary (max meetings scheduled)\nbest_itinerary = []\n\ndef backtrack(curr_loc, curr_time, remaining, itinerary):\n    global best_itinerary\n    # Update best itinerary if current itinerary has more meetings\n    if len(itinerary) > len(best_itinerary):\n        best_itinerary = deepcopy(itinerary)\n    \n    # Try scheduling each remaining meeting next\n    for i, meeting in enumerate(remaining):\n        # Check travel time from current location to meeting location\n        key = (curr_loc, meeting[\"location\"])\n        if key not in travel_times:\n            continue  # if route not defined, skip\n        travel_time = travel_times[key]\n        arrival_time = curr_time + travel_time\n        # The meeting can start when both you arrive and when the friend is available.\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"duration\"]\n        # Check if the meeting can finish before the friend's availability ends.\n        if meeting_end <= meeting[\"avail_end\"]:\n            # Create an itinerary entry\n            entry = {\n                \"action\": \"meet\",\n                \"location\": meeting[\"location\"],\n                \"person\": meeting[\"person\"],\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            }\n            new_itinerary = itinerary + [entry]\n            # Prepare new remaining list (remove the meeting we just scheduled)\n            new_remaining = remaining[:i] + remaining[i+1:]\n            # Recurse from the meeting's location and end time.\n            backtrack(meeting[\"location\"], meeting_end, new_remaining, new_itinerary)\n\nif __name__ == \"__main__\":\n    # Begin backtracking search from starting location and time\n    backtrack(start_location, start_time, meetings, [])\n\n    # Prepare final output JSON object\n    output = {\"itinerary\": best_itinerary}\n    # Print JSON formatted output\n    print(json.dumps(output, indent=2))\n",
+            "count": "meeting_planning_example_629"
+        }
+    ]
+}

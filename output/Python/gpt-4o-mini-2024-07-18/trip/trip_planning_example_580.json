@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 21-27",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 28-29",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 30-23",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 13-18",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the trip parameters\n    total_days = 23\n    stay_duration = {\n        'Paris': 6,\n        'Oslo': 5,\n        'Porto': 7,\n        'Geneva': 7,\n        'Reykjavik': 2\n    }\n    relatives_in_oslo = (19, 23)\n    conference_in_geneva = (1, 1)  # Conference on Day 1 and Day 7\n\n    # Initialize the itinerary\n    itinerary = []\n    current_day = 1\n\n    # Schedule Paris\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Paris\"] - 1}', 'place': 'Paris'})\n    current_day += stay_duration[\"Paris\"]\n\n    # Schedule Geneva\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Paris', 'to': 'Geneva'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Geneva\"] - 1}', 'place': 'Geneva'})\n    current_day += stay_duration[\"Geneva\"]\n\n    # Schedule Reykjavik\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Geneva', 'to': 'Reykjavik'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Reykjavik\"] - 1}', 'place': 'Reykjavik'})\n    current_day += stay_duration[\"Reykjavik\"]\n\n    # Schedule Oslo (before relatives visit)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Reykjavik', 'to': 'Oslo'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Oslo\"] - 1}', 'place': 'Oslo'})\n    current_day += stay_duration[\"Oslo\"]\n\n    # Schedule Porto\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Oslo', 'to': 'Porto'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Porto\"] - 1}', 'place': 'Porto'})\n    current_day += stay_duration[\"Porto\"]\n\n    # Return to Geneva for conference\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Porto', 'to': 'Geneva'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Geneva'})  # 2 days for conference\n    current_day += 2\n\n    # Schedule Oslo again for relatives\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Geneva', 'to': 'Oslo'})\n    itinerary.append({'day_range': f'Day {current_day}-{relatives_in_oslo[1]}', 'place': 'Oslo'})  # stay until Day 23\n\n    # Output the itinerary as a JSON formatted dictionary\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_580"
+        }
+    ]
+}

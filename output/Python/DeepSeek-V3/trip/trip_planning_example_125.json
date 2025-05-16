@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 14-19",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 9-15",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 15\n    stuttgart_days = 6\n    seville_days = 7\n    manchester_days = 4\n    \n    # Direct flights\n    direct_flights = {\n        'Manchester': ['Seville'],\n        'Seville': ['Manchester'],\n        'Stuttgart': ['Manchester'],\n        'Manchester': ['Stuttgart']\n    }\n    \n    # Cities to visit\n    cities = {\n        'Stuttgart': stuttgart_days,\n        'Seville': seville_days,\n        'Manchester': manchester_days\n    }\n    \n    # Determine possible sequences based on direct flights\n    possible_sequences = []\n    \n    # Option 1: Stuttgart -> Manchester -> Seville\n    if 'Manchester' in direct_flights['Stuttgart'] and 'Seville' in direct_flights['Manchester']:\n        possible_sequences.append(['Stuttgart', 'Manchester', 'Seville'])\n    \n    # Option 2: Stuttgart -> Seville -> Manchester (not possible, no direct flight)\n    # Option 3: Manchester -> Stuttgart -> Seville\n    if 'Stuttgart' in direct_flights['Manchester'] and 'Seville' in direct_flights['Stuttgart']:\n        possible_sequences.append(['Manchester', 'Stuttgart', 'Seville'])\n    # But Stuttgart doesn't have direct flight to Seville, so this is invalid\n    \n    # Option 4: Manchester -> Seville -> Stuttgart\n    if 'Seville' in direct_flights['Manchester'] and 'Stuttgart' in direct_flights['Seville']:\n        possible_sequences.append(['Manchester', 'Seville', 'Stuttgart'])\n    # Seville doesn't have direct flight to Stuttgart, so invalid\n    \n    # Option 5: Seville -> Manchester -> Stuttgart\n    if 'Manchester' in direct_flights['Seville'] and 'Stuttgart' in direct_flights['Manchester']:\n        possible_sequences.append(['Seville', 'Manchester', 'Stuttgart'])\n    \n    # The only valid sequences are Option 1 and Option 5\n    valid_sequences = []\n    for seq in possible_sequences:\n        if len(seq) == 3:\n            valid_sequences.append(seq)\n    \n    # Choose the first valid sequence (both are equivalent in terms of days)\n    if not valid_sequences:\n        raise ValueError(\"No valid itinerary found with given constraints\")\n    \n    chosen_sequence = valid_sequences[0]\n    \n    # Build itinerary\n    itinerary = []\n    current_day = 1\n    \n    # First city\n    first_city = chosen_sequence[0]\n    first_days = cities[first_city]\n    itinerary.append({\n        'day_range': f'Day {current_day}-{current_day + first_days - 1}',\n        'place': first_city\n    })\n    current_day += first_days\n    \n    # Flight to second city\n    second_city = chosen_sequence[1]\n    itinerary.append({\n        'flying': f'Day {current_day}-{current_day}',\n        'from': first_city,\n        'to': second_city\n    })\n    \n    # Second city\n    second_days = cities[second_city]\n    itinerary.append({\n        'day_range': f'Day {current_day + 1}-{current_day + second_days}',\n        'place': second_city\n    })\n    current_day += second_days + 1\n    \n    # Flight to third city\n    third_city = chosen_sequence[2]\n    itinerary.append({\n        'flying': f'Day {current_day}-{current_day}',\n        'from': second_city,\n        'to': third_city\n    })\n    \n    # Third city\n    third_days = cities[third_city]\n    itinerary.append({\n        'day_range': f'Day {current_day + 1}-{current_day + third_days}',\n        'place': third_city\n    })\n    \n    return itinerary\n\ndef main():\n    itinerary = calculate_itinerary()\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_125"
+        }
+    ]
+}

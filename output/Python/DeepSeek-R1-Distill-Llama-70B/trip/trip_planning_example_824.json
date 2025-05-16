@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 25-28",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I need to write a Python program that calculates an optimal itinerary based on the given constraints. Let's break down the problem step by step.\n\nFirst, I'll list out all the cities and the number of days to stay in each:\n\n- Berlin: 5 days (with an annual show from day 1 to 5)\n- Split: 3 days\n- Bucharest: 3 days (visiting relatives from day 13 to 15)\n- Riga: 5 days\n- Lisbon: 3 days\n- Tallinn: 4 days\n- Lyon: 5 days (wedding from day 7 to 11)\n\nNext, I'll note the direct flights available between these cities:\n\n- Lisbon and Bucharest\n- Berlin and Lisbon\n- Bucharest and Riga\n- Berlin and Riga\n- Split and Lyon\n- Lisbon and Riga\n- Riga and Tallinn\n- Berlin and Split\n- Lyon and Lisbon\n- Berlin and Tallinn\n- Lyon and Bucharest\n\nNow, I need to plan the trip starting from Berlin since the annual show is from day 1 to 5. After Berlin, I should fly to Split because there's a direct flight from Berlin to Split. I'll spend 3 days in Split.\n\nFrom Split, the next logical destination with a direct flight is Lyon. I'll fly to Lyon and spend 5 days there, which includes attending the wedding from day 7 to 11.\n\nAfter Lyon, I can fly to Lisbon as there's a direct flight. I'll spend 3 days in Lisbon.\n\nFrom Lisbon, I can fly to Bucharest. I need to ensure that I arrive in Bucharest by day 13 to visit relatives. Since I'm spending 3 days in Bucharest, I'll adjust the stay to cover days 13 to 15.\n\nNext, from Bucharest, I can fly to Riga. I'll spend 5 days in Riga.\n\nFrom Riga, I can fly to Tallinn. I'll spend 4 days in Tallinn.\n\nFinally, I'll return to Berlin from Tallinn, but since the trip ends in Tallinn, I might not need to include the return flight unless specified.\n\nI need to make sure that each transition between cities happens on the same day, so the departure and arrival dates align correctly. Also, I must ensure that all constraints, like attending events within specific date ranges, are met.\n\nNow, I'll structure the itinerary step by step, ensuring that each city's stay duration and flight connections are correctly planned without overlaps or gaps.\n\nI'll also need to handle the JSON output correctly, formatting each segment with 'day_range' and 'place' for stays, and 'flying' for flights, including 'from' and 'to' cities.\n\nFinally, I'll write the Python code to compute this itinerary based on the defined constraints and flights, ensuring that the output is a valid JSON-formatted dictionary.\n</think>\n\n```python\nimport json\n\ndef compute_itinerary():\n    # Define the cities and their required days\n    cities = {\n        'Berlin': 5,\n        'Split': 3,\n        'Bucharest': 3,\n        'Riga': 5,\n        'Lisbon': 3,\n        'Tallinn': 4,\n        'Lyon': 5\n    }\n\n    # Define direct flights between cities\n    flights = {\n        'Berlin': ['Split', 'Lisbon', 'Riga', 'Tallinn'],\n        'Split': ['Lyon'],\n        'Bucharest': ['Riga'],\n        'Riga': ['Tallinn'],\n        'Lisbon': ['Bucharest', 'Riga'],\n        'Tallinn': [],\n        'Lyon': ['Lisbon', 'Bucharest']\n    }\n\n    # Timing constraints\n    berlin_show = (1, 5)\n    lyon_wedding = (7, 11)\n    bucharest_visit = (13, 15)\n\n    # Build the itinerary\n    itinerary = []\n\n    # Start with Berlin for the annual show\n    itinerary.append({'day_range': f'Day {berlin_show[0]}-{berlin_show[1]}', 'place': 'Berlin'})\n\n    # Fly to Split\n    itinerary.append({'flying': f'Day {berlin_show[1]}-{berlin_show[1]}', 'from': 'Berlin', 'to': 'Split'})\n    # Stay in Split\n    split_days = cities['Split']\n    start_day = berlin_show[1] + 1\n    end_day = start_day + split_days - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Split'})\n\n    # Fly to Lyon\n    itinerary.append({'flying': f'Day {end_day}-{end_day}', 'from': 'Split', 'to': 'Lyon'})\n    # Stay in Lyon (including wedding)\n    lyon_days = cities['Lyon']\n    start_day = end_day + 1\n    end_day = start_day + lyon_days - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Lyon'})\n\n    # Fly to Lisbon\n    itinerary.append({'flying': f'Day {end_day}-{end_day}', 'from': 'Lyon', 'to': 'Lisbon'})\n    # Stay in Lisbon\n    lisbon_days = cities['Lisbon']\n    start_day = end_day + 1\n    end_day = start_day + lisbon_days - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Lisbon'})\n\n    # Fly to Bucharest\n    itinerary.append({'flying': f'Day {end_day}-{end_day}', 'from': 'Lisbon', 'to': 'Bucharest'})\n    # Stay in Bucharest (including relatives visit)\n    bucharest_days = cities['Bucharest']\n    start_day = end_day + 1\n    end_day = start_day + bucharest_days - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Bucharest'})\n\n    # Fly to Riga\n    itinerary.append({'flying': f'Day {end_day}-{end_day}', 'from': 'Bucharest', 'to': 'Riga'})\n    # Stay in Riga\n    riga_days = cities['Riga']\n    start_day = end_day + 1\n    end_day = start_day + riga_days - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Riga'})\n\n    # Fly to Tallinn\n    itinerary.append({'flying': f'Day {end_day}-{end_day}', 'from': 'Riga', 'to': 'Tallinn'})\n    # Stay in Tallinn\n    tallinn_days = cities['Tallinn']\n    start_day = end_day + 1\n    end_day = start_day + tallinn_days - 1\n    itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Tallinn'})\n\n    return itinerary\n\n# Generate the JSON output\nitinerary = compute_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_824"
+        }
+    ]
+}

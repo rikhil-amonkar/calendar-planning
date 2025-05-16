@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "15:30",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the meeting duration\nmeeting_duration = timedelta(hours=1)\n\n# Define work hours\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\").time()\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\").time()\n\n# Define existing schedules\nmartha_schedule = {\n    \"Monday\": [(datetime.strptime(\"16:00\", \"%H:%M\").time(), datetime.strptime(\"17:00\", \"%H:%M\").time())],\n    \"Tuesday\": [(datetime.strptime(\"15:00\", \"%H:%M\").time(), datetime.strptime(\"15:30\", \"%H:%M\").time())],\n    \"Wednesday\": [(datetime.strptime(\"10:00\", \"%H:%M\").time(), datetime.strptime(\"11:00\", \"%H:%M\").time()),\n                   (datetime.strptime(\"14:00\", \"%H:%M\").time(), datetime.strptime(\"14:30\", \"%H:%M\").time())]\n}\n\nbeverly_schedule = {\n    \"Monday\": [(datetime.strptime(\"09:00\", \"%H:%M\").time(), datetime.strptime(\"13:30\", \"%H:%M\").time()),\n                (datetime.strptime(\"14:00\", \"%H:%M\").time(), datetime.strptime(\"17:00\", \"%H:%M\").time())],\n    \"Tuesday\": [(datetime.strptime(\"09:00\", \"%H:%M\").time(), datetime.strptime(\"17:00\", \"%H:%M\").time())],\n    \"Wednesday\": [(datetime.strptime(\"09:30\", \"%H:%M\").time(), datetime.strptime(\"15:30\", \"%H:%M\").time()),\n                   (datetime.strptime(\"16:30\", \"%H:%M\").time(), datetime.strptime(\"17:00\", \"%H:%M\").time())]\n}\n\ndef is_time_available(schedule, day, start_time, duration):\n    end_time = (datetime.combine(datetime.today(), start_time) + duration).time()\n    for (start, end) in schedule.get(day, []):\n        if start_time < end and end_time > start:\n            return False\n    return True\n\ndef find_meeting_time():\n    for day in [\"Monday\", \"Tuesday\", \"Wednesday\"]:\n        for hour in range(work_start.hour, work_end.hour):\n            start_time = datetime.strptime(f\"{hour}:00\", \"%H:%M\").time()\n            if is_time_available(martha_schedule, day, start_time, meeting_duration) and \\\n               is_time_available(beverly_schedule, day, start_time, meeting_duration):\n                return f\"{day}: {start_time.strftime('%H:%M')} to {(datetime.combine(datetime.today(), start_time) + meeting_duration).time().strftime('%H:%M')}\"\n\nmeeting_time = find_meeting_time()\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_767"
+        }
+    ]
+}

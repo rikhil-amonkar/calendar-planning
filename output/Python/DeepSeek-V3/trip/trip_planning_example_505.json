@@ -1,0 +1,36 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Input parameters\n    total_days = 8\n    city_stays = {\n        'Prague': 4,\n        'Stuttgart': 2,\n        'Split': 2,\n        'Krakow': 2,\n        'Florence': 2\n    }\n    flight_connections = {\n        'Stuttgart': ['Split', 'Krakow'],\n        'Prague': ['Florence', 'Split', 'Krakow'],\n        'Krakow': ['Stuttgart', 'Split', 'Prague'],\n        'Split': ['Stuttgart', 'Krakow', 'Prague'],\n        'Florence': ['Prague']\n    }\n    \n    # Constraints\n    wedding_in_stuttgart_day = (2, 3)  # between day 2 and day 3\n    meet_in_split_day = (3, 4)         # between day 3 and day 4\n    \n    # Generate all possible permutations of the cities\n    cities = list(city_stays.keys())\n    for perm in permutations(cities):\n        itinerary = []\n        current_day = 1\n        valid = True\n        \n        # Check if Stuttgart is visited at the right time for the wedding\n        stuttgart_pos = perm.index('Stuttgart')\n        split_pos = perm.index('Split')\n        \n        # Check if Split comes after Stuttgart for meeting friends\n        if split_pos <= stuttgart_pos:\n            continue\n        \n        # Build itinerary\n        prev_city = None\n        for city in perm:\n            stay_days = city_stays[city]\n            \n            # Check flight connection\n            if prev_city is not None:\n                if city not in flight_connections[prev_city]:\n                    valid = False\n                    break\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': city\n                })\n            \n            # Add stay\n            end_day = current_day + stay_days - 1\n            if end_day > total_days:\n                valid = False\n                break\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            \n            # Check Stuttgart wedding constraint\n            if city == 'Stuttgart':\n                if not (current_day <= wedding_in_stuttgart_day[1] and end_day >= wedding_in_stuttgart_day[0]):\n                    valid = False\n                    break\n            \n            # Check Split meeting constraint\n            if city == 'Split':\n                if not (current_day <= meet_in_split_day[1] and end_day >= meet_in_split_day[0]):\n                    valid = False\n                    break\n            \n            current_day = end_day + 1\n            prev_city = city\n        \n        if valid and current_day - 1 == total_days:\n            return itinerary\n    \n    return None\n\nitinerary = find_valid_itinerary()\nif itinerary:\n    print(json.dumps(itinerary, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n```",
+            "count": "trip_planning_example_505"
+        }
+    ]
+}

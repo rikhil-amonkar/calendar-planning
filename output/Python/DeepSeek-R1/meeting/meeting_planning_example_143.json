@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mark",
+                        "start_time": "15:45",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Karen",
+                        "start_time": "18:45",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mark",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Karen",
+                        "start_time": "18:45",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    return f\"{m // 60}:{m % 60:02d}\"\n\ntravel_time = {\n    'North Beach': {'Pacific Heights': 8, 'Embarcadero': 6},\n    'Pacific Heights': {'North Beach': 9, 'Embarcadero': 10},\n    'Embarcadero': {'North Beach': 5, 'Pacific Heights': 11}\n}\n\ninitial_location = 'North Beach'\ninitial_time = time_to_min('9:00')\n\nmark_location = 'Embarcadero'\nmark_start = time_to_min('13:00')\nmark_end = time_to_min('17:45')\nmark_duration = 120\n\nkaren_location = 'Pacific Heights'\nkaren_start = time_to_min('18:45')\nkaren_end = time_to_min('20:15')\nkaren_duration = 90\n\nlatest_mark_start = mark_end - mark_duration\nmark_possible = latest_mark_start >= mark_start\n\nitinerary = []\nif mark_possible:\n    departure_to_mark = latest_mark_start - travel_time[initial_location][mark_location]\n    if departure_to_mark < initial_time:\n        departure_to_mark = initial_time\n        arrival_at_mark = departure_to_mark + travel_time[initial_location][mark_location]\n        mark_start_time = max(arrival_at_mark, mark_start)\n        if mark_start_time + mark_duration > mark_end:\n            mark_possible = False\n        else:\n            latest_mark_start = mark_start_time\n    else:\n        arrival_at_mark = latest_mark_start\n\n    if mark_possible:\n        mark_end_time = latest_mark_start + mark_duration\n        arrival_at_karen = mark_end_time + travel_time[mark_location][karen_location]\n        karen_start_time = max(arrival_at_karen, karen_start)\n        karen_end_time = karen_start_time + karen_duration\n        if karen_end_time <= karen_end:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": mark_location,\n                \"person\": \"Mark\",\n                \"start_time\": min_to_time(latest_mark_start),\n                \"end_time\": min_to_time(mark_end_time)\n            })\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": karen_location,\n                \"person\": \"Karen\",\n                \"start_time\": min_to_time(karen_start_time),\n                \"end_time\": min_to_time(karen_end_time)\n            })\n\nimport json\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_143"
+        }
+    ]
+}

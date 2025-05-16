@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:08",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kimberly",
+                        "start_time": "16:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Patricia",
+                        "start_time": "18:00",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:08",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kimberly",
+                        "start_time": "16:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Patricia",
+                        "start_time": "18:00",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nfrom itertools import permutations\n\ndef minutes_to_time(m):\n    return f\"{m // 60}:{m % 60:02d}\"\n\nfriends = [\n    {'name': 'Helen', 'location': 'North Beach', 'start': 7*60, 'end': 16*60+45, 'duration': 120},\n    {'name': 'Kimberly', 'location': \"Fisherman's Wharf\", 'start': 16*60+30, 'end': 21*60, 'duration': 45},\n    {'name': 'Patricia', 'location': 'Bayview', 'start': 18*60, 'end': 21*60+15, 'duration': 120}\n]\n\ntravel_times = {\n    ('Nob Hill', 'North Beach'): 8,\n    ('Nob Hill', \"Fisherman's Wharf\"): 11,\n    ('Nob Hill', 'Bayview'): 19,\n    ('North Beach', 'Nob Hill'): 7,\n    ('North Beach', \"Fisherman's Wharf\"): 5,\n    ('North Beach', 'Bayview'): 22,\n    (\"Fisherman's Wharf\", 'Nob Hill'): 11,\n    (\"Fisherman's Wharf\", 'North Beach'): 6,\n    (\"Fisherman's Wharf\", 'Bayview'): 26,\n    ('Bayview', 'Nob Hill'): 20,\n    ('Bayview', 'North Beach'): 21,\n    ('Bayview', \"Fisherman's Wharf\"): 25\n}\n\nbest = []\nmax_count = 0\n\nfor perm in permutations(friends):\n    current_loc = 'Nob Hill'\n    current_time = 540\n    itinerary = []\n    valid = True\n    for friend in perm:\n        key = (current_loc, friend['location'])\n        travel = travel_times.get(key)\n        if travel is None:\n            valid = False\n            break\n        arrive = current_time + travel\n        start = max(arrive, friend['start'])\n        if start + friend['duration'] > friend['end']:\n            valid = False\n            break\n        end = start + friend['duration']\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend['location'],\n            \"person\": friend['name'],\n            \"start_time\": minutes_to_time(start),\n            \"end_time\": minutes_to_time(end)\n        })\n        current_time = end\n        current_loc = friend['location']\n    if valid and len(perm) > max_count:\n        max_count = len(perm)\n        best = itinerary\n    elif valid and len(perm) == max_count and len(itinerary) > len(best):\n        best = itinerary\n\nprint(json.dumps({\"itinerary\": best}, indent=2))\n```",
+            "count": "meeting_planning_example_222"
+        }
+    ]
+}

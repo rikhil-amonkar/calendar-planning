@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Nancy",
+                        "start_time": "9:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Mary",
+                        "start_time": "11:17",
+                        "end_time": "12:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jessica",
+                        "start_time": "12:48",
+                        "end_time": "13:33"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Nancy",
+                        "start_time": "9:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Mary",
+                        "start_time": "11:17",
+                        "end_time": "12:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jessica",
+                        "start_time": "12:48",
+                        "end_time": "13:33"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times in minutes\ntravel_times = {\n    (\"Financial District\", \"Chinatown\"): 5,\n    (\"Financial District\", \"Alamo Square\"): 17,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Fisherman's Wharf\"): 10,\n    (\"Chinatown\", \"Financial District\"): 5,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Bayview\"): 22,\n    (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Alamo Square\", \"Chinatown\"): 16,\n    (\"Alamo Square\", \"Bayview\"): 16,\n    (\"Alamo Square\", \"Fisherman's Wharf\"): 19,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Bayview\", \"Chinatown\"): 18,\n    (\"Bayview\", \"Alamo Square\"): 16,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n    (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n    (\"Fisherman's Wharf\", \"Alamo Square\"): 20,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n}\n\n# Meeting constraints\nconstraints = {\n    \"Nancy\": {\"location\": \"Chinatown\", \"available_from\": \"9:30\", \"available_to\": \"13:30\", \"min_duration\": 90},\n    \"Mary\": {\"location\": \"Alamo Square\", \"available_from\": \"7:00\", \"available_to\": \"21:00\", \"min_duration\": 75},\n    \"Jessica\": {\"location\": \"Bayview\", \"available_from\": \"11:15\", \"available_to\": \"13:45\", \"min_duration\": 45},\n    \"Rebecca\": {\"location\": \"Fisherman's Wharf\", \"available_from\": \"7:00\", \"available_to\": \"8:30\", \"min_duration\": 45},\n}\n\n# Start time\narrival_time = datetime.strptime('09:00', '%H:%M')\n\n# Function to calculate meeting time\ndef schedule_meeting(start, duration):\n    end = start + timedelta(minutes=duration)\n    return start, end\n\n# List to hold the itinerary\nitinerary = []\n\n# Meeting with Rebecca\nrebecca_start = datetime.strptime(constraints[\"Rebecca\"][\"available_from\"], '%H:%M')\nrebecca_end = datetime.strptime(constraints[\"Rebecca\"][\"available_to\"], '%H:%M')\nif rebecca_end >= arrival_time + timedelta(minutes=10):\n    rebecca_meet_start = max(rebecca_start, arrival_time + timedelta(minutes=10))\n    rebecca_meet_end = rebecca_meet_start + timedelta(minutes=constraints[\"Rebecca\"][\"min_duration\"])\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Fisherman's Wharf\",\n        \"person\": \"Rebecca\",\n        \"start_time\": rebecca_meet_start.strftime('%H:%M'),\n        \"end_time\": rebecca_meet_end.strftime('%H:%M')\n    })\n    travel_to_chinatown = travel_times[(\"Fisherman's Wharf\", \"Chinatown\")]\n    arrival_time = rebecca_meet_end + timedelta(minutes=travel_to_chinatown)\n\n# Meeting with Nancy\nnancy_start = datetime.strptime(constraints[\"Nancy\"][\"available_from\"], '%H:%M')\nnancy_end = datetime.strptime(constraints[\"Nancy\"][\"available_to\"], '%H:%M')\nif arrival_time < nancy_end and arrival_time + timedelta(minutes=constraints[\"Nancy\"][\"min_duration\"]) <= nancy_end:\n    nancy_meet_start = max(arrival_time, nancy_start)\n    nancy_meet_end = nancy_meet_start + timedelta(minutes=constraints[\"Nancy\"][\"min_duration\"])\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Chinatown\",\n        \"person\": \"Nancy\",\n        \"start_time\": nancy_meet_start.strftime('%H:%M'),\n        \"end_time\": nancy_meet_end.strftime('%H:%M')\n    })\n    travel_to_alamo_square = travel_times[(\"Chinatown\", \"Alamo Square\")]\n    arrival_time = nancy_meet_end + timedelta(minutes=travel_to_alamo_square)\n\n# Meeting with Mary\nmary_start = datetime.strptime(constraints[\"Mary\"][\"available_from\"], '%H:%M')\nmary_end = datetime.strptime(constraints[\"Mary\"][\"available_to\"], '%H:%M')\nif arrival_time < mary_end and arrival_time + timedelta(minutes=constraints[\"Mary\"][\"min_duration\"]) <= mary_end:\n    mary_meet_start = max(arrival_time, mary_start)\n    mary_meet_end = mary_meet_start + timedelta(minutes=constraints[\"Mary\"][\"min_duration\"])\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Alamo Square\",\n        \"person\": \"Mary\",\n        \"start_time\": mary_meet_start.strftime('%H:%M'),\n        \"end_time\": mary_meet_end.strftime('%H:%M')\n    })\n    travel_to_bayview = travel_times[(\"Alamo Square\", \"Bayview\")]\n    arrival_time = mary_meet_end + timedelta(minutes=travel_to_bayview)\n\n# Meeting with Jessica\njessica_start = datetime.strptime(constraints[\"Jessica\"][\"available_from\"], '%H:%M')\njessica_end = datetime.strptime(constraints[\"Jessica\"][\"available_to\"], '%H:%M')\nif arrival_time < jessica_end and arrival_time + timedelta(minutes=constraints[\"Jessica\"][\"min_duration\"]) <= jessica_end:\n    jessica_meet_start = max(arrival_time, jessica_start)\n    jessica_meet_end = jessica_meet_start + timedelta(minutes=constraints[\"Jessica\"][\"min_duration\"])\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Bayview\",\n        \"person\": \"Jessica\",\n        \"start_time\": jessica_meet_start.strftime('%H:%M'),\n        \"end_time\": jessica_meet_end.strftime('%H:%M')\n    })\n\n# Output the resulting itinerary as JSON\nresult = {\"itinerary\": itinerary}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_309"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(start, end, duration, constraints):\n    day_of_week = start.strftime(\"%A\")\n    current_time = start\n\n    while current_time + duration <= end:\n        is_available = True\n        for constraint in constraints:\n            if current_time < constraint[1] and (current_time + duration) > constraint[0]:\n                is_available = False\n                break\n        \n        if is_available:\n            return current_time.strftime(\"%H:%M\") + \":\" + (current_time + duration).strftime(\"%H:%M\"), day_of_week\n        \n        current_time += timedelta(minutes=30)  # Check every half hour\n\n# Constraints for Judy and Nicole\njudy_constraints = []\nnicole_constraints = [(datetime.strptime(\"09:00\", \"%H:%M\").replace(year=2023, month=10, day=2), \n                      datetime.strptime(\"10:00\", \"%H:%M\").replace(year=2023, month=10, day=2)),\n                     (datetime.strptime(\"10:30\", \"%H:%M\").replace(year=2023, month=10, day=2), \n                      datetime.strptime(\"16:30\", \"%H:%M\").replace(year=2023, month=10, day=2))]\nconstraints = judy_constraints + nicole_constraints\n\n# Define working hours and meeting duration\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\").replace(year=2023, month=10, day=2)\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\").replace(year=2023, month=10, day=2)\nmeeting_duration = timedelta(minutes=30)\n\n# Find a suitable meeting time\nmeeting_time, day = find_meeting_time(work_start, work_end, meeting_duration, constraints)\nprint(f\"{meeting_time} on {day}\")\n```",
+            "count": "calendar_scheduling_example_548"
+        }
+    ]
+}

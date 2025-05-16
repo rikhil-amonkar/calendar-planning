@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "12:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "13:47",
+                        "end_time": "14:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "12:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "13:47",
+                        "end_time": "14:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef format_time(dt):\n    # Format time as H:MM (no leading zeros for hour)\n    return f\"{dt.hour}:{dt.minute:02d}\"\n\ndef main():\n    # Input parameters and travel times (in minutes)\n    arrival_castro_str = \"9:00\"\n    travel_times = {\n        (\"The Castro\", \"Mission District\"): 7,\n        (\"The Castro\", \"Financial District\"): 20,\n        (\"Mission District\", \"The Castro\"): 7,\n        (\"Mission District\", \"Financial District\"): 17,\n        (\"Financial District\", \"The Castro\"): 23,\n        (\"Financial District\", \"Mission District\"): 17\n    }\n    \n    # Constraints for Laura and Anthony:\n    # Laura: available at Mission District from 12:15 to 19:45, minimum meeting duration 75 minutes.\n    laura_available_start = datetime.strptime(\"12:15\", \"%H:%M\")\n    laura_available_end = datetime.strptime(\"19:45\", \"%H:%M\")\n    laura_min_duration = timedelta(minutes=75)\n    \n    # Anthony: available at Financial District from 12:30 to 14:45, minimum meeting duration 30 minutes.\n    anthony_available_start = datetime.strptime(\"12:30\", \"%H:%M\")\n    anthony_available_end = datetime.strptime(\"14:45\", \"%H:%M\")\n    anthony_min_duration = timedelta(minutes=30)\n    \n    # Start time at The Castro\n    start_time_castro = datetime.strptime(arrival_castro_str, \"%H:%M\")\n    \n    # We will compute the schedule that maximizes the number of friends.\n    # Option considered: First meet Laura at Mission District, then meet Anthony at Financial District.\n    \n    # Travel: The Castro -> Mission District\n    travel_castro_to_mission = timedelta(minutes= travel_times[(\"The Castro\", \"Mission District\")] )\n    arrival_mission = start_time_castro + travel_castro_to_mission\n    \n    # We can only start meeting Laura when she is available.\n    meeting_laura_start = max(arrival_mission, laura_available_start)\n    meeting_laura_end = meeting_laura_start + laura_min_duration\n    \n    # Check if meeting Laura finishes within her availability window.\n    if meeting_laura_end > laura_available_end:\n        raise ValueError(\"Cannot schedule a sufficient meeting with Laura within her available time.\")\n    \n    # Travel: Mission District -> Financial District for Anthony meeting\n    travel_mission_to_financial = timedelta(minutes= travel_times[(\"Mission District\", \"Financial District\")] )\n    arrival_financial = meeting_laura_end + travel_mission_to_financial\n    \n    # Start meeting Anthony when he is available.\n    meeting_anthony_start = max(arrival_financial, anthony_available_start)\n    meeting_anthony_end = anthony_available_end  # We use his availability end as end time, ensuring meeting is as long as possible\n    \n    # Check if there's enough time for Anthony meeting\n    if meeting_anthony_end - meeting_anthony_start < anthony_min_duration:\n        raise ValueError(\"Cannot schedule a sufficient meeting with Anthony within his available time.\")\n    \n    # Build the itinerary\n    itinerary = []\n    \n    # Add Laura meeting entry\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Mission District\",\n        \"person\": \"Laura\",\n        \"start_time\": format_time(meeting_laura_start),\n        \"end_time\": format_time(meeting_laura_end)\n    })\n    \n    # Add Anthony meeting entry\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Financial District\",\n        \"person\": \"Anthony\",\n        \"start_time\": format_time(meeting_anthony_start),\n        \"end_time\": format_time(meeting_anthony_end)\n    })\n    \n    result = {\"itinerary\": itinerary}\n    \n    # Output JSON formatted itinerary\n    print(json.dumps(result, indent=2))\n\nif __name__ == '__main__':\n    main()",
+            "count": "meeting_planning_example_144"
+        }
+    ]
+}

@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Laura",
+                        "start_time": "9:11",
+                        "end_time": "9:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Patricia",
+                        "start_time": "17:49",
+                        "end_time": "18:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "18:46",
+                        "end_time": "19:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "19:49",
+                        "end_time": "20:19"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Laura",
+                        "start_time": "9:11",
+                        "end_time": "9:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "18:30",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "19:16",
+                        "end_time": "20:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Patricia",
+                        "start_time": "20:15",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\nfrom datetime import datetime, timedelta\n\n# Helper functions to convert times\ndef time_to_minutes(t):\n    # expects t as \"H:MM\" in 24-hour format, e.g., \"9:00\" or \"15:30\"\n    parts = t.split(':')\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(m):\n    # returns H:MM (no leading zero for hour)\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Travel times in minutes between locations.\n# We'll store them in a dictionary of dictionaries.\ntravel_times = {\n    \"Fisherman's Wharf\": {\n        \"Bayview\": 26,\n        \"Golden Gate Park\": 25,\n        \"Nob Hill\": 11,\n        \"Marina District\": 9,\n        \"Embarcadero\": 8\n    },\n    \"Bayview\": {\n        \"Fisherman's Wharf\": 25,\n        \"Golden Gate Park\": 22,\n        \"Nob Hill\": 20,\n        \"Marina District\": 25,\n        \"Embarcadero\": 19\n    },\n    \"Golden Gate Park\": {\n        \"Fisherman's Wharf\": 24,\n        \"Bayview\": 23,\n        \"Nob Hill\": 20,\n        \"Marina District\": 16,\n        \"Embarcadero\": 25\n    },\n    \"Nob Hill\": {\n        \"Fisherman's Wharf\": 11,\n        \"Bayview\": 19,\n        \"Golden Gate Park\": 17,\n        \"Marina District\": 11,\n        \"Embarcadero\": 9\n    },\n    \"Marina District\": {\n        \"Fisherman's Wharf\": 10,\n        \"Bayview\": 27,\n        \"Golden Gate Park\": 18,\n        \"Nob Hill\": 12,\n        \"Embarcadero\": 14\n    },\n    \"Embarcadero\": {\n        \"Fisherman's Wharf\": 6,\n        \"Bayview\": 21,\n        \"Golden Gate Park\": 25,\n        \"Nob Hill\": 10,\n        \"Marina District\": 12\n    }\n}\n\n# Meeting constraints for each friend.\n# Each friend is represented as a dict with keys: name, location, avail_start, avail_end, and min_duration in minutes.\nfriends = [\n    {\n        \"name\": \"Thomas\",\n        \"location\": \"Bayview\",\n        \"avail_start\": time_to_minutes(\"15:30\"),\n        \"avail_end\": time_to_minutes(\"18:30\"),\n        \"min_duration\": 120\n    },\n    {\n        \"name\": \"Stephanie\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": time_to_minutes(\"18:30\"),\n        \"avail_end\": time_to_minutes(\"21:45\"),\n        \"min_duration\": 30\n    },\n    {\n        \"name\": \"Laura\",\n        \"location\": \"Nob Hill\",\n        \"avail_start\": time_to_minutes(\"8:45\"),\n        \"avail_end\": time_to_minutes(\"16:15\"),\n        \"min_duration\": 30\n    },\n    {\n        \"name\": \"Betty\",\n        \"location\": \"Marina District\",\n        \"avail_start\": time_to_minutes(\"18:45\"),\n        \"avail_end\": time_to_minutes(\"21:45\"),\n        \"min_duration\": 45\n    },\n    {\n        \"name\": \"Patricia\",\n        \"location\": \"Embarcadero\",\n        \"avail_start\": time_to_minutes(\"17:30\"),\n        \"avail_end\": time_to_minutes(\"22:00\"),\n        \"min_duration\": 45\n    }\n]\n\n# Starting point and start time\nstart_location = \"Fisherman's Wharf\"\nstart_time = time_to_minutes(\"9:00\")\n\n# We'll check all permutations of the friends to maximize the number of meetings\n# For each permutation, simulate the itinerary:\ndef simulate_itinerary(order):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n\n    for friend in order:\n        # Travel to friend's location\n        if current_location == friend[\"location\"]:\n            travel_time = 0\n        else:\n            # Get travel time from current_location to friend's location\n            # Use the travel_times dictionary. It is directional.\n            travel_time = travel_times[current_location][friend[\"location\"]]\n        current_time += travel_time\n        \n        # Meeting can only start when friend is available\n        meeting_start = max(current_time, friend[\"avail_start\"])\n        meeting_end = meeting_start + friend[\"min_duration\"]\n        \n        # Check if meeting fits in the friend\u2019s availability window\n        if meeting_end > friend[\"avail_end\"]:\n            # If meeting doesn't fit, itinerary is invalid for this friend order.\n            return None\n        \n        # Append the meeting action to itinerary\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        # Update time and location for next step\n        current_time = meeting_end\n        current_location = friend[\"location\"]\n    return itinerary\n\n# Try all permutations, and choose the one that meets the maximum number of meetings.\nbest_itinerary = None\nbest_count = 0\nbest_finish_time = None\n\nfor perm in itertools.permutations(friends):\n    itinerary = simulate_itinerary(perm)\n    if itinerary is not None:\n        count = len(itinerary)\n        # The finishing time is the end time of the last meeting\n        finish_time = time_to_minutes(itinerary[-1][\"end_time\"])\n        if count > best_count or (count == best_count and (best_finish_time is None or finish_time < best_finish_time)):\n            best_count = count\n            best_finish_time = finish_time\n            best_itinerary = itinerary\n\n# Prepare output in the required JSON format.\nresult = {\"itinerary\": best_itinerary if best_itinerary is not None else []}\n\n# Print the JSON output.\nprint(json.dumps(result, indent=2))",
+            "count": "meeting_planning_example_409"
+        }
+    ]
+}

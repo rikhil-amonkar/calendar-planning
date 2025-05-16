@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    ('Russian Hill', 'Nob Hill'): 5,\n    ('Russian Hill', 'Mission District'): 16,\n    ('Russian Hill', 'Embarcadero'): 8,\n    ('Nob Hill', 'Russian Hill'): 5,\n    ('Nob Hill', 'Mission District'): 13,\n    ('Nob Hill', 'Embarcadero'): 9,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Mission District', 'Nob Hill'): 12,\n    ('Mission District', 'Embarcadero'): 19,\n    ('Embarcadero', 'Russian Hill'): 8,\n    ('Embarcadero', 'Nob Hill'): 10,\n    ('Embarcadero', 'Mission District'): 20,\n}\n\n# Meeting constraints\nparticipants = {\n    'Patricia': {\n        'location': 'Nob Hill',\n        'available_from': '18:30',\n        'available_to': '21:45',\n        'min_meeting_duration': 90\n    },\n    'Ashley': {\n        'location': 'Mission District',\n        'available_from': '20:30',\n        'available_to': '21:15',\n        'min_meeting_duration': 45\n    },\n    'Timothy': {\n        'location': 'Embarcadero',\n        'available_from': '09:45',\n        'available_to': '17:45',\n        'min_meeting_duration': 120\n    },\n}\n\narrival_time = '09:00'\ndeparture_time = '21:45'\n\n# Function to convert time strings to datetime objects\ndef time_to_datetime(time_str):\n    return datetime.strptime(time_str, '%H:%M')\n\n# Function to compute end time based on start time and duration\ndef compute_end_time(start_time, duration):\n    return start_time + timedelta(minutes=duration)\n\n# Generate meeting schedule\nschedule = []\ncurrent_time = time_to_datetime(arrival_time)\n\n# Schedule for Timothy\ntimothy_start = time_to_datetime(participants['Timothy']['available_from'])\ntimothy_end = time_to_datetime(participants['Timothy']['available_to'])\n\n# Try to meet Timothy first\nif current_time < timothy_start:\n    current_time = timothy_start\n\ntimothy_meeting_duration = participants['Timothy']['min_meeting_duration']\ntimothy_meeting_end = compute_end_time(current_time, timothy_meeting_duration)\n\nif timothy_meeting_end <= timothy_end:\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": participants['Timothy']['location'],\n        \"person\": \"Timothy\",\n        \"start_time\": current_time.strftime('%H:%M'),\n        \"end_time\": timothy_meeting_end.strftime('%H:%M')\n    })\n    current_time = timothy_meeting_end + timedelta(minutes=travel_times[('Embarcadero', 'Nob Hill')])\n\n# Schedule for Patricia\npatricia_start = time_to_datetime(participants['Patricia']['available_from'])\npatricia_end = time_to_datetime(participants['Patricia']['available_to'])\n\nif current_time < patricia_start:\n    current_time = patricia_start\n\npatricia_meeting_duration = participants['Patricia']['min_meeting_duration']\npatricia_meeting_end = compute_end_time(current_time, patricia_meeting_duration)\n\nif patricia_meeting_end <= patricia_end:\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": participants['Patricia']['location'],\n        \"person\": \"Patricia\",\n        \"start_time\": current_time.strftime('%H:%M'),\n        \"end_time\": patricia_meeting_end.strftime('%H:%M'),\n    })\n    current_time = patricia_meeting_end + timedelta(minutes=travel_times[('Nob Hill', 'Mission District')])\n\n# Schedule for Ashley\nashley_start = time_to_datetime(participants['Ashley']['available_from'])\nashley_end = time_to_datetime(participants['Ashley']['available_to'])\n\nif current_time < ashley_start:\n    current_time = ashley_start\n\nashley_meeting_duration = participants['Ashley']['min_meeting_duration']\nashley_meeting_end = compute_end_time(current_time, ashley_meeting_duration)\n\nif ashley_meeting_end <= ashley_end:\n    schedule.append({\n        \"action\": \"meet\",\n        \"location\": participants['Ashley']['location'],\n        \"person\": \"Ashley\",\n        \"start_time\": current_time.strftime('%H:%M'),\n        \"end_time\": ashley_meeting_end.strftime('%H:%M'),\n    })\n\n# Output the schedule as a JSON formatted dictionary\noutput = {\"itinerary\": schedule}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_272"
+        }
+    ]
+}

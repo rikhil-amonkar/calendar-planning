@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nfrom itertools import permutations\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Chinatown\", \"Mission District\"): 18,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Pacific Heights\"): 10,\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Chinatown\", \"Golden Gate Park\"): 23,\n    (\"Chinatown\", \"Sunset District\"): 29,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Mission District\", \"Chinatown\"): 16,\n    (\"Mission District\", \"Alamo Square\"): 11,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"Union Square\"): 15,\n    (\"Mission District\", \"Golden Gate Park\"): 17,\n    (\"Mission District\", \"Sunset District\"): 24,\n    (\"Mission District\", \"Presidio\"): 25,\n    (\"Alamo Square\", \"Chinatown\"): 16,\n    (\"Alamo Square\", \"Mission District\"): 10,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Presidio\"): 18,\n    (\"Pacific Heights\", \"Chinatown\"): 11,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n    (\"Pacific Heights\", \"Union Square\"): 12,\n    (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n    (\"Pacific Heights\", \"Sunset District\"): 21,\n    (\"Pacific Heights\", \"Presidio\"): 11,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Mission District\"): 14,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Union Square\", \"Pacific Heights\"): 15,\n    (\"Union Square\", \"Golden Gate Park\"): 22,\n    (\"Union Square\", \"Sunset District\"): 26,\n    (\"Union Square\", \"Presidio\"): 24,\n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n    (\"Golden Gate Park\", \"Alamo Square\"): 10,\n    (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n    (\"Golden Gate Park\", \"Union Square\"): 22,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Sunset District\", \"Chinatown\"): 30,\n    (\"Sunset District\", \"Mission District\"): 24,\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"Sunset District\", \"Pacific Heights\"): 21,\n    (\"Sunset District\", \"Union Square\"): 30,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Mission District\"): 26,\n    (\"Presidio\", \"Alamo Square\"): 18,\n    (\"Presidio\", \"Pacific Heights\"): 11,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Sunset District\"): 15,\n}\n\n# Meeting constraints\nconstraints = {\n    \"David\": {\"location\": \"Mission District\", \"start\": \"08:00\", \"end\": \"19:45\", \"duration\": 45},\n    \"Kenneth\": {\"location\": \"Alamo Square\", \"start\": \"14:00\", \"end\": \"19:45\", \"duration\": 120},\n    \"John\": {\"location\": \"Pacific Heights\", \"start\": \"17:00\", \"end\": \"20:00\", \"duration\": 15},\n    \"Charles\": {\"location\": \"Union Square\", \"start\": \"21:45\", \"end\": \"22:45\", \"duration\": 60},\n    \"Deborah\": {\"location\": \"Golden Gate Park\", \"start\": \"07:00\", \"end\": \"18:15\", \"duration\": 90},\n    \"Karen\": {\"location\": \"Sunset District\", \"start\": \"17:45\", \"end\": \"21:15\", \"duration\": 15},\n    \"Carol\": {\"location\": \"Presidio\", \"start\": \"08:15\", \"end\": \"09:15\", \"duration\": 30},\n}\n\narrival_time = datetime.strptime('09:00', '%H:%M')\n\n# Function to convert time string to minutes since midnight\ndef to_minutes(time_str):\n    time = datetime.strptime(time_str, '%H:%M')\n    return time.hour * 60 + time.minute\n\n# Function to check if a meeting can be scheduled\ndef can_schedule(meeting_start, meeting_end, travel_time):\n    return (meeting_start + travel_time <= to_minutes(constraints[meeting_person][\"end\"])\n            and meeting_end >= to_minutes(constraints[meeting_person][\"start\"]))\n\n# Function to get meeting schedule\ndef get_meeting_schedule():\n    best_schedule = []\n    best_schedule_length = 0\n    possible_meetings = {}\n\n    # Create a list of all possible meetings\n    for person, info in constraints.items():\n        possible_meetings[person] = (info[\"location\"], info[\"duration\"], to_minutes(info[\"start\"]), to_minutes(info[\"end\"]))\n\n    # Check all permutations of meetings to find a valid schedule\n    for order in permutations(possible_meetings.keys()):\n        current_time = to_minutes('09:00')  # Start time\n        current_schedule = []\n        \n        for person in order:\n            location, duration, start_time, end_time = possible_meetings[person]\n            meeting_start = max(start_time, current_time)  # When we can actually start the meeting\n            meeting_end = meeting_start + duration\n\n            if meeting_end <= end_time and can_schedule(meeting_start, meeting_end, travel_times.get((current_item['location'], location), 0)):\n                travel_time = travel_times.get(('Chinatown', location), 0)\n                current_time = meeting_end + travel_time\n                current_schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": location,\n                    \"person\": person,\n                    \"start_time\": f\"{meeting_start // 60}:{meeting_start % 60:02}\",\n                    \"end_time\": f\"{meeting_end // 60}:{meeting_end % 60:02}\"\n                })\n\n        if len(current_schedule) > best_schedule_length:\n            best_schedule_length = len(current_schedule)\n            best_schedule = current_schedule\n\n    return best_schedule\n\n# Constructing the final output\nfinal_schedule = get_meeting_schedule()\nitinerary = {\"itinerary\": final_schedule}\n\n# Output the final schedule as JSON\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "meeting_planning_example_609"
+        }
+    ]
+}

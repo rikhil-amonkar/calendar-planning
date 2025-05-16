@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, I need to solve this problem where I have to create a Python program that calculates the optimal meeting schedule for a day in San Francisco. The user wants to meet as many friends as possible, considering travel times and meeting constraints. \n\nFirst, I'll start by understanding the problem thoroughly. The user arrives at Pacific Heights at 9:00 AM and wants to meet friends in different districts. Each friend has specific time windows and meeting durations. The goal is to find the best schedule that allows meeting the maximum number of friends without violating any constraints.\n\nI see that the user provided travel times between various locations. These are symmetric, meaning the travel time from A to B is the same as B to A. That's helpful because it means I can create a dictionary to store these times and easily look them up when calculating routes.\n\nNext, I need to list out all the friends with their details: location, name, start and end times in minutes since midnight, and the minimum duration required for the meeting. Converting times to minutes will make calculations easier, and I can convert them back to HH:MM format for the output.\n\nThe approach I think I'll take is to generate all possible permutations of the friends and check each permutation to see if it's feasible. For each permutation, I'll calculate the arrival time at each location, ensuring that the meeting can start on or after the friend's available start time and end before their available end time. I'll also account for travel times between locations.\n\nI'll start by trying permutations of all four friends. If none of these permutations work, I'll reduce the number of friends and try permutations of three, then two, and so on, until I find the best possible schedule that meets the maximum number of friends.\n\nIn the code, I'll define the travel times as a dictionary where the keys are tuples of the start and end locations, and the values are the travel times in minutes. Then, I'll create a list of dictionaries for each friend, containing their details.\n\nI'll use itertools.permutations to generate all possible orders of meeting the friends. For each permutation, I'll simulate the day, starting at Pacific Heights at 9:00 AM. I'll track the current time and location, and for each friend in the permutation, I'll calculate the arrival time, check if the meeting can fit within their available time window, and update the itinerary accordingly. If any meeting can't be scheduled, I'll mark that permutation as invalid and move on to the next one.\n\nOnce I find a valid permutation that allows meeting all four friends, I'll output the itinerary in the required JSON format. If no permutation with four friends works, I'll check for permutations with fewer friends, starting from three, and so on, until I find the best possible schedule.\n\nI also need to handle cases where no valid schedule is found, but given the constraints, it's likely that at least one friend can be met.\n\nFinally, I'll make sure the times are formatted correctly in HH:MM without leading zeros for hours, and the output is a valid JSON dictionary.\n</think>\n\n```python\nimport itertools\nimport json\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    ('Pacific Heights', 'Nob Hill'): 8,\n    ('Pacific Heights', 'Russian Hill'): 7,\n    ('Pacific Heights', 'The Castro'): 16,\n    ('Pacific Heights', 'Sunset District'): 21,\n    ('Pacific Heights', 'Haight-Ashbury'): 11,\n    ('Nob Hill', 'Pacific Heights'): 8,\n    ('Nob Hill', 'Russian Hill'): 5,\n    ('Nob Hill', 'The Castro'): 17,\n    ('Nob Hill', 'Sunset District'): 25,\n    ('Nob Hill', 'Haight-Ashbury'): 13,\n    ('Russian Hill', 'Pacific Heights'): 7,\n    ('Russian Hill', 'Nob Hill'): 5,\n    ('Russian Hill', 'The Castro'): 21,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n    ('The Castro', 'Pacific Heights'): 16,\n    ('The Castro', 'Nob Hill'): 16,\n    ('The Castro', 'Russian Hill'): 18,\n    ('The Castro', 'Sunset District'): 17,\n    ('The Castro', 'Haight-Ashbury'): 6,\n    ('Sunset District', 'Pacific Heights'): 21,\n    ('Sunset District', 'Nob Hill'): 27,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Sunset District', 'The Castro'): 17,\n    ('Sunset District', 'Haight-Ashbury'): 15,\n    ('Haight-Ashbury', 'Pacific Heights'): 12,\n    ('Haight-Ashbury', 'Nob Hill'): 15,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Haight-Ashbury', 'The Castro'): 6,\n    ('Haight-Ashbury', 'Sunset District'): 15,\n}\n\nfriends = [\n    {\n        'location': 'Nob Hill',\n        'name': 'Ronald',\n        'start': 600,  # 10:00 AM\n        'end': 1020,   # 5:00 PM\n        'duration': 105\n    },\n    {\n        'location': 'Russian Hill',\n        'name': 'Sarah',\n        'start': 435,  # 7:15 AM\n        'end': 570,   # 9:30 AM\n        'duration': 45\n    },\n    {\n        'location': 'The Castro',\n        'name': 'Helen',\n        'start': 810,  # 1:30 PM\n        'end': 1020,   # 5:00 PM\n        'duration': 120\n    },\n    {\n        'location': 'Sunset District',\n        'name': 'Joshua',\n        'start': 855,  # 2:15 PM\n        'end': 1200,   # 7:30 PM\n        'duration': 90\n    },\n    {\n        'location': 'Haight-Ashbury',\n        'name': 'Margaret',\n        'start': 615,  # 10:15 AM\n        'end': 1200,   # 10:00 PM\n        'duration': 60\n    }\n]\n\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_location = 'Pacific Heights'\n    itinerary = []\n    valid = True\n    \n    for friend in perm:\n        travel = travel_times.get((current_location, friend['location']), None)\n        if travel is None:\n            valid = False\n            break\n        arrival = current_time + travel\n        meeting_start = max(arrival, friend['start'])\n        meeting_end = meeting_start + friend['duration']\n        if meeting_end > friend['end']:\n            valid = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': format_time(meeting_start),\n            'end_time': format_time(meeting_end)\n        })\n        current_time = meeting_end\n        current_location = friend['location']\n    \n    if valid and len(itinerary) == 5:\n        print(json.dumps({'itinerary': itinerary}))\n        exit()\n\n# If no permutation meets all five, check for permutations with fewer friends\nmax_meetings = 0\nbest_itinerary = []\nfor r in range(4, 0, -1):\n    for perm in itertools.permutations(friends, r):\n        current_time = 540\n        current_location = 'Pacific Heights'\n        itinerary = []\n        valid = True\n        \n        for friend in perm:\n            travel = travel_times.get((current_location, friend['location']), None)\n            if travel is None:\n                valid = False\n                break\n            arrival = current_time + travel\n            meeting_start = max(arrival, friend['start'])\n            meeting_end = meeting_start + friend['duration']\n            if meeting_end > friend['end']:\n                valid = False\n                break\n            itinerary.append({\n                'action': 'meet',\n                'location': friend['location'],\n                'person': friend['name'],\n                'start_time': format_time(meeting_start),\n                'end_time': format_time(meeting_end)\n            })\n            current_time = meeting_end\n            current_location = friend['location']\n        \n        if valid and len(itinerary) > max_meetings:\n            max_meetings = len(itinerary)\n            best_itinerary = itinerary\n            if max_meetings == 4:\n                print(json.dumps({'itinerary': best_itinerary}))\n                exit()\n\nprint(json.dumps({'itinerary': best_itinerary}))\n```",
+            "count": "meeting_planning_example_488"
+        }
+    ]
+}

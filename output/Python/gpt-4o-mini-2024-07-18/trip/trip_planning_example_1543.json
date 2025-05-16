@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define trip constraints as input variables\n    constraints = {\n        \"cities\": {\n            \"Prague\": {\"days\": 3, \"workshop\": (1, 3)},\n            \"Warsaw\": {\"days\": 4, \"friends_meeting\": (20, 23)},\n            \"Dublin\": {\"days\": 3},\n            \"Athens\": {\"days\": 3},\n            \"Vilnius\": {\"days\": 4},\n            \"Porto\": {\"days\": 5, \"conference\": (16, 20)},\n            \"London\": {\"days\": 3, \"wedding\": (3, 5)},\n            \"Seville\": {\"days\": 2},\n            \"Lisbon\": {\"days\": 5, \"relatives\": (5, 9)},\n            \"Dubrovnik\": {\"days\": 3}\n        },\n        \"total_days\": 26\n    }\n\n    # Define the direct flights connectivity\n    direct_flights = {\n        \"Warsaw\": [\"Vilnius\", \"Prague\", \"Lisbon\", \"Dublin\"],\n        \"Vilnius\": [\"Warsaw\", \"Athens\"],\n        \"Prague\": [\"Athens\", \"Lisbon\", \"Dublin\", \"London\", \"Warsaw\"],\n        \"Athens\": [\"Vilnius\", \"Dublin\", \"Warsaw\", \"Dubrovnik\", \"Lisbon\"],\n        \"London\": [\"Lisbon\", \"Dublin\", \"Warsaw\", \"Athens\"],\n        \"Lisbon\": [\"Porto\", \"London\", \"Warsaw\", \"Seville\", \"Dublin\"],\n        \"Porto\": [\"Warsaw\", \"Lisbon\"],\n        \"Dublin\": [\"Seville\", \"London\", \"Athens\", \"Porto\"],\n        \"Seville\": [\"Dublin\", \"Lisbon\", \"Porto\"],\n        \"Dubrovnik\": [\"Athens\", \"Dublin\"]\n    }\n\n    # Start planning the itinerary\n    itinerary = []\n    current_day = 1\n    remaining_days = constraints[\"total_days\"]\n\n    # Helper function to add city stays in the itinerary\n    def add_city(city, start_day, duration):\n        end_day = start_day + duration - 1\n        itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n        return end_day + 1  # Return the next available day after the stay\n\n    # Sequence of cities based on constraints and direct flights\n    current_day = add_city(\"Prague\", current_day, constraints[\"cities\"][\"Prague\"][\"days\"])  # Prague with workshop\n    current_day = add_city(\"London\", current_day, constraints[\"cities\"][\"London\"][\"days\"])  # London for wedding\n    current_day = add_city(\"Lisbon\", current_day, constraints[\"cities\"][\"Lisbon\"][\"days\"])  # Lisbon then relatives\n    current_day = add_city(\"Porto\", current_day, constraints[\"cities\"][\"Porto\"][\"days\"])  # Porto with conference\n    current_day = add_city(\"Warsaw\", current_day, constraints[\"cities\"][\"Warsaw\"][\"days\"])  # Warsaw to meet friends\n    current_day = add_city(\"Vilnius\", current_day, constraints[\"cities\"][\"Vilnius\"][\"days\"])  # Vilnius\n    current_day = add_city(\"Dublin\", current_day, constraints[\"cities\"][\"Dublin\"][\"days\"])  # Dublin\n    current_day = add_city(\"Athens\", current_day, constraints[\"cities\"][\"Athens\"][\"days\"])  # Athens\n    current_day = add_city(\"Seville\", current_day, constraints[\"cities\"][\"Seville\"][\"days\"])  # Seville\n    current_day = add_city(\"Dubrovnik\", current_day, constraints[\"cities\"][\"Dubrovnik\"][\"days\"])  # Dubrovnik\n\n    # Ensure total days check is accurate\n    assert sum(constraints[\"cities\"][city][\"days\"] for city in constraints[\"cities\"]) == constraints[\"total_days\"]\n\n    # Return results as JSON\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_1543"
+        }
+    ]
+}

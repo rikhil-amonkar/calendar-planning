@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\nfriends = [\n    {'name': 'David', 'location': 'Mission District', 'start': 480, 'end': 1185, 'duration':45},\n    {'name': 'Kenneth', 'location': 'Alamo Square', 'start': 840, 'end': 1185, 'duration':120},\n    {'name': 'John', 'location': 'Pacific Heights', 'start': 1020, 'end': 1200, 'duration':15},\n    {'name': 'Charles', 'location': 'Union Square', 'start': 1305, 'end': 1365, 'duration':60},\n    {'name': 'Deborah', 'location': 'Golden Gate Park', 'start': 420, 'end': 1095, 'duration':90},\n    {'name': 'Karen', 'location': 'Sunset District', 'start': 1065, 'end': 1275, 'duration':15}\n]\n\ntravel_time = {\n    ('Chinatown', 'Mission District'): 18,\n    ('Chinatown', 'Alamo Square'): 17,\n    ('Chinatown', 'Pacific Heights'): 10,\n    ('Chinatown', 'Union Square'): 7,\n    ('Chinatown', 'Golden Gate Park'): 23,\n    ('Chinatown', 'Sunset District'): 29,\n    ('Mission District', 'Chinatown'): 16,\n    ('Mission District', 'Alamo Square'): 11,\n    ('Mission District', 'Pacific Heights'): 16,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Golden Gate Park'): 17,\n    ('Mission District', 'Sunset District'): 24,\n    ('Alamo Square', 'Chinatown'): 16,\n    ('Alamo Square', 'Mission District'): 10,\n    ('Alamo Square', 'Pacific Heights'): 10,\n    ('Alamo Square', 'Union Square'): 14,\n    ('Alamo Square', 'Golden Gate Park'): 9,\n    ('Alamo Square', 'Sunset District'): 16,\n    ('Pacific Heights', 'Chinatown'): 11,\n    ('Pacific Heights', 'Mission District'): 15,\n    ('Pacific Heights', 'Alamo Square'): 10,\n    ('Pacific Heights', 'Union Square'): 12,\n    ('Pacific Heights', 'Golden Gate Park'): 15,\n    ('Pacific Heights', 'Sunset District'): 21,\n    ('Union Square', 'Chinatown'): 7,\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Alamo Square'): 15,\n    ('Union Square', 'Pacific Heights'): 15,\n    ('Union Square', 'Golden Gate Park'): 22,\n    ('Union Square', 'Sunset District'): 26,\n    ('Golden Gate Park', 'Chinatown'): 23,\n    ('Golden Gate Park', 'Mission District'): 17,\n    ('Golden Gate Park', 'Alamo Square'): 10,\n    ('Golden Gate Park', 'Pacific Heights'): 16,\n    ('Golden Gate Park', 'Union Square'): 22,\n    ('Golden Gate Park', 'Sunset District'): 10,\n    ('Sunset District', 'Chinatown'): 30,\n    ('Sunset District', 'Mission District'): 24,\n    ('Sunset District', 'Alamo Square'): 17,\n    ('Sunset District', 'Pacific Heights'): 21,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Golden Gate Park'): 11\n}\n\nbest_count = 0\nbest_end = float('inf')\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_loc = 'Chinatown'\n    itinerary = []\n    count = 0\n    \n    for friend in perm:\n        key = (current_loc, friend['location'])\n        if key not in travel_time:\n            break\n        arrive = current_time + travel_time[key]\n        start = max(arrive, friend['start'])\n        if start + friend['duration'] > friend['end']:\n            continue\n        end = start + friend['duration']\n        itinerary.append((friend['name'], friend['location'], start, end))\n        current_time = end\n        current_loc = friend['location']\n        count += 1\n    \n    if count > best_count or (count == best_count and current_time < best_end):\n        best_count = count\n        best_end = current_time\n        best_itinerary = itinerary.copy()\n\nformatted = []\nfor item in best_itinerary:\n    name, loc, start, end = item\n    sh = start // 60\n    sm = start % 60\n    eh = end // 60\n    em = end % 60\n    start_str = f\"{sh}:{sm:02d}\"\n    end_str = f\"{eh}:{em:02d}\"\n    formatted.append({\n        \"action\": \"meet\",\n        \"location\": loc,\n        \"person\": name,\n        \"start_time\": start_str,\n        \"end_time\": end_str\n    })\n\nprint(json.dumps({\"itinerary\": formatted}, indent=2))",
+            "count": "meeting_planning_example_609"
+        }
+    ]
+}

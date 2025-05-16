@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "13:13",
+                        "end_time": "13:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "14:03",
+                        "end_time": "15:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "13:13",
+                        "end_time": "13:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "18:51",
+                        "end_time": "20:21"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\ndef time_to_str(m):\n    return f\"{m//60}:{m%60:02d}\"\n\nfriends = [\n    {'name':'Andrew', 'location':'Golden Gate Park', 'start':705, 'end':870, 'duration':75},\n    {'name':'Sarah', 'location':'Pacific Heights', 'start':975, 'end':1125, 'duration':15},\n    {'name':'Nancy', 'location':'Presidio', 'start':1050, 'end':1155, 'duration':60},\n    {'name':'Rebecca', 'location':'Chinatown', 'start':585, 'end':1290, 'duration':90},\n    {'name':'Robert', 'location':'The Castro', 'start':510, 'end':855, 'duration':30}\n]\n\ntravel = {\n    'Union Square': {'Golden Gate Park':22, 'Pacific Heights':15, 'Presidio':24, 'Chinatown':7, 'The Castro':19},\n    'Golden Gate Park': {'Union Square':22, 'Pacific Heights':16, 'Presidio':11, 'Chinatown':23, 'The Castro':13},\n    'Pacific Heights': {'Union Square':12, 'Golden Gate Park':15, 'Presidio':11, 'Chinatown':11, 'The Castro':16},\n    'Presidio': {'Union Square':22, 'Golden Gate Park':12, 'Pacific Heights':11, 'Chinatown':21, 'The Castro':21},\n    'Chinatown': {'Union Square':7, 'Golden Gate Park':23, 'Pacific Heights':10, 'Presidio':19, 'The Castro':22},\n    'The Castro': {'Union Square':19, 'Golden Gate Park':11, 'Pacific Heights':16, 'Presidio':20, 'Chinatown':20}\n}\n\nbest = []\nmax_count = 0\n\nfor perm in itertools.permutations(friends):\n    time = 540\n    loc = 'Union Square'\n    sched = []\n    valid = True\n    for p in perm:\n        tt = travel[loc].get(p['location'], 999)\n        arrive = time + tt\n        start = max(arrive, p['start'])\n        end = start + p['duration']\n        if end > p['end']:\n            valid = False\n            break\n        sched.append({'n':p['name'], 'l':p['location'], 's':start, 'e':end})\n        time = end\n        loc = p['location']\n    if valid and len(sched) > max_count or (len(sched) == max_count and time < best_time):\n        max_count = len(sched)\n        best = sched\n        best_time = time if len(sched) else 0\n\nitinerary = []\nfor meet in best:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meet['l'],\n        \"person\": meet['n'],\n        \"start_time\": time_to_str(meet['s']),\n        \"end_time\": time_to_str(meet['e'])\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))",
+            "count": "meeting_planning_example_403"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_busy_times, work_hours_start, work_hours_end, meeting_duration):\n    # Convert all times to minutes since midnight for easier calculation\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n    \n    work_start = time_to_minutes(work_hours_start)\n    work_end = time_to_minutes(work_hours_end)\n    \n    # Generate all possible slots within work hours\n    slots = []\n    current = work_start\n    while current + meeting_duration <= work_end:\n        slots.append((current, current + meeting_duration))\n        current += 1  # Check every minute\n    \n    # Check each slot against all participants' busy times\n    for slot_start, slot_end in slots:\n        slot_ok = True\n        for busy_times in participants_busy_times:\n            for busy_start, busy_end in busy_times:\n                busy_start_min = time_to_minutes(busy_start)\n                busy_end_min = time_to_minutes(busy_end)\n                # Check if slot overlaps with any busy time\n                if not (slot_end <= busy_start_min or slot_start >= busy_end_min):\n                    slot_ok = False\n                    break\n            if not slot_ok:\n                break\n        if slot_ok:\n            # Convert back to HH:MM format\n            def minutes_to_time(minutes):\n                hh = minutes // 60\n                mm = minutes % 60\n                return f\"{hh:02d}:{mm:02d}\"\n            return (minutes_to_time(slot_start), minutes_to_time(slot_end))\n    return None\n\n# Define work hours and meeting duration\nwork_hours_start = \"9:00\"\nwork_hours_end = \"17:00\"\nmeeting_duration = 60  # minutes\n\n# Participants' busy times in HH:MM format\nparticipants_busy_times = [\n    [(\"11:00\", \"12:30\"), (\"13:30\", \"14:30\"), (\"16:30\", \"17:00\")],  # Joshua\n    [],  # Kevin\n    [],  # Gerald\n    [(\"9:00\", \"9:30\"), (\"10:30\", \"12:00\"), (\"12:30\", \"13:00\"), (\"13:30\", \"14:00\"), (\"14:30\", \"15:00\"), (\"15:30\", \"16:00\")],  # Jerry\n    [(\"9:00\", \"9:30\"), (\"10:30\", \"12:00\"), (\"12:30\", \"13:00\"), (\"14:30\", \"15:00\"), (\"15:30\", \"16:30\")],  # Jesse\n    [(\"10:30\", \"12:30\"), (\"13:30\", \"14:00\"), (\"14:30\", \"15:00\"), (\"15:30\", \"16:00\"), (\"16:30\", \"17:00\")],  # Kenneth\n]\n\n# Find a meeting time\nmeeting_time = find_meeting_time(participants_busy_times, work_hours_start, work_hours_end, meeting_duration)\n\nif meeting_time:\n    start, end = meeting_time\n    print(f\"{start}:{end}\")\n    print(\"Monday\")\nelse:\n    print(\"No suitable time found.\")\n```",
+            "count": "calendar_scheduling_example_479"
+        }
+    ]
+}

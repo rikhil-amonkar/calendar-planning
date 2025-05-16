@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "9:13",
+                        "end_time": "10:28"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Laura",
+                        "start_time": "11:45",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Deborah",
+                        "start_time": "13:05",
+                        "end_time": "14:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Steven",
+                        "start_time": "15:03",
+                        "end_time": "17:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "17:08",
+                        "end_time": "18:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Elizabeth",
+                        "start_time": "18:44",
+                        "end_time": "19:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Carol",
+                        "start_time": "21:30",
+                        "end_time": "22:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "9:13",
+                        "end_time": "10:28"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Laura",
+                        "start_time": "11:45",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Deborah",
+                        "start_time": "13:05",
+                        "end_time": "14:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Steven",
+                        "start_time": "15:03",
+                        "end_time": "17:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "17:08",
+                        "end_time": "18:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Elizabeth",
+                        "start_time": "18:44",
+                        "end_time": "19:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Carol",
+                        "start_time": "21:30",
+                        "end_time": "22:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper: convert HH:MM to minutes since midnight\ndef time_to_minutes(t):\n    h, m = map(int, t.split(\":\"))\n    return h * 60 + m\n\n# Helper: convert minutes since midnight to H:MM (24-hour format, no leading zero for hour)\ndef minutes_to_time(m):\n    h = m // 60\n    mins = m % 60\n    return f\"{h}:{mins:02d}\"\n\n# Travel times in minutes (directly from the provided data)\n# We'll structure the data as a dictionary of dictionaries.\ntravel_times = {\n    \"Golden Gate Park\": {\n        \"Haight-Ashbury\": 7,\n        \"Fisherman's Wharf\": 24,\n        \"The Castro\": 13,\n        \"Chinatown\": 23,\n        \"Alamo Square\": 10,\n        \"North Beach\": 24,\n        \"Russian Hill\": 19\n    },\n    \"Haight-Ashbury\": {\n        \"Golden Gate Park\": 7,\n        \"Fisherman's Wharf\": 23,\n        \"The Castro\": 6,\n        \"Chinatown\": 19,\n        \"Alamo Square\": 5,\n        \"North Beach\": 19,\n        \"Russian Hill\": 17\n    },\n    \"Fisherman's Wharf\": {\n        \"Golden Gate Park\": 25,\n        \"Haight-Ashbury\": 22,\n        \"The Castro\": 26,\n        \"Chinatown\": 12,\n        \"Alamo Square\": 20,\n        \"North Beach\": 6,\n        \"Russian Hill\": 7\n    },\n    \"The Castro\": {\n        \"Golden Gate Park\": 11,\n        \"Haight-Ashbury\": 6,\n        \"Fisherman's Wharf\": 24,\n        \"Chinatown\": 20,\n        \"Alamo Square\": 8,\n        \"North Beach\": 20,\n        \"Russian Hill\": 18\n    },\n    \"Chinatown\": {\n        \"Golden Gate Park\": 23,\n        \"Haight-Ashbury\": 19,\n        \"Fisherman's Wharf\": 8,\n        \"The Castro\": 22,\n        \"Alamo Square\": 17,\n        \"North Beach\": 3,\n        \"Russian Hill\": 7\n    },\n    \"Alamo Square\": {\n        \"Golden Gate Park\": 9,\n        \"Haight-Ashbury\": 5,\n        \"Fisherman's Wharf\": 19,\n        \"The Castro\": 8,\n        \"Chinatown\": 16,\n        \"North Beach\": 15,\n        \"Russian Hill\": 13\n    },\n    \"North Beach\": {\n        \"Golden Gate Park\": 22,\n        \"Haight-Ashbury\": 18,\n        \"Fisherman's Wharf\": 5,\n        \"The Castro\": 22,\n        \"Chinatown\": 6,\n        \"Alamo Square\": 16,\n        \"Russian Hill\": 4\n    },\n    \"Russian Hill\": {\n        \"Golden Gate Park\": 21,\n        \"Haight-Ashbury\": 17,\n        \"Fisherman's Wharf\": 7,\n        \"The Castro\": 21,\n        \"Chinatown\": 9,\n        \"Alamo Square\": 15,\n        \"North Beach\": 5\n    }\n}\n\n# Friend meeting constraints.\n# Each friend is represented as a dictionary with:\n# \"person\", \"location\", \"avail_start\", \"avail_end\", \"duration\" (in minutes)\nfriends = [\n    {\n        \"person\": \"Carol\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": time_to_minutes(\"21:30\"),\n        \"avail_end\": time_to_minutes(\"22:30\"),\n        \"duration\": 60\n    },\n    {\n        \"person\": \"Laura\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": time_to_minutes(\"11:45\"),\n        \"avail_end\": time_to_minutes(\"21:30\"),\n        \"duration\": 60\n    },\n    {\n        \"person\": \"Karen\",\n        \"location\": \"The Castro\",\n        \"avail_start\": time_to_minutes(\"7:15\"),\n        \"avail_end\": time_to_minutes(\"14:00\"),\n        \"duration\": 75\n    },\n    {\n        \"person\": \"Elizabeth\",\n        \"location\": \"Chinatown\",\n        \"avail_start\": time_to_minutes(\"12:15\"),\n        \"avail_end\": time_to_minutes(\"21:30\"),\n        \"duration\": 75\n    },\n    {\n        \"person\": \"Deborah\",\n        \"location\": \"Alamo Square\",\n        \"avail_start\": time_to_minutes(\"12:00\"),\n        \"avail_end\": time_to_minutes(\"15:00\"),\n        \"duration\": 105\n    },\n    {\n        \"person\": \"Jason\",\n        \"location\": \"North Beach\",\n        \"avail_start\": time_to_minutes(\"14:45\"),\n        \"avail_end\": time_to_minutes(\"19:00\"),\n        \"duration\": 90\n    },\n    {\n        \"person\": \"Steven\",\n        \"location\": \"Russian Hill\",\n        \"avail_start\": time_to_minutes(\"14:45\"),\n        \"avail_end\": time_to_minutes(\"18:30\"),\n        \"duration\": 120\n    }\n]\n\n# Starting point and start time\nstart_location = \"Golden Gate Park\"\nstart_time = time_to_minutes(\"9:00\")\n\n# Function to retrieve travel time between two locations\ndef get_travel_time(frm, to):\n    if frm == to:\n        return 0\n    # if key not directly available, try swapping if symmetric\n    if frm in travel_times and to in travel_times[frm]:\n        return travel_times[frm][to]\n    elif to in travel_times and frm in travel_times[to]:\n        return travel_times[to][frm]\n    else:\n        # if not found, assume a large travel time\n        return 999\n\n# Given an ordering of friend meetings, simulate the schedule.\n# Returns (feasible, itinerary, final_end_time) if schedule is possible, else (False, None, None)\ndef simulate_schedule(order):\n    itinerary = []\n    current_location = start_location\n    current_time = start_time\n\n    for friend in order:\n        # Travel to friend's location\n        travel = get_travel_time(current_location, friend[\"location\"])\n        arrival_time = current_time + travel\n        # Wait if arrived before friend's available start\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        meeting_end = meeting_start + friend[\"duration\"]\n        # Check if meeting can finish before friend's available end\n        if meeting_end > friend[\"avail_end\"]:\n            return (False, None, None)\n        # Append the meeting event to itinerary\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"person\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        # Update current time and location\n        current_time = meeting_end\n        current_location = friend[\"location\"]\n    return (True, itinerary, current_time)\n\n# We want to schedule as many meetings as possible.\n# Here, we search over all permutations and choose the one that meets the largest number of meetings.\n# In our case, we try to schedule all 7 meetings if possible.\nbest_itinerary = None\nbest_count = 0\nbest_end_time = None\n\n# Loop over all permutations of the 7 friends.\nfor perm in itertools.permutations(friends):\n    feasible, itinerary, final_end_time = simulate_schedule(perm)\n    if feasible:\n        count = len(itinerary)\n        if count > best_count:\n            best_count = count\n            best_itinerary = itinerary\n            best_end_time = final_end_time\n        elif count == best_count:\n            # tie-breaker: choose the one finishing earlier (optimizing overall schedule length)\n            if best_end_time is None or final_end_time < best_end_time:\n                best_itinerary = itinerary\n                best_end_time = final_end_time\n\n# If a feasible itinerary that covers all meetings was not found, try partial meetings.\nif best_itinerary is None:\n    # We try subsets in descending order of meeting count.\n    for count in range(len(friends), 0, -1):\n        for subset in itertools.combinations(friends, count):\n            for perm in itertools.permutations(subset):\n                feasible, itinerary, final_end_time = simulate_schedule(perm)\n                if feasible:\n                    best_itinerary = itinerary\n                    best_count = len(itinerary)\n                    best_end_time = final_end_time\n                    break\n            if best_itinerary is not None:\n                break\n        if best_itinerary is not None:\n            break\n\n# Output the best itinerary in the required JSON format\noutput = {\n    \"itinerary\": best_itinerary if best_itinerary is not None else []\n}\n\nprint(json.dumps(output, indent=2))\n                    \nif __name__ == \"__main__\":\n    pass",
+            "count": "meeting_planning_example_624"
+        }
+    ]
+}

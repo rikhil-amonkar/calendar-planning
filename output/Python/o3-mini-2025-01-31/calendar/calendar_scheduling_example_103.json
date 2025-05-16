@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Define time in minutes since midnight for convenience\ndef time_to_minutes(time_str):\n    \"\"\"Convert HH:MM to minutes since midnight.\"\"\"\n    hours, minutes = map(int, time_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    \"\"\"Convert minutes since midnight to HH:MM formatted string.\"\"\"\n    return f\"{minutes//60:02d}:{minutes%60:02d}\"\n\n# Work hours and meeting duration in minutes\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 30  # in minutes\n\n# Participant schedules represented as lists of (start, end) in minutes. \n# These intervals are blocked times.\nschedules = {\n    \"Diane\": [(time_to_minutes(\"09:30\"), time_to_minutes(\"10:00\")),\n              (time_to_minutes(\"14:30\"), time_to_minutes(\"15:00\"))],\n    \"Jack\": [(time_to_minutes(\"13:30\"), time_to_minutes(\"14:00\")),\n             (time_to_minutes(\"14:30\"), time_to_minutes(\"15:00\"))],\n    \"Eugene\": [(time_to_minutes(\"09:00\"), time_to_minutes(\"10:00\")),\n               (time_to_minutes(\"10:30\"), time_to_minutes(\"11:30\")),\n               (time_to_minutes(\"12:00\"), time_to_minutes(\"14:30\")),\n               (time_to_minutes(\"15:00\"), time_to_minutes(\"16:30\"))],\n    \"Patricia\": [(time_to_minutes(\"09:30\"), time_to_minutes(\"10:30\")),\n                 (time_to_minutes(\"11:00\"), time_to_minutes(\"12:00\")),\n                 (time_to_minutes(\"12:30\"), time_to_minutes(\"14:00\")),\n                 (time_to_minutes(\"15:00\"), time_to_minutes(\"16:30\"))]\n}\n\ndef is_free(person, start, end):\n    \"\"\"\n    Check if the person is free during the time interval [start, end).\n    A person is free if the meeting interval does not overlap any blocked interval.\n    \"\"\"\n    for block in schedules[person]:\n        block_start, block_end = block\n        # Overlap exists if meeting starts before block ends and meeting ends after block starts.\n        if start < block_end and end > block_start:\n            return False\n    return True\n\ndef find_meeting_time():\n    # We'll iterate through the work day in minute increments\n    for start in range(work_start, work_end - meeting_duration + 1):\n        end = start + meeting_duration\n        # Check if the proposed interval fully fits in work hours.\n        if end > work_end:\n            continue\n        \n        # Check all participants\n        if all(is_free(person, start, end) for person in schedules):\n            return start, end\n    return None\n\nmeeting = find_meeting_time()\n\nif meeting:\n    meeting_start, meeting_end = meeting\n    # Format output as HH:MM:HH:MM\n    time_str = f\"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}\"\n    day = \"Monday\"\n    print(f\"Proposed meeting time: {time_str} on {day}\")\nelse:\n    print(\"No suitable meeting time found.\")\n'''",
+            "count": "calendar_scheduling_example_103"
+        }
+    ]
+}

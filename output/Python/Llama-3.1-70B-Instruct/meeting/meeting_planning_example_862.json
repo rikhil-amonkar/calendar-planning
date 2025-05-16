@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "9:20",
+                        "end_time": "9:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Stephanie",
+                        "start_time": "11:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "12:40",
+                        "end_time": "14:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Laura",
+                        "start_time": "14:49",
+                        "end_time": "16:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Deborah",
+                        "start_time": "19:00",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nimport itertools\n\n# Define the locations and travel times\nlocations = {\n    \"Mission District\": {},\n    \"Alamo Square\": {},\n    \"Presidio\": {},\n    \"Russian Hill\": {},\n    \"North Beach\": {},\n    \"Golden Gate Park\": {},\n    \"Richmond District\": {},\n    \"Embarcadero\": {},\n    \"Financial District\": {},\n    \"Marina District\": {}\n}\n\ntravel_times = {\n    (\"Mission District\", \"Alamo Square\"): 11,\n    (\"Mission District\", \"Presidio\"): 25,\n    (\"Mission District\", \"Russian Hill\"): 15,\n    (\"Mission District\", \"North Beach\"): 17,\n    (\"Mission District\", \"Golden Gate Park\"): 17,\n    (\"Mission District\", \"Richmond District\"): 20,\n    (\"Mission District\", \"Embarcadero\"): 19,\n    (\"Mission District\", \"Financial District\"): 15,\n    (\"Mission District\", \"Marina District\"): 19,\n    (\"Alamo Square\", \"Mission District\"): 10,\n    (\"Alamo Square\", \"Presidio\"): 17,\n    (\"Alamo Square\", \"Russian Hill\"): 13,\n    (\"Alamo Square\", \"North Beach\"): 15,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Richmond District\"): 11,\n    (\"Alamo Square\", \"Embarcadero\"): 16,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Alamo Square\", \"Marina District\"): 15,\n    (\"Presidio\", \"Mission District\"): 26,\n    (\"Presidio\", \"Alamo Square\"): 19,\n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Presidio\", \"Embarcadero\"): 20,\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Presidio\", \"Marina District\"): 11,\n    (\"Russian Hill\", \"Mission District\"): 16,\n    (\"Russian Hill\", \"Alamo Square\"): 15,\n    (\"Russian Hill\", \"Presidio\"): 14,\n    (\"Russian Hill\", \"North Beach\"): 5,\n    (\"Russian Hill\", \"Golden Gate Park\"): 21,\n    (\"Russian Hill\", \"Richmond District\"): 14,\n    (\"Russian Hill\", \"Embarcadero\"): 8,\n    (\"Russian Hill\", \"Financial District\"): 11,\n    (\"Russian Hill\", \"Marina District\"): 7,\n    (\"North Beach\", \"Mission District\"): 18,\n    (\"North Beach\", \"Alamo Square\"): 16,\n    (\"North Beach\", \"Presidio\"): 17,\n    (\"North Beach\", \"Russian Hill\"): 4,\n    (\"North Beach\", \"Golden Gate Park\"): 22,\n    (\"North Beach\", \"Richmond District\"): 18,\n    (\"North Beach\", \"Embarcadero\"): 6,\n    (\"North Beach\", \"Financial District\"): 8,\n    (\"North Beach\", \"Marina District\"): 9,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n    (\"Golden Gate Park\", \"Alamo Square\"): 9,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Golden Gate Park\", \"North Beach\"): 23,\n    (\"Golden Gate Park\", \"Richmond District\"): 7,\n    (\"Golden Gate Park\", \"Embarcadero\"): 25,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Golden Gate Park\", \"Marina District\"): 16,\n    (\"Richmond District\", \"Mission District\"): 20,\n    (\"Richmond District\", \"Alamo Square\"): 13,\n    (\"Richmond District\", \"Presidio\"): 7,\n    (\"Richmond District\", \"Russian Hill\"): 13,\n    (\"Richmond District\", \"North Beach\"): 17,\n    (\"Richmond District\", \"Golden Gate Park\"): 9,\n    (\"Richmond District\", \"Embarcadero\"): 19,\n    (\"Richmond District\", \"Financial District\"): 22,\n    (\"Richmond District\", \"Marina District\"): 9,\n    (\"Embarcadero\", \"Mission District\"): 20,\n    (\"Embarcadero\", \"Alamo Square\"): 19,\n    (\"Embarcadero\", \"Presidio\"): 20,\n    (\"Embarcadero\", \"Russian Hill\"): 8,\n    (\"Embarcadero\", \"North Beach\"): 5,\n    (\"Embarcadero\", \"Golden Gate Park\"): 25,\n    (\"Embarcadero\", \"Richmond District\"): 21,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    (\"Embarcadero\", \"Marina District\"): 12,\n    (\"Financial District\", \"Mission District\"): 17,\n    (\"Financial District\", \"Alamo Square\"): 17,\n    (\"Financial District\", \"Presidio\"): 22,\n    (\"Financial District\", \"Russian Hill\"): 11,\n    (\"Financial District\", \"North Beach\"): 7,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Financial District\", \"Richmond District\"): 21,\n    (\"Financial District\", \"Embarcadero\"): 4,\n    (\"Financial District\", \"Marina District\"): 15,\n    (\"Marina District\", \"Mission District\"): 20,\n    (\"Marina District\", \"Alamo Square\"): 15,\n    (\"Marina District\", \"Presidio\"): 10,\n    (\"Marina District\", \"Russian Hill\"): 8,\n    (\"Marina District\", \"North Beach\"): 11,\n    (\"Marina District\", \"Golden Gate Park\"): 18,\n    (\"Marina District\", \"Richmond District\"): 11,\n    (\"Marina District\", \"Embarcadero\"): 14,\n    (\"Marina District\", \"Financial District\"): 17\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"Alamo Square\", \"person\": \"Laura\", \"start_time\": 14.5, \"end_time\": 16.25, \"duration\": 75},\n    {\"location\": \"Presidio\", \"person\": \"Brian\", \"start_time\": 10.25, \"end_time\": 17, \"duration\": 30},\n    {\"location\": \"Russian Hill\", \"person\": \"Karen\", \"start_time\": 18, \"end_time\": 20.25, \"duration\": 90},\n    {\"location\": \"North Beach\", \"person\": \"Stephanie\", \"start_time\": 10.25, \"end_time\": 16, \"duration\": 75},\n    {\"location\": \"Golden Gate Park\", \"person\": \"Helen\", \"start_time\": 11.5, \"end_time\": 21.75, \"duration\": 120},\n    {\"location\": \"Richmond District\", \"person\": \"Sandra\", \"start_time\": 8, \"end_time\": 15.25, \"duration\": 30},\n    {\"location\": \"Embarcadero\", \"person\": \"Mary\", \"start_time\": 16.75, \"end_time\": 18.75, \"duration\": 120},\n    {\"location\": \"Financial District\", \"person\": \"Deborah\", \"start_time\": 19, \"end_time\": 20.75, \"duration\": 105},\n    {\"location\": \"Marina District\", \"person\": \"Elizabeth\", \"start_time\": 8.5, \"end_time\": 13.25, \"duration\": 105}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Mission District\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_862"
+        }
+    ]
+}

@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Karen",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joseph",
+                        "start_time": "10:13",
+                        "end_time": "19:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Sandra",
+                        "start_time": "20:17",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Nancy",
+                        "start_time": "19:46",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joseph",
+                        "start_time": "12:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Sandra",
+                        "start_time": "14:19",
+                        "end_time": "15:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Nancy",
+                        "start_time": "15:46",
+                        "end_time": "17:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Karen",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    \"Union Square\": {\n        \"Nob Hill\": 9,\n        \"Haight-Ashbury\": 18,\n        \"Chinatown\": 7,\n        \"Marina District\": 18\n    },\n    \"Nob Hill\": {\n        \"Union Square\": 7,\n        \"Haight-Ashbury\": 13,\n        \"Chinatown\": 6,\n        \"Marina District\": 11\n    },\n    \"Haight-Ashbury\": {\n        \"Union Square\": 17,\n        \"Nob Hill\": 15,\n        \"Chinatown\": 19,\n        \"Marina District\": 17\n    },\n    \"Chinatown\": {\n        \"Union Square\": 7,\n        \"Nob Hill\": 8,\n        \"Haight-Ashbury\": 19,\n        \"Marina District\": 12\n    },\n    \"Marina District\": {\n        \"Union Square\": 16,\n        \"Nob Hill\": 12,\n        \"Haight-Ashbury\": 16,\n        \"Chinatown\": 16\n    }\n}\n\n# Meeting constraints\nmeetings = [\n    {\"name\": \"Karen\", \"location\": \"Nob Hill\", \"start_time\": \"21:15\", \"end_time\": \"21:45\", \"duration\": 30},\n    {\"name\": \"Joseph\", \"location\": \"Haight-Ashbury\", \"start_time\": \"12:30\", \"end_time\": \"19:45\", \"duration\": 90},\n    {\"name\": \"Sandra\", \"location\": \"Chinatown\", \"start_time\": \"07:15\", \"end_time\": \"19:15\", \"duration\": 75},\n    {\"name\": \"Nancy\", \"location\": \"Marina District\", \"start_time\": \"11:00\", \"end_time\": \"20:15\", \"duration\": 105}\n]\n\ndef calculate_itinerary(meetings, travel_distances):\n    itinerary = []\n    current_location = \"Union Square\"\n    current_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n    for meeting in meetings:\n        travel_time = travel_distances[current_location][meeting[\"location\"]]\n        arrival_time = current_time + timedelta(minutes=travel_time)\n        start_time = datetime.strptime(meeting[\"start_time\"], \"%H:%M\")\n        end_time = datetime.strptime(meeting[\"end_time\"], \"%H:%M\")\n\n        if arrival_time < start_time:\n            wait_time = start_time - arrival_time\n            current_time = start_time\n        else:\n            wait_time = timedelta(0)\n\n        meeting_start_time = max(arrival_time, start_time)\n        meeting_end_time = min(meeting_start_time + timedelta(minutes=meeting[\"duration\"]), end_time)\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"name\"],\n            \"start_time\": meeting_start_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_end_time.strftime(\"%H:%M\")\n        })\n\n        current_time = meeting_end_time + wait_time + timedelta(minutes=travel_time)\n        current_location = meeting[\"location\"]\n\n    return itinerary\n\nitinerary = calculate_itinerary(meetings, travel_distances)\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_352"
+        }
+    ]
+}

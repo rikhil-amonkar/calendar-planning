@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Define constants\nWORK_DAY = \"Monday\"\nMEETING_DURATION = timedelta(minutes=30)\nWORK_START = datetime.strptime(\"09:00\", \"%H:%M\")\nWORK_END = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Busy schedules for each participant (as tuples of start and end times)\n# Times are provided in HH:MM format\nbusy_schedules = {\n    \"Adam\": [(\"09:30\", \"10:00\"), (\"12:30\", \"13:00\"), (\"14:30\", \"15:00\"), (\"16:30\", \"17:00\")],\n    \"Roy\":  [(\"10:00\", \"11:00\"), (\"11:30\", \"13:00\"), (\"13:30\", \"14:30\"), (\"16:30\", \"17:00\")]\n}\n\n# Convert busy schedule times to datetime objects (relative to an arbitrary date)\ndef convert_schedule(schedule):\n    converted = []\n    for start, end in schedule:\n        start_dt = datetime.strptime(start, \"%H:%M\")\n        end_dt = datetime.strptime(end, \"%H:%M\")\n        converted.append((start_dt, end_dt))\n    return converted\n\n# Convert busy schedules for each participant\nfor person in busy_schedules:\n    busy_schedules[person] = convert_schedule(busy_schedules[person])\n\n# Function to determine if a meeting time slot conflicts with any busy intervals.\ndef is_slot_free(meeting_start, meeting_end, schedules):\n    for intervals in schedules.values():\n        for busy_start, busy_end in intervals:\n            # If meeting overlaps with a busy interval, return False\n            if meeting_start < busy_end and busy_start < meeting_end:\n                return False\n    return True\n\n# Search for the earliest available time slot\ncurrent_start = WORK_START\nproposed_start = None\nwhile current_start + MEETING_DURATION <= WORK_END:\n    proposed_end = current_start + MEETING_DURATION\n    if is_slot_free(current_start, proposed_end, busy_schedules):\n        proposed_start = current_start\n        break\n    # Increment by one minute and try again\n    current_start += timedelta(minutes=1)\n\nif proposed_start:\n    proposed_end = proposed_start + MEETING_DURATION\n    # Format the time as HH:MM:HH:MM\n    meeting_time = f\"{proposed_start.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')}\"\n    print(f\"{WORK_DAY} {meeting_time}\")\nelse:\n    print(\"No available time slot was found.\")\n'''",
+            "count": "calendar_scheduling_example_594"
+        }
+    ]
+}

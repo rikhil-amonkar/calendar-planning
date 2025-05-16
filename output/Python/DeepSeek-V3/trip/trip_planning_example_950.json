@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_itinerary():\n    # Cities and their required days\n    cities = {\n        'Mykonos': 3,\n        'Riga': 3,\n        'Munich': 4,\n        'Bucharest': 4,\n        'Rome': 4,\n        'Nice': 3,\n        'Krakow': 2\n    }\n    \n    # Special constraints\n    constraints = [\n        {'place': 'Rome', 'day_range': (1, 4)},\n        {'place': 'Mykonos', 'day_range': (4, 6)},\n        {'place': 'Krakow', 'day_range': (16, 17)}\n    ]\n    \n    # Direct flights (undirected graph)\n    flights = {\n        'Nice': ['Riga', 'Rome', 'Mykonos', 'Munich'],\n        'Riga': ['Nice', 'Bucharest', 'Rome', 'Munich'],\n        'Bucharest': ['Riga', 'Munich', 'Rome'],\n        'Munich': ['Bucharest', 'Mykonos', 'Rome', 'Nice', 'Riga', 'Krakow'],\n        'Rome': ['Nice', 'Munich', 'Mykonos', 'Bucharest', 'Riga'],\n        'Mykonos': ['Munich', 'Nice', 'Rome'],\n        'Krakow': ['Munich']\n    }\n    \n    # Generate all possible city orders that meet the constraints\n    city_names = list(cities.keys())\n    possible_orders = permutations(city_names)\n    \n    valid_itineraries = []\n    \n    for order in possible_orders:\n        # Check if the order meets the constraints\n        # Rome must be first (since conference is day 1-4)\n        if order[0] != 'Rome':\n            continue\n        \n        # Mykonos must be after Rome but before day 6\n        mykonos_pos = order.index('Mykonos')\n        if mykonos_pos <= 0 or mykonos_pos >= 5:  # Must be in first 5 cities (since day 6 is early)\n            continue\n        \n        # Krakow must be last (since show is day 16-17)\n        if order[-1] != 'Krakow':\n            continue\n        \n        # Check flight connections\n        valid_flights = True\n        for i in range(len(order) - 1):\n            if order[i+1] not in flights[order[i]]:\n                valid_flights = False\n                break\n        if not valid_flights:\n            continue\n        \n        # Now try to assign days\n        itinerary = []\n        current_day = 1\n        \n        # Assign Rome first (days 1-4)\n        rome_days = (1, 4)\n        itinerary.append({\n            'day_range': f'Day {rome_days[0]}-{rome_days[1]}',\n            'place': 'Rome'\n        })\n        current_day = rome_days[1] + 1\n        \n        # Now assign other cities\n        remaining_cities = [c for c in order if c != 'Rome']\n        \n        # We know Mykonos must be next (since wedding is day 4-6)\n        if 'Mykonos' in remaining_cities:\n            mykonos_pos_in_remaining = remaining_cities.index('Mykonos')\n            if mykonos_pos_in_remaining != 0:\n                # Move Mykonos to front\n                remaining_cities.remove('Mykonos')\n                remaining_cities.insert(0, 'Mykonos')\n        \n        # Assign Mykonos (days 4-6)\n        if remaining_cities[0] == 'Mykonos':\n            mykonos_days = (4, 6)\n            itinerary.append({\n                'day_range': f'Day {mykonos_days[0]}-{mykonos_days[1]}',\n                'place': 'Mykonos'\n            })\n            current_day = mykonos_days[1] + 1\n            remaining_cities.pop(0)\n        \n        # Assign other cities\n        for city in remaining_cities[:-1]:  # all except Krakow\n            duration = cities[city]\n            end_day = current_day + duration - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            # Add flight to next city\n            next_city = remaining_cities[remaining_cities.index(city)+1]\n            itinerary.append({\n                'flying': f'Day {end_day}-{end_day}',\n                'from': city,\n                'to': next_city\n            })\n            current_day = end_day + 1\n        \n        # Assign Krakow last (days 16-17)\n        if remaining_cities[-1] == 'Krakow':\n            krakow_days = (16, 17)\n            if current_day <= krakow_days[0]:\n                # Fill gap if needed\n                if current_day < krakow_days[0]:\n                    # Need to assign some city in between\n                    # This is getting complex, skip for now\n                    continue\n                itinerary.append({\n                    'day_range': f'Day {krakow_days[0]}-{krakow_days[1]}',\n                    'place': 'Krakow'\n                })\n            else:\n                continue\n        \n        # Check if all cities are covered\n        covered_cities = set([item['place'] for item in itinerary if 'place' in item])\n        if covered_cities == set(city_names):\n            valid_itineraries.append(itinerary)\n    \n    # Select the first valid itinerary (in a real scenario, we might optimize further)\n    if valid_itineraries:\n        return valid_itineraries[0]\n    else:\n        return []\n\ndef main():\n    itinerary = find_itinerary()\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_950"
+        }
+    ]
+}

@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Emily",
+                        "start_time": "9:15",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Linda",
+                        "start_time": "11:26",
+                        "end_time": "11:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Anthony",
+                        "start_time": "11:52",
+                        "end_time": "13:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "13:54",
+                        "end_time": "14:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Paul",
+                        "start_time": "14:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "William",
+                        "start_time": "17:30",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Kimberly",
+                        "start_time": "19:52",
+                        "end_time": "21:07"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, so I've got this problem where I need to write a Python program to plan an optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I'll need to parse all the input parameters. There's a list of travel times between various locations, and each friend has a specific location, available time window, and a minimum meeting duration. The user starts at Russian Hill at 9:00 AM.\n\nI think the best approach is to model this as a permutation problem since the order in which friends are visited will affect the overall schedule. For each possible permutation of friends, I'll simulate the day, checking if it's possible to meet each friend within their available time and accounting for travel times.\n\nI'll need to convert time strings into minutes to make calculations easier. For each permutation, I'll track the current location and time, starting from Russian Hill at 9:00 AM. For each friend in the permutation, I'll calculate the travel time to their location, check if there's an overlapping time window where a meeting can occur, and ensure the meeting duration is met.\n\nIf a valid schedule is found that meets all constraints, I'll keep track of the best itinerary, which is the one that includes the most friends.\n\nFinally, I'll output the best itinerary in the specified JSON format.\n\nI should also make sure that the code is efficient enough to handle all permutations without taking too long, but given the constraints, it's manageable.\n\nNow, I'll structure the code step by step, starting with defining the travel times and friends, then implementing the permutation checks, and finally outputting the result.\n</think>\n\n```python\nimport itertools\n\ndef time_to_minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    h = m // 60\n    m = m % 60\n    return f\"{h}:{m:02d}\"\n\ntravel_times = {\n    'Russian Hill': {\n        'Pacific Heights': 7,\n        'North Beach': 5,\n        'Golden Gate Park': 21,\n        'Embarcadero': 8,\n        'Haight-Ashbury': 17,\n        'Fisherman\\'s Wharf': 7,\n        'Mission District': 16,\n        'Alamo Square': 15,\n        'Bayview': 23,\n        'Richmond District': 14,\n    },\n    'Pacific Heights': {\n        'Russian Hill': 7,\n        'North Beach': 9,\n        'Golden Gate Park': 15,\n        'Embarcadero': 10,\n        'Haight-Ashbury': 11,\n        'Fisherman\\'s Wharf': 13,\n        'Mission District': 15,\n        'Alamo Square': 10,\n        'Bayview': 22,\n        'Richmond District': 12,\n    },\n    'North Beach': {\n        'Russian Hill': 4,\n        'Pacific Heights': 8,\n        'Golden Gate Park': 22,\n        'Embarcadero': 6,\n        'Haight-Ashbury': 18,\n        'Fisherman\\'s Wharf': 5,\n        'Mission District': 18,\n        'Alamo Square': 16,\n        'Bayview': 25,\n        'Richmond District': 18,\n    },\n    'Golden Gate Park': {\n        'Russian Hill': 19,\n        'Pacific Heights': 16,\n        'North Beach': 23,\n        'Embarcadero': 25,\n        'Haight-Ashbury': 7,\n        'Fisherman\\'s Wharf': 24,\n        'Mission District': 17,\n        'Alamo Square': 9,\n        'Bayview': 23,\n        'Richmond District': 7,\n    },\n    'Embarcadero': {\n        'Russian Hill': 8,\n        'Pacific Heights': 11,\n        'North Beach': 5,\n        'Golden Gate Park': 25,\n        'Haight-Ashbury': 21,\n        'Fisherman\\'s Wharf': 6,\n        'Mission District': 20,\n        'Alamo Square': 19,\n        'Bayview': 21,\n        'Richmond District': 21,\n    },\n    'Haight-Ashbury': {\n        'Russian Hill': 17,\n        'Pacific Heights': 12,\n        'North Beach': 19,\n        'Golden Gate Park': 7,\n        'Embarcadero': 20,\n        'Fisherman\\'s Wharf': 23,\n        'Mission District': 11,\n        'Alamo Square': 5,\n        'Bayview': 18,\n        'Richmond District': 10,\n    },\n    'Fisherman\\'s Wharf': {\n        'Russian Hill': 7,\n        'Pacific Heights': 12,\n        'North Beach': 6,\n        'Golden Gate Park': 25,\n        'Embarcadero': 8,\n        'Haight-Ashbury': 22,\n        'Mission District': 22,\n        'Alamo Square': 21,\n        'Bayview': 26,\n        'Richmond District': 18,\n    },\n    'Mission District': {\n        'Russian Hill': 15,\n        'Pacific Heights': 16,\n        'North Beach': 17,\n        'Golden Gate Park': 17,\n        'Embarcadero': 19,\n        'Haight-Ashbury': 12,\n        'Fisherman\\'s Wharf': 22,\n        'Alamo Square': 11,\n        'Bayview': 14,\n        'Richmond District': 20,\n    },\n    'Alamo Square': {\n        'Russian Hill': 13,\n        'Pacific Heights': 10,\n        'North Beach': 15,\n        'Golden Gate Park': 9,\n        'Embarcadero': 16,\n        'Haight-Ashbury': 5,\n        'Fisherman\\'s Wharf': 19,\n        'Mission District': 10,\n        'Bayview': 16,\n        'Richmond District': 11,\n    },\n    'Bayview': {\n        'Russian Hill': 23,\n        'Pacific Heights': 23,\n        'North Beach': 22,\n        'Golden Gate Park': 22,\n        'Embarcadero': 19,\n        'Haight-Ashbury': 19,\n        'Fisherman\\'s Wharf': 25,\n        'Mission District': 13,\n        'Alamo Square': 16,\n        'Richmond District': 25,\n    },\n    'Richmond District': {\n        'Russian Hill': 13,\n        'Pacific Heights': 10,\n        'North Beach': 17,\n        'Golden Gate Park': 9,\n        'Embarcadero': 19,\n        'Haight-Ashbury': 10,\n        'Fisherman\\'s Wharf': 18,\n        'Mission District': 20,\n        'Alamo Square': 13,\n        'Bayview': 27,\n    },\n}\n\nfriends = [\n    {'name': 'Emily', 'location': 'Pacific Heights', 'start': '9:15', 'end': '13:45', 'duration': 120},\n    {'name': 'Helen', 'location': 'North Beach', 'start': '13:45', 'end': '18:45', 'duration': 30},\n    {'name': 'Kimberly', 'location': 'Golden Gate Park', 'start': '18:45', 'end': '21:15', 'duration': 75},\n    {'name': 'James', 'location': 'Embarcadero', 'start': '10:30', 'end': '11:30', 'duration': 30},\n    {'name': 'Linda', 'location': 'Haight-Ashbury', 'start': '7:30', 'end': '19:15', 'duration': 15},\n    {'name': 'Paul', 'location': 'Fisherman\\'s Wharf', 'start': '14:45', 'end': '18:45', 'duration': 90},\n    {'name': 'Anthony', 'location': 'Mission District', 'start': '8:00', 'end': '14:45', 'duration': 105},\n    {'name': 'Nancy', 'location': 'Alamo Square', 'start': '8:30', 'end': '13:45', 'duration': 120},\n    {'name': 'William', 'location': 'Bayview', 'start': '17:30', 'end': '20:30', 'duration': 120},\n    {'name': 'Margaret', 'location': 'Richmond District', 'start': '15:15', 'end': '18:15', 'duration': 45},\n]\n\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Russian Hill'\n    current_time = 540  # 9:00 AM\n    itinerary = []\n    valid = True\n    for friend in perm:\n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        meet_start = max(arrival, start)\n        meet_end = meet_start + friend['duration']\n        if meet_end > end:\n            valid = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meet_start),\n            'end_time': minutes_to_time(meet_end)\n        })\n        current_location = friend['location']\n        current_time = meet_end\n    if valid:\n        if len(itinerary) > len(best_itinerary):\n            best_itinerary = itinerary.copy()\n\nprint('SOLUTION:')\nprint('{ \"itinerary\": [')\nfor i, meeting in enumerate(best_itinerary):\n    print(f'    {{\"action\": \"meet\", \"location\": \"{meeting[\"location\"]}\", \"person\": \"{meeting[\"person\"]}\", \"start_time\": \"{meeting[\"start_time\"]}\", \"end_time\": \"{meeting[\"end_time\"]}\"}}' + ('' if i == len(best_itinerary)-1 else ','))\nprint(']}')\n```",
+            "count": "meeting_planning_example_901"
+        }
+    ]
+}

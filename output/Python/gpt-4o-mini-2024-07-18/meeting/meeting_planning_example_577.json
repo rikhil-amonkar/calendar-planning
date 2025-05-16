@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "9:07",
+                        "end_time": "10:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Anthony",
+                        "start_time": "10:32",
+                        "end_time": "10:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sandra",
+                        "start_time": "14:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Stephanie",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kevin",
+                        "start_time": "20:22",
+                        "end_time": "21:37"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nimport itertools\n\n# Travel times in minutes\ntravel_times = {\n    (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n    (\"Haight-Ashbury\", \"Fisherman's Wharf\"): 23,\n    (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n    (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n    (\"Haight-Ashbury\", \"Alamo Square\"): 5,\n    (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n    (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n    (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n    (\"Russian Hill\", \"Nob Hill\"): 5,\n    (\"Russian Hill\", \"Golden Gate Park\"): 21,\n    (\"Russian Hill\", \"Alamo Square\"): 15,\n    (\"Russian Hill\", \"Pacific Heights\"): 7,\n    (\"Fisherman's Wharf\", \"Haight-Ashbury\"): 22,\n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Alamo Square\"): 20,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n    (\"Nob Hill\", \"Russian Hill\"): 5,\n    (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n    (\"Nob Hill\", \"Golden Gate Park\"): 17,\n    (\"Nob Hill\", \"Alamo Square\"): 11,\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n    (\"Golden Gate Park\", \"Nob Hill\"): 20,\n    (\"Golden Gate Park\", \"Alamo Square\"): 10,\n    (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n    (\"Alamo Square\", \"Haight-Ashbury\"): 5,\n    (\"Alamo Square\", \"Russian Hill\"): 13,\n    (\"Alamo Square\", \"Fisherman's Wharf\"): 19,\n    (\"Alamo Square\", \"Nob Hill\"): 11,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n    (\"Pacific Heights\", \"Russian Hill\"): 7,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n}\n\n# Meeting constraints\nmeetings = {\n    \"Stephanie\": {\n        \"location\": \"Russian Hill\",\n        \"start\": \"20:00\",\n        \"end\": \"20:45\",\n        \"duration\": 15,\n    },\n    \"Kevin\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"start\": \"19:15\",\n        \"end\": \"21:45\",\n        \"duration\": 75,\n    },\n    \"Robert\": {\n        \"location\": \"Nob Hill\",\n        \"start\": \"07:45\",\n        \"end\": \"10:30\",\n        \"duration\": 90,\n    },\n    \"Steven\": {\n        \"location\": \"Golden Gate Park\",\n        \"start\": \"08:30\",\n        \"end\": \"17:00\",\n        \"duration\": 75,\n    },\n    \"Anthony\": {\n        \"location\": \"Alamo Square\",\n        \"start\": \"07:45\",\n        \"end\": \"19:45\",\n        \"duration\": 15,\n    },\n    \"Sandra\": {\n        \"location\": \"Pacific Heights\",\n        \"start\": \"14:45\",\n        \"end\": \"21:45\",\n        \"duration\": 45,\n    },\n}\n\n# Convert time string to datetime\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\n# Convert datetime to string\ndef format_time(dt):\n    return dt.strftime(\"%H:%M\")\n\ndef compute_schedule():\n    start_time = parse_time(\"09:00\")\n    itinerary = []\n    \n    def can_meet(start, end, duration):\n        return (end - start).total_seconds() / 60 >= duration\n    \n    # Try to meet all friends in a feasible order\n    locations = [\"Haight-Ashbury\", \"Russian Hill\", \"Fisherman's Wharf\", \"Nob Hill\", \n                 \"Golden Gate Park\", \"Alamo Square\", \"Pacific Heights\"]\n    \n    # Generate all permutations of locations to attempt\n    for order in itertools.permutations(locations[1:]):  # excluding \"Haight-Ashbury\"\n        current_time = start_time\n        current_location = \"Haight-Ashbury\"\n        temp_itinerary = []\n        \n        for friend in order:\n            meeting_info = meetings[friend]\n            travel_time = travel_times[(current_location, meeting_info['location'])]\n            arrival_time = current_time + timedelta(minutes=travel_time)\n            meeting_start = max(arrival_time, parse_time(meeting_info['start']))\n            meeting_end = meeting_start + timedelta(minutes=meeting_info['duration'])\n            \n            if can_meet(meeting_start, parse_time(meeting_info['end']), meeting_info['duration']):\n                temp_itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": meeting_info['location'],\n                    \"person\": friend,\n                    \"start_time\": format_time(meeting_start),\n                    \"end_time\": format_time(meeting_end),\n                })\n                current_time = meeting_end\n                current_location = meeting_info['location']\n            else:\n                break  # can't meet this friend in this order\n        \n        if len(temp_itinerary) == len(order):\n            itinerary = temp_itinerary\n            break  # found a complete valid itinerary\n    \n    return {\"itinerary\": itinerary}\n\nresult = compute_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_577"
+        }
+    ]
+}

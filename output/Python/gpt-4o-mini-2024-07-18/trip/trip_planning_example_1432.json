@@ -1,0 +1,93 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 26-28",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 29-31",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 32-34",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define the trip constraints\n    trip_days = 29\n    city_days = {\n        'Frankfurt': 4,\n        'Salzburg': 5,\n        'Athens': 5,\n        'Reykjavik': 5,\n        'Bucharest': 3,\n        'Valencia': 2,\n        'Vienna': 5,\n        'Amsterdam': 3,\n        'Stockholm': 3,\n        'Riga': 3,\n    }\n\n    events = {\n        'workshop_athens': (14, 18),\n        'annual_show_valencia': (5, 6),\n        'wedding_vienna': (6, 10),\n        'meeting_friend_stockholm': (1, 3),\n        'conference_riga': (18, 20)\n    }\n\n    # Define the direct flights\n    flights = {\n        'Valencia': ['Frankfurt', 'Athens', 'Bucharest'],\n        'Frankfurt': ['Valencia', 'Salzburg', 'Riga'],\n        'Vienna': ['Bucharest', 'Frankfurt', 'Riga', 'Reykjavik', 'Athens'],\n        'Bucharest': ['Vienna', 'Athens', 'Frankfurt'],\n        'Athens': ['Valencia', 'Bucharest', 'Riga', 'Frankfurt'],\n        'Riga': ['Frankfurt', 'Vienna', 'Amsterdam', 'Stockholm', 'Athens'],\n        'Stockholm': ['Athens', 'Vienna', 'Reykjavik', 'Amsterdam'],\n        'Reykjavik': ['Frankfurt', 'Vienna', 'Amsterdam'],\n        'Amsterdam': ['Bucharest', 'Vienna', 'Riga', 'Reykjavik', 'Athens', 'Frankfurt'],\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    day_counter = 1\n\n    # 1. Start from Frankfurt\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Frankfurt\"] - 1}', 'place': 'Frankfurt'})\n    day_counter += city_days['Frankfurt']\n    \n    # 2. Travel to Salzburg\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Frankfurt', 'to': 'Salzburg'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Salzburg\"] - 1}', 'place': 'Salzburg'})\n    day_counter += city_days['Salzburg']\n    \n    # 3. Travel to Valencia\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Salzburg', 'to': 'Valencia'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Valencia\"] - 1}', 'place': 'Valencia'})\n    day_counter += city_days['Valencia']\n    \n    # 4. Attend annual show in Valencia\n    day_counter += 1  # Day 6 for the event\n    \n    # 5. Travel to Athens\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Valencia', 'to': 'Athens'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Athens\"] - 1}', 'place': 'Athens'})\n    day_counter += city_days['Athens']\n    \n    # 6. Attend workshop in Athens (already within the stay)\n    \n    # 7. Travel to Bucharest\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Athens', 'to': 'Bucharest'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Bucharest\"] - 1}', 'place': 'Bucharest'})\n    day_counter += city_days['Bucharest']\n    \n    # 8. Travel to Vienna\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Bucharest', 'to': 'Vienna'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Vienna\"] - 1}', 'place': 'Vienna'})\n    day_counter += city_days['Vienna']\n    \n    # 9. Attend wedding in Vienna (already within the stay)\n    \n    # 10. Travel to Amsterdam\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Vienna', 'to': 'Amsterdam'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Amsterdam\"] - 1}', 'place': 'Amsterdam'})\n    day_counter += city_days['Amsterdam']\n    \n    # 11. Travel to Stockholm\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Amsterdam', 'to': 'Stockholm'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Stockholm\"] - 1}', 'place': 'Stockholm'})\n    day_counter += city_days['Stockholm']\n    \n    # 12. Meet friend in Stockholm (already within the stay)\n    \n    # 13. Travel to Riga\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Stockholm', 'to': 'Riga'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + city_days[\"Riga\"] - 1}', 'place': 'Riga'})\n    day_counter += city_days['Riga']\n    \n    # 14. Attend conference in Riga (already within the stay)\n\n    # Convert itinerary to JSON format\n    json_output = json.dumps(itinerary, indent=4)\n    return json_output\n\n# Run the program\nif __name__ == \"__main__\":\n    trip_plan = create_itinerary()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_1432"
+        }
+    ]
+}

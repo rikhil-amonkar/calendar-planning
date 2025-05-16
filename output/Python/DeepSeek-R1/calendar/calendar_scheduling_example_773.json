@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{9:00",
+                "end_time": "10:00}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{9:00",
+                "end_time": "10:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\nroy_schedule = {\n    'Monday': [\n        ('10:00', '11:30'),\n        ('12:00', '13:00'),\n        ('14:00', '14:30'),\n        ('15:00', '17:00'),\n    ],\n    'Tuesday': [\n        ('10:30', '11:30'),\n        ('12:00', '14:30'),\n        ('15:00', '15:30'),\n        ('16:00', '17:00'),\n    ],\n    'Wednesday': [\n        ('9:30', '11:30'),\n        ('12:30', '14:00'),\n        ('14:30', '15:30'),\n        ('16:30', '17:00'),\n    ]\n}\n\nwork_start = parse_time('09:00')\nwork_end = parse_time('17:00')\nmeeting_duration = 60\n\nfor day in ['Monday', 'Tuesday', 'Wednesday']:\n    busy = []\n    for slot in roy_schedule[day]:\n        s, e = parse_time(slot[0]), parse_time(slot[1])\n        busy.append((s, e))\n    busy.sort()\n    free = []\n    current = work_start\n    for s, e in busy:\n        if current < s:\n            free.append((current, s))\n        current = max(current, e)\n    if current < work_end:\n        free.append((current, work_end))\n    for start, end in free:\n        if end - start >= meeting_duration:\n            meeting_end = start + meeting_duration\n            print(f\"{day} {format_time(start)}:{format_time(meeting_end)}\")\n            exit()\n'''",
+            "count": "calendar_scheduling_example_773"
+        }
+    ]
+}

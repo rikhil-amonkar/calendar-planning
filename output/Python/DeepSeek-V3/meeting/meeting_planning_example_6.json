@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "14:15",
+                        "end_time": "15:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "14:15",
+                        "end_time": "15:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef calculate_optimal_schedule():\n    # Input parameters\n    arrival_time = datetime.strptime(\"9:00\", \"%H:%M\")\n    kenneth_available_start = datetime.strptime(\"14:15\", \"%H:%M\")\n    kenneth_available_end = datetime.strptime(\"19:45\", \"%H:%M\")\n    min_meeting_duration = timedelta(minutes=90)\n    travel_time_to_nob_hill = timedelta(minutes=11)\n    travel_time_to_fishermans_wharf = timedelta(minutes=11)\n\n    # Calculate possible meeting window with Kenneth\n    earliest_departure_to_meet = arrival_time + travel_time_to_nob_hill\n    meeting_start = max(earliest_departure_to_meet, kenneth_available_start)\n    meeting_end = meeting_start + min_meeting_duration\n\n    # Check if meeting is possible within Kenneth's availability\n    if meeting_end <= kenneth_available_end:\n        # Calculate return time\n        return_departure = meeting_end\n        return_arrival = return_departure + travel_time_to_fishermans_wharf\n\n        itinerary = [\n            {\n                \"action\": \"travel\",\n                \"location\": \"Nob Hill\",\n                \"person\": None,\n                \"start_time\": arrival_time.strftime(\"%H:%M\"),\n                \"end_time\": earliest_departure_to_meet.strftime(\"%H:%M\")\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Nob Hill\",\n                \"person\": \"Kenneth\",\n                \"start_time\": meeting_start.strftime(\"%H:%M\"),\n                \"end_time\": meeting_end.strftime(\"%H:%M\")\n            },\n            {\n                \"action\": \"travel\",\n                \"location\": \"Fisherman's Wharf\",\n                \"person\": None,\n                \"start_time\": return_departure.strftime(\"%H:%M\"),\n                \"end_time\": return_arrival.strftime(\"%H:%M\")\n            }\n        ]\n    else:\n        itinerary = [\n            {\n                \"action\": \"no_meeting_possible\",\n                \"location\": None,\n                \"person\": None,\n                \"start_time\": None,\n                \"end_time\": None\n            }\n        ]\n\n    return {\"itinerary\": itinerary}\n\nresult = calculate_optimal_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_6"
+        }
+    ]
+}

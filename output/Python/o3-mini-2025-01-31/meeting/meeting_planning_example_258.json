@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "9:15",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Betty",
+                        "start_time": "11:32",
+                        "end_time": "12:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "David",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Betty",
+                        "start_time": "10:15",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "David",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "14:48",
+                        "end_time": "16:48"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper functions to convert time between \"H:MM\" and minutes since midnight\ndef time_to_minutes(t):\n    # Expected t format \"H:MM\" or \"HH:MM\"\n    parts = t.split(':')\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(m):\n    # returns time in \"H:MM\" where hour is not zero padded and minutes are two digits.\n    hour = m // 60\n    minute = m % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Define travel times as dictionary with (from, to) keys (in minutes)\ntravel_times = {\n    (\"Embarcadero\", \"Presidio\"): 20,\n    (\"Embarcadero\", \"Richmond District\"): 21,\n    (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n    (\"Presidio\", \"Embarcadero\"): 20,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Richmond District\", \"Embarcadero\"): 19,\n    (\"Richmond District\", \"Presidio\"): 7,\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n    (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18\n}\n\n# Define friend meeting constraints data.\nfriends = {\n    \"Betty\": {\n        \"location\": \"Presidio\",\n        \"avail_start\": time_to_minutes(\"10:15\"),\n        \"avail_end\": time_to_minutes(\"21:30\"),\n        \"min_duration\": 45\n    },\n    \"David\": {\n        \"location\": \"Richmond District\",\n        \"avail_start\": time_to_minutes(\"13:00\"),\n        \"avail_end\": time_to_minutes(\"20:15\"),\n        \"min_duration\": 90\n    },\n    \"Barbara\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": time_to_minutes(\"9:15\"),\n        \"avail_end\": time_to_minutes(\"20:15\"),\n        \"min_duration\": 120\n    }\n}\n\n# Starting point info\nstart_location = \"Embarcadero\"\nstart_time = time_to_minutes(\"9:00\")\n\n# Function to compute schedule for a given order of meetings.\ndef compute_schedule(order):\n    itinerary = []\n    current_location = start_location\n    current_time = start_time\n    total_idle = 0  # total waiting time\n    for person in order:\n        friend = friends[person]\n        dest = friend[\"location\"]\n        # Get travel time from current location to destination\n        travel = travel_times.get((current_location, dest), None)\n        if travel is None:\n            # If travel time not defined, schedule is not feasible.\n            return None, None\n        # Arrive at destination\n        arrival_time = current_time + travel\n        # Meeting can only start when friend is available.\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        # Calculate waiting time if any.\n        waiting = meeting_start - arrival_time\n        total_idle += waiting\n        meeting_end = meeting_start + friend[\"min_duration\"]\n        # Check if meeting finishes before friend leaves\n        if meeting_end > friend[\"avail_end\"]:\n            return None, None  # not feasible\n        # Record itinerary step\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": dest,\n            \"person\": person,\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        # update current_time and current_location\n        current_time = meeting_end\n        current_location = dest\n    return itinerary, current_time\n\n# Try every permutation of friend meeting order and choose the one that is feasible and minimizes finishing time (and waiting time)\nbest_itinerary = None\nbest_finish_time = None\nbest_idle = None\nfor order in itertools.permutations(friends.keys()):\n    itinerary, finish_time = compute_schedule(order)\n    if itinerary is None:\n        continue\n    # Also compute total waiting time in this itinerary\n    # (We already computed waiting inside compute_schedule using total_idle but not returned.\n    # To recalc waiting, simulate once more.)\n    total_wait = 0\n    current_location = start_location\n    current_time = start_time\n    for person in order:\n        friend = friends[person]\n        dest = friend[\"location\"]\n        travel = travel_times[(current_location, dest)]\n        arrival_time = current_time + travel\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        total_wait += meeting_start - arrival_time\n        meeting_end = meeting_start + friend[\"min_duration\"]\n        current_time = meeting_end\n        current_location = dest\n\n    # Use finish time as primary measure and waiting as secondary.\n    if best_finish_time is None or finish_time < best_finish_time or (finish_time == best_finish_time and total_wait < best_idle):\n        best_finish_time = finish_time\n        best_itinerary = itinerary\n        best_idle = total_wait\n\n# If no itinerary is feasible, return a message in JSON.\nif best_itinerary is None:\n    output = {\"error\": \"No feasible meeting schedule found.\"}\nelse:\n    output = {\"itinerary\": best_itinerary}\n\n# Output the result as JSON.\nprint(json.dumps(output, indent=2))",
+            "count": "meeting_planning_example_258"
+        }
+    ]
+}

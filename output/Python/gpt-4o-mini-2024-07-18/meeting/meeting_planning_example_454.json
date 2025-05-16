@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Ronald",
+                        "start_time": "9:21",
+                        "end_time": "10:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "13:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "William",
+                        "start_time": "14:45",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Ashley",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Daniel",
+                        "start_time": "7:26",
+                        "end_time": "9:11"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Daniel",
+                        "start_time": "9:26",
+                        "end_time": "11:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Ronald",
+                        "start_time": "11:27",
+                        "end_time": "12:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "13:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Ashley",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "William",
+                        "start_time": "19:21",
+                        "end_time": "19:36"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times in minutes\ntravel_times = {\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Bayview\"): 31,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Mission District\"): 26,\n    (\"Golden Gate Park\", \"Bayview\"): 23,\n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n    (\"Golden Gate Park\", \"North Beach\"): 24,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n    (\"Bayview\", \"Chinatown\"): 22,\n    (\"Bayview\", \"North Beach\"): 21,\n    (\"Bayview\", \"Mission District\"): 13,\n    (\"Chinatown\", \"North Beach\"): 6,\n    (\"Chinatown\", \"Mission District\"): 18,\n    (\"North Beach\", \"Mission District\"): 17,\n}\n\n# Define meeting constraints\nmeetings = {\n    \"Jessica\": {\n        \"location\": \"Golden Gate Park\",\n        \"available_from\": \"13:45\",\n        \"available_to\": \"15:00\",\n        \"duration\": 30\n    },\n    \"Ashley\": {\n        \"location\": \"Bayview\",\n        \"available_from\": \"17:15\",\n        \"available_to\": \"20:00\",\n        \"duration\": 105\n    },\n    \"Ronald\": {\n        \"location\": \"Chinatown\",\n        \"available_from\": \"07:15\",\n        \"available_to\": \"14:45\",\n        \"duration\": 90\n    },\n    \"William\": {\n        \"location\": \"North Beach\",\n        \"available_from\": \"13:15\",\n        \"available_to\": \"20:15\",\n        \"duration\": 15\n    },\n    \"Daniel\": {\n        \"location\": \"Mission District\",\n        \"available_from\": \"07:00\",\n        \"available_to\": \"11:15\",\n        \"duration\": 105\n    }\n}\n\n# Convert time strings to datetime objects for easier manipulation\ndef time_str_to_datetime(time_str):\n    return datetime.strptime(time_str, '%H:%M')\n\ndef datetime_to_time_str(time_dt):\n    return time_dt.strftime('%H:%M')\n\n# Function to find meeting schedule\ndef find_schedule():\n    start_time = time_str_to_datetime(\"09:00\")\n    itinerary = []\n    \n    # Meeting with Ronald first (as he's available from morning)\n    ronald_avail_from = time_str_to_datetime(meetings[\"Ronald\"][\"available_from\"])\n    ronald_avail_to = time_str_to_datetime(meetings[\"Ronald\"][\"available_to\"])\n    \n    # Calculate travel time to Chinatown from Presidio\n    travel_time_to_ronald = travel_times[(\"Presidio\", \"Chinatown\")]\n    time_to_meet_ronald = start_time + timedelta(minutes=travel_time_to_ronald)\n    \n    if time_to_meet_ronald <= ronald_avail_to - timedelta(minutes=meetings[\"Ronald\"][\"duration\"]):\n        meet_ronald_start = max(time_to_meet_ronald, ronald_avail_from)\n        meet_ronald_end = meet_ronald_start + timedelta(minutes=meetings[\"Ronald\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Chinatown\",\n            \"person\": \"Ronald\",\n            \"start_time\": datetime_to_time_str(meet_ronald_start),\n            \"end_time\": datetime_to_time_str(meet_ronald_end),\n        })\n        start_time = meet_ronald_end + timedelta(minutes=travel_time_to_ronald)  # travel back to Presidio\n\n    # Meeting with Jessica next\n    jessica_avail_from = time_str_to_datetime(meetings[\"Jessica\"][\"available_from\"])\n    jessica_avail_to = time_str_to_datetime(meetings[\"Jessica\"][\"available_to\"])\n\n    travel_time_to_jessica = travel_times[(\"Presidio\", \"Golden Gate Park\")]\n    time_to_meet_jessica = start_time + timedelta(minutes=travel_time_to_jessica)\n\n    if time_to_meet_jessica <= jessica_avail_to - timedelta(minutes=meetings[\"Jessica\"][\"duration\"]):\n        meet_jessica_start = max(time_to_meet_jessica, jessica_avail_from)\n        meet_jessica_end = meet_jessica_start + timedelta(minutes=meetings[\"Jessica\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Golden Gate Park\",\n            \"person\": \"Jessica\",\n            \"start_time\": datetime_to_time_str(meet_jessica_start),\n            \"end_time\": datetime_to_time_str(meet_jessica_end),\n        })\n        start_time = meet_jessica_end + timedelta(minutes=travel_time_to_jessica)  # travel back to Presidio\n\n    # Meeting with William\n    william_avail_from = time_str_to_datetime(meetings[\"William\"][\"available_from\"])\n    william_avail_to = time_str_to_datetime(meetings[\"William\"][\"available_to\"])\n\n    travel_time_to_william = travel_times[(\"Presidio\", \"North Beach\")]\n    time_to_meet_william = start_time + timedelta(minutes=travel_time_to_william)\n\n    if time_to_meet_william <= william_avail_to - timedelta(minutes=meetings[\"William\"][\"duration\"]):\n        meet_william_start = max(time_to_meet_william, william_avail_from)\n        meet_william_end = meet_william_start + timedelta(minutes=meetings[\"William\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"North Beach\",\n            \"person\": \"William\",\n            \"start_time\": datetime_to_time_str(meet_william_start),\n            \"end_time\": datetime_to_time_str(meet_william_end),\n        })\n        start_time = meet_william_end + timedelta(minutes=travel_time_to_william)  # travel back to Presidio\n\n    # Meeting with Ashley last\n    ashley_avail_from = time_str_to_datetime(meetings[\"Ashley\"][\"available_from\"])\n    ashley_avail_to = time_str_to_datetime(meetings[\"Ashley\"][\"available_to\"])\n\n    travel_time_to_ashley = travel_times[(\"Presidio\", \"Bayview\")]\n    time_to_meet_ashley = start_time + timedelta(minutes=travel_time_to_ashley)\n\n    if time_to_meet_ashley <= ashley_avail_to - timedelta(minutes=meetings[\"Ashley\"][\"duration\"]):\n        meet_ashley_start = max(time_to_meet_ashley, ashley_avail_from)\n        meet_ashley_end = meet_ashley_start + timedelta(minutes=meetings[\"Ashley\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Bayview\",\n            \"person\": \"Ashley\",\n            \"start_time\": datetime_to_time_str(meet_ashley_start),\n            \"end_time\": datetime_to_time_str(meet_ashley_end),\n        })\n\n    # Meeting with Daniel\n    daniel_avail_from = time_str_to_datetime(meetings[\"Daniel\"][\"available_from\"])\n    daniel_avail_to = time_str_to_datetime(meetings[\"Daniel\"][\"available_to\"])\n\n    time_to_meet_daniel = datetime.strptime(\"07:00\", \"%H:%M\") + timedelta(minutes=travel_times[(\"Presidio\", \"Mission District\")])\n    \n    if time_to_meet_daniel <= daniel_avail_to - timedelta(minutes=meetings[\"Daniel\"][\"duration\"]):\n        meet_daniel_start = max(time_to_meet_daniel, daniel_avail_from)\n        meet_daniel_end = meet_daniel_start + timedelta(minutes=meetings[\"Daniel\"][\"duration\"])\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Mission District\",\n            \"person\": \"Daniel\",\n            \"start_time\": datetime_to_time_str(meet_daniel_start),\n            \"end_time\": datetime_to_time_str(meet_daniel_end),\n        })\n\n    return json.dumps({\"itinerary\": itinerary}, indent=2)\n\n# Run the schedule computation\nif __name__ == \"__main__\":\n    schedule = find_schedule()\n    print(\"SOLUTION:\")\n    print(schedule)\n```",
+            "count": "meeting_planning_example_454"
+        }
+    ]
+}

@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define initial parameters\n    total_days = 8\n    stay_durations = {\n        \"Prague\": 4,\n        \"Stuttgart\": 2,\n        \"Split\": 2,\n        \"Krakow\": 2,\n        \"Florence\": 2\n    }\n\n    # Define the travel constraints\n    constraints = {\n        \"wedding\": (2, 3),  # Wedding in Stuttgart between day 2 and day 3\n        \"friends\": (3, 4),   # Visit friends in Split between day 3 and day 4\n    }\n\n    # Define direct flight connections\n    flights = {\n        \"Stuttgart\": [\"Split\", \"Krakow\"],\n        \"Split\": [\"Prague\", \"Krakow\"],\n        \"Prague\": [\"Florence\"],\n        \"Krakow\": [\"Stuttgart\", \"Split\", \"Prague\"],\n    }\n\n    # Initialize the itinerary\n    itinerary = []\n    current_day = 1\n\n    # Add Prague stay\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + stay_durations['Prague'] - 1}\", \"place\": \"Prague\"})\n    current_day += stay_durations['Prague']\n\n    # Add Stuttgart stay with wedding\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + stay_durations['Stuttgart'] - 1}\", \"place\": \"Stuttgart\"})\n    current_day += stay_durations['Stuttgart']\n\n    # Add Split for friends meet after wedding\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + stay_durations['Split'] - 1}\", \"place\": \"Split\"})\n    current_day += stay_durations['Split']\n\n    # Add travel back to Stuttgart for the next flight\n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Split\", \"to\": \"Stuttgart\"})\n\n    # Add travel to Krakow from Stuttgart\n    current_day += 1\n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Stuttgart\", \"to\": \"Krakow\"})\n\n    # Add Krakow stay\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + stay_durations['Krakow'] - 1}\", \"place\": \"Krakow\"})\n    current_day += stay_durations['Krakow']\n\n    # Add travel to Florence from Krakow\n    current_day += 1\n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Krakow\", \"to\": \"Florence\"})\n\n    # Add Florence stay\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + stay_durations['Florence'] - 1}\", \"place\": \"Florence\"})\n\n    # Output the result as JSON\n    return json.dumps(itinerary, indent=4)\n\n# Print the trip plan\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_505"
+        }
+    ]
+}

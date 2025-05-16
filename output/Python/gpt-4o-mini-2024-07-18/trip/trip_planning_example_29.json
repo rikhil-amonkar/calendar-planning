@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Input parameters\n    total_days = 10\n    krakow_days = 2\n    dubrovnik_days = 7\n    frankfurt_days = 3\n    \n    # Days designation\n    trip_plan = []\n\n    # Calculate the non-wedding days\n    days_before_wedding = total_days - 1  # because we have the wedding on day 9 and 10\n    days_for_cities = days_before_wedding - (krakow_days + dubrovnik_days)\n    \n    # If we're to visit Frankfurt for a total of 3 days, then:\n    # We'll be in Dubrovnik for 7 days, and Krakow for 2 days\n    # This fits within our total days since:\n    # Total days = Days in Dubrovnik (7) + Days in Frankfurt (3) + Days in Krakow (2)\n\n    # Plan the itinerary\n    current_day = 1\n\n    # Stay in Dubrovnik first\n    if dubrovnik_days > 0:\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + dubrovnik_days - 1}', 'place': 'Dubrovnik'})\n        current_day += dubrovnik_days\n    \n    # Travel from Dubrovnik to Frankfurt\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Dubrovnik', 'to': 'Frankfurt'})\n    \n    # Stay in Frankfurt\n    if frankfurt_days > 0:\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + frankfurt_days - 1}', 'place': 'Frankfurt'})\n        current_day += frankfurt_days\n    \n    # Travel from Frankfurt to Krakow\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Frankfurt', 'to': 'Krakow'})\n    \n    # Stay in Krakow\n    if krakow_days > 0:\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + krakow_days - 1}', 'place': 'Krakow'})\n    \n    # Final output as JSON\n    return json.dumps(trip_plan, indent=4)\n\n# Output the trip plan\nif __name__ == \"__main__\":\n    itinerary = plan_trip()\n    print(itinerary)\n```",
+            "count": "trip_planning_example_29"
+        }
+    ]
+}

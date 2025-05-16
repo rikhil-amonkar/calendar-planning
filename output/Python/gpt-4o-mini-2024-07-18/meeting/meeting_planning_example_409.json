@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Laura",
+                        "start_time": "9:11",
+                        "end_time": "9:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "18:30",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "19:16",
+                        "end_time": "20:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Patricia",
+                        "start_time": "20:15",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times (in minutes)\ntravel_times = {\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"Marina District\"): 9,\n    (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n    (\"Bayview\", \"Golden Gate Park\"): 22,\n    (\"Bayview\", \"Nob Hill\"): 20,\n    (\"Bayview\", \"Marina District\"): 25,\n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Golden Gate Park\", \"Nob Hill\"): 20,\n    (\"Golden Gate Park\", \"Marina District\"): 16,\n    (\"Golden Gate Park\", \"Embarcadero\"): 25,\n    (\"Nob Hill\", \"Marina District\"): 12,\n    (\"Nob Hill\", \"Embarcadero\"): 9,\n    (\"Marina District\", \"Embarcadero\"): 12,\n}\n\n# Meeting Constraints\nconstraints = {\n    \"Thomas\": {\"location\": \"Bayview\", \"start\": \"15:30\", \"end\": \"18:30\", \"min_duration\": 120},\n    \"Stephanie\": {\"location\": \"Golden Gate Park\", \"start\": \"18:30\", \"end\": \"21:45\", \"min_duration\": 30},\n    \"Laura\": {\"location\": \"Nob Hill\", \"start\": \"08:45\", \"end\": \"16:15\", \"min_duration\": 30},\n    \"Betty\": {\"location\": \"Marina District\", \"start\": \"18:45\", \"end\": \"21:45\", \"min_duration\": 45},\n    \"Patricia\": {\"location\": \"Embarcadero\", \"start\": \"17:30\", \"end\": \"22:00\", \"min_duration\": 45},\n}\n\n# Helper functions\ndef time_to_datetime(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef add_minutes(start_time, minutes):\n    return start_time + timedelta(minutes=minutes)\n\ndef format_time(dt):\n    return dt.strftime(\"%H:%M\")\n\n# Itinerary calculation\nitinerary = []\ncurrent_time = time_to_datetime(\"09:00\")\n\n# Meet Laura\nlaura_start = time_to_datetime(constraints[\"Laura\"][\"start\"])\nlaura_end = time_to_datetime(constraints[\"Laura\"][\"end\"])\n\nif current_time < laura_start:\n    travel_time = travel_times[(\"Fisherman's Wharf\", \"Nob Hill\")]\n    current_time = add_minutes(current_time, travel_time)\n    \nif current_time < laura_end:\n    meet_duration = 30\n    end_time = add_minutes(current_time, meet_duration)\n    if end_time > laura_end:\n        end_time = laura_end\n        meet_duration = (end_time - current_time).seconds // 60\n        \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Laura\"][\"location\"],\n        \"person\": \"Laura\",\n        \"start_time\": format_time(current_time),\n        \"end_time\": format_time(end_time)\n    })\n    current_time = end_time\n\n# Meet Thomas\nthomas_start = time_to_datetime(constraints[\"Thomas\"][\"start\"])\nthomas_end = time_to_datetime(constraints[\"Thomas\"][\"end\"])\n\nif current_time < thomas_start:\n    travel_time = travel_times[(\"Nob Hill\", \"Bayview\")]\n    current_time = add_minutes(current_time, travel_time)\n\nif current_time < thomas_end:\n    meet_duration = 120\n    end_time = add_minutes(current_time, meet_duration)\n    if end_time > thomas_end:\n        end_time = thomas_end\n        meet_duration = (end_time - current_time).seconds // 60\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Thomas\"][\"location\"],\n        \"person\": \"Thomas\",\n        \"start_time\": format_time(current_time),\n        \"end_time\": format_time(end_time)\n    })\n    current_time = end_time\n\n# Meet Patricia\npatricia_start = time_to_datetime(constraints[\"Patricia\"][\"start\"])\npatricia_end = time_to_datetime(constraints[\"Patricia\"][\"end\"])\n\nif current_time < patricia_start:\n    travel_time = travel_times[(\"Bayview\", \"Embarcadero\")]\n    current_time = add_minutes(current_time, travel_time)\n\nif current_time < patricia_end:\n    meet_duration = 45\n    end_time = add_minutes(current_time, meet_duration)\n    if end_time > patricia_end:\n        end_time = patricia_end\n        meet_duration = (end_time - current_time).seconds // 60\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Patricia\"][\"location\"],\n        \"person\": \"Patricia\",\n        \"start_time\": format_time(current_time),\n        \"end_time\": format_time(end_time)\n    })\n    current_time = end_time\n\n# Meet Betty\nbetty_start = time_to_datetime(constraints[\"Betty\"][\"start\"])\nbetty_end = time_to_datetime(constraints[\"Betty\"][\"end\"])\n\nif current_time < betty_start:\n    travel_time = travel_times[(\"Embarcadero\", \"Marina District\")]\n    current_time = add_minutes(current_time, travel_time)\n\nif current_time < betty_end:\n    meet_duration = 45\n    end_time = add_minutes(current_time, meet_duration)\n    if end_time > betty_end:\n        end_time = betty_end\n        meet_duration = (end_time - current_time).seconds // 60\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Betty\"][\"location\"],\n        \"person\": \"Betty\",\n        \"start_time\": format_time(current_time),\n        \"end_time\": format_time(end_time)\n    })\n    current_time = end_time\n\n# Meet Stephanie\nstephanie_start = time_to_datetime(constraints[\"Stephanie\"][\"start\"])\nstephanie_end = time_to_datetime(constraints[\"Stephanie\"][\"end\"])\n\nif current_time < stephanie_start:\n    travel_time = travel_times[(\"Marina District\", \"Golden Gate Park\")]\n    current_time = add_minutes(current_time, travel_time)\n\nif current_time < stephanie_end:\n    meet_duration = 30\n    end_time = add_minutes(current_time, meet_duration)\n    if end_time > stephanie_end:\n        end_time = stephanie_end\n        meet_duration = (end_time - current_time).seconds // 60\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Stephanie\"][\"location\"],\n        \"person\": \"Stephanie\",\n        \"start_time\": format_time(current_time),\n        \"end_time\": format_time(end_time)\n    })\n\n# Output itinerary as JSON\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_409"
+        }
+    ]
+}

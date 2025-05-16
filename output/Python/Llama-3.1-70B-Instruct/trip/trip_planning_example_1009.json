@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 24-28",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 29-30",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 31-34",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 35-38",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 39-43",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef calculate_trip_plan():\n    # Define trip constraints\n    total_days = 23\n    cities = {\n        'Riga': 4,\n        'Manchester': 5,\n        'Bucharest': 4,\n        'Florence': 4,\n        'Vienna': 2,\n        'Istanbul': 2,\n        'Reykjavik': 4,\n        'Stuttgart': 5\n    }\n    events = {\n        'Bucharest': (16, 19),\n        'Istanbul': (12, 13)\n    }\n    direct_flights = [\n        ('Bucharest', 'Vienna'), ('Reykjavik', 'Vienna'), ('Manchester', 'Vienna'), \n        ('Manchester', 'Riga'), ('Riga', 'Vienna'), ('Istanbul', 'Vienna'), \n        ('Vienna', 'Florence'), ('Stuttgart', 'Vienna'), ('Riga', 'Bucharest'), \n        ('Istanbul', 'Riga'), ('Stuttgart', 'Istanbul'), ('Reykjavik', 'Stuttgart'), \n        ('Istanbul', 'Bucharest'), ('Manchester', 'Istanbul'), ('Manchester', 'Bucharest'), \n        ('Stuttgart', 'Manchester')\n    ]\n\n    # Initialize trip plan\n    trip_plan = []\n    current_day = 1\n    current_city = None\n\n    # Prioritize cities with events\n    prioritized_cities = sorted(cities.keys(), key=lambda x: events.get(x, (float('inf'), float('inf')))[0] if x in events else float('inf'))\n\n    # Visit cities with events first\n    for city in prioritized_cities:\n        if city in events:\n            event_start, event_end = events[city]\n            if current_day < event_start:\n                # Fill gap with other cities\n                for other_city in cities:\n                    if other_city not in prioritized_cities and other_city!= city:\n                        days_to_spend = min(event_start - current_day, cities[other_city])\n                        trip_plan.append({'day_range': f'Day {current_day}-{current_day + days_to_spend - 1}', 'place': other_city})\n                        current_day += days_to_spend\n                        cities[other_city] -= days_to_spend\n                        if cities[other_city] == 0:\n                            del cities[other_city]\n            # Visit city with event\n            trip_plan.append({'day_range': f'Day {event_start}-{event_end}', 'place': city})\n            current_day = event_end + 1\n            cities[city] = 0\n            del cities[city]\n\n    # Visit remaining cities\n    while cities:\n        # Find city with direct flight from current city\n        next_city = None\n        for city in cities:\n            if current_city and (current_city, city) in direct_flights:\n                next_city = city\n                break\n            elif current_city and (city, current_city) in direct_flights:\n                next_city = city\n                break\n        if not next_city:\n            # If no direct flight, choose any city\n            next_city = list(cities.keys())[0]\n        # Visit next city\n        days_to_spend = cities[next_city]\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + days_to_spend - 1}', 'place': next_city})\n        current_day += days_to_spend\n        del cities[next_city]\n        # Add flight to trip plan\n        if current_city:\n            trip_plan.append({'flying': f'Day {current_day-1}-{current_day-1}', 'from': current_city, 'to': next_city})\n        current_city = next_city\n\n    # Add last flight to trip plan if necessary\n    if current_day <= total_days:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': 'Home'})\n\n    return trip_plan\n\nif __name__ == '__main__':\n    trip_plan = calculate_trip_plan()\n    print(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_1009"
+        }
+    ]
+}

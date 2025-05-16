@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "9:15",
+                        "end_time": "9:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Robert",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joseph",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "17:00",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Sarah",
+                        "start_time": "18:00",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "9:16",
+                        "end_time": "9:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "17:00",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joseph",
+                        "start_time": "18:15",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Sarah",
+                        "start_time": "19:04",
+                        "end_time": "20:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Robert",
+                        "start_time": "21:06",
+                        "end_time": "21:21"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times in minutes\ntravel_times = {\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Marina District\"): 16,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Golden Gate Park\", \"Union Square\"): 22,\n    (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n    (\"Haight-Ashbury\", \"Sunset District\"): 15,\n    (\"Haight-Ashbury\", \"Marina District\"): 17,\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    (\"Haight-Ashbury\", \"Union Square\"): 17,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Sunset District\", \"Haight-Ashbury\"): 15,\n    (\"Sunset District\", \"Marina District\"): 21,\n    (\"Sunset District\", \"Financial District\"): 30,\n    (\"Sunset District\", \"Union Square\"): 30,\n    (\"Marina District\", \"Golden Gate Park\"): 18,\n    (\"Marina District\", \"Haight-Ashbury\"): 16,\n    (\"Marina District\", \"Sunset District\"): 19,\n    (\"Marina District\", \"Financial District\"): 17,\n    (\"Marina District\", \"Union Square\"): 16,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Financial District\", \"Haight-Ashbury\"): 19,\n    (\"Financial District\", \"Sunset District\"): 31,\n    (\"Financial District\", \"Marina District\"): 15,\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Union Square\", \"Golden Gate Park\"): 22,\n    (\"Union Square\", \"Haight-Ashbury\"): 18,\n    (\"Union Square\", \"Sunset District\"): 26,\n    (\"Union Square\", \"Marina District\"): 18,\n    (\"Union Square\", \"Financial District\"): 9,\n}\n\n# Meeting constraints\nmeeting_constraints = {\n    \"Sarah\": {\"location\": \"Haight-Ashbury\", \"start\": \"17:00\", \"end\": \"21:30\", \"duration\": 105},\n    \"Patricia\": {\"location\": \"Sunset District\", \"start\": \"17:00\", \"end\": \"19:45\", \"duration\": 45},\n    \"Matthew\": {\"location\": \"Marina District\", \"start\": \"09:15\", \"end\": \"12:00\", \"duration\": 15},\n    \"Joseph\": {\"location\": \"Financial District\", \"start\": \"14:15\", \"end\": \"18:45\", \"duration\": 30},\n    \"Robert\": {\"location\": \"Union Square\", \"start\": \"10:15\", \"end\": \"21:45\", \"duration\": 15},\n}\n\n# Convert time strings to datetime objects\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\n# Calculate the optimal meeting schedule\ndef calculate_schedule():\n    itinerary = []\n    current_time = parse_time(\"09:00\")  # Start time at Golden Gate Park\n\n    # Meet Matthew first\n    matthew_start = max(current_time, parse_time(meeting_constraints[\"Matthew\"][\"start\"]))\n    matthew_end = matthew_start + timedelta(minutes=15)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Marina District\",\n        \"person\": \"Matthew\",\n        \"start_time\": matthew_start.strftime(\"%H:%M\"),\n        \"end_time\": matthew_end.strftime(\"%H:%M\"),\n    })\n    current_time = matthew_end + timedelta(minutes=travel_times[(\"Marina District\", \"Union Square\")])\n\n    # Meet Robert next\n    robert_start = max(current_time, parse_time(meeting_constraints[\"Robert\"][\"start\"]))\n    robert_end = robert_start + timedelta(minutes=15)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Union Square\",\n        \"person\": \"Robert\",\n        \"start_time\": robert_start.strftime(\"%H:%M\"),\n        \"end_time\": robert_end.strftime(\"%H:%M\"),\n    })\n    current_time = robert_end + timedelta(minutes=travel_times[(\"Union Square\", \"Financial District\")])\n\n    # Meet Joseph next\n    joseph_start = max(current_time, parse_time(meeting_constraints[\"Joseph\"][\"start\"]))\n    joseph_end = joseph_start + timedelta(minutes=30)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Financial District\",\n        \"person\": \"Joseph\",\n        \"start_time\": joseph_start.strftime(\"%H:%M\"),\n        \"end_time\": joseph_end.strftime(\"%H:%M\"),\n    })\n    current_time = joseph_end + timedelta(minutes=travel_times[(\"Financial District\", \"Sunset District\")])\n\n    # Meet Patricia\n    patricia_start = max(current_time, parse_time(meeting_constraints[\"Patricia\"][\"start\"]))\n    patricia_end = patricia_start + timedelta(minutes=45)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Sunset District\",\n        \"person\": \"Patricia\",\n        \"start_time\": patricia_start.strftime(\"%H:%M\"),\n        \"end_time\": patricia_end.strftime(\"%H:%M\"),\n    })\n    current_time = patricia_end + timedelta(minutes=travel_times[(\"Sunset District\", \"Haight-Ashbury\")])\n\n    # Meet Sarah last\n    sarah_start = max(current_time, parse_time(meeting_constraints[\"Sarah\"][\"start\"]))\n    sarah_end = sarah_start + timedelta(minutes=105)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Haight-Ashbury\",\n        \"person\": \"Sarah\",\n        \"start_time\": sarah_start.strftime(\"%H:%M\"),\n        \"end_time\": sarah_end.strftime(\"%H:%M\"),\n    })\n\n    return {\"itinerary\": itinerary}\n\n# Main function to output the itinerary\ndef main():\n    schedule = calculate_schedule()\n    print(json.dumps(schedule, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_402"
+        }
+    ]
+}

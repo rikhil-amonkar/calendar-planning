@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nimport datetime\n\n# Helper function to convert HH:MM string to minutes since midnight\ndef time_to_minutes(t_str):\n    h, m = map(int, t_str.split(':'))\n    return h * 60 + m\n\n# Helper function to convert minutes since midnight to HH:MM string\ndef minutes_to_time(m):\n    return f\"{m//60:02d}:{m % 60:02d}\"\n\n# Function to check if a given time slot [start, end) conflicts with any busy intervals\ndef is_free(start, duration, busy_intervals):\n    end = start + duration\n    for interval in busy_intervals:\n        busy_start, busy_end = interval\n        # If meeting overlaps with a busy interval: start < busy_end and busy_start < end\n        if start < busy_end and busy_start < end:\n            return False\n    return True\n\n# Define meeting parameters\nmeeting_duration = 30  # in minutes\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\n\n# Busy schedules for participants in minutes.\n# Times are given in minutes from midnight.\n# Note: Larry is available all day, so his busy list is empty.\n# Samuel's busy intervals are provided for each day.\nbusy_schedules = {\n    \"Monday\": [\n        (time_to_minutes(\"10:30\"), time_to_minutes(\"11:00\")),\n        (time_to_minutes(\"12:00\"), time_to_minutes(\"12:30\")),\n        (time_to_minutes(\"13:00\"), time_to_minutes(\"15:00\")),\n        (time_to_minutes(\"15:30\"), time_to_minutes(\"16:30\"))\n    ],\n    \"Tuesday\": [\n        (time_to_minutes(\"09:00\"), time_to_minutes(\"12:00\")),\n        (time_to_minutes(\"14:00\"), time_to_minutes(\"15:30\")),\n        (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n    ],\n    \"Wednesday\": [\n        (time_to_minutes(\"10:30\"), time_to_minutes(\"11:00\")),\n        (time_to_minutes(\"11:30\"), time_to_minutes(\"12:00\")),\n        (time_to_minutes(\"12:30\"), time_to_minutes(\"13:00\")),\n        (time_to_minutes(\"14:00\"), time_to_minutes(\"14:30\")),\n        (time_to_minutes(\"15:00\"), time_to_minutes(\"16:00\"))\n    ]\n}\n\n# The order of day preference: Monday, then Tuesday, then Wednesday.\n# Larry prefers not to meet on Wednesday and Samuel prefers avoiding Tuesday,\n# so we choose the earliest available option considering these preferences.\npreferred_days = [\"Monday\", \"Tuesday\", \"Wednesday\"]\n\nmeeting_day = None\nmeeting_start = None\n\n# Iterate over the preferred days\nfor day in preferred_days:\n    # Use Samuel's busy schedule for that day.\n    busy_intervals = busy_schedules.get(day, [])\n    \n    # Try to find a slot between work_start and work_end - meeting_duration\n    slot_found = False\n    for start in range(work_start, work_end - meeting_duration + 1):\n        if is_free(start, meeting_duration, busy_intervals):\n            meeting_day = day\n            meeting_start = start\n            slot_found = True\n            break\n    if slot_found:\n        break\n\nif meeting_day and meeting_start is not None:\n    meeting_end = meeting_start + meeting_duration\n    # Format output as HH:MM:HH:MM and day of the week.\n    meeting_time_formatted = f\"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}\"\n    print(f\"Meeting scheduled on {meeting_day} at {meeting_time_formatted}\")\nelse:\n    print(\"No available slot found.\")\n'''",
+            "count": "calendar_scheduling_example_704"
+        }
+    ]
+}

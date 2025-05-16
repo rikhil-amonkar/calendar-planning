@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(participants_availability, meeting_duration, work_hours):\n    start_of_day = datetime.strptime(work_hours[0], \"%H:%M\")\n    end_of_day = datetime.strptime(work_hours[1], \"%H:%M\")\n\n    # Convert participants' busy times to datetime format\n    busy_slots = []\n    for availability in participants_availability:\n        for busy_time in availability:\n            busy_start = datetime.strptime(busy_time[0], \"%H:%M\")\n            busy_end = datetime.strptime(busy_time[1], \"%H:%M\")\n            busy_slots.append((busy_start, busy_end))\n\n    # Sort the busy slots\n    busy_slots.sort()\n\n    # Check for available time\n    last_end = start_of_day\n    for busy_start, busy_end in busy_slots:\n        # Check for a gap before the busy time\n        if last_end + timedelta(minutes=meeting_duration) <= busy_start:\n            return f\"{last_end.strftime('%H:%M')}:{(last_end + timedelta(minutes=meeting_duration)).strftime('%H:%M')}\"\n\n        # Update last_end to the end of the busy slot if it's more recent\n        last_end = max(last_end, busy_end)\n\n    # After the last busy slot, check if there's time until end of day\n    if last_end + timedelta(minutes=meeting_duration) <= end_of_day:\n        return f\"{last_end.strftime('%H:%M')}:{(last_end + timedelta(minutes=meeting_duration)).strftime('%H:%M')}\"\n\n    return None\n\n# Participants' availability\nparticipants_availability = [\n    [(\"09:30\", \"10:00\"), (\"12:30\", \"13:00\"), (\"14:30\", \"15:00\"), (\"16:30\", \"17:00\")],  # Adam\n    [(\"10:00\", \"11:00\"), (\"11:30\", \"13:00\"), (\"13:30\", \"14:30\"), (\"16:30\", \"17:00\")]   # Roy\n]\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# Work hours\nwork_hours = [\"09:00\", \"17:00\"]\n\n# Find the meeting time\nmeeting_time = find_meeting_time(participants_availability, meeting_duration, work_hours)\n\nif meeting_time:\n    day_of_week = \"Monday\"\n    print(f\"{meeting_time}:{day_of_week}\")\n```",
+            "count": "calendar_scheduling_example_594"
+        }
+    ]
+}

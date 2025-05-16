@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Joseph",
+                        "start_time": "9:24",
+                        "end_time": "10:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "11:16",
+                        "end_time": "11:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Barbara",
+                        "start_time": "12:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Joseph",
+                        "start_time": "9:24",
+                        "end_time": "10:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "11:16",
+                        "end_time": "11:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Barbara",
+                        "start_time": "12:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom copy import deepcopy\n\n# Helper: convert minutes-since-midnight to H:MM string (24-hour format with no leading zero for hour)\ndef minutes_to_str(t):\n    hour = t // 60\n    minute = t % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Data definitions for meetings and travel times.\n# All times are in minutes since midnight.\n# Starting state\nstart_time = 9 * 60  # 9:00 at Golden Gate Park\nstart_location = \"Golden Gate Park\"\n\n# Meeting definitions:\nmeetings = {\n    \"Joseph\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": 8 * 60,         # 8:00 -> 480\n        \"avail_end\": 17 * 60 + 30,       # 17:30 -> 1050\n        \"duration\": 90\n    },\n    \"Jeffrey\": {\n        \"location\": \"Bayview\",\n        \"avail_start\": 17 * 60 + 30,     # 17:30 -> 1050\n        \"avail_end\": 21 * 60 + 30,       # 21:30 -> 1290\n        \"duration\": 60\n    },\n    \"Kevin\": {\n        \"location\": \"Mission District\",\n        \"avail_start\": 11 * 60 + 15,     # 11:15 -> 675\n        \"avail_end\": 15 * 60 + 15,       # 15:15 -> 915\n        \"duration\": 30\n    },\n    \"David\": {\n        \"location\": \"Embarcadero\",\n        \"avail_start\": 8 * 60 + 15,      # 8:15 -> 495\n        \"avail_end\": 9 * 60,             # 9:00 -> 540\n        \"duration\": 30\n    },\n    \"Barbara\": {\n        \"location\": \"Financial District\",\n        \"avail_start\": 10 * 60 + 30,     # 10:30 -> 630\n        \"avail_end\": 16 * 60 + 30,       # 16:30 -> 990\n        \"duration\": 15\n    }\n}\n\n# Travel times in minutes: dictionary with keys (origin, destination)\ntravel_times = {\n    (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n    (\"Golden Gate Park\", \"Bayview\"): 23,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n    (\"Golden Gate Park\", \"Embarcadero\"): 25,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    \n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Fisherman's Wharf\", \"Mission District\"): 22,\n    (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n    \n    (\"Bayview\", \"Golden Gate Park\"): 22,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Bayview\", \"Mission District\"): 13,\n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Bayview\", \"Financial District\"): 19,\n    \n    (\"Mission District\", \"Golden Gate Park\"): 17,\n    (\"Mission District\", \"Fisherman's Wharf\"): 22,\n    (\"Mission District\", \"Bayview\"): 15,\n    (\"Mission District\", \"Embarcadero\"): 19,\n    (\"Mission District\", \"Financial District\"): 17,\n    \n    (\"Embarcadero\", \"Golden Gate Park\"): 25,\n    (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Embarcadero\", \"Mission District\"): 20,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    \n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Financial District\", \"Fisherman's Wharf\"): 10,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Mission District\"): 17,\n    (\"Financial District\", \"Embarcadero\"): 4\n}\n\n# Backtracking search for an optimal meeting schedule.\n# The goal is to maximize the number of meetings (friends met).\nbest_schedule = []\nbest_count = 0\n\ndef search(current_time, current_location, scheduled, remaining):\n    global best_schedule, best_count\n\n    # If no more meetings to schedule, update best if needed.\n    if len(scheduled) > best_count:\n        best_schedule = deepcopy(scheduled)\n        best_count = len(scheduled)\n    # Try all remaining meetings\n    for person in list(remaining.keys()):\n        meeting = remaining[person]\n        # Check travel time from current location to meeting location.\n        if (current_location, meeting[\"location\"]) not in travel_times:\n            continue  # no route if missing\n        travel = travel_times[(current_location, meeting[\"location\"])]\n        arrival_time = current_time + travel\n        # Determine meeting start time: maximum of arrival or person's available start.\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"duration\"]\n        # Check if meeting can be held within availability window.\n        if meeting_end <= meeting[\"avail_end\"]:\n            # Proceed: schedule this meeting.\n            scheduled.append({\n                \"person\": person,\n                \"location\": meeting[\"location\"],\n                \"start_time\": meeting_start,\n                \"end_time\": meeting_end\n            })\n            # Remove this meeting from remaining.\n            next_remaining = deepcopy(remaining)\n            del next_remaining[person]\n            search(meeting_end, meeting[\"location\"], scheduled, next_remaining)\n            # Backtrack.\n            scheduled.pop()\n\n# Start recursive search from the starting location and time with all meetings available.\nsearch(start_time, start_location, [], meetings)\n\n# The best_schedule now contains the optimal meeting events in order.\n# Format the best_schedule as JSON with time strings.\nitinerary = []\nfor event in best_schedule:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": event[\"location\"],\n        \"person\": event[\"person\"],\n        \"start_time\": minutes_to_str(event[\"start_time\"]),\n        \"end_time\": minutes_to_str(event[\"end_time\"])\n    })\n\nresult = {\"itinerary\": itinerary}\n\n# Output the result as JSON.\nprint(json.dumps(result, indent=2))\n    \nif __name__ == '__main__':\n    pass",
+            "count": "meeting_planning_example_432"
+        }
+    ]
+}

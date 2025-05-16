@@ -1,0 +1,129 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Elizabeth",
+                        "start_time": "10:00",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "11:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "15:22",
+                        "end_time": "17:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:18",
+                        "end_time": "17:48"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Helen",
+                        "start_time": "18:12",
+                        "end_time": "19:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ashley",
+                        "start_time": "20:21",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Elizabeth",
+                        "start_time": "10:00",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "11:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "15:22",
+                        "end_time": "17:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:18",
+                        "end_time": "17:48"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Helen",
+                        "start_time": "18:12",
+                        "end_time": "19:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ashley",
+                        "start_time": "20:21",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nimport itertools\n\ndef time_to_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    ('Marina District', 'Mission District'): 20,\n    ('Marina District', 'Fisherman\\'s Wharf'): 10,\n    ('Marina District', 'Presidio'): 10,\n    ('Marina District', 'Union Square'): 16,\n    ('Marina District', 'Sunset District'): 19,\n    ('Marina District', 'Financial District'): 17,\n    ('Marina District', 'Haight-Ashbury'): 16,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Mission District', 'Marina District'): 19,\n    ('Mission District', 'Fisherman\\'s Wharf'): 22,\n    ('Mission District', 'Presidio'): 25,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Sunset District'): 24,\n    ('Mission District', 'Financial District'): 15,\n    ('Mission District', 'Haight-Ashbury'): 12,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Fisherman\\'s Wharf', 'Marina District'): 9,\n    ('Fisherman\\'s Wharf', 'Mission District'): 22,\n    ('Fisherman\\'s Wharf', 'Presidio'): 17,\n    ('Fisherman\\'s Wharf', 'Union Square'): 13,\n    ('Fisherman\\'s Wharf', 'Sunset District'): 27,\n    ('Fisherman\\'s Wharf', 'Financial District'): 11,\n    ('Fisherman\\'s Wharf', 'Haight-Ashbury'): 22,\n    ('Fisherman\\'s Wharf', 'Russian Hill'): 7,\n    ('Presidio', 'Marina District'): 11,\n    ('Presidio', 'Mission District'): 26,\n    ('Presidio', 'Fisherman\\'s Wharf'): 19,\n    ('Presidio', 'Union Square'): 22,\n    ('Presidio', 'Sunset District'): 15,\n    ('Presidio', 'Financial District'): 23,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Presidio', 'Russian Hill'): 14,\n    ('Union Square', 'Marina District'): 18,\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Fisherman\\'s Wharf'): 15,\n    ('Union Square', 'Presidio'): 24,\n    ('Union Square', 'Sunset District'): 27,\n    ('Union Square', 'Financial District'): 9,\n    ('Union Square', 'Haight-Ashbury'): 18,\n    ('Union Square', 'Russian Hill'): 13,\n    ('Sunset District', 'Marina District'): 21,\n    ('Sunset District', 'Mission District'): 25,\n    ('Sunset District', 'Fisherman\\'s Wharf'): 29,\n    ('Sunset District', 'Presidio'): 16,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Financial District'): 30,\n    ('Sunset District', 'Haight-Ashbury'): 15,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Financial District', 'Marina District'): 15,\n    ('Financial District', 'Mission District'): 17,\n    ('Financial District', 'Fisherman\\'s Wharf'): 10,\n    ('Financial District', 'Presidio'): 22,\n    ('Financial District', 'Union Square'): 9,\n    ('Financial District', 'Sunset District'): 30,\n    ('Financial District', 'Haight-Ashbury'): 19,\n    ('Financial District', 'Russian Hill'): 11,\n    ('Haight-Ashbury', 'Marina District'): 17,\n    ('Haight-Ashbury', 'Mission District'): 11,\n    ('Haight-Ashbury', 'Fisherman\\'s Wharf'): 23,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Union Square'): 19,\n    ('Haight-Ashbury', 'Sunset District'): 15,\n    ('Haight-Ashbury', 'Financial District'): 21,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Russian Hill', 'Marina District'): 7,\n    ('Russian Hill', 'Mission District'): 16,\n    ('Russian Hill', 'Fisherman\\'s Wharf'): 7,\n    ('Russian Hill', 'Presidio'): 14,\n    ('Russian Hill', 'Union Square'): 10,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Russian Hill', 'Financial District'): 11,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n}\n\nfriends = [\n    {'name': 'Karen', 'location': 'Mission District', 'start': 855, 'end': 1320, 'duration': 30},\n    {'name': 'Richard', 'location': 'Fisherman\\'s Wharf', 'start': 870, 'end': 1050, 'duration': 30},\n    {'name': 'Robert', 'location': 'Presidio', 'start': 1305, 'end': 1365, 'duration': 60},\n    {'name': 'Joseph', 'location': 'Union Square', 'start': 705, 'end': 885, 'duration': 120},\n    {'name': 'Helen', 'location': 'Sunset District', 'start': 885, 'end': 1245, 'duration': 105},\n    {'name': 'Elizabeth', 'location': 'Financial District', 'start': 600, 'end': 765, 'duration': 75},\n    {'name': 'Kimberly', 'location': 'Haight-Ashbury', 'start': 855, 'end': 1050, 'duration': 105},\n    {'name': 'Ashley', 'location': 'Russian Hill', 'start': 690, 'end': 1290, 'duration': 45},\n]\n\nbest_schedule = []\nmax_friends = 0\nbest_end_time = float('inf')\n\nfor perm in itertools.permutations(friends):\n    current_time = 540\n    current_location = 'Marina District'\n    scheduled = []\n    for friend in perm:\n        from_loc = current_location\n        to_loc = friend['location']\n        travel_time = travel_times.get((from_loc, to_loc), 0)\n        arrival_time = current_time + travel_time\n        available_start = friend['start']\n        available_end = friend['end']\n        duration = friend['duration']\n        earliest_start = max(arrival_time, available_start)\n        latest_start = available_end - duration\n        if earliest_start > latest_start:\n            continue\n        meeting_start = earliest_start\n        meeting_end = meeting_start + duration\n        scheduled.append({\n            'friend': friend,\n            'start': meeting_start,\n            'end': meeting_end,\n        })\n        current_time = meeting_end\n        current_location = to_loc\n    if len(scheduled) > max_friends or (len(scheduled) == max_friends and current_time < best_end_time):\n        max_friends = len(scheduled)\n        best_schedule = scheduled.copy()\n        best_end_time = current_time\n\nitinerary = []\nfor entry in best_schedule:\n    friend = entry['friend']\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": friend['location'],\n        \"person\": friend['name'],\n        \"start_time\": time_to_str(entry['start']),\n        \"end_time\": time_to_str(entry['end'])\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_728"
+        }
+    ]
+}

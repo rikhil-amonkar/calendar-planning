@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Daniel",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kevin",
+                        "start_time": "13:41",
+                        "end_time": "14:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Betty",
+                        "start_time": "14:31",
+                        "end_time": "15:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Steven",
+                        "start_time": "16:30",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Lisa",
+                        "start_time": "19:15",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input data\ntravel_times = {\n    'Mission District': {\n        'The Castro': 7,\n        'Nob Hill': 12,\n        'Presidio': 25,\n        'Marina District': 19,\n        'Pacific Heights': 16,\n        'Golden Gate Park': 17,\n        'Chinatown': 16,\n        'Richmond District': 20\n    },\n    'The Castro': {\n        'Mission District': 7,\n        'Nob Hill': 16,\n        'Presidio': 20,\n        'Marina District': 21,\n        'Pacific Heights': 16,\n        'Golden Gate Park': 11,\n        'Chinatown': 22,\n        'Richmond District': 16\n    },\n    'Nob Hill': {\n        'Mission District': 13,\n        'The Castro': 17,\n        'Presidio': 17,\n        'Marina District': 11,\n        'Pacific Heights': 8,\n        'Golden Gate Park': 17,\n        'Chinatown': 6,\n        'Richmond District': 14\n    },\n    'Presidio': {\n        'Mission District': 26,\n        'The Castro': 21,\n        'Nob Hill': 18,\n        'Marina District': 11,\n        'Pacific Heights': 11,\n        'Golden Gate Park': 12,\n        'Chinatown': 21,\n        'Richmond District': 7\n    },\n    'Marina District': {\n        'Mission District': 20,\n        'The Castro': 22,\n        'Nob Hill': 12,\n        'Presidio': 10,\n        'Pacific Heights': 7,\n        'Golden Gate Park': 18,\n        'Chinatown': 15,\n        'Richmond District': 11\n    },\n    'Pacific Heights': {\n        'Mission District': 15,\n        'The Castro': 16,\n        'Nob Hill': 8,\n        'Presidio': 11,\n        'Marina District': 6,\n        'Golden Gate Park': 15,\n        'Chinatown': 11,\n        'Richmond District': 12\n    },\n    'Golden Gate Park': {\n        'Mission District': 17,\n        'The Castro': 13,\n        'Nob Hill': 20,\n        'Presidio': 11,\n        'Marina District': 16,\n        'Pacific Heights': 16,\n        'Chinatown': 23,\n        'Richmond District': 7\n    },\n    'Chinatown': {\n        'Mission District': 17,\n        'The Castro': 22,\n        'Nob Hill': 9,\n        'Presidio': 19,\n        'Marina District': 12,\n        'Pacific Heights': 10,\n        'Golden Gate Park': 23,\n        'Richmond District': 20\n    },\n    'Richmond District': {\n        'Mission District': 20,\n        'The Castro': 16,\n        'Nob Hill': 17,\n        'Presidio': 7,\n        'Marina District': 9,\n        'Pacific Heights': 10,\n        'Golden Gate Park': 9,\n        'Chinatown': 20\n    }\n}\n\nfriends = [\n    {\n        'name': 'Lisa',\n        'location': 'The Castro',\n        'available_start': '19:15',\n        'available_end': '21:15',\n        'min_duration': 120\n    },\n    {\n        'name': 'Daniel',\n        'location': 'Nob Hill',\n        'available_start': '8:15',\n        'available_end': '11:00',\n        'min_duration': 15\n    },\n    {\n        'name': 'Elizabeth',\n        'location': 'Presidio',\n        'available_start': '21:15',\n        'available_end': '22:15',\n        'min_duration': 45\n    },\n    {\n        'name': 'Steven',\n        'location': 'Marina District',\n        'available_start': '16:30',\n        'available_end': '20:45',\n        'min_duration': 90\n    },\n    {\n        'name': 'Timothy',\n        'location': 'Pacific Heights',\n        'available_start': '12:00',\n        'available_end': '18:00',\n        'min_duration': 90\n    },\n    {\n        'name': 'Ashley',\n        'location': 'Golden Gate Park',\n        'available_start': '20:45',\n        'available_end': '21:45',\n        'min_duration': 60\n    },\n    {\n        'name': 'Kevin',\n        'location': 'Chinatown',\n        'available_start': '12:00',\n        'available_end': '19:00',\n        'min_duration': 30\n    },\n    {\n        'name': 'Betty',\n        'location': 'Richmond District',\n        'available_start': '13:15',\n        'available_end': '15:45',\n        'min_duration': 30\n    }\n]\n\ncurrent_location = 'Mission District'\ncurrent_time = time_to_minutes('9:00')\n\ndef evaluate_schedule(order):\n    global current_location, current_time\n    itinerary = []\n    temp_location = current_location\n    temp_time = current_time\n    \n    for friend_idx in order:\n        friend = friends[friend_idx]\n        location = friend['location']\n        travel_time = travel_times[temp_location][location]\n        \n        arrival_time = temp_time + travel_time\n        available_start = time_to_minutes(friend['available_start'])\n        available_end = time_to_minutes(friend['available_end'])\n        min_duration = friend['min_duration']\n        \n        start_time = max(arrival_time, available_start)\n        end_time = min(start_time + min_duration, available_end)\n        \n        if end_time - start_time < min_duration:\n            return None\n        \n        itinerary.append({\n            'action': 'meet',\n            'location': location,\n            'person': friend['name'],\n            'start_time': minutes_to_time(start_time),\n            'end_time': minutes_to_time(end_time)\n        })\n        \n        temp_location = location\n        temp_time = end_time\n    \n    return itinerary\n\nbest_itinerary = None\nmax_meetings = 0\n\n# Try all possible orders of meeting friends\nfor order in permutations(range(len(friends))):\n    itinerary = evaluate_schedule(order)\n    if itinerary and len(itinerary) > max_meetings:\n        max_meetings = len(itinerary)\n        best_itinerary = itinerary\n    elif itinerary and len(itinerary) == max_meetings:\n        # Prefer longer total meeting time\n        current_duration = sum(time_to_minutes(item['end_time']) - time_to_minutes(item['start_time']) for item in itinerary)\n        best_duration = sum(time_to_minutes(item['end_time']) - time_to_minutes(item['start_time']) for item in best_itinerary)\n        if current_duration > best_duration:\n            best_itinerary = itinerary\n\n# After finding the best itinerary, check if we can add more meetings\nif best_itinerary:\n    remaining_friends = [f for f in friends if f['name'] not in [item['person'] for item in best_itinerary]]\n    \n    for friend in remaining_friends:\n        last_meeting = best_itinerary[-1]\n        temp_location = last_meeting['location']\n        temp_time = time_to_minutes(last_meeting['end_time'])\n        \n        location = friend['location']\n        travel_time = travel_times[temp_location][location]\n        \n        arrival_time = temp_time + travel_time\n        available_start = time_to_minutes(friend['available_start'])\n        available_end = time_to_minutes(friend['available_end'])\n        min_duration = friend['min_duration']\n        \n        start_time = max(arrival_time, available_start)\n        end_time = min(start_time + min_duration, available_end)\n        \n        if end_time - start_time >= min_duration:\n            best_itinerary.append({\n                'action': 'meet',\n                'location': location,\n                'person': friend['name'],\n                'start_time': minutes_to_time(start_time),\n                'end_time': minutes_to_time(end_time)\n            })\n\noutput = {\"itinerary\": best_itinerary} if best_itinerary else {\"itinerary\": []}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_701"
+        }
+    ]
+}

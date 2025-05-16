@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(participants, days, work_hours_start, work_hours_end, duration, preferences):\n    # Parse work hours\n    start_hour, start_minute = map(int, work_hours_start.split(':'))\n    end_hour, end_minute = map(int, work_hours_end.split(':'))\n    \n    # Convert duration to timedelta\n    duration = timedelta(minutes=duration)\n    \n    for day in days:\n        if day in preferences.get('avoid_days', []):\n            continue\n        \n        # Initialize current time to start of work day\n        current_time = datetime.strptime(f\"{day} {work_hours_start}\", \"%A %H:%M\")\n        end_time = datetime.strptime(f\"{day} {work_hours_end}\", \"%A %H:%M\")\n        \n        while current_time + duration <= end_time:\n            slot_end = current_time + duration\n            slot_ok = True\n            \n            # Check each participant's availability\n            for participant, meetings in participants.items():\n                for meeting in meetings.get(day, []):\n                    meeting_start = datetime.strptime(f\"{day} {meeting[0]}\", \"%A %H:%M\")\n                    meeting_end = datetime.strptime(f\"{day} {meeting[1]}\", \"%A %H:%M\")\n                    \n                    # Check for overlap\n                    if not (slot_end <= meeting_start or current_time >= meeting_end):\n                        slot_ok = False\n                        break\n                \n                if not slot_ok:\n                    break\n            \n            if slot_ok:\n                return day, current_time.time(), slot_end.time()\n            \n            # Move to next possible slot (in 15-minute increments for efficiency)\n            current_time += timedelta(minutes=15)\n    \n    return None\n\n# Define participants' schedules\nparticipants = {\n    \"Robert\": {\n        \"Monday\": [(\"11:00\", \"11:30\"), (\"14:00\", \"14:30\"), (\"15:30\", \"16:00\")],\n        \"Tuesday\": [(\"10:30\", \"11:00\"), (\"15:00\", \"15:30\")],\n        \"Wednesday\": [(\"10:00\", \"11:00\"), (\"11:30\", \"12:00\"), (\"12:30\", \"13:00\"), \n                     (\"13:30\", \"14:00\"), (\"15:00\", \"15:30\"), (\"16:00\", \"16:30\")]\n    },\n    \"Ralph\": {\n        \"Monday\": [(\"10:00\", \"13:30\"), (\"14:00\", \"14:30\"), (\"15:00\", \"17:00\")],\n        \"Tuesday\": [(\"09:00\", \"09:30\"), (\"10:00\", \"10:30\"), (\"11:00\", \"11:30\"), \n                    (\"12:00\", \"13:00\"), (\"14:00\", \"15:30\"), (\"16:00\", \"17:00\")],\n        \"Wednesday\": [(\"10:30\", \"11:00\"), (\"11:30\", \"12:00\"), (\"13:00\", \"14:30\"), (\"16:30\", \"17:00\")]\n    }\n}\n\n# Define meeting parameters\ndays_to_check = [\"Monday\", \"Tuesday\", \"Wednesday\"]\nwork_hours = (\"9:00\", \"17:00\")\nmeeting_duration = 30  # minutes\npreferences = {\n    \"avoid_days\": [\"Monday\"]  # Robert wants to avoid Monday\n}\n\n# Find meeting time\nresult = find_meeting_time(participants=participants,\n                          days=days_to_check,\n                          work_hours_start=work_hours[0],\n                          work_hours_end=work_hours[1],\n                          duration=meeting_duration,\n                          preferences=preferences)\n\nif result:\n    day, start_time, end_time = result\n    print(f\"{day}:{start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}\")\nelse:\n    print(\"No suitable time found.\")\n```",
+            "count": "calendar_scheduling_example_702"
+        }
+    ]
+}

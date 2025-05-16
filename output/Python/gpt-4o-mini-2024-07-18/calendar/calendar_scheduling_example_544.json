@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time():\n    # Define working hours\n    start_time = datetime.strptime(\"09:00\", \"%H:%M\")\n    end_time = datetime.strptime(\"17:00\", \"%H:%M\")\n\n    # Deborah's availability (all day)\n    deborah_availability = [(start_time, end_time)]\n\n    # Albert's blocked times\n    albert_busy_times = [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n        (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n        (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\")),\n    ]\n    \n    # Duration of the meeting\n    meeting_duration = timedelta(minutes=30)\n\n    # Check for available slots\n    for start, end in deborah_availability:\n        current_start = start\n        while current_start + meeting_duration <= end:\n            # Check if current time conflicts with Albert's busy times\n            conflict = False\n            for busy_start, busy_end in albert_busy_times:\n                if current_start < busy_end and (current_start + meeting_duration) > busy_start:\n                    conflict = True\n                    break\n            if not conflict:\n                # Proposed time found\n                proposed_start = current_start.strftime(\"%H:%M\")\n                proposed_end = (current_start + meeting_duration).strftime(\"%H:%M\")\n                return f\"{proposed_start}:{proposed_end} Monday\"\n            current_start += timedelta(minutes=1)\n\nprint(find_meeting_time())\n```",
+            "count": "calendar_scheduling_example_544"
+        }
+    ]
+}

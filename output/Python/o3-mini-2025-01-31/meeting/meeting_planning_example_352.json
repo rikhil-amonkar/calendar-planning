@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joseph",
+                        "start_time": "12:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Sandra",
+                        "start_time": "14:19",
+                        "end_time": "15:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Nancy",
+                        "start_time": "15:46",
+                        "end_time": "17:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Karen",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joseph",
+                        "start_time": "12:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Sandra",
+                        "start_time": "14:19",
+                        "end_time": "15:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Nancy",
+                        "start_time": "15:46",
+                        "end_time": "17:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Karen",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport itertools\nimport json\n\n# Helper functions to convert time strings to minutes-since-midnight and back.\ndef time_to_minutes(timestr):\n    # expects format H:MM or HH:MM\n    parts = timestr.split(':')\n    hour = int(parts[0])\n    minute = int(parts[1])\n    return hour * 60 + minute\n\ndef minutes_to_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"  # hour without leading zero, minute always 2 digits\n\n# Meeting constraints for each friend\nfriends = {\n    \"Karen\": {\n        \"location\": \"Nob Hill\",\n        \"available_start\": time_to_minutes(\"21:15\"),\n        \"available_end\": time_to_minutes(\"21:45\"),\n        \"min_duration\": 30\n    },\n    \"Joseph\": {\n        \"location\": \"Haight-Ashbury\",\n        \"available_start\": time_to_minutes(\"12:30\"),\n        \"available_end\": time_to_minutes(\"19:45\"),\n        \"min_duration\": 90\n    },\n    \"Sandra\": {\n        \"location\": \"Chinatown\",\n        \"available_start\": time_to_minutes(\"7:15\"),\n        \"available_end\": time_to_minutes(\"19:15\"),\n        \"min_duration\": 75\n    },\n    \"Nancy\": {\n        \"location\": \"Marina District\",\n        \"available_start\": time_to_minutes(\"11:00\"),\n        \"available_end\": time_to_minutes(\"20:15\"),\n        \"min_duration\": 105\n    }\n}\n\n# Travel distances (in minutes) as provided.\n# The data is not completely symmetric so we list each route explicitly.\ntravel_times = {\n    \"Union Square\": {\n        \"Nob Hill\": 9,\n        \"Haight-Ashbury\": 18,\n        \"Chinatown\": 7,\n        \"Marina District\": 18\n    },\n    \"Nob Hill\": {\n        \"Union Square\": 7,\n        \"Haight-Ashbury\": 13,\n        \"Chinatown\": 6,\n        \"Marina District\": 11\n    },\n    \"Haight-Ashbury\": {\n        \"Union Square\": 17,\n        \"Nob Hill\": 15,\n        \"Chinatown\": 19,\n        \"Marina District\": 17\n    },\n    \"Chinatown\": {\n        \"Union Square\": 7,\n        \"Nob Hill\": 8,\n        \"Haight-Ashbury\": 19,\n        \"Marina District\": 12\n    },\n    \"Marina District\": {\n        \"Union Square\": 16,\n        \"Nob Hill\": 12,\n        \"Haight-Ashbury\": 16,\n        \"Chinatown\": 16\n    }\n}\n\n# Starting conditions\nstart_location = \"Union Square\"\nstart_time = time_to_minutes(\"9:00\")\n\n# We'll iterate over all permutations of friends to see which order yields a feasible schedule.\ndef simulate_schedule(order):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n\n    for friend in order:\n        friend_info = friends[friend]\n        target_location = friend_info[\"location\"]\n        # Get travel time from current location to friend's location\n        if current_location not in travel_times or target_location not in travel_times[current_location]:\n            # if no travel time defined, schedule invalid\n            return None\n        travel = travel_times[current_location][target_location]\n        arrival_time = current_time + travel\n        \n        # Wait until friend's availability start if arriving early\n        meeting_start = max(arrival_time, friend_info[\"available_start\"])\n        meeting_end = meeting_start + friend_info[\"min_duration\"]\n        # Check if meeting can finish before friend's available_end\n        if meeting_end > friend_info[\"available_end\"]:\n            return None  # schedule not possible\n        # Record meeting event\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": target_location,\n            \"person\": friend,\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        # Update current time and location for next leg\n        current_time = meeting_end\n        current_location = target_location\n    return itinerary\n\nbest_itinerary = None\nbest_count = 0\nbest_end_time = 24 * 60  # large number in minutes\n\n# Permutations of friend orders.\nall_friends = list(friends.keys())\nfor perm in itertools.permutations(all_friends):\n    schedule = simulate_schedule(perm)\n    if schedule is not None:\n        count = len(schedule)\n        # End time of schedule is the meeting_end of the last event\n        last_event = schedule[-1]\n        end_time = time_to_minutes(last_event[\"end_time\"])\n        # We aim to maximize count (meet as many friends as possible) and then finish as early as possible.\n        if count > best_count or (count == best_count and end_time < best_end_time):\n            best_count = count\n            best_end_time = end_time\n            best_itinerary = schedule\n\n# If no complete schedule found, best_itinerary could be None. Otherwise, output best_itinerary.\nresult = {\"itinerary\": best_itinerary if best_itinerary is not None else []}\nprint(json.dumps(result, indent=2))",
+            "count": "meeting_planning_example_352"
+        }
+    ]
+}

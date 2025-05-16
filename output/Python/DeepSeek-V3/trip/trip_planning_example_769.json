@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Cities and their required days\n    cities = {\n        'Porto': 5,\n        'Prague': 4,\n        'Reykjavik': 4,\n        'Santorini': 2,\n        'Amsterdam': 2,\n        'Munich': 4\n    }\n    \n    # Direct flights\n    direct_flights = {\n        'Porto': ['Amsterdam', 'Munich'],\n        'Amsterdam': ['Porto', 'Munich', 'Reykjavik', 'Santorini', 'Prague'],\n        'Munich': ['Amsterdam', 'Porto', 'Reykjavik', 'Prague'],\n        'Reykjavik': ['Amsterdam', 'Munich', 'Prague'],\n        'Prague': ['Reykjavik', 'Amsterdam', 'Munich'],\n        'Santorini': ['Amsterdam']\n    }\n    \n    # Constraints\n    constraints = [\n        {'place': 'Reykjavik', 'day_range': (4, 7)},  # Wedding between day 4 and 7 (so must be there day 4-6)\n        {'place': 'Amsterdam', 'day_range': (14, 16)},  # Conference day 14 and 15\n        {'place': 'Munich', 'day_range': (7, 11)}  # Meet friend between day 7 and 10\n    ]\n    \n    # Generate all possible permutations of the cities\n    for perm in permutations(cities.keys()):\n        itinerary = []\n        current_day = 1\n        valid = True\n        temp_cities = cities.copy()\n        \n        for city in perm:\n            days_needed = temp_cities[city]\n            \n            # Check if the city can be placed in the itinerary\n            end_day = current_day + days_needed - 1\n            if end_day > 16:\n                valid = False\n                break\n            \n            # Check constraints\n            for constraint in constraints:\n                if constraint['place'] == city:\n                    start, end = constraint['day_range']\n                    if not (current_day <= start and end_day >= end - 1):\n                        valid = False\n                        break\n            \n            if not valid:\n                break\n            \n            # Add to itinerary\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            \n            # Move to next city\n            current_day = end_day + 1\n            if current_day > 16:\n                break\n            \n            # Check if next flight is possible\n            next_city_index = perm.index(city) + 1\n            if next_city_index < len(perm):\n                next_city = perm[next_city_index]\n                if next_city not in direct_flights.get(city, []):\n                    valid = False\n                    break\n                \n                # Add flight day\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': city,\n                    'to': next_city\n                })\n                current_day += 1\n        \n        # Check if all cities are placed and all days are filled\n        if valid and current_day >= 16 and len(itinerary) > 0:\n            # Verify all cities are included\n            included_cities = {item['place'] for item in itinerary if 'place' in item}\n            if included_cities == set(cities.keys()):\n                return itinerary\n    \n    return None\n\nitinerary = find_valid_itinerary()\nif itinerary:\n    print(json.dumps(itinerary, indent=2))\nelse:\n    print(json.dumps([{\"error\": \"No valid itinerary found\"}], indent=2))\n```",
+            "count": "trip_planning_example_769"
+        }
+    ]
+}

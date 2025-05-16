@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Function to find a suitable meeting time\ndef find_meeting_time(participants, duration, day_of_week):\n    work_start = datetime.strptime(\"09:00\", \"%H:%M\")\n    work_end = datetime.strptime(\"17:00\", \"%H:%M\")\n    \n    # Create a list of busy slots from participants\n    busy_slots = []\n    for schedule in participants.values():\n        for busy in schedule:\n            busy_slots.append((datetime.strptime(busy[0], \"%H:%M\"), datetime.strptime(busy[1], \"%H:%M\")))\n    \n    # Check for potential meeting slots\n    time_slot = work_start\n    while time_slot + duration <= work_end:\n        end_time_slot = time_slot + duration\n        if all(not (start < end_time_slot and end > time_slot) for start, end in busy_slots):\n            return f\"{time_slot.strftime('%H:%M')}:{end_time_slot.strftime('%H:%M')}\", day_of_week\n        time_slot += timedelta(minutes=1)\n    \n    return None\n\n# Participants' busy times\nparticipants = {\n    'Jacob': [('13:30', '14:00'), ('14:30', '15:00')],\n    'Diana': [('09:30', '10:00'), ('11:30', '12:00'), ('13:00', '13:30'), ('16:00', '16:30')],\n    'Adam': [('09:30', '10:30'), ('11:00', '12:30'), ('15:30', '16:00')],\n    'Angela': [('09:30', '10:00'), ('10:30', '12:00'), ('13:00', '15:30'), ('16:00', '16:30')],\n    'Dennis': [('09:00', '09:30'), ('10:30', '11:30'), ('13:00', '15:00'), ('16:30', '17:00')],\n}\n\n# Meeting duration\nduration = timedelta(minutes=30)\nday_of_week = \"Monday\"\n\n# Find and print the meeting time\nmeeting_time = find_meeting_time(participants, duration, day_of_week)\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_246"
+        }
+    ]
+}

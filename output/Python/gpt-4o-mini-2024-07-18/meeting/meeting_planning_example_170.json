@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Meeting constraints and travel times\narrival_time = datetime.strptime('9:00', '%H:%M')\nemily_start = datetime.strptime('16:00', '%H:%M')\nemily_end = datetime.strptime('17:15', '%H:%M')\nmargaret_start = datetime.strptime('19:00', '%H:%M')\nmargaret_end = datetime.strptime('21:00', '%H:%M')\n\nrequired_emily_duration = timedelta(minutes=45)\nrequired_margaret_duration = timedelta(minutes=120)\n\n# Travel distances in minutes\ntravel_times = {\n    (\"North Beach\", \"Union Square\"): 7,\n    (\"North Beach\", \"Russian Hill\"): 4,\n    (\"Union Square\", \"North Beach\"): 10,\n    (\"Union Square\", \"Russian Hill\"): 13,\n    (\"Russian Hill\", \"North Beach\"): 5,\n    (\"Russian Hill\", \"Union Square\"): 11,\n}\n\ndef calculate_meeting_schedule():\n    itinerary = []\n\n    # First, meeting Emily at Union Square\n    travel_to_emily = travel_times[(\"North Beach\", \"Union Square\")]\n    meet_start = max(arrival_time + timedelta(minutes=travel_to_emily), emily_start)\n    meet_end = meet_start + required_emily_duration\n\n    if meet_end <= emily_end:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Union Square\",\n            \"person\": \"Emily\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": meet_end.strftime(\"%H:%M\")\n        })\n\n        # Travel to Margaret at Russian Hill\n        travel_to_margaret = travel_times[(\"Union Square\", \"Russian Hill\")]\n        departure_to_margaret = meet_end + timedelta(minutes=travel_to_margaret)\n\n        # Meeting Margaret at Russian Hill\n        if departure_to_margaret < margaret_start:\n            departure_to_margaret = margaret_start  # Wait if necessary\n\n        meet_start_margaret = departure_to_margaret\n        meet_end_margaret = meet_start_margaret + required_margaret_duration\n        \n        if meet_end_margaret <= margaret_end:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Russian Hill\",\n                \"person\": \"Margaret\",\n                \"start_time\": meet_start_margaret.strftime(\"%H:%M\"),\n                \"end_time\": meet_end_margaret.strftime(\"%H:%M\")\n            })\n\n    return {\"itinerary\": itinerary}\n\n# Calculate and output the optimal meeting schedule\noptimal_schedule = calculate_meeting_schedule()\noutput_json = json.dumps(optimal_schedule, indent=2)\nprint(output_json)\n```",
+            "count": "meeting_planning_example_170"
+        }
+    ]
+}

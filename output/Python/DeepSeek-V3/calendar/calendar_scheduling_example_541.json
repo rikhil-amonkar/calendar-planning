@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, work_hours_start, work_hours_end, duration_minutes, day):\n    # Convert all time strings to minutes since midnight for easier calculation\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n\n    # Convert minutes back to HH:MM format\n    def minutes_to_time(minutes):\n        hh = minutes // 60\n        mm = minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n\n    work_start = time_to_minutes(work_hours_start)\n    work_end = time_to_minutes(work_hours_end)\n    \n    # Collect all busy intervals for all participants\n    busy_intervals = []\n    for schedule in participents_schedules:\n        for interval in schedule:\n            start, end = map(time_to_minutes, interval.split(' to '))\n            busy_intervals.append((start, end))\n    \n    # Sort all busy intervals by start time\n    busy_intervals.sort()\n    \n    # Find available slots by merging busy intervals\n    available_slots = []\n    prev_end = work_start\n    \n    for start, end in busy_intervals:\n        if start > prev_end:\n            available_slots.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    \n    if prev_end < work_end:\n        available_slots.append((prev_end, work_end))\n    \n    # Check each available slot for sufficient duration\n    for slot in available_slots:\n        slot_start, slot_end = slot\n        if slot_end - slot_start >= duration_minutes:\n            meeting_start = slot_start\n            meeting_end = meeting_start + duration_minutes\n            return (minutes_to_time(meeting_start), minutes_to_time(meeting_end))\n    \n    return None\n\n# Define the problem parameters\nparticipants_schedules = [\n    [\"10:00 to 10:30\", \"14:30 to 16:00\"],  # Kayla's schedule\n    [\"09:00 to 13:00\", \"13:30 to 15:00\", \"15:30 to 16:00\"]  # Rebecca's schedule\n]\nwork_hours_start = \"09:00\"\nwork_hours_end = \"17:00\"\nduration_minutes = 60\nday = \"Monday\"\n\n# Find the meeting time\nmeeting_time = find_meeting_time(participants_schedules, work_hours_start, work_hours_end, duration_minutes, day)\n\n# Output the result\nif meeting_time:\n    start_time, end_time = meeting_time\n    print(f\"{start_time}:{end_time}\")\n    print(day)\nelse:\n    print(\"No suitable meeting time found.\")\n```\n\nThe output of this script will be:\n```\n16:00:17:00\nMonday\n```",
+            "count": "calendar_scheduling_example_541"
+        }
+    ]
+}

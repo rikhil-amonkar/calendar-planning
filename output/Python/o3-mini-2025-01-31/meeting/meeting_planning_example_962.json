@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joshua",
+                        "start_time": "9:20",
+                        "end_time": "11:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "David",
+                        "start_time": "11:25",
+                        "end_time": "11:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Lisa",
+                        "start_time": "18:07",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Timothy",
+                        "start_time": "19:45",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joshua",
+                        "start_time": "9:20",
+                        "end_time": "11:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "David",
+                        "start_time": "11:25",
+                        "end_time": "11:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Lisa",
+                        "start_time": "18:07",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Timothy",
+                        "start_time": "19:45",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\nfrom copy import deepcopy\n\n# Utility functions to convert time formats\ndef to_minutes(time_str):\n    # time_str in \"H:MM\" 24-hour format (no leading zero guaranteed)\n    parts = time_str.split(':')\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef to_timestr(minutes):\n    # Convert minutes (int) to \"H:MM\" (no leading zero for hour)\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Define travel times as a dictionary of dictionaries.\ntravel_times = {\n    \"The Castro\": {\n        \"Marina District\": 21, \"Presidio\": 20, \"North Beach\": 20, \"Embarcadero\": 22,\n        \"Haight-Ashbury\": 6, \"Golden Gate Park\": 11, \"Richmond District\": 16,\n        \"Alamo Square\": 8, \"Financial District\": 21, \"Sunset District\": 17\n    },\n    \"Marina District\": {\n        \"The Castro\": 22, \"Presidio\": 10, \"North Beach\": 11, \"Embarcadero\": 14,\n        \"Haight-Ashbury\": 16, \"Golden Gate Park\": 18, \"Richmond District\": 11,\n        \"Alamo Square\": 15, \"Financial District\": 17, \"Sunset District\": 19\n    },\n    \"Presidio\": {\n        \"The Castro\": 21, \"Marina District\": 11, \"North Beach\": 18, \"Embarcadero\": 20,\n        \"Haight-Ashbury\": 15, \"Golden Gate Park\": 12, \"Richmond District\": 7,\n        \"Alamo Square\": 19, \"Financial District\": 23, \"Sunset District\": 15\n    },\n    \"North Beach\": {\n        \"The Castro\": 23, \"Marina District\": 9, \"Presidio\": 17, \"Embarcadero\": 6,\n        \"Haight-Ashbury\": 18, \"Golden Gate Park\": 22, \"Richmond District\": 18,\n        \"Alamo Square\": 16, \"Financial District\": 8, \"Sunset District\": 27\n    },\n    \"Embarcadero\": {\n        \"The Castro\": 25, \"Marina District\": 12, \"Presidio\": 20, \"North Beach\": 5,\n        \"Haight-Ashbury\": 21, \"Golden Gate Park\": 25, \"Richmond District\": 21,\n        \"Alamo Square\": 19, \"Financial District\": 5, \"Sunset District\": 30\n    },\n    \"Haight-Ashbury\": {\n        \"The Castro\": 6, \"Marina District\": 17, \"Presidio\": 15, \"North Beach\": 19,\n        \"Embarcadero\": 20, \"Golden Gate Park\": 7, \"Richmond District\": 10,\n        \"Alamo Square\": 5, \"Financial District\": 21, \"Sunset District\": 15\n    },\n    \"Golden Gate Park\": {\n        \"The Castro\": 13, \"Marina District\": 16, \"Presidio\": 11, \"North Beach\": 23,\n        \"Embarcadero\": 25, \"Haight-Ashbury\": 7, \"Richmond District\": 7,\n        \"Alamo Square\": 9, \"Financial District\": 26, \"Sunset District\": 10\n    },\n    \"Richmond District\": {\n        \"The Castro\": 16, \"Marina District\": 9, \"Presidio\": 7, \"North Beach\": 17,\n        \"Embarcadero\": 19, \"Haight-Ashbury\": 10, \"Golden Gate Park\": 9,\n        \"Alamo Square\": 13, \"Financial District\": 22, \"Sunset District\": 11\n    },\n    \"Alamo Square\": {\n        \"The Castro\": 8, \"Marina District\": 15, \"Presidio\": 17, \"North Beach\": 15,\n        \"Embarcadero\": 16, \"Haight-Ashbury\": 5, \"Golden Gate Park\": 9,\n        \"Richmond District\": 11, \"Financial District\": 17, \"Sunset District\": 16\n    },\n    \"Financial District\": {\n        \"The Castro\": 20, \"Marina District\": 15, \"Presidio\": 22, \"North Beach\": 7,\n        \"Embarcadero\": 4, \"Haight-Ashbury\": 19, \"Golden Gate Park\": 23,\n        \"Richmond District\": 21, \"Alamo Square\": 17, \"Sunset District\": 30\n    },\n    \"Sunset District\": {\n        \"The Castro\": 17, \"Marina District\": 21, \"Presidio\": 16, \"North Beach\": 28,\n        \"Embarcadero\": 30, \"Haight-Ashbury\": 15, \"Golden Gate Park\": 11,\n        \"Richmond District\": 12, \"Alamo Square\": 17, \"Financial District\": 30\n    }\n}\n\n# Define the meeting constraints as a list of dictionaries\nmeetings = [\n    {\"person\": \"Elizabeth\", \"location\": \"Marina District\",\n     \"avail_start\": to_minutes(\"19:00\"), \"avail_end\": to_minutes(\"20:45\"), \"duration\":105},\n    {\"person\": \"Joshua\", \"location\": \"Presidio\",\n     \"avail_start\": to_minutes(\"8:30\"), \"avail_end\": to_minutes(\"13:15\"), \"duration\":105},\n    {\"person\": \"Timothy\", \"location\": \"North Beach\",\n     \"avail_start\": to_minutes(\"19:45\"), \"avail_end\": to_minutes(\"22:00\"), \"duration\":90},\n    {\"person\": \"David\", \"location\": \"Embarcadero\",\n     \"avail_start\": to_minutes(\"10:45\"), \"avail_end\": to_minutes(\"12:30\"), \"duration\":30},\n    {\"person\": \"Kimberly\", \"location\": \"Haight-Ashbury\",\n     \"avail_start\": to_minutes(\"16:45\"), \"avail_end\": to_minutes(\"21:30\"), \"duration\":75},\n    {\"person\": \"Lisa\", \"location\": \"Golden Gate Park\",\n     \"avail_start\": to_minutes(\"17:30\"), \"avail_end\": to_minutes(\"21:45\"), \"duration\":45},\n    {\"person\": \"Ronald\", \"location\": \"Richmond District\",\n     \"avail_start\": to_minutes(\"8:00\"), \"avail_end\": to_minutes(\"9:30\"), \"duration\":90},\n    {\"person\": \"Stephanie\", \"location\": \"Alamo Square\",\n     \"avail_start\": to_minutes(\"15:30\"), \"avail_end\": to_minutes(\"16:30\"), \"duration\":30},\n    {\"person\": \"Helen\", \"location\": \"Financial District\",\n     \"avail_start\": to_minutes(\"17:30\"), \"avail_end\": to_minutes(\"18:30\"), \"duration\":45},\n    {\"person\": \"Laura\", \"location\": \"Sunset District\",\n     \"avail_start\": to_minutes(\"17:45\"), \"avail_end\": to_minutes(\"21:15\"), \"duration\":90}\n]\n\n# Starting point: you arrive at The Castro at 9:00AM.\nstart_time = to_minutes(\"9:00\")\nstart_location = \"The Castro\"\n\n# We'll use DFS to find the schedule that meets the most meetings.\ndef dfs(current_time, current_location, remaining, schedule):\n    best_schedule = deepcopy(schedule)\n    \n    # Try each meeting in remaining that is feasible next.\n    for i, m in enumerate(remaining):\n        # Compute travel time from current location to meeting location.\n        if current_location not in travel_times or m[\"location\"] not in travel_times[current_location]:\n            continue\n        travel = travel_times[current_location][m[\"location\"]]\n        arrival_time = current_time + travel\n        # The meeting can only start when both you arrive and the meeting is available.\n        meeting_start = max(arrival_time, m[\"avail_start\"])\n        meeting_end = meeting_start + m[\"duration\"]\n        # Check if meeting can be held within the available window.\n        if meeting_end <= m[\"avail_end\"]:\n            # Create an event record to add.\n            event = {\n                \"action\": \"meet\",\n                \"location\": m[\"location\"],\n                \"person\": m[\"person\"],\n                \"start_time\": to_timestr(meeting_start),\n                \"end_time\": to_timestr(meeting_end)\n            }\n            new_schedule = deepcopy(schedule)\n            new_schedule.append(event)\n            new_remaining = remaining[:i] + remaining[i+1:]\n            candidate = dfs(meeting_end, m[\"location\"], new_remaining, new_schedule)\n            # Choose the candidate schedule with more meetings.\n            if len(candidate) > len(best_schedule):\n                best_schedule = candidate\n    return best_schedule\n\n# Run DFS to compute the optimal schedule.\noptimal_schedule = dfs(start_time, start_location, meetings, [])\n\n# For the purposes of this problem, we want to output the itinerary.\noutput = {\n    \"itinerary\": optimal_schedule\n}\n\nprint(json.dumps(output, indent=2))",
+            "count": "meeting_planning_example_962"
+        }
+    ]
+}

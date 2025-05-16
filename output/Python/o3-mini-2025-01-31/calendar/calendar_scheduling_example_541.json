@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Helper functions to convert time strings to minutes since midnight and vice versa\ndef time_to_minutes(time_str):\n    t = datetime.strptime(time_str, \"%H:%M\")\n    return t.hour * 60 + t.minute\n\ndef minutes_to_time(minutes):\n    return f\"{minutes // 60:02d}:{minutes % 60:02d}\"\n\n# Working day parameters\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 60  # in minutes\n\n# Busy intervals for each person on Monday (as minutes since midnight)\n# Kayla's busy times: 10:00 to 10:30, 14:30 to 16:00\nkayla_busy = [\n    (time_to_minutes(\"10:00\"), time_to_minutes(\"10:30\")),\n    (time_to_minutes(\"14:30\"), time_to_minutes(\"16:00\"))\n]\n\n# Rebecca's busy times: 9:00 to 13:00, 13:30 to 15:00, 15:30 to 16:00\nrebecca_busy = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"13:00\")),\n    (time_to_minutes(\"13:30\"), time_to_minutes(\"15:00\")),\n    (time_to_minutes(\"15:30\"), time_to_minutes(\"16:00\"))\n]\n\ndef invert_intervals(busy, start, end):\n    \"\"\"Given busy intervals, return free intervals within [start, end].\"\"\"\n    free = []\n    current = start\n    for b_start, b_end in sorted(busy):\n        if b_start > current:\n            free.append((current, b_start))\n        current = max(current, b_end)\n    if current < end:\n        free.append((current, end))\n    return free\n\n# Get free intervals for Kayla and Rebecca\nkayla_free = invert_intervals(kayla_busy, work_start, work_end)\nrebecca_free = invert_intervals(rebecca_busy, work_start, work_end)\n\ndef intersect_intervals(intervals1, intervals2):\n    \"\"\"Compute intersection of two lists of intervals.\"\"\"\n    i, j = 0, 0\n    intersection = []\n    while i < len(intervals1) and j < len(intervals2):\n        start1, end1 = intervals1[i]\n        start2, end2 = intervals2[j]\n        # Find overlap\n        start_overlap = max(start1, start2)\n        end_overlap = min(end1, end2)\n        if start_overlap < end_overlap:\n            intersection.append((start_overlap, end_overlap))\n        # Move to next interval in the list that ends earlier\n        if end1 < end2:\n            i += 1\n        else:\n            j += 1\n    return intersection\n\n# Calculate common free intervals\ncommon_free = intersect_intervals(kayla_free, rebecca_free)\n\n# Find a slot with at least the meeting duration\nmeeting_slot = None\nfor start, end in common_free:\n    if end - start >= meeting_duration:\n        meeting_slot = (start, start + meeting_duration)\n        break\n\nif meeting_slot:\n    meeting_start = minutes_to_time(meeting_slot[0])\n    meeting_end = minutes_to_time(meeting_slot[1])\n    print(\"Monday {\" + meeting_start + \":\" + meeting_end + \"}\")\nelse:\n    print(\"No available time slot found.\")\n'''",
+            "count": "calendar_scheduling_example_541"
+        }
+    ]
+}

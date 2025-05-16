@@ -1,0 +1,61 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 14-14",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 16-16",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Dubrovnik"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Dubrovnik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 19\n    city_days = {\n        'Dubrovnik': 5,\n        'Warsaw': 2,\n        'Stuttgart': 7,\n        'Bucharest': 6,\n        'Copenhagen': 3\n    }\n    \n    # Conference and wedding constraints\n    conference_days = [7, 13]\n    wedding_range = (1, 6)\n    \n    # Direct flights graph\n    flights = {\n        'Warsaw': ['Copenhagen', 'Stuttgart', 'Bucharest'],\n        'Stuttgart': ['Copenhagen', 'Warsaw'],\n        'Bucharest': ['Copenhagen', 'Warsaw'],\n        'Copenhagen': ['Warsaw', 'Stuttgart', 'Bucharest', 'Dubrovnik'],\n        'Dubrovnik': ['Copenhagen']\n    }\n    \n    # Correcting city name inconsistencies\n    city_names = {\n        'Warsaw': 'Warsaw',\n        'Warsaw': 'Warsaw',\n        'Stuttgart': 'Stuttgart',\n        'Bucharest': 'Bucharest',\n        'Copenhagen': 'Copenhagen',\n        'Dubrovnik': 'Dubrovnik'\n    }\n    flights = {\n        'Warsaw': ['Copenhagen', 'Stuttgart', 'Bucharest'],\n        'Stuttgart': ['Copenhagen', 'Warsaw'],\n        'Bucharest': ['Copenhagen', 'Warsaw'],\n        'Copenhagen': ['Warsaw', 'Stuttgart', 'Bucharest', 'Dubrovnik'],\n        'Dubrovnik': ['Copenhagen']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    current_day = 1\n    \n    # Wedding in Bucharest must be between day 1-6\n    wedding_start = wedding_range[0]\n    wedding_end = wedding_range[1]\n    itinerary.append({\n        'day_range': f'Day {wedding_start}-{wedding_end}',\n        'place': 'Bucharest'\n    })\n    current_day = wedding_end + 1\n    \n    # Next, handle Stuttgart conference days\n    # We need to be in Stuttgart on day 7 and day 13\n    # Since current_day is 7 after Bucharest, we go to Stuttgart on day 7\n    if current_day <= conference_days[0]:\n        # Fly to Stuttgart on day 7\n        itinerary.append({\n            'flying': f'Day {conference_days[0]}-{conference_days[0]}',\n            'from': 'Bucharest',\n            'to': 'Stuttgart'\n        })\n        current_day = conference_days[0] + 1\n    \n    # Stay in Stuttgart until next conference day or required days\n    stuttgart_days_remaining = city_days['Stuttgart']\n    stuttgart_days_spent = 1  # day 7 is spent\n    \n    # Next conference day is 13\n    days_until_next_conf = conference_days[1] - conference_days[0]\n    stuttgart_stay = min(days_until_next_conf - 1, stuttgart_days_remaining - stuttgart_days_spent)\n    if stuttgart_stay > 0:\n        itinerary.append({\n            'day_range': f'Day {conference_days[0] + 1}-{conference_days[0] + stuttgart_stay}',\n            'place': 'Stuttgart'\n        })\n        current_day = conference_days[0] + stuttgart_stay + 1\n        stuttgart_days_spent += stuttgart_stay\n    \n    # Now, we need to be back in Stuttgart by day 13\n    # So between day (7 + stuttgart_stay + 1) and day 13, we can visit other cities\n    available_days_before_conf = conference_days[1] - current_day\n    if available_days_before_conf > 0:\n        # Possible to visit another city\n        # Choose a city that has flights to/from Stuttgart and hasn't been fully visited\n        possible_cities = []\n        for city in ['Warsaw', 'Copenhagen', 'Dubrovnik']:\n            if city_days[city] > 0 and city in flights['Stuttgart']:\n                possible_cities.append(city)\n        \n        if possible_cities:\n            chosen_city = possible_cities[0]\n            days_to_spend = min(available_days_before_conf, city_days[chosen_city])\n            \n            # Fly to chosen city\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': 'Stuttgart',\n                'to': chosen_city\n            })\n            \n            # Stay in chosen city\n            itinerary.append({\n                'day_range': f'Day {current_day + 1}-{current_day + days_to_spend}',\n                'place': chosen_city\n            })\n            \n            city_days[chosen_city] -= days_to_spend\n            current_day += days_to_spend + 1\n    \n    # Fly back to Stuttgart for conference on day 13\n    itinerary.append({\n        'flying': f'Day {conference_days[1]}-{conference_days[1]}',\n        'from': chosen_city if 'chosen_city' in locals() else 'Bucharest',\n        'to': 'Stuttgart'\n    })\n    \n    # Stay in Stuttgart for remaining days\n    stuttgart_remaining = city_days['Stuttgart'] - stuttgart_days_spent\n    if stuttgart_remaining > 0:\n        itinerary.append({\n            'day_range': f'Day {conference_days[1] + 1}-{conference_days[1] + stuttgart_remaining}',\n            'place': 'Stuttgart'\n        })\n        current_day = conference_days[1] + stuttgart_remaining + 1\n    \n    # Now, visit remaining cities\n    remaining_cities = [city for city in city_days if city_days[city] > 0 and city not in ['Stuttgart', 'Bucharest']]\n    \n    for city in remaining_cities:\n        if city_days[city] <= 0:\n            continue\n        \n        # Find a city in current location's flights that can reach this city\n        current_location = itinerary[-1]['place'] if 'place' in itinerary[-1] else itinerary[-1]['to']\n        if city in flights.get(current_location, []):\n            # Fly to city\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': current_location,\n                'to': city\n            })\n            \n            # Stay in city\n            end_day = current_day + city_days[city] - 1\n            itinerary.append({\n                'day_range': f'Day {current_day + 1}-{end_day}',\n                'place': city\n            })\n            \n            current_day = end_day + 1\n            city_days[city] = 0\n    \n    # Handle Dubrovnik separately if not visited yet\n    if city_days['Dubrovnik'] > 0:\n        # Find a city that can fly to Dubrovnik\n        for item in reversed(itinerary):\n            if 'place' in item:\n                last_city = item['place']\n                if 'Copenhagen' in flights[last_city] and 'Dubrovnik' in flights['Copenhagen']:\n                    # Fly to Copenhagen first if needed\n                    if last_city != 'Copenhagen':\n                        itinerary.append({\n                            'flying': f'Day {current_day}-{current_day}',\n                            'from': last_city,\n                            'to': 'Copenhagen'\n                        })\n                        current_day += 1\n                    \n                    # Then fly to Dubrovnik\n                    itinerary.append({\n                        'flying': f'Day {current_day}-{current_day}',\n                        'from': 'Copenhagen',\n                        'to': 'Dubrovnik'\n                    })\n                    \n                    # Stay in Dubrovnik\n                    end_day = current_day + city_days['Dubrovnik'] - 1\n                    itinerary.append({\n                        'day_range': f'Day {current_day + 1}-{end_day}',\n                        'place': 'Dubrovnik'\n                    })\n                    current_day = end_day + 1\n                    city_days['Dubrovnik'] = 0\n                    break\n    \n    # Verify all cities are visited\n    for city in city_days:\n        if city_days[city] > 0:\n            # Find a way to visit remaining days\n            pass\n    \n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_517"
+        }
+    ]
+}

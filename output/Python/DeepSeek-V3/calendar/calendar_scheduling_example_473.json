@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, day, work_hours_start, work_hours_end, duration_minutes):\n    # Convert all time slots to minutes since start of day for easier comparison\n    start_time = work_hours_start * 60\n    end_time = work_hours_end * 60\n    duration = duration_minutes\n    \n    # Collect all busy intervals for all participants\n    busy_intervals = []\n    for schedule in participants_schedules:\n        for busy in schedule:\n            start = busy[0] * 60\n            end = busy[1] * 60\n            busy_intervals.append((start, end))\n    \n    # Sort all busy intervals by start time\n    busy_intervals.sort()\n    \n    # Merge overlapping or adjacent busy intervals\n    merged = []\n    for start, end in busy_intervals:\n        if not merged:\n            merged.append((start, end))\n        else:\n            last_start, last_end = merged[-1]\n            if start <= last_end:\n                # Overlapping or adjacent, merge them\n                new_start = min(last_start, start)\n                new_end = max(last_end, end)\n                merged[-1] = (new_start, new_end)\n            else:\n                merged.append((start, end))\n    \n    # Find the first available slot outside busy intervals\n    previous_end = start_time\n    for start, end in merged:\n        if start > previous_end:\n            available_start = previous_end\n            available_end = start\n            if available_end - available_start >= duration:\n                # Found a suitable slot\n                meeting_start = available_start\n                meeting_end = meeting_start + duration\n                return (meeting_start, meeting_end)\n        previous_end = max(previous_end, end)\n    \n    # Check after the last busy interval\n    if previous_end + duration <= end_time:\n        meeting_start = previous_end\n        meeting_end = meeting_start + duration\n        return (meeting_start, meeting_end)\n    \n    # No available slot found (though the problem states one exists)\n    return None\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define participants' schedules in 24-hour format as (start_hour, end_hour)\ngregory = [(9, 9.5), (11.5, 12)]\njonathan = [(9, 9.5), (12, 12.5), (13, 13.5), (15, 16), (16.5, 17)]\nbarbara = [(10, 10.5), (13.5, 14)]\njesse = [(10, 11), (12.5, 14.5)]\nalan = [(9.5, 11), (11.5, 12.5), (13, 15.5), (16, 17)]\nnicole = [(9, 10.5), (11.5, 12), (12.5, 13.5), (14, 17)]\ncatherine = [(9, 10.5), (12, 13.5), (15, 15.5), (16, 16.5)]\n\n# All participants' schedules\nparticipants_schedules = [gregory, jonathan, barbara, jesse, alan, nicole, catherine]\n\n# Find a meeting time\nmeeting_time = find_meeting_time(participants_schedules, \"Monday\", 9, 17, 30)\n\nif meeting_time:\n    start, end = meeting_time\n    start_time_str = minutes_to_time(start)\n    end_time_str = minutes_to_time(end)\n    print(f\"{start_time_str}:{end_time_str}\")\n    print(\"Monday\")\nelse:\n    print(\"No suitable time found.\")\n```",
+            "count": "calendar_scheduling_example_473"
+        }
+    ]
+}

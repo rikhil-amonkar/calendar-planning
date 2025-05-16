@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{9:00",
+                "end_time": "9:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{12:30",
+                "end_time": "13:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 30\n\nchristine_blocked = [\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n    (time_to_minutes(\"15:00\"), time_to_minutes(\"15:30\"))\n]\n\nhelen_blocked = [\n    (time_to_minutes(\"09:30\"), time_to_minutes(\"10:30\")),\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n    (time_to_minutes(\"12:00\"), time_to_minutes(\"12:30\")),\n    (time_to_minutes(\"13:30\"), time_to_minutes(\"16:00\")),\n    (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n]\nhelen_no_meet_after = time_to_minutes(\"15:00\")\n\ndef get_available_slots(blocked, work_start, work_end, additional_constraint_end=None):\n    blocked = sorted(blocked, key=lambda x: x[0])\n    available = []\n    current_start = work_start\n\n    for start, end in blocked:\n        if start > current_start:\n            available.append((current_start, start))\n        current_start = max(current_start, end)\n    \n    if current_start < work_end:\n        available.append((current_start, work_end))\n    \n    if additional_constraint_end is not None:\n        filtered = []\n        for start, end in available:\n            if end <= additional_constraint_end:\n                filtered.append((start, end))\n            elif start < additional_constraint_end:\n                filtered.append((start, additional_constraint_end))\n        available = filtered\n    \n    return available\n\nchristine_available = get_available_slots(christine_blocked, work_start, work_end)\nchristine_available = [(s, e) for s, e in christine_available if e > s]\n\nhelen_available = get_available_slots(helen_blocked, work_start, work_end, helen_no_meet_after)\nhelen_available = [(s, e) for s, e in helen_available if e > s]\n\ndef find_overlap(c_avail, h_avail, duration):\n    for c_start, c_end in c_avail:\n        for h_start, h_end in h_avail:\n            start = max(c_start, h_start)\n            end = min(c_end, h_end)\n            if end - start >= duration:\n                return (start, start + duration)\n    return None\n\nmeeting_time = find_overlap(christine_available, helen_available, meeting_duration)\n\nstart_time = minutes_to_time(meeting_time[0])\nend_time = minutes_to_time(meeting_time[1])\n\nprint(f\"Monday {start_time}:{end_time}\")\n'''",
+            "count": "calendar_scheduling_example_579"
+        }
+    ]
+}

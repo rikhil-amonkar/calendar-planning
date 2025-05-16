@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{16:00",
+                "end_time": "16:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{16:00",
+                "end_time": "16:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef main():\n    import datetime\n\n    # Define work hours (9:00 to 17:00 in minutes)\n    work_start = 9 * 60\n    work_end = 17 * 60\n\n    # Define days to check in order\n    days = ['Monday', 'Tuesday', 'Wednesday']\n\n    # Ruth's schedule (in minutes since midnight)\n    ruth_busy = {\n        'Monday': [\n            (9*60, 10*60),       # 9:00-10:00\n            (10*60 + 30, 12*60), # 10:30-12:00\n            (12*60 + 30, 14*60 + 30), # 12:30-14:30\n            (15*60, 16*60),      # 15:00-16:00\n            (16*60 + 30, 17*60)  # 16:30-17:00\n        ],\n        'Tuesday': [(9*60, 17*60)],   # Entire day blocked\n        'Wednesday': [(9*60, 17*60)]  # Entire day blocked\n    }\n\n    # Tyler's constraints (prefers no meetings before 16:00 on Monday)\n    def is_tyler_available(day, start_min):\n        if day == 'Monday' and start_min < 16 * 60:\n            return False\n        # Check Tyler's explicit busy times (only Tue/Wed in this case)\n        return True\n\n    # Find the first available slot\n    meeting_duration = 30\n    for day in days:\n        if day != 'Monday':  # Ruth is fully busy on Tue/Wed\n            continue\n        \n        # Get Ruth's busy intervals for the day\n        busy_intervals = ruth_busy.get(day, [])\n        busy_intervals.sort()\n        \n        # Calculate Ruth's free intervals within work hours\n        free_ruth = []\n        prev_end = work_start\n        for start, end in busy_intervals:\n            if start > prev_end:\n                free_ruth.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        if prev_end < work_end:\n            free_ruth.append((prev_end, work_end))\n        \n        # Check each free interval against Tyler's availability\n        for start, end in free_ruth:\n            # Find earliest start time within this interval that satisfies Tyler\n            current_start = start\n            while current_start + meeting_duration <= end:\n                if is_tyler_available(day, current_start):\n                    # Format the time\n                    start_time = f\"{current_start // 60:02d}:{current_start % 60:02d}\"\n                    end_time = f\"{(current_start + meeting_duration) // 60:02d}:{(current_start + meeting_duration) % 60:02d}\"\n                    print(f\"{day}:{start_time}:{end_time}\")\n                    return\n                current_start += 15  # Check every 15 minutes for flexibility\n\n    print(\"No suitable time found\")\n\nif __name__ == \"__main__\":\n    main()\n'''",
+            "count": "calendar_scheduling_example_724"
+        }
+    ]
+}

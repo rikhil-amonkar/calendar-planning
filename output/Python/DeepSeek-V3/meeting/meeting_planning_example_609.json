@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:08",
+                        "end_time": "17:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:54",
+                        "end_time": "18:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:30",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    'Chinatown': {\n        'Mission District': 18,\n        'Alamo Square': 17,\n        'Pacific Heights': 10,\n        'Union Square': 7,\n        'Golden Gate Park': 23,\n        'Sunset District': 29,\n        'Presidio': 19\n    },\n    'Mission District': {\n        'Chinatown': 16,\n        'Alamo Square': 11,\n        'Pacific Heights': 16,\n        'Union Square': 15,\n        'Golden Gate Park': 17,\n        'Sunset District': 24,\n        'Presidio': 25\n    },\n    'Alamo Square': {\n        'Chinatown': 16,\n        'Mission District': 10,\n        'Pacific Heights': 10,\n        'Union Square': 14,\n        'Golden Gate Park': 9,\n        'Sunset District': 16,\n        'Presidio': 18\n    },\n    'Pacific Heights': {\n        'Chinatown': 11,\n        'Mission District': 15,\n        'Alamo Square': 10,\n        'Union Square': 12,\n        'Golden Gate Park': 15,\n        'Sunset District': 21,\n        'Presidio': 11\n    },\n    'Union Square': {\n        'Chinatown': 7,\n        'Mission District': 14,\n        'Alamo Square': 15,\n        'Pacific Heights': 15,\n        'Golden Gate Park': 22,\n        'Sunset District': 26,\n        'Presidio': 24\n    },\n    'Golden Gate Park': {\n        'Chinatown': 23,\n        'Mission District': 17,\n        'Alamo Square': 10,\n        'Pacific Heights': 16,\n        'Union Square': 22,\n        'Sunset District': 10,\n        'Presidio': 11\n    },\n    'Sunset District': {\n        'Chinatown': 30,\n        'Mission District': 24,\n        'Alamo Square': 17,\n        'Pacific Heights': 21,\n        'Union Square': 30,\n        'Golden Gate Park': 11,\n        'Presidio': 16\n    },\n    'Presidio': {\n        'Chinatown': 21,\n        'Mission District': 26,\n        'Alamo Square': 18,\n        'Pacific Heights': 11,\n        'Union Square': 22,\n        'Golden Gate Park': 12,\n        'Sunset District': 15\n    }\n}\n\n# People's availability\npeople = {\n    'David': {\n        'location': 'Mission District',\n        'start': 8.0,\n        'end': 19.75,\n        'duration': 0.75\n    },\n    'Kenneth': {\n        'location': 'Alamo Square',\n        'start': 14.0,\n        'end': 19.75,\n        'duration': 2.0\n    },\n    'John': {\n        'location': 'Pacific Heights',\n        'start': 17.0,\n        'end': 20.0,\n        'duration': 0.25\n    },\n    'Charles': {\n        'location': 'Union Square',\n        'start': 21.75,\n        'end': 22.75,\n        'duration': 1.0\n    },\n    'Deborah': {\n        'location': 'Golden Gate Park',\n        'start': 7.0,\n        'end': 18.25,\n        'duration': 1.5\n    },\n    'Karen': {\n        'location': 'Sunset District',\n        'start': 17.75,\n        'end': 21.25,\n        'duration': 0.25\n    },\n    'Carol': {\n        'location': 'Presidio',\n        'start': 8.25,\n        'end': 9.25,\n        'duration': 0.5\n    }\n}\n\ndef time_to_float(time_str):\n    if isinstance(time_str, float):\n        return time_str\n    h, m = map(int, time_str.split(':'))\n    return h + m / 60.0\n\ndef float_to_time(time_float):\n    h = int(time_float)\n    m = int((time_float - h) * 60)\n    return f\"{h}:{m:02d}\"\n\ndef calculate_schedule(order):\n    current_time = 9.0  # Start at Chinatown at 9:00\n    current_location = 'Chinatown'\n    schedule = []\n    met_people = set()\n    \n    for person in order:\n        if person in met_people:\n            continue\n            \n        info = people[person]\n        location = info['location']\n        travel_time = travel_times[current_location][location] / 60.0\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet this person\n        meeting_start = max(arrival_time, info['start'])\n        meeting_end = meeting_start + info['duration']\n        \n        if meeting_end > info['end']:\n            continue  # Can't meet this person in this order\n            \n        # Add to schedule\n        schedule.append({\n            'person': person,\n            'location': location,\n            'start_time': meeting_start,\n            'end_time': meeting_end,\n            'duration': info['duration']\n        })\n        \n        met_people.add(person)\n        current_time = meeting_end\n        current_location = location\n    \n    return schedule, len(met_people)\n\ndef generate_possible_orders():\n    # Generate possible meeting orders (prioritizing people with tighter schedules)\n    all_people = list(people.keys())\n    # Try Carol first since she's only available in the morning\n    priority_order = ['Carol'] + [p for p in all_people if p != 'Carol']\n    return [priority_order] + list(permutations(all_people))\n\ndef find_best_schedule():\n    best_schedule = []\n    max_meetings = 0\n    \n    # Try different meeting orders\n    for order in generate_possible_orders():\n        schedule, num_meetings = calculate_schedule(order)\n        if num_meetings > max_meetings or (num_meetings == max_meetings and len(schedule) > len(best_schedule)):\n            best_schedule = schedule\n            max_meetings = num_meetings\n    \n    return best_schedule\n\ndef format_schedule(schedule):\n    itinerary = []\n    for meeting in schedule:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting['location'],\n            \"person\": meeting['person'],\n            \"start_time\": float_to_time(meeting['start_time']),\n            \"end_time\": float_to_time(meeting['end_time'])\n        })\n    return {\"itinerary\": itinerary}\n\n# Main execution\nbest_schedule = find_best_schedule()\nresult = format_schedule(best_schedule)\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_609"
+        }
+    ]
+}

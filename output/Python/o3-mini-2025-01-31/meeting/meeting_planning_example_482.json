@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Sandra",
+                        "start_time": "13:00",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Brian",
+                        "start_time": "13:38",
+                        "end_time": "15:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "15:45",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Sandra",
+                        "start_time": "13:00",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Brian",
+                        "start_time": "13:38",
+                        "end_time": "15:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "15:45",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper functions for time conversion\ndef time_to_minutes(time_str):\n    # expects \"H:MM\" format (24-hour)\n    h, m = time_str.split(\":\")\n    return int(h) * 60 + int(m)\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Define travel times between locations as a dictionary\n# Keys are (from, to) with travel time in minutes.\ntravel_times = {\n    (\"Haight-Ashbury\", \"Mission District\"): 11,\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n    (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n    (\"Haight-Ashbury\", \"Fisherman's Wharf\"): 23,\n    \n    (\"Mission District\", \"Haight-Ashbury\"): 12,\n    (\"Mission District\", \"Bayview\"): 15,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"Russian Hill\"): 15,\n    (\"Mission District\", \"Fisherman's Wharf\"): 22,\n    \n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Mission District\"): 13,\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    (\"Bayview\", \"Russian Hill\"): 23,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    \n    (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Pacific Heights\", \"Bayview\"): 22,\n    (\"Pacific Heights\", \"Russian Hill\"): 7,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    \n    (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n    (\"Russian Hill\", \"Mission District\"): 16,\n    (\"Russian Hill\", \"Bayview\"): 23,\n    (\"Russian Hill\", \"Pacific Heights\"): 7,\n    (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n    \n    (\"Fisherman's Wharf\", \"Haight-Ashbury\"): 22,\n    (\"Fisherman's Wharf\", \"Mission District\"): 22,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n}\n\n# Define friend meeting constraints as dictionaries\n# Each friend's available time window and meeting duration are stored in minutes (from midnight).\nfriends = [\n    {\n        \"name\": \"Stephanie\",\n        \"location\": \"Mission District\",\n        \"avail_start\": time_to_minutes(\"8:15\"),\n        \"avail_end\": time_to_minutes(\"13:45\"),\n        \"duration\": 90\n    },\n    {\n        \"name\": \"Sandra\",\n        \"location\": \"Bayview\",\n        \"avail_start\": time_to_minutes(\"13:00\"),\n        \"avail_end\": time_to_minutes(\"19:30\"),\n        \"duration\": 15\n    },\n    {\n        \"name\": \"Richard\",\n        \"location\": \"Pacific Heights\",\n        \"avail_start\": time_to_minutes(\"7:15\"),\n        \"avail_end\": time_to_minutes(\"10:15\"),\n        \"duration\": 75\n    },\n    {\n        \"name\": \"Brian\",\n        \"location\": \"Russian Hill\",\n        \"avail_start\": time_to_minutes(\"12:15\"),\n        \"avail_end\": time_to_minutes(\"16:00\"),\n        \"duration\": 120\n    },\n    {\n        \"name\": \"Jason\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": time_to_minutes(\"8:30\"),\n        \"avail_end\": time_to_minutes(\"17:45\"),\n        \"duration\": 60\n    }\n]\n\n# Starting point details\nstart_location = \"Haight-Ashbury\"\nstart_time = time_to_minutes(\"9:00\")  # 9:00 in minutes\n\n# Function to simulate a given itinerary permutation.\n# It returns the itinerary (list of meetings) and count of meetings if feasible;\n# Otherwise it returns None.\ndef simulate_itinerary(order):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for friend in order:\n        # Get travel time from current location to friend's location.\n        travel_key = (current_location, friend[\"location\"])\n        if travel_key not in travel_times:\n            # If no defined travel time then skip this itinerary.\n            return None\n        travel_time = travel_times[travel_key]\n        arrival_time = current_time + travel_time\n        \n        # Meeting can only start when friend is available.\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        meeting_end = meeting_start + friend[\"duration\"]\n        \n        # Check if meeting fits within friend's available window.\n        if meeting_end > friend[\"avail_end\"]:\n            # Cannot meet friend within available window, so this itinerary is not feasible.\n            return None\n        \n        # Append meeting details to the itinerary.\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location after meeting.\n        current_time = meeting_end\n        current_location = friend[\"location\"]\n    return itinerary\n\n# Try all permutations of friends to maximize the number of meetings.\n# Our goal is to meet as many friends as possible.\nbest_itinerary = None\nmax_count = 0\n\n# We'll also check for partial itineraries by trying subsets of friends.\n# We'll iterate over all combinations (of all lengths) and their orders.\nfor r in range(1, len(friends)+1):\n    for subset in itertools.permutations(friends, r):\n        res = simulate_itinerary(subset)\n        if res is not None:\n            if r > max_count:\n                max_count = r\n                best_itinerary = res\n\n# Prepare the result dictionary in the required format.\nresult = {\"itinerary\": best_itinerary if best_itinerary is not None else []}\n\n# Output the result as JSON\nprint(json.dumps(result, indent=2))",
+            "count": "meeting_planning_example_482"
+        }
+    ]
+}

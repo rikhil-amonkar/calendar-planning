@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 26-29",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 30-30",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 31-31",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 32-35",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    cities = list(constraints.keys())\n    unvisited_cities = cities.copy()\n    current_city = None\n\n    # Start with Salzburg\n    current_city = 'Salzburg'\n    unvisited_cities.remove(current_city)\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[current_city] - 1}', 'place': current_city})\n    current_day += constraints[current_city]\n\n    # Visit Hamburg\n    next_city = 'Hamburg'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Nice\n    next_city = 'Nice'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': next_city})\n    current_city = next_city\n    current_day += 3\n\n    # Visit Zurich\n    next_city = 'Zurich'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Brussels\n    next_city = 'Brussels'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Bucharest\n    next_city = 'Bucharest'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Venice\n    next_city = 'Venice'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Copenhagen\n    next_city = 'Copenhagen'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    if current_day < 18:\n        trip_plan.append({'day_range': f'Day {current_day}-{17}', 'place': next_city})\n        current_day = 18\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': next_city})\n    current_city = next_city\n    current_day += 4\n\n    # Attend a wedding in Copenhagen between day 18 and day 21\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day}', 'place': current_city})\n    current_day += 1\n\n    # Continue staying in Copenhagen\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day}', 'place': current_city})\n    current_day += 1\n\n    # Visit Naples\n    next_city = 'Naples'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    if current_day < 22:\n        trip_plan.append({'day_range': f'Day {current_day}-{21}', 'place': next_city})\n        current_day = 22\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': next_city})\n\n    return trip_plan\n\nconstraints = {\n    'Salzburg': 2,\n    'Venice': 5,\n    'Bucharest': 4,\n    'Brussels': 2,\n    'Hamburg': 4,\n    'Copenhagen': 4,\n    'Nice': 3,\n    'Zurich': 5,\n    'Naples': 4\n}\n\ndirect_flights = [\n    ['Zurich', 'Brussels'],\n    ['Bucharest', 'Copenhagen'],\n    ['Venice', 'Brussels'],\n    ['Nice', 'Zurich'],\n    ['Hamburg', 'Nice'],\n    ['Zurich', 'Naples'],\n    ['Hamburg', 'Bucharest'],\n    ['Zurich', 'Copenhagen'],\n    ['Bucharest', 'Brussels'],\n    ['Hamburg', 'Brussels'],\n    ['Venice', 'Naples'],\n    ['Venice', 'Copenhagen'],\n    ['Bucharest', 'Naples'],\n    ['Hamburg', 'Copenhagen'],\n    ['Venice', 'Zurich'],\n    ['Nice', 'Brussels'],\n    ['Hamburg', 'Venice'],\n    ['Copenhagen', 'Naples'],\n    ['Nice', 'Naples'],\n    ['Hamburg', 'Zurich'],\n    ['Salzburg', 'Hamburg'],\n    ['Zurich', 'Bucharest'],\n    ['Brussels', 'Naples'],\n    ['Copenhagen', 'Brussels'],\n    ['Venice', 'Nice'],\n    ['Nice', 'Copenhagen']\n]\n\ntrip_plan = calculate_trip_plan(constraints, direct_flights)\nprint(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_1330"
+        }
+    ]
+}

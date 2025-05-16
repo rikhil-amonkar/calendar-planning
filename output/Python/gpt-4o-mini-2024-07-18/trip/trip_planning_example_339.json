@@ -1,0 +1,53 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 10-16",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 17-17",
+                        "place": "Paris"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 2-8",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Define the constraints and parameters\n    total_days = 17\n    days_in_riga = 7\n    days_in_budapest = 7\n    days_in_paris = 4\n    days_in_warsaw = 2\n    \n    wedding_start = 11\n    wedding_end = 17\n    \n    # Initialize itinerary\n    itinerary = []\n    \n    # Step 1: Plan days for Warsaw (show)\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Warsaw'})\n    \n    # Step 2: Travel to Riga\n    # From Day 3 to Day 9 in Riga\n    itinerary.append({'flying': 'Day 2-3', 'from': 'Warsaw', 'to': 'Riga'})\n    itinerary.append({'day_range': 'Day 3-9', 'place': 'Riga'})\n    \n    # Step 3: Attend wedding in Riga\n    # Wedding days are within days 11-17, so stay in Riga until day 9 (2 extra days for wedding)\n    # Move back to Budapest after wedding\n    itinerary.append({'flying': 'Day 9-10', 'from': 'Riga', 'to': 'Budapest'})\n    \n    # Step 4: Days in Budapest\n    itinerary.append({'day_range': 'Day 10-16', 'place': 'Budapest'})\n    \n    # Step 5: Return to Paris and allocate days there\n    itinerary.append({'flying': 'Day 16-17', 'from': 'Budapest', 'to': 'Paris'})\n    itinerary.append({'day_range': 'Day 17-17', 'place': 'Paris'})\n    \n    # Collect days based on constraints\n    # Adjusting the days in Paris\n    itinerary.insert(4, {'day_range': 'Day 16-17', 'place': 'Paris'})  # add Paris here to the existing\n    \n    # Output results in JSON format\n    return json.dumps(itinerary, indent=4)\n\n# Execute function and print the itinerary\nitinerary_json = compute_itinerary()\nprint(itinerary_json)\n```",
+            "count": "trip_planning_example_339"
+        }
+    ]
+}

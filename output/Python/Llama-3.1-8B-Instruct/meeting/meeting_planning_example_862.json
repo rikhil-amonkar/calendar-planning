@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "9:20",
+                        "end_time": "9:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Stephanie",
+                        "start_time": "11:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "12:40",
+                        "end_time": "14:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Laura",
+                        "start_time": "14:49",
+                        "end_time": "16:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Deborah",
+                        "start_time": "19:00",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nimport itertools\n\n# Define travel distances in minutes\ntravel_distances = {\n    \"Mission District\": {\n        \"Alamo Square\": 11,\n        \"Presidio\": 25,\n        \"Russian Hill\": 15,\n        \"North Beach\": 17,\n        \"Golden Gate Park\": 17,\n        \"Richmond District\": 20,\n        \"Embarcadero\": 19,\n        \"Financial District\": 15,\n        \"Marina District\": 19\n    },\n    \"Alamo Square\": {\n        \"Mission District\": 10,\n        \"Presidio\": 17,\n        \"Russian Hill\": 13,\n        \"North Beach\": 15,\n        \"Golden Gate Park\": 9,\n        \"Richmond District\": 11,\n        \"Embarcadero\": 16,\n        \"Financial District\": 17,\n        \"Marina District\": 15\n    },\n    \"Presidio\": {\n        \"Mission District\": 26,\n        \"Alamo Square\": 19,\n        \"Russian Hill\": 14,\n        \"North Beach\": 18,\n        \"Golden Gate Park\": 12,\n        \"Richmond District\": 7,\n        \"Embarcadero\": 20,\n        \"Financial District\": 23,\n        \"Marina District\": 11\n    },\n    \"Russian Hill\": {\n        \"Mission District\": 16,\n        \"Alamo Square\": 15,\n        \"Presidio\": 14,\n        \"North Beach\": 5,\n        \"Golden Gate Park\": 21,\n        \"Richmond District\": 14,\n        \"Embarcadero\": 8,\n        \"Financial District\": 11,\n        \"Marina District\": 7\n    },\n    \"North Beach\": {\n        \"Mission District\": 18,\n        \"Alamo Square\": 16,\n        \"Presidio\": 17,\n        \"Russian Hill\": 4,\n        \"Golden Gate Park\": 22,\n        \"Richmond District\": 18,\n        \"Embarcadero\": 6,\n        \"Financial District\": 8,\n        \"Marina District\": 9\n    },\n    \"Golden Gate Park\": {\n        \"Mission District\": 17,\n        \"Alamo Square\": 9,\n        \"Presidio\": 11,\n        \"Russian Hill\": 19,\n        \"North Beach\": 23,\n        \"Richmond District\": 7,\n        \"Embarcadero\": 25,\n        \"Financial District\": 26,\n        \"Marina District\": 16\n    },\n    \"Richmond District\": {\n        \"Mission District\": 20,\n        \"Alamo Square\": 13,\n        \"Presidio\": 7,\n        \"Russian Hill\": 13,\n        \"North Beach\": 17,\n        \"Golden Gate Park\": 9,\n        \"Embarcadero\": 19,\n        \"Financial District\": 22,\n        \"Marina District\": 9\n    },\n    \"Embarcadero\": {\n        \"Mission District\": 20,\n        \"Alamo Square\": 19,\n        \"Presidio\": 20,\n        \"Russian Hill\": 8,\n        \"North Beach\": 5,\n        \"Golden Gate Park\": 25,\n        \"Richmond District\": 21,\n        \"Financial District\": 5,\n        \"Marina District\": 12\n    },\n    \"Financial District\": {\n        \"Mission District\": 17,\n        \"Alamo Square\": 17,\n        \"Presidio\": 22,\n        \"Russian Hill\": 11,\n        \"North Beach\": 7,\n        \"Golden Gate Park\": 23,\n        \"Richmond District\": 21,\n        \"Embarcadero\": 4,\n        \"Marina District\": 15\n    },\n    \"Marina District\": {\n        \"Mission District\": 20,\n        \"Alamo Square\": 15,\n        \"Presidio\": 10,\n        \"Russian Hill\": 8,\n        \"North Beach\": 11,\n        \"Golden Gate Park\": 18,\n        \"Richmond District\": 11,\n        \"Embarcadero\": 14,\n        \"Financial District\": 17\n    }\n}\n\n# Define meeting constraints\nconstraints = {\n    \"Laura\": {\"location\": \"Alamo Square\", \"start_time\": \"14:30\", \"end_time\": \"16:15\", \"duration\": 75},\n    \"Brian\": {\"location\": \"Presidio\", \"start_time\": \"10:15\", \"end_time\": \"17:00\", \"duration\": 30},\n    \"Karen\": {\"location\": \"Russian Hill\", \"start_time\": \"18:00\", \"end_time\": \"20:15\", \"duration\": 90},\n    \"Stephanie\": {\"location\": \"North Beach\", \"start_time\": \"10:15\", \"end_time\": \"16:00\", \"duration\": 75},\n    \"Helen\": {\"location\": \"Golden Gate Park\", \"start_time\": \"11:30\", \"end_time\": \"21:45\", \"duration\": 120},\n    \"Sandra\": {\"location\": \"Richmond District\", \"start_time\": \"08:00\", \"end_time\": \"15:15\", \"duration\": 30},\n    \"Mary\": {\"location\": \"Embarcadero\", \"start_time\": \"16:45\", \"end_time\": \"18:45\", \"duration\": 120},\n    \"Deborah\": {\"location\": \"Financial District\", \"start_time\": \"19:00\", \"end_time\": \"20:45\", \"duration\": 105},\n    \"Elizabeth\": {\"location\": \"Marina District\", \"start_time\": \"08:30\", \"end_time\": \"13:15\", \"duration\": 105}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    if start_location == \"Mission District\":\n        return travel_distances[\"Mission District\"][end_location]\n    elif start_location == \"Alamo Square\":\n        return travel_distances[\"Alamo Square\"][end_location]\n    elif start_location == \"Presidio\":\n        return travel_distances[\"Presidio\"][end_location]\n    elif start_location == \"Russian Hill\":\n        return travel_distances[\"Russian Hill\"][end_location]\n    elif start_location == \"North Beach\":\n        return travel_distances[\"North Beach\"][end_location]\n    elif start_location == \"Golden Gate Park\":\n        return travel_distances[\"Golden Gate Park\"][end_location]\n    elif start_location == \"Richmond District\":\n        return travel_distances[\"Richmond District\"][end_location]\n    elif start_location == \"Embarcadero\":\n        return travel_distances[\"Embarcadero\"][end_location]\n    elif start_location == \"Financial District\":\n        return travel_distances[\"Financial District\"][end_location]\n    elif start_location == \"Marina District\":\n        return travel_distances[\"Marina District\"][end_location]\n\ndef check_constraint(person, start_time, end_time):\n    constraint = constraints[person]\n    if start_time >= constraint[\"start_time\"] and end_time <= constraint[\"end_time\"]:\n        return True\n    return False\n\ndef schedule_meeting(person, start_time, end_time):\n    if check_constraint(person, start_time, end_time):\n        return {\"action\": \"meet\", \"location\": constraints[person][\"location\"], \"person\": person, \"start_time\": start_time, \"end_time\": end_time}\n    return None\n\ndef generate_itinerary():\n    start_time = \"09:00\"\n    end_time = \"21:00\"\n    start_location = \"Mission District\"\n    itinerary = []\n    \n    # Generate all possible meeting times\n    for hour in range(9, 21):\n        for minute in range(0, 60):\n            meeting_time = f\"{hour:02d}:{minute:02d}\"\n            if meeting_time >= constraints[\"Laura\"][\"start_time\"] and meeting_time <= constraints[\"Laura\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Laura\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Brian\"][\"start_time\"] and meeting_time <= constraints[\"Brian\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Brian\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Karen\"][\"start_time\"] and meeting_time <= constraints[\"Karen\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Karen\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Stephanie\"][\"start_time\"] and meeting_time <= constraints[\"Stephanie\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Stephanie\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Helen\"][\"start_time\"] and meeting_time <= constraints[\"Helen\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Helen\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Sandra\"][\"start_time\"] and meeting_time <= constraints[\"Sandra\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Sandra\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Mary\"][\"start_time\"] and meeting_time <= constraints[\"Mary\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Mary\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Deborah\"][\"start_time\"] and meeting_time <= constraints[\"Deborah\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Deborah\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Elizabeth\"][\"start_time\"] and meeting_time <= constraints[\"Elizabeth\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Elizabeth\", meeting_time, meeting_time))\n    \n    # Remove duplicates and sort by start time\n    itinerary = list(set(itinerary))\n    itinerary.sort(key=lambda x: x[\"start_time\"])\n    \n    return itinerary\n\ndef optimize_itinerary(itinerary):\n    optimized_itinerary = []\n    current_location = \"Mission District\"\n    for meeting in itinerary:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"])\n        start_time = datetime.strptime(meeting[\"start_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        end_time = datetime.strptime(meeting[\"end_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        optimized_itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": start_time.strftime(\"%H:%M\"), \"end_time\": end_time.strftime(\"%H:%M\")})\n        current_location = meeting[\"location\"]\n    return optimized_itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    optimized_itinerary = optimize_itinerary(itinerary)\n    result = {\"itinerary\": optimized_itinerary}\n    print(json.dumps(result, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_862"
+        }
+    ]
+}

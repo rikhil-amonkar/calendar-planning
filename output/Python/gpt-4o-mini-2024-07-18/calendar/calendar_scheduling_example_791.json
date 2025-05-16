@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import time, timedelta\nimport pandas as pd\n\n# Define the working hours\nwork_hours_start = time(9, 0)\nwork_hours_end = time(17, 0)\n\n# Define the busy schedules\nschedule_nicole = {\n    'Monday': [(time(9, 0), time(9, 30)), (time(13, 0), time(13, 30)), (time(14, 30), time(15, 30))],\n    'Tuesday': [(time(9, 0), time(9, 30)), (time(11, 30), time(13, 30)), (time(14, 30), time(15, 30))],\n    'Wednesday': [(time(10, 0), time(11, 0)), (time(12, 30), time(15, 0)), (time(16, 0), time(17, 0))]\n}\n\nschedule_ruth = {\n    'Monday': [(time(9, 0), time(17, 0))],\n    'Tuesday': [(time(9, 0), time(17, 0))],\n    'Wednesday': [(time(9, 0), time(10, 30)), (time(11, 0), time(11, 30)), \n                  (time(12, 0), time(12, 30)), (time(13, 30), time(15, 30)), (time(16, 0), time(16, 30))]\n}\n\n# Define meeting duration\nmeeting_duration = timedelta(minutes=30)\n\n# Function to find available time\ndef find_available_time():\n    for day in ['Monday', 'Tuesday', 'Wednesday']:\n        # Get busy times of both participants\n        busy_times_nicole = schedule_nicole[day]\n        busy_times_ruth = schedule_ruth[day]\n        \n        # Merge the busy schedules\n        busy_times = busy_times_nicole + busy_times_ruth\n        \n        # Sort and combine overlapping schedules\n        busy_times.sort()\n        merged_busy_times = []\n        for start, end in busy_times:\n            if not merged_busy_times or merged_busy_times[-1][1] < start:\n                merged_busy_times.append((start, end))\n            else:\n                merged_busy_times[-1] = (merged_busy_times[-1][0], max(merged_busy_times[-1][1], end))\n\n        # Check for available slots within working hours\n        available_starts = [work_hours_start]\n        for start, end in merged_busy_times:\n            # Check if there's time before this busy slot\n            if available_starts[-1] < start:\n                available_starts.append(end)\n            # Update latest available start time\n            available_starts[-1] = max(available_starts[-1], end)\n\n        available_starts.append(work_hours_end)\n\n        # Now check for meeting time slots\n        for i in range(len(available_starts) - 1):\n            if available_starts[i + 1] - available_starts[i] >= meeting_duration:\n                meeting_start = available_starts[i]\n                meeting_end = (datetime.combine(datetime.today(), meeting_start) + meeting_duration).time()\n                if day == 'Wednesday' and meeting_end > time(13, 30):\n                    continue\n                return f\"{day}: {meeting_start.strftime('%H:%M')} - {meeting_end.strftime('%H:%M')}\"\n\n# Output the available time\nprint(find_available_time())\n```",
+            "count": "calendar_scheduling_example_791"
+        }
+    ]
+}

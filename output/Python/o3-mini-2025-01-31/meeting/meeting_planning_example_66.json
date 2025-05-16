@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\n\ndef minutes_to_time_str(total_minutes):\n    hour = total_minutes // 60\n    minute = total_minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Input parameters (all times in minutes after midnight)\n# Arrival at Nob Hill: 9:00AM -> 9 * 60 = 540 minutes\narrival_time_nob_hill = 9 * 60  # 540\n\n# Robert's meeting availability at Presidio: 11:15AM to 17:45PM\nrobert_available_start = 11 * 60 + 15  # 675 minutes\nrobert_available_end = 17 * 60 + 45      # 1065 minutes\n\n# Travel times in minutes\nnobhill_to_presidio = 17\npresidio_to_nobhill = 18\n\n# Minimum meeting duration with Robert (in minutes)\nmin_meeting_duration = 120\n\n# The plan is to meet Robert at Presidio.\n# We need to leave Nob Hill with enough time such that we arrive at Presidio at or just at Robert's available start.\n# Compute departure time from Nob Hill ensuring timely arrival at Robert's location.\n# We want the meeting to start when Robert becomes available (or later if travel prevents it):\nproposed_meeting_start = robert_available_start\n# Calculate the departure time from Nob Hill needed to arrive by proposed_meeting_start:\ndeparture_time_nob_hill = proposed_meeting_start - nobhill_to_presidio\n\n# Ensure that we don't depart before we arrive at Nob Hill:\nif departure_time_nob_hill < arrival_time_nob_hill:\n    departure_time_nob_hill = arrival_time_nob_hill\n    # Adjust meeting start accordingly\n    proposed_meeting_start = departure_time_nob_hill + nobhill_to_presidio\n\n# Determine meeting end time at Presidio\nproposed_meeting_end = proposed_meeting_start + min_meeting_duration\n\n# If the meeting end goes beyond Robert's available end time, adjust the meeting start (if possible)\nif proposed_meeting_end > robert_available_end:\n    # If there is slack, try shifting the meeting earlier.\n    proposed_meeting_start = robert_available_end - min_meeting_duration\n    # But we cannot start before Robert's available start.\n    if proposed_meeting_start < robert_available_start:\n        raise ValueError(\"Meeting cannot be scheduled to meet the minimum duration within Robert's available window.\")\n    proposed_meeting_end = proposed_meeting_start + min_meeting_duration\n\n# Build itinerary JSON structure\nitinerary = {\n    \"itinerary\": [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Robert\",\n            \"start_time\": minutes_to_time_str(proposed_meeting_start),\n            \"end_time\": minutes_to_time_str(proposed_meeting_end)\n        }\n    ]\n}\n\n# Print the JSON formatted itinerary\nprint(json.dumps(itinerary, indent=2))",
+            "count": "meeting_planning_example_66"
+        }
+    ]
+}

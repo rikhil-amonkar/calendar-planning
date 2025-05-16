@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define participants' schedules\nschedules = {\n    \"Joshua\": {\n        \"Monday\": [(15, 0, 15, 30)],\n        \"Tuesday\": [(11, 30, 12, 0), (13, 0, 13, 30), (14, 30, 15, 0)],\n        \"Wednesday\": []\n    },\n    \"Joyce\": {\n        \"Monday\": [(9, 0, 9, 30), (10, 0, 11, 0), (11, 30, 12, 30), \n                   (13, 0, 15, 0), (15, 30, 17, 0)],\n        \"Tuesday\": [(9, 0, 17, 0)],\n        \"Wednesday\": [(9, 0, 9, 30), (10, 0, 11, 0), (12, 30, 15, 30), \n                      (16, 0, 16, 30)]\n    }\n}\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# Convert schedule times to a list of unavailable time ranges\ndef create_unavailable_times(schedule):\n    unavailable_times = []\n    for times in schedule.values():\n        for start_h, start_m, end_h, end_m in times:\n            start = datetime(2023, 1, 1, start_h, start_m)\n            end = datetime(2023, 1, 1, end_h, end_m)\n            unavailable_times.append((start, end))\n    return unavailable_times\n\n# Check for available time slots\ndef find_available_time(day):\n    start_time = datetime(2023, 1, 1, 9, 0)  # Work starts at 9:00\n    end_time = datetime(2023, 1, 1, 17, 0)    # Work ends at 17:00\n\n    # Get unavailable times for both participants\n    joshua_unavailable = create_unavailable_times({day: schedules[\"Joshua\"].get(day, [])})\n    joyce_unavailable = create_unavailable_times({day: schedules[\"Joyce\"].get(day, [])})\n\n    # Merge unavailable times\n    all_unavailable = sorted(joshua_unavailable + joyce_unavailable)\n\n    # Check for gaps in unavailable times\n    last_end = start_time\n    for start, end in all_unavailable:\n        if last_end + timedelta(minutes=meeting_duration) <= start:\n            return last_end.strftime(\"%H:%M\"), (last_end + timedelta(minutes=meeting_duration)).strftime(\"%H:%M\")\n        last_end = max(last_end, end)\n\n    # Check after the last unavailable time\n    if last_end + timedelta(minutes=meeting_duration) <= end_time:\n        return last_end.strftime(\"%H:%M\"), (last_end + timedelta(minutes=meeting_duration)).strftime(\"%H:%M\")\n\n    return None\n\n# Attempt to find a time on preferred days\npreferred_days = [\"Tuesday\", \"Wednesday\"]\n\nfor preferred_day in preferred_days:\n    available_time = find_available_time(preferred_day)\n    if available_time:\n        start_time, end_time = available_time\n        print(f\"{start_time}:{end_time}, {preferred_day}\")\n        break\n```",
+            "count": "calendar_scheduling_example_765"
+        }
+    ]
+}

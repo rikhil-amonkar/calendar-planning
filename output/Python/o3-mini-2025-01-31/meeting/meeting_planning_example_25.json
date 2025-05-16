@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "David",
+                        "start_time": "16:00",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "David",
+                        "start_time": "16:00",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef time_to_str(dt):\n    # Format time as H:MM without leading zero in hour.\n    return dt.strftime(\"%-H:%M\") if dt.strftime(\"%-H\") != \"\" else dt.strftime(\"%H:%M\")\n\ndef main():\n    # Input parameters\n    arrival_location = \"Golden Gate Park\"\n    meeting_location = \"Chinatown\"\n    friend = \"David\"\n    \n    # Times in 24-hour format. Reference date is arbitrary; we'll use today.\n    base_date = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)\n    \n    # You arrive at Golden Gate Park at 9:00AM.\n    arrival_time = base_date.replace(hour=9, minute=0)\n    \n    # David will be at Chinatown from 16:00 to 21:45.\n    david_available_start = base_date.replace(hour=16, minute=0)\n    david_available_end = base_date.replace(hour=21, minute=45)\n    \n    # Travel distance in minutes (Golden Gate Park to Chinatown)\n    travel_minutes = 23\n    travel_duration = timedelta(minutes=travel_minutes)\n    \n    # Minimum meeting duration (105 minutes)\n    min_meeting_duration = timedelta(minutes=105)\n    \n    # To meet David at the beginning of his availability, plan to arrive at Chinatown at 16:00.\n    # Therefore, we need to leave Golden Gate Park at:\n    departure_time = david_available_start - travel_duration\n    \n    # Ensure that departure time is not before arrival time.\n    if departure_time < arrival_time:\n        # If it is, adjust the meeting start time.\n        departure_time = arrival_time\n        david_meeting_start = departure_time + travel_duration\n    else:\n        david_meeting_start = david_available_start\n    \n    # Calculate meeting end time by adding the minimum meeting duration.\n    david_meeting_end = david_meeting_start + min_meeting_duration\n    \n    # Make sure meeting end time is within David's availability.\n    if david_meeting_end > david_available_end:\n        # If not possible, adjust meeting end to David's available end.\n        david_meeting_end = david_available_end\n        # And adjust meeting start time accordingly if possible.\n        if david_meeting_end - min_meeting_duration >= david_available_start:\n            david_meeting_start = david_meeting_end - min_meeting_duration\n        else:\n            # Cannot meet the minimum duration, so exit with an error itinerary.\n            result = {\n                \"itinerary\": [\n                    {\"action\": \"error\", \"message\": \"Meeting time with David cannot satisfy the minimum duration given his availability.\"}\n                ]\n            }\n            print(json.dumps(result))\n            return\n    \n    # Create itinerary events.\n    # The schedule includes a travel leg from Golden Gate Park to Chinatown and a meeting with David.\n    # However, as per output structure, we output meeting events.\n    # We assume waiting or travel are not separate \"meet\" events.\n    itinerary = []\n    \n    # Meeting event with David in Chinatown.\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meeting_location,\n        \"person\": friend,\n        \"start_time\": time_to_str(david_meeting_start),\n        \"end_time\": time_to_str(david_meeting_end)\n    })\n    \n    # Prepare final schedule.\n    schedule = {\n        \"itinerary\": itinerary\n    }\n    \n    # Output the result as JSON.\n    print(json.dumps(schedule, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_25"
+        }
+    ]
+}

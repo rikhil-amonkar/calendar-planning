@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "11:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "18:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Mary",
+                        "start_time": "19:41",
+                        "end_time": "20:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Laura",
+                        "start_time": "20:44",
+                        "end_time": "21:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "20:44",
+                        "end_time": "20:59"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "11:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Mary",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "18:26",
+                        "end_time": "19:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances between locations in minutes\ntravel_times = {\n    \"Presidio\": {\"Pacific Heights\": 11, \"Golden Gate Park\": 12, \"Fisherman's Wharf\": 19, \"Marina District\": 11,\n                 \"Alamo Square\": 19, \"Sunset District\": 15, \"Nob Hill\": 18, \"North Beach\": 18},\n    \"Pacific Heights\": {\"Presidio\": 11, \"Golden Gate Park\": 15, \"Fisherman's Wharf\": 13, \"Marina District\": 6,\n                        \"Alamo Square\": 10, \"Sunset District\": 21, \"Nob Hill\": 8, \"North Beach\": 9},\n    \"Golden Gate Park\": {\"Presidio\": 11, \"Pacific Heights\": 16, \"Fisherman's Wharf\": 24, \"Marina District\": 18,\n                         \"Alamo Square\": 9, \"Sunset District\": 10, \"Nob Hill\": 20, \"North Beach\": 23},\n    \"Fisherman's Wharf\": {\"Presidio\": 17, \"Pacific Heights\": 12, \"Golden Gate Park\": 25, \"Marina District\": 9,\n                          \"Alamo Square\": 21, \"Sunset District\": 27, \"Nob Hill\": 11, \"North Beach\": 6},\n    \"Marina District\": {\"Presidio\": 10, \"Pacific Heights\": 7, \"Golden Gate Park\": 18, \"Fisherman's Wharf\": 10,\n                        \"Alamo Square\": 15, \"Sunset District\": 19, \"Nob Hill\": 12, \"North Beach\": 11},\n    \"Alamo Square\": {\"Presidio\": 17, \"Pacific Heights\": 10, \"Golden Gate Park\": 9, \"Fisherman's Wharf\": 19,\n                     \"Marina District\": 15, \"Sunset District\": 16, \"Nob Hill\": 11, \"North Beach\": 15},\n    \"Sunset District\": {\"Presidio\": 16, \"Pacific Heights\": 21, \"Golden Gate Park\": 11, \"Fisherman's Wharf\": 29,\n                        \"Marina District\": 21, \"Alamo Square\": 17, \"Nob Hill\": 27, \"North Beach\": 28},\n    \"Nob Hill\": {\"Presidio\": 17, \"Pacific Heights\": 8, \"Golden Gate Park\": 17, \"Fisherman's Wharf\": 10,\n                  \"Marina District\": 11, \"Alamo Square\": 11, \"Sunset District\": 24, \"North Beach\": 8},\n    \"North Beach\": {\"Presidio\": 17, \"Pacific Heights\": 8, \"Golden Gate Park\": 22, \"Fisherman's Wharf\": 5,\n                    \"Marina District\": 9, \"Alamo Square\": 16, \"Sunset District\": 27, \"Nob Hill\": 7}\n}\n\n# Meeting constraints as input\nmeetings = {\n    \"Kevin\": {\"location\": \"Pacific Heights\", \"start\": \"7:15\", \"end\": \"8:45\", \"duration\": 90},\n    \"Michelle\": {\"location\": \"Golden Gate Park\", \"start\": \"20:00\", \"end\": \"21:00\", \"duration\": 15},\n    \"Emily\": {\"location\": \"Fisherman's Wharf\", \"start\": \"16:15\", \"end\": \"19:00\", \"duration\": 30},\n    \"Mark\": {\"location\": \"Marina District\", \"start\": \"18:15\", \"end\": \"19:45\", \"duration\": 75},\n    \"Barbara\": {\"location\": \"Alamo Square\", \"start\": \"17:00\", \"end\": \"19:00\", \"duration\": 120},\n    \"Laura\": {\"location\": \"Sunset District\", \"start\": \"19:00\", \"end\": \"21:15\", \"duration\": 75},\n    \"Mary\": {\"location\": \"Nob Hill\", \"start\": \"17:30\", \"end\": \"19:00\", \"duration\": 45},\n    \"Helen\": {\"location\": \"North Beach\", \"start\": \"11:00\", \"end\": \"12:15\", \"duration\": 45}\n}\n\n# Starting point and time\nstart_location = \"Presidio\"\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting_start, meeting_end, required_duration, current_time, travel_time):\n    available_time = (meeting_end - meeting_start).total_seconds() / 60\n    return available_time >= required_duration + travel_time\n\ndef schedule_meetings():\n    current_time = start_time\n    itinerary = []\n\n    # Meeting with Helen\n    helen_start_time = datetime.strptime(meetings[\"Helen\"][\"start\"], \"%H:%M\")\n    helen_end_time = datetime.strptime(meetings[\"Helen\"][\"end\"], \"%H:%M\")\n    travel_time_to_helen = travel_times[start_location][meetings[\"Helen\"][\"location\"]]\n    \n    if current_time <= helen_start_time and can_schedule_meeting(helen_start_time, helen_end_time, meetings[\"Helen\"][\"duration\"], current_time, travel_time_to_helen):\n        meeting_start = helen_start_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Helen\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Helen\"][\"location\"], \"person\": \"Helen\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n        current_time = meeting_end + timedelta(minutes=travel_time_to_helen)\n\n    # Meeting with Kevin\n    kevin_start_time = datetime.strptime(meetings[\"Kevin\"][\"start\"], \"%H:%M\")\n    kevin_end_time = datetime.strptime(meetings[\"Kevin\"][\"end\"], \"%H:%M\")\n    travel_time_to_kevin = travel_times[start_location][meetings[\"Kevin\"][\"location\"]]\n    \n    if current_time < kevin_start_time:\n        current_time = kevin_start_time\n\n    if can_schedule_meeting(kevin_start_time, kevin_end_time, meetings[\"Kevin\"][\"duration\"], current_time, travel_time_to_kevin):\n        meeting_start = current_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Kevin\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Kevin\"][\"location\"], \"person\": \"Kevin\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n        current_time = meeting_end + timedelta(minutes=travel_time_to_kevin)\n\n    # Meeting with Emily\n    emily_start_time = datetime.strptime(meetings[\"Emily\"][\"start\"], \"%H:%M\")\n    emily_end_time = datetime.strptime(meetings[\"Emily\"][\"end\"], \"%H:%M\")\n    travel_time_to_emily = travel_times[start_location][meetings[\"Emily\"][\"location\"]]\n    \n    current_time = max(current_time, emily_start_time)\n    \n    if can_schedule_meeting(emily_start_time, emily_end_time, meetings[\"Emily\"][\"duration\"], current_time, travel_time_to_emily):\n        meeting_start = current_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Emily\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Emily\"][\"location\"], \"person\": \"Emily\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n        current_time = meeting_end + timedelta(minutes=travel_time_to_emily)\n    \n    # Meeting with Mark\n    mark_start_time = datetime.strptime(meetings[\"Mark\"][\"start\"], \"%H:%M\")\n    mark_end_time = datetime.strptime(meetings[\"Mark\"][\"end\"], \"%H:%M\")\n    travel_time_to_mark = travel_times[start_location][meetings[\"Mark\"][\"location\"]]\n    \n    current_time = max(current_time, mark_start_time)\n    \n    if can_schedule_meeting(mark_start_time, mark_end_time, meetings[\"Mark\"][\"duration\"], current_time, travel_time_to_mark):\n        meeting_start = current_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Mark\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Mark\"][\"location\"], \"person\": \"Mark\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n        current_time = meeting_end + timedelta(minutes=travel_time_to_mark)\n\n    # Meeting with Barbara\n    barbara_start_time = datetime.strptime(meetings[\"Barbara\"][\"start\"], \"%H:%M\")\n    barbara_end_time = datetime.strptime(meetings[\"Barbara\"][\"end\"], \"%H:%M\")\n    travel_time_to_barbara = travel_times[start_location][meetings[\"Barbara\"][\"location\"]]\n    \n    current_time = max(current_time, barbara_start_time)\n    \n    if can_schedule_meeting(barbara_start_time, barbara_end_time, meetings[\"Barbara\"][\"duration\"], current_time, travel_time_to_barbara):\n        meeting_start = current_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Barbara\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Barbara\"][\"location\"], \"person\": \"Barbara\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n        current_time = meeting_end + timedelta(minutes=travel_time_to_barbara)\n\n    # Meeting with Mary\n    mary_start_time = datetime.strptime(meetings[\"Mary\"][\"start\"], \"%H:%M\")\n    mary_end_time = datetime.strptime(meetings[\"Mary\"][\"end\"], \"%H:%M\")\n    travel_time_to_mary = travel_times[start_location][meetings[\"Mary\"][\"location\"]]\n\n    current_time = max(current_time, mary_start_time)\n\n    if can_schedule_meeting(mary_start_time, mary_end_time, meetings[\"Mary\"][\"duration\"], current_time, travel_time_to_mary):\n        meeting_start = current_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Mary\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Mary\"][\"location\"], \"person\": \"Mary\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n        current_time = meeting_end + timedelta(minutes=travel_time_to_mary)\n\n    # Meeting with Laura\n    laura_start_time = datetime.strptime(meetings[\"Laura\"][\"start\"], \"%H:%M\")\n    laura_end_time = datetime.strptime(meetings[\"Laura\"][\"end\"], \"%H:%M\")\n    travel_time_to_laura = travel_times[start_location][meetings[\"Laura\"][\"location\"]]\n\n    current_time = max(current_time, laura_start_time)\n\n    if can_schedule_meeting(laura_start_time, laura_end_time, meetings[\"Laura\"][\"duration\"], current_time, travel_time_to_laura):\n        meeting_start = current_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Laura\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Laura\"][\"location\"], \"person\": \"Laura\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n\n    # Meeting with Michelle\n    michelle_start_time = datetime.strptime(meetings[\"Michelle\"][\"start\"], \"%H:%M\")\n    michelle_end_time = datetime.strptime(meetings[\"Michelle\"][\"end\"], \"%H:%M\")\n    travel_time_to_michelle = travel_times[start_location][meetings[\"Michelle\"][\"location\"]]\n\n    current_time = max(current_time, michelle_start_time)\n\n    if can_schedule_meeting(michelle_start_time, michelle_end_time, meetings[\"Michelle\"][\"duration\"], current_time, travel_time_to_michelle):\n        meeting_start = current_time\n        meeting_end = meeting_start + timedelta(minutes=meetings[\"Michelle\"][\"duration\"])\n        itinerary.append({\"action\": \"meet\", \"location\": meetings[\"Michelle\"][\"location\"], \"person\": \"Michelle\", \"start_time\": meeting_start.strftime(\"%H:%M\"), \"end_time\": meeting_end.strftime(\"%H:%M\")})\n\n    return {\"itinerary\": itinerary}\n\nif __name__ == \"__main__\":\n    schedule = schedule_meetings()\n    print(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_700"
+        }
+    ]
+}

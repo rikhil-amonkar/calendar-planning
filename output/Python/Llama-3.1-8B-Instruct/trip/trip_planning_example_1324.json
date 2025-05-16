@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 22-26",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nimport itertools\n\n# Input parameters\ncities = {\n    'Venice': 4,\n    'Barcelona': 3,\n    'Copenhagen': 4,\n    'Lyon': 4,\n    'Reykjavik': 4,\n    'Dubrovnik': 5,\n    'Athens': 2,\n    'Tallinn': 5,\n    'Munich': 3\n}\n\nconstraints = {\n    'Venice': ['Munich'],\n    'Barcelona': ['Reykjavik'],\n    'Copenhagen': ['Athens', 'Dubrovnik', 'Reykjavik'],\n    'Lyon': ['Barcelona', 'Munich'],\n    'Reykjavik': ['Munich', 'Athens'],\n    'Dubrovnik': ['Munich', 'Athens'],\n    'Athens': ['Munich', 'Dubrovnik'],\n    'Tallinn': ['Barcelona', 'Copenhagen', 'Munich'],\n    'Munich': ['Venice', 'Barcelona', 'Tallinn', 'Dubrovnik', 'Athens', 'Lyon', 'Copenhagen']\n}\n\n# Direct flights\nflights = {\n    ('Copenhagen', 'Athens'): 1,\n    ('Copenhagen', 'Dubrovnik'): 1,\n    ('Munich', 'Tallinn'): 1,\n    ('Copenhagen', 'Munich'): 1,\n    ('Venice', 'Munich'): 1,\n    ('Reykjavik', 'Athens'): 1,\n    ('Athens', 'Dubrovnik'): 1,\n    ('Venice', 'Athens'): 1,\n    ('Lyon', 'Barcelona'): 1,\n    ('Copenhagen', 'Reykjavik'): 1,\n    ('Reykjavik', 'Munich'): 1,\n    ('Athens', 'Munich'): 1,\n    ('Lyon', 'Munich'): 1,\n    ('Barcelona', 'Reykjavik'): 1,\n    ('Venice', 'Copenhagen'): 1,\n    ('Barcelona', 'Dubrovnik'): 1,\n    ('Lyon', 'Venice'): 1,\n    ('Dubrovnik', 'Munich'): 1,\n    ('Barcelona', 'Athens'): 1,\n    ('Copenhagen', 'Barcelona'): 1,\n    ('Venice', 'Barcelona'): 1,\n    ('Barcelona', 'Munich'): 1,\n    ('Barcelona', 'Tallinn'): 1,\n    ('Copenhagen', 'Tallinn'): 1\n}\n\ndef compute_itinerary(cities, constraints, flights, total_days):\n    # Initialize the itinerary\n    itinerary = []\n    current_city = None\n    current_day = 1\n\n    # Visit each city\n    for city, duration in cities.items():\n        # Find the next city to visit\n        next_cities = constraints[city]\n        if current_city is not None:\n            next_cities = [c for c in next_cities if flights.get((current_city, c), 0) > 0]\n\n        # Find the first available city to visit\n        next_city = None\n        for c in next_cities:\n            if current_day + duration <= total_days and flights.get((current_city, c), 0) > 0:\n                next_city = c\n                break\n\n        # Add the current city to the itinerary\n        if current_city is not None:\n            itinerary.append({'day_range': f'Day {current_day}-{current_day + duration - 1}', 'place': current_city})\n\n        # Add the flight to the next city\n        if next_city is not None:\n            itinerary.append({'flying': f'Day {current_day + duration - 1}-{current_day + duration - 1}', 'from': current_city, 'to': next_city})\n\n        # Update the current city and day\n        current_city = next_city\n        current_day += duration\n\n    # Add the last city to the itinerary\n    if current_city is not None:\n        itinerary.append({'day_range': f'Day {current_day - cities[current_city]}-{current_day - 1}', 'place': current_city})\n\n    return itinerary\n\n# Compute the itinerary\nitinerary = compute_itinerary(cities, constraints, flights, 26)\n\n# Print the itinerary as JSON\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_1324"
+        }
+    ]
+}

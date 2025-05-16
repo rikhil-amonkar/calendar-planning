@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(s):\n    return datetime.strptime(s, \"%H:%M\")\n\ndef format_time(dt):\n    return f\"{dt.hour}:{dt.minute:02d}\"\n\ntravel_times = {\n    'North Beach': {'Union Square': 7, 'Russian Hill': 4},\n    'Union Square': {'North Beach': 10, 'Russian Hill': 13},\n    'Russian Hill': {'North Beach': 5, 'Union Square': 11}\n}\n\nstart_loc = 'North Beach'\nstart_time = parse_time('9:00')\ncurrent_time = start_time\ncurrent_loc = start_loc\nitinerary = []\n\n# Schedule Emily meeting\nemily_loc = 'Union Square'\nemily_start = parse_time('16:00')\nemily_end = parse_time('17:15')\ntravel_duration = travel_times[current_loc][emily_loc]\ndeparture = emily_start - timedelta(minutes=travel_duration)\nif departure >= current_time:\n    meet_emily_start = emily_start\n    meet_emily_end = emily_end\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": emily_loc,\n        \"person\": \"Emily\",\n        \"start_time\": format_time(meet_emily_start),\n        \"end_time\": format_time(meet_emily_end)\n    })\n    current_time = meet_emily_end\n    current_loc = emily_loc\n\n# Schedule Margaret meeting\nmargaret_loc = 'Russian Hill'\nmargaret_start = parse_time('19:00')\nmargaret_end = parse_time('21:00')\nif current_loc != margaret_loc:\n    travel_duration = travel_times[current_loc][margaret_loc]\n    arrival = current_time + timedelta(minutes=travel_duration)\n    if arrival <= margaret_start:\n        meet_margaret_start = margaret_start\n        meet_margaret_end = margaret_end\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": margaret_loc,\n            \"person\": \"Margaret\",\n            \"start_time\": format_time(meet_margaret_start),\n            \"end_time\": format_time(meet_margaret_end)\n        })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_170"
+        }
+    ]
+}

@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    itinerary = []\n\n    # Setting initial days\n    current_day = 1\n\n    # Dubrovnik for 4 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Dubrovnik'})\n    current_day += 4\n\n    # Munich for 5 days with an annual show from day 4 to day 8\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Dubrovnik', 'to': 'Munich'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Munich'})\n    current_day += 5\n\n    # Krakow for 2 days with friends between day 8 and 9\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Munich', 'to': 'Krakow'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Krakow'})\n    current_day += 2\n\n    # Split for 3 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Krakow', 'to': 'Split'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Split'})\n    current_day += 3\n\n    # Milan for 3 days with a wedding between day 11 and 13\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Split', 'to': 'Milan'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Milan'})\n    current_day += 3\n\n    # Porto for 4 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Milan', 'to': 'Porto'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Porto'})\n    current_day += 4\n\n    # Finalize the itinerary for JSON output\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    result = calculate_itinerary()\n    print(result)\n```",
+            "count": "trip_planning_example_675"
+        }
+    ]
+}

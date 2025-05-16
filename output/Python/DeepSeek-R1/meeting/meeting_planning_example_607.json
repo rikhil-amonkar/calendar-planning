@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Matthew",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Michelle",
+                        "start_time": "10:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Carol",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Stephanie",
+                        "start_time": "13:37",
+                        "end_time": "14:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Jessica",
+                        "start_time": "15:45",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Linda",
+                        "start_time": "16:56",
+                        "end_time": "18:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Matthew",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Michelle",
+                        "start_time": "10:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Carol",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Stephanie",
+                        "start_time": "13:37",
+                        "end_time": "14:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Jessica",
+                        "start_time": "15:45",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Linda",
+                        "start_time": "16:56",
+                        "end_time": "18:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef main():\n    friends = [\n        {'name': 'Karen', 'location': 'Russian Hill', 'start': 20*60+45, 'end': 21*60+45, 'duration': 60},\n        {'name': 'Jessica', 'location': 'The Castro', 'start': 15*60+45, 'end': 19*60+30, 'duration': 60},\n        {'name': 'Matthew', 'location': 'Richmond District', 'start': 7*60+30, 'end': 15*60+15, 'duration': 15},\n        {'name': 'Michelle', 'location': 'Marina District', 'start': 10*60+30, 'end': 18*60+45, 'duration': 75},\n        {'name': 'Carol', 'location': 'North Beach', 'start': 12*60+0, 'end': 17*60+0, 'duration': 90},\n        {'name': 'Stephanie', 'location': 'Union Square', 'start': 10*60+45, 'end': 14*60+15, 'duration': 30},\n        {'name': 'Linda', 'location': 'Golden Gate Park', 'start': 10*60+45, 'end': 22*60+0, 'duration': 90},\n    ]\n    \n    travel_time = {\n        'Sunset District': {'Russian Hill':24, 'The Castro':17, 'Richmond District':12, 'Marina District':21, 'North Beach':29, 'Union Square':30, 'Golden Gate Park':11},\n        'Russian Hill': {'Sunset District':23, 'The Castro':21, 'Richmond District':14, 'Marina District':7, 'North Beach':5, 'Union Square':11, 'Golden Gate Park':21},\n        'The Castro': {'Sunset District':17, 'Russian Hill':18, 'Richmond District':16, 'Marina District':21, 'North Beach':20, 'Union Square':19, 'Golden Gate Park':11},\n        'Richmond District': {'Sunset District':11, 'Russian Hill':13, 'The Castro':16, 'Marina District':9, 'North Beach':17, 'Union Square':21, 'Golden Gate Park':9},\n        'Marina District': {'Sunset District':19, 'Russian Hill':8, 'The Castro':22, 'Richmond District':11, 'North Beach':11, 'Union Square':16, 'Golden Gate Park':18},\n        'North Beach': {'Sunset District':27, 'Russian Hill':4, 'The Castro':22, 'Richmond District':18, 'Marina District':9, 'Union Square':7, 'Golden Gate Park':22},\n        'Union Square': {'Sunset District':26, 'Russian Hill':13, 'The Castro':19, 'Richmond District':20, 'Marina District':18, 'North Beach':10, 'Golden Gate Park':22},\n        'Golden Gate Park': {'Sunset District':10, 'Russian Hill':19, 'The Castro':13, 'Richmond District':7, 'Marina District':16, 'North Beach':24, 'Union Square':22},\n    }\n    \n    best_count = 0\n    best_duration = 0\n    best_end_time = float('inf')\n    best_itinerary = None\n    \n    for k in range(len(friends), 0, -1):\n        for perm in itertools.permutations(friends, k):\n            current_loc = 'Sunset District'\n            current_time = 9 * 60\n            itinerary = []\n            valid = True\n            for friend in perm:\n                to_loc = friend['location']\n                try:\n                    tt = travel_time[current_loc][to_loc]\n                except KeyError:\n                    valid = False\n                    break\n                arrival = current_time + tt\n                start = max(arrival, friend['start'])\n                latest_start = friend['end'] - friend['duration']\n                if start > latest_start:\n                    valid = False\n                    break\n                end = start + friend['duration']\n                itinerary.append({'location': to_loc, 'person': friend['name'], 'start_time': start, 'end_time': end})\n                current_time = end\n                current_loc = to_loc\n            if valid:\n                count = len(itinerary)\n                duration = sum(e['end_time'] - e['start_time'] for e in itinerary)\n                end_time = itinerary[-1]['end_time'] if itinerary else 0\n                if (count > best_count or\n                    (count == best_count and duration > best_duration) or\n                    (count == best_count and duration == best_duration and end_time < best_end_time)):\n                    best_count = count\n                    best_duration = duration\n                    best_end_time = end_time\n                    best_itinerary = itinerary.copy()\n                    if best_count == len(friends):\n                        break\n            if best_count == len(friends):\n                break\n        if best_count == len(friends):\n            break\n    \n    if best_itinerary:\n        formatted = []\n        for event in best_itinerary:\n            start_h = event['start_time'] // 60\n            start_m = event['start_time'] % 60\n            end_h = event['end_time'] // 60\n            end_m = event['end_time'] % 60\n            formatted.append({\n                \"action\": \"meet\",\n                \"location\": event['location'],\n                \"person\": event['person'],\n                \"start_time\": f\"{start_h}:{start_m:02d}\",\n                \"end_time\": f\"{end_h}:{end_m:02d}\"\n            })\n        output = {\"itinerary\": formatted}\n    else:\n        output = {\"itinerary\": []}\n    \n    print(json.dumps(output))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_607"
+        }
+    ]
+}

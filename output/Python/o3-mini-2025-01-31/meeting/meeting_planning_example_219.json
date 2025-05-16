@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Emily",
+                        "start_time": "11:45",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "William",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Emily",
+                        "start_time": "11:45",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Barbara",
+                        "start_time": "16:45",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper functions to convert time to minutes and back.\ndef time_to_minutes(time_str):\n    # Expects format \"H:MM\" in 24-hour format (e.g., \"9:00\" or \"13:30\")\n    parts = time_str.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Define travel times between locations (in minutes)\n# Keys are tuples (origin, destination)\ntravel_times = {\n    (\"The Castro\", \"Alamo Square\"): 8,\n    (\"The Castro\", \"Union Square\"): 19,\n    (\"The Castro\", \"Chinatown\"): 20,\n    (\"Alamo Square\", \"The Castro\"): 8,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Chinatown\"): 16,\n    (\"Union Square\", \"The Castro\"): 19,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Chinatown\", \"The Castro\"): 22,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Union Square\"): 7,\n}\n\n# Define friend meeting constraints\nfriends = {\n    \"Emily\": {\n        \"location\": \"Alamo Square\",\n        \"available_start\": time_to_minutes(\"11:45\"),\n        \"available_end\": time_to_minutes(\"15:15\"),\n        \"min_duration\": 105\n    },\n    \"Barbara\": {\n        \"location\": \"Union Square\",\n        \"available_start\": time_to_minutes(\"16:45\"),\n        \"available_end\": time_to_minutes(\"18:15\"),\n        \"min_duration\": 60\n    },\n    \"William\": {\n        \"location\": \"Chinatown\",\n        \"available_start\": time_to_minutes(\"17:15\"),\n        \"available_end\": time_to_minutes(\"19:00\"),\n        \"min_duration\": 105\n    }\n}\n\n# Starting location and time\nstart_location = \"The Castro\"\nstart_time = time_to_minutes(\"9:00\")\n\n# We'll search across all possible orders (subsets) of friends\n# Our goal is to maximize the number of friends met; if tie, maximize total meeting minutes.\nbest_schedule = None\nbest_score = (-1, -1)  # (number of meetings, total meeting minutes)\n\n# Get all non-empty subsets of friends' names\nall_friends = list(friends.keys())\nfor r in range(1, len(all_friends) + 1):\n    for subset in itertools.permutations(all_friends, r):\n        current_time = start_time\n        current_location = start_location\n        schedule = []\n        valid = True\n        total_meeting_time = 0\n        \n        for person in subset:\n            friend = friends[person]\n            dest = friend[\"location\"]\n            # Determine travel time from current_location to dest.\n            # If no direct entry, we assume the reverse if available.\n            travel_key = (current_location, dest)\n            if travel_key not in travel_times:\n                valid = False\n                break\n            travel_duration = travel_times[travel_key]\n            # Arrival time at destination:\n            arrival_time = current_time + travel_duration\n            # Meeting can only start after friend's available_start:\n            meeting_start = max(arrival_time, friend[\"available_start\"])\n            meeting_end = meeting_start + friend[\"min_duration\"]\n            # If meeting would finish after the friend's available_end, schedule is invalid.\n            if meeting_end > friend[\"available_end\"]:\n                valid = False\n                break\n            # Append meeting event details\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": dest,\n                \"person\": person,\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            })\n            total_meeting_time += friend[\"min_duration\"]\n            # Update current time and location\n            current_time = meeting_end\n            current_location = dest\n        \n        if valid:\n            score = (len(schedule), total_meeting_time)\n            # Choose schedule with more meetings; if tie, with higher total meeting minutes.\n            if score > best_score:\n                best_score = score\n                best_schedule = schedule\n\n# If no valid schedule was found, result is an empty itinerary.\nresult = {\"itinerary\": best_schedule if best_schedule is not None else []}\n\n# Output the JSON-formatted result\nprint(json.dumps(result, indent=2))\n                        \nif __name__ == \"__main__\":\n    pass",
+            "count": "meeting_planning_example_219"
+        }
+    ]
+}

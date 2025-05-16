@@ -1,0 +1,48 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Cities and their required days\n    cities = {\n        'Lisbon': 2,\n        'Dubrovnik': 5,\n        'Copenhagen': 5,\n        'Prague': 3,\n        'Tallinn': 2,\n        'Stockholm': 4,\n        'Split': 3,\n        'Lyon': 2\n    }\n    \n    # Direct flights\n    direct_flights = {\n        'Dubrovnik': ['Stockholm', 'Copenhagen'],\n        'Lisbon': ['Copenhagen', 'Lyon', 'Stockholm', 'Prague'],\n        'Copenhagen': ['Lisbon', 'Stockholm', 'Split', 'Dubrovnik', 'Prague', 'Tallinn'],\n        'Prague': ['Stockholm', 'Lyon', 'Lisbon', 'Split', 'Copenhagen'],\n        'Tallinn': ['Stockholm', 'Prague', 'Copenhagen'],\n        'Stockholm': ['Dubrovnik', 'Copenhagen', 'Prague', 'Tallinn', 'Lisbon', 'Split'],\n        'Split': ['Copenhagen', 'Stockholm', 'Prague', 'Lyon'],\n        'Lyon': ['Lisbon', 'Prague', 'Split']\n    }\n    \n    # Constraints\n    constraints = [\n        {'city': 'Lisbon', 'day_range': (4, 5)},\n        {'city': 'Tallinn', 'day_range': (1, 2)},\n        {'city': 'Stockholm', 'day_range': (13, 16)},\n        {'city': 'Lyon', 'day_range': (18, 19)}\n    ]\n    \n    # Generate all possible permutations of cities\n    for perm in permutations(cities.keys()):\n        itinerary = []\n        current_day = 1\n        valid = True\n        \n        for i, city in enumerate(perm):\n            days = cities[city]\n            \n            # Check if the current city placement satisfies constraints\n            for constraint in constraints:\n                if constraint['city'] == city:\n                    start, end = constraint['day_range']\n                    if not (current_day <= start and current_day + days - 1 >= end):\n                        valid = False\n                        break\n            if not valid:\n                break\n            \n            # Add stay\n            itinerary.append({\n                'day_range': f'Day {current_day}-{current_day + days - 1}',\n                'place': city\n            })\n            \n            current_day += days\n            \n            # Add flight if not last city\n            if i < len(perm) - 1:\n                next_city = perm[i + 1]\n                if next_city not in direct_flights[city]:\n                    valid = False\n                    break\n                itinerary.append({\n                    'flying': f'Day {current_day - 1}-{current_day - 1}',\n                    'from': city,\n                    'to': next_city\n                })\n        \n        # Check if all days are used and all cities are visited\n        if valid and current_day - 1 == 19:\n            return itinerary\n    \n    return None\n\nitinerary = find_valid_itinerary()\nif itinerary:\n    print(json.dumps(itinerary, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n```",
+            "count": "trip_planning_example_1148"
+        }
+    ]
+}

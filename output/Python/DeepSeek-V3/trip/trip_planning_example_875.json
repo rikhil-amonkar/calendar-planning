@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Parameters\n    total_days = 20\n    cities = {\n        'Stuttgart': {'duration': 3, 'constraints': [{'start': 11, 'end': 13}]},\n        'Edinburgh': {'duration': 4, 'constraints': []},\n        'Athens': {'duration': 4, 'constraints': []},\n        'Split': {'duration': 2, 'constraints': [{'start': 13, 'end': 14}]},\n        'Krakow': {'duration': 4, 'constraints': [{'start': 8, 'end': 11}]},\n        'Venice': {'duration': 5, 'constraints': []},\n        'Mykonos': {'duration': 4, 'constraints': []}\n    }\n    \n    direct_flights = {\n        'Krakow': ['Split', 'Stuttgart', 'Edinburgh'],\n        'Split': ['Krakow', 'Athens', 'Stuttgart'],\n        'Edinburgh': ['Krakow', 'Stuttgart', 'Venice', 'Athens'],\n        'Venice': ['Stuttgart', 'Edinburgh', 'Athens'],\n        'Stuttgart': ['Venice', 'Krakow', 'Edinburgh', 'Athens', 'Split'],\n        'Athens': ['Split', 'Stuttgart', 'Edinburgh', 'Venice', 'Mykonos'],\n        'Mykonos': ['Athens']\n    }\n    \n    # Generate all possible permutations of the cities\n    city_names = list(cities.keys())\n    for perm in permutations(city_names):\n        itinerary = list(perm)\n        # Check if all flights are direct\n        valid = True\n        for i in range(len(itinerary)-1):\n            if itinerary[i+1] not in direct_flights[itinerary[i]]:\n                valid = False\n                break\n        if not valid:\n            continue\n        \n        # Assign days and check constraints\n        day = 1\n        schedule = []\n        prev_city = None\n        for city in itinerary:\n            duration = cities[city]['duration']\n            if prev_city is not None:\n                schedule.append({\n                    'flying': f'Day {day}-{day}',\n                    'from': prev_city,\n                    'to': city\n                })\n            schedule.append({\n                'day_range': f'Day {day}-{day + duration - 1}',\n                'place': city\n            })\n            # Check constraints\n            for constraint in cities[city]['constraints']:\n                start = constraint['start']\n                end = constraint['end']\n                if not (day <= start and day + duration - 1 >= end):\n                    valid = False\n                    break\n            if not valid:\n                break\n            day += duration\n            prev_city = city\n        \n        if valid and day - 1 == total_days:\n            return schedule\n    \n    return None\n\ndef main():\n    itinerary = find_valid_itinerary()\n    if itinerary:\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_875"
+        }
+    ]
+}

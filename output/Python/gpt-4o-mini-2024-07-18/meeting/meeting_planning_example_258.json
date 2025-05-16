@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "9:15",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Betty",
+                        "start_time": "11:35",
+                        "end_time": "12:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "David",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Betty",
+                        "start_time": "10:15",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "David",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "14:48",
+                        "end_time": "16:48"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Embarcadero\", \"Presidio\"): 20,\n    (\"Embarcadero\", \"Richmond District\"): 21,\n    (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18\n}\n\n# Meeting constraints\nmeetings = {\n    \"Betty\": {\"location\": \"Presidio\", \"available_from\": \"10:15\", \"available_to\": \"21:30\", \"min_duration\": 45},\n    \"David\": {\"location\": \"Richmond District\", \"available_from\": \"13:00\", \"available_to\": \"20:15\", \"min_duration\": 90},\n    \"Barbara\": {\"location\": \"Fisherman's Wharf\", \"available_from\": \"09:15\", \"available_to\": \"20:15\", \"min_duration\": 120},\n}\n\n# Arrival time\narriving_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Function to calculate potential meeting times\ndef calculate_meeting(person, start_time):\n    available_start = datetime.strptime(meetings[person][\"available_from\"], \"%H:%M\")\n    available_end = datetime.strptime(meetings[person][\"available_to\"], \"%H:%M\")\n    min_duration = timedelta(minutes=meetings[person][\"min_duration\"])\n    \n    travel_time_to_location = travel_times[(\"Embarcadero\", meetings[person][\"location\"])]\n    travel_time = timedelta(minutes=travel_time_to_location)\n    \n    meeting_start = max(start_time + travel_time, available_start)\n    meeting_end = meeting_start + min_duration\n    \n    if meeting_end <= available_end:\n        return (meeting_start, meeting_end)\n    return None\n\n# Itinerary to hold the meetings\nitinerary = []\n\n# Compute the schedule\ncurrent_time = arriving_time\n# Meeting Barbara first as she's available earliest after you arrive\nbarbara_meeting = calculate_meeting(\"Barbara\", current_time)\nif barbara_meeting:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Fisherman's Wharf\",\n        \"person\": \"Barbara\",\n        \"start_time\": barbara_meeting[0].strftime(\"%H:%M\"),\n        \"end_time\": barbara_meeting[1].strftime(\"%H:%M\"),\n    })\n    current_time = barbara_meeting[1]\n\n# After meeting Barbara, check for Betty\nbetty_meeting = calculate_meeting(\"Betty\", current_time)\nif betty_meeting:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Presidio\",\n        \"person\": \"Betty\",\n        \"start_time\": betty_meeting[0].strftime(\"%H:%M\"),\n        \"end_time\": betty_meeting[1].strftime(\"%H:%M\"),\n    })\n    current_time = betty_meeting[1]\n\n# Finally, check for David\ndavid_meeting = calculate_meeting(\"David\", current_time)\nif david_meeting:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Richmond District\",\n        \"person\": \"David\",\n        \"start_time\": david_meeting[0].strftime(\"%H:%M\"),\n        \"end_time\": david_meeting[1].strftime(\"%H:%M\"),\n    })\n\n# Output result as JSON\nresult = {\"itinerary\": itinerary}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_258"
+        }
+    ]
+}

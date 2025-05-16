@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to help schedule a meeting for Emily, Melissa, and Frank. The meeting should be half an hour long between 9:00 and 17:00 on Monday. Let me look at their schedules and constraints.\n\nFirst, Emily has meetings at 10:00-10:30, 11:30-12:30, 14:00-15:00, and 16:00-16:30. So, she's busy during those times and probably needs a break. Melissa is busy from 9:30-10:00 and 14:30-15:00. Frank doesn't want to meet after 9:30, so the latest his meeting can start is 9:30.\n\nFrank is blocked from 10:00-10:30, 11:00-11:30, 12:30-13:00, 13:30-14:30, 15:00-16:00, and 16:30-17:00. So, his available slots before 9:30 are only 9:00-9:30. But Frank doesn't want to meet after 9:30, so the latest we can start is 9:30.\n\nLet me list out all possible half-hour slots between 9:00 and 17:00:\n\n9:00-9:30\n9:30-10:00\n10:00-10:30\n10:30-11:00\n11:00-11:30\n11:30-12:00\n12:00-12:30\n12:30-13:00\n13:00-13:30\n13:30-14:00\n14:00-14:30\n14:30-15:00\n15:00-15:30\n15:30-16:00\n16:00-16:30\n16:30-17:00\n\nNow, eliminate times that are blocked by anyone or don't fit Frank's constraint.\n\nFirst, Frank's latest possible start is 9:30. So, let's check 9:00-9:30. Is that available?\n\nEmily is free at 9:00-9:30? Yes, her first meeting starts at 10:00. Melissa is free at 9:00-9:30? Yes, her first block is 9:30-10:00. Frank is free at 9:00-9:30? Yes, he only blocks after 9:30.\n\nSo, 9:00-9:30 seems available. Let's check Melissa. She's free at 9:00-9:30. Frank is okay with this time. Emily is also free. So, this slot works.\n\nWait, but the user said Frank doesn't want to meet after 9:30. So, 9:00-9:30 is acceptable.\n\nLet me double-check:\n\n- 9:00-9:30: All three are free.\n- 9:30-10:00: Melissa is busy.\n- 10:00-10:30: Frank is busy.\n- 10:30-11:00: Frank is busy until 11:30.\n- 11:00-11:30: Frank is busy.\n- 11:30-12:00: Frank is busy until 12:30.\n- 12:00-12:30: Frank is busy until 13:00.\n- 13:00-13:30: Frank is busy until 14:30.\n- 13:30-14:00: Frank is busy until 14:30.\n- 14:00-14:30: Frank is busy until 15:00.\n- 14:30-15:00: Melissa is busy.\n- 15:00-15:30: Frank is busy.\n- 15:30-16:00: Frank is busy until 16:30.\n- 16:00-16:30: Frank is busy.\n- 16:30-17:00: Frank is busy.\n\nSo, the only available slot that works for everyone is 9:00-9:30. That's the earliest possible time. It seems perfect for everyone.\n</think>\n\n```python\nparticipants = [\n    {'name': 'Emily', 'blocks': [(180, 210), (330, 390), (600, 630), (960, 990)]},  # 10:00-10:30, 11:30-12:30, 14:00-15:00, 16:00-16:30\n    {'name': 'Melissa', 'blocks': [(270, 300), (690, 750)]},  # 9:30-10:00, 14:30-15:00\n    {'name': 'Frank', 'blocks': [(180, 210), (300, 330), (390, 420), (690, 750), (900, 960), (960, 990)]}  # 10:00-10:30, 11:00-11:30, 12:30-13:00, 13:30-14:30, 15:00-16:00, 16:30-17:00\n]\n\nday = \"Monday\"\n\nfor start in range(0, 990, 30):\n    slot = (start, start + 30)\n    conflict = False\n    for participant in participants:\n        for block in participant['blocks']:\n            if not (block[1] < slot[0] or block[0] > slot[1]):\n                conflict = True\n                break\n        if conflict:\n            break\n    if not conflict:\n        print(f\"{start//30:02d}:{start%30:02d}-{(start+30)//30:02d}:{(start+30)%30:02d} {day}\")\n        exit()\n```",
+            "count": "calendar_scheduling_example_32"
+        }
+    ]
+}

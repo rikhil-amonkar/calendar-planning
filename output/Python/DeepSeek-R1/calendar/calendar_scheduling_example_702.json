@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef to_time_str(minutes):\n    return f\"{minutes // 60:02d}:{minutes % 60:02d}\"\n\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n    merged = [sorted_intervals[0]]\n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        if current[0] <= last[1]:\n            merged[-1] = (last[0], max(last[1], current[1]))\n        else:\n            merged.append(current)\n    return merged\n\ndef get_free_intervals(busy, day_start=540, day_end=1020):\n    merged = merge_intervals(busy)\n    free = []\n    prev_end = day_start\n    for start, end in merged:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < day_end:\n        free.append((prev_end, day_end))\n    return free\n\ndef find_overlap(a, b):\n    overlaps = []\n    i = j = 0\n    while i < len(a) and j < len(b):\n        a_start, a_end = a[i]\n        b_start, b_end = b[j]\n        start = max(a_start, b_start)\n        end = min(a_end, b_end)\n        if start < end:\n            overlaps.append((start, end))\n        if a_end < b_end:\n            i += 1\n        else:\n            j += 1\n    return overlaps\n\nrobert_busy = {\n    'Monday': [(parse_time('11:00'), parse_time('11:30')), (parse_time('14:00'), parse_time('14:30')), (parse_time('15:30'), parse_time('16:00'))],\n    'Tuesday': [(parse_time('10:30'), parse_time('11:00')), (parse_time('15:00'), parse_time('15:30'))],\n    'Wednesday': [(parse_time('10:00'), parse_time('11:00')), (parse_time('11:30'), parse_time('12:00')), (parse_time('12:30'), parse_time('13:00')), (parse_time('13:30'), parse_time('14:00')), (parse_time('15:00'), parse_time('15:30')), (parse_time('16:00'), parse_time('16:30'))]\n}\n\nralph_busy = {\n    'Monday': [(parse_time('10:00'), parse_time('13:30')), (parse_time('14:00'), parse_time('14:30')), (parse_time('15:00'), parse_time('17:00'))],\n    'Tuesday': [(parse_time('09:00'), parse_time('09:30')), (parse_time('10:00'), parse_time('10:30')), (parse_time('11:00'), parse_time('11:30')), (parse_time('12:00'), parse_time('13:00')), (parse_time('14:00'), parse_time('15:30')), (parse_time('16:00'), parse_time('17:00'))],\n    'Wednesday': [(parse_time('10:30'), parse_time('11:00')), (parse_time('11:30'), parse_time('12:00')), (parse_time('13:00'), parse_time('14:30')), (parse_time('16:30'), parse_time('17:00'))]\n}\n\ndays_order = ['Tuesday', 'Wednesday', 'Monday']\n\nfor day in days_order:\n    r_merged = merge_intervals(robert_busy[day])\n    r_free = get_free_intervals(r_merged)\n    ra_merged = merge_intervals(ralph_busy[day])\n    ra_free = get_free_intervals(ra_merged)\n    overlaps = find_overlap(r_free, ra_free)\n    \n    for interval in overlaps:\n        start, end = interval\n        if end - start >= 30:\n            meeting_start = start\n            meeting_end = start + 30\n            print(f\"{day}:{to_time_str(meeting_start)}:{to_time_str(meeting_end)}\")\n            exit()\n\nprint(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_702"
+        }
+    ]
+}

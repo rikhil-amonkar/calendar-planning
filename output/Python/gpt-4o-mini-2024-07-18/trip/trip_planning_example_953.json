@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define trip parameters\n    trip_days = 18\n    cities = {\n        \"Salzburg\": 4,\n        \"Stockholm\": 2,\n        \"Venice\": 5,\n        \"Frankfurt\": 4,\n        \"Florence\": 4,\n        \"Barcelona\": 2,\n        \"Stuttgart\": 3\n    }\n    \n    # Direct flights connections\n    flights = {\n        \"Barcelona\": [\"Frankfurt\", \"Florence\", \"Stockholm\", \"Venice\", \"Stuttgart\"],\n        \"Frankfurt\": [\"Salzburg\", \"Venice\", \"Stuttgart\", \"Stockholm\"],\n        \"Florence\": [\"Frankfurt\", \"Barcelona\"],\n        \"Stockholm\": [\"Barcelona\", \"Frankfurt\", \"Stuttgart\"],\n        \"Venice\": [\"Barcelona\", \"Stuttgart\", \"Frankfurt\"],\n        \"Stuttgart\": [\"Barcelona\", \"Frankfurt\", \"Stockholm\", \"Venice\"]\n    }\n    \n    # Itinerary\n    itinerary = []\n    day_count = 1\n\n    # Venice for 5 days (Day 1 to Day 5)\n    itinerary.append({'day_range': f'Day {day_count}-{day_count+4}', 'place': 'Venice'})\n    day_count += 5\n    \n    # Barcelona for 2 days (Day 6 to Day 7)\n    itinerary.append({'flying': f'Day {day_count-1}-{day_count-1}', 'from': 'Venice', 'to': 'Barcelona'})\n    itinerary.append({'day_range': f'Day {day_count}-{day_count+1}', 'place': 'Barcelona'})\n    day_count += 2\n    \n    # Florence for 4 days (Day 8 to Day 11)\n    itinerary.append({'flying': f'Day {day_count-1}-{day_count-1}', 'from': 'Barcelona', 'to': 'Florence'})\n    itinerary.append({'day_range': f'Day {day_count}-{day_count+3}', 'place': 'Florence'})\n    day_count += 4\n    \n    # Frankfurt for 4 days (Day 12 to Day 15)\n    itinerary.append({'flying': f'Day {day_count-1}-{day_count-1}', 'from': 'Florence', 'to': 'Frankfurt'})\n    itinerary.append({'day_range': f'Day {day_count}-{day_count+3}', 'place': 'Frankfurt'})\n    day_count += 4\n    \n    # Salzburg for 4 days (Day 16 to Day 18)\n    itinerary.append({'flying': f'Day {day_count-1}-{day_count-1}', 'from': 'Frankfurt', 'to': 'Salzburg'})\n    itinerary.append({'day_range': f'Day {day_count}-{trip_days}', 'place': 'Salzburg'})\n    \n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_itinerary = create_itinerary()\n    print(trip_itinerary)\n```",
+            "count": "trip_planning_example_953"
+        }
+    ]
+}

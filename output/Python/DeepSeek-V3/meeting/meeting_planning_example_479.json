@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "17:19",
+                        "end_time": "19:04"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "17:19",
+                        "end_time": "19:04"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input data\ntravel_times = {\n    'Embarcadero': {\n        'Golden Gate Park': 25,\n        'Haight-Ashbury': 21,\n        'Bayview': 21,\n        'Presidio': 20,\n        'Financial District': 5\n    },\n    'Golden Gate Park': {\n        'Embarcadero': 25,\n        'Haight-Ashbury': 7,\n        'Bayview': 23,\n        'Presidio': 11,\n        'Financial District': 26\n    },\n    'Haight-Ashbury': {\n        'Embarcadero': 20,\n        'Golden Gate Park': 7,\n        'Bayview': 18,\n        'Presidio': 15,\n        'Financial District': 21\n    },\n    'Bayview': {\n        'Embarcadero': 19,\n        'Golden Gate Park': 22,\n        'Haight-Ashbury': 19,\n        'Presidio': 31,\n        'Financial District': 19\n    },\n    'Presidio': {\n        'Embarcadero': 20,\n        'Golden Gate Park': 12,\n        'Haight-Ashbury': 15,\n        'Bayview': 31,\n        'Financial District': 23\n    },\n    'Financial District': {\n        'Embarcadero': 4,\n        'Golden Gate Park': 23,\n        'Haight-Ashbury': 19,\n        'Bayview': 19,\n        'Presidio': 22\n    }\n}\n\nfriends = {\n    'Mary': {\n        'location': 'Golden Gate Park',\n        'start': time_to_minutes('8:45'),\n        'end': time_to_minutes('11:45'),\n        'duration': 45\n    },\n    'Kevin': {\n        'location': 'Haight-Ashbury',\n        'start': time_to_minutes('10:15'),\n        'end': time_to_minutes('16:15'),\n        'duration': 90\n    },\n    'Deborah': {\n        'location': 'Bayview',\n        'start': time_to_minutes('15:00'),\n        'end': time_to_minutes('19:15'),\n        'duration': 120\n    },\n    'Stephanie': {\n        'location': 'Presidio',\n        'start': time_to_minutes('10:00'),\n        'end': time_to_minutes('17:15'),\n        'duration': 120\n    },\n    'Emily': {\n        'location': 'Financial District',\n        'start': time_to_minutes('11:30'),\n        'end': time_to_minutes('21:45'),\n        'duration': 105\n    }\n}\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes('9:00')\n    current_location = 'Embarcadero'\n    schedule = []\n    \n    for friend in order:\n        friend_data = friends[friend]\n        location = friend_data['location']\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        # Calculate meeting window\n        start_window = friend_data['start']\n        end_window = friend_data['end']\n        duration = friend_data['duration']\n        \n        # Determine meeting start time\n        meeting_start = max(arrival_time, start_window)\n        meeting_end = meeting_start + duration\n        \n        if meeting_end > end_window:\n            return None  # Not enough time to meet\n        \n        schedule.append({\n            'action': 'meet',\n            'location': location,\n            'person': friend,\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        current_time = meeting_end\n        current_location = location\n    \n    return schedule\n\n# Generate all possible orders of meeting friends\nall_orders = permutations(friends.keys())\n\nbest_schedule = None\nmax_meetings = 0\n\nfor order in all_orders:\n    schedule = calculate_schedule(order)\n    if schedule is not None and len(schedule) > max_meetings:\n        max_meetings = len(schedule)\n        best_schedule = schedule\n\nif best_schedule is None:\n    # Try to find a schedule with fewer meetings if all 5 is impossible\n    for num_meetings in range(4, 0, -1):\n        from itertools import combinations\n        for friends_subset in combinations(friends.keys(), num_meetings):\n            for order in permutations(friends_subset):\n                schedule = calculate_schedule(order)\n                if schedule is not None:\n                    best_schedule = schedule\n                    break\n            if best_schedule is not None:\n                break\n        if best_schedule is not None:\n            break\n\noutput = {\n    \"itinerary\": best_schedule if best_schedule is not None else []\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_479"
+        }
+    ]
+}

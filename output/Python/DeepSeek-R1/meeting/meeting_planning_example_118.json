@@ -1,0 +1,38 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Richard",
+                        "start_time": "9:17",
+                        "end_time": "11:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Charles",
+                        "start_time": "11:41",
+                        "end_time": "13:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Richard",
+                        "start_time": "9:17",
+                        "end_time": "11:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nfrom itertools import permutations\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02}\"\n\ndef compute_schedule(order, travel_times, friends, start_time):\n    current_time = start_time\n    current_loc = \"Bayview\"\n    itinerary = []\n    total = 0\n    \n    for name in order:\n        friend = next(f for f in friends if f[\"name\"] == name)\n        travel = travel_times.get((current_loc, friend[\"location\"]), 0)\n        arrive = current_time + travel\n        start = max(arrive, friend[\"available_start\"])\n        end = min(friend[\"available_end\"], start + friend[\"desired\"])\n        duration = end - start\n        if duration <= 0:\n            continue\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": name,\n            \"start_time\": format_time(start),\n            \"end_time\": format_time(end)\n        })\n        total += duration\n        current_time = end\n        current_loc = friend[\"location\"]\n    return itinerary, total\n\ntravel_times = {\n    (\"Bayview\", \"Union Square\"): 17,\n    (\"Bayview\", \"Presidio\"): 31,\n    (\"Union Square\", \"Presidio\"): 24,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Union Square\", \"Bayview\"): 15,\n    (\"Presidio\", \"Bayview\"): 31\n}\n\nfriends = [\n    {\n        \"name\": \"Richard\",\n        \"location\": \"Union Square\",\n        \"available_start\": 8*60 +45,\n        \"available_end\": 13*60,\n        \"desired\": 120\n    },\n    {\n        \"name\": \"Charles\",\n        \"location\": \"Presidio\",\n        \"available_start\": 9*60 +45,\n        \"available_end\": 13*60,\n        \"desired\": 120\n    }\n]\n\nbest = None\nmax_total = 0\n\nfor order in permutations([\"Richard\", \"Charles\"]):\n    itinerary, total = compute_schedule(order, travel_times, friends, 9*60)\n    if total > max_total:\n        max_total = total\n        best = itinerary\n\nprint(json.dumps({\"itinerary\": best}, indent=2))\n```",
+            "count": "meeting_planning_example_118"
+        }
+    ]
+}

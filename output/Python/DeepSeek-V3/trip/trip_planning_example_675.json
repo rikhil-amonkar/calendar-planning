@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    total_days = 16\n    city_stays = {\n        'Dubrovnik': 4,\n        'Split': 3,\n        'Milan': 3,\n        'Porto': 4,\n        'Krakow': 2,\n        'Munich': 5\n    }\n    \n    # Constraints\n    constraints = {\n        'Milan': {'wedding': (11, 13)},\n        'Krakow': {'meet_friends': (8, 9)},\n        'Munich': {'show': (4, 8)}\n    }\n    \n    # Direct flights\n    direct_flights = {\n        'Munich': ['Porto', 'Krakow', 'Milan', 'Dubrovnik', 'Split'],\n        'Porto': ['Munich', 'Milan'],\n        'Milan': ['Porto', 'Split', 'Munich', 'Krakow'],\n        'Split': ['Milan', 'Krakow', 'Munich'],\n        'Krakow': ['Munich', 'Split', 'Milan'],\n        'Dubrovnik': ['Munich']\n    }\n    \n    # Check if two cities are connected\n    def is_connected(city1, city2):\n        return city2 in direct_flights.get(city1, []) or city1 in direct_flights.get(city2, [])\n    \n    # Generate all possible city orders\n    cities = list(city_stays.keys())\n    possible_orders = permutations(cities)\n    \n    # Function to check if an order satisfies all constraints\n    def is_valid_order(order):\n        day = 1\n        itinerary = []\n        prev_city = None\n        \n        for city in order:\n            if prev_city and not is_connected(prev_city, city):\n                return False\n            \n            stay_duration = city_stays[city]\n            end_day = day + stay_duration - 1\n            \n            # Check constraints for current city\n            if city in constraints:\n                for constraint, (start_con, end_con) in constraints[city].items():\n                    if not (day <= start_con and end_day >= end_con):\n                        return False\n            \n            day = end_day + 1\n            prev_city = city\n        \n        return day - 1 == total_days\n    \n    # Find a valid order\n    valid_order = None\n    for order in possible_orders:\n        if is_valid_order(order):\n            valid_order = order\n            break\n    \n    if not valid_order:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}))\n        return\n    \n    # Generate itinerary\n    itinerary = []\n    day = 1\n    prev_city = None\n    \n    for city in valid_order:\n        stay_duration = city_stays[city]\n        end_day = day + stay_duration - 1\n        \n        if prev_city:\n            itinerary.append({\n                'flying': f'Day {day-1}-{day-1}',\n                'from': prev_city,\n                'to': city\n            })\n        \n        itinerary.append({\n            'day_range': f'Day {day}-{end_day}',\n            'place': city\n        })\n        \n        day = end_day + 1\n        prev_city = city\n    \n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_675"
+        }
+    ]
+}

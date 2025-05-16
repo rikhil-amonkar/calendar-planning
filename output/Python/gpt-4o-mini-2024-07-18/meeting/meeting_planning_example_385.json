@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "13:38",
+                        "end_time": "14:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "18:11",
+                        "end_time": "18:41"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "9:08",
+                        "end_time": "9:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "13:30",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "18:00",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Function to calculate the end time after adding duration (in minutes) to a given start time\ndef add_minutes(start_time, minutes):\n    return start_time + timedelta(minutes=minutes)\n\n# Class to represent a meeting\nclass Meeting:\n    def __init__(self, person, location, start_time, duration):\n        self.person = person\n        self.location = location\n        self.start_time = start_time\n        self.end_time = add_minutes(self.start_time, duration)\n\n    def to_dict(self):\n        return {\n            \"action\": \"meet\",\n            \"location\": self.location,\n            \"person\": self.person,\n            \"start_time\": self.start_time.strftime(\"%H:%M\"),\n            \"end_time\": self.end_time.strftime(\"%H:%M\"),\n        }\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Nob Hill\", \"Presidio\"): 17,\n    (\"Nob Hill\", \"North Beach\"): 8,\n    (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    (\"Presidio\", \"Nob Hill\"): 18,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Pacific Heights\"): 11,\n    (\"North Beach\", \"Nob Hill\"): 7,\n    (\"North Beach\", \"Presidio\"): 17,\n    (\"North Beach\", \"Fisherman's Wharf\"): 5,\n    (\"North Beach\", \"Pacific Heights\"): 8,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"North Beach\"): 6,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"Presidio\"): 11,\n    (\"Pacific Heights\", \"North Beach\"): 9,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n}\n\n# Meeting constraints\nmeetings = {\n    \"Jeffrey\": {\"location\": \"Presidio\", \"available\": (datetime.strptime(\"08:00\", \"%H:%M\"),\n                                                      datetime.strptime(\"10:00\", \"%H:%M\")), \n                \"duration\": 105},\n    \"Steven\": {\"location\": \"North Beach\", \"available\": (datetime.strptime(\"13:30\", \"%H:%M\"),\n                                                       datetime.strptime(\"22:00\", \"%H:%M\")), \n               \"duration\": 45},\n    \"Barbara\": {\"location\": \"Fisherman's Wharf\", \"available\": (datetime.strptime(\"18:00\", \"%H:%M\"),\n                                                             datetime.strptime(\"21:30\", \"%H:%M\")), \n                \"duration\": 30},\n    \"John\": {\"location\": \"Pacific Heights\", \"available\": (datetime.strptime(\"09:00\", \"%H:%M\"),\n                                                          datetime.strptime(\"13:30\", \"%H:%M\")), \n             \"duration\": 15},\n}\n\n# Start time\ncurrent_time = datetime.strptime(\"09:00\", \"%H:%M\")\nitinerary = []\n\n# Meeting sequence\ndef schedule_meetings(current_time):\n    for person, info in meetings.items():\n        start = info[\"available\"][0]\n        end = info[\"available\"][1]\n        duration = info[\"duration\"]\n        \n        # Check if we can meet this person\n        if current_time < start:\n            current_time = start  # Wait until they are available\n            \n        # Calculate travel time to meeting location\n        travel_time = travel_times.get((\"Nob Hill\", info[\"location\"]), 0)\n        start_meeting_time = add_minutes(current_time, travel_time)\n        \n        # Check if we can fit the meeting in the available window\n        if start_meeting_time + timedelta(minutes=duration) <= end:\n            meeting = Meeting(person, info[\"location\"], start_meeting_time, duration)\n            itinerary.append(meeting.to_dict())\n            # Update current time to the end of the meeting + travel back\n            current_time = add_minutes(meeting.end_time, travel_times.get((info[\"location\"], \"Nob Hill\"), 0))\n\n# Call the scheduling function\nschedule_meetings(current_time)\n\n# Convert output to JSON\nresult = {\"itinerary\": itinerary}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_385"
+        }
+    ]
+}

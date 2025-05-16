@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 4-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 11-11",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 14-14",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Frankfurt"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 8-14",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 14-19",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Frankfurt"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom collections import defaultdict\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Nice': 5,\n            'Krakow': 6,\n            'Dublin': 7,\n            'Lyon': 4,\n            'Frankfurt': 2\n        }\n        self.flights = {\n            ('Nice', 'Dublin'): 1,\n            ('Dublin', 'Frankfurt'): 1,\n            ('Dublin', 'Krakow'): 1,\n            ('Krakow', 'Frankfurt'): 1,\n            ('Lyon', 'Frankfurt'): 1,\n            ('Nice', 'Frankfurt'): 1,\n            ('Lyon', 'Dublin'): 1,\n            ('Nice', 'Lyon'): 1\n        }\n        self.conference = {'Nice': (1, 5)}\n        self.meeting = {'Frankfurt': (19, 20)}\n\n    def plan_trip(self):\n        trip = []\n        days = 0\n        current_city = None\n        for city, duration in self.cities.items():\n            if city in self.conference:\n                start_day, end_day = self.conference[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            elif city in self.meeting:\n                start_day, end_day = self.meeting[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            else:\n                if current_city is not None:\n                    for flight, duration in self.flights.items():\n                        if flight[0] == current_city:\n                            trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                            days += 1\n                trip.append({'day_range': f'Day {days}-{days + duration - 1}', 'place': city})\n                days += duration\n                current_city = city\n        if current_city is not None:\n            for flight, duration in self.flights.items():\n                if flight[0] == current_city:\n                    trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                    days += 1\n        return trip\n\n    def output_json(self, trip):\n        return json.dumps(trip, indent=4)\n\ndef main():\n    planner = TripPlanner()\n    trip = planner.plan_trip()\n    print(planner.output_json(trip))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_421"
+        }
+    ]
+}

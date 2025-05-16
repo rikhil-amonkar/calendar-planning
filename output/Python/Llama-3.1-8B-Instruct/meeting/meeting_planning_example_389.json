@@ -1,0 +1,66 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Sarah",
+                        "start_time": "9:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Mary",
+                        "start_time": "12:00",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Helen",
+                        "start_time": "19:15",
+                        "end_time": "20:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "20:30",
+                        "end_time": "23:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Sarah",
+                        "start_time": "14:45",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Mary",
+                        "start_time": "16:48",
+                        "end_time": "18:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Helen",
+                        "start_time": "21:45",
+                        "end_time": "22:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Haight-Ashbury': {'Fisherman\\'s Wharf': 23, 'Richmond District': 10, 'Mission District': 11, 'Bayview': 18},\n    'Fisherman\\'s Wharf': {'Haight-Ashbury': 22, 'Richmond District': 18, 'Mission District': 22, 'Bayview': 26},\n    'Richmond District': {'Haight-Ashbury': 10, 'Fisherman\\'s Wharf': 18, 'Mission District': 20, 'Bayview': 26},\n    'Mission District': {'Haight-Ashbury': 12, 'Fisherman\\'s Wharf': 22, 'Richmond District': 20, 'Bayview': 15},\n    'Bayview': {'Haight-Ashbury': 19, 'Fisherman\\'s Wharf': 25, 'Richmond District': 25, 'Mission District': 13}\n}\n\n# Constraints\nconstraints = {\n    'Sarah': {'location': 'Fisherman\\'s Wharf','start_time': '14:45', 'end_time': '17:30','required_time': 105},\n    'Mary': {'location': 'Richmond District','start_time': '13:00', 'end_time': '19:15','required_time': 75},\n    'Helen': {'location': 'Mission District','start_time': '21:45', 'end_time': '22:30','required_time': 30},\n    'Thomas': {'location': 'Bayview','start_time': '15:15', 'end_time': '18:45','required_time': 120}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\ndef is_valid_meeting(person, start_time, end_time, required_time):\n    return (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=required_time)).time() <= datetime.strptime(end_time, '%H:%M').time()\n\ndef schedule_meeting(person, start_time, end_time, required_time, location):\n    travel_time = calculate_travel_time('Haight-Ashbury', location)\n    start_time = (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    end_time = (datetime.strptime(end_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    return is_valid_meeting(person, start_time, end_time, required_time)\n\ndef generate_itinerary():\n    itinerary = []\n    start_time = '09:00'\n    end_time = '12:00'\n    \n    for person in constraints:\n        location = constraints[person]['location']\n        start_person_time = constraints[person]['start_time']\n        end_person_time = constraints[person]['end_time']\n        required_time = constraints[person]['required_time']\n        \n        if schedule_meeting(person, start_time, end_time, required_time, location):\n            itinerary.append({\n                'action':'meet',\n                'location': location,\n                'person': person,\n               'start_time': start_time,\n                'end_time': end_time\n            })\n            start_time = end_time\n            end_time = (datetime.strptime(end_person_time, '%H:%M') + timedelta(minutes=required_time)).strftime('%H:%M')\n    \n    return itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```\n\nThis Python program generates an optimal meeting schedule based on the given constraints and travel distances between locations. The schedule is represented as a JSON-formatted dictionary with the specified structure. The program uses logical rules and calculations to determine the best schedule, taking into account travel times and constraints.",
+            "count": "meeting_planning_example_389"
+        }
+    ]
+}

@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Stephanie",
+                        "start_time": "9:00",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Karen",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "11:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "8:00",
+                        "end_time": "8:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Joseph",
+                        "start_time": "8:15",
+                        "end_time": "9:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Steven",
+                        "start_time": "9:28",
+                        "end_time": "11:28"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "13:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Brian",
+                        "start_time": "15:00",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "15:40",
+                        "end_time": "17:40"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times\ntravel_times = {\n    \"Financial District\": {\n        \"Golden Gate Park\": 23,\n        \"Chinatown\": 5,\n        \"Union Square\": 9,\n        \"Fisherman's Wharf\": 10,\n        \"Pacific Heights\": 13,\n        \"North Beach\": 7\n    },\n    \"Golden Gate Park\": {\n        \"Financial District\": 26,\n        \"Chinatown\": 23,\n        \"Union Square\": 22,\n        \"Fisherman's Wharf\": 24,\n        \"Pacific Heights\": 16,\n        \"North Beach\": 24\n    },\n    \"Chinatown\": {\n        \"Financial District\": 5,\n        \"Golden Gate Park\": 23,\n        \"Union Square\": 7,\n        \"Fisherman's Wharf\": 8,\n        \"Pacific Heights\": 10,\n        \"North Beach\": 3\n    },\n    \"Union Square\": {\n        \"Financial District\": 9,\n        \"Golden Gate Park\": 22,\n        \"Chinatown\": 7,\n        \"Fisherman's Wharf\": 15,\n        \"Pacific Heights\": 12,\n        \"North Beach\": 10\n    },\n    \"Fisherman's Wharf\": {\n        \"Financial District\": 11,\n        \"Golden Gate Park\": 25,\n        \"Chinatown\": 12,\n        \"Union Square\": 13,\n        \"Pacific Heights\": 12,\n        \"North Beach\": 6\n    },\n    \"Pacific Heights\": {\n        \"Financial District\": 13,\n        \"Golden Gate Park\": 15,\n        \"Chinatown\": 11,\n        \"Union Square\": 12,\n        \"Fisherman's Wharf\": 13,\n        \"North Beach\": 9\n    },\n    \"North Beach\": {\n        \"Financial District\": 8,\n        \"Golden Gate Park\": 22,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Fisherman's Wharf\": 5,\n        \"Pacific Heights\": 8\n    }\n}\n\n# Define constraints\nconstraints = {\n    \"Stephanie\": {\"start\": datetime(2023, 1, 1, 11, 0), \"end\": datetime(2023, 1, 1, 16, 0), \"min_time\": 105},\n    \"Karen\": {\"start\": datetime(2023, 1, 1, 13, 45), \"end\": datetime(2023, 1, 1, 16, 30), \"min_time\": 15},\n    \"Brian\": {\"start\": datetime(2023, 1, 1, 15, 0), \"end\": datetime(2023, 1, 1, 17, 15), \"min_time\": 30},\n    \"Rebecca\": {\"start\": datetime(2023, 1, 1, 8, 0), \"end\": datetime(2023, 1, 1, 11, 15), \"min_time\": 30},\n    \"Joseph\": {\"start\": datetime(2023, 1, 1, 8, 15), \"end\": datetime(2023, 1, 1, 9, 30), \"min_time\": 60},\n    \"Steven\": {\"start\": datetime(2023, 1, 1, 14, 30), \"end\": datetime(2023, 1, 1, 20, 45), \"min_time\": 120}\n}\n\n# Define start location and time\nstart_location = \"Financial District\"\nstart_time = datetime(2023, 1, 1, 9, 0)\n\n# Initialize schedule\nschedule = []\n\n# Function to calculate travel time\ndef calculate_travel_time(location1, location2):\n    return travel_times[location1][location2]\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(person, start_time, end_time, location):\n    return constraints[person][\"start\"] <= start_time and constraints[person][\"end\"] >= end_time and location == constraints[person][\"location\"]\n\n# Function to schedule a meeting\ndef schedule_meeting(person, start_time, end_time, location):\n    schedule.append({\"action\": \"meet\", \"location\": location, \"person\": person, \"start_time\": start_time.strftime(\"%H:%M\"), \"end_time\": end_time.strftime(\"%H:%M\")})\n\n# Main function to generate schedule\ndef generate_schedule():\n    current_time = start_time\n    current_location = start_location\n\n    # Schedule meetings\n    for person, constraint in constraints.items():\n        if person == \"Stephanie\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Golden Gate Park\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Financial District\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Golden Gate Park\"))\n        elif person == \"Karen\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Chinatown\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Financial District\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Chinatown\"))\n        elif person == \"Brian\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Union Square\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Financial District\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Union Square\"))\n        elif person == \"Rebecca\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Fisherman's Wharf\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Financial District\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Fisherman's Wharf\"))\n        elif person == \"Joseph\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Pacific Heights\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Financial District\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Pacific Heights\"))\n        elif person == \"Steven\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"North Beach\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Financial District\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"North Beach\"))\n\n    # Return schedule as JSON\n    return json.dumps({\"itinerary\": schedule}, indent=4)\n\n# Generate schedule\nschedule = generate_schedule()\n\n# Print schedule\nprint(schedule)\n```",
+            "count": "meeting_planning_example_502"
+        }
+    ]
+}

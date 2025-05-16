@@ -1,0 +1,37 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "9:29",
+                        "end_time": "11:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Anthony",
+                        "start_time": "13:15",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Rebecca",
+                        "start_time": "19:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nimport datetime\nfrom itertools import product\n\ndef calculate_travel_time(distance, start_time):\n    travel_time = distance / 60\n    end_time = start_time + datetime.timedelta(minutes=travel_time)\n    return end_time\n\ndef generate_schedules(locations, travel_times, constraints):\n    schedules = []\n    for start_time in [datetime.datetime.strptime('09:00', '%H:%M')]:\n        for person in constraints:\n            for time in constraints[person]:\n                if time[0] >= start_time and time[1] >= start_time + datetime.timedelta(minutes=constraints[person][time]):\n                    for location in locations:\n                        if location!='Sunset District':\n                            for other_time in constraints:\n                                if other_time!= person:\n                                    for other_location in locations:\n                                        if other_location!='Sunset District' and other_location!= location:\n                                            for travel in travel_times:\n                                                if travel[0] == location and travel[1] == other_location:\n                                                    schedule = {\n                                                        \"action\": \"meet\",\n                                                        \"location\": location,\n                                                        \"person\": person,\n                                                        \"start_time\": start_time.strftime('%H:%M'),\n                                                        \"end_time\": (start_time + datetime.timedelta(minutes=travel[2])).strftime('%H:%M')\n                                                    }\n                                                    if other_location == 'Chinatown':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 29)).strftime('%H:%M')\n                                                    elif other_location == 'Russian Hill':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 23)).strftime('%H:%M')\n                                                    elif other_location == 'North Beach':\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2] + 27)).strftime('%H:%M')\n                                                    else:\n                                                        schedule['end_time'] = (schedule['end_time'] + datetime.timedelta(minutes=constraints[person][time] - travel[2])).strftime('%H:%M')\n                                                    schedules.append(schedule)\n    return schedules\n\ndef find_optimal_schedule(schedules):\n    optimal_schedule = []\n    for schedule in schedules:\n        if len(optimal_schedule) == 0 or len(schedule) > len(optimal_schedule):\n            optimal_schedule = schedule\n    return optimal_schedule\n\ndef main():\n    locations = ['Sunset District', 'Chinatown', 'Russian Hill', 'North Beach']\n    travel_times = [\n        ['Sunset District', 'Chinatown', 30],\n        ['Sunset District', 'Russian Hill', 24],\n        ['Sunset District', 'North Beach', 29],\n        ['Chinatown', 'Sunset District', 29],\n        ['Chinatown', 'Russian Hill', 7],\n        ['Chinatown', 'North Beach', 3],\n        ['Russian Hill', 'Sunset District', 23],\n        ['Russian Hill', 'Chinatown', 9],\n        ['Russian Hill', 'North Beach', 5],\n        ['North Beach', 'Sunset District', 27],\n        ['North Beach', 'Chinatown', 6],\n        ['North Beach', 'Russian Hill', 4]\n    ]\n    constraints = {\n        'Anthony': {'13:15-14:30': 60},\n        'Rebecca': {'19:30-21:15': 105},\n        'Melissa': {'08:15-13:30': 105}\n    }\n    schedules = generate_schedules(locations, travel_times, constraints)\n    optimal_schedule = find_optimal_schedule(schedules)\n    print(json.dumps({'itinerary': optimal_schedule}))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_209"
+        }
+    ]
+}

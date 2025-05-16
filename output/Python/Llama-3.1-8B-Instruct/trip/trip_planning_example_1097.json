@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 0-3",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 6-6",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 12-12",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 15-15",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 18-18",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 24-24",
+                        "place": "London"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom collections import defaultdict\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Reykjavik': 4,\n            'Riga': 2,\n            'Oslo': 3,\n            'Lyon': 5,\n            'Dubrovnik': 2,\n            'Madrid': 2,\n            'Warsaw': 4,\n            'London': 3\n        }\n        self.flights = {\n            ('Warsaw', 'Reykjavik'): 1,\n            ('Oslo', 'Madrid'): 1,\n            ('Warsaw', 'Riga'): 1,\n            ('Lyon', 'London'): 1,\n            ('Madrid', 'London'): 1,\n            ('Warsaw', 'London'): 1,\n            ('Reykjavik', 'Madrid'): 1,\n            ('Warsaw', 'Oslo'): 1,\n            ('Oslo', 'Dubrovnik'): 1,\n            ('Oslo', 'Reykjavik'): 1,\n            ('Riga', 'Oslo'): 1,\n            ('Oslo', 'Lyon'): 1,\n            ('Oslo', 'London'): 1,\n            ('London', 'Reykjavik'): 1,\n            ('Warsaw', 'Madrid'): 1,\n            ('Madrid', 'Lyon'): 1,\n            ('Dubrovnik', 'Madrid'): 1\n        }\n        self.conference = {'Riga': (4, 5)}\n        self.wedding = {'Dubrovnik': (7, 8)}\n        self.meeting = {'Riga': (4, 5)}\n\n    def plan_trip(self):\n        trip = []\n        days = 0\n        current_city = None\n        for city, duration in self.cities.items():\n            if city in self.conference:\n                start_day, end_day = self.conference[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            elif city in self.wedding:\n                start_day, end_day = self.wedding[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            elif city in self.meeting:\n                start_day, end_day = self.meeting[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            else:\n                if current_city is not None:\n                    for flight, duration in self.flights.items():\n                        if flight[0] == current_city:\n                            trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                            days += 1\n                trip.append({'day_range': f'Day {days}-{days + duration - 1}', 'place': city})\n                days += duration\n                current_city = city\n        if current_city is not None:\n            for flight, duration in self.flights.items():\n                if flight[0] == current_city:\n                    trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                    days += 1\n        return trip\n\n    def output_json(self, trip):\n        return json.dumps(trip, indent=4)\n\ndef main():\n    planner = TripPlanner()\n    trip = planner.plan_trip()\n    print(planner.output_json(trip))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1097"
+        }
+    ]
+}

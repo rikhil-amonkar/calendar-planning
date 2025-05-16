@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 27-28",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    total_days = 28\n    cities = {\n        'Copenhagen': {'duration': 5, 'constraints': [{'type': 'meet', 'day_range': (11, 15)}]},\n        'Geneva': {'duration': 3, 'constraints': []},\n        'Mykonos': {'duration': 2, 'constraints': [{'type': 'conference', 'day_range': (27, 28)}]},\n        'Naples': {'duration': 4, 'constraints': [{'type': 'relatives', 'day_range': (5, 8)}]},\n        'Prague': {'duration': 2, 'constraints': []},\n        'Dubrovnik': {'duration': 3, 'constraints': []},\n        'Athens': {'duration': 4, 'constraints': [{'type': 'workshop', 'day_range': (8, 11)}]},\n        'Santorini': {'duration': 5, 'constraints': []},\n        'Brussels': {'duration': 4, 'constraints': []},\n        'Munich': {'duration': 5, 'constraints': []}\n    }\n\n    direct_flights = {\n        'Copenhagen': ['Dubrovnik', 'Brussels', 'Naples', 'Prague', 'Athens', 'Geneva', 'Munich', 'Santorini'],\n        'Geneva': ['Prague', 'Athens', 'Mykonos', 'Naples', 'Dubrovnik', 'Brussels', 'Munich', 'Santorini'],\n        'Mykonos': ['Geneva', 'Naples', 'Athens', 'Munich'],\n        'Naples': ['Dubrovnik', 'Athens', 'Mykonos', 'Copenhagen', 'Munich', 'Geneva', 'Santorini', 'Brussels'],\n        'Prague': ['Geneva', 'Athens', 'Brussels', 'Copenhagen', 'Munich'],\n        'Dubrovnik': ['Copenhagen', 'Athens', 'Naples', 'Geneva', 'Munich'],\n        'Athens': ['Geneva', 'Dubrovnik', 'Mykonos', 'Naples', 'Prague', 'Santorini', 'Brussels', 'Munich', 'Copenhagen'],\n        'Santorini': ['Geneva', 'Athens', 'Naples', 'Copenhagen'],\n        'Brussels': ['Copenhagen', 'Naples', 'Prague', 'Athens', 'Munich', 'Geneva'],\n        'Munich': ['Mykonos', 'Dubrovnik', 'Brussels', 'Athens', 'Geneva', 'Copenhagen', 'Prague', 'Naples']\n    }\n\n    # Generate all possible city orders\n    city_names = list(cities.keys())\n    possible_orders = permutations(city_names)\n\n    valid_itineraries = []\n\n    for order in possible_orders:\n        itinerary = []\n        current_day = 1\n        valid = True\n\n        # Check if the order satisfies all constraints\n        for i, city in enumerate(order):\n            city_info = cities[city]\n            duration = city_info['duration']\n            end_day = current_day + duration - 1\n\n            # Check constraints\n            for constraint in city_info.get('constraints', []):\n                if constraint['type'] == 'meet':\n                    meet_start, meet_end = constraint['day_range']\n                    if not (current_day <= meet_end and end_day >= meet_start):\n                        valid = False\n                        break\n                elif constraint['type'] == 'conference':\n                    conf_start, conf_end = constraint['day_range']\n                    if not (current_day <= conf_start and end_day >= conf_end):\n                        valid = False\n                        break\n                elif constraint['type'] == 'relatives':\n                    rel_start, rel_end = constraint['day_range']\n                    if not (current_day <= rel_end and end_day >= rel_start):\n                        valid = False\n                        break\n                elif constraint['type'] == 'workshop':\n                    work_start, work_end = constraint['day_range']\n                    if not (current_day <= work_start and end_day >= work_end):\n                        valid = False\n                        break\n            if not valid:\n                break\n\n            # Check flight connections\n            if i > 0:\n                prev_city = order[i-1]\n                if city not in direct_flights[prev_city]:\n                    valid = False\n                    break\n                itinerary.append({'flying': f'Day {current_day-1}-{current_day-1}', 'from': prev_city, 'to': city})\n\n            itinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': city})\n            current_day = end_day + 1\n\n            if current_day > total_days + 1:\n                valid = False\n                break\n\n        if valid and current_day == total_days + 1:\n            valid_itineraries.append(itinerary)\n\n    # Select the first valid itinerary (can be optimized further)\n    if valid_itineraries:\n        selected_itinerary = valid_itineraries[0]\n        print(json.dumps(selected_itinerary, indent=2))\n    else:\n        print(json.dumps([{'error': 'No valid itinerary found'}], indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1487"
+        }
+    ]
+}

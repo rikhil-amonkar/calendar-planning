@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 24-27",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 28-30",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 31-34",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 35-36",
+                        "place": "Valencia"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 23-25",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 25-27",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Constants\n    total_days = 27\n    \n    # Constraints\n    stay_duration = {\n        'Warsaw': 3,\n        'Porto': 5,\n        'Naples': 4,\n        'Brussels': 3,\n        'Split': 3,\n        'Reykjavik': 5,\n        'Amsterdam': 4,\n        'Lyon': 3,\n        'Helsinki': 4,\n        'Valencia': 2\n    }\n    \n    workshops = {\n        'Porto': (1, 5),\n        'Naples': (17, 20),\n        'Brussels': (20, 22),\n        'Helsinki': (8, 11),\n        'Amsterdam': (5, 8)\n    }\n    \n    # Cities to visit based on constraints\n    itinerary = []\n    \n    current_day = 1\n    \n    # Warsaw for 3 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Warsaw\"] - 1}', 'place': 'Warsaw'})\n    current_day += stay_duration['Warsaw']\n    \n    # Porto for 5 days with workshop\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Porto\"] - 1}', 'place': 'Porto'})\n    current_day += stay_duration['Porto']\n    \n    # Naples for 4 days with conferences on specific days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Naples\"] - 1}', 'place': 'Naples'})\n    current_day += stay_duration['Naples']\n    \n    # Brussels for 3 days with an annual show\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Brussels\"] - 1}', 'place': 'Brussels'})\n    current_day += stay_duration['Brussels']\n    \n    # Split for 3 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Split\"] - 1}', 'place': 'Split'})\n    current_day += stay_duration['Split']\n    \n    # Reykjavik for 5 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Reykjavik\"] - 1}', 'place': 'Reykjavik'})\n    current_day += stay_duration['Reykjavik']\n    \n    # Amsterdam for 4 days with visiting relatives\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Amsterdam\"] - 1}', 'place': 'Amsterdam'})\n    current_day += stay_duration['Amsterdam']\n    \n    # Lyon for 3 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Lyon\"] - 1}', 'place': 'Lyon'})\n    current_day += stay_duration['Lyon']\n    \n    # Helsinki for 4 days with a wedding\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Helsinki\"] - 1}', 'place': 'Helsinki'})\n    current_day += stay_duration['Helsinki']\n    \n    # Valencia for 2 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration[\"Valencia\"] - 1}', 'place': 'Valencia'})\n    current_day += stay_duration['Valencia']\n\n    # Output result as JSON\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == '__main__':\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_1424"
+        }
+    ]
+}

@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Karen",
+                        "start_time": "9:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "11:17",
+                        "end_time": "12:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Matthew",
+                        "start_time": "12:52",
+                        "end_time": "13:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "13:52",
+                        "end_time": "15:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "David",
+                        "start_time": "15:54",
+                        "end_time": "17:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Linda",
+                        "start_time": "18:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "19:27",
+                        "end_time": "20:57"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Karen",
+                        "start_time": "9:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "11:17",
+                        "end_time": "12:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Matthew",
+                        "start_time": "12:52",
+                        "end_time": "13:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "13:52",
+                        "end_time": "15:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "David",
+                        "start_time": "15:54",
+                        "end_time": "17:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Linda",
+                        "start_time": "18:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "19:27",
+                        "end_time": "20:57"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    \"Russian Hill\": {\n        \"Marina District\": 7,\n        \"Financial District\": 11,\n        \"Alamo Square\": 15,\n        \"Golden Gate Park\": 21,\n        \"The Castro\": 21,\n        \"Bayview\": 23,\n        \"Sunset District\": 23,\n        \"Haight-Ashbury\": 17,\n        \"Nob Hill\": 5\n    },\n    \"Marina District\": {\n        \"Russian Hill\": 8,\n        \"Financial District\": 17,\n        \"Alamo Square\": 15,\n        \"Golden Gate Park\": 18,\n        \"The Castro\": 22,\n        \"Bayview\": 27,\n        \"Sunset District\": 19,\n        \"Haight-Ashbury\": 16,\n        \"Nob Hill\": 12\n    },\n    \"Financial District\": {\n        \"Russian Hill\": 11,\n        \"Marina District\": 15,\n        \"Alamo Square\": 17,\n        \"Golden Gate Park\": 23,\n        \"The Castro\": 20,\n        \"Bayview\": 19,\n        \"Sunset District\": 30,\n        \"Haight-Ashbury\": 19,\n        \"Nob Hill\": 8\n    },\n    \"Alamo Square\": {\n        \"Russian Hill\": 13,\n        \"Marina District\": 15,\n        \"Financial District\": 17,\n        \"Golden Gate Park\": 9,\n        \"The Castro\": 8,\n        \"Bayview\": 16,\n        \"Sunset District\": 16,\n        \"Haight-Ashbury\": 5,\n        \"Nob Hill\": 11\n    },\n    \"Golden Gate Park\": {\n        \"Russian Hill\": 19,\n        \"Marina District\": 16,\n        \"Financial District\": 26,\n        \"Alamo Square\": 9,\n        \"The Castro\": 13,\n        \"Bayview\": 23,\n        \"Sunset District\": 10,\n        \"Haight-Ashbury\": 7,\n        \"Nob Hill\": 20\n    },\n    \"The Castro\": {\n        \"Russian Hill\": 18,\n        \"Marina District\": 21,\n        \"Financial District\": 21,\n        \"Alamo Square\": 8,\n        \"Golden Gate Park\": 11,\n        \"Bayview\": 19,\n        \"Sunset District\": 17,\n        \"Haight-Ashbury\": 6,\n        \"Nob Hill\": 16\n    },\n    \"Bayview\": {\n        \"Russian Hill\": 23,\n        \"Marina District\": 27,\n        \"Financial District\": 19,\n        \"Alamo Square\": 16,\n        \"Golden Gate Park\": 22,\n        \"The Castro\": 19,\n        \"Sunset District\": 23,\n        \"Haight-Ashbury\": 19,\n        \"Nob Hill\": 20\n    },\n    \"Sunset District\": {\n        \"Russian Hill\": 24,\n        \"Marina District\": 21,\n        \"Financial District\": 30,\n        \"Alamo Square\": 17,\n        \"Golden Gate Park\": 11,\n        \"The Castro\": 17,\n        \"Bayview\": 22,\n        \"Haight-Ashbury\": 15,\n        \"Nob Hill\": 27\n    },\n    \"Haight-Ashbury\": {\n        \"Russian Hill\": 17,\n        \"Marina District\": 17,\n        \"Financial District\": 21,\n        \"Alamo Square\": 5,\n        \"Golden Gate Park\": 7,\n        \"The Castro\": 6,\n        \"Bayview\": 18,\n        \"Sunset District\": 15,\n        \"Nob Hill\": 15\n    },\n    \"Nob Hill\": {\n        \"Russian Hill\": 5,\n        \"Marina District\": 11,\n        \"Financial District\": 9,\n        \"Alamo Square\": 11,\n        \"Golden Gate Park\": 17,\n        \"The Castro\": 17,\n        \"Bayview\": 19,\n        \"Sunset District\": 24,\n        \"Haight-Ashbury\": 13\n    }\n}\n\n# Friend availability\nfriends = {\n    \"Mark\": {\n        \"location\": \"Marina District\",\n        \"start\": 18.75,  # 6:45 PM\n        \"end\": 21.0,     # 9:00 PM\n        \"duration\": 1.5  # 90 minutes\n    },\n    \"Karen\": {\n        \"location\": \"Financial District\",\n        \"start\": 9.5,    # 9:30 AM\n        \"end\": 12.75,    # 12:45 PM\n        \"duration\": 1.5\n    },\n    \"Barbara\": {\n        \"location\": \"Alamo Square\",\n        \"start\": 10.0,  # 10:00 AM\n        \"end\": 19.5,     # 7:30 PM\n        \"duration\": 1.5\n    },\n    \"Nancy\": {\n        \"location\": \"Golden Gate Park\",\n        \"start\": 16.75,  # 4:45 PM\n        \"end\": 20.0,     # 8:00 PM\n        \"duration\": 1.75 # 105 minutes\n    },\n    \"David\": {\n        \"location\": \"The Castro\",\n        \"start\": 9.0,    # 9:00 AM\n        \"end\": 18.0,     # 6:00 PM\n        \"duration\": 2.0  # 120 minutes\n    },\n    \"Linda\": {\n        \"location\": \"Bayview\",\n        \"start\": 18.25,  # 6:15 PM\n        \"end\": 19.75,    # 7:45 PM\n        \"duration\": 0.75 # 45 minutes\n    },\n    \"Kevin\": {\n        \"location\": \"Sunset District\",\n        \"start\": 10.0,  # 10:00 AM\n        \"end\": 17.75,    # 5:45 PM\n        \"duration\": 2.0\n    },\n    \"Matthew\": {\n        \"location\": \"Haight-Ashbury\",\n        \"start\": 10.25,  # 10:15 AM\n        \"end\": 15.5,     # 3:30 PM\n        \"duration\": 0.75\n    },\n    \"Andrew\": {\n        \"location\": \"Nob Hill\",\n        \"start\": 11.75, # 11:45 AM\n        \"end\": 16.75,    # 4:45 PM\n        \"duration\": 1.75\n    }\n}\n\ndef time_to_float(time_str):\n    \"\"\"Convert time string (H:MM) to float (H.MM)\"\"\"\n    h, m = map(int, time_str.split(':'))\n    return h + m / 60.0\n\ndef float_to_time(time_float):\n    \"\"\"Convert float (H.MM) to time string (H:MM)\"\"\"\n    h = int(time_float)\n    m = int(round((time_float - h) * 60))\n    if m == 60:\n        h += 1\n        m = 0\n    return f\"{h}:{m:02d}\"\n\ndef get_travel_time(from_loc, to_loc):\n    \"\"\"Get travel time between two locations\"\"\"\n    return travel_times[from_loc][to_loc] / 60.0  # Convert to hours\n\ndef is_schedule_valid(schedule):\n    \"\"\"Check if a schedule meets all constraints\"\"\"\n    current_time = 9.0  # Start at Russian Hill at 9:00 AM\n    current_loc = \"Russian Hill\"\n    \n    for meeting in schedule:\n        # Travel to meeting location\n        travel_time = get_travel_time(current_loc, meeting[\"location\"])\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet during their availability\n        friend = friends[meeting[\"person\"]]\n        meeting_start = max(arrival_time, friend[\"start\"])\n        meeting_end = meeting_start + friend[\"duration\"]\n        \n        if meeting_end > friend[\"end\"]:\n            return False  # Can't meet for required duration\n        \n        # Update current time and location\n        current_time = meeting_end\n        current_loc = meeting[\"location\"]\n        \n        # Store meeting times\n        meeting[\"start_time\"] = meeting_start\n        meeting[\"end_time\"] = meeting_end\n    \n    return True\n\ndef evaluate_schedule(schedule):\n    \"\"\"Evaluate a schedule by counting meetings and total meeting time\"\"\"\n    if not is_schedule_valid(schedule):\n        return -1, -1\n    \n    total_meetings = len(schedule)\n    total_time = sum(friends[m[\"person\"]][\"duration\"] for m in schedule)\n    return total_meetings, total_time\n\ndef generate_possible_schedules():\n    \"\"\"Generate possible schedules by trying different permutations\"\"\"\n    friend_names = list(friends.keys())\n    best_schedule = []\n    best_meetings = 0\n    best_time = 0\n    \n    # Try permutations of different lengths\n    for r in range(1, len(friend_names) + 1):\n        for perm in permutations(friend_names, r):\n            # Create schedule in order of permutation\n            schedule = [{\"action\": \"meet\", \"location\": friends[name][\"location\"], \n                         \"person\": name} for name in perm]\n            \n            # Evaluate schedule\n            meetings, time = evaluate_schedule(schedule)\n            \n            # Update best schedule if better\n            if meetings > best_meetings or (meetings == best_meetings and time > best_time):\n                best_schedule = schedule\n                best_meetings = meetings\n                best_time = time\n    \n    return best_schedule\n\ndef main():\n    # Generate the best possible schedule\n    best_schedule = generate_possible_schedules()\n    \n    # Convert to output format\n    itinerary = []\n    for meeting in best_schedule:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"person\"],\n            \"start_time\": float_to_time(meeting[\"start_time\"]),\n            \"end_time\": float_to_time(meeting[\"end_time\"])\n        })\n    \n    # Output as JSON\n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_885"
+        }
+    ]
+}

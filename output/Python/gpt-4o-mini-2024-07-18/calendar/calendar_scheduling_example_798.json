@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport datetime\n\n# Define participants' schedules\nnancy_schedule = {\n    \"Monday\": [\"10:00-10:30\", \"11:30-12:30\", \"13:30-14:00\", \"14:30-15:30\", \"16:00-17:00\"],\n    \"Tuesday\": [\"09:30-10:30\", \"11:00-11:30\", \"12:00-12:30\", \"13:00-13:30\", \"15:30-16:00\"],\n    \"Wednesday\": [\"10:00-11:30\", \"13:30-16:00\"]\n}\n\njose_schedule = {\n    \"Monday\": [\"09:00-17:00\"],\n    \"Tuesday\": [\"09:00-17:00\"],\n    \"Wednesday\": [\"09:00-09:30\", \"10:00-12:30\", \"13:30-14:30\", \"15:00-17:00\"]\n}\n\n# Define working hours and meeting duration\nworking_hours = {\n    \"Monday\": [\"09:00\", \"17:00\"],\n    \"Tuesday\": [\"09:00\", \"17:00\"],\n    \"Wednesday\": [\"09:00\", \"17:00\"]\n}\nmeeting_duration = datetime.timedelta(minutes=30)\n\ndef parse_schedule(schedule):\n    busy_times = []\n    for times in schedule.values():\n        for time in times:\n            start, end = time.split('-')\n            busy_times.append((datetime.datetime.strptime(start, \"%H:%M\"), datetime.datetime.strptime(end, \"%H:%M\")))\n    return busy_times\n\ndef find_time(participant1_schedule, participant2_schedule, working_hours):\n    participant1_busy = parse_schedule(participant1_schedule)\n    participant2_busy = parse_schedule(participant2_schedule)\n    \n    for day in working_hours:\n        start_work, end_work = [datetime.datetime.strptime(t, \"%H:%M\") for t in working_hours[day]]\n        available_slots = [(start_work, end_work)]\n        \n        # Mark busy slots\n        for busy in participant1_busy + participant2_busy:\n            new_available_slots = []\n            for available in available_slots:\n                if busy[0] > available[0]:\n                    new_available_slots.append((available[0], min(busy[0], available[1])))\n                if busy[1] < available[1]:\n                    new_available_slots.append((max(busy[1], available[0]), available[1]))\n            available_slots = new_available_slots\n        \n        # Find suitable meeting time\n        for start, end in available_slots:\n            if end - start >= meeting_duration:\n                proposed_start = start\n                proposed_end = start + meeting_duration\n                return f\"{proposed_start.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')} {day}\"\n    \n    return None\n\n# Find the meeting time\nmeeting_time = find_time(nancy_schedule, jose_schedule, working_hours)\n\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_798"
+        }
+    ]
+}

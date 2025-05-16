@@ -1,0 +1,30 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 2-8",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 12\n    days_in_brussels = 2\n    days_in_split = 5\n    days_in_barcelona = 7\n    \n    # Flight connections\n    connections = {\n        'Brussels': ['Barcelona'],\n        'Barcelona': ['Brussels', 'Split'],\n        'Split': ['Barcelona']\n    }\n    \n    # Validate total days\n    if days_in_brussels + days_in_split + days_in_barcelona != total_days:\n        raise ValueError(\"Total days in cities do not match the trip duration.\")\n    \n    # Determine the itinerary based on constraints\n    itinerary = []\n    \n    # Day 1-2: Brussels (conference)\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Brussels'})\n    \n    # After conference, fly to Barcelona (Day 3)\n    itinerary.append({'flying': 'Day 3-3', 'from': 'Brussels', 'to': 'Barcelona'})\n    \n    # Stay in Barcelona for part of the time\n    barcelona_stay1 = 7 - (total_days - days_in_brussels - days_in_split)\n    itinerary.append({'day_range': f'Day 3-{3 + barcelona_stay1 - 1}', 'place': 'Barcelona'})\n    \n    # Fly to Split (Day 3 + barcelona_stay1)\n    fly_day = 3 + barcelona_stay1\n    itinerary.append({'flying': f'Day {fly_day}-{fly_day}', 'from': 'Barcelona', 'to': 'Split'})\n    \n    # Stay in Split for 5 days\n    itinerary.append({'day_range': f'Day {fly_day}-{fly_day + days_in_split - 1}', 'place': 'Split'})\n    \n    # Fly back to Barcelona (Day fly_day + days_in_split)\n    fly_day_back = fly_day + days_in_split\n    itinerary.append({'flying': f'Day {fly_day_back}-{fly_day_back}', 'from': 'Split', 'to': 'Barcelona'})\n    \n    # Stay in Barcelona for the remaining days\n    remaining_barcelona_days = days_in_barcelona - barcelona_stay1\n    itinerary.append({'day_range': f'Day {fly_day_back}-{fly_day_back + remaining_barcelona_days - 1}', 'place': 'Barcelona'})\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = calculate_itinerary()\n    print(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_188"
+        }
+    ]
+}

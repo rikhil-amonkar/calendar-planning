@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    import datetime\n\n    participants = {\n        'John': [(690, 720), (840, 870)],  # 11:30-12:00, 14:00-14:30\n        'Megan': [(720, 750), (840, 900), (930, 960)],  # 12:00-12:30, 14:00-15:00, 15:30-16:00\n        'Brandon': [],\n        'Kimberly': [(540, 570), (600, 630), (660, 870), (900, 960), (990, 1020)],  # 9:00-9:30, 10:00-10:30, 11:00-14:30, 15:00-16:00, 16:30-17:00\n        'Sean': [(600, 660), (690, 840), (900, 930)],  # 10:00-11:00, 11:30-14:00, 15:00-15:30\n        'Lori': [(540, 570), (630, 720), (780, 870), (960, 990)]  # 9:00-9:30, 10:30-12:00, 13:00-14:30, 16:00-16:30\n    }\n\n    work_start = 540  # 9:00 in minutes since midnight\n    work_end = 1020   # 17:00 in minutes since midnight\n    duration = 30\n\n    all_busy = []\n    for person in participants.values():\n        all_busy.extend(person)\n    all_busy.sort()\n\n    def merge_intervals(intervals):\n        if not intervals:\n            return []\n        merged = [list(intervals[0])]\n        for current in intervals[1:]:\n            last = merged[-1]\n            if current[0] <= last[1]:\n                last[1] = max(last[1], current[1])\n            else:\n                merged.append(list(current))\n        return merged\n\n    merged_busy = merge_intervals(all_busy)\n    free_slots = []\n    previous_end = work_start\n    for start, end in merged_busy:\n        if start > previous_end:\n            free_slots.append((previous_end, start))\n        previous_end = max(previous_end, end)\n    if previous_end < work_end:\n        free_slots.append((previous_end, work_end))\n\n    for slot in free_slots:\n        start, end = slot\n        if end - start >= duration:\n            meeting_start = start\n            meeting_end = start + duration\n            return (\n                datetime.time(meeting_start // 60, meeting_start % 60).strftime('%H:%M'),\n                datetime.time(meeting_end // 60, meeting_end % 60).strftime('%H:%M'),\n                'Monday'\n            )\n\n    return None\n\nstart_time, end_time, day = find_meeting_time()\nprint(f\"{day}:{start_time}:{end_time}\")\n'''",
+            "count": "calendar_scheduling_example_337"
+        }
+    ]
+}

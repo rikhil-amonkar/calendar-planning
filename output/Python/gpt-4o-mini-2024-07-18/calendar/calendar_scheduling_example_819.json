@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Thursday",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Participants' availability\njulie_schedule = []\nruth_schedule = [\n    (datetime.strptime('09:00', '%H:%M'), datetime.strptime('17:00', '%H:%M')),  # Monday\n    (datetime.strptime('09:00', '%H:%M'), datetime.strptime('17:00', '%H:%M')),  # Tuesday\n    (datetime.strptime('09:00', '%H:%M'), datetime.strptime('17:00', '%H:%M')),  # Wednesday\n    (datetime.strptime('09:00', '%H:%M'), datetime.strptime('11:00', '%H:%M')),  # Thursday busy\n    (datetime.strptime('11:30', '%H:%M'), datetime.strptime('14:30', '%H:%M')),  # Thursday busy\n    (datetime.strptime('15:00', '%H:%M'), datetime.strptime('17:00', '%H:%M'))   # Thursday busy\n]\n\n# Meeting constraints\nmeeting_duration = timedelta(minutes=30)\nwork_hours_start = datetime.strptime('09:00', '%H:%M')\nwork_hours_end = datetime.strptime('17:00', '%H:%M')\ndays_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']\n\n# Function to find a suitable meeting time\ndef find_meeting_time():\n    for day in days_of_week:\n        for start_hour in range(work_hours_start.hour, work_hours_end.hour):\n            proposed_start = datetime.strptime(f'{day} {start_hour:02}:00', '%A %H:%M')\n            proposed_end = proposed_start + meeting_duration\n            \n            if proposed_end.time() > work_hours_end.time():\n                continue\n            \n            if day == 'Thursday' and proposed_end <= datetime.strptime('11:30', '%H:%M'):\n                continue\n            \n            if proposed_start.time() < work_hours_start.time() or proposed_end.time() > work_hours_end.time():\n                continue\n            \n            # Check Ruth's schedule\n            slot_available = True\n            for busy_start, busy_end in ruth_schedule:\n                if not (proposed_end <= busy_start or proposed_start >= busy_end):\n                    slot_available = False\n                    break\n            \n            if slot_available:\n                return proposed_start.time(), proposed_end.time(), day\n    \n    return None\n\n# Get the meeting time\nmeeting_time = find_meeting_time()\nif meeting_time:\n    start_time, end_time, meeting_day = meeting_time\n    print(f'{start_time.strftime(\"%H:%M\")} : {end_time.strftime(\"%H:%M\")}, {meeting_day}')\n```\n",
+            "count": "calendar_scheduling_example_819"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Function to find common available slots for a meeting\ndef find_meeting_time(ronald_schedule, amber_schedule, duration):\n    # Define work hours\n    work_days = ['Monday', 'Tuesday', 'Wednesday']\n    work_start = 9 * 60  # 9:00 AM in minutes\n    work_end = 17 * 60    # 5:00 PM in minutes\n\n    # Prepare a list to check available slots\n    available_slots = []\n    \n    for day in work_days:\n        ronald_free_times = get_free_times(ronald_schedule[day], work_start, work_end)\n        amber_free_times = get_free_times(amber_schedule[day], work_start, work_end)\n\n        # Find common free time slots\n        common_free_times = find_common_availability(ronald_free_times, amber_free_times, duration)\n\n        if common_free_times:\n            available_slots.extend((day, slot) for slot in common_free_times)\n\n    return available_slots[0] if available_slots else None\n\ndef get_free_times(schedule, work_start, work_end):\n    # Convert blocked times into available times\n    free_times = []\n    last_end = work_start\n    \n    for start, end in sorted(schedule):\n        if start > last_end:\n            free_times.append((last_end, start))\n        last_end = max(last_end, end)\n    \n    if last_end < work_end:\n        free_times.append((last_end, work_end))\n    \n    return free_times\n\ndef find_common_availability(free_times1, free_times2, duration):\n    common_times = []\n    \n    for start1, end1 in free_times1:\n        for start2, end2 in free_times2:\n            common_start = max(start1, start2)\n            common_end = min(end1, end2)\n            \n            if (common_end - common_start) >= duration:\n                common_times.append((common_start, common_start + duration))\n\n    return common_times\n\n# Ronald and Amber's schedules\nronald_schedule = {\n    'Monday': [(630, 630 + 30), (720, 720 + 30), (930, 930 + 30)],\n    'Tuesday': [(540, 540 + 30), (720, 720 + 30), (930, 930 + 60)],\n    'Wednesday': [(570, 630), (660, 780)],\n}\n\namber_schedule = {\n    'Monday': [(540, 550), (600, 630), (750, 780), (840, 870)],\n    'Tuesday': [(540, 550), (600, 690), (720, 750)],\n    'Wednesday': [(540, 550), (600, 630), (660, 810)],\n}\n\n# Duration of the meeting in minutes\nmeeting_duration = 30\n\nmeeting_time = find_meeting_time(ronald_schedule, amber_schedule, meeting_duration)\n\nif meeting_time:\n    day, time_slot = meeting_time\n    start_time = (time_slot[0] // 60, time_slot[0] % 60)\n    print(f\"{day}: {start_time[0]:02}:{start_time[1]:02} - {start_time[0]:02}:{start_time[1] + meeting_duration:02}\")\n```\n",
+            "count": "calendar_scheduling_example_735"
+        }
+    ]
+}

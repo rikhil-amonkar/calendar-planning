@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Daniel",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kevin",
+                        "start_time": "13:41",
+                        "end_time": "14:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Betty",
+                        "start_time": "14:31",
+                        "end_time": "15:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Steven",
+                        "start_time": "16:30",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Lisa",
+                        "start_time": "19:15",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Daniel",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kevin",
+                        "start_time": "13:41",
+                        "end_time": "14:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Betty",
+                        "start_time": "14:31",
+                        "end_time": "15:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Steven",
+                        "start_time": "16:30",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Lisa",
+                        "start_time": "19:15",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport copy\n\n# Helper functions to convert time formats\ndef time_to_minutes(t_str):\n    # t_str in format \"H:MM\" (24-hour) or \"H:MMAM/PM\"\n    # For our use, we'll assume input times are in 24-hour format if no AM/PM\n    if t_str[-2:].lower() in ['am','pm']:\n        # Convert from e.g., \"7:15PM\"\n        period = t_str[-2:].lower()\n        t_core = t_str[:-2]\n        hours, minutes = map(int, t_core.split(\":\"))\n        if period == 'pm' and hours != 12:\n            hours += 12\n        if period == 'am' and hours == 12:\n            hours = 0\n    else:\n        hours, minutes = map(int, t_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# Travel times (in minutes) between locations as provided, stored as nested dictionary.\ntravel_times = {\n    \"Mission District\": {\n        \"The Castro\": 7,\n        \"Nob Hill\": 12,\n        \"Presidio\": 25,\n        \"Marina District\": 19,\n        \"Pacific Heights\": 16,\n        \"Golden Gate Park\": 17,\n        \"Chinatown\": 16,\n        \"Richmond District\": 20\n    },\n    \"The Castro\": {\n        \"Mission District\": 7,\n        \"Nob Hill\": 16,\n        \"Presidio\": 20,\n        \"Marina District\": 21,\n        \"Pacific Heights\": 16,\n        \"Golden Gate Park\": 11,\n        \"Chinatown\": 22,\n        \"Richmond District\": 16\n    },\n    \"Nob Hill\": {\n        \"Mission District\": 13,\n        \"The Castro\": 17,\n        \"Presidio\": 17,\n        \"Marina District\": 11,\n        \"Pacific Heights\": 8,\n        \"Golden Gate Park\": 17,\n        \"Chinatown\": 6,\n        \"Richmond District\": 14\n    },\n    \"Presidio\": {\n        \"Mission District\": 26,\n        \"The Castro\": 21,\n        \"Nob Hill\": 18,\n        \"Marina District\": 11,\n        \"Pacific Heights\": 11,\n        \"Golden Gate Park\": 12,\n        \"Chinatown\": 21,\n        \"Richmond District\": 7\n    },\n    \"Marina District\": {\n        \"Mission District\": 20,\n        \"The Castro\": 22,\n        \"Nob Hill\": 12,\n        \"Presidio\": 10,\n        \"Pacific Heights\": 7,\n        \"Golden Gate Park\": 18,\n        \"Chinatown\": 15,\n        \"Richmond District\": 11\n    },\n    \"Pacific Heights\": {\n        \"Mission District\": 15,\n        \"The Castro\": 16,\n        \"Nob Hill\": 8,\n        \"Presidio\": 11,\n        \"Marina District\": 6,\n        \"Golden Gate Park\": 15,\n        \"Chinatown\": 11,\n        \"Richmond District\": 12\n    },\n    \"Golden Gate Park\": {\n        \"Mission District\": 17,\n        \"The Castro\": 13,\n        \"Nob Hill\": 20,\n        \"Presidio\": 11,\n        \"Marina District\": 16,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 23,\n        \"Richmond District\": 7\n    },\n    \"Chinatown\": {\n        \"Mission District\": 17,\n        \"The Castro\": 22,\n        \"Nob Hill\": 9,\n        \"Presidio\": 19,\n        \"Marina District\": 12,\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 23,\n        \"Richmond District\": 20\n    },\n    \"Richmond District\": {\n        \"Mission District\": 20,\n        \"The Castro\": 16,\n        \"Nob Hill\": 17,\n        \"Presidio\": 7,\n        \"Marina District\": 9,\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 9,\n        \"Chinatown\": 20\n    }\n}\n\n# Meeting constraints for each friend. Times are stored in minutes after midnight.\nmeetings = {\n    \"Lisa\": {\n        \"location\": \"The Castro\",\n        \"avail_start\": time_to_minutes(\"19:15\"),\n        \"avail_end\": time_to_minutes(\"21:15\"),\n        \"min_duration\": 120\n    },\n    \"Daniel\": {\n        \"location\": \"Nob Hill\",\n        \"avail_start\": time_to_minutes(\"8:15\"),\n        \"avail_end\": time_to_minutes(\"11:00\"),\n        \"min_duration\": 15\n    },\n    \"Elizabeth\": {\n        \"location\": \"Presidio\",\n        \"avail_start\": time_to_minutes(\"21:15\"),\n        \"avail_end\": time_to_minutes(\"22:15\"),\n        \"min_duration\": 45\n    },\n    \"Steven\": {\n        \"location\": \"Marina District\",\n        \"avail_start\": time_to_minutes(\"16:30\"),\n        \"avail_end\": time_to_minutes(\"20:45\"),\n        \"min_duration\": 90\n    },\n    \"Timothy\": {\n        \"location\": \"Pacific Heights\",\n        \"avail_start\": time_to_minutes(\"12:00\"),\n        \"avail_end\": time_to_minutes(\"18:00\"),\n        \"min_duration\": 90\n    },\n    \"Ashley\": {\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": time_to_minutes(\"20:45\"),\n        \"avail_end\": time_to_minutes(\"21:45\"),\n        \"min_duration\": 60\n    },\n    \"Kevin\": {\n        \"location\": \"Chinatown\",\n        \"avail_start\": time_to_minutes(\"12:00\"),\n        \"avail_end\": time_to_minutes(\"19:00\"),\n        \"min_duration\": 30\n    },\n    \"Betty\": {\n        \"location\": \"Richmond District\",\n        \"avail_start\": time_to_minutes(\"13:15\"),\n        \"avail_end\": time_to_minutes(\"15:45\"),\n        \"min_duration\": 30\n    }\n}\n\n# Initial state parameters\nSTART_TIME = time_to_minutes(\"9:00\")\nSTART_LOCATION = \"Mission District\"\n\n# We'll use backtracking to search over all possible orders of meetings to maximize number of friends met.\n# Each state: current_time, current_location, remaining meetings, current itinerary.\n# Itinerary items will be a list of dict items with meeting details.\nbest_itinerary = []\nbest_count = 0\n\ndef search(curr_time, curr_loc, remaining, itinerary):\n    global best_itinerary, best_count\n    # Update best if current itinerary length is greater\n    if len(itinerary) > best_count:\n        best_count = len(itinerary)\n        best_itinerary = copy.deepcopy(itinerary)\n    # Try each remaining meeting\n    for person in list(remaining.keys()):\n        meeting = remaining[person]\n        dest = meeting[\"location\"]\n        # Check if travel time exists from current location to destination\n        if curr_loc not in travel_times or dest not in travel_times[curr_loc]:\n            continue\n        travel = travel_times[curr_loc][dest]\n        arrival_time = curr_time + travel\n        # meeting can only start at max(arrival_time, meeting available start)\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"min_duration\"]\n        # Check if meeting can be finished within avail_end\n        if meeting_end > meeting[\"avail_end\"]:\n            continue\n        # Prepare itinerary record for this meeting\n        meeting_item = {\n            \"action\": \"meet\",\n            \"location\": dest,\n            \"person\": person,\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        }\n        # Create new remaining dictionary without this person\n        new_remaining = copy.deepcopy(remaining)\n        del new_remaining[person]\n        # Recurse from the end time and destination of this meeting\n        new_itinerary = itinerary + [meeting_item]\n        search(meeting_end, dest, new_remaining, new_itinerary)\n    # Also, it's valid to end the itinerary here.\n\n# Run the search starting from the initial state with all meetings available.\nsearch(START_TIME, START_LOCATION, meetings, [])\n\n# Prepare the output dictionary in the required JSON structure.\noutput = {\n    \"itinerary\": best_itinerary\n}\n\n# Output the JSON formatted result.\nprint(json.dumps(output, indent=2))",
+            "count": "meeting_planning_example_701"
+        }
+    ]
+}

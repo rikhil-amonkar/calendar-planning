@@ -1,0 +1,77 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 6-6",
+                        "place": "Frankfurt (Annual Show)"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Mykonos (with friend)"
+                    },
+                    {
+                        "day_range": "Day 22-26",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 28-31",
+                        "place": "Manchester (Wedding)"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define trip parameters\n    cities = [\n        {'name': 'Porto', 'days': 2},\n        {'name': 'Geneva', 'days': 3},\n        {'name': 'Mykonos', 'days': 3, 'friend_meet_days': (10, 12)},\n        {'name': 'Manchester', 'days': 4, 'wedding_days': (15, 18)},\n        {'name': 'Hamburg', 'days': 5},\n        {'name': 'Naples', 'days': 5},\n        {'name': 'Frankfurt', 'days': 2, 'show_days': (5, 6)}\n    ]\n\n    # Define the direct flights connections\n    direct_flights = {\n        'Hamburg': ['Frankfurt', 'Porto', 'Geneva', 'Manchester'],\n        'Naples': ['Mykonos', 'Geneva', 'Manchester', 'Frankfurt'],\n        'Porto': ['Hamburg', 'Geneva', 'Manchester'],\n        'Geneva': ['Hamburg', 'Mykonos', 'Frankfurt', 'Porto', 'Manchester', 'Naples'],\n        'Mykonos': ['Naples', 'Geneva'],\n        'Frankfurt': ['Hamburg', 'Geneva', 'Manchester', 'Naples', 'Porto'],\n        'Manchester': ['Hamburg', 'Frankfurt', 'Naples', 'Porto']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    total_days = 0\n    current_day = 1\n    \n    # Porto\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Porto'})\n    total_days += 2\n    current_day += 2\n    \n    # Frankfurt\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Porto', 'to': 'Frankfurt'})\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Frankfurt'})\n    total_days += 2\n    current_day += 2\n    \n    # Annual show in Frankfurt\n    itinerary.append({'day_range': f'Day {current_day}-{current_day}', 'place': 'Frankfurt (Annual Show)'})\n    total_days += 1\n    current_day += 1\n    \n    # Hamburg\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Frankfurt', 'to': 'Hamburg'})\n    total_days += 1\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Hamburg'})\n    total_days += 5\n    current_day += 5\n    \n    # Geneva\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Hamburg', 'to': 'Geneva'})\n    total_days += 1\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Geneva'})\n    total_days += 3\n    current_day += 3\n    \n    # Mykonos (meet friend)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Geneva', 'to': 'Mykonos'})\n    total_days += 1\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Mykonos (with friend)'})\n    total_days += 3\n    current_day += 3\n    \n    # Naples\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Mykonos', 'to': 'Naples'})\n    total_days += 1\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Naples'})\n    total_days += 5\n    current_day += 5\n    \n    # Manchester (wedding)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Naples', 'to': 'Manchester'})\n    total_days += 1\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Manchester (Wedding)'})\n    total_days += 4\n    current_day += 4\n\n    # Output result as JSON\n    return json.dumps(itinerary, indent=2)\n\nif __name__ == \"__main__\":\n    itinerary_json = plan_trip()\n    print(itinerary_json)\n```",
+            "count": "trip_planning_example_857"
+        }
+    ]
+}

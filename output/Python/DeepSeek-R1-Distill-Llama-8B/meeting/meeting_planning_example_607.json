@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Matthew",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Michelle",
+                        "start_time": "10:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Carol",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Stephanie",
+                        "start_time": "13:37",
+                        "end_time": "14:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Jessica",
+                        "start_time": "15:45",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Linda",
+                        "start_time": "16:56",
+                        "end_time": "18:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "Okay, so I need to write a Python program that helps me figure out the best schedule to meet as many friends as possible in San Francisco. I'm starting at the Sunset District at 9:00 AM, and I have several friends spread out across different locations with specific availability windows and meeting duration requirements.\n\nFirst, I'll need to understand the travel times between different districts. The user provided a dictionary with travel distances in minutes between various locations. I'll use this data to calculate how long it takes to travel between places.\n\nNext, I have a list of friends, each with their own location, availability start and end times, and the minimum duration they need for a meeting. My goal is to meet as many of them as possible, starting with the ones who require the most time since they're harder to fit in.\n\nI think the best approach is to sort the friends based on their required meeting duration in descending order. That way, I can try to meet the person who needs the most time first, then move on to the next, ensuring I maximize the number of meetings.\n\nFor each person, I'll need to calculate the earliest possible time I can meet them based on my current location and the travel time. Then, I'll check if this time fits within their availability window. If it does, I'll schedule the meeting as late as possible within their window to leave room for other meetings.\n\nI'll keep track of my current location and time after each meeting and update the itinerary accordingly. If a meeting isn't feasible, I'll skip to the next person.\n\nFinally, I'll convert the itinerary into a JSON format and print it out. This way, I can see the optimal schedule based on the constraints provided.\n\nI should make sure to handle edge cases, like when a meeting doesn't fit into the person's schedule or when the travel time makes it impossible to meet someone. The program should dynamically adjust based on these factors.\n\nOverall, the steps are:\n1. Read and organize travel times.\n2. Sort friends by meeting duration.\n3. For each friend, calculate possible meeting times.\n4. Schedule meetings if feasible.\n5. Update current location and time.\n6. Convert the itinerary to JSON and print it.\n\nI think this approach should help me meet as many friends as possible while respecting all the constraints and travel times.\n</think>\n\n```python\n# Read the input parameters and create a dictionary of travel times\ntravel_times = {\n    'Sunset District': {\n        'Russian Hill': 24,\n        'The Castro': 17,\n        'Richmond District': 12,\n        'Marina District': 21,\n        'North Beach': 29,\n        'Union Square': 30,\n        'Golden Gate Park': 11,\n    },\n    'Russian Hill': {\n        'Sunset District': 23,\n        'The Castro': 21,\n        'Richmond District': 14,\n        'Marina District': 7,\n        'North Beach': 5,\n        'Union Square': 11,\n        'Golden Gate Park': 21,\n    },\n    'The Castro': {\n        'Sunset District': 17,\n        'Russian Hill': 18,\n        'Richmond District': 16,\n        'Marina District': 21,\n        'North Beach': 20,\n        'Union Square': 19,\n        'Golden Gate Park': 11,\n    },\n    'Richmond District': {\n        'Sunset District': 11,\n        'Russian Hill': 13,\n        'The Castro': 16,\n        'Marina District': 9,\n        'North Beach': 17,\n        'Union Square': 21,\n        'Golden Gate Park': 9,\n    },\n    'Marina District': {\n        'Sunset District': 19,\n        'Russian Hill': 8,\n        'The Castro': 22,\n        'Richmond District': 11,\n        'North Beach': 11,\n        'Union Square': 16,\n        'Golden Gate Park': 18,\n    },\n    'North Beach': {\n        'Sunset District': 27,\n        'Russian Hill': 4,\n        'The Castro': 22,\n        'Richmond District': 18,\n        'Marina District': 11,\n        'Union Square': 7,\n        'Golden Gate Park': 22,\n    },\n    'Union Square': {\n        'Sunset District': 26,\n        'Russian Hill': 13,\n        'The Castro': 19,\n        'Richmond District': 20,\n        'Marina District': 18,\n        'North Beach': 10,\n        'Golden Gate Park': 22,\n    },\n    'Golden Gate Park': {\n        'Sunset District': 10,\n        'Russian Hill': 19,\n        'The Castro': 13,\n        'Richmond District': 7,\n        'Marina District': 16,\n        'North Beach': 24,\n        'Union Square': 22,\n    }\n}\n\n# Define the current location and time\ncurrent_location = 'Sunset District'\ncurrent_time = '9:00'\n\nitinerary = []\n\n# List of people with their constraints\npeople = [\n    {'name': 'Karen', 'location': 'Russian Hill', 'start': '20:45', 'end': '21:45', 'duration': 60},\n    {'name': 'Jessica', 'location': 'The Castro', 'start': '14:45', 'end': '19:30', 'duration': 60},\n    {'name': 'Matthew', 'location': 'Richmond District', 'start': '7:30', 'end': '13:15', 'duration': 15},\n    {'name': 'Michelle', 'location': 'Marina District', 'start': '10:30', 'end': '17:45', 'duration': 75},\n    {'name': 'Carol', 'location': 'North Beach', 'start': '12:00', 'end': '17:00', 'duration': 90},\n    {'name': 'Stephanie', 'location': 'Union Square', 'start': '10:45', 'end': '13:15', 'duration': 30},\n    {'name': 'Linda', 'location': 'Golden Gate Park', 'start': '10:45', 'end': '22:00', 'duration': 90},\n]\n\n# Sort people by duration in descending order\npeople_sorted = sorted(people, key=lambda x: -x['duration'])\n\nimport datetime\n\nfor person in people_sorted:\n    # Calculate the latest possible start time considering current location and travel time\n    location = person['location']\n    if current_location not in travel_times:\n        continue  # Skip if current location is not in the travel times\n    if location not in travel_times[current_location]:\n        continue  # Skip if location is not reachable from current location\n    travel_time = travel_times[current_location][location]\n    \n    # Convert current_time to datetime object\n    current_dt = datetime.datetime.strptime(current_time, \"%H:%M\")\n    \n    # Calculate earliest possible start time\n    earliest_possible_start = current_dt + datetime.timedelta(minutes=travel_time)\n    earliest_possible_start = earliest_possible_start.replace(second=0, microsecond=0)\n    \n    # Check if earliest possible start is within the person's availability\n    start_dt = datetime.datetime.strptime(person['start'], \"%H:%M\")\n    end_dt = datetime.datetime.strptime(person['end'], \"%H:%M\")\n    \n    if earliest_possible_start > end_dt:\n        continue  # Not possible to meet this person\n    \n    # Ensure that the meeting duration fits within the person's availability\n    if (end_dt - earliest_possible_start).total_seconds() < (person['duration'] * 60):\n        continue  # Not enough time to meet\n    \n    # Calculate the latest possible start time to maximize remaining time\n    latest_possible_start = end_dt - datetime.timedelta(minutes=person['duration'])\n    if latest_possible_start < current_dt:\n        latest_possible_start = current_dt\n    \n    # Choose the latest possible start time\n    start_dt = latest_possible_start\n    \n    # Check if the calculated start time is valid\n    if start_dt < current_dt:\n        continue  # Not possible to meet this person\n    \n    # Create the meeting entry\n    meeting = {\n        'action': 'meet',\n        'location': location,\n        'person': person['name'],\n        'start_time': start_dt.strftime(\"%H:%M\"),\n        'end_time': (start_dt + datetime.timedelta(minutes=person['duration'])).strftime(\"%H:%MM\")\n    }\n    itinerary.append(meeting)\n    \n    # Update current location and time\n    current_location = location\n    current_time = meeting['end_time']\n\n# Convert the itinerary to JSON format\nimport json\nprint(json.dumps(itinerary))\n```",
+            "count": "meeting_planning_example_607"
+        }
+    ]
+}

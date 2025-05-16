@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "16:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Jessica",
+                        "start_time": "16:45",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "18:30",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "16:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Jessica",
+                        "start_time": "16:45",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "18:30",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef time_to_min(timestr):\n    h, m = map(int, timestr.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    h = m // 60\n    min = m % 60\n    return f\"{h}:{min:02d}\"\n\ntravel_time = {\n    'Bayview': {'Embarcadero': 19, 'Richmond District': 25, 'Fisherman\\'s Wharf': 25},\n    'Embarcadero': {'Bayview': 21, 'Richmond District': 21, 'Fisherman\\'s Wharf': 6},\n    'Richmond District': {'Bayview': 26, 'Embarcadero': 19, 'Fisherman\\'s Wharf': 18},\n    'Fisherman\\'s Wharf': {'Bayview': 26, 'Embarcadero': 8, 'Richmond District': 18}\n}\n\nfriends = [\n    {'name': 'Jessica', 'location': 'Embarcadero', 'start': time_to_min('16:45'), 'end': time_to_min('19:00'), 'duration': 30},\n    {'name': 'Sandra', 'location': 'Richmond District', 'start': time_to_min('18:30'), 'end': time_to_min('21:45'), 'duration': 120},\n    {'name': 'Jason', 'location': 'Fisherman\\'s Wharf', 'start': time_to_min('16:00'), 'end': time_to_min('16:45'), 'duration': 30}\n]\n\nbest_itinerary = []\nmax_meetings = 0\n\nfor perm in itertools.permutations(friends):\n    current_loc = 'Bayview'\n    current_time = time_to_min('9:00')\n    itinerary = []\n    valid = True\n    \n    for f in perm:\n        if current_loc not in travel_time or f['location'] not in travel_time[current_loc]:\n            valid = False\n            break\n        travel = travel_time[current_loc][f['location']]\n        arrival = current_time + travel\n        start = max(arrival, f['start'])\n        end = start + f['duration']\n        if end > f['end']:\n            valid = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': f['location'],\n            'person': f['name'],\n            'start_time': min_to_time(start),\n            'end_time': min_to_time(end)\n        })\n        current_loc = f['location']\n        current_time = end\n    \n    if valid and len(itinerary) > max_meetings:\n        max_meetings = len(itinerary)\n        best_itinerary = itinerary\n\nprint(json.dumps({'itinerary': best_itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_215"
+        }
+    ]
+}

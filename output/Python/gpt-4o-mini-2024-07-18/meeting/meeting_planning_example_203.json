@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "9:13",
+                        "end_time": "10:28"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "10:51",
+                        "end_time": "11:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "11:12",
+                        "end_time": "12:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Robert",
+                        "start_time": "12:42",
+                        "end_time": "14:12"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times (in minutes)\ntravel_times = {\n    (\"Financial District\", \"Fisherman's Wharf\"): 10,\n    (\"Financial District\", \"Pacific Heights\"): 13,\n    (\"Financial District\", \"Mission District\"): 17,\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    (\"Fisherman's Wharf\", \"Mission District\"): 22,\n    (\"Pacific Heights\", \"Financial District\"): 13,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Mission District\", \"Financial District\"): 17,\n    (\"Mission District\", \"Fisherman's Wharf\"): 22,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n}\n\n# Define constraints\nconstraints = {\n    \"David\": {\"location\": \"Fisherman's Wharf\", \"start\": \"10:45\", \"end\": \"15:30\", \"duration\": 15},\n    \"Timothy\": {\"location\": \"Pacific Heights\", \"start\": \"9:00\", \"end\": \"15:30\", \"duration\": 75},\n    \"Robert\": {\"location\": \"Mission District\", \"start\": \"12:15\", \"end\": \"19:45\", \"duration\": 90},\n}\n\n# Convert time strings to datetime objects for easier manipulation\ndef str_to_time(s):\n    return datetime.strptime(s, '%H:%M')\n\n# Travel and meeting scheduling logic\ndef compute_schedule():\n    itinerary = []\n    \n    # Start at Financial District at 9:00\n    current_time = str_to_time(\"9:00\")\n    \n    # Meet Timothy at Pacific Heights\n    travel_time = travel_times[(\"Financial District\", \"Pacific Heights\")]\n    arrive_time = current_time + timedelta(minutes=travel_time)\n    \n    if arrive_time <= str_to_time(constraints[\"Timothy\"][\"end\"]):\n        meeting_start = max(arrive_time, str_to_time(constraints[\"Timothy\"][\"start\"]))\n        meeting_end = meeting_start + timedelta(minutes=constraints[\"Timothy\"][\"duration\"])\n        \n        if meeting_end <= str_to_time(constraints[\"Timothy\"][\"end\"]):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": constraints[\"Timothy\"][\"location\"],\n                \"person\": \"Timothy\",\n                \"start_time\": meeting_start.strftime('%H:%M'),\n                \"end_time\": meeting_end.strftime('%H:%M')\n            })\n            current_time = meeting_end + timedelta(minutes=travel_time)  # Travel time back\n    \n    # Meet David at Fisherman's Wharf\n    travel_time = travel_times[(\"Financial District\", \"Fisherman's Wharf\")]\n    arrive_time = current_time + timedelta(minutes=travel_time)\n    \n    if arrive_time <= str_to_time(constraints[\"David\"][\"end\"]):\n        meeting_start = max(arrive_time, str_to_time(constraints[\"David\"][\"start\"]))\n        meeting_end = meeting_start + timedelta(minutes=constraints[\"David\"][\"duration\"])\n        \n        if meeting_end <= str_to_time(constraints[\"David\"][\"end\"]):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": constraints[\"David\"][\"location\"],\n                \"person\": \"David\",\n                \"start_time\": meeting_start.strftime('%H:%M'),\n                \"end_time\": meeting_end.strftime('%H:%M')\n            })\n            current_time = meeting_end + timedelta(minutes=travel_time)  # Travel time back\n    \n    # Meet Robert at Mission District\n    travel_time = travel_times[(\"Financial District\", \"Mission District\")]\n    arrive_time = current_time + timedelta(minutes=travel_time)\n\n    if arrive_time <= str_to_time(constraints[\"Robert\"][\"end\"]):\n        meeting_start = max(arrive_time, str_to_time(constraints[\"Robert\"][\"start\"]))\n        meeting_end = meeting_start + timedelta(minutes=constraints[\"Robert\"][\"duration\"])\n\n        if meeting_end <= str_to_time(constraints[\"Robert\"][\"end\"]):\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": constraints[\"Robert\"][\"location\"],\n                \"person\": \"Robert\",\n                \"start_time\": meeting_start.strftime('%H:%M'),\n                \"end_time\": meeting_end.strftime('%H:%M')\n            })\n    \n    return {\"itinerary\": itinerary}\n\n# Execute the meeting schedule computation\nschedule = compute_schedule()\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_203"
+        }
+    ]
+}

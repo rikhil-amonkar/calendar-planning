@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 24-28",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 29-32",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 33-37",
+                        "place": "Munich"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 27-28",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    visited_cities = set()\n    city_stay = {}\n\n    # Initialize city_stay dictionary\n    for city, stay in constraints.items():\n        city_stay[city] = stay\n\n    # Visit Naples\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Naples\"] - 1}', 'place': 'Naples'})\n    visited_cities.add('Naples')\n    current_day += city_stay[\"Naples\"]\n\n    # Visit Athens\n    if 'Athens' in direct_flights['Naples']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Naples', 'to': 'Athens'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Athens\"] - 1}', 'place': 'Athens'})\n        visited_cities.add('Athens')\n        current_day += city_stay[\"Athens\"]\n    else:\n        raise Exception(\"No direct flight from Naples to Athens\")\n\n    # Visit Copenhagen\n    if 'Copenhagen' in direct_flights['Athens']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Athens', 'to': 'Copenhagen'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Copenhagen\"] - 1}', 'place': 'Copenhagen'})\n        visited_cities.add('Copenhagen')\n        current_day += city_stay[\"Copenhagen\"]\n    else:\n        raise Exception(\"No direct flight from Athens to Copenhagen\")\n\n    # Visit Prague\n    if 'Prague' in direct_flights['Copenhagen']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Copenhagen', 'to': 'Prague'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Prague\"] - 1}', 'place': 'Prague'})\n        visited_cities.add('Prague')\n        current_day += city_stay[\"Prague\"]\n    else:\n        raise Exception(\"No direct flight from Copenhagen to Prague\")\n\n    # Visit Geneva\n    if 'Geneva' in direct_flights['Prague']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Prague', 'to': 'Geneva'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Geneva\"] - 1}', 'place': 'Geneva'})\n        visited_cities.add('Geneva')\n        current_day += city_stay[\"Geneva\"]\n    else:\n        raise Exception(\"No direct flight from Prague to Geneva\")\n\n    # Visit Mykonos\n    if 'Mykonos' in direct_flights['Geneva']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Geneva', 'to': 'Mykonos'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Mykonos\"] - 1}', 'place': 'Mykonos'})\n        visited_cities.add('Mykonos')\n        current_day += city_stay[\"Mykonos\"]\n    else:\n        raise Exception(\"No direct flight from Geneva to Mykonos\")\n\n    # Visit Dubrovnik\n    if 'Dubrovnik' in direct_flights['Mykonos']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Mykonos', 'to': 'Dubrovnik'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Dubrovnik\"] - 1}', 'place': 'Dubrovnik'})\n        visited_cities.add('Dubrovnik')\n        current_day += city_stay[\"Dubrovnik\"]\n    else:\n        raise Exception(\"No direct flight from Mykonos to Dubrovnik\")\n\n    # Visit Santorini\n    if 'Santorini' in direct_flights['Dubrovnik']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Dubrovnik', 'to': 'Santorini'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Santorini\"] - 1}', 'place': 'Santorini'})\n        visited_cities.add('Santorini')\n        current_day += city_stay[\"Santorini\"]\n    else:\n        raise Exception(\"No direct flight from Dubrovnik to Santorini\")\n\n    # Visit Brussels\n    if 'Brussels' in direct_flights['Santorini']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Santorini', 'to': 'Brussels'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Brussels\"] - 1}', 'place': 'Brussels'})\n        visited_cities.add('Brussels')\n        current_day += city_stay[\"Brussels\"]\n    else:\n        raise Exception(\"No direct flight from Santorini to Brussels\")\n\n    # Visit Munich\n    if 'Munich' in direct_flights['Brussels']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Brussels', 'to': 'Munich'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Munich\"] - 1}', 'place': 'Munich'})\n        visited_cities.add('Munich')\n        current_day += city_stay[\"Munich\"]\n    else:\n        raise Exception(\"No direct flight from Brussels to Munich\")\n\n    # Check if all cities are visited\n    for city in constraints:\n        if city not in visited_cities:\n            raise Exception(f\"City {city} is not visited\")\n\n    return trip_plan\n\ndef main():\n    constraints = {\n        \"Copenhagen\": 5,\n        \"Geneva\": 3,\n        \"Mykonos\": 2,\n        \"Naples\": 4,\n        \"Prague\": 2,\n        \"Dubrovnik\": 3,\n        \"Athens\": 4,\n        \"Santorini\": 5,\n        \"Brussels\": 4,\n        \"Munich\": 5\n    }\n\n    direct_flights = {\n        \"Copenhagen\": [\"Dubrovnik\", \"Brussels\", \"Prague\", \"Munich\", \"Athens\"],\n        \"Brussels\": [\"Copenhagen\", \"Naples\", \"Munich\", \"Athens\", \"Geneva\"],\n        \"Prague\": [\"Geneva\", \"Athens\", \"Copenhagen\", \"Brussels\", \"Munich\"],\n        \"Athens\": [\"Geneva\", \"Dubrovnik\", \"Mykonos\", \"Munich\", \"Copenhagen\", \"Brussels\", \"Naples\"],\n        \"Naples\": [\"Dubrovnik\", \"Mykonos\", \"Munich\", \"Athens\", \"Copenhagen\", \"Geneva\", \"Brussels\"],\n        \"Munich\": [\"Mykonos\", \"Dubrovnik\", \"Brussels\", \"Copenhagen\", \"Athens\", \"Naples\", \"Geneva\", \"Prague\"],\n        \"Geneva\": [\"Mykonos\", \"Munich\", \"Dubrovnik\", \"Santorini\", \"Athens\", \"Copenhagen\", \"Brussels\", \"Prague\", \"Naples\"],\n        \"Mykonos\": [\"Dubrovnik\", \"Naples\", \"Munich\", \"Athens\", \"Geneva\"],\n        \"Dubrovnik\": [\"Munich\", \"Santorini\", \"Copenhagen\", \"Athens\", \"Naples\", \"Geneva\"],\n        \"Santorini\": [\"Geneva\", \"Athens\", \"Naples\", \"Copenhagen\", \"Brussels\"]\n    }\n\n    trip_plan = calculate_trip_plan(constraints, direct_flights)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1487"
+        }
+    ]
+}

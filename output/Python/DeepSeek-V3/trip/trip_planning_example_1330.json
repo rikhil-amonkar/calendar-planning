@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    total_days = 25\n    cities = {\n        'Salzburg': {'days': 2, 'constraints': []},\n        'Venice': {'days': 5, 'constraints': []},\n        'Bucharest': {'days': 4, 'constraints': []},\n        'Brussels': {'days': 2, 'constraints': [{'day_range': (21, 22)}]},\n        'Hamburg': {'days': 4, 'constraints': []},\n        'Copenhagen': {'days': 4, 'constraints': [{'day_range': (18, 21)}]},\n        'Nice': {'days': 3, 'constraints': [{'day_range': (9, 11)}]},\n        'Zurich': {'days': 5, 'constraints': []},\n        'Naples': {'days': 4, 'constraints': [{'day_range': (22, 25)}]}\n    }\n\n    flight_connections = {\n        'Zurich': ['Brussels', 'Nice', 'Naples', 'Copenhagen', 'Venice', 'Bucharest', 'Hamburg'],\n        'Brussels': ['Zurich', 'Venice', 'Bucharest', 'Hamburg', 'Nice', 'Copenhagen', 'Naples'],\n        'Bucharest': ['Copenhagen', 'Hamburg', 'Brussels', 'Naples', 'Zurich'],\n        'Venice': ['Brussels', 'Naples', 'Copenhagen', 'Zurich', 'Nice', 'Hamburg'],\n        'Nice': ['Zurich', 'Hamburg', 'Brussels', 'Venice', 'Naples', 'Copenhagen'],\n        'Hamburg': ['Nice', 'Bucharest', 'Brussels', 'Copenhagen', 'Zurich', 'Venice', 'Salzburg'],\n        'Copenhagen': ['Bucharest', 'Venice', 'Zurich', 'Hamburg', 'Brussels', 'Naples', 'Nice'],\n        'Naples': ['Zurich', 'Venice', 'Bucharest', 'Brussels', 'Copenhagen', 'Nice'],\n        'Salzburg': ['Hamburg']\n    }\n\n    # Generate all possible city permutations\n    city_names = list(cities.keys())\n    possible_sequences = permutations(city_names)\n\n    valid_itineraries = []\n\n    for sequence in possible_sequences:\n        current_day = 1\n        itinerary = []\n        prev_city = None\n        feasible = True\n\n        for city in sequence:\n            # Check if current city can be reached from previous city\n            if prev_city and city not in flight_connections[prev_city]:\n                feasible = False\n                break\n\n            # Check constraints for the current city\n            constraints = cities[city]['constraints']\n            stay_days = cities[city]['days']\n            end_day = current_day + stay_days - 1\n\n            for constraint in constraints:\n                c_start, c_end = constraint['day_range']\n                if not (current_day <= c_end and end_day >= c_start):\n                    feasible = False\n                    break\n\n            if not feasible:\n                break\n\n            # Add stay to itinerary\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n\n            # Add flight if not first city\n            if prev_city:\n                itinerary.append({\n                    'flying': f'Day {current_day-1}-{current_day-1}',\n                    'from': prev_city,\n                    'to': city\n                })\n\n            prev_city = city\n            current_day = end_day + 1\n\n            # Check if total days exceeded\n            if current_day - 1 > total_days:\n                feasible = False\n                break\n\n        # Check if all days are used\n        if feasible and (current_day - 1) == total_days:\n            valid_itineraries.append(itinerary)\n\n    # Select the first valid itinerary (can be optimized further)\n    if valid_itineraries:\n        output = valid_itineraries[0]\n    else:\n        output = []\n\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1330"
+        }
+    ]
+}

@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Joseph",
+                        "start_time": "11:30",
+                        "end_time": "12:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:30",
+                        "end_time": "15:07"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Joseph",
+                        "start_time": "11:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "15:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Laura",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define the travel times in minutes as a dictionary\ntravel_times = {\n    (\"Fisherman's Wharf\", \"The Castro\"): 26,\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Embarcadero\"): 8,\n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"Alamo Square\"): 20,\n    (\"Fisherman's Wharf\", \"North Beach\"): 6,\n    (\"The Castro\", \"Golden Gate Park\"): 13,\n    (\"The Castro\", \"Embarcadero\"): 22,\n    (\"The Castro\", \"Russian Hill\"): 18,\n    (\"The Castro\", \"Nob Hill\"): 16,\n    (\"The Castro\", \"Alamo Square\"): 8,\n    (\"The Castro\", \"North Beach\"): 20,\n    (\"Golden Gate Park\", \"Embarcadero\"): 25,\n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Golden Gate Park\", \"Nob Hill\"): 20,\n    (\"Golden Gate Park\", \"Alamo Square\"): 10,\n    (\"Golden Gate Park\", \"North Beach\"): 24,\n    (\"Embarcadero\", \"Russian Hill\"): 8,\n    (\"Embarcadero\", \"Nob Hill\"): 10,\n    (\"Embarcadero\", \"Alamo Square\"): 19,\n    (\"Embarcadero\", \"North Beach\"): 5,\n    (\"Russian Hill\", \"Nob Hill\"): 5,\n    (\"Russian Hill\", \"Alamo Square\"): 15,\n    (\"Russian Hill\", \"North Beach\"): 5,\n    (\"Nob Hill\", \"Alamo Square\"): 11,\n    (\"Nob Hill\", \"North Beach\"): 8,\n    (\"Alamo Square\", \"North Beach\"): 15,\n}\n\n# Define the meeting constraints\nmeetings = {\n    \"Laura\": {\n        \"location\": \"The Castro\",\n        \"available\": (\"19:45\", \"21:30\"),\n        \"duration\": 105,\n    },\n    \"Daniel\": {\n        \"location\": \"Golden Gate Park\",\n        \"available\": (\"21:15\", \"21:45\"),\n        \"duration\": 15,\n    },\n    \"William\": {\n        \"location\": \"Embarcadero\",\n        \"available\": (\"07:00\", \"09:00\"),\n        \"duration\": 90,\n    },\n    \"Karen\": {\n        \"location\": \"Russian Hill\",\n        \"available\": (\"14:30\", \"19:45\"),\n        \"duration\": 30,\n    },\n    \"Stephanie\": {\n        \"location\": \"Nob Hill\",\n        \"available\": (\"07:30\", \"09:30\"),\n        \"duration\": 45,\n    },\n    \"Joseph\": {\n        \"location\": \"Alamo Square\",\n        \"available\": (\"11:30\", \"12:45\"),\n        \"duration\": 15,\n    },\n    \"Kimberly\": {\n        \"location\": \"North Beach\",\n        \"available\": (\"15:45\", \"19:15\"),\n        \"duration\": 30,\n    },\n}\n\n# Start from Fisherman's Wharf at 9:00 AM\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\nitinerary = []\ncurrent_time = start_time\n\n# Function to meet a person if the time constraints allow\ndef can_meet(person, start_time, current_time):\n    end_time_limit = datetime.strptime(meetings[person][\"available\"][1], \"%H:%M\")\n    available_start = datetime.strptime(meetings[person][\"available\"][0], \"%H:%M\")\n    duration = meetings[person][\"duration\"]\n    \n    travel_duration = travel_times.get((\"Fisherman's Wharf\", meetings[person][\"location\"]), 0)\n    \n    if current_time + timedelta(minutes=travel_duration) >= available_start:\n        meeting_end_time = current_time + timedelta(minutes=travel_duration) + timedelta(minutes=duration)\n        if meeting_end_time <= end_time_limit:\n            return meeting_end_time\n    return None\n\n# Attempt to schedule meetings in a reasonable order based on availability and preference\ndef schedule_meetings():\n    global current_time\n    \n    # Meet William first since he is available before 9:00\n    if current_time <= datetime.strptime(\"09:00\", \"%H:%M\"):\n        meeting_time = can_meet(\"William\", current_time, current_time)\n        if meeting_time:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": meetings[\"William\"][\"location\"],\n                \"person\": \"William\",\n                \"start_time\": current_time.strftime(\"%H:%M\"),\n                \"end_time\": meeting_time.strftime(\"%H:%M\"),\n            })\n            current_time = meeting_time\n    \n    # Meet Stephanie next\n    meeting_time = can_meet(\"Stephanie\", current_time, current_time)\n    if meeting_time:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Stephanie\"][\"location\"],\n            \"person\": \"Stephanie\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_time.strftime(\"%H:%M\"),\n        })\n        current_time = meeting_time\n\n    # Meet Joseph afterward\n    if current_time < datetime.strptime(\"11:30\", \"%H:%M\"):\n        current_time = datetime.strptime(\"11:30\", \"%H:%M\")  # Wait until 11:30\n    meeting_time = can_meet(\"Joseph\", current_time, current_time)\n    if meeting_time:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Joseph\"][\"location\"],\n            \"person\": \"Joseph\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_time.strftime(\"%H:%M\"),\n        })\n        current_time = meeting_time\n\n    # Meet Karen next\n    if current_time < datetime.strptime(\"14:30\", \"%H:%M\"):\n        current_time = datetime.strptime(\"14:30\", \"%H:%M\")  # Wait until 14:30\n    meeting_time = can_meet(\"Karen\", current_time, current_time)\n    if meeting_time:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Karen\"][\"location\"],\n            \"person\": \"Karen\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_time.strftime(\"%H:%M\"),\n        })\n        current_time = meeting_time\n\n    # Meet Kimberly next\n    meeting_time = can_meet(\"Kimberly\", current_time, current_time)\n    if meeting_time:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Kimberly\"][\"location\"],\n            \"person\": \"Kimberly\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_time.strftime(\"%H:%M\"),\n        })\n        current_time = meeting_time\n\n    # Finally, meet Laura at The Castro\n    if current_time < datetime.strptime(\"19:45\", \"%H:%M\"):\n        current_time = datetime.strptime(\"19:45\", \"%H:%M\")  # Wait until Laura is available\n    meeting_time = can_meet(\"Laura\", current_time, current_time)\n    if meeting_time:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Laura\"][\"location\"],\n            \"person\": \"Laura\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_time.strftime(\"%H:%M\"),\n        })\n        current_time = meeting_time\n\n    # Meet Daniel last if time allows\n    if current_time < datetime.strptime(\"21:15\", \"%H:%M\"):\n        current_time = datetime.strptime(\"21:15\", \"%H:%M\")  # Wait until Daniel is available\n    meeting_time = can_meet(\"Daniel\", current_time, current_time)\n    if meeting_time:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Daniel\"][\"location\"],\n            \"person\": \"Daniel\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_time.strftime(\"%H:%M\"),\n        })\n\nschedule_meetings()\n\n# Output the final itinerary in JSON format\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_604"
+        }
+    ]
+}

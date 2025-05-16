@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import timedelta, datetime\n\n# Participants' busy schedules\namanda_busy = {\n    'Monday': [\n        (timedelta(hours=9, minutes=0), timedelta(hours=10, minutes=30)),\n        (timedelta(hours=11, minutes=0), timedelta(hours=11, minutes=30)),\n        (timedelta(hours=12, minutes=30), timedelta(hours=13, minutes=0)),\n        (timedelta(hours=13, minutes=30), timedelta(hours=14, minutes=0)),\n        (timedelta(hours=14, minutes=30), timedelta(hours=15, minutes=0)),\n    ],\n    'Tuesday': [\n        (timedelta(hours=9, minutes=0), timedelta(hours=9, minutes=30)),\n        (timedelta(hours=10, minutes=0), timedelta(hours=10, minutes=30)),\n        (timedelta(hours=11, minutes=30), timedelta(hours=12, minutes=0)),\n        (timedelta(hours=13, minutes=30), timedelta(hours=14, minutes=30)),\n        (timedelta(hours=15, minutes=30), timedelta(hours=16, minutes=0)),\n        (timedelta(hours=16, minutes=30), timedelta(hours=17, minutes=0)),\n    ]\n}\n\nnathan_busy = {\n    'Monday': [\n        (timedelta(hours=10, minutes=0), timedelta(hours=10, minutes=30)),\n        (timedelta(hours=11, minutes=0), timedelta(hours=11, minutes=30)),\n        (timedelta(hours=13, minutes=30), timedelta(hours=14, minutes=30)),\n        (timedelta(hours=16, minutes=0), timedelta(hours=16, minutes=30)),\n    ],\n    'Tuesday': [\n        (timedelta(hours=9, minutes=0), timedelta(hours=10, minutes=30)),\n        (timedelta(hours=11, minutes=0), timedelta(hours=13, minutes=0)),\n        (timedelta(hours=13, minutes=30), timedelta(hours=14, minutes=0)),\n        (timedelta(hours=14, minutes=30), timedelta(hours=15, minutes=30)),\n        (timedelta(hours=16, minutes=0), timedelta(hours=16, minutes=30)),\n    ]\n}\n\n# Meeting duration\nmeeting_duration = timedelta(minutes=30)\n\ndef find_meeting_time(amanda_busy, nathan_busy, duration):\n    for day in amanda_busy.keys():\n        # Skipping Nathan's busy slots for Monday\n        if day == 'Monday':\n            continue\n        \n        amanda_slots = amanda_busy[day]\n        nathan_slots = nathan_busy[day]\n        \n        # Find available slots for both\n        for a_start, a_end in amanda_slots:\n            for n_start, n_end in nathan_slots:\n                # Calculate start and end for the meeting\n                start_time = max(a_start, n_start)\n                end_time = start_time + duration\n                \n                if end_time <= min(a_end, n_end):\n                    return f\"{start_time.seconds//3600}:{(start_time.seconds//60)%60:02d}:{end_time.seconds//3600}:{(end_time.seconds//60)%60:02d}\", day\n\nmeeting_time, day_of_week = find_meeting_time(amanda_busy, nathan_busy, meeting_duration)\nprint(meeting_time)\nprint(day_of_week)\n```",
+            "count": "calendar_scheduling_example_682"
+        }
+    ]
+}

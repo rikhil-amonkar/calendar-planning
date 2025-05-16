@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport datetime\n\ndef find_meeting_time():\n    # Define the working hours and meeting duration\n    working_hours = (datetime.time(9, 0), datetime.time(17, 0))\n    meeting_duration = datetime.timedelta(minutes=30)\n    \n    # Existing schedules (busy times)\n    arthur_schedule = {\n        'Monday': [(datetime.time(11, 0), datetime.time(11, 30)),\n                   (datetime.time(13, 30), datetime.time(14, 0)),\n                   (datetime.time(15, 0), datetime.time(15, 30))],\n        'Tuesday': [(datetime.time(13, 0), datetime.time(13, 30)),\n                    (datetime.time(16, 0), datetime.time(16, 30))],\n        'Wednesday': [(datetime.time(10, 0), datetime.time(10, 30)),\n                      (datetime.time(11, 0), datetime.time(11, 30)),\n                      (datetime.time(12, 0), datetime.time(12, 30)),\n                      (datetime.time(14, 0), datetime.time(14, 30)),\n                      (datetime.time(16, 0), datetime.time(16, 30))]\n    }\n\n    michael_schedule = {\n        'Monday': [(datetime.time(9, 0), datetime.time(12, 0)),\n                   (datetime.time(12, 30), datetime.time(13, 0)),\n                   (datetime.time(14, 0), datetime.time(14, 30)),\n                   (datetime.time(15, 0), datetime.time(17, 0))],\n        'Tuesday': [(datetime.time(9, 30), datetime.time(11, 30)),\n                    (datetime.time(12, 0), datetime.time(13, 30)),\n                    (datetime.time(14, 0), datetime.time(15, 30))],\n        'Wednesday': [(datetime.time(10, 0), datetime.time(12, 30)),\n                      (datetime.time(13, 0), datetime.time(13, 30))]\n    }\n\n    # Combine schedules\n    schedules = {'Monday': arthur_schedule['Monday'] + michael_schedule['Monday'],\n                 'Tuesday': arthur_schedule['Tuesday'] + michael_schedule['Tuesday'],\n                 'Wednesday': arthur_schedule['Wednesday'] + michael_schedule['Wednesday']}\n    \n    # Function to check if a time slot is free\n    def is_free(start, end, busy_times):\n        for (busy_start, busy_end) in busy_times:\n            if (start < busy_end and end > busy_start):  # Overlap check\n                return False\n        return True\n\n    # Check availability for Monday, Wednesday (Tuesday is excluded for Arthur)\n    days_to_check = ['Monday', 'Wednesday']\n\n    for day in days_to_check:\n        busy_times = schedules[day]\n        \n        # Check for available time slots in the working hours\n        start_time = working_hours[0]\n        while start_time + meeting_duration <= working_hours[1]:\n            end_time = start_time + meeting_duration\n            if is_free(start_time, end_time, busy_times):\n                return f\"{day} {start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}\"\n            start_time = (datetime.datetime.combine(datetime.date.today(), start_time) + \n                           datetime.timedelta(minutes=1)).time()  # Increment by 1 minute\n\n# Get the meeting time\nmeeting_time = find_meeting_time()\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_723"
+        }
+    ]
+}

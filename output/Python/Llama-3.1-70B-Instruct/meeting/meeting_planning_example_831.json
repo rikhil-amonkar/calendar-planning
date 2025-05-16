@@ -1,0 +1,129 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Ronald",
+                        "start_time": "9:19",
+                        "end_time": "11:19"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "11:34",
+                        "end_time": "11:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Laura",
+                        "start_time": "12:09",
+                        "end_time": "13:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "13:27",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Jason",
+                        "start_time": "13:11",
+                        "end_time": "14:56"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Margaret",
+                        "start_time": "15:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Elizabeth",
+                        "start_time": "17:00",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Melissa",
+                        "start_time": "18:00",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "George",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "10:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Ronald",
+                        "start_time": "12:06",
+                        "end_time": "14:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Margaret",
+                        "start_time": "14:22",
+                        "end_time": "15:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "15:59",
+                        "end_time": "16:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Laura",
+                        "start_time": "16:34",
+                        "end_time": "17:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Melissa",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "George",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Presidio': {'Fisherman\\'s Wharf': 19, 'Alamo Square': 19, 'Financial District': 23, 'Union Square': 22, 'Sunset District': 15, 'Embarcadero': 20, 'Golden Gate Park': 12, 'Chinatown': 21, 'Richmond District': 7},\n    'Fisherman\\'s Wharf': {'Presidio': 17, 'Alamo Square': 21, 'Financial District': 11, 'Union Square': 13, 'Sunset District': 27, 'Embarcadero': 8, 'Golden Gate Park': 25, 'Chinatown': 12, 'Richmond District': 18},\n    'Alamo Square': {'Presidio': 17, 'Fisherman\\'s Wharf': 19, 'Financial District': 17, 'Union Square': 14, 'Sunset District': 16, 'Embarcadero': 16, 'Golden Gate Park': 9, 'Chinatown': 15, 'Richmond District': 11},\n    'Financial District': {'Presidio': 22, 'Fisherman\\'s Wharf': 10, 'Alamo Square': 17, 'Union Square': 9, 'Sunset District': 30, 'Embarcadero': 4, 'Golden Gate Park': 23, 'Chinatown': 5, 'Richmond District': 21},\n    'Union Square': {'Presidio': 24, 'Fisherman\\'s Wharf': 15, 'Alamo Square': 15, 'Financial District': 9, 'Sunset District': 27, 'Embarcadero': 11, 'Golden Gate Park': 22, 'Chinatown': 7, 'Richmond District': 20},\n    'Sunset District': {'Presidio': 16, 'Fisherman\\'s Wharf': 29, 'Alamo Square': 17, 'Financial District': 30, 'Union Square': 30, 'Embarcadero': 30, 'Golden Gate Park': 11, 'Chinatown': 30, 'Richmond District': 12},\n    'Embarcadero': {'Presidio': 20, 'Fisherman\\'s Wharf': 6, 'Alamo Square': 19, 'Financial District': 5, 'Union Square': 10, 'Sunset District': 30, 'Golden Gate Park': 25, 'Chinatown': 7, 'Richmond District': 21},\n    'Golden Gate Park': {'Presidio': 11, 'Fisherman\\'s Wharf': 24, 'Alamo Square': 9, 'Financial District': 26, 'Union Square': 22, 'Sunset District': 10, 'Embarcadero': 25, 'Chinatown': 23, 'Richmond District': 7},\n    'Chinatown': {'Presidio': 19, 'Fisherman\\'s Wharf': 8, 'Alamo Square': 17, 'Financial District': 5, 'Union Square': 7, 'Sunset District': 29, 'Embarcadero': 5, 'Golden Gate Park': 23, 'Richmond District': 20},\n    'Richmond District': {'Presidio': 7, 'Fisherman\\'s Wharf': 18, 'Alamo Square': 13, 'Financial District': 22, 'Union Square': 21, 'Sunset District': 11, 'Embarcadero': 19, 'Golden Gate Park': 9, 'Chinatown': 20}\n}\n\n# Meeting constraints\nmeeting_constraints = {\n    'Jeffrey': {'location': 'Fisherman\\'s Wharf','start_time': '10:15', 'end_time': '13:00','min_duration': 90},\n    'Ronald': {'location': 'Alamo Square','start_time': '07:45', 'end_time': '14:45','min_duration': 120},\n    'Jason': {'location': 'Financial District','start_time': '10:45', 'end_time': '16:00','min_duration': 105},\n    'Melissa': {'location': 'Union Square','start_time': '17:45', 'end_time': '18:15','min_duration': 15},\n    'Elizabeth': {'location': 'Sunset District','start_time': '14:45', 'end_time': '17:30','min_duration': 105},\n    'Margaret': {'location': 'Embarcadero','start_time': '13:15', 'end_time': '19:00','min_duration': 90},\n    'George': {'location': 'Golden Gate Park','start_time': '19:00', 'end_time': '22:00','min_duration': 75},\n    'Richard': {'location': 'Chinatown','start_time': '09:30', 'end_time': '21:00','min_duration': 15},\n    'Laura': {'location': 'Richmond District','start_time': '09:45', 'end_time': '18:00','min_duration': 60}\n}\n\ndef calculate_meeting_schedule(travel_distances, meeting_constraints):\n    itinerary = []\n    current_time = '09:00'\n    current_location = 'Presidio'\n\n    # Sort meeting constraints by start time\n    sorted_meetings = sorted(meeting_constraints.items(), key=lambda x: x[1]['start_time'])\n\n    for person, meeting in sorted_meetings:\n        travel_time = travel_distances[current_location][meeting['location']]\n        arrival_time = add_time(current_time, travel_time)\n\n        if arrival_time > meeting['start_time']:\n            start_time = arrival_time\n        else:\n            start_time = meeting['start_time']\n\n        end_time = add_time(start_time, meeting['min_duration'])\n\n        if end_time > meeting['end_time']:\n            end_time = meeting['end_time']\n\n        itinerary.append({\n            'action':'meet',\n            'location': meeting['location'],\n            'person': person,\n          'start_time': start_time,\n            'end_time': end_time\n        })\n\n        current_time = end_time\n        current_location = meeting['location']\n\n    return itinerary\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef main():\n    meeting_schedule = calculate_meeting_schedule(travel_distances, meeting_constraints)\n    print(json.dumps({'itinerary': meeting_schedule}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_831"
+        }
+    ]
+}

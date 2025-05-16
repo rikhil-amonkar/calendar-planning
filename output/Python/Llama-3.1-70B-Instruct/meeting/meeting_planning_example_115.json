@@ -1,0 +1,30 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Carol",
+                        "start_time": "11:30",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jessica",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define travel times between locations\ntravel_times = {\n    'Richmond District': {'Pacific Heights': 10, 'Marina District': 9},\n    'Pacific Heights': {'Richmond District': 12, 'Marina District': 6},\n    'Marina District': {'Richmond District': 11, 'Pacific Heights': 7}\n}\n\n# Define meeting constraints\nmeetings = {\n    'Jessica': {'location': 'Pacific Heights','start_time': '15:30', 'end_time': '16:45', 'duration': 45},\n    'Carol': {'location': 'Marina District','start_time': '11:30', 'end_time': '15:00', 'duration': 60}\n}\n\ndef calculate_meeting_time(current_time, travel_time, meeting_duration):\n    meeting_start_time = add_time(current_time, travel_time)\n    meeting_end_time = add_time(meeting_start_time, meeting_duration)\n    return meeting_start_time, meeting_end_time\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef is_meeting_possible(current_time, meeting_start_time, meeting_end_time):\n    return meeting_start_time <= current_time < meeting_end_time\n\ndef plan_meetings():\n    current_time = '09:00'\n    current_location = 'Richmond District'\n    itinerary = []\n\n    for person, meeting in meetings.items():\n        travel_time = travel_times[current_location][meeting['location']]\n        meeting_start_time, meeting_end_time = calculate_meeting_time(current_time, travel_time, meeting['duration'])\n        if is_meeting_possible(meeting_start_time, meeting['start_time'], meeting['end_time']):\n            itinerary.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': person,\n              'start_time': meeting_start_time,\n                'end_time': meeting_end_time\n            })\n            current_time = meeting_end_time\n            current_location = meeting['location']\n\n    return itinerary\n\ndef main():\n    itinerary = plan_meetings()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_115"
+        }
+    ]
+}

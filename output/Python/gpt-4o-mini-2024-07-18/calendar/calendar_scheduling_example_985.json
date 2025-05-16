@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "11:00",
+                "end_time": "12:00"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "15:00",
+                "end_time": "16:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the time slots for each day\nwork_hours = {\n    'Monday': [(9, 17)],\n    'Tuesday': [(9, 17)],\n    'Wednesday': [(9, 17)],\n    'Thursday': [(9, 17)],\n    'Friday': [(9, 17)]\n}\n\n# Define the busy schedules for Diane and Matthew\ndiane_busy = {\n    'Monday': [(12, 12.5), (15, 15.5)],\n    'Tuesday': [(10, 11), (11.5, 12.5), (16, 17)],\n    'Wednesday': [(9, 9.5), (14.5, 15), (16.5, 17)],\n    'Thursday': [(15.5, 16.5)],\n    'Friday': [(9.5, 11.5), (14.5, 15), (16, 17)]\n}\n\nmatthew_busy = {\n    'Monday': [(9, 10), (10.5, 17)],\n    'Tuesday': [(9, 17)],\n    'Wednesday': [(9, 11), (12, 14.5), (16, 17)],\n    'Thursday': [(9, 16)],\n    'Friday': [(9, 17)]\n}\n\n# Meeting duration\nmeeting_duration = timedelta(hours=1)\n\ndef find_meeting_time():\n    for day in work_hours.keys():\n        # Calculate free time slots for the day\n        free_slots = []\n        start_time = work_hours[day][0][0]\n        end_time = work_hours[day][0][1]\n\n        # Create a full day's schedule\n        full_schedule = [(start_time, end_time)]\n        \n        # Add busy slots into the schedule\n        for busy_slot in diane_busy.get(day, []) + matthew_busy.get(day, []):\n            busy_start, busy_end = busy_slot\n            new_schedule = []\n            \n            for (fs, fe) in full_schedule:\n                # If there's free time before the busy slot\n                if fs < busy_start:\n                    new_schedule.append((fs, min(fe, busy_start)))\n                # If there's free time after the busy slot\n                if fe > busy_end:\n                    new_schedule.append((max(fs, busy_end), fe))\n\n            full_schedule = new_schedule\n\n        # Check for a suitable free slot for the meeting\n        for (fs, fe) in full_schedule:\n            if fe - fs >= meeting_duration.total_seconds() / 3600.0:\n                # convert float time back to hh:mm format\n                start_hour = int(fs)\n                start_minute = int((fs - start_hour) * 60)\n                end_hour = start_hour + 1\n                end_minute = start_minute\n                \n                # Return the proposed time\n                return f\"{day}: {start_hour:02}:{start_minute:02}:{end_hour:02}:{end_minute:02}\"\n\n# Call the function to find the meeting time\nproposed_time = find_meeting_time()\nprint(proposed_time)\n```",
+            "count": "calendar_scheduling_example_985"
+        }
+    ]
+}

@@ -1,0 +1,72 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Jessica",
+                        "start_time": "9:13",
+                        "end_time": "11:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "John",
+                        "start_time": "11:18",
+                        "end_time": "11:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "11:40",
+                        "end_time": "12:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Rebecca",
+                        "start_time": "12:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jason",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "18:28",
+                        "end_time": "19:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef time_to_minutes(t_str):\n    t_str = t_str.replace('AM', '').replace('PM', '').strip()\n    if ':' in t_str:\n        h, m = t_str.split(':')\n    else:\n        h, m = t_str, '00'\n    h = int(h)\n    m = int(m)\n    if 'PM' in t_str.upper() and h != 12:\n        h += 12\n    if 'AM' in t_str.upper() and h == 12:\n        h = 0\n    return h * 60 + m\n\ndef minutes_to_time(mins):\n    h = mins // 60\n    m = mins % 60\n    return f\"{h}:{m:02d}\".replace(':0', ':') if m == 0 else f\"{h}:{m:02d}\"\n\ntravel_times = {\n    ('Union Square', 'Mission District'): 14,\n    ('Union Square', 'Fisherman\\'s Wharf'): 15,\n    ('Union Square', 'Russian Hill'): 13,\n    ('Union Square', 'Marina District'): 18,\n    ('Union Square', 'North Beach'): 10,\n    ('Union Square', 'Chinatown'): 7,\n    ('Union Square', 'Pacific Heights'): 15,\n    ('Union Square', 'The Castro'): 17,\n    ('Union Square', 'Nob Hill'): 9,\n    ('Union Square', 'Sunset District'): 27,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Fisherman\\'s Wharf'): 22,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Mission District', 'Marina District'): 19,\n    ('Mission District', 'North Beach'): 17,\n    ('Mission District', 'Chinatown'): 16,\n    ('Mission District', 'Pacific Heights'): 16,\n    ('Mission District', 'The Castro'): 7,\n    ('Mission District', 'Nob Hill'): 12,\n    ('Mission District', 'Sunset District'): 24,\n    ('Fisherman\\'s Wharf', 'Union Square'): 13,\n    ('Fisherman\\'s Wharf', 'Mission District'): 22,\n    ('Fisherman\\'s Wharf', 'Russian Hill'): 7,\n    ('Fisherman\\'s Wharf', 'Marina District'): 9,\n    ('Fisherman\\'s Wharf', 'North Beach'): 6,\n    ('Fisherman\\'s Wharf', 'Chinatown'): 12,\n    ('Fisherman\\'s Wharf', 'Pacific Heights'): 12,\n    ('Fisherman\\'s Wharf', 'The Castro'): 27,\n    ('Fisherman\\'s Wharf', 'Nob Hill'): 11,\n    ('Fisherman\\'s Wharf', 'Sunset District'): 27,\n    ('Russian Hill', 'Union Square'): 10,\n    ('Russian Hill', 'Mission District'): 16,\n    ('Russian Hill', 'Fisherman\\'s Wharf'): 7,\n    ('Russian Hill', 'Marina District'): 7,\n    ('Russian Hill', 'North Beach'): 5,\n    ('Russian Hill', 'Chinatown'): 9,\n    ('Russian Hill', 'Pacific Heights'): 7,\n    ('Russian Hill', 'The Castro'): 21,\n    ('Russian Hill', 'Nob Hill'): 5,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Marina District', 'Union Square'): 16,\n    ('Marina District', 'Mission District'): 20,\n    ('Marina District', 'Fisherman\\'s Wharf'): 10,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Marina District', 'North Beach'): 11,\n    ('Marina District', 'Chinatown'): 15,\n    ('Marina District', 'Pacific Heights'): 7,\n    ('Marina District', 'The Castro'): 22,\n    ('Marina District', 'Nob Hill'): 12,\n    ('Marina District', 'Sunset District'): 19,\n    ('North Beach', 'Union Square'): 7,\n    ('North Beach', 'Mission District'): 18,\n    ('North Beach', 'Fisherman\\'s Wharf'): 5,\n    ('North Beach', 'Russian Hill'): 4,\n    ('North Beach', 'Marina District'): 9,\n    ('North Beach', 'Chinatown'): 6,\n    ('North Beach', 'Pacific Heights'): 8,\n    ('North Beach', 'The Castro'): 23,\n    ('North Beach', 'Nob Hill'): 7,\n    ('North Beach', 'Sunset District'): 27,\n    ('Chinatown', 'Union Square'): 7,\n    ('Chinatown', 'Mission District'): 17,\n    ('Chinatown', 'Fisherman\\'s Wharf'): 8,\n    ('Chinatown', 'Russian Hill'): 7,\n    ('Chinatown', 'Marina District'): 12,\n    ('Chinatown', 'North Beach'): 3,\n    ('Chinatown', 'Pacific Heights'): 10,\n    ('Chinatown', 'The Castro'): 22,\n    ('Chinatown', 'Nob Hill'): 9,\n    ('Chinatown', 'Sunset District'): 29,\n    ('Pacific Heights', 'Union Square'): 12,\n    ('Pacific Heights', 'Mission District'): 15,\n    ('Pacific Heights', 'Fisherman\\'s Wharf'): 13,\n    ('Pacific Heights', 'Russian Hill'): 7,\n    ('Pacific Heights', 'Marina District'): 6,\n    ('Pacific Heights', 'North Beach'): 9,\n    ('Pacific Heights', 'Chinatown'): 11,\n    ('Pacific Heights', 'The Castro'): 16,\n    ('Pacific Heights', 'Nob Hill'): 8,\n    ('Pacific Heights', 'Sunset District'): 21,\n    ('The Castro', 'Union Square'): 19,\n    ('The Castro', 'Mission District'): 7,\n    ('The Castro', 'Fisherman\\'s Wharf'): 24,\n    ('The Castro', 'Russian Hill'): 18,\n    ('The Castro', 'Marina District'): 21,\n    ('The Castro', 'North Beach'): 20,\n    ('The Castro', 'Chinatown'): 22,\n    ('The Castro', 'Pacific Heights'): 16,\n    ('The Castro', 'Nob Hill'): 16,\n    ('The Castro', 'Sunset District'): 17,\n    ('Nob Hill', 'Union Square'): 7,\n    ('Nob Hill', 'Mission District'): 13,\n    ('Nob Hill', 'Fisherman\\'s Wharf'): 10,\n    ('Nob Hill', 'Russian Hill'): 5,\n    ('Nob Hill', 'Marina District'): 11,\n    ('Nob Hill', 'North Beach'): 8,\n    ('Nob Hill', 'Chinatown'): 6,\n    ('Nob Hill', 'Pacific Heights'): 8,\n    ('Nob Hill', 'The Castro'): 17,\n    ('Nob Hill', 'Sunset District'): 24,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Mission District'): 25,\n    ('Sunset District', 'Fisherman\\'s Wharf'): 29,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Sunset District', 'Marina District'): 21,\n    ('Sunset District', 'North Beach'): 28,\n    ('Sunset District', 'Chinatown'): 30,\n    ('Sunset District', 'Pacific Heights'): 21,\n    ('Sunset District', 'The Castro'): 17,\n    ('Sunset District', 'Nob Hill'): 27,\n}\n\nfriends = [\n    {'name': 'Kevin', 'location': 'Mission District', 'start': time_to_minutes('8:45PM'), 'end': time_to_minutes('9:45PM'), 'duration': 60},\n    {'name': 'Mark', 'location': 'Fisherman\\'s Wharf', 'start': time_to_minutes('5:15PM'), 'end': time_to_minutes('8:00PM'), 'duration': 90},\n    {'name': 'Jessica', 'location': 'Russian Hill', 'start': time_to_minutes('9:00AM'), 'end': time_to_minutes('3:00PM'), 'duration': 120},\n    {'name': 'Jason', 'location': 'Marina District', 'start': time_to_minutes('3:15PM'), 'end': time_to_minutes('9:45PM'), 'duration': 120},\n    {'name': 'John', 'location': 'North Beach', 'start': time_to_minutes('9:45AM'), 'end': time_to_minutes('6:00PM'), 'duration': 15},\n    {'name': 'Karen', 'location': 'Chinatown', 'start': time_to_minutes('4:45PM'), 'end': time_to_minutes('7:00PM'), 'duration': 75},\n    {'name': 'Sarah', 'location': 'Pacific Heights', 'start': time_to_minutes('5:30PM'), 'end': time_to_minutes('6:15PM'), 'duration': 45},\n    {'name': 'Amanda', 'location': 'The Castro', 'start': time_to_minutes('8:00PM'), 'end': time_to_minutes('9:15PM'), 'duration': 60},\n    {'name': 'Nancy', 'location': 'Nob Hill', 'start': time_to_minutes('9:45AM'), 'end': time_to_minutes('1:00PM'), 'duration': 45},\n    {'name': 'Rebecca', 'location': 'Sunset District', 'start': time_to_minutes('8:45AM'), 'end': time_to_minutes('3:00PM'), 'duration': 75},\n]\n\nfriends_sorted = sorted(friends, key=lambda x: x['end'])\n\nitinerary = []\ncurrent_loc = 'Union Square'\ncurrent_time = time_to_minutes('9:00AM')\n\nfor friend in friends_sorted:\n    from_loc = current_loc\n    to_loc = friend['location']\n    travel_time = travel_times.get((from_loc, to_loc))\n    if travel_time is None:\n        continue\n    arrival = current_time + travel_time\n    start = max(arrival, friend['start'])\n    end = start + friend['duration']\n    if end > friend['end']:\n        continue\n    itinerary.append({\n        'action': 'meet',\n        'location': to_loc,\n        'person': friend['name'],\n        'start_time': minutes_to_time(start).replace(':00', ''),\n        'end_time': minutes_to_time(end).replace(':00', '')\n    })\n    current_time = end\n    current_loc = to_loc\n\nprint(json.dumps({'itinerary': itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_940"
+        }
+    ]
+}

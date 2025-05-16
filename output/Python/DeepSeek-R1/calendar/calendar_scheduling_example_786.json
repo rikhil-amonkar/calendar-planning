@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "{16:30",
+                "end_time": "17:00}"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "{16:30",
+                "end_time": "17:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time):\n    return time[0] * 60 + time[1]\n\ndef minutes_to_time(m):\n    return (m // 60, m % 60)\n\ndef get_free_intervals(busy_intervals, work_start, work_end):\n    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])\n    free = []\n    prev_end = work_start\n    for start, end in sorted_busy:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        free.append((prev_end, work_end))\n    return free\n\ndef find_overlapping_intervals(a, b):\n    overlapping = []\n    i = j = 0\n    while i < len(a) and j < len(b):\n        a_start, a_end = a[i]\n        b_start, b_end = b[j]\n        start = max(a_start, b_start)\n        end = min(a_end, b_end)\n        if start < end:\n            overlapping.append((start, end))\n        if a_end < b_end:\n            i += 1\n        else:\n            j += 1\n    return overlapping\n\nwork_hours = (9, 0), (17, 0)\nwork_start = time_to_minutes(work_hours[0])\nwork_end = time_to_minutes(work_hours[1])\n\nschedule = {\n    'Amy': {\n        'Wednesday': [( (11, 0), (11, 30) ), ( (13, 30), (14, 0) )]\n    },\n    'Pamela': {\n        'Monday': [( (9, 0), (10, 30) ), ( (11, 0), (16, 30) )],\n        'Tuesday': [( (9, 0), (9, 30) ), ( (10, 0), (17, 0) )],\n        'Wednesday': [( (9, 0), (9, 30) ), ( (10, 0), (11, 0) ), ( (11, 30), (13, 30) ), ( (14, 30), (15, 0) ), ( (16, 0), (16, 30) )]\n    }\n}\n\ndays_order = ['Wednesday', 'Tuesday', 'Monday']\n\nfor day in days_order:\n    amy_busy = schedule['Amy'].get(day, [])\n    pamela_busy = schedule['Pamela'].get(day, [])\n    \n    amy_busy_min = [ (time_to_minutes(s), time_to_minutes(e)) for s, e in amy_busy ]\n    pamela_busy_min = [ (time_to_minutes(s), time_to_minutes(e)) for s, e in pamela_busy ]\n    \n    amy_free = get_free_intervals(amy_busy_min, work_start, work_end)\n    pamela_free = get_free_intervals(pamela_busy_min, work_start, work_end)\n    \n    overlapping = find_overlapping_intervals(amy_free, pamela_free)\n    \n    for interval in overlapping:\n        start, end = interval\n        duration = end - start\n        if duration >= 30:\n            preferred = False\n            if day in ['Tuesday', 'Wednesday']:\n                if start >= time_to_minutes((16, 0)):\n                    preferred = True\n            elif day == 'Monday':\n                preferred = False\n            \n            if (day != 'Monday' and preferred) or (day == 'Monday' and not preferred):\n                start_time = minutes_to_time(start)\n                end_time = minutes_to_time(start + 30)\n                print(f\"{day} {start_time[0]:02}:{start_time[1]:02}:{end_time[0]:02}:{end_time[1]:02}\")\n                exit()\n\n# Fallback to first available slot if preferences couldn't be met (not needed per problem statement)\n'''",
+            "count": "calendar_scheduling_example_786"
+        }
+    ]
+}

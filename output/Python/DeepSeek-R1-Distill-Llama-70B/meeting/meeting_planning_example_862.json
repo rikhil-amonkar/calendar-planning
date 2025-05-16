@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "9:20",
+                        "end_time": "9:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Stephanie",
+                        "start_time": "11:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "12:40",
+                        "end_time": "14:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Laura",
+                        "start_time": "14:49",
+                        "end_time": "16:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Deborah",
+                        "start_time": "19:00",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "9:20",
+                        "end_time": "9:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Stephanie",
+                        "start_time": "11:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "12:40",
+                        "end_time": "14:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Laura",
+                        "start_time": "14:49",
+                        "end_time": "16:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Deborah",
+                        "start_time": "19:00",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to write a Python program that helps plan an optimal meeting schedule based on the given constraints. Let's break down the problem and figure out how to approach it.\n\nFirst, I'll look at the input parameters. The user is visiting San Francisco and wants to meet as many friends as possible. The goal is to create a schedule that allows meeting the maximum number of friends, considering travel times and each friend's availability.\n\nThe travel times between locations are provided in a detailed list. Each location has travel times to several other locations. I'll need to represent this data in a way that's easy to access during the calculations. A dictionary where each key is a location, and the value is another dictionary mapping to other locations with their respective travel times seems appropriate.\n\nNext, there are several friends, each with their own constraints. Each friend is at a specific location during certain hours, and there's a minimum meeting duration. I'll store each friend's details, including their name, location, start and end times, and the required meeting duration.\n\nThe main challenge is to find the optimal schedule that allows meeting as many friends as possible. Since the number of friends is relatively small, I can use a brute-force approach by trying all possible permutations of the friends. For each permutation, I'll calculate the schedule and see if it's feasible, then keep track of the best schedule found.\n\nI'll need to convert time strings into minutes since midnight to make time calculations easier. Similarly, after calculating the meeting times, I'll convert them back to the \"H:MM\" format.\n\nFor each permutation of friends:\n1. Start at the initial location (Mission District) at 9:00 AM.\n2. For each friend in the permutation, calculate the travel time from the current location to the friend's location.\n3. Determine the earliest possible start time for the meeting, ensuring it's within the friend's available window.\n4. Check if the meeting can be scheduled without exceeding the friend's end time.\n5. If successful, add the meeting to the itinerary and update the current location and time.\n6. If any meeting can't be scheduled, discard this permutation and try the next one.\n\nI'll keep track of the best itinerary, which is the one with the most meetings successfully scheduled.\n\nFinally, I'll output the best itinerary in the required JSON format.\n\nI should also handle cases where no valid schedule is found, but given the constraints, I'll assume there's at least one valid permutation.\n\nNow, I'll proceed to write the code, making sure to handle all edge cases, such as ensuring the meeting duration fits within the friend's availability and correctly calculating travel times between locations.\n</think>\n\n```python\nimport itertools\nimport json\n\n# Travel times in minutes between locations\ntravel_times = {\n    'Mission District': {\n        'Alamo Square': 11,\n        'Presidio': 25,\n        'Russian Hill': 15,\n        'North Beach': 17,\n        'Golden Gate Park': 17,\n        'Richmond District': 20,\n        'Embarcadero': 19,\n        'Financial District': 15,\n        'Marina District': 19,\n    },\n    'Alamo Square': {\n        'Mission District': 10,\n        'Presidio': 17,\n        'Russian Hill': 13,\n        'North Beach': 15,\n        'Golden Gate Park': 9,\n        'Richmond District': 11,\n        'Embarcadero': 16,\n        'Financial District': 17,\n        'Marina District': 15,\n    },\n    'Presidio': {\n        'Mission District': 26,\n        'Alamo Square': 19,\n        'Russian Hill': 14,\n        'North Beach': 18,\n        'Golden Gate Park': 12,\n        'Richmond District': 7,\n        'Embarcadero': 20,\n        'Financial District': 23,\n        'Marina District': 11,\n    },\n    'Russian Hill': {\n        'Mission District': 16,\n        'Alamo Square': 15,\n        'Presidio': 14,\n        'North Beach': 5,\n        'Golden Gate Park': 21,\n        'Richmond District': 14,\n        'Embarcadero': 8,\n        'Financial District': 11,\n        'Marina District': 7,\n    },\n    'North Beach': {\n        'Mission District': 18,\n        'Alamo Square': 16,\n        'Presidio': 17,\n        'Russian Hill': 4,\n        'Golden Gate Park': 22,\n        'Richmond District': 18,\n        'Embarcadero': 6,\n        'Financial District': 8,\n        'Marina District': 9,\n    },\n    'Golden Gate Park': {\n        'Mission District': 17,\n        'Alamo Square': 9,\n        'Presidio': 11,\n        'Russian Hill': 19,\n        'North Beach': 23,\n        'Richmond District': 7,\n        'Embarcadero': 25,\n        'Financial District': 26,\n        'Marina District': 16,\n    },\n    'Richmond District': {\n        'Mission District': 20,\n        'Alamo Square': 13,\n        'Presidio': 7,\n        'Russian Hill': 13,\n        'North Beach': 17,\n        'Golden Gate Park': 9,\n        'Embarcadero': 19,\n        'Financial District': 22,\n        'Marina District': 9,\n    },\n    'Embarcadero': {\n        'Mission District': 20,\n        'Alamo Square': 19,\n        'Presidio': 20,\n        'Russian Hill': 8,\n        'North Beach': 5,\n        'Golden Gate Park': 25,\n        'Richmond District': 21,\n        'Financial District': 5,\n        'Marina District': 12,\n    },\n    'Financial District': {\n        'Mission District': 17,\n        'Alamo Square': 17,\n        'Presidio': 22,\n        'Russian Hill': 11,\n        'North Beach': 7,\n        'Golden Gate Park': 23,\n        'Richmond District': 21,\n        'Embarcadero': 4,\n        'Marina District': 15,\n    },\n    'Marina District': {\n        'Mission District': 20,\n        'Alamo Square': 15,\n        'Presidio': 10,\n        'Russian Hill': 8,\n        'North Beach': 11,\n        'Golden Gate Park': 18,\n        'Richmond District': 11,\n        'Embarcadero': 14,\n        'Financial District': 17,\n    }\n}\n\n# Friends' data\nfriends = [\n    {\n        'name': 'Laura',\n        'location': 'Alamo Square',\n        'start': '14:30',\n        'end': '16:15',\n        'duration': 75,\n    },\n    {\n        'name': 'Brian',\n        'location': 'Presidio',\n        'start': '10:15',\n        'end': '17:00',\n        'duration': 30,\n    },\n    {\n        'name': 'Karen',\n        'location': 'Russian Hill',\n        'start': '18:00',\n        'end': '20:15',\n        'duration': 90,\n    },\n    {\n        'name': 'Stephanie',\n        'location': 'North Beach',\n        'start': '10:15',\n        'end': '16:00',\n        'duration': 75,\n    },\n    {\n        'name': 'Helen',\n        'location': 'Golden Gate Park',\n        'start': '11:30',\n        'end': '21:45',\n        'duration': 120,\n    },\n    {\n        'name': 'Sandra',\n        'location': 'Richmond District',\n        'start': '8:00',\n        'end': '15:15',\n        'duration': 30,\n    },\n    {\n        'name': 'Mary',\n        'location': 'Embarcadero',\n        'start': '16:45',\n        'end': '18:45',\n        'duration': 120,\n    },\n    {\n        'name': 'Deborah',\n        'location': 'Financial District',\n        'start': '19:00',\n        'end': '20:45',\n        'duration': 105,\n    },\n    {\n        'name': 'Elizabeth',\n        'location': 'Marina District',\n        'start': '8:30',\n        'end': '13:15',\n        'duration': 105,\n    },\n]\n\nbest_itinerary = []\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Try all possible permutations of friends\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM in minutes\n    current_location = 'Mission District'\n    temp_itinerary = []\n    \n    for friend in perm:\n        # Convert friend's time window to minutes\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        \n        # Get travel time from current_location to friend's location\n        if current_location not in travel_times or friend['location'] not in travel_times[current_location]:\n            break  # No path available\n        \n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        \n        # Determine meeting start time\n        meeting_start = max(arrival, start)\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > end:\n            break  # Cannot meet this friend\n        \n        # Add to temporary itinerary\n        temp_itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location\n        current_time = meeting_end\n        current_location = friend['location']\n    \n    # Update best itinerary if this permutation is better\n    if len(temp_itinerary) > len(best_itinerary):\n        best_itinerary = temp_itinerary\n\n# Prepare the result\nresult = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the result as JSON\nprint(json.dumps(result))\n```",
+            "count": "meeting_planning_example_862"
+        }
+    ]
+}

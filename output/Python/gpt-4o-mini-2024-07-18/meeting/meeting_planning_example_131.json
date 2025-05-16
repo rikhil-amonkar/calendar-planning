@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef calculate_schedule():\n    # Define travel time (in minutes) between locations\n    travel_times = {\n        (\"Pacific Heights\", \"Presidio\"): 11,\n        (\"Pacific Heights\", \"Marina District\"): 6,\n        (\"Presidio\", \"Pacific Heights\"): 11,\n        (\"Presidio\", \"Marina District\"): 10,\n        (\"Marina District\", \"Pacific Heights\"): 7,\n        (\"Marina District\", \"Presidio\"): 10,\n    }\n    \n    # Define meeting constraints\n    arrival_time_pacific = datetime.strptime(\"09:00\", \"%H:%M\")\n    meeting_window_jason_start = datetime.strptime(\"10:00\", \"%H:%M\")\n    meeting_window_jason_end = datetime.strptime(\"16:15\", \"%H:%M\")\n    meeting_duration_jason = timedelta(minutes=90)\n    \n    meeting_window_kenneth_start = datetime.strptime(\"15:30\", \"%H:%M\")\n    meeting_window_kenneth_end = datetime.strptime(\"16:45\", \"%H:%M\")\n    meeting_duration_kenneth = timedelta(minutes=45)\n    \n    schedule = []\n    \n    # Try to meet Jason first\n    # Arrive at Presidio first to meet Jason\n    travel_to_presidio = travel_times[(\"Pacific Heights\", \"Presidio\")]\n    jason_start_time = max(arrival_time_pacific + timedelta(minutes=travel_to_presidio), meeting_window_jason_start)\n    jason_end_time = jason_start_time + meeting_duration_jason\n    \n    if jason_end_time <= meeting_window_jason_end:\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Jason\",\n            \"start_time\": jason_start_time.strftime(\"%H:%M\"),\n            \"end_time\": jason_end_time.strftime(\"%H:%M\"),\n        })\n        \n        # Move to Marina District to meet Kenneth\n        travel_to_marina = travel_times[(\"Presidio\", \"Marina District\")]\n        travel_time_after_jason = travel_to_marina\n\n        kenneth_start_time = max(jason_end_time + timedelta(minutes=travel_time_after_jason), meeting_window_kenneth_start)\n        kenneth_end_time = kenneth_start_time + meeting_duration_kenneth\n        \n        if kenneth_end_time <= meeting_window_kenneth_end:\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": \"Marina District\",\n                \"person\": \"Kenneth\",\n                \"start_time\": kenneth_start_time.strftime(\"%H:%M\"),\n                \"end_time\": kenneth_end_time.strftime(\"%H:%M\"),\n            })\n        else:\n            # If unable to meet Kenneth after Jason, it's best to try meeting Kenneth first\n            # Try to meet Kenneth before Jason\n            travel_to_marina = travel_times[(\"Pacific Heights\", \"Marina District\")]\n            kenneth_start_time = max(arrival_time_pacific + timedelta(minutes=travel_to_marina), meeting_window_kenneth_start)\n            kenneth_end_time = kenneth_start_time + meeting_duration_kenneth\n            \n            if kenneth_end_time <= meeting_window_kenneth_end:\n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": \"Marina District\",\n                    \"person\": \"Kenneth\",\n                    \"start_time\": kenneth_start_time.strftime(\"%H:%M\"),\n                    \"end_time\": kenneth_end_time.strftime(\"%H:%M\"),\n                })\n                \n                # Move to Presidio to meet Jason\n                travel_to_presidio = travel_times[(\"Marina District\", \"Presidio\")]\n                jason_start_time = max(kenneth_end_time + timedelta(minutes=travel_to_presidio), meeting_window_jason_start)\n                jason_end_time = jason_start_time + meeting_duration_jason\n                \n                if jason_end_time <= meeting_window_jason_end:\n                    schedule.append({\n                        \"action\": \"meet\",\n                        \"location\": \"Presidio\",\n                        \"person\": \"Jason\",\n                        \"start_time\": jason_start_time.strftime(\"%H:%M\"),\n                        \"end_time\": jason_end_time.strftime(\"%H:%M\"),\n                    })\n                    \n    return json.dumps({\"itinerary\": schedule}, indent=2)\n\nif __name__ == \"__main__\":\n    print(\"SOLUTION:\")\n    print(calculate_schedule())\n```",
+            "count": "meeting_planning_example_131"
+        }
+    ]
+}

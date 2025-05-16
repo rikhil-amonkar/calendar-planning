@@ -1,0 +1,42 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(dubrovnik_days, split_days, milan_days, porto_days, krakow_days, munich_days, friend_meeting_window, wedding_window, annual_show_window):\n    total_days = dubrovnik_days + split_days + milan_days + porto_days + krakow_days + munich_days\n\n    # Calculate the number of days for each city, considering the annual show window in Munich\n    munich_start_day = 4\n    munich_end_day = munich_start_day + munich_days - 1\n    annual_show_day = (annual_show_window[0] + annual_show_window[1]) // 2\n\n    # Ensure Munich is visited to attend the annual show\n    if annual_show_day < munich_start_day or annual_show_day > munich_end_day:\n        raise ValueError(\"Annual show day does not fall within the Munich visit window\")\n\n    # Calculate the day ranges for Dubrovnik\n    dubrovnik_start_day = 1\n    dubrovnik_end_day = dubrovnik_start_day + dubrovnik_days - 1\n\n    # Calculate the day ranges for Krakow\n    krakow_start_day = munich_end_day + 1\n    krakow_end_day = krakow_start_day + krakow_days - 1\n    friend_meeting_day = (friend_meeting_window[0] + friend_meeting_window[1]) // 2\n\n    # Ensure Krakow is visited to meet friends\n    if friend_meeting_day < krakow_start_day or friend_meeting_day > krakow_end_day:\n        raise ValueError(\"Friend meeting day does not fall within the Krakow visit window\")\n\n    # Calculate the day ranges for Split\n    split_start_day = krakow_end_day + 1\n    split_end_day = split_start_day + split_days - 1\n\n    # Calculate the day ranges for Milan\n    milan_start_day = split_end_day + 1\n    milan_end_day = milan_start_day + milan_days - 1\n    wedding_day = (wedding_window[0] + wedding_window[1]) // 2\n\n    # Ensure Milan is visited to attend the wedding\n    if wedding_day < milan_start_day or wedding_day > milan_end_day:\n        raise ValueError(\"Wedding day does not fall within the Milan visit window\")\n\n    # Calculate the day ranges for Porto\n    porto_start_day = milan_end_day + 1\n    porto_end_day = porto_start_day + porto_days - 1\n\n    # Check if the total days add up correctly\n    if porto_end_day!= total_days:\n        raise ValueError(\"Total days do not add up correctly\")\n\n    # Create the trip plan\n    trip_plan = [\n        {'day_range': f'Day {dubrovnik_start_day}-{dubrovnik_end_day}', 'place': 'Dubrovnik'},\n        {'flying': f'Day {dubrovnik_end_day}-{dubrovnik_end_day}', 'from': 'Dubrovnik', 'to': 'Munich'},\n        {'day_range': f'Day {munich_start_day}-{munich_end_day}', 'place': 'Munich'},\n        {'flying': f'Day {munich_end_day}-{munich_end_day}', 'from': 'Munich', 'to': 'Krakow'},\n        {'day_range': f'Day {krakow_start_day}-{krakow_end_day}', 'place': 'Krakow'},\n        {'flying': f'Day {krakow_end_day}-{krakow_end_day}', 'from': 'Krakow', 'to': 'Split'},\n        {'day_range': f'Day {split_start_day}-{split_end_day}', 'place': 'Split'},\n        {'flying': f'Day {split_end_day}-{split_end_day}', 'from': 'Split', 'to': 'Milan'},\n        {'day_range': f'Day {milan_start_day}-{milan_end_day}', 'place': 'Milan'},\n        {'flying': f'Day {milan_end_day}-{milan_end_day}', 'from': 'Milan', 'to': 'Porto'},\n        {'day_range': f'Day {porto_start_day}-{porto_end_day}', 'place': 'Porto'}\n    ]\n\n    return trip_plan\n\ndef main():\n    dubrovnik_days = 4\n    split_days = 3\n    milan_days = 3\n    porto_days = 4\n    krakow_days = 2\n    munich_days = 5\n    friend_meeting_window = (8, 9)\n    wedding_window = (11, 13)\n    annual_show_window = (4, 8)\n\n    trip_plan = calculate_trip_plan(dubrovnik_days, split_days, milan_days, porto_days, krakow_days, munich_days, friend_meeting_window, wedding_window, annual_show_window)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_675"
+        }
+    ]
+}

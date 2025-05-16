@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Friday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Friday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time():\n    # Define work hours\n    work_start = datetime.strptime(\"09:00\", \"%H:%M\")\n    work_end = datetime.strptime(\"17:00\", \"%H:%M\")\n    meeting_duration = timedelta(minutes=30)\n    \n    # Days to consider\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n    \n    # Eugene's busy slots\n    eugene_busy = {\n        \"Monday\": [\n            (\"11:00\", \"12:00\"), (\"13:30\", \"14:00\"), (\"14:30\", \"15:00\"), (\"16:00\", \"16:30\")\n        ],\n        \"Wednesday\": [\n            (\"09:00\", \"09:30\"), (\"11:00\", \"11:30\"), (\"12:00\", \"12:30\"), (\"13:30\", \"15:00\")\n        ],\n        \"Thursday\": [\n            (\"09:30\", \"10:00\"), (\"11:00\", \"12:30\")\n        ],\n        \"Friday\": [\n            (\"10:30\", \"11:00\"), (\"12:00\", \"12:30\"), (\"13:00\", \"13:30\")\n        ]\n    }\n    \n    # Eric's busy slots\n    eric_busy = {\n        \"Monday\": [(\"09:00\", \"17:00\")],\n        \"Tuesday\": [(\"09:00\", \"17:00\")],\n        \"Wednesday\": [\n            (\"09:00\", \"11:30\"), (\"12:00\", \"14:00\"), (\"14:30\", \"16:30\")\n        ],\n        \"Thursday\": [(\"09:00\", \"17:00\")],\n        \"Friday\": [\n            (\"09:00\", \"11:00\"), (\"11:30\", \"17:00\")\n        ]\n    }\n    \n    # Iterate through each day (excluding Wednesday first due to Eric's preference)\n    preferred_days = [day for day in days if day != \"Wednesday\"] + [\"Wednesday\"]\n    \n    for day in preferred_days:\n        # Collect all busy slots for both participants\n        busy_slots = []\n        \n        # Add Eugene's busy slots\n        for slot in eugene_busy.get(day, []):\n            start = datetime.strptime(slot[0], \"%H:%M\")\n            end = datetime.strptime(slot[1], \"%H:%M\")\n            busy_slots.append((start, end))\n        \n        # Add Eric's busy slots\n        for slot in eric_busy.get(day, []):\n            start = datetime.strptime(slot[0], \"%H:%M\")\n            end = datetime.strptime(slot[1], \"%H:%M\")\n            busy_slots.append((start, end))\n        \n        # Sort busy slots by start time\n        busy_slots.sort()\n        \n        # Find available slots\n        available_slots = []\n        prev_end = work_start\n        \n        for slot in busy_slots:\n            slot_start, slot_end = slot\n            if slot_start > prev_end:\n                available_slots.append((prev_end, slot_start))\n            prev_end = max(prev_end, slot_end)\n        \n        if prev_end < work_end:\n            available_slots.append((prev_end, work_end))\n        \n        # Check each available slot for sufficient duration\n        for slot in available_slots:\n            slot_start, slot_end = slot\n            if slot_end - slot_start >= meeting_duration:\n                meeting_start = slot_start\n                meeting_end = meeting_start + meeting_duration\n                # Format the output\n                start_str = meeting_start.strftime(\"%H:%M\")\n                end_str = meeting_end.strftime(\"%H:%M\")\n                print(f\"{day}: {start_str}:{end_str}\")\n                return\n    \n    print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_938"
+        }
+    ]
+}

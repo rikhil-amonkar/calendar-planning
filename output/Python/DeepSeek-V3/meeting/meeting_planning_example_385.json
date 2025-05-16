@@ -1,0 +1,37 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "9:08",
+                        "end_time": "9:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "13:30",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "18:00",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    if time_str == '24:00':\n        return 24 * 60\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input parameters\ntravel_times = {\n    'Nob Hill': {\n        'Presidio': 17,\n        'North Beach': 8,\n        'Fisherman\\'s Wharf': 11,\n        'Pacific Heights': 8\n    },\n    'Presidio': {\n        'Nob Hill': 18,\n        'North Beach': 18,\n        'Fisherman\\'s Wharf': 19,\n        'Pacific Heights': 11\n    },\n    'North Beach': {\n        'Nob Hill': 7,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 5,\n        'Pacific Heights': 8\n    },\n    'Fisherman\\'s Wharf': {\n        'Nob Hill': 11,\n        'Presidio': 17,\n        'North Beach': 6,\n        'Pacific Heights': 12\n    },\n    'Pacific Heights': {\n        'Nob Hill': 8,\n        'Presidio': 11,\n        'North Beach': 9,\n        'Fisherman\\'s Wharf': 13\n    }\n}\n\npeople = {\n    'Jeffrey': {\n        'location': 'Presidio',\n        'available_start': '8:00',\n        'available_end': '10:00',\n        'duration': 105\n    },\n    'Steven': {\n        'location': 'North Beach',\n        'available_start': '13:30',\n        'available_end': '22:00',\n        'duration': 45\n    },\n    'Barbara': {\n        'location': 'Fisherman\\'s Wharf',\n        'available_start': '18:00',\n        'available_end': '21:30',\n        'duration': 30\n    },\n    'John': {\n        'location': 'Pacific Heights',\n        'available_start': '9:00',\n        'available_end': '13:30',\n        'duration': 15\n    }\n}\n\ncurrent_location = 'Nob Hill'\ncurrent_time = time_to_minutes('9:00')\n\ndef calculate_schedule(order):\n    schedule = []\n    loc = current_location\n    time = current_time\n    \n    for person in order:\n        info = people[person]\n        dest = info['location']\n        travel = travel_times[loc][dest]\n        arrival = time + travel\n        \n        available_start = time_to_minutes(info['available_start'])\n        available_end = time_to_minutes(info['available_end'])\n        duration = info['duration']\n        \n        start = max(arrival, available_start)\n        end = start + duration\n        \n        if end > available_end:\n            return None\n        \n        schedule.append({\n            'person': person,\n            'location': dest,\n            'start_time': minutes_to_time(start),\n            'end_time': minutes_to_time(end),\n            'departure_time': end\n        })\n        \n        loc = dest\n        time = end\n    \n    return schedule\n\nbest_schedule = None\nmax_people = 0\n\n# Try all possible orders of meeting people\nfor order in permutations(people.keys()):\n    schedule = calculate_schedule(order)\n    if schedule:\n        if len(schedule) > max_people:\n            max_people = len(schedule)\n            best_schedule = schedule\n        elif len(schedule) == max_people:\n            # Prefer schedules that end earlier\n            current_end = time_to_minutes(best_schedule[-1]['end_time'])\n            new_end = time_to_minutes(schedule[-1]['end_time'])\n            if new_end < current_end:\n                best_schedule = schedule\n\n# Format the output\nif best_schedule:\n    itinerary = []\n    for meeting in best_schedule:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting['location'],\n            \"person\": meeting['person'],\n            \"start_time\": meeting['start_time'],\n            \"end_time\": meeting['end_time']\n        })\n    \n    output = {\n        \"itinerary\": itinerary\n    }\nelse:\n    output = {\n        \"itinerary\": []\n    }\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_385"
+        }
+    ]
+}

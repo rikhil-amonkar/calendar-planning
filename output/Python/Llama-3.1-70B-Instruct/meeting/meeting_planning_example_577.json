@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Robert",
+                        "start_time": "9:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Anthony",
+                        "start_time": "10:41",
+                        "end_time": "10:56"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "11:05",
+                        "end_time": "12:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sandra",
+                        "start_time": "14:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kevin",
+                        "start_time": "19:15",
+                        "end_time": "20:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Stephanie",
+                        "start_time": "20:37",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "9:07",
+                        "end_time": "10:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Anthony",
+                        "start_time": "10:32",
+                        "end_time": "10:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sandra",
+                        "start_time": "14:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Stephanie",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kevin",
+                        "start_time": "20:22",
+                        "end_time": "21:37"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Haight-Ashbury': {'Russian Hill': 17, 'Fisherman\\'s Wharf': 23, 'Nob Hill': 15, 'Golden Gate Park': 7, 'Alamo Square': 5, 'Pacific Heights': 12},\n    'Russian Hill': {'Haight-Ashbury': 17, 'Fisherman\\'s Wharf': 7, 'Nob Hill': 5, 'Golden Gate Park': 21, 'Alamo Square': 15, 'Pacific Heights': 7},\n    'Fisherman\\'s Wharf': {'Haight-Ashbury': 22, 'Russian Hill': 7, 'Nob Hill': 11, 'Golden Gate Park': 25, 'Alamo Square': 20, 'Pacific Heights': 12},\n    'Nob Hill': {'Haight-Ashbury': 13, 'Russian Hill': 5, 'Fisherman\\'s Wharf': 11, 'Golden Gate Park': 17, 'Alamo Square': 11, 'Pacific Heights': 8},\n    'Golden Gate Park': {'Haight-Ashbury': 7, 'Russian Hill': 19, 'Fisherman\\'s Wharf': 24, 'Nob Hill': 20, 'Alamo Square': 10, 'Pacific Heights': 16},\n    'Alamo Square': {'Haight-Ashbury': 5, 'Russian Hill': 13, 'Fisherman\\'s Wharf': 19, 'Nob Hill': 11, 'Golden Gate Park': 9, 'Pacific Heights': 10},\n    'Pacific Heights': {'Haight-Ashbury': 11, 'Russian Hill': 7, 'Fisherman\\'s Wharf': 13, 'Nob Hill': 8, 'Golden Gate Park': 15, 'Alamo Square': 10}\n}\n\n# Meeting constraints\nmeeting_constraints = {\n    'Stephanie': {'location': 'Russian Hill','start_time': '20:00', 'end_time': '20:45','min_duration': 15},\n    'Kevin': {'location': 'Fisherman\\'s Wharf','start_time': '19:15', 'end_time': '21:45','min_duration': 75},\n    'Robert': {'location': 'Nob Hill','start_time': '07:45', 'end_time': '10:30','min_duration': 90},\n    'Steven': {'location': 'Golden Gate Park','start_time': '08:30', 'end_time': '17:00','min_duration': 75},\n    'Anthony': {'location': 'Alamo Square','start_time': '07:45', 'end_time': '19:45','min_duration': 15},\n    'Sandra': {'location': 'Pacific Heights','start_time': '14:45', 'end_time': '21:45','min_duration': 45}\n}\n\ndef calculate_meeting_schedule(travel_distances, meeting_constraints):\n    itinerary = []\n    current_time = '09:00'\n    current_location = 'Haight-Ashbury'\n\n    # Sort meeting constraints by start time\n    sorted_meetings = sorted(meeting_constraints.items(), key=lambda x: x[1]['start_time'])\n\n    for person, meeting in sorted_meetings:\n        travel_time = travel_distances[current_location][meeting['location']]\n        arrival_time = add_time(current_time, travel_time)\n\n        if arrival_time > meeting['start_time']:\n            start_time = arrival_time\n        else:\n            start_time = meeting['start_time']\n\n        end_time = add_time(start_time, meeting['min_duration'])\n\n        if end_time > meeting['end_time']:\n            end_time = meeting['end_time']\n\n        itinerary.append({\n            'action':'meet',\n            'location': meeting['location'],\n            'person': person,\n         'start_time': start_time,\n            'end_time': end_time\n        })\n\n        current_time = end_time\n        current_location = meeting['location']\n\n    return itinerary\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef main():\n    meeting_schedule = calculate_meeting_schedule(travel_distances, meeting_constraints)\n    print(json.dumps({'itinerary': meeting_schedule}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_577"
+        }
+    ]
+}

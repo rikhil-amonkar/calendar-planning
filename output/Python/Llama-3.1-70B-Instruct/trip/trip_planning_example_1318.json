@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 25-25",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 26-26",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 27-31",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 32-33",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 34-35",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 36-37",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    cities = list(constraints.keys())\n    unvisited_cities = cities.copy()\n    current_city = None\n\n    # Start with Edinburgh\n    current_city = 'Edinburgh'\n    unvisited_cities.remove(current_city)\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[current_city] - 1}', 'place': current_city})\n    current_day += constraints[current_city]\n\n    # Visit Budapest\n    next_city = 'Budapest'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Geneva\n    next_city = 'Geneva'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Porto\n    next_city = 'Porto'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Riga\n    next_city = 'Riga'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Tallinn\n    next_city = 'Tallinn'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': next_city})\n    current_city = next_city\n    current_day += 5\n\n    # Attend a wedding in Tallinn between day 4 and day 8\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day}', 'place': current_city})\n    current_day += 1\n\n    # Continue staying in Tallinn\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day}', 'place': current_city})\n    current_day += 1\n\n    # Visit Vilnius\n    next_city = 'Vilnius'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Helsinki\n    next_city = 'Helsinki'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Oslo\n    next_city = 'Oslo'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Meet a friend in Oslo between day 24 and day 25\n    if current_day < 24:\n        trip_plan.append({'day_range': f'Day {current_day}-{23}', 'place': current_city})\n        current_day = 24\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': current_city})\n\n    return trip_plan\n\nconstraints = {\n    'Oslo': 2,\n    'Helsinki': 2,\n    'Edinburgh': 3,\n    'Riga': 2,\n    'Tallinn': 5,\n    'Budapest': 5,\n    'Vilnius': 5,\n    'Porto': 5,\n    'Geneva': 4\n}\n\ndirect_flights = [\n    ['Porto', 'Oslo'],\n    ['Edinburgh', 'Budapest'],\n    ['Edinburgh', 'Geneva'],\n    ['Riga', 'Tallinn'],\n    ['Edinburgh', 'Porto'],\n    ['Vilnius', 'Helsinki'],\n    ['Tallinn', 'Vilnius'],\n    ['Riga', 'Oslo'],\n    ['Geneva', 'Oslo'],\n    ['Edinburgh', 'Oslo'],\n    ['Edinburgh', 'Helsinki'],\n    ['Vilnius', 'Oslo'],\n    ['Riga', 'Helsinki'],\n    ['Budapest', 'Geneva'],\n    ['Helsinki', 'Budapest'],\n    ['Helsinki', 'Oslo'],\n    ['Edinburgh', 'Riga'],\n    ['Tallinn', 'Helsinki'],\n    ['Geneva', 'Porto'],\n    ['Budapest', 'Oslo'],\n    ['Helsinki', 'Geneva'],\n    ['Riga', 'Vilnius'],\n    ['Tallinn', 'Oslo']\n]\n\ntrip_plan = calculate_trip_plan(constraints, direct_flights)\nprint(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_1318"
+        }
+    ]
+}

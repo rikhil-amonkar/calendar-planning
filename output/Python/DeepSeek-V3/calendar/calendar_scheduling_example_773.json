@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_earliest_meeting_time(participant_busy_times, work_hours, meeting_duration, days):\n    # Convert work hours to minutes since midnight for easier calculation\n    work_start = int(work_hours[0].split(':')[0]) * 60 + int(work_hours[0].split(':')[1])\n    work_end = int(work_hours[1].split(':')[0]) * 60 + int(work_hours[1].split(':')[1])\n    \n    for day in days:\n        # Get busy slots for the current day\n        busy_slots = participant_busy_times.get(day, [])\n        \n        # Convert busy slots to minutes since midnight and sort them\n        busy_minutes = []\n        for slot in busy_slots:\n            start = slot[0].split(':')\n            end = slot[1].split(':')\n            start_min = int(start[0]) * 60 + int(start[1])\n            end_min = int(end[0]) * 60 + int(end[1])\n            busy_minutes.append((start_min, end_min))\n        \n        # Sort busy slots by start time\n        busy_minutes.sort()\n        \n        # Check the time before the first busy slot\n        if len(busy_minutes) > 0:\n            first_busy_start = busy_minutes[0][0]\n            available_start = work_start\n            available_end = first_busy_start\n            if available_end - available_start >= meeting_duration:\n                return day, (available_start, available_start + meeting_duration)\n        \n        # Check the time between busy slots\n        for i in range(len(busy_minutes) - 1):\n            current_end = busy_minutes[i][1]\n            next_start = busy_minutes[i + 1][0]\n            if next_start - current_end >= meeting_duration:\n                return day, (current_end, current_end + meeting_duration)\n        \n        # Check the time after the last busy slot\n        if len(busy_minutes) > 0:\n            last_busy_end = busy_minutes[-1][1]\n            available_start = last_busy_end\n            available_end = work_end\n            if available_end - available_start >= meeting_duration:\n                return day, (available_start, available_start + meeting_duration)\n        else:\n            # No busy slots, the entire work day is available\n            return day, (work_start, work_start + meeting_duration)\n    \n    return None, None\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define the problem constraints\nwork_hours = ('9:00', '17:00')\nmeeting_duration = 60  # minutes\ndays = ['Monday', 'Tuesday', 'Wednesday']\n\n# Roy's busy times (Patrick is free all the time)\nroy_busy_times = {\n    'Monday': [('10:00', '11:30'), ('12:00', '13:00'), ('14:00', '14:30'), ('15:00', '17:00')],\n    'Tuesday': [('10:30', '11:30'), ('12:00', '14:30'), ('15:00', '15:30'), ('16:00', '17:00')],\n    'Wednesday': [('9:30', '11:30'), ('12:30', '14:00'), ('14:30', '15:30'), ('16:30', '17:00')]\n}\n\n# Find the earliest meeting time\nday, (start_min, end_min) = find_earliest_meeting_time(roy_busy_times, work_hours, meeting_duration, days)\n\n# Format the output\nstart_time = format_time(start_min)\nend_time = format_time(end_min)\nprint(f\"{day}:{start_time}:{end_time}\")\n```",
+            "count": "calendar_scheduling_example_773"
+        }
+    ]
+}

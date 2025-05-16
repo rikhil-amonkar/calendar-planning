@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Joseph",
+                        "start_time": "9:24",
+                        "end_time": "10:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "11:16",
+                        "end_time": "11:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Barbara",
+                        "start_time": "12:3",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Joseph",
+                        "start_time": "9:24",
+                        "end_time": "10:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "11:16",
+                        "end_time": "11:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Barbara",
+                        "start_time": "12:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nfrom itertools import permutations\n\ndef min_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours}:{mins:02d}\".replace(\":0\", \":\") if mins < 10 else f\"{hours}:{mins}\"\n\ntravel_times = {\n    'Golden Gate Park': {\n        \"Fisherman's Wharf\": 24,\n        'Bayview': 23,\n        'Mission District': 17,\n        'Embarcadero': 25,\n        'Financial District': 26\n    },\n    \"Fisherman's Wharf\": {\n        'Golden Gate Park': 25,\n        'Bayview': 26,\n        'Mission District': 22,\n        'Embarcadero': 8,\n        'Financial District': 11\n    },\n    'Bayview': {\n        'Golden Gate Park': 22,\n        \"Fisherman's Wharf\": 25,\n        'Mission District': 13,\n        'Embarcadero': 19,\n        'Financial District': 19\n    },\n    'Mission District': {\n        'Golden Gate Park': 17,\n        \"Fisherman's Wharf\": 22,\n        'Bayview': 15,\n        'Embarcadero': 19,\n        'Financial District': 17\n    },\n    'Embarcadero': {\n        'Golden Gate Park': 25,\n        \"Fisherman's Wharf\": 6,\n        'Bayview': 21,\n        'Mission District': 20,\n        'Financial District': 5\n    },\n    'Financial District': {\n        'Golden Gate Park': 23,\n        \"Fisherman's Wharf\": 10,\n        'Bayview': 19,\n        'Mission District': 17,\n        'Embarcadero': 4\n    }\n}\n\nfriends = [\n    {\n        'name': 'Joseph',\n        'location': \"Fisherman's Wharf\",\n        'start': 8 * 60,\n        'end': 17 * 60 + 30,\n        'duration': 90\n    },\n    {\n        'name': 'Kevin',\n        'location': 'Mission District',\n        'start': 11 * 60 + 15,\n        'end': 15 * 60 + 15,\n        'duration': 30\n    },\n    {\n        'name': 'Barbara',\n        'location': 'Financial District',\n        'start': 10 * 60 + 30,\n        'end': 16 * 60 + 30,\n        'duration': 15\n    },\n    {\n        'name': 'Jeffrey',\n        'location': 'Bayview',\n        'start': 17 * 60 + 30,\n        'end': 21 * 60 + 30,\n        'duration': 60\n    }\n]\n\nbest = []\nfor perm in permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_loc = 'Golden Gate Park'\n    itinerary = []\n    valid = True\n    \n    for f in perm:\n        to_loc = f['location']\n        tt = travel_times[current_loc].get(to_loc)\n        if tt is None:\n            valid = False\n            break\n        arrive = current_time + tt\n        if arrive > f['end']:\n            valid = False\n            break\n        \n        start = max(arrive, f['start'])\n        end = start + f['duration']\n        if end > f['end']:\n            valid = False\n            break\n        \n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": to_loc,\n            \"person\": f['name'],\n            \"start_time\": min_to_time(start),\n            \"end_time\": min_to_time(end)\n        })\n        current_time = end\n        current_loc = to_loc\n    \n    if valid and len(itinerary) > len(best):\n        best = itinerary\n        if len(best) == 4:\n            break\n\nprint(json.dumps({\"itinerary\": best}, indent=2))\n```",
+            "count": "meeting_planning_example_432"
+        }
+    ]
+}
