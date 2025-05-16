@@ -1,115 +1,53 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, megan_schedule, daniel_schedule):
-    # Create Z3 variables for the meeting time
-    megan_meeting = Int('megan_meeting')
-    daniel_meeting = Int('daniel_meeting')
+# Define the variables
+day = [Monday, Tuesday, Wednesday, Thursday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+megan_schedule = [(13, 13, 30), (14, 15, 30), (9, 9, 30), (12, 12, 30), (16, 17), (9, 30, 10), (10, 30, 11, 30), (12, 30, 14), (16, 16, 30), (13, 30, 14, 30), (15, 15, 30)]
+daniel_schedule = [(10, 11, 30), (12, 30, 15), (9, 10), (10, 30, 17), (9, 10), (10, 30, 11, 30), (12, 17), (9, 12), (12, 30, 14, 30), (15, 15, 30), (16, 17)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(megan_meeting >= start_time, megan_meeting <= end_time),
-        And(daniel_meeting >= start_time, daniel_meeting <= end_time),
-        meeting_start == megan_meeting,
-        meeting_end == megan_meeting + duration,
-        meeting_start == daniel_meeting,
-        meeting_end == daniel_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 1
 
-    # Define the constraints for Megan's schedule
-    megan_constraints = []
-    for day, schedule in megan_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                megan_constraints.extend([
-                    Not(And(megan_meeting >= start, megan_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                megan_constraints.extend([
-                    Not(And(megan_meeting >= start, megan_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                megan_constraints.extend([
-                    Not(And(megan_meeting >= start, megan_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Thursday':
-                megan_constraints.extend([
-                    Not(And(megan_meeting >= start, megan_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-    constraints.extend(megan_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for Daniel's schedule
-    daniel_constraints = []
-    for day, schedule in daniel_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                daniel_constraints.extend([
-                    Not(And(daniel_meeting >= start, daniel_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                daniel_constraints.extend([
-                    Not(And(daniel_meeting >= start, daniel_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                daniel_constraints.extend([
-                    Not(And(daniel_meeting >= start, daniel_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Thursday':
-                daniel_constraints.extend([
-                    Not(And(daniel_meeting >= start, daniel_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-    constraints.extend(daniel_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the solver
-    solver = Solver()
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration * 2)  # Convert meeting duration to hours
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Add the constraints to the solver
-    solver.add(constraints)
+# Add constraints for Megan's schedule
+for start, end in megan_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Solve the solver
-    result = solver.check()
+# Add constraints for Daniel's schedule
+for start, end in daniel_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[megan_meeting].as_long()} - {model[meeting_end].as_long()}")
-    else:
-        print("No solution found")
+# Define the objective function
+solver.minimize(start_var)
 
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 60  # 1 hour
-megan_schedule = {
-    'Monday': [(13 * 0, 13 * 30), (14 * 0, 15 * 30)],
-    'Tuesday': [(9 * 0, 9 * 30), (12 * 0, 12 * 30), (16 * 0, 17 * 0)],
-    'Wednesday': [(9 * 30, 10 * 0), (10 * 30, 11 * 30), (12 * 30, 14 * 0), (16 * 0, 16 * 30)],
-    'Thursday': [(13 * 30, 14 * 30), (15 * 0, 15 * 30)],
-}
-daniel_schedule = {
-    'Monday': [(10 * 0, 11 * 30), (12 * 30, 15 * 0)],
-    'Tuesday': [(9 * 0, 10 * 0), (10 * 30, 17 * 0)],
-    'Wednesday': [(9 * 0, 10 * 0), (10 * 30, 11 * 30), (12 * 0, 17 * 0)],
-    'Thursday': [(9 * 0, 12 * 0), (12 * 30, 14 * 30), (15 * 0, 15 * 30), (16 * 0, 17 * 0)],
-}
-
-schedule_meeting(start_time, end_time, duration, megan_schedule, daniel_schedule)
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

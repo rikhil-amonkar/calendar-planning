@@ -1,65 +1,53 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, james_schedule, john_schedule):
-    # Create Z3 variables for the meeting time
-    james_meeting = Int('james_meeting')
-    john_meeting = Int('john_meeting')
+# Define the variables
+day = [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+james_schedule = [(11, 30), (14, 30)]
+john_schedule = [(9, 30, 11), (11, 30, 12), (12, 30, 13, 30), (14, 30, 16, 30)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(james_meeting >= start_time, james_meeting <= end_time),
-        And(john_meeting >= start_time, john_meeting <= end_time),
-        meeting_start == james_meeting,
-        meeting_end == james_meeting + duration,
-        meeting_start == john_meeting,
-        meeting_end == john_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 1
 
-    # Define the constraints for James' schedule
-    james_constraints = []
-    for start, end in james_schedule:
-        james_constraints.extend([
-            Not(And(james_meeting >= start, james_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(james_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for John's schedule
-    john_constraints = []
-    for start, end in john_schedule:
-        john_constraints.extend([
-            Not(And(john_meeting >= start, john_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(john_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the solver
-    solver = Solver()
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration)
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Add the constraints to the solver
-    solver.add(constraints)
+# Add constraints for James' schedule
+for start, end in james_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Solve the solver
-    result = solver.check()
+# Add constraints for John's schedule
+for start, end in john_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[james_meeting].as_long()} - {model[meeting_end].as_long()}")
-    else:
-        print("No solution found")
+# Define the objective function
+solver.minimize(end_var - start_var)
 
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 60  # 1 hour
-james_schedule = [(11 * 60 + 30, 12 * 60), (14 * 60 + 30, 15 * 60)]
-john_schedule = [(9 * 60 + 30, 11 * 60), (11 * 60 + 30, 12 * 60), (12 * 60 + 30, 13 * 60 + 30), (14 * 60 + 30, 16 * 60 + 30)]
-
-schedule_meeting(start_time, end_time, duration, james_schedule, john_schedule)
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

@@ -1,43 +1,44 @@
 from z3 import *
 
-# Define the time slots
-start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60  # 17:00 in minutes
-meeting_duration = 30  # 0.5 hours in minutes
+# Define the participants and their busy times
+participants = ['Bradley', 'Teresa', 'Elizabeth', 'Christian']
+busy_times = {
+    'Bradley': [(9*60+30, 10*60), (12*60+30, 13*60), (13*60+30, 14*60), (15*60+30, 16*60)],
+    'Teresa': [(10*60+30, 11*60), (12*60, 12*60+30), (13*60, 13*60+30), (14*60+30, 15*60)],
+    'Elizabeth': [(9*60, 9*60+30), (10*60+30, 11*60+30), (13*60, 13*60+30), (14*60+30, 15*60), (15*60+30, 17*60)],
+    'Christian': [(9*60, 9*60+30), (10*60+30, 17*60)],
+}
 
-# Define the existing schedules for Bradley, Teresa, Elizabeth and Christian
-bradley_schedule = [(9 * 60 + 30, 10 * 60), (12 * 60 + 30, 13 * 60), (13 * 60 + 30, 14 * 60), (15 * 60 + 30, 16 * 60)]
-teresa_schedule = [(10 * 60 + 30, 11 * 60), (12 * 60, 12 * 60 + 30), (13 * 60, 13 * 60 + 30), (14 * 60 + 30, 15 * 60)]
-elizabeth_schedule = [(9 * 60, 9 * 60 + 30), (10 * 60 + 30, 11 * 60 + 30), (13 * 60, 13 * 60 + 30), (14 * 60 + 30, 15 * 60), (15 * 60 + 30, 17 * 60)]
-christian_schedule = [(9 * 60, 9 * 60 + 30), (10 * 60 + 30, 17 * 60)]
+# Define the meeting duration
+meeting_duration = 30  # in minutes
+
+# Define the work hours
+work_hours = (9*60, 17*60)  # in minutes
 
 # Create a Z3 solver
-solver = Solver()
+s = Solver()
 
-# Create a Z3 variable to represent the start time of the meeting
-meeting_start = Int('meeting_start')
+# Define the variables for the meeting start time
+start_time = Int('start_time')
 
-# Add constraints to ensure the meeting start time is within the work hours
-solver.add(And(meeting_start >= start_time, meeting_start <= end_time - meeting_duration))
+# Add constraints for the work hours
+s.add(start_time >= work_hours[0])
+s.add(start_time + meeting_duration <= work_hours[1])
 
-# Add constraints to avoid everyone's schedule
-for start, end in bradley_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
+# Add constraints for each participant's busy times
+for participant, times in busy_times.items():
+    for start, end in times:
+        s.add(Or(start_time + meeting_duration <= start, start_time >= end))
 
-for start, end in teresa_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-for start, end in elizabeth_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-for start, end in christian_schedule:
-    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
-
-# Check if the solver can find a solution
-if solver.check() == sat:
+# Check if there is a solution
+if s.check() == sat:
     # Get the solution
-    model = solver.model()
-    meeting_start_time = model[meeting_start].as_long()
-    print(f"Meeting can be scheduled from {meeting_start_time // 60}:{meeting_start_time % 60:02} to {(meeting_start_time + meeting_duration) // 60}:{(meeting_start_time + meeting_duration) % 60:02}")
+    m = s.model()
+    start_time_value = m[start_time].as_long()
+
+    # Print the solution
+    print(f"Day to meet: Monday")
+    print(f"Start time: {start_time_value // 60}:{start_time_value % 60:02d}")
+    print(f"End time: {(start_time_value + meeting_duration) // 60}:{(start_time_value + meeting_duration) % 60:02d}")
 else:
-    print("No solution found")
+    print("No solution found.")

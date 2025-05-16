@@ -1,73 +1,66 @@
 from z3 import *
 
-# Define work hours and meeting duration
-work_start = 9 * 60  # 9:00 AM in minutes
-work_end = 17 * 60   # 5:00 PM in minutes
-meeting_duration = 30  # Meeting duration in minutes
+# Create a Z3 solver instance
+solver = Solver()
 
-# Define busy times for each participant (in minutes from midnight)
-busy_times = {
-    "Adam": {
-        "Monday": [
-            (14 * 60, 15 * 60)  # 14:00 to 15:00
-        ]
+# Define work hours in minutes from midnight
+work_start = 9 * 60  # 9:00 AM
+work_end = 17 * 60   # 5:00 PM
+
+# Define existing busy schedules for each participant
+schedules = {
+    'Adam': {
+        'Monday': [(14 * 60, 15 * 60)],  # Busy on Monday
     },
-    "John": {
-        "Monday": [
-            (13 * 60, 13 * 60 + 30),  # 13:00 to 13:30
-            (14 * 60, 14 * 60 + 30),   # 14:00 to 14:30
-            (15 * 60 + 30, 16 * 60),   # 15:30 to 16:00
-            (16 * 60 + 30, 17 * 60)    # 16:30 to 17:00
-        ]
+    'John': {
+        'Monday': [(13 * 60, 13 * 60 + 30), (14 * 60, 14 * 60 + 30), 
+                   (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],  # Busy on Monday
     },
-    "Stephanie": {
-        "Monday": [
-            (9 * 60 + 30, 10 * 60),    # 9:30 to 10:00
-            (10 * 60 + 30, 11 * 60),   # 10:30 to 11:00
-            (11 * 60 + 30, 16 * 60),   # 11:30 to 16:00
-            (16 * 60 + 30, 17 * 60)    # 16:30 to 17:00
-        ]
+    'Stephanie': {
+        'Monday': [(9 * 60 + 30, 10 * 60), (10 * 60 + 30, 11 * 60), 
+                   (11 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],  # Busy on Monday
     },
-    "Anna": {
-        "Monday": [
-            (9 * 60 + 30, 10 * 60),    # 9:30 to 10:00
-            (12 * 60, 12 * 60 + 30),   # 12:00 to 12:30
-            (13 * 60, 15 * 60 + 30),   # 13:00 to 15:30
-            (16 * 60 + 30, 17 * 60)     # 16:30 to 17:00
-        ]
+    'Anna': {
+        'Monday': [(9 * 60 + 30, 10 * 60), (12 * 60, 12 * 60 + 30), 
+                   (13 * 60, 15 * 60 + 30), (16 * 60 + 30, 17 * 60)],  # Busy on Monday
     }
 }
 
-# Initialize Z3 Solver
-solver = Solver()
-
-# Variable for the start time of the meeting
+# Define variables for the meeting start and end times (in minutes) and the day
 start_time = Int('start_time')
+end_time = Int('end_time')
 
-# Constraints: the meeting must occur during work hours
+# Meeting duration
+meeting_duration = 30  # in minutes
+
+# Constraints to ensure meeting duration is half an hour
+solver.add(end_time == start_time + meeting_duration)
+
+# Ensure the meeting is within work hours
 solver.add(start_time >= work_start)
-solver.add(start_time + meeting_duration <= work_end)
+solver.add(end_time <= work_end)
 
-# Function to add busy time constraints for each participant
-def add_busy_constraints(participant):
-    for busy_start, busy_end in busy_times[participant]["Monday"]:
-        # Ensure the meeting does not overlap with busy times
-        solver.add(Or(start_time + meeting_duration <= busy_start, start_time >= busy_end))
+# Ensure the meeting does not overlap with any participant's busy schedules
+for participant, busy_times in schedules.items():
+    for busy_start, busy_end in busy_times['Monday']:
+        solver.add(Or(start_time < busy_start, end_time > busy_end))
 
-# Add busy time constraints for all participants
-add_busy_constraints("Adam")
-add_busy_constraints("John")
-add_busy_constraints("Stephanie")
-add_busy_constraints("Anna")
-
-# Add Anna's preference: cannot meet before 14:30
+# Additional constraint: Anna prefers not to meet before 14:30 on Monday
 solver.add(start_time >= (14 * 60 + 30))  # 14:30 in minutes
 
-# Check for a solution
+# Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    meeting_start = model[start_time].as_long()
-    meeting_end = meeting_start + meeting_duration
-    print(f"Meeting can be scheduled from {meeting_start // 60:02}:{meeting_start % 60:02} to {meeting_end // 60:02}:{meeting_end % 60:02}")
+
+    start = model[start_time].as_long()
+    end = model[end_time].as_long()
+    
+    # Convert back to standard time for output
+    start_hour = start // 60
+    start_minute = start % 60
+    end_hour = end // 60
+    end_minute = end % 60
+
+    print(f"SOLUTION: Meeting on Monday from {start_hour:02}:{start_minute:02} to {end_hour:02}:{end_minute:02}")
 else:
-    print("No available time found for the meeting.")
+    print("No available time slot found.")

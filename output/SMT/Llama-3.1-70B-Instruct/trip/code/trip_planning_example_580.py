@@ -1,68 +1,53 @@
 from z3 import *
 
-# Define the cities and their stay durations
+# Define the cities
 cities = ['Paris', 'Oslo', 'Porto', 'Geneva', 'Reykjavik']
-durations = {'Paris': 6, 'Oslo': 5, 'Porto': 7, 'Geneva': 7, 'Reykjavik': 2}
 
-# Define the direct flights between cities
-direct_flights = {
-    'Paris': ['Oslo'],
-    'Geneva': ['Oslo'],
-    'Porto': ['Paris'],
-    'Geneva': ['Paris'],
-    'Geneva': ['Porto'],
-    'Paris': ['Reykjavik'],
-    'Reykjavik': ['Oslo'],
-    'Porto': ['Oslo']
-}
+# Define the direct flights
+direct_flights = [('Paris', 'Oslo'), ('Geneva', 'Oslo'), ('Porto', 'Paris'), 
+                  ('Geneva', 'Paris'), ('Geneva', 'Porto'), ('Paris', 'Reykjavik'), 
+                  ('Reykjavik', 'Oslo'), ('Porto', 'Oslo')]
+
+# Define the variables
+x = [[Int(f'{city}_{day}') for day in range(1, 24)] for city in cities]
 
 # Define the constraints
-def define_constraints():
-    # Define the variables
-    city_vars = [Int(f'city_{i}') for i in range(23)]
-    for var in city_vars:
-        var.domain(cities)
+constraints = []
 
-    # Define the constraints
-    constraints = []
-    constraints.append(Or([city_vars[0] == 'Geneva', city_vars[6] == 'Geneva']))  # Attend conference in Geneva between day 1 and 7
-    constraints.append(Or([city_vars[18] == 'Oslo', city_vars[19] == 'Oslo', city_vars[20] == 'Oslo', city_vars[21] == 'Oslo', city_vars[22] == 'Oslo']))  # Visit relatives in Oslo between day 19 and 23
+# Each day, the person can only be in one city
+for day in range(1, 24):
+    constraints.append(Sum([x[i][day-1] for i in range(len(cities))]) == 1)
 
-    # Stay in each city for the required duration
-    for city, duration in durations.items():
-        constraints.append(Sum([If(city_vars[i] == city, 1, 0) for i in range(23)]) == duration)
+# The person stays in each city for the required number of days
+constraints.append(Sum(x[0]) == 6)  # Paris
+constraints.append(Sum(x[1]) == 5)  # Oslo
+constraints.append(Sum(x[2]) == 7)  # Porto
+constraints.append(Sum(x[3]) == 7)  # Geneva
+constraints.append(Sum(x[4]) == 2)  # Reykjavik
 
-    # Ensure that the trip plan is feasible (i.e., only take direct flights)
-    for i in range(22):
-        constraints.append(Or([And(city_vars[i] == from_city, city_vars[i+1] == to_city) for from_city, to_cities in direct_flights.items() for to_city in to_cities]))
+# The person visits relatives in Oslo between day 19 and day 23
+for day in range(19, 24):
+    constraints.append(x[1][day-1] == 1)
 
-    # Ensure that the trip plan is connected (i.e., no gaps in the trip plan)
-    constraints.append(Distinct([city_vars[i] for i in range(23)]))
+# The person attends a conference in Geneva on day 1 and day 7
+constraints.append(x[3][0] == 1)
+constraints.append(x[3][6] == 1)
 
-    return city_vars, constraints
+# The person can only travel between cities with direct flights
+for day in range(1, 23):
+    for i in range(len(cities)):
+        for j in range(len(cities)):
+            if (cities[i], cities[j]) not in direct_flights and (cities[j], cities[i]) not in direct_flights:
+                constraints.append(Implies(And(x[i][day-1] == 1, x[j][day] == 1), False))
 
-# Solve the constraints
-def solve_constraints(city_vars, constraints):
-    solver = Solver()
-    for constraint in constraints:
-        solver.add(constraint)
-    if solver.check() == sat:
-        model = solver.model()
-        trip_plan = [model.evaluate(city_var).as_string() for city_var in city_vars]
-        return trip_plan
-    else:
-        return None
+# Solve the problem
+solver = Solver()
+solver.add(constraints)
+result = solver.check()
 
-# Main function
-def main():
-    city_vars, constraints = define_constraints()
-    trip_plan = solve_constraints(city_vars, constraints)
-    if trip_plan is not None:
-        print('Trip Plan:')
-        for i, city in enumerate(trip_plan):
-            print(f'Day {i+1}: {city}')
-    else:
-        print('No trip plan found.')
-
-if __name__ == '__main__':
-    main()
+if result == sat:
+    model = solver.model()
+    for city in cities:
+        print(f'{city}: {[day for day, value in enumerate([model.evaluate(x[cities.index(city)][i], model_completion=True) for i in range(23)]) if value]}')
+else:
+    print('No solution found')

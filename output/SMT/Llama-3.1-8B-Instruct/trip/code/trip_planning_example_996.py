@@ -1,55 +1,74 @@
 from z3 import *
 
-def schedule_trip():
-    # Define the cities
-    cities = ['Valencia', 'Riga', 'Prague', 'Mykonos', 'Zurich', 'Bucharest', 'Nice']
+# Define the cities
+cities = ['Valencia', 'Riga', 'Prague', 'Mykonos', 'Zurich', 'Bucharest', 'Nice']
 
-    # Define the days
-    days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+# Define the days
+days = range(1, 23)
 
-    # Define the direct flights
-    direct_flights = {
-        ('Mykonos', 'Nice'): 1,
-        ('Mykonos', 'Zurich'): 1,
-        ('Prague', 'Bucharest'): 1,
-        ('Valencia', 'Bucharest'): 1,
-        ('Zurich', 'Prague'): 1,
-        ('Riga', 'Nice'): 1,
-        ('Zurich', 'Riga'): 1,
-        ('Zurich', 'Bucharest'): 1,
-        ('Zurich', 'Valencia'): 1,
-        ('Bucharest', 'Riga'): 1,
-        ('Prague', 'Riga'): 1,
-        ('Prague', 'Valencia'): 1,
-        ('Zurich', 'Nice'): 1,
-    }
+# Define the direct flights
+flights = {
+    ('Mykonos', 'Nice'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Mykonos', 'Zurich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Prague', 'Bucharest'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Valencia', 'Bucharest'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Zurich', 'Prague'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Riga', 'Nice'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Zurich', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Zurich', 'Bucharest'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Zurich', 'Valencia'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Bucharest', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Prague', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Prague', 'Valencia'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+    ('Zurich', 'Nice'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+}
 
-    # Define the constraints
-    constraints = []
+# Define the constraints
+solver = Solver()
+
+# Define the variables
+x = {city: [Bool(f'{city}_day_{day}') for day in days] for city in cities}
+
+# Constraints for wedding
+for day in [1, 2, 3]:
+    solver.add(Not(x['Mykonos'][day]))
+
+# Constraints for visiting relatives
+for day in [7, 8, 9]:
+    solver.add(Not(x['Prague'][day]))
+
+# Constraints for staying in each city
+for city in cities:
     for day in days:
-        for city1 in cities:
-            for city2 in cities:
-                if city1!= city2:
-                    constraints.append(Not(And(day >= 1, day <= 22, city1 in cities, city2 in cities, (city1, city2) in direct_flights)))
+        if city == 'Valencia' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Riga' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Prague' and (day >= 1 and day <= 3):
+            solver.add(x[city][day])
+        elif city == 'Mykonos' and (day >= 1 and day <= 3):
+            solver.add(x[city][day])
+        elif city == 'Zurich' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Bucharest' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Nice' and (day >= 1 and day <= 2):
+            solver.add(x[city][day])
 
-    # Define the solver
-    solver = Solver()
+# Constraints for direct flights
+for (city1, city2), days in flights.items():
+    for day in days:
+        solver.add(Implies(x[city1][day], x[city2][day]))
 
-    # Add the constraints to the solver
-    solver.add(constraints)
-
-    # Solve the solver
-    result = solver.check()
-
-    # If the solver found a solution, print the trip plan
-    if result == sat:
-        model = solver.model()
-        trip_plan = []
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    trip_plan = {}
+    for city in cities:
+        trip_plan[city] = []
         for day in days:
-            trip_plan.append(model[('city', day).as_long()])
-        print(trip_plan)
-    else:
-        print("No solution found")
-
-# Example usage
-schedule_trip()
+            if model[x[city][day]]:
+                trip_plan[city].append(day)
+    print(trip_plan)
+else:
+    print("No solution exists")

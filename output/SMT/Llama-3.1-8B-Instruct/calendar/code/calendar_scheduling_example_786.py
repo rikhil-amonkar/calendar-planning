@@ -1,119 +1,69 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, amy_schedule, pamela_schedule, pamela_avoid_monday, pamela_avoid_tuesday, pamela_avoid_wednesday_before):
-    # Create Z3 variables for the meeting time
-    amy_meeting = Int('amy_meeting')
-    pamela_meeting = Int('pamela_meeting')
+# Define the variables
+day = [Monday, Tuesday, Wednesday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+amy_schedule = [(11, 11, 30), (13, 30, 14), (Wednesday, 11, 11, 30), (13, 30, 14)]
+pamela_schedule = [(9, 10, 30), (11, 16, 30), (9, 9, 30), (10, 17), (9, 9, 30), (10, 11), (11, 30, 13, 30), (14, 30, 15), (16, 16, 30)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(amy_meeting >= start_time, amy_meeting <= end_time),
-        And(pamela_meeting >= start_time, pamela_meeting <= end_time),
-        meeting_start == amy_meeting,
-        meeting_end == amy_meeting + duration,
-        meeting_start == pamela_meeting,
-        meeting_end == pamela_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 0.5
 
-    # Define the constraints for Amy's schedule
-    amy_constraints = []
-    for day, schedule in amy_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                amy_constraints.extend([
-                    Not(And(amy_meeting >= start, amy_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                amy_constraints.extend([
-                    Not(And(amy_meeting >= start, amy_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                amy_constraints.extend([
-                    Not(And(amy_meeting >= start, amy_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-    constraints.extend(amy_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for Pamela's schedule
-    pamela_constraints = []
-    for day, schedule in pamela_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                pamela_constraints.extend([
-                    Not(And(pamela_meeting >= start, pamela_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                pamela_constraints.extend([
-                    Not(And(pamela_meeting >= start, pamela_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                pamela_constraints.extend([
-                    Not(And(pamela_meeting >= start, pamela_meeting < 16 * 60)),
-                    Not(And(pamela_meeting >= start, pamela_meeting < 16 * 60)),
-                ])
-    constraints.extend(pamela_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the constraint for Pamela avoiding Monday
-    pamela_avoid_monday_constraints = [
-        Not(And(pamela_meeting >= 9 * 60, pamela_meeting < 17 * 60)),
-    ]
-    constraints.extend(pamela_avoid_monday_constraints)
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration * 2)  # Convert meeting duration to hours
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Define the constraint for Pamela avoiding Tuesday
-    pamela_avoid_tuesday_constraints = [
-        Not(And(pamela_meeting >= 9 * 60, pamela_meeting < 17 * 60)),
-    ]
-    constraints.extend(pamela_avoid_tuesday_constraints)
-
-    # Define the constraint for Pamela avoiding Wednesday before 16:00
-    pamela_avoid_wednesday_before_constraints = [
-        Not(And(pamela_meeting >= 0, pamela_meeting < 16 * 60)),
-    ]
-    constraints.extend(pamela_avoid_wednesday_before_constraints)
-
-    # Define the solver
-    solver = Solver()
-
-    # Add the constraints to the solver
-    solver.add(constraints)
-
-    # Solve the solver
-    result = solver.check()
-
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[amy_meeting].as_long()} - {model[meeting_end].as_long()}")
+# Add constraints for Amy's schedule
+for day, start, end in amy_schedule:
+    if day == Wednesday:
+        solver.add(start_var > start)
+        solver.add(end_var < end)
     else:
-        print("No solution found")
+        solver.add(day_var!= day)
+        solver.add(start_var > start)
+        solver.add(end_var < end)
 
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 30  # 30 minutes
-amy_schedule = {
-    'Wednesday': [(11 * 60, 11 * 60 + 30), (13 * 60 + 30, 14 * 60)],
-}
-pamela_schedule = {
-    'Monday': [(9 * 60, 10 * 60 + 30), (11 * 60, 16 * 60 + 30)],
-    'Tuesday': [(9 * 60, 9 * 60 + 30), (10 * 60, 17 * 60)],
-    'Wednesday': [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60), (11 * 60 + 30, 13 * 60 + 30), (14 * 60 + 30, 15 * 60), (16 * 60, 16 * 60 + 30)],
-}
-pamela_avoid_monday = True
-pamela_avoid_tuesday = True
-pamela_avoid_wednesday_before = True
+# Add constraints for Pamela's schedule
+for day, start, end in pamela_schedule:
+    if day == Monday:
+        solver.add(day_var!= 0)
+    elif day == Tuesday:
+        solver.add(day_var!= 1)
+    elif day == Wednesday:
+        solver.add(day_var!= 2)
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-schedule_meeting(start_time, end_time, duration, amy_schedule, pamela_schedule, pamela_avoid_monday, pamela_avoid_tuesday, pamela_avoid_wednesday_before)
+# Add constraints for Pamela's preferences
+solver.add(start_var > 16, day_var == 0)  # Pamela would like to avoid more meetings on Monday
+solver.add(start_var > 16, day_var == 1)  # Pamela would like to avoid more meetings on Tuesday
+solver.add(start_var > 16, day_var == 2)  # Pamela would like to avoid more meetings on Wednesday
+
+# Define the objective function
+solver.minimize(end_var - start_var)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

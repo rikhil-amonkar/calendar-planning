@@ -1,94 +1,137 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 28
-cities = [
-    "Copenhagen", "Geneva", "Mykonos", "Naples",
-    "Prague", "Dubrovnik", "Athens", "Santorini",
-    "Brussels", "Munich"
-]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "Copenhagen": 5,
-    "Geneva": 3,
-    "Mykonos": 2,
-    "Naples": 4,
-    "Prague": 2,
-    "Dubrovnik": 3,
-    "Athens": 4,
-    "Santorini": 5,
-    "Brussels": 4,
-    "Munich": 5
-}
-
-# Constraints for specific events
-meet_friends_days_copenhagen = range(11, 16)  # Meeting friends in Copenhagen (Day 11 to Day 15)
-relatives_visit_days_naples = range(5, 9)      # Visiting relatives in Naples (Day 5 to Day 8)
-workshop_days_athens = range(8, 11)             # Workshop in Athens (Day 8 to Day 11)
-conference_days_mykonos = [27, 28]              # Conference in Mykonos (Day 27 and Day 28)
-
-# Define direct flights between the cities
-flights = {
-    "Copenhagen": ["Dubrovnik", "Brussels", "Naples", "Munich", "Geneva"],
-    "Geneva": ["Mykonos", "Prague", "Athens", "Santorini", "Dubrovnik", "Munich"],
-    "Mykonos": ["Naples", "Athens", "Munich"],
-    "Naples": ["Dubrovnik", "Mykonos", "Copenhagen", "Athens", "Geneva", "Munich"],
-    "Prague": ["Geneva", "Athens", "Copenhagen", "Brussels", "Munich"],
-    "Dubrovnik": ["Copenhagen", "Athens", "Naples", "Munich"],
-    "Athens": ["Geneva", "Mykonos", "Santorini", "Naples", "Prague", "Copenhagen"],
-    "Santorini": ["Geneva", "Athens"],
-    "Brussels": ["Copenhagen", "Prague", "Munich", "Naples", "Athens"],
-    "Munich": ["Copenhagen", "Mykonos", "Naples", "Brussels", "Prague", "Geneva", "Dubrovnik"],
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Total days of the trip
+total_days = 28
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Define the days spent in each city
+cities = {
+    'Copenhagen': Int('days_in_copenhagen'),
+    'Geneva': Int('days_in_geneva'),
+    'Mykonos': Int('days_in_mykonos'),
+    'Naples': Int('days_in_naples'),
+    'Prague': Int('days_in_prague'),
+    'Dubrovnik': Int('days_in_dubrovnik'),
+    'Athens': Int('days_in_athens'),
+    'Santorini': Int('days_in_santorini'),
+    'Brussels': Int('days_in_brussels'),
+    'Munich': Int('days_in_munich'),
+}
 
-# Count the days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Constraints on days in cities
+solver.add(cities['Copenhagen'] == 5)  # Spend 5 days in Copenhagen
+solver.add(cities['Geneva'] == 3)       # Spend 3 days in Geneva
+solver.add(cities['Mykonos'] == 2)      # Spend 2 days in Mykonos
+solver.add(cities['Naples'] == 4)       # Spend 4 days in Naples
+solver.add(cities['Prague'] == 2)       # Spend 2 days in Prague
+solver.add(cities['Dubrovnik'] == 3)    # Spend 3 days in Dubrovnik
+solver.add(cities['Athens'] == 4)       # Spend 4 days in Athens
+solver.add(cities['Santorini'] == 5)    # Spend 5 days in Santorini
+solver.add(cities['Brussels'] == 4)     # Spend 4 days in Brussels
+solver.add(cities['Munich'] == 5)       # Spend 5 days in Munich
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days must sum to 28
+solver.add(Sum([cities[city] for city in cities]) == total_days)
 
-# Meeting friends in Copenhagen between day 11 and day 15
-for day in meet_friends_days_copenhagen:
-    solver.add(trip[day - 1] == cities.index("Copenhagen"))  # Adjust for 0-based index
+# Daily city assignments for 28 days
+days = [Int(f'day_{i}') for i in range(total_days)]
 
-# Visiting relatives in Naples between day 5 and day 8
-for day in relatives_visit_days_naples:
-    solver.add(trip[day - 1] == cities.index("Naples"))  # Adjust for 0-based index
+# Constraints for specific events
+# Visit relatives in Naples (between day 5 and day 8)
+for i in range(4, 8):
+    solver.add(days[i] == 3)  # Naples on days 5 to 8
 
-# Workshop in Athens between day 8 and day 11
-for day in workshop_days_athens:
-    solver.add(trip[day - 1] == cities.index("Athens"))  # Adjust for 0-based index
+# Meeting a friend in Copenhagen (between day 11 and day 15)
+for i in range(10, 15):
+    solver.add(days[i] == 0)  # Copenhagen on days 11 to 15
 
-# Conference in Mykonos between day 27 and day 28
-for day in conference_days_mykonos:
-    solver.add(trip[day - 1] == cities.index("Mykonos"))  # Adjust for 0-based index
+# Workshop in Athens (between day 8 and day 11)
+for i in range(7, 10):
+    solver.add(days[i] == 6)  # Athens on days 8 to 10
+
+# Conference in Mykonos (day 27 and day 28)
+solver.add(days[26] == 2)  # Mykonos on day 27
+solver.add(days[27] == 2)  # Mykonos on day 28
+
+# Define valid city indices
+city_indices = {
+    'Copenhagen': 0,
+    'Geneva': 1,
+    'Mykonos': 2,
+    'Naples': 3,
+    'Prague': 4,
+    'Dubrovnik': 5,
+    'Athens': 6,
+    'Santorini': 7,
+    'Brussels': 8,
+    'Munich': 9,
+}
+
+# Ensure daily assignments are valid city indices
+for i in range(total_days):
+    solver.add(Or(
+        days[i] == city_indices['Copenhagen'],
+        days[i] == city_indices['Geneva'],
+        days[i] == city_indices['Mykonos'],
+        days[i] == city_indices['Naples'],
+        days[i] == city_indices['Prague'],
+        days[i] == city_indices['Dubrovnik'],
+        days[i] == city_indices['Athens'],
+        days[i] == city_indices['Santorini'],
+        days[i] == city_indices['Brussels'],
+        days[i] == city_indices['Munich'],
+    ))
 
 # Define direct flight connections
-for day in range(total_days - 1):
-    curr_city_index = trip[day]
-    next_city_index = trip[day + 1]
-    curr_city = cities[curr_city_index]
-    next_city = cities[next_city_index]
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
-                    for city in cities for next_city_city in flights[city]]))
+direct_flights = [
+    (0, 5),  # Copenhagen to Dubrovnik
+    (8, 0),  # Brussels to Copenhagen
+    (4, 1),  # Prague to Geneva
+    (6, 1),  # Athens to Geneva
+    (3, 5),  # Naples to Dubrovnik
+    (6, 5),  # Athens to Dubrovnik
+    (1, 2),  # Geneva to Mykonos
+    (3, 2),  # Naples to Mykonos
+    (3, 0),  # Naples to Copenhagen
+    (9, 2),  # Munich to Mykonos
+    (3, 6),  # Naples to Athens
+    (4, 6),  # Prague to Athens
+    (7, 1),  # Santorini to Geneva
+    (6, 7),  # Athens to Santorini
+    (3, 9),  # Naples to Munich
+    (4, 0),  # Prague to Copenhagen
+    (8, 3),  # Brussels to Naples
+    (6, 2),  # Athens to Mykonos
+    (6, 0),  # Athens to Copenhagen
+    (3, 1),  # Naples to Geneva
+    (5, 9),  # Dubrovnik to Munich
+    (8, 9),  # Brussels to Munich
+    (4, 8),  # Prague to Brussels
+    (8, 6),  # Brussels to Athens
+    (6, 9),  # Athens to Munich
+    (1, 9),  # Geneva to Munich
+    (0, 9),  # Copenhagen to Munich
+    (8, 1),  # Brussels to Geneva
+    (0, 1),  # Copenhagen to Geneva
+    (4, 9),  # Prague to Munich
+    (0, 7),  # Copenhagen to Santorini
+    (3, 7),  # Naples to Santorini
+    (1, 5),  # Geneva to Dubrovnik
+]
 
-# Solve the problem
+# Add constraints based on direct flights
+for i in range(total_days - 1):
+    for src, dst in direct_flights:
+        solver.add(If(days[i] == src, days[i + 1] == dst, True))
+
+# Solve the scheduling problem
 if solver.check() == sat:
     model = solver.model()
-    for day in range(total_days):
-        print(f"Day {day + 1}: {cities[model[trip[day]].as_long()]}")
+    print("Schedule:")
+    for i in range(total_days):
+        city_code = model[days[i]].as_long()
+        print(f"Day {i + 1}: City code {city_code} (0=Copenhagen, 1=Geneva, 2=Mykonos, 3=Naples, 4=Prague, 5=Dubrovnik, 6=Athens, 7=Santorini, 8=Brussels, 9=Munich)")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

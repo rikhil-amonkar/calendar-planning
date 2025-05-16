@@ -1,85 +1,63 @@
 from z3 import *
 
-# Define the cities and their stay durations
+# Define the cities
 cities = ['Venice', 'Barcelona', 'Copenhagen', 'Lyon', 'Reykjavik', 'Dubrovnik', 'Athens', 'Tallinn', 'Munich']
-durations = {'Venice': 4, 'Barcelona': 3, 'Copenhagen': 4, 'Lyon': 4, 'Reykjavik': 4, 'Dubrovnik': 5, 'Athens': 2, 'Tallinn': 5, 'Munich': 3}
 
-# Define the direct flights between cities
-direct_flights = {
-    'Copenhagen': ['Athens'],
-    'Copenhagen': ['Dubrovnik'],
-    'Munich': ['Tallinn'],
-    'Copenhagen': ['Munich'],
-    'Venice': ['Munich'],
-    'Reykjavik': ['Athens'],
-    'Athens': ['Dubrovnik'],
-    'Venice': ['Athens'],
-    'Lyon': ['Barcelona'],
-    'Copenhagen': ['Reykjavik'],
-    'Reykjavik': ['Munich'],
-    'Athens': ['Munich'],
-    'Lyon': ['Munich'],
-    'Barcelona': ['Reykjavik'],
-    'Venice': ['Copenhagen'],
-    'Barcelona': ['Dubrovnik'],
-    'Lyon': ['Venice'],
-    'Dubrovnik': ['Munich'],
-    'Barcelona': ['Athens'],
-    'Copenhagen': ['Barcelona'],
-    'Venice': ['Barcelona'],
-    'Barcelona': ['Munich'],
-    'Barcelona': ['Tallinn'],
-    'Copenhagen': ['Tallinn']
-}
+# Define the direct flights
+direct_flights = [('Copenhagen', 'Athens'), ('Copenhagen', 'Dubrovnik'), ('Munich', 'Tallinn'), ('Copenhagen', 'Munich'), ('Venice', 'Munich'), 
+                  ('Reykjavik', 'Athens'), ('Athens', 'Dubrovnik'), ('Venice', 'Athens'), ('Lyon', 'Barcelona'), ('Copenhagen', 'Reykjavik'), 
+                  ('Reykjavik', 'Munich'), ('Athens', 'Munich'), ('Lyon', 'Munich'), ('Barcelona', 'Reykjavik'), ('Venice', 'Copenhagen'), 
+                  ('Barcelona', 'Dubrovnik'), ('Lyon', 'Venice'), ('Dubrovnik', 'Munich'), ('Barcelona', 'Athens'), ('Copenhagen', 'Barcelona'), 
+                  ('Venice', 'Barcelona'), ('Barcelona', 'Munich'), ('Barcelona', 'Tallinn'), ('Copenhagen', 'Tallinn')]
+
+# Define the variables
+x = [[Int(f'{city}_{day}') for day in range(1, 27)] for city in cities]
 
 # Define the constraints
-def define_constraints():
-    # Define the variables
-    city_vars = [Int(f'city_{i}') for i in range(26)]
-    for var in city_vars:
-        var.domain(cities)
+constraints = []
 
-    # Define the constraints
-    constraints = []
-    constraints.append(Or([city_vars[6] == 'Copenhagen', city_vars[7] == 'Copenhagen', city_vars[8] == 'Copenhagen', city_vars[9] == 'Copenhagen']))  # Visit relatives in Copenhagen between day 7 and 10
-    constraints.append(Or([city_vars[9] == 'Barcelona', city_vars[10] == 'Barcelona', city_vars[11] == 'Barcelona']))  # Meet a friend in Barcelona between day 10 and 12
-    constraints.append(Or([city_vars[15] == 'Dubrovnik', city_vars[16] == 'Dubrovnik', city_vars[17] == 'Dubrovnik', city_vars[18] == 'Dubrovnik', city_vars[19] == 'Dubrovnik']))  # Attend wedding in Dubrovnik between day 16 and 20
+# Each day, the person can only be in one city
+for day in range(1, 27):
+    constraints.append(Sum([x[i][day-1] for i in range(len(cities))]) == 1)
 
-    # Stay in each city for the required duration
-    for city, duration in durations.items():
-        constraints.append(Sum([If(city_vars[i] == city, 1, 0) for i in range(26)]) == duration)
+# The person stays in each city for the required number of days
+constraints.append(Sum(x[0]) == 4)  # Venice
+constraints.append(Sum(x[1]) == 3)  # Barcelona
+constraints.append(Sum(x[2]) == 4)  # Copenhagen
+constraints.append(Sum(x[3]) == 4)  # Lyon
+constraints.append(Sum(x[4]) == 4)  # Reykjavik
+constraints.append(Sum(x[5]) == 5)  # Dubrovnik
+constraints.append(Sum(x[6]) == 2)  # Athens
+constraints.append(Sum(x[7]) == 5)  # Tallinn
+constraints.append(Sum(x[8]) == 3)  # Munich
 
-    # Ensure that the trip plan is feasible (i.e., only take direct flights)
-    for i in range(25):
-        constraints.append(Or([And(city_vars[i] == from_city, city_vars[i+1] == to_city) for from_city, to_cities in direct_flights.items() for to_city in to_cities]))
+# The person meets a friend in Barcelona between day 10 and day 12
+for day in range(10, 13):
+    constraints.append(x[1][day-1] == 1)
 
-    # Ensure that the trip plan is connected (i.e., no gaps in the trip plan)
-    constraints.append(Distinct([city_vars[i] for i in range(26)]))
+# The person visits relatives in Copenhagen between day 7 and day 10
+for day in range(7, 11):
+    constraints.append(x[2][day-1] == 1)
 
-    return city_vars, constraints
+# The person attends a wedding in Dubrovnik between day 16 and day 20
+for day in range(16, 21):
+    constraints.append(x[5][day-1] == 1)
 
-# Solve the constraints
-def solve_constraints(city_vars, constraints):
-    solver = Solver()
-    for constraint in constraints:
-        solver.add(constraint)
-    if solver.check() == sat:
-        model = solver.model()
-        trip_plan = [model.evaluate(city_var).as_string() for city_var in city_vars]
-        return trip_plan
-    else:
-        return None
+# The person can only travel between cities with direct flights
+for day in range(1, 26):
+    for i in range(len(cities)):
+        for j in range(len(cities)):
+            if (cities[i], cities[j]) not in direct_flights and (cities[j], cities[i]) not in direct_flights:
+                constraints.append(Implies(And(x[i][day-1] == 1, x[j][day] == 1), False))
 
-# Main function
-def main():
-    city_vars, constraints = define_constraints()
-    trip_plan = solve_constraints(city_vars, constraints)
-    if trip_plan is not None:
-        print('Trip Plan:')
-        for i, city in enumerate(trip_plan):
-            print(f'Day {i+1}: {city}')
-    else:
-        print('No trip plan found.')
+# Solve the problem
+solver = Solver()
+solver.add(constraints)
+result = solver.check()
 
-if __name__ == '__main__':
-    main()
+if result == sat:
+    model = solver.model()
+    for city in cities:
+        print(f'{city}: {[day for day, value in enumerate([model.evaluate(x[cities.index(city)][i], model_completion=True) for i in range(26)]) if value]}')
+else:
+    print('No solution found')
