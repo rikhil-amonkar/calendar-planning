@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 28-29",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 32-35",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 36-37",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 38-40",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 41-44",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Stockholm"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Vienna': {'duration': 4, 'fixed_range': None, 'visited': False},\n            'Barcelona': {'duration': 2, 'fixed_range': None, 'visited': False},\n            'Edinburgh': {'duration': 4, 'fixed_range': (12, 15), 'visited': False},\n            'Krakow': {'duration': 3, 'fixed_range': None, 'visited': False},\n            'Riga': {'duration': 4, 'fixed_range': None, 'visited': False},\n            'Hamburg': {'duration': 2, 'fixed_range': (10, 11), 'visited': False},\n            'Paris': {'duration': 2, 'fixed_range': (1, 2), 'visited': False},\n            'Stockholm': {'duration': 2, 'fixed_range': (15, 16), 'visited': False},\n        }\n        self.direct_flights = [\n            ('Hamburg', 'Stockholm'), ('Vienna', 'Stockholm'), ('Paris', 'Edinburgh'), \n            ('Riga', 'Barcelona'), ('Paris', 'Riga'), ('Krakow', 'Barcelona'), \n            ('Edinburgh', 'Stockholm'), ('Paris', 'Krakow'), ('Krakow', 'Stockholm'), \n            ('Riga', 'Edinburgh'), ('Barcelona', 'Stockholm'), ('Paris', 'Stockholm'), \n            ('Krakow', 'Edinburgh'), ('Vienna', 'Hamburg'), ('Paris', 'Hamburg'), \n            ('Riga', 'Stockholm'), ('Hamburg', 'Barcelona'), ('Vienna', 'Barcelona'), \n            ('Krakow', 'Vienna'), ('Riga', 'Hamburg'), ('Barcelona', 'Edinburgh'), \n            ('Paris', 'Barcelona'), ('Hamburg', 'Edinburgh'), ('Paris', 'Vienna'), \n            ('Vienna', 'Riga')\n        ]\n        self.itinerary = []\n        self.current_day = 1\n\n    def plan_trip(self):\n        # Plan fixed ranges first\n        for city, info in self.cities.items():\n            if info['fixed_range']:\n                self.plan_fixed_range(city, info['fixed_range'], info['duration'])\n\n        # Plan remaining cities\n        while any(not info['visited'] for info in self.cities.values()):\n            for city, info in self.cities.items():\n                if not info['visited']:\n                    self.plan_city(city, info['duration'])\n                    break\n\n    def plan_fixed_range(self, city, day_range, duration):\n        start_day, end_day = day_range\n        if start_day > self.current_day:\n            self.plan_gap(start_day - self.current_day)\n        self.plan_city(city, duration)\n        self.current_day += duration\n\n    def plan_city(self, city, duration):\n        self.cities[city]['visited'] = True\n        self.itinerary.append({'day_range': f'Day {self.current_day}-{self.current_day + duration - 1}', 'place': city})\n        self.current_day += duration\n\n    def plan_gap(self, days):\n        self.itinerary.append({'flying': f'Day {self.current_day}-{self.current_day}', 'from': 'None', 'to': 'None'})\n        self.current_day += days\n\n    def plan_transition(self, from_city, to_city):\n        self.itinerary.append({'flying': f'Day {self.current_day}-{self.current_day}', 'from': from_city, 'to': to_city})\n\n    def print_itinerary(self):\n        print(json.dumps(self.itinerary, indent=4))\n\n\nif __name__ == '__main__':\n    planner = TripPlanner()\n    planner.plan_trip()\n    planner.print_itinerary()\n```",
+            "count": "trip_planning_example_1094"
+        }
+    ]
+}

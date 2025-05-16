@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    cities = {\n        'Dublin': {'duration': 3, 'constraints': [{'type': 'meet', 'start': 7, 'end': 9}]},\n        'Madrid': {'duration': 2, 'constraints': [{'type': 'relatives', 'start': 2, 'end': 3}]},\n        'Oslo': {'duration': 3, 'constraints': []},\n        'London': {'duration': 2, 'constraints': []},\n        'Vilnius': {'duration': 3, 'constraints': []},\n        'Berlin': {'duration': 5, 'constraints': [{'type': 'wedding', 'start': 3, 'end': 7}]}\n    }\n\n    direct_flights = {\n        'London': ['Madrid', 'Oslo', 'Dublin', 'Berlin'],\n        'Madrid': ['London', 'Oslo', 'Dublin', 'Berlin'],\n        'Oslo': ['London', 'Madrid', 'Vilnius', 'Berlin', 'Dublin'],\n        'Berlin': ['London', 'Madrid', 'Oslo', 'Vilnius', 'Dublin'],\n        'Dublin': ['London', 'Madrid', 'Oslo', 'Berlin'],\n        'Vilnius': ['Oslo', 'Berlin']\n    }\n\n    city_names = list(cities.keys())\n    for perm in permutations(city_names):\n        itinerary = []\n        current_day = 1\n        prev_city = None\n        valid = True\n\n        for city in perm:\n            if prev_city is not None:\n                if city not in direct_flights[prev_city]:\n                    valid = False\n                    break\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': city\n                })\n                current_day += 1\n\n            duration = cities[city]['duration']\n            end_day = current_day + duration - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n\n            for constraint in cities[city]['constraints']:\n                if constraint['type'] == 'meet':\n                    if not (current_day <= constraint['start'] and end_day >= constraint['end']):\n                        valid = False\n                        break\n                elif constraint['type'] == 'relatives':\n                    if not (current_day <= constraint['start'] and end_day >= constraint['end']):\n                        valid = False\n                        break\n                elif constraint['type'] == 'wedding':\n                    if not (current_day <= constraint['start'] and end_day >= constraint['end']):\n                        valid = False\n                        break\n            if not valid:\n                break\n\n            prev_city = city\n            current_day = end_day + 1\n\n        if valid and current_day - 1 <= 13:\n            total_days = sum(cities[city]['duration'] for city in perm) + len(perm) - 1\n            if total_days <= 13:\n                return itinerary\n\n    return None\n\nitinerary = find_valid_itinerary()\nif itinerary:\n    print(json.dumps(itinerary, indent=2))\nelse:\n    print(json.dumps([{\"error\": \"No valid itinerary found\"}], indent=2))\n```",
+            "count": "trip_planning_example_762"
+        }
+    ]
+}

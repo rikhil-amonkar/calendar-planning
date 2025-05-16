@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, let's tackle this problem step by step. The user wants to visit 4 European cities over 12 days with specific constraints. They provided the cities, the number of days they want to stay in each, and the direct flight connections between them.\n\nFirst, I need to list out all the cities and their respective stays:\n- Prague: 2 days\n- Berlin: 3 days\n- Tallinn: 5 days\n- Stockholm: 5 days\n\nNext, I'll consider the constraints:\n1. The user must attend a conference in Berlin between day 6 and day 8.\n2. They plan to visit relatives in Tallinn between day 8 and day 12.\n\nGiven these constraints, I need to ensure that the itinerary aligns with these time frames. It's crucial that the user is in Berlin during days 6-8 and in Tallinn from day 8 onwards.\n\nLooking at the direct flights:\n- Berlin and Tallinn\n- Prague and Tallinn\n- Stockholm and Tallinn\n- Prague and Stockholm\n- Stockholm and Berlin\n\nI need to find a logical sequence that connects these cities using the available flights while respecting the time constraints.\n\nStarting with Prague makes sense because it's a common starting point and has direct flights to both Tallinn and Stockholm. From Prague, the user can fly to Stockholm, which then connects to Berlin. From Berlin, there's a direct flight to Tallinn, which is the final destination.\n\nSo, the sequence would be:\n1. Prague (2 days)\n2. Stockholm (5 days)\n3. Berlin (3 days)\n4. Tallinn (5 days)\n\nLet me verify the timeline:\n- Days 1-2: Prague\n- Days 3-7: Stockholm (ensuring they arrive before day 6)\n- Days 8-10: Berlin (covers the conference days 6-8)\n- Days 11-15: Tallinn (covers visiting relatives from day 8-12)\n\nWait, that exceeds the total 12 days. I need to adjust the stays to fit within 12 days. Let me recalculate:\n\n- Prague: 2 days (Days 1-2)\n- Stockholm: 5 days (Days 3-7)\n- Berlin: 3 days (Days 8-10)\n- Tallinn: 5 days (Days 11-15)\n\nThis still exceeds 12 days. I need to adjust the stays. Perhaps reduce Stockholm's stay to 4 days and adjust accordingly:\n\n- Prague: 2 days (1-2)\n- Stockholm: 4 days (3-6)\n- Berlin: 3 days (7-9)\n- Tallinn: 5 days (10-14)\n\nThis still goes beyond 12 days. Maybe the user can leave Tallinn on day 12, having spent 3 days there. Let me adjust:\n\n- Prague: 2 days (1-2)\n- Stockholm: 4 days (3-6)\n- Berlin: 3 days (7-9)\n- Tallinn: 3 days (10-12)\n\nThis fits within 12 days. However, the user wanted to stay in Tallinn for 5 days. This is a conflict. To resolve this, I might need to adjust the number of days in Stockholm or Berlin.\n\nAlternatively, perhaps the user can spend 5 days in Stockholm, 3 days in Berlin, and 4 days in Tallinn, totaling 14 days, but the user only has 12 days. This suggests that some stays need to be shortened.\n\nGiven the constraints, especially the conference and visiting relatives, it's crucial to prioritize those. Therefore, I'll adjust the stays as follows:\n\n- Prague: 2 days (1-2)\n- Stockholm: 4 days (3-6)\n- Berlin: 3 days (7-9)\n- Tallinn: 4 days (10-13)\n\nThis totals 13 days, which is still over. I need to ensure the total is exactly 12 days. Perhaps reducing Tallinn to 3 days:\n\n- Prague: 2 days (1-2)\n- Stockholm: 4 days (3-6)\n- Berlin: 3 days (7-9)\n- Tallinn: 3 days (10-12)\n\nThis fits perfectly within 12 days. The user will attend the conference in Berlin from day 6 to 8 (within their 3-day stay) and visit relatives in Tallinn from day 8 to 12, which aligns with their 3-day stay there.\n\nFinally, I'll ensure that the flights are direct and follow the sequence Prague -> Stockholm -> Berlin -> Tallinn, which is possible based on the provided direct flight connections.\n</think>\n\n```python\nimport json\n\ndef compute_itinerary():\n    cities_order = ['Prague', 'Stockholm', 'Berlin', 'Tallinn']\n    city_days = {\n        'Prague': 2,\n        'Stockholm': 5,\n        'Berlin': 3,\n        'Tallinn': 5\n    }\n\n    itinerary = []\n    current_day = 1\n\n    for i in range(len(cities_order)):\n        city = cities_order[i]\n        days = city_days[city]\n        end_day = current_day + days - 1\n        itinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': city})\n\n        if i < len(cities_order) - 1:\n            next_city = cities_order[i + 1]\n            flight_day = end_day\n            itinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': city, 'to': next_city})\n            current_day = flight_day\n        else:\n            current_day = end_day + 1\n\n    return itinerary\n\nitinerary = compute_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_240"
+        }
+    ]
+}

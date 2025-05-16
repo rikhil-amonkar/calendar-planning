@@ -1,0 +1,143 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joshua",
+                        "start_time": "9:16",
+                        "end_time": "9:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Anthony",
+                        "start_time": "9:41",
+                        "end_time": "10:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Helen",
+                        "start_time": "10:23",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joseph",
+                        "start_time": "11:51",
+                        "end_time": "12:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Karen",
+                        "start_time": "12:21",
+                        "end_time": "12:36"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Brian",
+                        "start_time": "13:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "William",
+                        "start_time": "15:51",
+                        "end_time": "16:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "David",
+                        "start_time": "17:05",
+                        "end_time": "17:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jeffrey",
+                        "start_time": "19:00",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joshua",
+                        "start_time": "9:16",
+                        "end_time": "9:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Anthony",
+                        "start_time": "9:41",
+                        "end_time": "10:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Helen",
+                        "start_time": "10:23",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joseph",
+                        "start_time": "11:51",
+                        "end_time": "12:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "William",
+                        "start_time": "15:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "David",
+                        "start_time": "16:45",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Karen",
+                        "start_time": "17:48",
+                        "end_time": "18:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Brian",
+                        "start_time": "18:13",
+                        "end_time": "19:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jeffrey",
+                        "start_time": "20:23",
+                        "end_time": "21:23"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel distances in minutes\ntravel_distances = {\n    'The Castro': {'Alamo Square': 8, 'Richmond District': 16, 'Financial District': 21, 'Union Square': 19, 'Fisherman\\'s Wharf': 24, 'Marina District': 21, 'Haight-Ashbury': 6, 'Mission District': 7, 'Pacific Heights': 16, 'Golden Gate Park': 11},\n    'Alamo Square': {'The Castro': 8, 'Richmond District': 11, 'Financial District': 17, 'Union Square': 14, 'Fisherman\\'s Wharf': 19, 'Marina District': 15, 'Haight-Ashbury': 5, 'Mission District': 10, 'Pacific Heights': 10, 'Golden Gate Park': 9},\n    'Richmond District': {'The Castro': 16, 'Alamo Square': 13, 'Financial District': 22, 'Union Square': 21, 'Fisherman\\'s Wharf': 18, 'Marina District': 9, 'Haight-Ashbury': 10, 'Mission District': 20, 'Pacific Heights': 10, 'Golden Gate Park': 9},\n    'Financial District': {'The Castro': 20, 'Alamo Square': 17, 'Richmond District': 21, 'Union Square': 9, 'Fisherman\\'s Wharf': 10, 'Marina District': 15, 'Haight-Ashbury': 19, 'Mission District': 17, 'Pacific Heights': 13, 'Golden Gate Park': 23},\n    'Union Square': {'The Castro': 17, 'Alamo Square': 15, 'Richmond District': 20, 'Financial District': 9, 'Fisherman\\'s Wharf': 15, 'Marina District': 18, 'Haight-Ashbury': 18, 'Mission District': 14, 'Pacific Heights': 15, 'Golden Gate Park': 22},\n    'Fisherman\\'s Wharf': {'The Castro': 27, 'Alamo Square': 21, 'Richmond District': 18, 'Financial District': 11, 'Union Square': 13, 'Marina District': 9, 'Haight-Ashbury': 22, 'Mission District': 22, 'Pacific Heights': 12, 'Golden Gate Park': 25},\n    'Marina District': {'The Castro': 22, 'Alamo Square': 15, 'Richmond District': 11, 'Financial District': 17, 'Union Square': 16, 'Fisherman\\'s Wharf': 10, 'Haight-Ashbury': 16, 'Mission District': 20, 'Pacific Heights': 7, 'Golden Gate Park': 18},\n    'Haight-Ashbury': {'The Castro': 6, 'Alamo Square': 5, 'Richmond District': 10, 'Financial District': 21, 'Union Square': 19, 'Fisherman\\'s Wharf': 23, 'Marina District': 17, 'Mission District': 11, 'Pacific Heights': 12, 'Golden Gate Park': 7},\n    'Mission District': {'The Castro': 7, 'Alamo Square': 11, 'Richmond District': 20, 'Financial District': 15, 'Union Square': 15, 'Fisherman\\'s Wharf': 22, 'Marina District': 19, 'Haight-Ashbury': 12, 'Pacific Heights': 16, 'Golden Gate Park': 17},\n    'Pacific Heights': {'The Castro': 16, 'Alamo Square': 10, 'Richmond District': 12, 'Financial District': 13, 'Union Square': 12, 'Fisherman\\'s Wharf': 13, 'Marina District': 6, 'Haight-Ashbury': 11, 'Mission District': 15, 'Golden Gate Park': 15},\n    'Golden Gate Park': {'The Castro': 13, 'Alamo Square': 9, 'Richmond District': 7, 'Financial District': 26, 'Union Square': 22, 'Fisherman\\'s Wharf': 24, 'Marina District': 16, 'Haight-Ashbury': 7, 'Mission District': 17, 'Pacific Heights': 16}\n}\n\n# Define meeting constraints\nmeeting_constraints = {\n    'William': {'location': 'Alamo Square','start_time': '15:15', 'end_time': '17:15', 'duration': 60},\n    'Joshua': {'location': 'Richmond District','start_time': '07:00', 'end_time': '20:00', 'duration': 15},\n    'Joseph': {'location': 'Financial District','start_time': '11:15', 'end_time': '13:30', 'duration': 15},\n    'David': {'location': 'Union Square','start_time': '16:45', 'end_time': '19:15', 'duration': 45},\n    'Brian': {'location': 'Fisherman\\'s Wharf','start_time': '13:45', 'end_time': '20:45', 'duration': 105},\n    'Karen': {'location': 'Marina District','start_time': '11:30', 'end_time': '18:30', 'duration': 15},\n    'Anthony': {'location': 'Haight-Ashbury','start_time': '07:15', 'end_time': '10:30', 'duration': 30},\n    'Matthew': {'location': 'Mission District','start_time': '17:15', 'end_time': '19:15', 'duration': 120},\n    'Helen': {'location': 'Pacific Heights','start_time': '08:00', 'end_time': '12:00', 'duration': 75},\n    'Jeffrey': {'location': 'Golden Gate Park','start_time': '19:00', 'end_time': '21:30', 'duration': 60}\n}\n\ndef calculate_meeting_schedule():\n    # Initialize the schedule\n    schedule = []\n    current_location = 'The Castro'\n    current_time = '9:00'\n\n    # Sort the meeting constraints by start time\n    sorted_constraints = sorted(meeting_constraints.items(), key=lambda x: x[1]['start_time'])\n\n    # Calculate the schedule for each person\n    for person, constraint in sorted_constraints:\n        # Calculate the travel time to the person's location\n        travel_time = travel_distances[current_location][constraint['location']]\n        arrival_time = add_time(current_time, travel_time)\n\n        # Check if we can meet the person within their available time\n        if arrival_time < constraint['start_time']:\n            # Wait until the person is available\n            start_time = constraint['start_time']\n        else:\n            start_time = arrival_time\n\n        # Calculate the end time of the meeting\n        end_time = add_time(start_time, constraint['duration'])\n\n        # Check if the meeting ends within the person's available time\n        if end_time > constraint['end_time']:\n            # We cannot meet the person within their available time\n            continue\n\n        # Add the meeting to the schedule\n        schedule.append({\n            'action':'meet',\n            'location': constraint['location'],\n            'person': person,\n         'start_time': start_time,\n            'end_time': end_time\n        })\n\n        # Update the current location and time\n        current_location = constraint['location']\n        current_time = end_time\n\n    return schedule\n\ndef add_time(time, minutes):\n    dt = datetime.strptime(time, '%H:%M')\n    dt += timedelta(minutes=minutes)\n    return dt.strftime('%H:%M')\n\ndef main():\n    schedule = calculate_meeting_schedule()\n    print(json.dumps({'itinerary': schedule}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_956"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Function to find the first available meeting time\ndef find_meeting_time(available_times, meeting_duration):\n    for start, end in available_times:\n        if (end - start) >= meeting_duration:\n            return start, start + meeting_duration\n    return None\n\n# Define participants' schedules\nandrew_schedule = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\ngrace_schedule = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\nsamuel_schedule = [\n    (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n    (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n    (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n    (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n    (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))\n]\n\n# Combine schedules to understand availability\ndef get_available_times(schedules):\n    combined_schedule = []\n    for schedule in schedules:\n        for start, end in schedule:\n            combined_schedule.append((start, end))\n    \n    # Create full day's schedule\n    full_day = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n    \n    # Calculate free times\n    free_times = []\n    for start, end in full_day:\n        current_start = start\n        for block_start, block_end in sorted(combined_schedule):\n            if current_start < block_start:\n                free_times.append((current_start, block_start))\n                current_start = block_end\n            elif current_start < block_end:\n                current_start = block_end\n        if current_start < end:\n            free_times.append((current_start, end))\n    \n    return free_times\n\n# Meeting duration\nmeeting_duration = timedelta(minutes=30)\n\n# Get available times for all participants\navailable_times = get_available_times([andrew_schedule, grace_schedule, samuel_schedule])\n\n# Find meeting time\nmeeting_start, meeting_end = find_meeting_time(available_times, meeting_duration)\n\n# Output the result\nif meeting_start and meeting_end:\n    print(f\"{meeting_start.strftime('%H:%M')}:{meeting_end.strftime('%H:%M')}\")\n    print(\"Monday\")\n```",
+            "count": "calendar_scheduling_example_45"
+        }
+    ]
+}

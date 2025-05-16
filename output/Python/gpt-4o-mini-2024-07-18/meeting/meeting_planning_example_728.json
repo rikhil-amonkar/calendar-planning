@@ -1,0 +1,122 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Elizabeth",
+                        "start_time": "10:00",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "11:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "14:55",
+                        "end_time": "15:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "15:41",
+                        "end_time": "17:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Helen",
+                        "start_time": "17:45",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Elizabeth",
+                        "start_time": "10:00",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "11:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "15:22",
+                        "end_time": "17:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:18",
+                        "end_time": "17:48"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Helen",
+                        "start_time": "18:12",
+                        "end_time": "19:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ashley",
+                        "start_time": "20:21",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times in minutes\ntravel_times = {\n    ('Marina District', 'Mission District'): 20,\n    ('Marina District', 'Fisherman\\'s Wharf'): 10,\n    ('Marina District', 'Presidio'): 10,\n    ('Marina District', 'Union Square'): 16,\n    ('Marina District', 'Sunset District'): 19,\n    ('Marina District', 'Financial District'): 17,\n    ('Marina District', 'Haight-Ashbury'): 16,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Mission District', 'Fisherman\\'s Wharf'): 22,\n    ('Mission District', 'Presidio'): 25,\n    ('Mission District', 'Union Square'): 15,\n    ('Mission District', 'Sunset District'): 24,\n    ('Mission District', 'Financial District'): 15,\n    ('Mission District', 'Haight-Ashbury'): 12,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Fisherman\\'s Wharf', 'Presidio'): 19,\n    ('Fisherman\\'s Wharf', 'Union Square'): 13,\n    ('Fisherman\\'s Wharf', 'Sunset District'): 27,\n    ('Fisherman\\'s Wharf', 'Financial District'): 11,\n    ('Fisherman\\'s Wharf', 'Haight-Ashbury'): 22,\n    ('Fisherman\\'s Wharf', 'Russian Hill'): 7,\n    ('Presidio', 'Union Square'): 22,\n    ('Presidio', 'Sunset District'): 15,\n    ('Presidio', 'Financial District'): 23,\n    ('Union Square', 'Sunset District'): 27,\n    ('Union Square', 'Financial District'): 9,\n    ('Union Square', 'Haight-Ashbury'): 18,\n    ('Union Square', 'Russian Hill'): 13,\n    ('Sunset District', 'Financial District'): 30,\n    ('Sunset District', 'Haight-Ashbury'): 15,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Financial District', 'Haight-Ashbury'): 19,\n    ('Financial District', 'Russian Hill'): 11,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n}\n\n# Meeting constraints\nconstraints = {\n    \"Karen\": {\"location\": \"Mission District\", \"start\": \"14:15\", \"end\": \"22:00\", \"duration\": 30},\n    \"Richard\": {\"location\": \"Fisherman's Wharf\", \"start\": \"14:30\", \"end\": \"17:30\", \"duration\": 30},\n    \"Robert\": {\"location\": \"Presidio\", \"start\": \"21:45\", \"end\": \"22:45\", \"duration\": 60},\n    \"Joseph\": {\"location\": \"Union Square\", \"start\": \"11:45\", \"end\": \"14:45\", \"duration\": 120},\n    \"Helen\": {\"location\": \"Sunset District\", \"start\": \"14:45\", \"end\": \"20:45\", \"duration\": 105},\n    \"Elizabeth\": {\"location\": \"Financial District\", \"start\": \"10:00\", \"end\": \"12:45\", \"duration\": 75},\n    \"Kimberly\": {\"location\": \"Haight-Ashbury\", \"start\": \"14:15\", \"end\": \"17:30\", \"duration\": 105},\n    \"Ashley\": {\"location\": \"Russian Hill\", \"start\": \"11:30\", \"end\": \"21:30\", \"duration\": 45},\n}\n\n# Start time\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Schedule itinerary\nitinerary = []\n\n# Meet Elizabeth first since her time constraint is the tightest\ndef add_meeting(person, duration, location, start, end):\n    start_time = max(start, arrival_time + timedelta(minutes=travel_times.get(('Marina District', location), 0)))\n    end_time = start_time + timedelta(minutes=duration)\n    \n    if end_time <= end:\n        itinerary.append({\"action\": \"meet\", \"location\": location, \"person\": person, \n                          \"start_time\": start_time.strftime(\"%H:%M\"), \n                          \"end_time\": end_time.strftime(\"%H:%M\")})\n        return end_time\n    return None\n\n# Meeting with Elizabeth\nelizabeth_start = datetime.strptime(\"10:00\", \"%H:%M\")\nelizabeth_end = datetime.strptime(\"12:45\", \"%H:%M\")\narrival_time = add_meeting(\"Elizabeth\", constraints[\"Elizabeth\"][\"duration\"], \n                            constraints[\"Elizabeth\"][\"location\"], elizabeth_start, elizabeth_end)\n\n# Meeting with Joseph\njoseph_start = datetime.strptime(\"11:45\", \"%H:%M\")\njoseph_end = datetime.strptime(\"14:45\", \"%H:%M\")\narrival_time = add_meeting(\"Joseph\", constraints[\"Joseph\"][\"duration\"], \n                            constraints[\"Joseph\"][\"location\"], joseph_start, joseph_end)\n\n# Meeting with Karen\nkaren_start = datetime.strptime(\"14:15\", \"%H:%M\")\nkaren_end = datetime.strptime(\"22:00\", \"%H:%M\")\narrival_time = add_meeting(\"Karen\", constraints[\"Karen\"][\"duration\"], \n                            constraints[\"Karen\"][\"location\"], karen_start, karen_end)\n\n# Meeting with Richard\nrichard_start = datetime.strptime(\"14:30\", \"%H:%M\")\nrichard_end = datetime.strptime(\"17:30\", \"%H:%M\")\narrival_time = add_meeting(\"Richard\", constraints[\"Richard\"][\"duration\"], \n                            constraints[\"Richard\"][\"location\"], richard_start, richard_end)\n\n# Meeting with Kimberly\nkimberly_start = datetime.strptime(\"14:15\", \"%H:%M\")\nkimberly_end = datetime.strptime(\"17:30\", \"%H:%M\")\narrival_time = add_meeting(\"Kimberly\", constraints[\"Kimberly\"][\"duration\"], \n                            constraints[\"Kimberly\"][\"location\"], kimberly_start, kimberly_end)\n\n# Meeting with Helen\nhelen_start = datetime.strptime(\"14:45\", \"%H:%M\")\nhelen_end = datetime.strptime(\"20:45\", \"%H:%M\")\narrival_time = add_meeting(\"Helen\", constraints[\"Helen\"][\"duration\"], \n                            constraints[\"Helen\"][\"location\"], helen_start, helen_end)\n\n# Meeting with Robert\nrobert_start = datetime.strptime(\"21:45\", \"%H:%M\")\nrobert_end = datetime.strptime(\"22:45\", \"%H:%M\")\narrival_time = add_meeting(\"Robert\", constraints[\"Robert\"][\"duration\"], \n                            constraints[\"Robert\"][\"location\"], robert_start, robert_end)\n\n# Meeting with Ashley\nashley_start = datetime.strptime(\"11:30\", \"%H:%M\")\nashley_end = datetime.strptime(\"21:30\", \"%H:%M\")\narrival_time = add_meeting(\"Ashley\", constraints[\"Ashley\"][\"duration\"], \n                            constraints[\"Ashley\"][\"location\"], ashley_start, ashley_end)\n\n# Create the JSON output\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_728"
+        }
+    ]
+}

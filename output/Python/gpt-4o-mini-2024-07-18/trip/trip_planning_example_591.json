@@ -1,0 +1,53 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Valencia"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_trip_plan():\n    # Input parameters\n    trip_days = 17\n    stay_durations = {\n        'Stuttgart': 2,\n        'Bucharest': 2,\n        'Geneva': 4,\n        'Valencia': 6,\n        'Munich': 7\n    }\n    \n    # Define the order of visiting based on constraints\n    itinerary = []\n    current_day = 1\n\n    # Visit Geneva for 4 days (day 1 to day 4, visiting relatives)\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Geneva'})\n    current_day += 4  # Move to day 5\n\n    # Visit Munich for 7 days (day 4 to day 10)\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 6}', 'place': 'Munich'})\n    current_day += 7  # Move to day 12\n\n    # Visit Bucharest for 2 days (day 12 to day 13)\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Bucharest'})\n    current_day += 2  # Move to day 14\n\n    # Visit Valencia for 6 days (day 14 to day 19)\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 5}', 'place': 'Valencia'})\n    current_day += 6  # Move to day 20\n    \n    # Since we only need to plan for 17 days, we need to adjust the timeline to fit\n    # We already allotted more days than available, thus we restrict the Valencia stay\n    itinerary[-1]['day_range'] = f'Day 14-{trip_days}'  # Make Valencia only up to the 17th day\n    \n    return itinerary\n\ndef main():\n    trip_plan = create_trip_plan()\n    output = json.dumps(trip_plan, indent=4)\n    print(output)\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_591"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time_str):\n    \"\"\"Converts a time string in HH:MM format to minutes since midnight.\"\"\"\n    hours, minutes = map(int, time_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    \"\"\"Converts minutes since midnight to a time string in HH:MM format.\"\"\"\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\ndef interval_overlaps(start1, end1, start2, end2):\n    \"\"\"Returns True if the intervals [start1, end1) and [start2, end2) overlap.\"\"\"\n    return not (end1 <= start2 or start1 >= end2)\n\n# Define work day bounds (in minutes since midnight)\nwork_day_start = time_to_minutes(\"09:00\")\nwork_day_end   = time_to_minutes(\"17:00\")\nmeeting_duration = 30\n\n# Busy schedules for each participant.\n# Each busy interval is a tuple with start and end times (HH:MM format)\nbusy_schedules = {\n    \"Judy\":      [(\"13:00\", \"13:30\"), (\"16:00\",\"16:30\")],\n    \"Olivia\":    [(\"10:00\", \"10:30\"), (\"12:00\", \"13:00\"), (\"14:00\", \"14:30\")],\n    \"Eric\":      [],  # free the entire day\n    \"Jacqueline\":[(\"10:00\", \"10:30\"), (\"15:00\", \"15:30\")],\n    \"Laura\":     [(\"09:00\", \"10:00\"), (\"10:30\", \"12:00\"), (\"13:00\", \"13:30\"),\n                  (\"14:30\", \"15:00\"), (\"15:30\", \"17:00\")],\n    \"Tyler\":     [(\"09:00\", \"10:00\"), (\"11:00\", \"11:30\"), (\"12:30\", \"13:00\"),\n                  (\"14:00\", \"14:30\"), (\"15:30\", \"17:00\")],\n    \"Lisa\":      [(\"09:30\", \"10:30\"), (\"11:00\", \"11:30\"), (\"12:00\", \"12:30\"),\n                  (\"13:00\", \"13:30\"), (\"14:00\", \"14:30\"), (\"16:00\", \"17:00\")]\n}\n\n# Convert all busy intervals into minutes since midnight for easier calculation.\nfor person in busy_schedules:\n    busy_schedules[person] = [(time_to_minutes(start), time_to_minutes(end)) \n                              for start, end in busy_schedules[person]]\n\ndef can_schedule(start_time):\n    end_time = start_time + meeting_duration\n    # The meeting should be fully within working hours.\n    if start_time < work_day_start or end_time > work_day_end:\n        return False\n    # Check each person's busy intervals for conflict.\n    for person, intervals in busy_schedules.items():\n        for busy_start, busy_end in intervals:\n            if interval_overlaps(start_time, end_time, busy_start, busy_end):\n                return False\n    return True\n\ndef find_meeting_time():\n    # Try each minute from work_day_start to work_day_end - meeting_duration\n    for start in range(work_day_start, work_day_end - meeting_duration + 1):\n        if can_schedule(start):\n            return start, start + meeting_duration\n    return None, None\n\nstart, end = find_meeting_time()\nif start is not None:\n    meeting_start = minutes_to_time(start)\n    meeting_end = minutes_to_time(end)\n    print(f\"{meeting_start}:{meeting_end} Monday\")\nelse:\n    print(\"No available meeting time found.\")\n'''",
+            "count": "calendar_scheduling_example_429"
+        }
+    ]
+}

@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Input parameters\n    total_days = 18\n    city_stays = {\n        'Helsinki': 4,\n        'Valencia': 5,\n        'Dubrovnik': 4,\n        'Porto': 3,\n        'Prague': 3,\n        'Reykjavik': 4\n    }\n    porto_meet_range = (16, 18)\n    \n    # Direct flights graph\n    direct_flights = {\n        'Helsinki': ['Prague', 'Reykjavik', 'Dubrovnik'],\n        'Prague': ['Helsinki', 'Valencia', 'Reykjavik'],\n        'Valencia': ['Prague', 'Porto'],\n        'Porto': ['Valencia'],\n        'Reykjavik': ['Helsinki', 'Prague'],\n        'Dubrovnik': ['Helsinki']\n    }\n    \n    # Generate all possible permutations of the cities\n    cities = list(city_stays.keys())\n    \n    for perm in permutations(cities):\n        # Check if the permutation is a valid path considering direct flights\n        valid_path = True\n        for i in range(len(perm) - 1):\n            if perm[i+1] not in direct_flights[perm[i]]:\n                valid_path = False\n                break\n        if not valid_path:\n            continue\n        \n        # Check if Porto is visited within the meet range\n        porto_index = perm.index('Porto')\n        days_before_porto = sum(city_stays[city] for city in perm[:porto_index]) + porto_index\n        porto_start = days_before_porto + 1\n        porto_end = porto_start + city_stays['Porto'] - 1\n        \n        if not (porto_meet_range[0] <= porto_end <= porto_meet_range[1]):\n            continue\n        \n        # Check total days\n        total_trip_days = sum(city_stays.values()) + (len(city_stays) - 1)\n        if total_trip_days != total_days:\n            continue\n        \n        # If all conditions are met, construct the itinerary\n        itinerary = []\n        current_day = 1\n        for i, city in enumerate(perm):\n            stay_days = city_stays[city]\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            if i < len(perm) - 1:\n                itinerary.append({\n                    'flying': f'Day {end_day}-{end_day}',\n                    'from': city,\n                    'to': perm[i+1]\n                })\n                current_day = end_day + 1\n        return itinerary\n    \n    return None\n\nitinerary = find_valid_itinerary()\nif itinerary:\n    print(json.dumps(itinerary, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n```",
+            "count": "trip_planning_example_709"
+        }
+    ]
+}

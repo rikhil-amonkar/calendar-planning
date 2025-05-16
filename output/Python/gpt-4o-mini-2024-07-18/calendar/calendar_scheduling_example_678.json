@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Participant availability\n    russell_schedule = {\n        'Monday': [(9, 10, 30), (11, 0, 12, 0), (14, 30, 17, 0)],\n        'Tuesday': [(9, 13, 30), (14, 0, 17, 0)]\n    }\n    \n    alexander_schedule = {\n        'Monday': [(9, 11, 30), (12, 0, 14, 30), (15, 0, 17, 0)],\n        'Tuesday': [(9, 10, 0), (13, 14, 0), (15, 15, 30), (16, 16, 30)]\n    }\n    \n    # Meeting duration\n    meeting_duration = 1  # in hours\n    \n    # Function to find free time slots for each day\n    def get_free_slots(schedule):\n        free_slots = []\n        for day, busy_times in schedule.items():\n            busy_times.sort()  # Sort busy times\n            last_end = 9  # Work starts at 9:00\n            for start, end in busy_times:\n                if last_end < start:\n                    free_slots.append((day, last_end, start))  # Free time found\n                last_end = max(last_end, end)  # Update last end time\n            if last_end < 17:  # Work ends at 17:00\n                free_slots.append((day, last_end, 17))\n        return free_slots\n    \n    # Get free slots for both participants\n    russell_free_slots = get_free_slots(russell_schedule)\n    alexander_free_slots = get_free_slots(alexander_schedule)\n    \n    # Check for overlapping free slots that meet the conditions\n    for day in russell_schedule.keys():\n        russell_slots = [(day, start, end) for d, start, end in russell_free_slots if d == day]\n        alexander_slots = [(day, start, end) for d, start, end in alexander_free_slots if d == day]\n        \n        for r_start, r_end in russell_slots:\n            for a_start, a_end in alexander_slots:\n                # Check if there's a common slot at least 1 hour long\n                start_time = max(r_start, a_start)\n                end_time = min(r_end, a_end)\n                if end_time - start_time >= meeting_duration:\n                    # Check that it's within Russell's preferred times\n                    if not (day == 'Tuesday' and start_time < 13.5):\n                        # Return in the requested format\n                        start_hour = int(start_time)\n                        start_minute = int((start_time % 1) * 60)\n                        end_hour = int(end_time)\n                        end_minute = int((end_time % 1) * 60)\n                        return f\"{day} {start_hour:02}:{start_minute:02}:{end_hour:02}:{end_minute:02}\"\n\n# Output the proposed meeting time\nprint(find_meeting_time())\n```",
+            "count": "calendar_scheduling_example_678"
+        }
+    ]
+}

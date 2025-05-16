@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{15:00",
+                "end_time": "15:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{15:00",
+                "end_time": "15:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef main():\n    work_hours = ('09:00', '17:00')\n    participants = {\n        'Natalie': [],\n        'David': [('11:30', '12:00'), ('14:30', '15:00')],\n        'Douglas': [('09:30', '10:00'), ('11:30', '12:00'), ('13:00', '13:30'), ('14:30', '15:00')],\n        'Ralph': [('09:00', '09:30'), ('10:00', '11:00'), ('11:30', '12:30'), ('13:30', '15:00'), ('15:30', '16:00'), ('16:30', '17:00')],\n        'Jordan': [('09:00', '10:00'), ('12:00', '12:30'), ('13:00', '13:30'), ('14:30', '15:00'), ('15:30', '17:00')]\n    }\n    preferences = {'David': [('00:00', '14:00')]}\n    duration = 30\n\n    def time_to_minutes(t):\n        h, m = map(int, t.split(':'))\n        return h * 60 + m\n\n    work_start = time_to_minutes(work_hours[0])\n    work_end = time_to_minutes(work_hours[1])\n\n    busy_slots = []\n    for person, slots in participants.items():\n        for start, end in slots:\n            busy_slots.append((time_to_minutes(start), time_to_minutes(end)))\n\n    for person, pref in preferences.items():\n        for start, end in pref:\n            busy_slots.append((time_to_minutes(start), time_to_minutes(end)))\n\n    free_slots = []\n    current = work_start\n    for start, end in sorted(busy_slots, key=lambda x: x[0]):\n        if start > current:\n            free_slots.append((current, start))\n        current = max(current, end)\n    if current < work_end:\n        free_slots.append((current, work_end))\n\n    valid_slots = []\n    for start, end in free_slots:\n        if end - start >= duration:\n            valid_slots.append((start, end))\n\n    def minutes_to_time(m):\n        return f\"{m // 60:02d}:{m % 60:02d}\"\n\n    meeting_slot = None\n    for slot in valid_slots:\n        slot_start, slot_end = slot\n        if slot_end - slot_start >= duration:\n            meeting_start = slot_start\n            meeting_end = meeting_start + duration\n            conflict = False\n            for person, slots in participants.items():\n                for s, e in slots:\n                    s_m = time_to_minutes(s)\n                    e_m = time_to_minutes(e)\n                    if not (meeting_end <= s_m or meeting_start >= e_m):\n                        conflict = True\n                        break\n                if person in preferences:\n                    for s, e in preferences[person]:\n                        s_m = time_to_minutes(s)\n                        e_m = time_to_minutes(e)\n                        if not (meeting_end <= s_m or meeting_start >= e_m):\n                            conflict = True\n                            break\n                if conflict:\n                    break\n            if not conflict:\n                meeting_slot = (meeting_start, meeting_end)\n                break\n\n    if meeting_slot:\n        start = minutes_to_time(meeting_slot[0])\n        end = minutes_to_time(meeting_slot[1])\n        print(f\"Monday {start}:{end}\")\n\nif __name__ == \"__main__\":\n    main()\n'''",
+            "count": "calendar_scheduling_example_227"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the work hours and meeting duration\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(hours=1)\n\n# Define existing schedules\nanthony_busy = [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n                (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\")),\n                (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))]\n\npamela_busy = [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n                (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\npamela_preference_end = datetime.strptime(\"14:30\", \"%H:%M\")\n\nzachary_busy = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n                 (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                 (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n                 (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n                 (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n\n# Combine all busy times\nbusy_times = anthony_busy + pamela_busy + zachary_busy\n\n# Function to find a free slot\ndef find_free_time(start, end, duration, busy_times, pamela_pref_end):\n    current_time = start\n    while current_time + duration <= end:\n        is_free = True\n        for busy_start, busy_end in busy_times:\n            if busy_start < current_time + duration and current_time < busy_end:\n                is_free = False\n                break\n        if is_free and current_time + duration <= pamela_pref_end:\n            return (current_time, current_time + duration)\n        current_time += timedelta(minutes=30)  # Check every 30 minutes\n    return None\n\n# Find a suitable time\nfree_time = find_free_time(work_start, work_end, meeting_duration, busy_times, pamela_preference_end)\n\nif free_time:\n    start_time, end_time = free_time\n    print(f\"{start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')} Monday\")\n```\n",
+            "count": "calendar_scheduling_example_25"
+        }
+    ]
+}

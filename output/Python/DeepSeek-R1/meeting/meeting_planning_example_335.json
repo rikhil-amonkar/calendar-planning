@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:09",
+                        "end_time": "9:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "10:45",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:09",
+                        "end_time": "9:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "10:45",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\nimport itertools\n\ntravel_times = {\n    \"Pacific Heights\": {\"North Beach\": 9, \"Financial District\": 13, \"Alamo Square\": 10, \"Mission District\": 15},\n    \"North Beach\": {\"Pacific Heights\": 8, \"Financial District\": 8, \"Alamo Square\": 16, \"Mission District\": 18},\n    \"Financial District\": {\"Pacific Heights\": 13, \"North Beach\": 7, \"Alamo Square\": 17, \"Mission District\": 17},\n    \"Alamo Square\": {\"Pacific Heights\": 10, \"North Beach\": 15, \"Financial District\": 17, \"Mission District\": 10},\n    \"Mission District\": {\"Pacific Heights\": 16, \"North Beach\": 17, \"Financial District\": 17, \"Alamo Square\": 11}\n}\n\nfriends = [\n    {\"name\": \"Helen\", \"location\": \"North Beach\", \"start\": 540, \"end\": 1020, \"duration\": 15},\n    {\"name\": \"Betty\", \"location\": \"Financial District\", \"start\": 1140, \"end\": 1305, \"duration\": 90},\n    {\"name\": \"Amanda\", \"location\": \"Alamo Square\", \"start\": 1185, \"end\": 1260, \"duration\": 60},\n    {\"name\": \"Kevin\", \"location\": \"Mission District\", \"start\": 645, \"end\": 885, \"duration\": 45}\n]\n\ndef minutes_to_time(m):\n    return f\"{m//60}:{m%60:02d}\"\n\nbest = []\nmax_count = 0\n\nfor order in itertools.permutations(friends):\n    current_loc = \"Pacific Heights\"\n    current_time = 540\n    itinerary = []\n    \n    for friend in order:\n        travel = travel_times[current_loc].get(friend[\"location\"], float('inf'))\n        arrive = current_time + travel\n        start = max(arrive, friend[\"start\"])\n        end = start + friend[\"duration\"]\n        \n        if end > friend[\"end\"]:\n            continue\n            \n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time(start),\n            \"end_time\": minutes_to_time(end)\n        })\n        current_loc = friend[\"location\"]\n        current_time = end\n    \n    if len(itinerary) > max_count or (len(itinerary) == max_count and current_time < best_time):\n        max_count = len(itinerary)\n        best = itinerary\n        best_time = current_time\n\nprint(json.dumps({\"itinerary\": best}, indent=2))",
+            "count": "meeting_planning_example_335"
+        }
+    ]
+}

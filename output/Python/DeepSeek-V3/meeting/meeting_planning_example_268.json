@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "16:45",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "18:45",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "18:45",
+                        "end_time": "19:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "19:59",
+                        "end_time": "20:59"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef add_minutes(time_str, minutes):\n    dt = parse_time(time_str)\n    dt += timedelta(minutes=minutes)\n    return format_time(dt)\n\ndef calculate_schedule():\n    # Input parameters\n    travel_times = {\n        (\"Golden Gate Park\", \"Alamo Square\"): 10,\n        (\"Golden Gate Park\", \"Presidio\"): 11,\n        (\"Golden Gate Park\", \"Russian Hill\"): 19,\n        (\"Alamo Square\", \"Golden Gate Park\"): 9,\n        (\"Alamo Square\", \"Presidio\"): 18,\n        (\"Alamo Square\", \"Russian Hill\"): 13,\n        (\"Presidio\", \"Golden Gate Park\"): 12,\n        (\"Presidio\", \"Alamo Square\"): 18,\n        (\"Presidio\", \"Russian Hill\"): 14,\n        (\"Russian Hill\", \"Golden Gate Park\"): 21,\n        (\"Russian Hill\", \"Alamo Square\"): 15,\n        (\"Russian Hill\", \"Presidio\"): 14,\n    }\n\n    # Constraints\n    current_location = \"Golden Gate Park\"\n    current_time = \"9:00\"\n\n    timothy_constraints = {\n        \"location\": \"Alamo Square\",\n        \"available_start\": \"12:00\",\n        \"available_end\": \"16:15\",\n        \"min_duration\": 105\n    }\n\n    mark_constraints = {\n        \"location\": \"Presidio\",\n        \"available_start\": \"18:45\",\n        \"available_end\": \"21:00\",\n        \"min_duration\": 60\n    }\n\n    joseph_constraints = {\n        \"location\": \"Russian Hill\",\n        \"available_start\": \"16:45\",\n        \"available_end\": \"21:30\",\n        \"min_duration\": 60\n    }\n\n    itinerary = []\n\n    # Meet Timothy at Alamo Square\n    travel_time = travel_times[(current_location, timothy_constraints[\"location\"])]\n    arrival_time = add_minutes(current_time, travel_time)\n    \n    if parse_time(arrival_time) < parse_time(timothy_constraints[\"available_start\"]):\n        arrival_time = timothy_constraints[\"available_start\"]\n    \n    end_time = add_minutes(arrival_time, timothy_constraints[\"min_duration\"])\n    if parse_time(end_time) > parse_time(timothy_constraints[\"available_end\"]):\n        end_time = timothy_constraints[\"available_end\"]\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": timothy_constraints[\"location\"],\n        \"person\": \"Timothy\",\n        \"start_time\": arrival_time,\n        \"end_time\": end_time\n    })\n    \n    current_location = timothy_constraints[\"location\"]\n    current_time = end_time\n\n    # Next, decide between Joseph and Mark\n    # Option 1: Meet Joseph first, then Mark\n    option1_itinerary = itinerary.copy()\n    option1_location = current_location\n    option1_time = current_time\n\n    # Travel to Joseph\n    travel_time = travel_times[(option1_location, joseph_constraints[\"location\"])]\n    arrival_time = add_minutes(option1_time, travel_time)\n    \n    if parse_time(arrival_time) < parse_time(joseph_constraints[\"available_start\"]):\n        arrival_time = joseph_constraints[\"available_start\"]\n    \n    end_time = add_minutes(arrival_time, joseph_constraints[\"min_duration\"])\n    if parse_time(end_time) > parse_time(joseph_constraints[\"available_end\"]):\n        end_time = joseph_constraints[\"available_end\"]\n    \n    option1_itinerary.append({\n        \"action\": \"meet\",\n        \"location\": joseph_constraints[\"location\"],\n        \"person\": \"Joseph\",\n        \"start_time\": arrival_time,\n        \"end_time\": end_time\n    })\n    \n    option1_location = joseph_constraints[\"location\"]\n    option1_time = end_time\n\n    # Travel to Mark\n    travel_time = travel_times[(option1_location, mark_constraints[\"location\"])]\n    arrival_time = add_minutes(option1_time, travel_time)\n    \n    if parse_time(arrival_time) < parse_time(mark_constraints[\"available_start\"]):\n        arrival_time = mark_constraints[\"available_start\"]\n    \n    end_time = add_minutes(arrival_time, mark_constraints[\"min_duration\"])\n    if parse_time(end_time) > parse_time(mark_constraints[\"available_end\"]):\n        end_time = mark_constraints[\"available_end\"]\n    \n    option1_itinerary.append({\n        \"action\": \"meet\",\n        \"location\": mark_constraints[\"location\"],\n        \"person\": \"Mark\",\n        \"start_time\": arrival_time,\n        \"end_time\": end_time\n    })\n\n    # Option 2: Meet Mark first, then Joseph\n    option2_itinerary = itinerary.copy()\n    option2_location = current_location\n    option2_time = current_time\n\n    # Travel to Mark\n    travel_time = travel_times[(option2_location, mark_constraints[\"location\"])]\n    arrival_time = add_minutes(option2_time, travel_time)\n    \n    if parse_time(arrival_time) < parse_time(mark_constraints[\"available_start\"]):\n        arrival_time = mark_constraints[\"available_start\"]\n    \n    end_time = add_minutes(arrival_time, mark_constraints[\"min_duration\"])\n    if parse_time(end_time) > parse_time(mark_constraints[\"available_end\"]):\n        end_time = mark_constraints[\"available_end\"]\n    \n    option2_itinerary.append({\n        \"action\": \"meet\",\n        \"location\": mark_constraints[\"location\"],\n        \"person\": \"Mark\",\n        \"start_time\": arrival_time,\n        \"end_time\": end_time\n    })\n    \n    option2_location = mark_constraints[\"location\"]\n    option2_time = end_time\n\n    # Travel to Joseph\n    travel_time = travel_times[(option2_location, joseph_constraints[\"location\"])]\n    arrival_time = add_minutes(option2_time, travel_time)\n    \n    if parse_time(arrival_time) < parse_time(joseph_constraints[\"available_start\"]):\n        arrival_time = joseph_constraints[\"available_start\"]\n    \n    end_time = add_minutes(arrival_time, joseph_constraints[\"min_duration\"])\n    if parse_time(end_time) > parse_time(joseph_constraints[\"available_end\"]):\n        end_time = joseph_constraints[\"available_end\"]\n    \n    option2_itinerary.append({\n        \"action\": \"meet\",\n        \"location\": joseph_constraints[\"location\"],\n        \"person\": \"Joseph\",\n        \"start_time\": arrival_time,\n        \"end_time\": end_time\n    })\n\n    # Choose the option that meets all constraints\n    if len(option1_itinerary) == 3:\n        return {\"itinerary\": option1_itinerary}\n    elif len(option2_itinerary) == 3:\n        return {\"itinerary\": option2_itinerary}\n    else:\n        # Fallback to meeting only Timothy and one other\n        # Try meeting Timothy and Joseph\n        fallback_itinerary = itinerary.copy()\n        fallback_location = current_location\n        fallback_time = current_time\n\n        # Travel to Joseph\n        travel_time = travel_times[(fallback_location, joseph_constraints[\"location\"])]\n        arrival_time = add_minutes(fallback_time, travel_time)\n        \n        if parse_time(arrival_time) < parse_time(joseph_constraints[\"available_start\"]):\n            arrival_time = joseph_constraints[\"available_start\"]\n        \n        end_time = add_minutes(arrival_time, joseph_constraints[\"min_duration\"])\n        if parse_time(end_time) > parse_time(joseph_constraints[\"available_end\"]):\n            end_time = joseph_constraints[\"available_end\"]\n        \n        fallback_itinerary.append({\n            \"action\": \"meet\",\n            \"location\": joseph_constraints[\"location\"],\n            \"person\": \"Joseph\",\n            \"start_time\": arrival_time,\n            \"end_time\": end_time\n        })\n\n        if len(fallback_itinerary) == 2:\n            return {\"itinerary\": fallback_itinerary}\n        \n        # Try meeting Timothy and Mark\n        fallback_itinerary = itinerary.copy()\n        fallback_location = current_location\n        fallback_time = current_time\n\n        # Travel to Mark\n        travel_time = travel_times[(fallback_location, mark_constraints[\"location\"])]\n        arrival_time = add_minutes(fallback_time, travel_time)\n        \n        if parse_time(arrival_time) < parse_time(mark_constraints[\"available_start\"]):\n            arrival_time = mark_constraints[\"available_start\"]\n        \n        end_time = add_minutes(arrival_time, mark_constraints[\"min_duration\"])\n        if parse_time(end_time) > parse_time(mark_constraints[\"available_end\"]):\n            end_time = mark_constraints[\"available_end\"]\n        \n        fallback_itinerary.append({\n            \"action\": \"meet\",\n            \"location\": mark_constraints[\"location\"],\n            \"person\": \"Mark\",\n            \"start_time\": arrival_time,\n            \"end_time\": end_time\n        })\n\n        return {\"itinerary\": fallback_itinerary}\n\nresult = calculate_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_268"
+        }
+    ]
+}

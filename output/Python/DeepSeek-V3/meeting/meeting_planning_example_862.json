@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Laura",
+                        "start_time": "14:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "16:02",
+                        "end_time": "16:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "9:20",
+                        "end_time": "9:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Stephanie",
+                        "start_time": "11:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "12:40",
+                        "end_time": "14:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Laura",
+                        "start_time": "14:49",
+                        "end_time": "16:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Deborah",
+                        "start_time": "19:00",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, '%H:%M')\n\ndef format_time(dt):\n    return dt.strftime('%-H:%M')\n\ndef calculate_schedule():\n    # Travel times dictionary: {from: {to: minutes}}\n    travel_times = {\n        'Mission District': {\n            'Alamo Square': 11, 'Presidio': 25, 'Russian Hill': 15, 'North Beach': 17,\n            'Golden Gate Park': 17, 'Richmond District': 20, 'Embarcadero': 19,\n            'Financial District': 15, 'Marina District': 19\n        },\n        'Alamo Square': {\n            'Mission District': 10, 'Presidio': 17, 'Russian Hill': 13, 'North Beach': 15,\n            'Golden Gate Park': 9, 'Richmond District': 11, 'Embarcadero': 16,\n            'Financial District': 17, 'Marina District': 15\n        },\n        'Presidio': {\n            'Mission District': 26, 'Alamo Square': 19, 'Russian Hill': 14, 'North Beach': 18,\n            'Golden Gate Park': 12, 'Richmond District': 7, 'Embarcadero': 20,\n            'Financial District': 23, 'Marina District': 11\n        },\n        'Russian Hill': {\n            'Mission District': 16, 'Alamo Square': 15, 'Presidio': 14, 'North Beach': 5,\n            'Golden Gate Park': 21, 'Richmond District': 14, 'Embarcadero': 8,\n            'Financial District': 11, 'Marina District': 7\n        },\n        'North Beach': {\n            'Mission District': 18, 'Alamo Square': 16, 'Presidio': 17, 'Russian Hill': 4,\n            'Golden Gate Park': 22, 'Richmond District': 18, 'Embarcadero': 6,\n            'Financial District': 8, 'Marina District': 9\n        },\n        'Golden Gate Park': {\n            'Mission District': 17, 'Alamo Square': 9, 'Presidio': 11, 'Russian Hill': 19,\n            'North Beach': 23, 'Richmond District': 7, 'Embarcadero': 25,\n            'Financial District': 26, 'Marina District': 16\n        },\n        'Richmond District': {\n            'Mission District': 20, 'Alamo Square': 13, 'Presidio': 7, 'Russian Hill': 13,\n            'North Beach': 17, 'Golden Gate Park': 9, 'Embarcadero': 19,\n            'Financial District': 22, 'Marina District': 9\n        },\n        'Embarcadero': {\n            'Mission District': 20, 'Alamo Square': 19, 'Presidio': 20, 'Russian Hill': 8,\n            'North Beach': 5, 'Golden Gate Park': 25, 'Richmond District': 21,\n            'Financial District': 5, 'Marina District': 12\n        },\n        'Financial District': {\n            'Mission District': 17, 'Alamo Square': 17, 'Presidio': 22, 'Russian Hill': 11,\n            'North Beach': 7, 'Golden Gate Park': 23, 'Richmond District': 21,\n            'Embarcadero': 4, 'Marina District': 17\n        },\n        'Marina District': {\n            'Mission District': 20, 'Alamo Square': 15, 'Presidio': 10, 'Russian Hill': 8,\n            'North Beach': 11, 'Golden Gate Park': 18, 'Richmond District': 11,\n            'Embarcadero': 14, 'Financial District': 17\n        }\n    }\n\n    # Friend constraints\n    friends = [\n        {'name': 'Laura', 'location': 'Alamo Square', 'start': '14:30', 'end': '16:15', 'duration': 75},\n        {'name': 'Brian', 'location': 'Presidio', 'start': '10:15', 'end': '17:00', 'duration': 30},\n        {'name': 'Karen', 'location': 'Russian Hill', 'start': '18:00', 'end': '20:15', 'duration': 90},\n        {'name': 'Stephanie', 'location': 'North Beach', 'start': '10:15', 'end': '16:00', 'duration': 75},\n        {'name': 'Helen', 'location': 'Golden Gate Park', 'start': '11:30', 'end': '21:45', 'duration': 120},\n        {'name': 'Sandra', 'location': 'Richmond District', 'start': '8:00', 'end': '15:15', 'duration': 30},\n        {'name': 'Mary', 'location': 'Embarcadero', 'start': '16:45', 'end': '18:45', 'duration': 120},\n        {'name': 'Deborah', 'location': 'Financial District', 'start': '19:00', 'end': '20:45', 'duration': 105},\n        {'name': 'Elizabeth', 'location': 'Marina District', 'start': '8:30', 'end': '13:15', 'duration': 105}\n    ]\n\n    current_location = 'Mission District'\n    current_time = parse_time('9:00')\n    itinerary = []\n\n    # Helper function to find next friend to meet\n    def get_next_friend(current_loc, current_t, remaining_friends):\n        for friend in remaining_friends:\n            friend_start = parse_time(friend['start'])\n            friend_end = parse_time(friend['end'])\n            travel_time = travel_times[current_loc][friend['location']]\n            arrival_time = current_t + timedelta(minutes=travel_time)\n            \n            # Check if we can meet this friend\n            if arrival_time < friend_end:\n                meet_start = max(arrival_time, friend_start)\n                meet_end = meet_start + timedelta(minutes=friend['duration'])\n                if meet_end <= friend_end:\n                    return friend, meet_start, meet_end\n        return None, None, None\n\n    remaining_friends = friends.copy()\n    while remaining_friends:\n        friend, meet_start, meet_end = get_next_friend(current_location, current_time, remaining_friends)\n        if not friend:\n            break\n        \n        # Add travel to itinerary\n        if current_location != friend['location']:\n            travel_duration = travel_times[current_location][friend['location']]\n            travel_start = current_time\n            travel_end = current_time + timedelta(minutes=travel_duration)\n            itinerary.append({\n                'action': 'travel',\n                'from': current_location,\n                'to': friend['location'],\n                'start_time': format_time(travel_start),\n                'end_time': format_time(travel_end)\n            })\n        \n        # Add meeting to itinerary\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': format_time(meet_start),\n            'end_time': format_time(meet_end)\n        })\n        \n        # Update current state\n        current_location = friend['location']\n        current_time = meet_end\n        remaining_friends.remove(friend)\n\n    # Filter out only meet actions for final output\n    meet_entries = [entry for entry in itinerary if entry['action'] == 'meet']\n    return {'itinerary': meet_entries}\n\nschedule = calculate_schedule()\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_862"
+        }
+    ]
+}

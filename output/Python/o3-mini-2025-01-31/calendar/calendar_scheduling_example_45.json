@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Define meeting parameters\nmeeting_duration = timedelta(minutes=30)\nwork_day_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_day_end = datetime.strptime(\"17:00\", \"%H:%M\")\nday_of_week = \"Monday\"\n\n# Define Samuel's blocked time intervals (start, end)\n# These intervals are within the work day\nblocked_intervals = [\n    (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n    (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n    (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n    (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n    (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n]\n\ndef is_available(candidate_start):\n    candidate_end = candidate_start + meeting_duration\n    # Check if the candidate meeting time is within working hours\n    if candidate_start < work_day_start or candidate_end > work_day_end:\n        return False\n    # Check against all blocked intervals for overlaps\n    for block_start, block_end in blocked_intervals:\n        # Overlap occurs if candidate_start is before block_end and candidate_end is after block_start.\n        if candidate_start < block_end and candidate_end > block_start:\n            return False\n    return True\n\n# Start searching from the beginning of the day until the end of the day minus meeting duration\ncandidate_time = work_day_start\nproposed_time = None\n\nwhile candidate_time + meeting_duration <= work_day_end:\n    if is_available(candidate_time):\n        proposed_time = candidate_time\n        break\n    candidate_time += timedelta(minutes=1)\n\nif proposed_time:\n    proposed_end = proposed_time + meeting_duration\n    # Format output as HH:MM:HH:MM along with day of the week.\n    meeting_time_str = f\"{proposed_time.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')}\"\n    print(meeting_time_str)\n    print(day_of_week)\nelse:\n    print(\"No available meeting time found within the given constraints.\")\n'''",
+            "count": "calendar_scheduling_example_45"
+        }
+    ]
+}

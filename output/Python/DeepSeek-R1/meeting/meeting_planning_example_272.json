@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef parse_time(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef min_to_time(mins):\n    h = mins // 60\n    m = mins % 60\n    return f\"{h}:{m:02}\"\n\ntravel_times = {\n    'Russian Hill': {'Nob Hill': 5, 'Mission District': 16, 'Embarcadero': 8},\n    'Nob Hill': {'Russian Hill': 5, 'Mission District': 13, 'Embarcadero': 9},\n    'Mission District': {'Russian Hill': 15, 'Nob Hill': 12, 'Embarcadero': 19},\n    'Embarcadero': {'Russian Hill': 8, 'Nob Hill': 10, 'Mission District': 20},\n}\n\nfriends = [\n    {\n        'name': 'Patricia',\n        'location': 'Nob Hill',\n        'available_start': parse_time('18:30'),\n        'available_end': parse_time('21:45'),\n        'duration': 90\n    },\n    {\n        'name': 'Ashley',\n        'location': 'Mission District',\n        'available_start': parse_time('20:30'),\n        'available_end': parse_time('21:15'),\n        'duration': 45\n    },\n    {\n        'name': 'Timothy',\n        'location': 'Embarcadero',\n        'available_start': parse_time('9:45'),\n        'available_end': parse_time('17:45'),\n        'duration': 120\n    }\n]\n\nbest_itinerary = []\nmax_friends = 0\nbest_end_time = float('inf')\n\nfor order in itertools.permutations(friends):\n    current_location = 'Russian Hill'\n    current_time = parse_time('9:00')\n    itinerary = []\n    possible = True\n    for friend in order:\n        to_loc = friend['location']\n        travel_time = travel_times[current_location][to_loc]\n        arrival = current_time + travel_time\n        start = max(arrival, friend['available_start'])\n        end = start + friend['duration']\n        if end > friend['available_end']:\n            possible = False\n            break\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": to_loc,\n            \"person\": friend['name'],\n            \"start_time\": min_to_time(start),\n            \"end_time\": min_to_time(end)\n        })\n        current_time = end\n        current_location = to_loc\n    if possible:\n        num = len(order)\n        if num > max_friends or (num == max_friends and current_time < best_end_time):\n            max_friends = num\n            best_itinerary = itinerary\n            best_end_time = current_time\n\nprint(json.dumps({\"itinerary\": best_itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_272"
+        }
+    ]
+}

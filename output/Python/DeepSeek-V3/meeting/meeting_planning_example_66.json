@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_optimal_schedule():\n    # Input parameters\n    arrival_time = \"9:00\"\n    robert_available_start = \"11:15\"\n    robert_available_end = \"17:45\"\n    min_meeting_duration = 120  # minutes\n    travel_nob_to_presidio = 17  # minutes\n    travel_presidio_to_nob = 18  # minutes\n    \n    # Convert time strings to minutes since midnight\n    def time_to_minutes(time_str):\n        h, m = map(int, time_str.split(':'))\n        return h * 60 + m\n    \n    arrival_min = time_to_minutes(arrival_time)\n    robert_start_min = time_to_minutes(robert_available_start)\n    robert_end_min = time_to_minutes(robert_available_end)\n    \n    # Calculate earliest possible meeting start\n    # Need to travel from Nob Hill to Presidio\n    earliest_arrival_presidio = arrival_min + travel_nob_to_presidio\n    meeting_start = max(earliest_arrival_presidio, robert_start_min)\n    \n    # Calculate meeting end time (must be before Robert's availability ends)\n    meeting_end = min(meeting_start + min_meeting_duration, robert_end_min)\n    \n    # Check if meeting duration is sufficient\n    actual_duration = meeting_end - meeting_start\n    if actual_duration < min_meeting_duration:\n        return {\"itinerary\": []}  # No feasible schedule\n    \n    # Convert minutes back to time strings\n    def minutes_to_time(m):\n        h = m // 60\n        m = m % 60\n        return f\"{h}:{m:02d}\"\n    \n    # Create itinerary\n    itinerary = [\n        {\n            \"action\": \"travel\",\n            \"location\": \"Presidio\",\n            \"person\": \"self\",\n            \"start_time\": minutes_to_time(arrival_min),\n            \"end_time\": minutes_to_time(earliest_arrival_presidio)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Robert\",\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        }\n    ]\n    \n    return {\"itinerary\": itinerary}\n\n# Compute and output the schedule\nschedule = calculate_optimal_schedule()\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_66"
+        }
+    ]
+}

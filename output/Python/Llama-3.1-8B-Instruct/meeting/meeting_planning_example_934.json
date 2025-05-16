@@ -1,0 +1,136 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Mary",
+                        "start_time": "9:00",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Joseph",
+                        "start_time": "10:45",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Sarah",
+                        "start_time": "12:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Thomas",
+                        "start_time": "14:15",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Daniel",
+                        "start_time": "14:30",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Richard",
+                        "start_time": "14:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Mark",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "David",
+                        "start_time": "17:15",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "13:15",
+                        "end_time": "15:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Kenneth",
+                        "start_time": "11:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Sarah",
+                        "start_time": "12:04",
+                        "end_time": "13:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "13:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:52",
+                        "end_time": "16:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Thomas",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "20:00",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times\ntravel_times = {\n    \"Nob Hill\": {\n        \"Embarcadero\": 9,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 13,\n        \"Union Square\": 7,\n        \"North Beach\": 8,\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Golden Gate Park\": 17,\n        \"Marina District\": 11,\n        \"Russian Hill\": 5\n    },\n    \"Embarcadero\": {\n        \"Nob Hill\": 10,\n        \"The Castro\": 25,\n        \"Haight-Ashbury\": 21,\n        \"Union Square\": 10,\n        \"North Beach\": 5,\n        \"Pacific Heights\": 11,\n        \"Chinatown\": 7,\n        \"Golden Gate Park\": 25,\n        \"Marina District\": 12,\n        \"Russian Hill\": 8\n    },\n    \"The Castro\": {\n        \"Nob Hill\": 16,\n        \"Embarcadero\": 22,\n        \"Haight-Ashbury\": 6,\n        \"Union Square\": 19,\n        \"North Beach\": 20,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 22,\n        \"Golden Gate Park\": 11,\n        \"Marina District\": 21,\n        \"Russian Hill\": 18\n    },\n    \"Haight-Ashbury\": {\n        \"Nob Hill\": 15,\n        \"Embarcadero\": 20,\n        \"The Castro\": 6,\n        \"Union Square\": 19,\n        \"North Beach\": 19,\n        \"Pacific Heights\": 12,\n        \"Chinatown\": 19,\n        \"Golden Gate Park\": 7,\n        \"Marina District\": 17,\n        \"Russian Hill\": 17\n    },\n    \"Union Square\": {\n        \"Nob Hill\": 9,\n        \"Embarcadero\": 11,\n        \"The Castro\": 17,\n        \"Haight-Ashbury\": 18,\n        \"North Beach\": 10,\n        \"Pacific Heights\": 15,\n        \"Chinatown\": 7,\n        \"Golden Gate Park\": 22,\n        \"Marina District\": 18,\n        \"Russian Hill\": 13\n    },\n    \"North Beach\": {\n        \"Nob Hill\": 7,\n        \"Embarcadero\": 6,\n        \"The Castro\": 23,\n        \"Haight-Ashbury\": 18,\n        \"Union Square\": 7,\n        \"Pacific Heights\": 8,\n        \"Chinatown\": 6,\n        \"Golden Gate Park\": 22,\n        \"Marina District\": 9,\n        \"Russian Hill\": 4\n    },\n    \"Pacific Heights\": {\n        \"Nob Hill\": 8,\n        \"Embarcadero\": 10,\n        \"The Castro\": 16,\n        \"Haight-Ashbury\": 11,\n        \"Union Square\": 12,\n        \"North Beach\": 9,\n        \"Chinatown\": 11,\n        \"Golden Gate Park\": 15,\n        \"Marina District\": 6,\n        \"Russian Hill\": 7\n    },\n    \"Chinatown\": {\n        \"Nob Hill\": 9,\n        \"Embarcadero\": 5,\n        \"The Castro\": 22,\n        \"Haight-Ashbury\": 19,\n        \"Union Square\": 7,\n        \"North Beach\": 3,\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 23,\n        \"Marina District\": 12,\n        \"Russian Hill\": 7\n    },\n    \"Golden Gate Park\": {\n        \"Nob Hill\": 20,\n        \"Embarcadero\": 25,\n        \"The Castro\": 13,\n        \"Haight-Ashbury\": 7,\n        \"Union Square\": 22,\n        \"North Beach\": 23,\n        \"Pacific Heights\": 16,\n        \"Chinatown\": 23,\n        \"Marina District\": 16,\n        \"Russian Hill\": 19\n    },\n    \"Marina District\": {\n        \"Nob Hill\": 12,\n        \"Embarcadero\": 14,\n        \"The Castro\": 22,\n        \"Haight-Ashbury\": 16,\n        \"Union Square\": 16,\n        \"North Beach\": 11,\n        \"Pacific Heights\": 7,\n        \"Chinatown\": 15,\n        \"Golden Gate Park\": 18,\n        \"Russian Hill\": 8\n    },\n    \"Russian Hill\": {\n        \"Nob Hill\": 5,\n        \"Embarcadero\": 8,\n        \"The Castro\": 21,\n        \"Haight-Ashbury\": 17,\n        \"Union Square\": 10,\n        \"North Beach\": 5,\n        \"Pacific Heights\": 7,\n        \"Chinatown\": 9,\n        \"Golden Gate Park\": 21,\n        \"Marina District\": 7\n    }\n}\n\n# Define constraints\nconstraints = {\n    \"Mary\": {\"start\": datetime(2023, 1, 1, 20, 0), \"end\": datetime(2023, 1, 1, 21, 15), \"min_time\": 75},\n    \"Kenneth\": {\"start\": datetime(2023, 1, 1, 11, 15), \"end\": datetime(2023, 1, 1, 19, 15), \"min_time\": 30},\n    \"Joseph\": {\"start\": datetime(2023, 1, 1, 20, 0), \"end\": datetime(2023, 1, 1, 22, 0), \"min_time\": 120},\n    \"Sarah\": {\"start\": datetime(2023, 1, 1, 11, 45), \"end\": datetime(2023, 1, 1, 14, 30), \"min_time\": 90},\n    \"Thomas\": {\"start\": datetime(2023, 1, 1, 19, 15), \"end\": datetime(2023, 1, 1, 19, 45), \"min_time\": 15},\n    \"Daniel\": {\"start\": datetime(2023, 1, 1, 13, 45), \"end\": datetime(2023, 1, 1, 20, 30), \"min_time\": 15},\n    \"Richard\": {\"start\": datetime(2023, 1, 1, 8, 0), \"end\": datetime(2023, 1, 1, 18, 45), \"min_time\": 30},\n    \"Mark\": {\"start\": datetime(2023, 1, 1, 17, 30), \"end\": datetime(2023, 1, 1, 21, 30), \"min_time\": 120},\n    \"David\": {\"start\": datetime(2023, 1, 1, 20, 0), \"end\": datetime(2023, 1, 1, 21, 0), \"min_time\": 60},\n    \"Karen\": {\"start\": datetime(2023, 1, 1, 13, 15), \"end\": datetime(2023, 1, 1, 18, 30), \"min_time\": 120}\n}\n\n# Define start location and time\nstart_location = \"Nob Hill\"\nstart_time = datetime(2023, 1, 1, 9, 0)\n\n# Initialize schedule\nschedule = []\n\n# Function to calculate travel time\ndef calculate_travel_time(location1, location2):\n    return travel_times[location1][location2]\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(person, start_time, end_time, location):\n    return constraints[person][\"start\"] <= start_time and constraints[person][\"end\"] >= end_time and location == constraints[person][\"location\"]\n\n# Function to schedule a meeting\ndef schedule_meeting(person, start_time, end_time, location):\n    schedule.append({\"action\": \"meet\", \"location\": location, \"person\": person, \"start_time\": start_time.strftime(\"%H:%M\"), \"end_time\": end_time.strftime(\"%H:%M\")})\n\n# Main function to generate schedule\ndef generate_schedule():\n    current_time = start_time\n    current_location = start_location\n\n    # Schedule meetings\n    for person, constraint in constraints.items():\n        if person == \"Mary\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Embarcadero\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Embarcadero\"))\n        elif person == \"Kenneth\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"The Castro\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"The Castro\"))\n        elif person == \"Joseph\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Haight-Ashbury\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Haight-Ashbury\"))\n        elif person == \"Sarah\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Union Square\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Union Square\"))\n        elif person == \"Thomas\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"North Beach\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"North Beach\"))\n        elif person == \"Daniel\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Pacific Heights\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Pacific Heights\"))\n        elif person == \"Richard\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Chinatown\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Chinatown\"))\n        elif person == \"Mark\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Golden Gate Park\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Golden Gate Park\"))\n        elif person == \"David\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Marina District\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Marina District\"))\n        elif person == \"Karen\":\n            if current_time + timedelta(minutes=constraints[person][\"min_time\"]) <= constraint[\"end\"]:\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n            else:\n                current_location = \"Russian Hill\"\n                current_time = constraint[\"start\"]\n                schedule_meeting(person, current_time, current_time + timedelta(minutes=constraints[person][\"min_time\"]), current_location)\n                current_time += timedelta(minutes=constraints[person][\"min_time\"])\n                current_location = \"Nob Hill\"\n                current_time = current_time + timedelta(minutes=calculate_travel_time(current_location, \"Russian Hill\"))\n\n    # Return schedule as JSON\n    return json.dumps({\"itinerary\": schedule}, indent=4)\n\n# Generate schedule\nschedule = generate_schedule()\n\n# Print schedule\nprint(schedule)\n```",
+            "count": "meeting_planning_example_934"
+        }
+    ]
+}

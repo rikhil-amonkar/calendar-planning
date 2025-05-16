@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "9:10",
+                        "end_time": "9:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "12:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Brian",
+                        "start_time": "14:10",
+                        "end_time": "14:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joseph",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "20:36",
+                        "end_time": "21:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "21:14",
+                        "end_time": "21:29"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Union Square': {\n        'The Castro': 17,\n        'North Beach': 10,\n        'Embarcadero': 11,\n        'Alamo Square': 15,\n        'Nob Hill': 9,\n        'Presidio': 24,\n        'Fisherman\\'s Wharf': 15,\n        'Mission District': 14,\n        'Haight-Ashbury': 18\n    },\n    'The Castro': {\n        'Union Square': 19,\n        'North Beach': 20,\n        'Embarcadero': 22,\n        'Alamo Square': 8,\n        'Nob Hill': 16,\n        'Presidio': 20,\n        'Fisherman\\'s Wharf': 24,\n        'Mission District': 7,\n        'Haight-Ashbury': 6\n    },\n    'North Beach': {\n        'Union Square': 7,\n        'The Castro': 23,\n        'Embarcadero': 6,\n        'Alamo Square': 16,\n        'Nob Hill': 7,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 5,\n        'Mission District': 18,\n        'Haight-Ashbury': 18\n    },\n    'Embarcadero': {\n        'Union Square': 10,\n        'The Castro': 25,\n        'North Beach': 5,\n        'Alamo Square': 19,\n        'Nob Hill': 10,\n        'Presidio': 20,\n        'Fisherman\\'s Wharf': 6,\n        'Mission District': 20,\n        'Haight-Ashbury': 21\n    },\n    'Alamo Square': {\n        'Union Square': 14,\n        'The Castro': 8,\n        'North Beach': 15,\n        'Embarcadero': 16,\n        'Nob Hill': 11,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 19,\n        'Mission District': 10,\n        'Haight-Ashbury': 5\n    },\n    'Nob Hill': {\n        'Union Square': 7,\n        'The Castro': 17,\n        'North Beach': 8,\n        'Embarcadero': 9,\n        'Alamo Square': 11,\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 10,\n        'Mission District': 13,\n        'Haight-Ashbury': 13\n    },\n    'Presidio': {\n        'Union Square': 22,\n        'The Castro': 21,\n        'North Beach': 18,\n        'Embarcadero': 20,\n        'Alamo Square': 19,\n        'Nob Hill': 18,\n        'Fisherman\\'s Wharf': 19,\n        'Mission District': 26,\n        'Haight-Ashbury': 15\n    },\n    'Fisherman\\'s Wharf': {\n        'Union Square': 13,\n        'The Castro': 27,\n        'North Beach': 6,\n        'Embarcadero': 8,\n        'Alamo Square': 21,\n        'Nob Hill': 11,\n        'Presidio': 17,\n        'Mission District': 22,\n        'Haight-Ashbury': 22\n    },\n    'Mission District': {\n        'Union Square': 15,\n        'The Castro': 7,\n        'North Beach': 17,\n        'Embarcadero': 19,\n        'Alamo Square': 11,\n        'Nob Hill': 12,\n        'Presidio': 25,\n        'Fisherman\\'s Wharf': 22,\n        'Haight-Ashbury': 12\n    },\n    'Haight-Ashbury': {\n        'Union Square': 19,\n        'The Castro': 6,\n        'North Beach': 19,\n        'Embarcadero': 20,\n        'Alamo Square': 5,\n        'Nob Hill': 15,\n        'Presidio': 15,\n        'Fisherman\\'s Wharf': 23,\n        'Mission District': 11\n    }\n}\n\n# Constraints\nconstraints = {\n    'Melissa': {'start_time': datetime(2024, 7, 26, 20, 15), 'end_time': datetime(2024, 7, 26, 21, 15),'min_time': 30},\n    'Kimberly': {'start_time': datetime(2024, 7, 26, 7, 0), 'end_time': datetime(2024, 7, 26, 10, 30),'min_time': 15},\n    'Joseph': {'start_time': datetime(2024, 7, 26, 15, 30), 'end_time': datetime(2024, 7, 26, 20, 30),'min_time': 75},\n    'Barbara': {'start_time': datetime(2024, 7, 26, 20, 45), 'end_time': datetime(2024, 7, 26, 21, 45),'min_time': 15},\n    'Kenneth': {'start_time': datetime(2024, 7, 26, 12, 15), 'end_time': datetime(2024, 7, 26, 17, 15),'min_time': 105},\n    'Joshua': {'start_time': datetime(2024, 7, 26, 16, 30), 'end_time': datetime(2024, 7, 26, 18, 15),'min_time': 105},\n    'Brian': {'start_time': datetime(2024, 7, 26, 9, 30), 'end_time': datetime(2024, 7, 26, 15, 30),'min_time': 45},\n    'Steven': {'start_time': datetime(2024, 7, 26, 19, 30), 'end_time': datetime(2024, 7, 26, 21, 0),'min_time': 90},\n    'Betty': {'start_time': datetime(2024, 7, 26, 19, 0), 'end_time': datetime(2024, 7, 26, 20, 30),'min_time': 90}\n}\n\n# Start time\nstart_time = datetime(2024, 7, 26, 9, 0)\n\n# Function to calculate travel time\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\n# Function to check if a meeting is possible\ndef is_meeting_possible(meeting_start_time, meeting_end_time, person):\n    person_start_time = constraints[person]['start_time']\n    person_end_time = constraints[person]['end_time']\n    min_time = constraints[person]['min_time']\n    return (meeting_start_time >= person_start_time and meeting_start_time <= person_end_time) or \\\n           (meeting_end_time >= person_start_time and meeting_end_time <= person_end_time) or \\\n           (person_start_time <= meeting_start_time and person_end_time >= meeting_end_time and meeting_end_time - meeting_start_time >= timedelta(minutes=min_time))\n\n# Function to find the optimal meeting schedule\ndef find_optimal_schedule():\n    schedule = []\n    current_time = start_time\n    while current_time < datetime(2024, 7, 26, 23, 59):\n        possible_meetings = []\n        for person in constraints:\n            if is_meeting_possible(current_time, current_time + timedelta(minutes=60), person):\n                possible_meetings.append(person)\n        if possible_meetings:\n            meeting_person = max(possible_meetings, key=lambda person: constraints[person]['min_time'])\n            meeting_time = current_time + timedelta(minutes=constraints[meeting_person]['min_time'])\n            schedule.append({'action':'meet', 'location': 'Union Square', 'person': meeting_person,'start_time': current_time.strftime('%H:%M'), 'end_time': meeting_time.strftime('%H:%M')})\n            current_time = meeting_time\n        else:\n            current_time += timedelta(minutes=1)\n    return schedule\n\n# Find the optimal meeting schedule\nschedule = find_optimal_schedule()\n\n# Add travel times to the schedule\nfor i in range(len(schedule) - 1):\n    start_location = schedule[i]['location']\n    end_location = schedule[i+1]['location']\n    travel_time = calculate_travel_time(start_location, end_location)\n    schedule[i]['end_time'] = (datetime.strptime(schedule[i]['end_time'], '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    schedule[i+1]['start_time'] = (datetime.strptime(schedule[i+1]['start_time'], '%H:%M') - timedelta(minutes=travel_time)).strftime('%H:%M')\n\n# Add travel time from Union Square to the first meeting location\nschedule[0]['start_time'] = (datetime.strptime(schedule[0]['start_time'], '%H:%M') - timedelta(minutes=calculate_travel_time('Union Square', schedule[0]['location']))).strftime('%H:%M')\n\n# Add travel time from the last meeting location to Union Square\nschedule[-1]['end_time'] = (datetime.strptime(schedule[-1]['end_time'], '%H:%M') + timedelta(minutes=calculate_travel_time(schedule[-1]['location'], 'Union Square'))).strftime('%H:%M')\n\n# Print the schedule as a JSON-formatted dictionary\nprint(json.dumps({'itinerary': schedule}, indent=4))\n\n```",
+            "count": "meeting_planning_example_800"
+        }
+    ]
+}

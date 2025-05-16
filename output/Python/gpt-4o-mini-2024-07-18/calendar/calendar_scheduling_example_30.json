@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the work hours and duration\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(minutes=30)\n\n# Participants' schedules\njeffrey_schedule = [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n                    (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\"))]\n\nvirginia_schedule = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n                     (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n                     (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n                     (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))]\n\nmelissa_schedule = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n                    (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                    (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n                    (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n\n# Day of the week\nday_of_week = \"Monday\"\n\n# Function to check if the time slot is available\ndef is_time_slot_available(start_time, end_time, schedules):\n    for schedule in schedules:\n        if (start_time < schedule[1] and end_time > schedule[0]):\n            return False\n    return True\n\n# Finding a suitable time\ncurrent_time = work_start\nwhile current_time + meeting_duration <= work_end:\n    end_time = current_time + meeting_duration\n    if is_time_slot_available(current_time, end_time, jeffrey_schedule) and \\\n       is_time_slot_available(current_time, end_time, virginia_schedule) and \\\n       is_time_slot_available(current_time, end_time, melissa_schedule):\n       \n        # Check Melissa's preference not to meet after 14:00\n        if current_time >= datetime.strptime(\"14:00\", \"%H:%M\"):\n            break\n        \n        print(f\"{current_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}\")\n        print(day_of_week)\n        break\n    \n    current_time += timedelta(minutes=30)\n```",
+            "count": "calendar_scheduling_example_30"
+        }
+    ]
+}

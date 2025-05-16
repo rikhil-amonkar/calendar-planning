@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "13:13",
+                        "end_time": "13:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "18:51",
+                        "end_time": "20:21"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define travel times between locations\ntravel_times = {\n    'Union Square': {'Golden Gate Park': 22, 'Pacific Heights': 15, 'Presidio': 24, 'Chinatown': 7, 'The Castro': 19},\n    'Golden Gate Park': {'Union Square': 22, 'Pacific Heights': 16, 'Presidio': 11, 'Chinatown': 23, 'The Castro': 13},\n    'Pacific Heights': {'Union Square': 12, 'Golden Gate Park': 15, 'Presidio': 11, 'Chinatown': 11, 'The Castro': 16},\n    'Presidio': {'Union Square': 22, 'Golden Gate Park': 12, 'Pacific Heights': 11, 'Chinatown': 21, 'The Castro': 21},\n    'Chinatown': {'Union Square': 7, 'Golden Gate Park': 23, 'Pacific Heights': 10, 'Presidio': 19, 'The Castro': 22},\n    'The Castro': {'Union Square': 19, 'Golden Gate Park': 11, 'Pacific Heights': 16, 'Presidio': 20, 'Chinatown': 20}\n}\n\n# Define meeting constraints\nmeetings = {\n    'Andrew': {'location': 'Golden Gate Park','start_time': '11:45', 'end_time': '14:30', 'duration': 75},\n    'Sarah': {'location': 'Pacific Heights','start_time': '16:15', 'end_time': '18:45', 'duration': 15},\n    'Nancy': {'location': 'Presidio','start_time': '17:30', 'end_time': '19:15', 'duration': 60},\n    'Rebecca': {'location': 'Chinatown','start_time': '09:45', 'end_time': '21:30', 'duration': 90},\n    'Robert': {'location': 'The Castro','start_time': '08:30', 'end_time': '14:15', 'duration': 30}\n}\n\ndef calculate_meeting_time(current_time, travel_time, meeting_duration):\n    meeting_start_time = add_time(current_time, travel_time)\n    meeting_end_time = add_time(meeting_start_time, meeting_duration)\n    return meeting_start_time, meeting_end_time\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef is_meeting_possible(current_time, meeting_start_time, meeting_end_time):\n    return meeting_start_time <= current_time < meeting_end_time\n\ndef plan_meetings():\n    current_time = '09:00'\n    current_location = 'Union Square'\n    itinerary = []\n\n    for person, meeting in meetings.items():\n        travel_time = travel_times[current_location][meeting['location']]\n        meeting_start_time, meeting_end_time = calculate_meeting_time(current_time, travel_time, meeting['duration'])\n        if is_meeting_possible(meeting_start_time, meeting['start_time'], meeting['end_time']):\n            itinerary.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': person,\n              'start_time': meeting_start_time,\n                'end_time': meeting_end_time\n            })\n            current_time = meeting_end_time\n            current_location = meeting['location']\n\n    return itinerary\n\ndef main():\n    itinerary = plan_meetings()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_403"
+        }
+    ]
+}

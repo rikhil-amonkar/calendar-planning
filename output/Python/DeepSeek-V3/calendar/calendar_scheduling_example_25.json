@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n\n    # Define participants' busy times in minutes since midnight\n    anthony_busy = [\n        (9 * 60 + 30, 10 * 60),      # 9:30-10:00\n        (12 * 60, 13 * 60),           # 12:00-13:00\n        (16 * 60, 16 * 60 + 30)      # 16:00-16:30\n    ]\n    pamela_busy = [\n        (9 * 60 + 30, 10 * 60),       # 9:30-10:00\n        (16 * 60 + 30, 17 * 60)       # 16:30-17:00\n    ]\n    zachary_busy = [\n        (9 * 60, 11 * 60 + 30),       # 9:00-11:30\n        (12 * 60, 12 * 60 + 30),      # 12:00-12:30\n        (13 * 60, 13 * 60 + 30),      # 13:00-13:30\n        (14 * 60 + 30, 15 * 60),      # 14:30-15:00\n        (16 * 60, 17 * 60)            # 16:00-17:00\n    ]\n\n    # Pamela's preference: not after 14:30\n    pamela_preference_end = 14 * 60 + 30\n\n    # Meeting duration in minutes\n    meeting_duration = 60\n\n    # Generate all possible slots\n    possible_slots = []\n    current_time = work_start\n\n    while current_time + meeting_duration <= work_end:\n        slot_end = current_time + meeting_duration\n        # Check if the slot is valid for all participants\n        anthony_free = all(not (start <= current_time < end or start < slot_end <= end) for start, end in anthony_busy)\n        pamela_free = all(not (start <= current_time < end or start < slot_end <= end) for start, end in pamela_busy)\n        zachary_free = all(not (start <= current_time < end or start < slot_end <= end) for start, end in zachary_busy)\n        # Check Pamela's preference\n        pamela_preference_ok = slot_end <= pamela_preference_end\n\n        if anthony_free and pamela_free and zachary_free and pamela_preference_ok:\n            possible_slots.append((current_time, slot_end))\n        \n        current_time += 15  # Check every 15 minutes for efficiency\n\n    if not possible_slots:\n        return None\n\n    # Select the first available slot\n    chosen_slot = possible_slots[0]\n    start_hour = chosen_slot[0] // 60\n    start_min = chosen_slot[0] % 60\n    end_hour = chosen_slot[1] // 60\n    end_min = chosen_slot[1] % 60\n\n    # Format the output\n    time_str = f\"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\"\n    return time_str, \"Monday\"\n\n# Execute and print the result\ntime_range, day = find_meeting_time()\nprint(f\"{time_range} {day}\")\n```",
+            "count": "calendar_scheduling_example_25"
+        }
+    ]
+}

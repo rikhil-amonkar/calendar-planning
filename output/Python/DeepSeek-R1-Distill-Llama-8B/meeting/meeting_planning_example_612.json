@@ -1,0 +1,66 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "George",
+                        "start_time": "739:0",
+                        "end_time": "1244:0"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "9:16",
+                        "end_time": "10:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "George",
+                        "start_time": "10:23",
+                        "end_time": "11:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Emily",
+                        "start_time": "12:15",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "14:45",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Steven",
+                        "start_time": "15:57",
+                        "end_time": "17:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Margaret",
+                        "start_time": "21:30",
+                        "end_time": "22:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to help this person write a Python program to schedule meetings in San Francisco. The goal is to meet as many friends as possible, considering travel times and each person's availability. \n\nFirst, I'll look at the travel distances provided. The distances are between various San Francisco neighborhoods, and I need to calculate the time it takes to travel between them. The person starts at Alamo Square at 9:00 AM, so I'll need to consider travel times from there.\n\nNext, I'll examine the constraints. There are several friends in different locations with specific time slots. For example, Emily is at Russian Hill from 12:15 PM to 2:15 PM, Mark at Presidio from 2:45 PM to 7:30 PM, Deborah at Chinatown from 7:30 AM to 3:30 PM, Margaret at Sunset District from 9:30 PM to 10:30 PM, George at The Castro from 7:30 AM to 2:15 PM, and Andrew at Embarcadero from 8:15 PM to 10:00 PM. Each person has a preferred location and a duration they're willing to meet.\n\nI need to determine the best times and locations to meet each person without overlapping schedules and considering travel times. The goal is to maximize the number of meetings.\n\nI'll start by calculating the travel times from Alamo Square to each location. From the given data, it takes 13 minutes to Russian Hill, 18 minutes to Presidio, 16 minutes to Chinatown, 16 minutes to Sunset District, 8 minutes to The Castro, 17 minutes to Embarcadero, and 25 minutes to Golden Gate Park.\n\nFor each friend, I'll calculate the earliest and latest possible start times based on their availability and the travel time from Alamo Square. For example, Emily can be met as early as 12:15 PM (12:15 + 0 minutes) and as late as 2:15 PM (2:15 - 105 minutes).\n\nI'll repeat this process for each friend, calculating their feasible meeting windows. After that, I'll sort these meetings by their end times to pick the earliest ending ones first, which helps in maximizing the number of meetings.\n\nOnce I have all the feasible meetings, I'll select non-overlapping ones, starting with the earliest and moving to the next compatible one. This greedy algorithm approach should give me the optimal schedule.\n\nFinally, I'll convert the meeting times into the required 24-hour format and structure the output as a JSON-formatted dictionary. This way, the program can run independently and provide a valid schedule based on the given constraints.\n\nThe code should handle all the travel times, calculate feasible meeting windows, sort them, select non-overlapping meetings, and output the schedule in the correct format. The goal is to ensure that the person meets as many friends as possible without exceeding their availability and travel time constraints.\n```python\nimport json\n\n# Define travel times from Alamo Square to each location\ntravel_times = {\n    'Alamo Square': {\n        'Russian Hill': 13,\n        'Presidio': 18,\n        'Chinatown': 16,\n        'Sunset District': 16,\n        'The Castro': 8,\n        'Embarcadero': 17,\n        'Golden Gate Park': 9\n    },\n    'Russian Hill': {\n        'Alamo Square': 15,\n        'Presidio': 14,\n        'Chinatown': 9,\n        'Sunset District': 24,\n        'The Castro': 21,\n        'Embarcadero': 8,\n        'Golden Gate Park': 21\n    },\n    'Presidio': {\n        'Alamo Square': 18,\n        'Russian Hill': 14,\n        'Chinatown': 21,\n        'Sunset District': 15,\n        'The Castro': 21,\n        'Embarcadero': 20,\n        'Golden Gate Park': 12\n    },\n    'Chinatown': {\n        'Alamo Square': 17,\n        'Russian Hill': 7,\n        'Presidio': 19,\n        'Sunset District': 30,\n        'The Castro': 22,\n        'Embarcadero': 5,\n        'Golden Gate Park': 23\n    },\n    'Sunset District': {\n        'Alamo Square': 17,\n        'Russian Hill': 24,\n        'Presidio': 16,\n        'Chinatown': 30,\n        'The Castro': 17,\n        'Embarcadero': 31,\n        'Golden Gate Park': 11\n    },\n    'The Castro': {\n        'Alamo Square': 8,\n        'Russian Hill': 18,\n        'Presidio': 20,\n        'Chinatown': 20,\n        'Sunset District': 17,\n        'Embarcadero': 22,\n        'Golden Gate Park': 11\n    },\n    'Embarcadero': {\n        'Alamo Square': 19,\n        'Russian Hill': 8,\n        'Presidio': 20,\n        'Chinatown': 7,\n        'Sunset District': 31,\n        'The Castro': 25,\n        'Golden Gate Park': 25\n    },\n    'Golden Gate Park': {\n        'Alamo Square': 10,\n        'Russian Hill': 19,\n        'Presidio': 11,\n        'Chinatown': 23,\n        'Sunset District': 10,\n        'The Castro': 13,\n        'Embarcadero': 25\n    }\n}\n\n# List of people with their details\npeople = [\n    {\n        'name': 'Emily',\n        'location': 'Russian Hill',\n        'start_time': '12:15',\n        'end_time': '14:15',\n        'duration': 105,\n        'travel_time': 13\n    },\n    {\n        'name': 'Mark',\n        'location': 'Presidio',\n        'start_time': '14:45',\n        'end_time': '20:30',\n        'duration': 60,\n        'travel_time': 18\n    },\n    {\n        'name': 'Deborah',\n        'location': 'Chinatown',\n        'start_time': '7:30',\n        'end_time': '16:30',\n        'duration': 45,\n        'travel_time': 16\n    },\n    {\n        'name': 'Margaret',\n        'location': 'Sunset District',\n        'start_time': '21:30',\n        'end_time': '22:30',\n        'duration': 60,\n        'travel_time': 16\n    },\n    {\n        'name': 'George',\n        'location': 'The Castro',\n        'start_time': '7:30',\n        'end_time': '12:45',\n        'duration': 60,\n        'travel_time': 8\n    },\n    {\n        'name': 'Andrew',\n        'location': 'Embarcadero',\n        'start_time': '20:15',\n        'end_time': '22:00',\n        'duration': 75,\n        'travel_time': 17\n    },\n    {\n        'name': 'Steven',\n        'location': 'Golden Gate Park',\n        'start_time': '10:00',\n        'end_time': '16:00',\n        'duration': 105,\n        'travel_time': 9\n    }\n]\n\n# Function to calculate feasible meeting times\ndef calculate_feasible_meetings(people, travel_times):\n    meetings = []\n    for person in people:\n        location = person['location']\n        start_time = person['start_time']\n        end_time = person['end_time']\n        duration = person['duration']\n        travel_time = travel_times['Alamo Square'][location]\n        \n        # Convert times to minutes since 9:00 AM\n        earliest_start_min = (int(start_time.replace(':', '')) * 60) + 540  # 9:00 AM in minutes\n        latest_start_min = (int(end_time.replace(':', '')) * 60) - duration\n        \n        # Ensure earliest start is at least 9:00 AM\n        if earliest_start_min < 540:\n            earliest_start_min = 540\n        \n        if latest_start_min < earliest_start_min:\n            continue  # No possible meeting time\n        \n        meetings.append({\n            'name': person['name'],\n            'location': location,\n            'start_time': earliest_start_min,\n            'end_time': latest_start_min\n        })\n    \n    return meetings\n\n# Calculate feasible meeting times\nfeasible_meetings = calculate_feasible_meetings(people, travel_times)\n\n# Sort meetings by end time\nfeasible_meetings.sort(key=lambda x: x['end_time'])\n\n# Select non-overlapping meetings\nitinerary = []\nfor meeting in feasible_meetings:\n    start = meeting['start_time']\n    end = meeting['end_time']\n    if not itinerary or end <= itinerary[-1]['end_time']:\n        itinerary.append(meeting)\n\n# Convert time to 24-hour format strings\nitinerary = [\n    {\n        'action': 'meet',\n        'location': meeting['location'],\n        'person': meeting['name'],\n        'start_time': f\"{meeting['start_time'] // 60 + (meeting['start_time'] % 60 // 10)}:{meeting['start_time'] % 60 // 10 * 10}\",\n        'end_time': f\"{meeting['end_time'] // 60 + (meeting['end_time'] % 60 // 10)}:{meeting['end_time'] % 60 // 10 * 10}\"\n    }\n    for meeting in itinerary\n]\n\n# Generate JSON output\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_612"
+        }
+    ]
+}

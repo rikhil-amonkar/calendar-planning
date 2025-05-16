@@ -1,0 +1,30 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Input parameters\n    total_days = 10\n    days_in_krakow = 2\n    wedding_day_start = 9\n    wedding_day_end = 10\n    days_in_dubrovnik = 7\n    days_in_frankfurt = 3\n    \n    # Direct flights\n    direct_flights = {\n        'Frankfurt': ['Krakow', 'Dubrovnik'],\n        'Krakow': ['Frankfurt'],\n        'Dubrovnik': ['Frankfurt']\n    }\n    \n    # Validate constraints\n    total_planned_days = days_in_krakow + days_in_dubrovnik + days_in_frankfurt\n    if total_planned_days != total_days:\n        raise ValueError(\"Total days in cities do not match the trip duration\")\n    \n    # Determine the order of cities\n    # Wedding is in Krakow on days 9-10, so Krakow must be last\n    # Possible sequences:\n    # 1. Dubrovnik -> Frankfurt -> Krakow\n    # 2. Frankfurt -> Dubrovnik -> Krakow\n    \n    # Try sequence 1: Dubrovnik -> Frankfurt -> Krakow\n    # Dubrovnik: days 1-7 (7 days)\n    # Flight to Frankfurt on day 7\n    # Frankfurt: days 7-10 (3 days)\n    # Flight to Krakow on day 10 (but wedding is day 9-10, so this doesn't work)\n    \n    # Try sequence 2: Frankfurt -> Dubrovnik -> Krakow\n    # Frankfurt: days 1-3 (3 days)\n    # Flight to Dubrovnik on day 3\n    # Dubrovnik: days 3-10 (7 days)\n    # Flight to Krakow on day 10 (but wedding is day 9-10, so this doesn't work)\n    \n    # Alternative approach: Split stays\n    # Since we must be in Krakow on days 9-10, and we need 2 days there,\n    # we must be in Krakow days 9-10\n    # Then we have 8 days left for Dubrovnik and Frankfurt\n    \n    # Possible sequences:\n    # 1. Start in Dubrovnik, then Frankfurt, then Krakow\n    # Dubrovnik: days 1-x (must be <=6 because we need at least 3 for Frankfurt)\n    # Let's try Dubrovnik 1-5 (5 days), then Frankfurt 5-8 (3 days), then Krakow 8-10 (2 days)\n    # Check flights:\n    # Dubrovnik -> Frankfurt: direct flight exists\n    # Frankfurt -> Krakow: direct flight exists\n    # This fits all constraints\n    \n    itinerary = []\n    \n    # Dubrovnik stay\n    itinerary.append({\n        'day_range': f'Day 1-5',\n        'place': 'Dubrovnik'\n    })\n    \n    # Flight to Frankfurt\n    itinerary.append({\n        'flying': 'Day 5-5',\n        'from': 'Dubrovnik',\n        'to': 'Frankfurt'\n    })\n    \n    # Frankfurt stay\n    itinerary.append({\n        'day_range': f'Day 5-8',\n        'place': 'Frankfurt'\n    })\n    \n    # Flight to Krakow\n    itinerary.append({\n        'flying': 'Day 8-8',\n        'from': 'Frankfurt',\n        'to': 'Krakow'\n    })\n    \n    # Krakow stay (including wedding)\n    itinerary.append({\n        'day_range': f'Day 8-10',\n        'place': 'Krakow'\n    })\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = plan_trip()\n    print(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_29"
+        }
+    ]
+}

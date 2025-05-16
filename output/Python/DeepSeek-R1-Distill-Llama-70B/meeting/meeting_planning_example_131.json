@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I'll start by understanding the problem. The user arrives at Pacific Heights at 9:00 AM. There are two friends: Jason at Presidio and Kenneth at Marina District. Each has specific time windows and meeting durations. I need to find the best order to meet them so that all constraints are satisfied.\n\nI'll need to define the travel times between the locations. From the input, I see the travel times are:\n\n- Pacific Heights to Presidio: 11 minutes\n- Pacific Heights to Marina District: 6 minutes\n- Presidio to Pacific Heights: 11 minutes\n- Presidio to Marina District: 10 minutes\n- Marina District to Pacific Heights: 7 minutes\n- Marina District to Presidio: 10 minutes\n\nNext, I'll represent these in a dictionary for easy lookup. That way, when calculating travel times between locations, I can quickly find the duration.\n\nThen, I'll define the friends' details. Jason is at Presidio from 10:00 AM to 4:15 PM and needs at least 90 minutes. Kenneth is at Marina District from 3:30 PM to 4:45 PM and needs 45 minutes.\n\nI'll convert all time strings to minutes since midnight to make calculations easier. For example, 9:00 AM becomes 540 minutes, 10:00 AM is 600 minutes, etc.\n\nSince there are only two friends, there are two possible orders: meet Jason first then Kenneth, or Kenneth first then Jason. I'll need to check both permutations to see which one fits all constraints.\n\nFor each permutation, I'll simulate the schedule:\n\n1. Start at Pacific Heights at 9:00 AM.\n2. Travel to the first friend's location, calculate arrival time.\n3. Check if the arrival time is within the friend's available window. If not, adjust the start time to the earliest possible within their availability.\n4. Ensure the meeting duration doesn't exceed their available end time.\n5. If successful, add this meeting to the itinerary.\n6. Update the current time and location, then proceed to the next friend.\n7. Repeat the process for the second friend.\n\nAfter evaluating both orders, I'll select the one that allows meeting both friends. If only one can be met, that's the best possible. The result should be output in JSON format.\n\nI'll write helper functions to convert time strings to minutes and vice versa to handle the time calculations smoothly.\n\nFinally, I'll test the code to ensure it works correctly for both scenarios and outputs the optimal schedule.\n</think>\n\n```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\ndef minutes_to_time(mins):\n    hours = mins // 60\n    mins = mins % 60\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    ('Pacific Heights', 'Presidio'): 11,\n    ('Pacific Heights', 'Marina District'): 6,\n    ('Presidio', 'Pacific Heights'): 11,\n    ('Presidio', 'Marina District'): 10,\n    ('Marina District', 'Pacific Heights'): 7,\n    ('Marina District', 'Presidio'): 10\n}\n\nfriends = [\n    {\n        'name': 'Jason',\n        'location': 'Presidio',\n        'available_start': '10:00',\n        'available_end': '16:15',\n        'required_duration': 90\n    },\n    {\n        'name': 'Kenneth',\n        'location': 'Marina District',\n        'available_start': '15:30',\n        'available_end': '16:45',\n        'required_duration': 45\n    }\n]\n\ncurrent_time = 540  # 9:00 AM in minutes\ncurrent_location = 'Pacific Heights'\n\nbest_itinerary = []\n\nfor perm in permutations(friends):\n    itinerary = []\n    temp_time = current_time\n    temp_loc = current_location\n    valid = True\n\n    for friend in perm:\n        travel = travel_times.get((temp_loc, friend['location']), None)\n        if travel is None:\n            valid = False\n            break\n        arrival_time = temp_time + travel\n\n        avail_start = time_to_minutes(friend['available_start'])\n        avail_end = time_to_minutes(friend['available_end'])\n\n        start_time = max(arrival_time, avail_start)\n        end_time = start_time + friend['required_duration']\n\n        if end_time > avail_end:\n            valid = False\n            break\n\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(start_time),\n            'end_time': minutes_to_time(end_time)\n        })\n\n        temp_time = end_time\n        temp_loc = friend['location']\n\n    if valid and len(itinerary) > len(best_itinerary):\n        best_itinerary = itinerary\n\nresult = {'itinerary': best_itinerary}\nprint(json.dumps(result))\n```",
+            "count": "meeting_planning_example_131"
+        }
+    ]
+}

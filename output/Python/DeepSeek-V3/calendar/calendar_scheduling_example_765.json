@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days to consider\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    meeting_duration = 30  # minutes\n\n    # Define busy times for each person in minutes since midnight\n    joshua_busy = {\n        'Monday': [(15 * 60, 15 * 60 + 30)],\n        'Tuesday': [(11 * 60 + 30, 12 * 60), (13 * 60, 13 * 60 + 30), (14 * 60 + 30, 15 * 60)],\n        'Wednesday': []\n    }\n    \n    joyce_busy = {\n        'Monday': [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60), (11 * 60 + 30, 12 * 60 + 30),\n                   (13 * 60, 15 * 60), (15 * 60 + 30, 17 * 60)],\n        'Tuesday': [(9 * 60, 17 * 60)],\n        'Wednesday': [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60), (12 * 60 + 30, 15 * 60 + 30),\n                      (16 * 60, 16 * 60 + 30)]\n    }\n    \n    # Joyce's preference: not before 12:00 on Monday\n    joyce_preference = {\n        'Monday': 12 * 60,\n        'Tuesday': 0,\n        'Wednesday': 0\n    }\n    \n    # Iterate through each day to find a suitable time\n    for day in days:\n        # Collect all busy intervals for both participants\n        busy_intervals = joshua_busy[day] + joyce_busy[day]\n        busy_intervals.sort()  # Sort by start time\n        \n        # Find the earliest possible start time considering Joyce's preference\n        current_start = max(work_start, joyce_preference[day])\n        \n        # Check the time slots between busy intervals\n        for interval in busy_intervals:\n            interval_start, interval_end = interval\n            if current_start + meeting_duration <= interval_start:\n                # Found a suitable slot\n                start_time = current_start\n                end_time = start_time + meeting_duration\n                # Format the time as HH:MM:HH:MM\n                start_str = f\"{start_time // 60:02d}:{start_time % 60:02d}\"\n                end_str = f\"{end_time // 60:02d}:{end_time % 60:02d}\"\n                print(f\"{day}:{start_str}:{end_str}\")\n                return\n            # Update current_start to the end of the current busy interval\n            if interval_end > current_start:\n                current_start = interval_end\n        \n        # Check the time after the last busy interval\n        if current_start + meeting_duration <= work_end:\n            start_time = current_start\n            end_time = start_time + meeting_duration\n            start_str = f\"{start_time // 60:02d}:{start_time % 60:02d}\"\n            end_str = f\"{end_time // 60:02d}:{end_time % 60:02d}\"\n            print(f\"{day}:{start_str}:{end_str}\")\n            return\n    \n    print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_765"
+        }
+    ]
+}

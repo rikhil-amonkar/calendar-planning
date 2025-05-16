@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{12:30",
+                "end_time": "13:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef to_time_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\ndef find_meeting_slot(busy_intervals, duration, work_start, work_end):\n    merged = []\n    for start, end in sorted(busy_intervals):\n        if merged and merged[-1][1] >= start:\n            merged[-1] = (merged[-1][0], max(merged[-1][1], end))\n        else:\n            merged.append((start, end))\n    \n    free = []\n    prev_end = work_start\n    for start, end in merged:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        free.append((prev_end, work_end))\n    \n    for start, end in free:\n        if end - start >= duration:\n            return (start, start + duration)\n    return None\n\nparticipants = {\n    'Ronald': [],\n    'Stephen': ['10:00-10:30', '12:00-12:30'],\n    'Brittany': ['11:00-11:30', '13:30-14:00', '15:30-16:00', '16:30-17:00'],\n    'Dorothy': ['9:00-9:30', '10:00-10:30', '11:00-12:30', '13:00-15:00', '15:30-17:00'],\n    'Rebecca': ['9:30-10:30', '11:00-11:30', '12:00-12:30', '13:00-17:00'],\n    'Jordan': ['9:00-9:30', '10:00-11:00', '11:30-12:00', '13:00-15:00', '15:30-16:30']\n}\n\nbusy = []\nfor person, intervals in participants.items():\n    for interval in intervals:\n        start_str, end_str = interval.split('-')\n        start = parse_time(start_str)\n        end = parse_time(end_str)\n        busy.append((start, end))\n\nwork_start = parse_time('09:00')\nwork_end = parse_time('17:00')\nduration = 30\n\nslot = find_meeting_slot(busy, duration, work_start, work_end)\nif slot:\n    start, end = slot\n    print(f\"{to_time_str(start)}-{to_time_str(end)}\")\n    print(\"Monday\")\nelse:\n    print(\"No suitable slot found\")\n'''",
+            "count": "calendar_scheduling_example_307"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the work hours and meeting duration\nwork_start = datetime.strptime('09:00', '%H:%M')\nwork_end = datetime.strptime('17:00', '%H:%M')\nmeeting_duration = timedelta(hours=1)\n\n# Existing schedules for each participant\nschedules = {\n    'Stephanie': [(datetime.strptime('10:00', '%H:%M'), datetime.strptime('10:30', '%H:%M')),\n                  (datetime.strptime('16:00', '%H:%M'), datetime.strptime('16:30', '%H:%M'))],\n    'Cheryl': [(datetime.strptime('10:00', '%H:%M'), datetime.strptime('10:30', '%H:%M')),\n               (datetime.strptime('11:30', '%H:%M'), datetime.strptime('12:00', '%H:%M')),\n               (datetime.strptime('13:30', '%H:%M'), datetime.strptime('14:00', '%H:%M')),\n               (datetime.strptime('16:30', '%H:%M'), work_end)],\n    'Bradley': [(datetime.strptime('9:30', '%H:%M'), datetime.strptime('10:00', '%H:%M')),\n                (datetime.strptime('10:30', '%H:%M'), datetime.strptime('11:30', '%H:%M')),\n                (datetime.strptime('13:30', '%H:%M'), datetime.strptime('14:00', '%H:%M')),\n                (datetime.strptime('14:30', '%H:%M'), datetime.strptime('15:00', '%H:%M')),\n                (datetime.strptime('15:30', '%H:%M'), work_end)],\n    'Steven': [(work_start, datetime.strptime('12:00', '%H:%M')),\n               (datetime.strptime('13:00', '%H:%M'), datetime.strptime('13:30', '%H:%M')),\n               (datetime.strptime('14:30', '%H:%M'), work_end)]\n}\n\n# Function to find a suitable time for the meeting\ndef find_meeting_time(schedules, meeting_duration, work_start, work_end):\n    free_times = []\n    current_start = work_start\n\n    while current_start + meeting_duration <= work_end:\n        current_end = current_start + meeting_duration\n        if all(not (current_start < end and current_end > start) for times in schedules.values() for start, end in times):\n            free_times.append((current_start, current_end))\n        current_start += timedelta(minutes=30)  # Check every 30 minutes\n\n    return free_times\n\n# Find free times and select the first available\navailable_times = find_meeting_time(schedules, meeting_duration, work_start, work_end)\n\nif available_times:\n    proposed_time = available_times[0]\n    start_time_str = proposed_time[0].strftime('%H:%M')\n    end_time_str = proposed_time[1].strftime('%H:%M')\n    day_of_week = 'Monday'\n    print(f\"{start_time_str}:{end_time_str}\")\n    print(day_of_week)\nelse:\n    print(\"No available time found.\")\n```",
+            "count": "calendar_scheduling_example_114"
+        }
+    ]
+}

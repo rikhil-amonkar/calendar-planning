@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    \n    # Convert each participant's busy slots to minutes\n    # Natalie: free all day\n    natalie_busy = []\n    \n    # David: busy 11:30-12:00, 14:30-15:00; prefers after 14:00\n    david_busy = [(11 * 60 + 30, 12 * 60), (14 * 60 + 30, 15 * 60)]\n    david_preference = 14 * 60  # prefers after 14:00\n    \n    # Douglas: busy 9:30-10:00, 11:30-12:00, 13:00-13:30, 14:30-15:00\n    douglas_busy = [(9 * 60 + 30, 10 * 60), (11 * 60 + 30, 12 * 60),\n                    (13 * 60, 13 * 60 + 30), (14 * 60 + 30, 15 * 60)]\n    \n    # Ralph: busy 9:00-9:30, 10:00-11:00, 11:30-12:30, 13:30-15:00, 15:30-16:00, 16:30-17:00\n    ralph_busy = [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60),\n                  (11 * 60 + 30, 12 * 60 + 30), (13 * 60 + 30, 15 * 60),\n                  (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]\n    \n    # Jordan: busy 9:00-10:00, 12:00-12:30, 13:00-13:30, 14:30-15:00, 15:30-17:00\n    jordan_busy = [(9 * 60, 10 * 60), (12 * 60, 12 * 60 + 30),\n                   (13 * 60, 13 * 60 + 30), (14 * 60 + 30, 15 * 60),\n                   (15 * 60 + 30, 17 * 60)]\n    \n    # Combine all busy slots\n    all_busy = david_busy + douglas_busy + ralph_busy + jordan_busy\n    \n    # Sort busy slots by start time\n    all_busy.sort()\n    \n    # Find free slots by checking gaps between busy slots\n    free_slots = []\n    previous_end = work_start\n    \n    for start, end in all_busy:\n        if start > previous_end:\n            free_slots.append((previous_end, start))\n        previous_end = max(previous_end, end)\n    \n    # Check the end of the day\n    if previous_end < work_end:\n        free_slots.append((previous_end, work_end))\n    \n    # Filter free slots that are at least 30 minutes and meet David's preference\n    meeting_duration = 30\n    valid_slots = []\n    \n    for start, end in free_slots:\n        if end - start >= meeting_duration and start >= david_preference:\n            valid_slots.append((start, end))\n    \n    # Select the earliest valid slot\n    if valid_slots:\n        meeting_start = valid_slots[0][0]\n        meeting_end = meeting_start + meeting_duration\n    else:\n        return \"No suitable time found.\"\n    \n    # Convert minutes back to HH:MM format\n    def minutes_to_time(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours:02d}:{mins:02d}\"\n    \n    start_time = minutes_to_time(meeting_start)\n    end_time = minutes_to_time(meeting_end)\n    \n    return f\"{start_time}:{end_time}\", \"Monday\"\n\n# Run the function and print the result\ntime_range, day = find_meeting_time()\nprint(f\"{time_range} {day}\")\n```\n\nThe output of this script will be:\n```\n15:00:15:30 Monday\n```",
+            "count": "calendar_scheduling_example_227"
+        }
+    ]
+}

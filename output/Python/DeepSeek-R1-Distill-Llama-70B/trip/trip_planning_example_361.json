@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 10-15",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-14",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, let's tackle this problem step by step. The user wants to visit four European cities\u2014Paris, Madrid, Bucharest, and Seville\u2014over 15 days. They have specific constraints on how many days they want to stay in each city and certain time frames for attending events or visiting relatives.\n\nFirst, I need to list out the cities and their required durations:\n- Paris: 6 days\n- Madrid: 7 days\n- Bucharest: 2 days\n- Seville: 3 days\n\nNext, I'll note the direct flight connections between these cities:\n- Paris \u2194 Bucharest\n- Seville \u2194 Paris\n- Madrid \u2194 Bucharest\n- Madrid \u2194 Paris\n- Madrid \u2194 Seville\n\nNow, considering the constraints:\n1. The user wants to attend an annual show in Madrid from day 1 to day 7. So, Madrid should be scheduled during this period.\n2. They plan to visit relatives in Bucharest between day 14 and day 15, which means Bucharest should be towards the end of the trip.\n3. They want to spend 6 days in Paris and 3 days in Seville, which are more flexible but need to fit around the fixed events.\n\nStarting with Madrid makes sense because the annual show starts on day 1. So, the trip will begin in Madrid, staying there for 7 days (days 1-7). After Madrid, the next logical step is to fly to Seville, which has a direct flight from Madrid. Staying in Seville for 3 days (days 8-10) fits well.\n\nFrom Seville, the user can fly back to Paris, as there's a direct flight. Paris requires a 6-day stay, so that would cover days 11-16. However, the trip only lasts until day 15, so adjusting the stay in Paris to end by day 15 makes sense (days 11-15).\n\nFinally, from Paris, there's a direct flight to Bucharest, where the user will spend the last 2 days (days 16-17). But since the trip is only 15 days, I need to adjust the itinerary to ensure it ends on day 15. Therefore, the flight to Bucharest should be on day 15, and the stay in Bucharest will be just 1 day, which isn't ideal. To fix this, perhaps adjusting the stay in Paris to end on day 14 and then flying to Bucharest on day 14 for a 2-day stay (days 14-15) works better.\n\nThis way, all constraints are met: the annual show in Madrid, visiting relatives in Bucharest towards the end, and fitting in the stays in Seville and Paris within the 15-day period.\n</think>\n\n```python\nimport json\n\n# Define the cities and their required durations\ncities = {\n    'Paris': 6,\n    'Madrid': 7,\n    'Bucharest': 2,\n    'Seville': 3\n}\n\n# Define flight connections\nflight_connections = {\n    'Paris': {'Bucharest', 'Seville', 'Madrid'},\n    'Madrid': {'Bucharest', 'Paris', 'Seville'},\n    'Bucharest': {'Paris', 'Madrid'},\n    'Seville': {'Paris', 'Madrid'}\n}\n\nitinerary = []\n\n# Start with Madrid for the annual show\ncurrent_day = 1\nend_day = current_day + cities['Madrid'] - 1\nitinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': 'Madrid'})\ncurrent_day = end_day + 1\n\n# Fly to Seville\nflight_day = 7\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Madrid', 'to': 'Seville'})\n\n# Stay in Seville\nstart_day = flight_day\nend_day = start_day + cities['Seville'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Seville'})\ncurrent_day = end_day + 1\n\n# Fly to Paris\nflight_day = 10\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Seville', 'to': 'Paris'})\n\n# Stay in Paris\nstart_day = flight_day\nend_day = start_day + cities['Paris'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Paris'})\ncurrent_day = end_day + 1\n\n# Fly to Bucharest\nflight_day = 16\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Paris', 'to': 'Bucharest'})\n\n# Stay in Bucharest\nstart_day = flight_day\nend_day = start_day + cities['Bucharest'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Bucharest'})\ncurrent_day = end_day + 1\n\n# Output the itinerary\nprint(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_361"
+        }
+    ]
+}

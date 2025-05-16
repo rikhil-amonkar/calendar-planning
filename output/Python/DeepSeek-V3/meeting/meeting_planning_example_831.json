@@ -1,0 +1,108 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "10:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Ronald",
+                        "start_time": "12:06",
+                        "end_time": "14:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Elizabeth",
+                        "start_time": "14:45",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Melissa",
+                        "start_time": "17:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "18:07",
+                        "end_time": "18:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "George",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "10:15",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Ronald",
+                        "start_time": "12:06",
+                        "end_time": "14:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Margaret",
+                        "start_time": "14:22",
+                        "end_time": "15:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Richard",
+                        "start_time": "15:59",
+                        "end_time": "16:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Laura",
+                        "start_time": "16:34",
+                        "end_time": "17:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Melissa",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "George",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    'Presidio': {\n        'Fisherman\\'s Wharf': 19,\n        'Alamo Square': 19,\n        'Financial District': 23,\n        'Union Square': 22,\n        'Sunset District': 15,\n        'Embarcadero': 20,\n        'Golden Gate Park': 12,\n        'Chinatown': 21,\n        'Richmond District': 7\n    },\n    'Fisherman\\'s Wharf': {\n        'Presidio': 17,\n        'Alamo Square': 21,\n        'Financial District': 11,\n        'Union Square': 13,\n        'Sunset District': 27,\n        'Embarcadero': 8,\n        'Golden Gate Park': 25,\n        'Chinatown': 12,\n        'Richmond District': 18\n    },\n    'Alamo Square': {\n        'Presidio': 17,\n        'Fisherman\\'s Wharf': 19,\n        'Financial District': 17,\n        'Union Square': 14,\n        'Sunset District': 16,\n        'Embarcadero': 16,\n        'Golden Gate Park': 9,\n        'Chinatown': 15,\n        'Richmond District': 11\n    },\n    'Financial District': {\n        'Presidio': 22,\n        'Fisherman\\'s Wharf': 10,\n        'Alamo Square': 17,\n        'Union Square': 9,\n        'Sunset District': 30,\n        'Embarcadero': 4,\n        'Golden Gate Park': 23,\n        'Chinatown': 5,\n        'Richmond District': 21\n    },\n    'Union Square': {\n        'Presidio': 24,\n        'Fisherman\\'s Wharf': 15,\n        'Alamo Square': 15,\n        'Financial District': 9,\n        'Sunset District': 27,\n        'Embarcadero': 11,\n        'Golden Gate Park': 22,\n        'Chinatown': 7,\n        'Richmond District': 20\n    },\n    'Sunset District': {\n        'Presidio': 16,\n        'Fisherman\\'s Wharf': 29,\n        'Alamo Square': 17,\n        'Financial District': 30,\n        'Union Square': 30,\n        'Embarcadero': 30,\n        'Golden Gate Park': 11,\n        'Chinatown': 30,\n        'Richmond District': 12\n    },\n    'Embarcadero': {\n        'Presidio': 20,\n        'Fisherman\\'s Wharf': 6,\n        'Alamo Square': 19,\n        'Financial District': 5,\n        'Union Square': 10,\n        'Sunset District': 30,\n        'Golden Gate Park': 25,\n        'Chinatown': 7,\n        'Richmond District': 21\n    },\n    'Golden Gate Park': {\n        'Presidio': 11,\n        'Fisherman\\'s Wharf': 24,\n        'Alamo Square': 9,\n        'Financial District': 26,\n        'Union Square': 22,\n        'Sunset District': 10,\n        'Embarcadero': 25,\n        'Chinatown': 23,\n        'Richmond District': 7\n    },\n    'Chinatown': {\n        'Presidio': 19,\n        'Fisherman\\'s Wharf': 8,\n        'Alamo Square': 17,\n        'Financial District': 5,\n        'Union Square': 7,\n        'Sunset District': 29,\n        'Embarcadero': 5,\n        'Golden Gate Park': 23,\n        'Richmond District': 20\n    },\n    'Richmond District': {\n        'Presidio': 7,\n        'Fisherman\\'s Wharf': 18,\n        'Alamo Square': 13,\n        'Financial District': 22,\n        'Union Square': 21,\n        'Sunset District': 11,\n        'Embarcadero': 19,\n        'Golden Gate Park': 9,\n        'Chinatown': 20\n    }\n}\n\n# Friend data: name -> (location, start, end, min_duration)\nfriends = {\n    'Jeffrey': ('Fisherman\\'s Wharf', '10:15', '13:00', 90),\n    'Ronald': ('Alamo Square', '7:45', '14:45', 120),\n    'Jason': ('Financial District', '10:45', '16:00', 105),\n    'Melissa': ('Union Square', '17:45', '18:15', 15),\n    'Elizabeth': ('Sunset District', '14:45', '17:30', 105),\n    'Margaret': ('Embarcadero', '13:15', '19:00', 90),\n    'George': ('Golden Gate Park', '19:00', '22:00', 75),\n    'Richard': ('Chinatown', '9:30', '21:00', 15),\n    'Laura': ('Richmond District', '9:45', '18:00', 60)\n}\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\ndef calculate_schedule(order):\n    current_location = 'Presidio'\n    current_time = time_to_minutes('9:00')\n    schedule = []\n    met_friends = set()\n    \n    for friend in order:\n        name = friend\n        location, start_str, end_str, min_duration = friends[friend]\n        start = time_to_minutes(start_str)\n        end = time_to_minutes(end_str)\n        \n        # Travel to location\n        travel_time = travel_times[current_location].get(location, float('inf'))\n        arrival_time = current_time + travel_time\n        \n        # Calculate meeting window\n        meeting_start = max(arrival_time, start)\n        meeting_end = min(meeting_start + min_duration, end)\n        \n        if meeting_end - meeting_start >= min_duration:\n            schedule.append({\n                'action': 'meet',\n                'location': location,\n                'person': name,\n                'start_time': minutes_to_time(meeting_start),\n                'end_time': minutes_to_time(meeting_end)\n            })\n            met_friends.add(name)\n            current_time = meeting_end\n            current_location = location\n    \n    # Add George at the end if not already met\n    if 'George' not in met_friends:\n        location, start_str, end_str, min_duration = friends['George']\n        travel_time = travel_times[current_location].get(location, float('inf'))\n        arrival_time = current_time + travel_time\n        start = time_to_minutes(start_str)\n        end = time_to_minutes(end_str)\n        \n        meeting_start = max(arrival_time, start)\n        meeting_end = min(meeting_start + min_duration, end)\n        \n        if meeting_end - meeting_start >= min_duration:\n            schedule.append({\n                'action': 'meet',\n                'location': location,\n                'person': 'George',\n                'start_time': minutes_to_time(meeting_start),\n                'end_time': minutes_to_time(meeting_end)\n            })\n            met_friends.add('George')\n    \n    return schedule, len(met_friends)\n\ndef find_optimal_schedule():\n    friend_names = [name for name in friends if name != 'George']\n    best_schedule = []\n    max_met = 0\n    \n    # Try all permutations of 5 friends (to keep computation reasonable)\n    from itertools import combinations\n    for friends_subset in combinations(friend_names, 5):\n        for order in permutations(friends_subset):\n            schedule, num_met = calculate_schedule(order)\n            if num_met > max_met or (num_met == max_met and len(schedule) > len(best_schedule)):\n                max_met = num_met\n                best_schedule = schedule\n    \n    return best_schedule\n\noptimal_schedule = find_optimal_schedule()\nresult = {\n    \"itinerary\": optimal_schedule\n}\n\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_831"
+        }
+    ]
+}

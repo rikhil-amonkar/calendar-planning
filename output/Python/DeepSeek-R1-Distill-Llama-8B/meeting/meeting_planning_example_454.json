@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Daniel",
+                        "start_time": "9:26",
+                        "end_time": "11:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Ronald",
+                        "start_time": "11:27",
+                        "end_time": "12:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "13:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Ashley",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "William",
+                        "start_time": "19:21",
+                        "end_time": "19:36"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to figure out the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible while considering travel times and each person's availability. Let me start by understanding the constraints and the travel distances provided.\n\nFirst, the starting point is the Presidio, arriving at 9:00 AM. The person wants to meet several friends, each located in different neighborhoods with specific time windows. The travel times between these locations are provided, which will be crucial in planning the schedule.\n\nI notice that the person needs to meet Jessica, Ashley, Ronald, William, and Daniel. Each has their own availability and required meeting durations. The first step is to prioritize these meetings based on the earliest possible start times and the durations to maximize the number of meetings.\n\nStarting with Ronald, who is available from 7:15 AM to 2:45 PM in Chinatown. Since the person arrives at Presidio at 9:00 AM, they can travel to Chinatown. The travel time from Presidio to Chinatown is 21 minutes, so they'd arrive around 9:21 AM. This seems feasible as Ronald is available until 2:45 PM, allowing for a 90-minute meeting. Meeting Ronald first makes sense because his availability window is wide and early in the day.\n\nNext, Daniel is available from 7:00 AM to 11:15 AM in the Mission District. The travel time from Presidio to Mission District is 26 minutes, so they'd arrive around 9:26 AM. Daniel requires a 105-minute meeting, which would end at 11:31 AM. This is within his availability, so meeting Daniel next is a good choice.\n\nAfter that, William is available from 1:15 PM to 8:15 PM in North Beach. The person needs to travel from Mission District to North Beach, which takes 17 minutes. If they leave Mission District at 11:31 AM, they'd arrive in North Beach by 11:48 AM. However, William isn't available until 1:15 PM. So, there's a gap. To utilize the time, they can move on to another meeting and then come back to William later.\n\nJessica is available from 1:45 PM to 3:00 PM at Golden Gate Park. The travel time from North Beach to Golden Gate Park is 22 minutes, so arriving by 2:10 PM would be perfect. Jessica needs 30 minutes, ending at 2:40 PM. This fits well within her availability.\n\nAshley is available from 5:15 PM to 8:00 PM in Bayview. The travel time from Golden Gate Park to Bayview is 23 minutes, so arriving by 6:10 PM would work. Ashley needs 105 minutes, ending at 7:15 PM. This is within her availability.\n\nFinally, after meeting Ashley, the person can return to Presidio if needed, but since there's no one else left to meet, the schedule ends there.\n\nThis sequence ensures that the person meets all five friends without overlapping their availability and with minimal travel time between meetings.\n</think>\n\nSOLUTION:\n\n```python\n# Define the travel times as a dictionary\ntravel_times = {\n    \"Presidio\": {\n        \"Golden Gate Park\": 12,\n        \"Bayview\": 31,\n        \"Chinatown\": 21,\n        \"North Beach\": 18,\n        \"Mission District\": 26,\n    },\n    \"Golden Gate Park\": {\n        \"Presidio\": 11,\n        \"Bayview\": 23,\n        \"Chinatown\": 23,\n        \"North Beach\": 24,\n        \"Mission District\": 17,\n    },\n    \"Bayview\": {\n        \"Presidio\": 31,\n        \"Golden Gate Park\": 22,\n        \"Chinatown\": 18,\n        \"North Beach\": 21,\n        \"Mission District\": 13,\n    },\n    \"Chinatown\": {\n        \"Presidio\": 19,\n        \"Golden Gate Park\": 23,\n        \"Bayview\": 22,\n        \"North Beach\": 3,\n        \"Mission District\": 18,\n    },\n    \"North Beach\": {\n        \"Presidio\": 17,\n        \"Golden Gate Park\": 22,\n        \"Bayview\": 22,\n        \"Chinatown\": 6,\n        \"Mission District\": 18,\n    },\n    \"Mission District\": {\n        \"Presidio\": 25,\n        \"Golden Gate Park\": 17,\n        \"Bayview\": 15,\n        \"Chinatown\": 16,\n        \"North Beach\": 17,\n    }\n}\n\n# Starting location and time\nstart_location = \"Presidio\"\nstart_time = \"9:00\"\n\nitinerary = []\n\ndef calculate_travel_time(from_loc, to_loc):\n    return travel_times[from_loc][to_loc]\n\ndef is_available(person):\n    return True\n\ndef schedule_meeting(current_loc, person):\n    if not is_available(person):\n        return False\n    # Calculate arrival time\n    arrival_time = add_time(current_loc, start_time)\n    # Check if arrival time is before the person's start time\n    if arrival_time >= person[\"start\"]:\n        return False\n    # Calculate meeting end time\n    meeting_end = add_time(current_loc, start_time, person[\"duration\"])\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": person[\"location\"],\n        \"person\": person[\"name\"],\n        \"start_time\": arrival_time,\n        \"end_time\": meeting_end\n    })\n    # Update current location and time\n    current_loc = person[\"location\"]\n    current_time = meeting_end\n    return True\n\n# Helper function to add time\ndef add_time(location, current_time, duration=0):\n    hours, minutes = map(int, current_time.split(\":\"))\n    total_minutes = minutes + duration\n    hours += total_minutes // 60\n    minutes = total_minutes % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\n# Meeting Ronald\nmeeting_ronald = {\n    \"name\": \"Ronald\",\n    \"location\": \"Chinatown\",\n    \"start\": \"7:15\",\n    \"end\": \"2:45\",\n    \"duration\": 90\n}\nif schedule_meeting(start_location, meeting_ronald):\n    pass\n\n# Meeting Daniel\nmeeting_daniel = {\n    \"name\": \"Daniel\",\n    \"location\": \"Mission District\",\n    \"start\": \"7:00\",\n    \"end\": \"11:15\",\n    \"duration\": 105\n}\nif schedule_meeting(\"Chinatown\", meeting_daniel):\n    pass\n\n# Meeting William\nmeeting_william = {\n    \"name\": \"William\",\n    \"location\": \"North Beach\",\n    \"start\": \"1:15\",\n    \"end\": \"8:15\",\n    \"duration\": 15\n}\nif schedule_meeting(\"Mission District\", meeting_william):\n    pass\n\n# Meeting Jessica\nmeeting_jessica = {\n    \"name\": \"Jessica\",\n    \"location\": \"Golden Gate Park\",\n    \"start\": \"1:45\",\n    \"end\": \"3:00\",\n    \"duration\": 30\n}\nif schedule_meeting(\"North Beach\", meeting_jessica):\n    pass\n\n# Meeting Ashley\nmeeting_ashley = {\n    \"name\": \"Ashley\",\n    \"location\": \"Bayview\",\n    \"start\": \"5:15\",\n    \"end\": \"8:00\",\n    \"duration\": 105\n}\nif schedule_meeting(\"Golden Gate Park\", meeting_ashley):\n    pass\n\n# Convert itinerary to JSON format\nimport json\nitinerary_json = [\n    {\n        \"action\": \"meet\",\n        \"location\": meeting_ronald[\"location\"],\n        \"person\": meeting_ronald[\"name\"],\n        \"start_time\": meeting_ronald[\"start\"],\n        \"end_time\": meeting_ronald[\"end\"]\n    },\n    {\n        \"action\": \"meet\",\n        \"location\": meeting_daniel[\"location\"],\n        \"person\": meeting_daniel[\"name\"],\n        \"start_time\": meeting_daniel[\"start\"],\n        \"end_time\": meeting_daniel[\"end\"]\n    },\n    {\n        \"action\": \"meet\",\n        \"location\": meeting_william[\"location\"],\n        \"person\": meeting_william[\"name\"],\n        \"start_time\": meeting_william[\"start\"],\n        \"end_time\": meeting_william[\"end\"]\n    },\n    {\n        \"action\": \"meet\",\n        \"location\": meeting_jessica[\"location\"],\n        \"person\": meeting_jessica[\"name\"],\n        \"start_time\": meeting_jessica[\"start\"],\n        \"end_time\": meeting_jessica[\"end\"]\n    },\n    {\n        \"action\": \"meet\",\n        \"location\": meeting_ashley[\"location\"],\n        \"person\": meeting_ashley[\"name\"],\n        \"start_time\": meeting_ashley[\"start\"],\n        \"end_time\": meeting_ashley[\"end\"]\n    }\n]\n\n# Remove duplicates and sort by time\nunique_itinerary = []\nfor meeting in itinerary:\n    if not any(m[\"person\"] == meeting[\"person\"] for m in unique_itinerary):\n        unique_itinerary.append(meeting)\n\n# Sort the itinerary by start time\nunique_itinerary.sort(key=lambda x: (x['start_time'], x['end_time']))\n\n# Convert to JSON\nfinal_itinerary = [\n    {\n        \"action\": \"meet\",\n        \"location\": m[\"location\"],\n        \"person\": m[\"person\"],\n        \"start_time\": m[\"start_time\"],\n        \"end_time\": m[\"end_time\"]\n    }\n    for m in unique_itinerary\n]\n\n# Output the JSON\nprint(json.dumps(final_itinerary))\n```",
+            "count": "meeting_planning_example_454"
+        }
+    ]
+}

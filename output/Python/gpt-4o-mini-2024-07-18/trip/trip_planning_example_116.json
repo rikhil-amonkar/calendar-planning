@@ -1,0 +1,30 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-12",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 12-18",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Constants for the trip\n    total_days = 18\n    split_days = 6\n    santorini_days = 7\n    london_days = 7\n    conference_days = [12, 18]  # Days we must be in Santorini for conference\n    \n    # Validate day allocation\n    if split_days + santorini_days + london_days != total_days:\n        raise ValueError(\"The days allocated to cities do not sum up to the total days.\")\n    \n    itinerary = []\n    current_day = 1\n\n    # Days in Split\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + split_days - 1}', 'place': 'Split'})\n    current_day += split_days\n\n    # Flight from Split to Santorini\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Split', 'to': 'Santorini'})\n    \n    # Days in Santorini before first conference\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + conference_days[0] - 1 - 1}', 'place': 'Santorini'})\n    current_day += (conference_days[0] - 1)\n    \n    # Conference day in Santorini\n    itinerary.append({'day_range': f'Day {current_day}', 'place': 'Santorini'})\n    current_day += 1\n\n    # Days in Santorini after first conference until the second\n    days_to_allocate = santorini_days - 1  # Subtract the conference day already accounted for\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + days_to_allocate - 1}', 'place': 'Santorini'})\n    current_day += days_to_allocate\n\n    # Flight from Santorini to London\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Santorini', 'to': 'London'})\n    \n    # Days in London until the end of the trip\n    itinerary.append({'day_range': f'Day {current_day}-{total_days}', 'place': 'London'})\n\n    # Final output as JSON\n    return json.dumps(itinerary, indent=4)\n\n# Run the trip planning function and print the result\nif __name__ == \"__main__\":\n    print(plan_trip())\n```",
+            "count": "trip_planning_example_116"
+        }
+    ]
+}

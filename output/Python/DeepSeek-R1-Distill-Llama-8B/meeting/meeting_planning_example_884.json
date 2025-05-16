@@ -1,0 +1,72 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "9:20",
+                        "end_time": "11:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Matthew",
+                        "start_time": "11:37",
+                        "end_time": "13:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "David",
+                        "start_time": "13:23",
+                        "end_time": "14:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "14:36",
+                        "end_time": "15:21"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mark",
+                        "start_time": "15:27",
+                        "end_time": "16:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Jessica",
+                        "start_time": "16:17",
+                        "end_time": "17:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Deborah",
+                        "start_time": "19:00",
+                        "end_time": "19:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Karen",
+                        "start_time": "19:57",
+                        "end_time": "21:57"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "Alright, let's tackle this problem. So, I'm supposed to write a Python program that helps schedule meetings in San Francisco based on given constraints. The goal is to meet as many friends as possible, starting from the Richmond District at 9:00 AM.\n\nFirst, I need to understand the input parameters. There are travel distances between various locations, and each person has specific availability windows and minimum meeting durations. My task is to create a program that uses these inputs to determine the optimal schedule.\n\nI think the first step is to convert all the time windows into minutes since 9:00 AM. This will make it easier to calculate travel times and check for overlaps. For example, if someone arrives at 8:15 AM, that's 45 minutes before 9:00 AM, so I'll convert that to -45 minutes.\n\nNext, I need a map of all the locations with their travel times between each other. This way, I can look up the time it takes to travel from one location to another. I'll create a nested dictionary where each location points to its neighboring locations and the corresponding travel times.\n\nThen, I'll list all the people with their details: name, location they'll be at, their availability window in minutes, and the minimum meeting duration required. I'll store these in a list of dictionaries.\n\nAfter that, I'll sort this list based on their latest possible start time (end time minus minimum duration) to prioritize those who can be met earlier, which is crucial for maximizing the number of meetings.\n\nOnce the list is sorted, I'll use a greedy algorithm to schedule meetings. Starting from the Richmond District at 9:00 AM, I'll iterate through each person in the sorted list. For each person, I'll calculate the travel time from the current location to their location. If I arrive before their latest possible start time, I'll schedule the meeting, update the current location and time, and move on to the next person.\n\nIf I can't meet a person due to time constraints, I'll skip them and try the next one. This approach ensures that I meet as many people as possible within the given time.\n\nI also need to make sure that the times are formatted correctly in a 24-hour format without leading zeros. For example, 9:00 AM is '9:00', and 12:30 PM is '12:30'.\n\nFinally, I'll output the itinerary as a JSON-formatted dictionary, which includes each meeting's action, location, person, start time, and end time.\n\nI should also test the program to ensure it handles edge cases, like when a meeting can't be scheduled due to time constraints, and that all travel times are correctly accounted for. This way, the program will efficiently compute the optimal meeting schedule based on the given constraints.\n</think>\n\n```python\ndef convert_minutes(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    if hours == 0:\n        return '9:00'\n    else:\n        return f\"{hours}:{mins:02d}\"\n\nlocations = {\n    'Richmond District': {\n        'Chinatown': 20,\n        'Sunset District': 11,\n        'Alamo Square': 13,\n        'Financial District': 22,\n        'North Beach': 17,\n        'Embarcadero': 19,\n        'Presidio': 7,\n        'Golden Gate Park': 9,\n        'Bayview': 27\n    },\n    'Chinatown': {\n        'Richmond District': 20,\n        'Sunset District': 29,\n        'Alamo Square': 17,\n        'Financial District': 5,\n        'North Beach': 3,\n        'Embarcadero': 5,\n        'Presidio': 19,\n        'Golden Gate Park': 23,\n        'Bayview': 20\n    },\n    'Sunset District': {\n        'Richmond District': 12,\n        'Chinatown': 30,\n        'Alamo Square': 17,\n        'Financial District': 30,\n        'North Beach': 28,\n        'Embarcadero': 30,\n        'Presidio': 16,\n        'Golden Gate Park': 11,\n        'Bayview': 22\n    },\n    'Alamo Square': {\n        'Richmond District': 11,\n        'Chinatown': 15,\n        'Sunset District': 16,\n        'Financial District': 17,\n        'North Beach': 15,\n        'Embarcadero': 16,\n        'Presidio': 17,\n        'Golden Gate Park': 9,\n        'Bayview': 16\n    },\n    'Financial District': {\n        'Richmond District': 21,\n        'Chinatown': 5,\n        'Sunset District': 30,\n        'Alamo Square': 17,\n        'North Beach': 7,\n        'Embarcadero': 4,\n        'Presidio': 22,\n        'Golden Gate Park': 23,\n        'Bayview': 19\n    },\n    'North Beach': {\n        'Richmond District': 18,\n        'Chinatown': 6,\n        'Sunset District': 27,\n        'Alamo Square': 16,\n        'Financial District': 8,\n        'Embarcadero': 6,\n        'Presidio': 17,\n        'Golden Gate Park': 22,\n        'Bayview': 25\n    },\n    'Embarcadero': {\n        'Richmond District': 21,\n        'Chinatown': 7,\n        'Sunset District': 30,\n        'Alamo Square': 19,\n        'Financial District': 5,\n        'North Beach': 5,\n        'Presidio': 20,\n        'Golden Gate Park': 25,\n        'Bayview': 21\n    },\n    'Presidio': {\n        'Richmond District': 7,\n        'Chinatown': 21,\n        'Sunset District': 15,\n        'Alamo Square': 19,\n        'Financial District': 23,\n        'North Beach': 18,\n        'Embarcadero': 20,\n        'Golden Gate Park': 12,\n        'Bayview': 31\n    },\n    'Golden Gate Park': {\n        'Richmond District': 7,\n        'Chinatown': 23,\n        'Sunset District': 10,\n        'Alamo Square': 9,\n        'Financial District': 26,\n        'North Beach': 23,\n        'Embarcadero': 25,\n        'Presidio': 11,\n        'Bayview': 23\n    },\n    'Bayview': {\n        'Richmond District': 25,\n        'Chinatown': 19,\n        'Sunset District': 23,\n        'Alamo Square': 16,\n        'Financial District': 19,\n        'North Beach': 22,\n        'Embarcadero': 19,\n        'Presidio': 32,\n        'Golden Gate Park': 22\n    }\n}\n\npeople = [\n    {'name': 'Robert', 'location': 'Chinatown', 'start': 630, 'end': 990, 'min': 120},\n    {'name': 'David', 'location': 'Sunset District', 'start': 570, 'end': 990, 'min': 45},\n    {'name': 'Matthew', 'location': 'Alamo Square', 'start': 90, 'end': 390, 'min': 90},\n    {'name': 'Jessica', 'location': 'Financial District', 'start': 90, 'end': 990, 'min': 45},\n    {'name': 'Melissa', 'location': 'North Beach', 'start': 90, 'end': 720, 'min': 45},\n    {'name': 'Mark', 'location': 'Embarcadero', 'start': 630, 'end': 780, 'min': 45},\n    {'name': 'Deborah', 'location': 'Presidio', 'start': 990, 'end': 1080, 'min': 45},\n    {'name': 'Karen', 'location': 'Golden Gate Park', 'start': 990, 'end': 1260, 'min': 120},\n    {'name': 'Laura', 'location': 'Bayview', 'start': 1080, 'end': 1140, 'min': 15}\n]\n\npeople_sorted = sorted(people, key=lambda x: (x['end'] - x['min']))\n\ncurrent_time = 0\ncurrent_location = 'Richmond District'\nitinerary = []\n\nfor person in people_sorted:\n    location = person['location']\n    travel_time = locations[current_location][location]\n    arrival_time = current_time + travel_time\n    latest_start = person['end'] - person['min']\n    if arrival_time <= latest_start:\n        meeting_end = arrival_time + person['min']\n        start_str = convert_minutes(arrival_time)\n        end_str = convert_minutes(meeting_end)\n        itinerary.append({\n            'action': 'meet',\n            'location': location,\n            'person': person['name'],\n            'start_time': start_str,\n            'end_time': end_str\n        })\n        current_time = meeting_end\n        current_location = location\n\nprint(json.dumps(itinerary))\n```",
+            "count": "meeting_planning_example_884"
+        }
+    ]
+}

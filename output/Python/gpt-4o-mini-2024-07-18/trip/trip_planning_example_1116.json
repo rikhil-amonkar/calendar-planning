@@ -1,0 +1,69 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Frankfurt"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Frankfurt"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the trip constraints\n    trip_days = 20\n    city_constraints = {\n        'Oslo': {'stay': 2, 'special_days': [(16, 17)]}, # Special show days\n        'Reykjavik': {'stay': 5, 'meet_friend': (9, 13)},\n        'Stockholm': {'stay': 4},\n        'Munich': {'stay': 4, 'visit_relatives': (13, 16)},\n        'Frankfurt': {'stay': 4, 'workshop': (17, 20)},\n        'Barcelona': {'stay': 3},\n        'Bucharest': {'stay': 2},\n        'Split': {'stay': 3}\n    }\n\n    # Define direct flights\n    direct_flights = {\n        'Reykjavik': ['Munich', 'Oslo', 'Frankfurt'],\n        'Oslo': ['Munich', 'Frankfurt', 'Split', 'Barcelona', 'Bucharest'],\n        'Stockholm': ['Reykjavik', 'Barcelona', 'Munich', 'Oslo', 'Split', 'Frankfurt'],\n        'Munich': ['Reykjavik', 'Oslo', 'Frankfurt', 'Bucharest', 'Stockholm', 'Split'],\n        'Frankfurt': ['Reykjavik', 'Munich', 'Oslo', 'Barcelona', 'Bucharest', 'Split', 'Stockholm'],\n        'Barcelona': ['Reykjavik', 'Bucharest', 'Stockholm', 'Munich', 'Split'],\n        'Bucharest': ['Munich', 'Barcelona', 'Oslo', 'Frankfurt'],\n        'Split': ['Oslo', 'Stockholm', 'Munich', 'Barcelona', 'Frankfurt']\n    }\n\n    # Create an itinerary\n    itinerary = []\n    current_day = 1\n\n    # Oslo\n    if current_day + city_constraints['Oslo']['stay'] <= trip_days:\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Oslo\"][\"stay\"] - 1}', 'place': 'Oslo'})\n        current_day += city_constraints['Oslo']['stay']\n\n    # Reykjavik\n    if current_day + city_constraints['Reykjavik']['stay'] <= trip_days:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Oslo', 'to': 'Reykjavik'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Reykjavik\"][\"stay\"] - 1}', 'place': 'Reykjavik'})\n        current_day += city_constraints['Reykjavik']['stay']\n\n    # Meet friend in Reykjavik\n    # Days allocated between 9 and 13\n    # Current day can be adjusted if needed\n    if current_day + city_constraints['Bucharest']['stay'] <= trip_days:\n        # Assuming a flexible schedule for friend meeting\n        if current_day <= 13:  # Can meet friend on day 9 to day 13\n            current_day = 9  # Fix meeting at day 9\n\n    # Split\n    if current_day + city_constraints['Split']['stay'] <= trip_days:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Reykjavik', 'to': 'Split'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Split\"][\"stay\"] - 1}', 'place': 'Split'})\n        current_day += city_constraints['Split']['stay']\n\n    # Munich\n    if current_day + city_constraints['Munich']['stay'] <= trip_days:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Split', 'to': 'Munich'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Munich\"][\"stay\"] - 1}', 'place': 'Munich'})\n        current_day += city_constraints['Munich']['stay']\n\n    # Frankfurt\n    if current_day + city_constraints['Frankfurt']['stay'] <= trip_days:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Munich', 'to': 'Frankfurt'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Frankfurt\"][\"stay\"] - 1}', 'place': 'Frankfurt'})\n        current_day += city_constraints['Frankfurt']['stay']\n\n    # Barcelona\n    if current_day + city_constraints['Barcelona']['stay'] <= trip_days:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Frankfurt', 'to': 'Barcelona'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Barcelona\"][\"stay\"] - 1}', 'place': 'Barcelona'})\n        current_day += city_constraints['Barcelona']['stay']\n\n    # Bucharest\n    if current_day + city_constraints['Bucharest']['stay'] <= trip_days:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Barcelona', 'to': 'Bucharest'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Bucharest\"][\"stay\"] - 1}', 'place': 'Bucharest'})\n        current_day += city_constraints['Bucharest']['stay']\n\n    # Stockholm\n    if current_day + city_constraints['Stockholm']['stay'] <= trip_days:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Bucharest', 'to': 'Stockholm'})\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Stockholm\"][\"stay\"] - 1}', 'place': 'Stockholm'})\n        current_day += city_constraints['Stockholm']['stay']\n\n    # Final adjustments: Ensure we don't exceed the days\n    for flight in itinerary:\n        if 'day_range' in flight:\n            day_range = flight['day_range'].split('-')\n            start_day, end_day = int(day_range[1].strip()), int(day_range[1].strip())\n            if end_day > trip_days:\n                new_end_day = trip_days\n                flight['day_range'] = f'Day {start_day}-{new_end_day}'\n\n    return json.dumps(itinerary, indent=4)\n\n# Execute the trip planner and print the output as JSON\nif __name__ == \"__main__\":\n    result = plan_trip()\n    print(result)\n```",
+            "count": "trip_planning_example_1116"
+        }
+    ]
+}

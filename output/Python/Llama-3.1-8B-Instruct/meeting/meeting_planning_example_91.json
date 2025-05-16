@@ -1,0 +1,23 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Daniel",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nimport itertools\n\n# Define travel distances in minutes\ntravel_distances = {\n    \"Russian Hill\": {\n        \"Richmond District\": 14\n    },\n    \"Richmond District\": {\n        \"Russian Hill\": 13\n    }\n}\n\n# Define meeting constraints\nconstraints = {\n    \"Daniel\": {\"location\": \"Richmond District\", \"start_time\": \"19:00\", \"end_time\": \"20:15\", \"duration\": 75}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\ndef check_constraint(person, start_time, end_time):\n    constraint = constraints[person]\n    if start_time >= constraint[\"start_time\"] and end_time <= constraint[\"end_time\"]:\n        return True\n    return False\n\ndef schedule_meeting(person, start_time, end_time):\n    if check_constraint(person, start_time, end_time):\n        return {\"action\": \"meet\", \"location\": constraints[person][\"location\"], \"person\": person, \"start_time\": start_time, \"end_time\": end_time}\n    return None\n\ndef generate_itinerary():\n    start_time = \"09:00\"\n    end_time = \"21:00\"\n    start_location = \"Russian Hill\"\n    itinerary = []\n    \n    # Generate all possible meeting times\n    for hour in range(9, 21):\n        for minute in range(0, 60):\n            meeting_time = f\"{hour:02d}:{minute:02d}\"\n            if meeting_time >= constraints[\"Daniel\"][\"start_time\"] and meeting_time <= constraints[\"Daniel\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Daniel\", meeting_time, meeting_time))\n    \n    # Remove duplicates and sort by start time\n    itinerary = list(set(itinerary))\n    itinerary.sort(key=lambda x: x[\"start_time\"])\n    \n    return itinerary\n\ndef optimize_itinerary(itinerary):\n    optimized_itinerary = []\n    current_location = \"Russian Hill\"\n    for meeting in itinerary:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"])\n        start_time = datetime.strptime(meeting[\"start_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        end_time = datetime.strptime(meeting[\"end_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        optimized_itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": start_time.strftime(\"%H:%M\"), \"end_time\": end_time.strftime(\"%H:%M\")})\n        current_location = meeting[\"location\"]\n    return optimized_itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    optimized_itinerary = optimize_itinerary(itinerary)\n    result = {\"itinerary\": optimized_itinerary}\n    print(json.dumps(result, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_91"
+        }
+    ]
+}

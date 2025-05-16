@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "9:11",
+                        "end_time": "9:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:45",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:24",
+                        "end_time": "9:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\ndef minutes_to_time_str(minutes):\n    # Convert minutes since midnight to H:MM 24-hour format (no leading zero)\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Define travel times in minutes between locations\n# travel_times[from_location][to_location]\ntravel_times = {\n    \"Sunset District\": {\n        \"Alamo Square\": 17,\n        \"Russian Hill\": 24,\n        \"Golden Gate Park\": 11,\n        \"Mission District\": 24\n    },\n    \"Alamo Square\": {\n        \"Sunset District\": 16,\n        \"Russian Hill\": 13,\n        \"Golden Gate Park\": 9,\n        \"Mission District\": 10\n    },\n    \"Russian Hill\": {\n        \"Sunset District\": 23,\n        \"Alamo Square\": 15,\n        \"Golden Gate Park\": 21,\n        \"Mission District\": 16\n    },\n    \"Golden Gate Park\": {\n        \"Sunset District\": 10,\n        \"Alamo Square\": 10,\n        \"Russian Hill\": 19,\n        \"Mission District\": 17\n    },\n    \"Mission District\": {\n        \"Sunset District\": 24,\n        \"Alamo Square\": 11,\n        \"Russian Hill\": 15,\n        \"Golden Gate Park\": 17\n    }\n}\n\n# Define participant meeting constraints and available locations, times in minutes since midnight\n# You arrive at Sunset District at 9:00 (540 minutes).\nparticipants = {\n    \"Charles\": {\n        \"location\": \"Alamo Square\",\n        \"avail_start\": 18 * 60,        # 18:00 -> 1080\n        \"avail_end\": 20 * 60 + 45,      # 20:45 -> 1245\n        \"duration\": 90\n    },\n    \"Margaret\": {\n        \"location\": \"Russian Hill\",\n        \"avail_start\": 9 * 60,         # 9:00 -> 540\n        \"avail_end\": 16 * 60,          # 16:00 -> 960\n        \"duration\": 30\n    },\n    \"Daniel\": {\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": 8 * 60,         # 8:00 -> 480\n        \"avail_end\": 13 * 60 + 30,     # 13:30 -> 810\n        \"duration\": 15\n    },\n    \"Stephanie\": {\n        \"location\": \"Mission District\",\n        \"avail_start\": 20 * 60 + 30,   # 20:30 -> 1230\n        \"avail_end\": 22 * 60,          # 22:00 -> 1320\n        \"duration\": 90\n    }\n}\n\n# The meetings are divided into two parts:\n# Morning meetings: Daniel and Margaret can be scheduled in either order (they must finish by their avail_end).\n# Evening meetings: Charles then Stephanie (their time windows force this order).\nmorning_names = [\"Daniel\", \"Margaret\"]\nevening_names = [\"Charles\", \"Stephanie\"]\n\n# Starting point and time:\nstart_location = \"Sunset District\"\nstart_time = 9 * 60  # 9:00 AM\n\ndef simulate_schedule(morning_order):\n    itinerary = []\n    current_location = start_location\n    current_time = start_time\n\n    # Process morning meetings (Daniel and Margaret in the given order)\n    for name in morning_order:\n        person = participants[name]\n        meeting_location = person[\"location\"]\n        # Travel to meeting location\n        travel_time = travel_times[current_location][meeting_location]\n        arrival_time = current_time + travel_time\n        # Meeting starts at the later of arrival time and person's available start\n        meeting_start = max(arrival_time, person[\"avail_start\"])\n        meeting_end = meeting_start + person[\"duration\"]\n        # Check if meeting can finish before person's available end\n        if meeting_end > person[\"avail_end\"]:\n            return None  # invalid schedule\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting_location,\n            \"person\": name,\n            \"start_time\": minutes_to_time_str(meeting_start),\n            \"end_time\": minutes_to_time_str(meeting_end)\n        })\n        current_location = meeting_location\n        current_time = meeting_end\n\n    # Process evening meetings in fixed order: Charles then Stephanie\n    # For Charles:\n    name = \"Charles\"\n    person = participants[name]\n    meeting_location = person[\"location\"]\n    travel_time = travel_times[current_location][meeting_location]\n    arrival_time = current_time + travel_time\n    meeting_start = max(arrival_time, person[\"avail_start\"])\n    meeting_end = meeting_start + person[\"duration\"]\n    if meeting_end > person[\"avail_end\"]:\n        return None\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meeting_location,\n        \"person\": name,\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    current_location = meeting_location\n    current_time = meeting_end\n\n    # For Stephanie:\n    name = \"Stephanie\"\n    person = participants[name]\n    meeting_location = person[\"location\"]\n    travel_time = travel_times[current_location][meeting_location]\n    arrival_time = current_time + travel_time\n    meeting_start = max(arrival_time, person[\"avail_start\"])\n    meeting_end = meeting_start + person[\"duration\"]\n    if meeting_end > person[\"avail_end\"]:\n        return None\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meeting_location,\n        \"person\": name,\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    # Successful schedule, also include overall itinerary data\n    return itinerary\n\n# Try all possible orders for morning meetings and select the best valid schedule.\nvalid_schedules = []\nfor order in itertools.permutations(morning_names):\n    schedule = simulate_schedule(order)\n    if schedule is not None:\n        # Compute finish time (in minutes) of the last meeting\n        last_meeting = schedule[-1]\n        # Convert end_time string to minutes\n        end_hour, end_min = map(int, last_meeting[\"end_time\"].split(\":\"))\n        finish_time = end_hour * 60 + end_min\n        valid_schedules.append((finish_time, order, schedule))\n\n# Select the schedule with the earliest finishing time (optimal in terms of time)\nif valid_schedules:\n    valid_schedules.sort(key=lambda x: x[0])\n    best_schedule = valid_schedules[0][2]\nelse:\n    best_schedule = []\n\n# Prepare output in JSON format\noutput = {\"itinerary\": best_schedule}\nprint(json.dumps(output))\n",
+            "count": "meeting_planning_example_372"
+        }
+    ]
+}

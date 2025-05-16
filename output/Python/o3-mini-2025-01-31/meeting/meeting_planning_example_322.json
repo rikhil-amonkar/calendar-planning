@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Robert",
+                        "start_time": "9:29",
+                        "end_time": "9:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Michelle",
+                        "start_time": "10:11",
+                        "end_time": "10:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "George",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "William",
+                        "start_time": "18:30",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Michelle",
+                        "start_time": "9:30",
+                        "end_time": "9:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "George",
+                        "start_time": "10:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Robert",
+                        "start_time": "11:19",
+                        "end_time": "11:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "William",
+                        "start_time": "18:30",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef minutes_to_time_str(total_minutes):\n    # Convert total minutes (from midnight) to hour:minute format, no leading zeros\n    hours = total_minutes // 60\n    minutes = total_minutes % 60\n    return f\"{hours}:{minutes:02d}\"\n\n# Travel time matrix in minutes (keys as tuples: (from, to))\ntravel_times = {\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"Chinatown\"): 30,\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Sunset District\", \"Fisherman's Wharf\"): 29,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"Chinatown\"): 9,\n    (\"Russian Hill\", \"Presidio\"): 14,\n    (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n    (\"Chinatown\", \"Sunset District\"): 29,\n    (\"Chinatown\", \"Russian Hill\"): 7,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n    (\"Presidio\", \"Sunset District\"): 15,\n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Fisherman's Wharf\", \"Sunset District\"): 27,\n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n    (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17\n}\n\n# Participant constraints with their location, availability (in minutes since midnight), and minimum meeting duration (in minutes)\n# Times are given in 24-hour time. We'll convert them into minutes from midnight.\ndef to_minutes(time_str):\n    # Expects time_str in \"H:MM\" or \"HH:MM\"\n    parts = time_str.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\nparticipants = {\n    \"William\": {\n        \"location\": \"Russian Hill\",\n        \"available_start\": to_minutes(\"18:30\"),\n        \"available_end\": to_minutes(\"20:45\"),\n        \"min_duration\": 105\n    },\n    \"Michelle\": {\n        \"location\": \"Chinatown\",\n        \"available_start\": to_minutes(\"8:15\"),\n        \"available_end\": to_minutes(\"14:00\"),\n        \"min_duration\": 15\n    },\n    \"George\": {\n        \"location\": \"Presidio\",\n        \"available_start\": to_minutes(\"10:30\"),\n        \"available_end\": to_minutes(\"18:45\"),\n        \"min_duration\": 30\n    },\n    \"Robert\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"available_start\": to_minutes(\"9:00\"),\n        \"available_end\": to_minutes(\"13:45\"),\n        \"min_duration\": 30\n    }\n}\n\n# Starting point and time\nstart_location = \"Sunset District\"\nstart_time = to_minutes(\"9:00\")  # 9:00 AM\n\n# We'll define a fixed order that allows us to meet all friends:\n# 1. Meet Robert at Fisherman's Wharf\n# 2. Meet Michelle at Chinatown\n# 3. Meet George at Presidio\n# 4. Meet William at Russian Hill\norder = [\"Robert\", \"Michelle\", \"George\", \"William\"]\n\nitinerary = []\n\ncurrent_location = start_location\ncurrent_time = start_time\n\nfor friend in order:\n    info = participants[friend]\n    destination = info[\"location\"]\n    # Get travel time from current location to destination\n    travel_key = (current_location, destination)\n    travel_duration = travel_times.get(travel_key, None)\n    if travel_duration is None:\n        # If not direct in our matrix, try reverse (should not happen for our given data)\n        travel_duration = travel_times.get((destination, current_location), 0)\n    # Compute arrival time after travel\n    arrival_time = current_time + travel_duration\n    \n    # Meeting can only start when the friend is available.\n    meeting_start = max(arrival_time, info[\"available_start\"])\n    meeting_end = meeting_start + info[\"min_duration\"]\n    \n    # Ensure that meeting doesn't exceed available_end (not doing error handling as it's assumed feasible)\n    if meeting_end > info[\"available_end\"]:\n        raise ValueError(f\"Cannot schedule meeting with {friend} within available window.\")\n    \n    # Add meeting action to itinerary\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": destination,\n        \"person\": friend,\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    \n    # Update current location and time: we leave right after meeting end\n    current_location = destination\n    current_time = meeting_end\n\n# For William, if we arrive too early before availability, we waited until available_start; however, after meeting George we went to Russian Hill.\n# The itinerary already reflects the waiting by scheduling his meeting at max(arrival, available_start).\n\nresult = {\"itinerary\": itinerary}\n\n# Output the result in JSON format\nprint(json.dumps(result, indent=2))\n                    \nif __name__ == \"__main__\":\n    pass",
+            "count": "meeting_planning_example_322"
+        }
+    ]
+}

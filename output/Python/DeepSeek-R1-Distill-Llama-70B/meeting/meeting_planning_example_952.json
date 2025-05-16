@@ -1,0 +1,72 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "11:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Elizabeth",
+                        "start_time": "12:11",
+                        "end_time": "13:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Brian",
+                        "start_time": "13:34",
+                        "end_time": "15:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Anthony",
+                        "start_time": "15:12",
+                        "end_time": "15:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Ashley",
+                        "start_time": "15:53",
+                        "end_time": "17:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Deborah",
+                        "start_time": "17:42",
+                        "end_time": "18:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kimberly",
+                        "start_time": "18:57",
+                        "end_time": "19:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "20:00",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I need to write a Python program that calculates the optimal meeting schedule based on the given constraints. Let's break down the problem and figure out how to approach it.\n\nFirst, I'll start by understanding the input parameters. The user is in San Francisco and wants to meet as many friends as possible. The constraints include travel times between various locations and the availability of each friend at specific locations.\n\nI see that the user provided a list of travel times between different neighborhoods in San Francisco. These times are in minutes and are directional, meaning the travel time from A to B might be different from B to A. This is important because it affects the total time taken to move between locations.\n\nNext, there are several friends, each with their own constraints. Each friend is available at a specific location during a certain time window, and there's a minimum duration required for the meeting. My goal is to meet as many friends as possible, respecting these constraints and the travel times between locations.\n\nI need to generate a schedule that starts at Bayview at 9:00 AM. From there, I have to decide the order in which to visit the friends to maximize the number of meetings. Since the number of friends is manageable (11 in total), I can consider all possible permutations of these friends and evaluate which permutation allows meeting the maximum number of them.\n\nFor each permutation, I'll simulate the schedule:\n1. Start at Bayview at 9:00 AM.\n2. For each friend in the permutation:\n   - Calculate the travel time from the current location to the friend's location.\n   - Determine the earliest possible start time for the meeting, which is the maximum of the arrival time and the friend's start time.\n   - Check if the meeting can fit within the friend's available time slot. If yes, add it to the itinerary and update the current time and location. If not, discard this permutation and try the next one.\n3. Keep track of the best schedule found, which is the one that allows meeting the most friends.\n\nI'll represent the travel times using a nested dictionary where each key is a starting location, and its value is another dictionary mapping destination locations to travel times in minutes. This makes it easy to look up travel times between any two locations.\n\nFor the friends, I'll create a list of dictionaries, each containing the friend's name, location, available start and end times (converted to minutes since midnight for easier calculations), and the minimum meeting duration.\n\nTo handle the permutations, I'll use Python's `itertools.permutations` function, which generates all possible orderings of the friends. For each permutation, I'll attempt to schedule the meetings as described.\n\nOnce all permutations are evaluated, I'll select the one that results in the maximum number of meetings and convert the times back to the required 'H:MM' format for the output.\n\nFinally, I'll structure the output as a JSON-formatted dictionary with the itinerary, ensuring that the times are correctly formatted without leading zeros for hours.\n</think>\n\n```python\nimport itertools\nimport json\n\n# Define travel times between locations in minutes\ntravel_times = {\n    'Bayview': {\n        'North Beach': 22, 'Fisherman\\'s Wharf': 25, 'Haight-Ashbury': 19,\n        'Nob Hill': 20, 'Golden Gate Park': 22, 'Union Square': 18,\n        'Alamo Square': 16, 'Presidio': 32, 'Chinatown': 19, 'Pacific Heights': 23\n    },\n    'North Beach': {\n        'Bayview': 25, 'Fisherman\\'s Wharf': 5, 'Haight-Ashbury': 18,\n        'Nob Hill': 7, 'Golden Gate Park': 22, 'Union Square': 7,\n        'Alamo Square': 16, 'Presidio': 17, 'Chinatown': 6, 'Pacific Heights': 8\n    },\n    'Fisherman\\'s Wharf': {\n        'Bayview': 26, 'North Beach': 6, 'Haight-Ashbury': 22,\n        'Nob Hill': 11, 'Golden Gate Park': 25, 'Union Square': 13,\n        'Alamo Square': 21, 'Presidio': 17, 'Chinatown': 12, 'Pacific Heights': 12\n    },\n    'Haight-Ashbury': {\n        'Bayview': 18, 'North Beach': 19, 'Fisherman\\'s Wharf': 23,\n        'Nob Hill': 15, 'Golden Gate Park': 7, 'Union Square': 19,\n        'Alamo Square': 5, 'Presidio': 15, 'Chinatown': 19, 'Pacific Heights': 12\n    },\n    'Nob Hill': {\n        'Bayview': 19, 'North Beach': 8, 'Fisherman\\'s Wharf': 10,\n        'Haight-Ashbury': 13, 'Golden Gate Park': 17, 'Union Square': 7,\n        'Alamo Square': 11, 'Presidio': 17, 'Chinatown': 6, 'Pacific Heights': 8\n    },\n    'Golden Gate Park': {\n        'Bayview': 23, 'North Beach': 23, 'Fisherman\\'s Wharf': 24,\n        'Haight-Ashbury': 7, 'Nob Hill': 20, 'Union Square': 22,\n        'Alamo Square': 9, 'Presidio': 11, 'Chinatown': 23, 'Pacific Heights': 16\n    },\n    'Union Square': {\n        'Bayview': 15, 'North Beach': 10, 'Fisherman\\'s Wharf': 15,\n        'Haight-Ashbury': 18, 'Nob Hill': 9, 'Golden Gate Park': 22,\n        'Alamo Square': 15, 'Presidio': 24, 'Chinatown': 7, 'Pacific Heights': 15\n    },\n    'Alamo Square': {\n        'Bayview': 16, 'North Beach': 15, 'Fisherman\\'s Wharf': 19,\n        'Haight-Ashbury': 5, 'Nob Hill': 11, 'Golden Gate Park': 9,\n        'Union Square': 14, 'Presidio': 17, 'Chinatown': 15, 'Pacific Heights': 10\n    },\n    'Presidio': {\n        'Bayview': 31, 'North Beach': 18, 'Fisherman\\'s Wharf': 19,\n        'Haight-Ashbury': 15, 'Nob Hill': 18, 'Golden Gate Park': 12,\n        'Union Square': 22, 'Alamo Square': 19, 'Chinatown': 21, 'Pacific Heights': 11\n    },\n    'Chinatown': {\n        'Bayview': 20, 'North Beach': 3, 'Fisherman\\'s Wharf': 8,\n        'Haight-Ashbury': 19, 'Nob Hill': 9, 'Golden Gate Park': 23,\n        'Union Square': 7, 'Alamo Square': 17, 'Presidio': 19, 'Pacific Heights': 10\n    },\n    'Pacific Heights': {\n        'Bayview': 22, 'North Beach': 9, 'Fisherman\\'s Wharf': 13,\n        'Haight-Ashbury': 11, 'Nob Hill': 8, 'Golden Gate Park': 15,\n        'Union Square': 12, 'Alamo Square': 10, 'Presidio': 11, 'Chinatown': 11\n    }\n}\n\n# Define friends with their constraints\nfriends = [\n    {'name': 'Brian', 'location': 'North Beach', 'start': 1300, 'end': 1900, 'duration': 90},\n    {'name': 'Richard', 'location': 'Fisherman\\'s Wharf', 'start': 1100, 'end': 1245, 'duration': 60},\n    {'name': 'Ashley', 'location': 'Haight-Ashbury', 'start': 1500, 'end': 2130, 'duration': 90},\n    {'name': 'Elizabeth', 'location': 'Nob Hill', 'start': 1145, 'end': 1830, 'duration': 75},\n    {'name': 'Jessica', 'location': 'Golden Gate Park', 'start': 2000, 'end': 2145, 'duration': 105},\n    {'name': 'Deborah', 'location': 'Union Square', 'start': 1730, 'end': 2200, 'duration': 60},\n    {'name': 'Kimberly', 'location': 'Alamo Square', 'start': 1730, 'end': 2115, 'duration': 45},\n    {'name': 'Matthew', 'location': 'Presidio', 'start': 495, 'end': 540, 'duration': 15},\n    {'name': 'Kenneth', 'location': 'Chinatown', 'start': 1345, 'end': 2130, 'duration': 105},\n    {'name': 'Anthony', 'location': 'Pacific Heights', 'start': 1415, 'end': 1600, 'duration': 30}\n]\n\ndef convert_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nbest_itinerary = []\nbest_count = 0\n\n# Generate all possible permutations of friends\nfor perm in itertools.permutations(friends):\n    current_time = 540  # Starting at 9:00 AM\n    current_loc = 'Bayview'\n    itinerary = []\n    \n    for friend in perm:\n        # Calculate travel time to friend's location\n        travel = travel_times[current_loc][friend['location']]\n        arrival = current_time + travel\n        \n        # Determine meeting start and end times\n        meeting_start = max(arrival, friend['start'])\n        meeting_end = meeting_start + friend['duration']\n        \n        # Check if the meeting can be scheduled\n        if meeting_end > friend['end']:\n            break  # Cannot meet this friend, proceed to next permutation\n        \n        # Add the meeting to the itinerary\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': convert_time(meeting_start),\n            'end_time': convert_time(meeting_end)\n        })\n        \n        # Update current time and location for next meeting\n        current_time = meeting_end\n        current_loc = friend['location']\n    \n    else:\n        # All friends in permutation were successfully scheduled\n        if len(itinerary) > best_count:\n            best_itinerary = itinerary\n            best_count = len(itinerary)\n\n# Prepare the output\noutput = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the result as JSON\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_952"
+        }
+    ]
+}

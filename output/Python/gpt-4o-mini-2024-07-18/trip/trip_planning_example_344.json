@@ -1,0 +1,34 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    itinerary = []\n    total_days = 20\n    \n    # Constraints\n    valencia_days = 6\n    athens_days = 6\n    naples_days = 5\n    zurich_days = 6\n    \n    # Wedding in Naples\n    wedding_start = 16\n    wedding_end = 20\n    \n    # Fill itinerary according to the constraints\n    # Day 1-6 in Athens\n    itinerary.append({'day_range': 'Day 1-6', 'place': 'Athens'})\n    \n    # Flight: Athens to Valencia\n    itinerary.append({'flying': 'Day 6-6', 'from': 'Athens', 'to': 'Valencia'})\n    \n    # Day 7-12 in Valencia\n    itinerary.append({'day_range': 'Day 7-12', 'place': 'Valencia'})\n    \n    # Flight: Valencia to Naples\n    itinerary.append({'flying': 'Day 12-12', 'from': 'Valencia', 'to': 'Naples'})\n    \n    # Day 13-15 in Naples\n    itinerary.append({'day_range': 'Day 13-15', 'place': 'Naples'})\n    \n    # Flight: Naples to Zurich\n    itinerary.append({'flying': 'Day 15-15', 'from': 'Naples', 'to': 'Zurich'})\n    \n    # Day 16-20 in Zurich (After flight from Naples)\n    itinerary.append({'day_range': 'Day 16-20', 'place': 'Zurich'})\n\n    # This will ensure that the wedding days are connected properly\n    # Wedding in Naples starts after Day 15 and goes until Day 20\n    itinerary.append({'day_range': 'Day 16-20', 'place': 'Naples'})\n\n    # Ensuring itinerary completeness and total counting of days\n    assert (6 + 6 + 5 + 6) == total_days  # should match the length of the planned stay\n    \n    return json.dumps(itinerary)\n\n# Run the trip planner\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_344"
+        }
+    ]
+}

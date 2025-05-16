@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "12:30",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "13:07",
+                        "end_time": "14:22"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "12:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "13:47",
+                        "end_time": "14:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Constants\nTRAVEL_TIMES = {\n    (\"The Castro\", \"Mission District\"): 7,\n    (\"The Castro\", \"Financial District\"): 20,\n    (\"Mission District\", \"The Castro\"): 7,\n    (\"Mission District\", \"Financial District\"): 17,\n    (\"Financial District\", \"The Castro\"): 23,\n    (\"Financial District\", \"Mission District\"): 17,\n}\n\n# Meeting constraints\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\nlaura_start = datetime.strptime(\"12:15\", \"%H:%M\")\nlaura_end = datetime.strptime(\"19:45\", \"%H:%M\")\nanthony_start = datetime.strptime(\"12:30\", \"%H:%M\")\nanthony_end = datetime.strptime(\"14:45\", \"%H:%M\")\nlaura_meeting_duration = timedelta(minutes=75)\nanthony_meeting_duration = timedelta(minutes=30)\n\n# Initialize meeting schedule\nitinerary = []\n\n# Define a function to add meetings to the itinerary\ndef add_meeting(location, person, start_time, duration):\n    end_time = start_time + duration\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": start_time.strftime(\"%H:%M\"),\n        \"end_time\": end_time.strftime(\"%H:%M\"),\n    })\n    return end_time\n\n# Meeting with Anthony\n# From Castro to Financial District\ntravel_to_anthony = TRAVEL_TIMES[(\"The Castro\", \"Financial District\")]\ntime_after_travel_to_anthony = arrival_time + timedelta(minutes=travel_to_anthony)\n\nif time_after_travel_to_anthony <= anthony_start:\n    start_time_anthony = anthony_start\nelse:\n    start_time_anthony = time_after_travel_to_anthony\n\nend_time_anthony = start_time_anthony + anthony_meeting_duration\n\n# Ensure the meeting with Anthony ends before he leaves\nif end_time_anthony > anthony_end:\n    end_time_anthony = anthony_end\n    start_time_anthony = end_time_anthony - anthony_meeting_duration\n\nadd_meeting(\"Financial District\", \"Anthony\", start_time_anthony, anthony_meeting_duration)\n\n# Travel back to Castro or to Mission District directly\nif end_time_anthony < laura_start:\n    travel_to_castro = TRAVEL_TIMES[(\"Financial District\", \"The Castro\")]\n    end_time_anthony += timedelta(minutes=travel_to_castro)\n\n# Meeting with Laura\n# From Castro to Mission District\ntravel_to_laura = TRAVEL_TIMES[(\"The Castro\", \"Mission District\")]\nstart_time_laura = end_time_anthony + timedelta(minutes=travel_to_laura)\n\nif start_time_laura < laura_start:\n    start_time_laura = laura_start\n\nend_time_laura = start_time_laura + laura_meeting_duration\n\n# Ensure the meeting with Laura ends before she leaves\nif end_time_laura > laura_end:\n    end_time_laura = laura_end\n    start_time_laura = end_time_laura - laura_meeting_duration\n\nadd_meeting(\"Mission District\", \"Laura\", start_time_laura, laura_meeting_duration)\n\n# Generate output\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_144"
+        }
+    ]
+}

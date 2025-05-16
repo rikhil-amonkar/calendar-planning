@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:30",
+                "end_time": "10:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the working hours and the durations\nworking_hours = {\n    \"Monday\": (9, 17),\n    \"Tuesday\": (9, 17),\n    \"Wednesday\": (9, 17)\n}\nmeeting_duration = timedelta(hours=1)\n\n# Existing schedules\nschedules = {\n    \"Stephanie\": {\n        \"Monday\": [(9, 30), (10, 30), (11, 30), (14, 0)],  # end times derived\n        \"Tuesday\": [(12, 0)],\n        \"Wednesday\": [(9, 0), (13, 0)]  \n    },\n    \"Betty\": {\n        \"Monday\": [(9, 0), (11, 0), (14, 30), (15, 30)],\n        \"Tuesday\": [(9, 0), (11, 30), (12, 30), (15, 30)],\n        \"Wednesday\": [(10, 0), (12, 0), (14, 30)]\n    }\n}\n\n# Block out times on their schedules\ndef get_unavailable_times(schedule):\n    unavailable_times = []\n    for day, times in schedule.items():\n        for time in times:\n            start_time = datetime.strptime(f\"{day} {time[0]}:{time[1]}\", \"%A %H:%M\")\n            end_time = start_time + timedelta(minutes=30)\n            unavailable_times.append((start_time, end_time))\n    return unavailable_times\n\n# Calculate the available time slots for a given day\ndef find_available_slots(day):\n    start_hour, end_hour = working_hours[day]\n    day_start = datetime.strptime(f\"{day} {start_hour}:00\", \"%A %H:%M\")\n    day_end = datetime.strptime(f\"{day} {end_hour}:00\", \"%A %H:%M\")\n    \n    # Get unavailable times for both participants\n    unavailable_times = []\n    unavailable_times += get_unavailable_times(schedules[\"Stephanie\"].get(day, []))\n    unavailable_times += get_unavailable_times(schedules[\"Betty\"].get(day, []))\n    \n    # Sort by start time\n    unavailable_times.sort()\n\n    # Find available slots\n    available_slots = []\n    current_time = day_start\n\n    for start, end in unavailable_times:\n        # Check if there's a gap before the next meeting\n        if current_time < start:\n            while current_time + meeting_duration <= start:\n                available_slots.append((current_time, current_time + meeting_duration))\n                current_time += timedelta(minutes=30)  # Increment by 30 minutes\n\n        # Move current time to the end of the unavailable block\n        current_time = max(current_time, end)\n\n    # Check for any remaining time after the last unavailable block\n    if current_time + meeting_duration <= day_end:\n        available_slots.append((current_time, current_time + meeting_duration))\n\n    return available_slots\n\n# Main logic to find meeting time\ndef schedule_meeting():\n    for day in working_hours.keys():\n        available_slots = find_available_slots(day)\n        if available_slots:\n            meeting_time = available_slots[0]  # Take the first available slot\n            return f\"{meeting_time[0].strftime('%H:%M')}:{meeting_time[1].strftime('%H:%M')} {day}\"\n    \n    return \"No available times found\"\n\n# Execute the scheduling function\nscheduled_time = schedule_meeting()\nprint(scheduled_time)\n```",
+            "count": "calendar_scheduling_example_703"
+        }
+    ]
+}

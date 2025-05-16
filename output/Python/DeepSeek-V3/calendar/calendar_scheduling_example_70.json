@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, work_hours, duration, day):\n    # Convert time strings to minutes for easier calculation\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n    \n    # Convert minutes back to time string\n    def minutes_to_time(minutes):\n        hh = minutes // 60\n        mm = minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n    \n    work_start, work_end = work_hours.split(' to ')\n    work_start_min = time_to_minutes(work_start)\n    work_end_min = time_to_minutes(work_end)\n    \n    # Initialize busy slots for all participants\n    busy_slots = []\n    for schedule in participents_schedules:\n        for busy in schedule:\n            start, end = busy.split(' to ')\n            start_min = time_to_minutes(start)\n            end_min = time_to_minutes(end)\n            busy_slots.append((start_min, end_min))\n    \n    # Sort all busy slots by start time\n    busy_slots.sort()\n    \n    # Find all free slots\n    free_slots = []\n    prev_end = work_start_min\n    for start, end in busy_slots:\n        if start > prev_end:\n            free_slots.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end_min:\n        free_slots.append((prev_end, work_end_min))\n    \n    # Check each free slot for availability\n    duration_min = duration * 60\n    for slot in free_slots:\n        start, end = slot\n        if end - start >= duration_min:\n            meeting_end = start + duration_min\n            return f\"{minutes_to_time(start)}:{minutes_to_time(meeting_end)}\", day\n    \n    return None, None\n\n# Define the task parameters\nparticipants_schedules = [\n    [\"12:00 to 12:30\", \"15:30 to 16:00\"],  # Denise\n    [],                                    # Angela\n    [\"9:00 to 11:30\", \"12:00 to 13:00\", \"14:00 to 14:30\", \"15:00 to 17:00\"]  # Natalie\n]\nwork_hours = \"9:00 to 17:00\"\nmeeting_duration = 0.5  # in hours\nday = \"Monday\"\n\n# Find the earliest meeting time\nmeeting_time, day = find_meeting_time(participants_schedules, work_hours, meeting_duration, day)\n\n# Output the result\nprint(f\"{meeting_time}:{day}\")\n```",
+            "count": "calendar_scheduling_example_70"
+        }
+    ]
+}

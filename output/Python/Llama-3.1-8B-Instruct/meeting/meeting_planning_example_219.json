@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Emily",
+                        "start_time": "9:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Barbara",
+                        "start_time": "12:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "William",
+                        "start_time": "17:00",
+                        "end_time": "19:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Emily",
+                        "start_time": "11:45",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Barbara",
+                        "start_time": "16:45",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'The Castro': {'Alamo Square': 8, 'Union Square': 19, 'Chinatown': 20},\n    'Alamo Square': {'The Castro': 8, 'Union Square': 14, 'Chinatown': 16},\n    'Union Square': {'The Castro': 19, 'Alamo Square': 15, 'Chinatown': 7},\n    'Chinatown': {'The Castro': 22, 'Alamo Square': 17, 'Union Square': 7}\n}\n\n# Constraints\nconstraints = {\n    'Emily': {'location': 'Alamo Square','start_time': '11:45', 'end_time': '15:15','required_time': 105},\n    'Barbara': {'location': 'Union Square','start_time': '16:45', 'end_time': '18:15','required_time': 60},\n    'William': {'location': 'Chinatown','start_time': '17:15', 'end_time': '19:00','required_time': 105}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\ndef is_valid_meeting(person, start_time, end_time, required_time):\n    return (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=required_time)).time() <= datetime.strptime(end_time, '%H:%M').time()\n\ndef schedule_meeting(person, start_time, end_time, required_time, location):\n    travel_time = calculate_travel_time('The Castro', location)\n    start_time = (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    end_time = (datetime.strptime(end_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    return is_valid_meeting(person, start_time, end_time, required_time)\n\ndef generate_itinerary():\n    itinerary = []\n    start_time = '09:00'\n    end_time = '12:00'\n    \n    for person in constraints:\n        location = constraints[person]['location']\n        start_person_time = constraints[person]['start_time']\n        end_person_time = constraints[person]['end_time']\n        required_time = constraints[person]['required_time']\n        \n        if schedule_meeting(person, start_time, end_time, required_time, location):\n            itinerary.append({\n                'action':'meet',\n                'location': location,\n                'person': person,\n 'start_time': start_time,\n                'end_time': end_time\n            })\n            start_time = end_time\n            end_time = (datetime.strptime(end_person_time, '%H:%M') + timedelta(minutes=required_time)).strftime('%H:%M')\n    \n    return itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_219"
+        }
+    ]
+}

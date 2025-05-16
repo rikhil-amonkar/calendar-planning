@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "13:13",
+                        "end_time": "13:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "14:03",
+                        "end_time": "15:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "13:13",
+                        "end_time": "13:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "18:51",
+                        "end_time": "20:21"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Input parameters\nlocations = {\n    \"Union Square\": 0,\n    \"Golden Gate Park\": 1,\n    \"Pacific Heights\": 2,\n    \"Presidio\": 3,\n    \"Chinatown\": 4,\n    \"The Castro\": 5\n}\n\ntravel_times = [\n    [0, 22, 15, 24, 7, 19],  # Union Square\n    [22, 0, 16, 11, 23, 13],  # Golden Gate Park\n    [15, 16, 0, 11, 11, 16],  # Pacific Heights\n    [24, 11, 11, 0, 21, 21],  # Presidio\n    [7, 23, 10, 19, 0, 22],    # Chinatown\n    [19, 13, 16, 20, 20, 0]    # The Castro\n]\n\nfriends = [\n    {\"name\": \"Andrew\", \"location\": \"Golden Gate Park\", \"start\": \"11:45\", \"end\": \"14:30\", \"duration\": 75},\n    {\"name\": \"Sarah\", \"location\": \"Pacific Heights\", \"start\": \"16:15\", \"end\": \"18:45\", \"duration\": 15},\n    {\"name\": \"Nancy\", \"location\": \"Presidio\", \"start\": \"17:30\", \"end\": \"19:15\", \"duration\": 60},\n    {\"name\": \"Rebecca\", \"location\": \"Chinatown\", \"start\": \"9:45\", \"end\": \"21:30\", \"duration\": 90},\n    {\"name\": \"Robert\", \"location\": \"The Castro\", \"start\": \"8:30\", \"end\": \"14:15\", \"duration\": 30}\n]\n\ncurrent_time = time_to_minutes(\"9:00\")\ncurrent_location = \"Union Square\"\n\ndef find_best_schedule():\n    best_schedule = []\n    max_meetings = 0\n    \n    # Try all permutations of friends to find the best order\n    for order in permutations(friends):\n        schedule = []\n        current_loc = current_location\n        current_time_temp = current_time\n        meetings = 0\n        \n        for friend in order:\n            loc = friend[\"location\"]\n            travel_time = travel_times[locations[current_loc]][locations[loc]]\n            arrival_time = current_time_temp + travel_time\n            \n            start_window = time_to_minutes(friend[\"start\"])\n            end_window = time_to_minutes(friend[\"end\"])\n            duration = friend[\"duration\"]\n            \n            # Calculate possible meeting start time\n            meeting_start = max(arrival_time, start_window)\n            meeting_end = meeting_start + duration\n            \n            if meeting_end <= end_window:\n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": loc,\n                    \"person\": friend[\"name\"],\n                    \"start_time\": minutes_to_time(meeting_start),\n                    \"end_time\": minutes_to_time(meeting_end)\n                })\n                current_time_temp = meeting_end\n                current_loc = loc\n                meetings += 1\n        \n        if meetings > max_meetings:\n            max_meetings = meetings\n            best_schedule = schedule\n        elif meetings == max_meetings and meetings > 0:\n            # Prefer schedules that end earlier\n            if time_to_minutes(schedule[-1][\"end_time\"]) < time_to_minutes(best_schedule[-1][\"end_time\"]):\n                best_schedule = schedule\n    \n    return best_schedule\n\nbest_schedule = find_best_schedule()\n\n# Output the result as JSON\noutput = {\n    \"itinerary\": best_schedule\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_403"
+        }
+    ]
+}

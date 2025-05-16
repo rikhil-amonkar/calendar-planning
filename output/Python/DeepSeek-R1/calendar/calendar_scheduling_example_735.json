@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{9:30",
+                "end_time": "10:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\ndef is_available(person, day, start, end):\n    for block in person['busy'][day]:\n        block_start = time_to_minutes(block[0])\n        block_end = time_to_minutes(block[1])\n        if start < block_end and end > block_start:\n            return False\n    return True\n\nronald = {\n    'busy': {\n        'Monday': [('10:30', '11:00'), ('12:00', '12:30'), ('15:30', '16:00')],\n        'Tuesday': [('9:00', '9:30'), ('12:00', '12:30'), ('15:30', '16:30')],\n        'Wednesday': [('9:30', '10:30'), ('11:00', '12:00'), ('12:30', '13:00'), ('13:30', '14:00'), ('16:30', '17:00')]\n    }\n}\n\namber = {\n    'busy': {\n        'Monday': [('9:00', '9:30'), ('10:00', '10:30'), ('11:30', '12:00'), ('12:30', '14:00'), ('14:30', '15:00'), ('15:30', '17:00')],\n        'Tuesday': [('9:00', '9:30'), ('10:00', '11:30'), ('12:00', '12:30'), ('13:30', '15:30'), ('16:30', '17:00')],\n        'Wednesday': [('9:00', '9:30'), ('10:00', '10:30'), ('11:00', '13:30'), ('15:00', '15:30')]\n    }\n}\n\ndays = ['Monday', 'Tuesday', 'Wednesday']\nduration = 30\n\nfor day in days:\n    time = 9 * 60  # Start at 9:00\n    while time + duration <= 17 * 60:  # End by 17:00\n        current_start = time\n        current_end = time + duration\n        if (is_available(ronald, day, current_start, current_end) and\n            is_available(amber, day, current_start, current_end)):\n            print(f\"{day}:{minutes_to_time(current_start)}:{minutes_to_time(current_end)}\")\n            exit()\n        time += 1  # Check every minute increment\n\nprint(\"No suitable time found.\")\n'''",
+            "count": "calendar_scheduling_example_735"
+        }
+    ]
+}

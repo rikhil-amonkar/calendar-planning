@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, '%H:%M')\n\ndef format_time(dt):\n    return dt.strftime('%-H:%M')\n\ndef compute_schedule():\n    # Input parameters\n    travel_times = {\n        ('Pacific Heights', 'Presidio'): 11,\n        ('Pacific Heights', 'Marina District'): 6,\n        ('Presidio', 'Pacific Heights'): 11,\n        ('Presidio', 'Marina District'): 10,\n        ('Marina District', 'Pacific Heights'): 7,\n        ('Marina District', 'Presidio'): 10,\n    }\n    \n    # Constraints\n    start_location = 'Pacific Heights'\n    start_time = parse_time('9:00')\n    \n    jason_location = 'Presidio'\n    jason_window_start = parse_time('10:00')\n    jason_window_end = parse_time('16:15')\n    jason_duration = timedelta(minutes=90)\n    \n    kenneth_location = 'Marina District'\n    kenneth_window_start = parse_time('15:30')\n    kenneth_window_end = parse_time('16:45')\n    kenneth_duration = timedelta(minutes=45)\n    \n    # Possible schedules\n    possible_schedules = []\n    \n    # Option 1: Meet Jason first, then Kenneth\n    # Calculate earliest arrival at Presidio\n    travel_to_jason = travel_times[(start_location, jason_location)]\n    arrival_jason = start_time + timedelta(minutes=travel_to_jason)\n    meet_jason_start = max(arrival_jason, jason_window_start)\n    meet_jason_end = meet_jason_start + jason_duration\n    if meet_jason_end <= jason_window_end:\n        # Travel to Kenneth\n        travel_to_kenneth = travel_times[(jason_location, kenneth_location)]\n        arrival_kenneth = meet_jason_end + timedelta(minutes=travel_to_kenneth)\n        meet_kenneth_start = max(arrival_kenneth, kenneth_window_start)\n        meet_kenneth_end = meet_kenneth_start + kenneth_duration\n        if meet_kenneth_end <= kenneth_window_end:\n            possible_schedules.append([\n                {'action': 'meet', 'location': jason_location, 'person': 'Jason', \n                 'start_time': format_time(meet_jason_start), 'end_time': format_time(meet_jason_end)},\n                {'action': 'meet', 'location': kenneth_location, 'person': 'Kenneth', \n                 'start_time': format_time(meet_kenneth_start), 'end_time': format_time(meet_kenneth_end)}\n            ])\n    \n    # Option 2: Meet Kenneth first, then Jason\n    # Calculate earliest arrival at Marina District\n    travel_to_kenneth = travel_times[(start_location, kenneth_location)]\n    arrival_kenneth = start_time + timedelta(minutes=travel_to_kenneth)\n    meet_kenneth_start = max(arrival_kenneth, kenneth_window_start)\n    meet_kenneth_end = meet_kenneth_start + kenneth_duration\n    if meet_kenneth_end <= kenneth_window_end:\n        # Travel to Jason\n        travel_to_jason = travel_times[(kenneth_location, jason_location)]\n        arrival_jason = meet_kenneth_end + timedelta(minutes=travel_to_jason)\n        meet_jason_start = max(arrival_jason, jason_window_start)\n        meet_jason_end = meet_jason_start + jason_duration\n        if meet_jason_end <= jason_window_end:\n            possible_schedules.append([\n                {'action': 'meet', 'location': kenneth_location, 'person': 'Kenneth', \n                 'start_time': format_time(meet_kenneth_start), 'end_time': format_time(meet_kenneth_end)},\n                {'action': 'meet', 'location': jason_location, 'person': 'Jason', \n                 'start_time': format_time(meet_jason_start), 'end_time': format_time(meet_jason_end)}\n            ])\n    \n    # Select the best schedule (prefer meeting both if possible)\n    best_schedule = []\n    if len(possible_schedules) > 0:\n        # Prefer schedules where both meetings happen\n        valid_schedules = [s for s in possible_schedules if len(s) == 2]\n        if valid_schedules:\n            best_schedule = valid_schedules[0]\n        else:\n            # Fallback to meeting just one person\n            for s in possible_schedules:\n                if len(s) == 1:\n                    best_schedule = s\n                    break\n    \n    return {'itinerary': best_schedule}\n\nif __name__ == '__main__':\n    schedule = compute_schedule()\n    print(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_131"
+        }
+    ]
+}

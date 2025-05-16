@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    cities = {\n        'Dublin': {'duration': 5, 'constraints': [(2, 6)]},\n        'Reykjavik': {'duration': 2, 'constraints': [(9, 10)]},\n        'London': {'duration': 5, 'constraints': []},\n        'Helsinki': {'duration': 4, 'constraints': []},\n        'Hamburg': {'duration': 2, 'constraints': [(1, 2)]},\n        'Mykonos': {'duration': 3, 'constraints': []}\n    }\n\n    direct_flights = {\n        'Dublin': ['London', 'Hamburg', 'Helsinki', 'Reykjavik'],\n        'Hamburg': ['Dublin', 'London', 'Helsinki'],\n        'Helsinki': ['Reykjavik', 'Dublin', 'Hamburg', 'London'],\n        'Reykjavik': ['Helsinki', 'London', 'Dublin'],\n        'London': ['Dublin', 'Hamburg', 'Reykjavik', 'Mykonos'],\n        'Mykonos': ['London']\n    }\n\n    total_days = 16\n    city_names = list(cities.keys())\n\n    for perm in permutations(city_names):\n        itinerary = []\n        current_day = 1\n        valid = True\n        prev_city = None\n\n        for city in perm:\n            duration = cities[city]['duration']\n            constraints = cities[city]['constraints']\n            start_day = current_day\n            end_day = current_day + duration - 1\n\n            if end_day > total_days:\n                valid = False\n                break\n\n            for (cons_start, cons_end) in constraints:\n                if not (start_day <= cons_end and end_day >= cons_start):\n                    valid = False\n                    break\n            if not valid:\n                break\n\n            if prev_city is not None:\n                if city not in direct_flights[prev_city]:\n                    valid = False\n                    break\n                itinerary.append({\n                    'flying': f'Day {current_day-1}-{current_day-1}',\n                    'from': prev_city,\n                    'to': city\n                })\n\n            itinerary.append({\n                'day_range': f'Day {start_day}-{end_day}',\n                'place': city\n            })\n\n            prev_city = city\n            current_day = end_day + 1\n\n        if valid and current_day - 1 <= total_days:\n            return itinerary\n\n    return None\n\nitinerary = find_valid_itinerary()\nif itinerary:\n    print(json.dumps(itinerary, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n```",
+            "count": "trip_planning_example_699"
+        }
+    ]
+}

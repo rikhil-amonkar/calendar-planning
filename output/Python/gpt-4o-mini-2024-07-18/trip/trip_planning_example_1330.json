@@ -1,0 +1,85 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 28-32",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 33-37",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 38-41",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define variables for the trip\n    total_days = 25\n    cities = {\n        \"Salzburg\": 2,\n        \"Venice\": 5,\n        \"Bucharest\": 4,\n        \"Brussels\": 2,\n        \"Hamburg\": 4,\n        \"Copenhagen\": 4,\n        \"Nice\": 3,\n        \"Zurich\": 5,\n        \"Naples\": 4\n    }\n    \n    # Define the flight connections\n    flights = {\n        \"Zurich\": [\"Brussels\", \"Bucharest\", \"Copenhagen\", \"Naples\", \"Nice\", \"Hamburg\"],\n        \"Bucharest\": [\"Copenhagen\", \"Brussels\", \"Hamburg\", \"Naples\"],\n        \"Venice\": [\"Brussels\", \"Naples\", \"Copenhagen\", \"Zurich\", \"Nice\", \"Hamburg\"],\n        \"Nice\": [\"Zurich\", \"Brussels\", \"Copenhagen\", \"Naples\"],\n        \"Hamburg\": [\"Nice\", \"Bucharest\", \"Brussels\", \"Copenhagen\", \"Zurich\", \"Venice\"],\n        \"Copenhagen\": [\"Bucharest\", \"Hamburg\", \"Naples\", \"Venice\"],\n        \"Brussels\": [\"Zurich\", \"Naples\", \"Hamburg\", \"Venice\"],\n        \"Naples\": [\"Zurich\", \"Bucharest\", \"Copenhagen\", \"Venice\"],\n        # Direct connections are mutual, so no need to add both directions\n    }\n    \n    # Define hard constraints\n    constraints = {\n        \"friends_meeting\": (21, 22),  # Brussels\n        \"wedding\": (18, 21),           # Copenhagen\n        \"relatives_visit\": (9, 11),    # Nice\n        \"workshop\": (22, 25),           # Naples\n    }\n    \n    itinerary = []\n    current_day = 1\n\n    # Sequence of planned stays\n    plan_order = [\n        (\"Salzburg\", 2),\n        (\"Hamburg\", 4),\n        (\"Nice\", 3),\n        (\"Bucharest\", 4),\n        (\"Brussels\", 2),\n        (\"Copenhagen\", 4),\n        (\"Venice\", 5),\n        (\"Zurich\", 5),\n        (\"Naples\", 4)\n    ]\n\n    # Add fixed day assignments based on the constraints\n    for city, days in plan_order:\n        if city == \"Brussels\":\n            if current_day < constraints[\"friends_meeting\"][0]:\n                # Travel to Brussels before day 21\n                travel_days = constraints[\"friends_meeting\"][0] - current_day\n                if travel_days > 0:\n                    itinerary.append({\n                        \"flying\": f\"Day {current_day}-{current_day}\",\n                        \"from\": \"Copenhagen\",\n                        \"to\": \"Brussels\"\n                    })\n                    current_day += travel_days\n            \n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Brussels\"\n            })\n            current_day += days\n            \n        elif city == \"Copenhagen\":\n            if current_day < constraints[\"wedding\"][0]:\n                travel_days = constraints[\"wedding\"][0] - current_day\n                if travel_days > 0:\n                    itinerary.append({\n                        \"flying\": f\"Day {current_day}-{current_day}\",\n                        \"from\": \"Nice\",\n                        \"to\": \"Copenhagen\"\n                    })\n                    current_day += travel_days\n\n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Copenhagen\"\n            })\n            current_day += days\n            \n        elif city == \"Nice\":\n            if current_day < constraints[\"relatives_visit\"][0]:\n                travel_days = constraints[\"relatives_visit\"][0] - current_day\n                if travel_days > 0:\n                    itinerary.append({\n                        \"flying\": f\"Day {current_day}-{current_day}\",\n                        \"from\": \"Hamburg\",\n                        \"to\": \"Nice\"\n                    })\n                    current_day += travel_days\n            \n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Nice\"\n            })\n            current_day += days\n            \n        elif city == \"Naples\":\n            if current_day < constraints[\"workshop\"][0]:\n                travel_days = constraints[\"workshop\"][0] - current_day\n                if travel_days > 0:\n                    itinerary.append({\n                        \"flying\": f\"Day {current_day}-{current_day}\",\n                        \"from\": \"Zurich\",\n                        \"to\": \"Naples\"\n                    })\n                    current_day += travel_days\n            \n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Naples\"\n            })\n            current_day += days\n            \n        elif city == \"Bucharest\":\n            itinerary.append({\n                \"flying\": f\"Day {current_day}-{current_day}\",\n                \"from\": \"Hamburg\",\n                \"to\": \"Bucharest\"\n            })\n            current_day += 1\n            \n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Bucharest\"\n            })\n            current_day += days\n            \n        elif city == \"Venice\":\n            itinerary.append({\n                \"flying\": f\"Day {current_day}-{current_day}\",\n                \"from\": \"Bucharest\",\n                \"to\": \"Venice\"\n            })\n            current_day += 1\n            \n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Venice\"\n            })\n            current_day += days\n            \n        elif city == \"Zurich\":\n            if current_day < total_days:\n                itinerary.append({\n                    \"flying\": f\"Day {current_day}-{current_day}\",\n                    \"from\": \"Venice\",\n                    \"to\": \"Zurich\"\n                })\n                current_day += 1\n            \n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Zurich\"\n            })\n            current_day += days\n            \n        elif city == \"Hamburg\":\n            if current_day < total_days:\n                itinerary.append({\n                    \"flying\": f\"Day {current_day}-{current_day}\",\n                    \"from\": \"Zurich\",\n                    \"to\": \"Hamburg\"\n                })\n                current_day += 1\n            \n            itinerary.append({\n                \"day_range\": f\"Day {current_day}-{current_day + days - 1}\",\n                \"place\": \"Hamburg\"\n            })\n            current_day += days\n\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    result = create_itinerary()\n    print(result)\n```",
+            "count": "trip_planning_example_1330"
+        }
+    ]
+}

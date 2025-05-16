@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:00",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "13:42",
+                        "end_time": "14:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define locations and travel times\ntravel_times = {\n    (\"Embarcadero\", \"Richmond District\"): 21,\n    (\"Embarcadero\", \"Union Square\"): 10,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    (\"Embarcadero\", \"Pacific Heights\"): 11,\n    (\"Embarcadero\", \"Nob Hill\"): 10,\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Richmond District\", \"Embarcadero\"): 19,\n    (\"Richmond District\", \"Union Square\"): 21,\n    (\"Richmond District\", \"Financial District\"): 22,\n    (\"Richmond District\", \"Pacific Heights\"): 10,\n    (\"Richmond District\", \"Nob Hill\"): 17,\n    (\"Richmond District\", \"Bayview\"): 26,\n    (\"Union Square\", \"Embarcadero\"): 11,\n    (\"Union Square\", \"Richmond District\"): 20,\n    (\"Union Square\", \"Financial District\"): 9,\n    (\"Union Square\", \"Pacific Heights\"): 15,\n    (\"Union Square\", \"Nob Hill\"): 9,\n    (\"Union Square\", \"Bayview\"): 15,\n    (\"Financial District\", \"Embarcadero\"): 4,\n    (\"Financial District\", \"Richmond District\"): 21,\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Financial District\", \"Pacific Heights\"): 13,\n    (\"Financial District\", \"Nob Hill\"): 8,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Pacific Heights\", \"Embarcadero\"): 10,\n    (\"Pacific Heights\", \"Richmond District\"): 12,\n    (\"Pacific Heights\", \"Union Square\"): 12,\n    (\"Pacific Heights\", \"Financial District\"): 13,\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"Bayview\"): 22,\n    (\"Nob Hill\", \"Embarcadero\"): 9,\n    (\"Nob Hill\", \"Richmond District\"): 14,\n    (\"Nob Hill\", \"Union Square\"): 7,\n    (\"Nob Hill\", \"Financial District\"): 9,\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    (\"Nob Hill\", \"Bayview\"): 19,\n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Bayview\", \"Richmond District\"): 25,\n    (\"Bayview\", \"Union Square\"): 17,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    (\"Bayview\", \"Nob Hill\"): 20,\n}\n\n# Define meeting constraints\nmeetings = {\n    \"Kenneth\": {\"location\": \"Richmond District\", \"start\": \"21:15\", \"end\": \"22:00\", \"duration\": 30},\n    \"Lisa\": {\"location\": \"Union Square\", \"start\": \"09:00\", \"end\": \"16:30\", \"duration\": 45},\n    \"Joshua\": {\"location\": \"Financial District\", \"start\": \"12:00\", \"end\": \"15:15\", \"duration\": 15},\n    \"Nancy\": {\"location\": \"Pacific Heights\", \"start\": \"08:00\", \"end\": \"11:30\", \"duration\": 90},\n    \"Andrew\": {\"location\": \"Nob Hill\", \"start\": \"11:30\", \"end\": \"20:15\", \"duration\": 60},\n    \"John\": {\"location\": \"Bayview\", \"start\": \"16:45\", \"end\": \"21:30\", \"duration\": 75},\n}\n\n# Function to compute schedule\ndef compute_schedule():\n    itinerary = []\n    current_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n    # Meet Nancy first as she is only available until 11:30\n    if current_time < datetime.strptime(meetings[\"Nancy\"][\"end\"], \"%H:%M\"):\n        start_time = max(current_time, datetime.strptime(meetings[\"Nancy\"][\"start\"], \"%H:%M\"))\n        end_time = start_time + timedelta(minutes=meetings[\"Nancy\"][\"duration\"])\n        \n        # Calculate travel time to the next location after Nancy\n        travel_time = travel_times[(\"Pacific Heights\", \"Nob Hill\")]\n        current_time = end_time + timedelta(minutes=travel_time)\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Nancy\"][\"location\"],\n            \"person\": \"Nancy\",\n            \"start_time\": start_time.strftime(\"%H:%M\"),\n            \"end_time\": end_time.strftime(\"%H:%M\")\n        })\n\n    # Meet Joshua next\n    if current_time < datetime.strptime(meetings[\"Joshua\"][\"end\"], \"%H:%M\"):\n        start_time = max(current_time, datetime.strptime(meetings[\"Joshua\"][\"start\"], \"%H:%M\"))\n        end_time = start_time + timedelta(minutes=meetings[\"Joshua\"][\"duration\"])\n\n        # Calculate travel time to the next location after Joshua\n        travel_time = travel_times[(\"Financial District\", \"Nob Hill\")]\n        current_time = end_time + timedelta(minutes=travel_time)\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Joshua\"][\"location\"],\n            \"person\": \"Joshua\",\n            \"start_time\": start_time.strftime(\"%H:%M\"),\n            \"end_time\": end_time.strftime(\"%H:%M\")\n        })\n\n    # Meet Andrew next\n    if current_time < datetime.strptime(meetings[\"Andrew\"][\"end\"], \"%H:%M\"):\n        start_time = max(current_time, datetime.strptime(meetings[\"Andrew\"][\"start\"], \"%H:%M\"))\n        end_time = start_time + timedelta(minutes=meetings[\"Andrew\"][\"duration\"])\n\n        # Calculate travel time to the next location after Andrew\n        travel_time = travel_times[(\"Nob Hill\", \"Bayview\")]\n        current_time = end_time + timedelta(minutes=travel_time)\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Andrew\"][\"location\"],\n            \"person\": \"Andrew\",\n            \"start_time\": start_time.strftime(\"%H:%M\"),\n            \"end_time\": end_time.strftime(\"%H:%M\")\n        })\n\n    # Meet Lisa next\n    if current_time < datetime.strptime(meetings[\"Lisa\"][\"end\"], \"%H:%M\"):\n        start_time = max(current_time, datetime.strptime(meetings[\"Lisa\"][\"start\"], \"%H:%M\"))\n        end_time = start_time + timedelta(minutes=meetings[\"Lisa\"][\"duration\"])\n\n        # Calculate travel time to the next location after Lisa\n        travel_time = travel_times[(\"Union Square\", \"Bayview\")]\n        current_time = end_time + timedelta(minutes=travel_time)\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Lisa\"][\"location\"],\n            \"person\": \"Lisa\",\n            \"start_time\": start_time.strftime(\"%H:%M\"),\n            \"end_time\": end_time.strftime(\"%H:%M\")\n        })\n\n    # Meet Kenneth last\n    if current_time < datetime.strptime(meetings[\"Kenneth\"][\"end\"], \"%H:%M\"):\n        start_time = max(current_time, datetime.strptime(meetings[\"Kenneth\"][\"start\"], \"%H:%M\"))\n        end_time = start_time + timedelta(minutes=meetings[\"Kenneth\"][\"duration\"])\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meetings[\"Kenneth\"][\"location\"],\n            \"person\": \"Kenneth\",\n            \"start_time\": start_time.strftime(\"%H:%M\"),\n            \"end_time\": end_time.strftime(\"%H:%M\")\n        })\n\n    return json.dumps({\"itinerary\": itinerary}, indent=2)\n\n# Execute the program\nif __name__ == \"__main__\":\n    solution = compute_schedule()\n    print(solution)\n```",
+            "count": "meeting_planning_example_546"
+        }
+    ]
+}

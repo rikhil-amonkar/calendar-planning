@@ -1,0 +1,38 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mark",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mark",
+                        "start_time": "13:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Karen",
+                        "start_time": "18:45",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef format_time(dt):\n    return dt.strftime(\"%H:%M\")\n\ndef calculate_meeting_schedule():\n    # Define travel times in minutes\n    travel_times = {\n        (\"North Beach\", \"Pacific Heights\"): 8,\n        (\"North Beach\", \"Embarcadero\"): 6,\n        (\"Pacific Heights\", \"North Beach\"): 9,\n        (\"Pacific Heights\", \"Embarcadero\"): 10,\n        (\"Embarcadero\", \"North Beach\"): 5,\n        (\"Embarcadero\", \"Pacific Heights\"): 11,\n    }\n\n    # Define the meeting constraints\n    arrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\n    karen_start = datetime.strptime(\"18:45\", \"%H:%M\")\n    karen_end = datetime.strptime(\"20:15\", \"%H:%M\")\n    mark_start = datetime.strptime(\"13:00\", \"%H:%M\")\n    mark_end = datetime.strptime(\"17:45\", \"%H:%M\")\n    \n    # Minimum meeting durations\n    karen_meeting_duration = timedelta(minutes=90)\n    mark_meeting_duration = timedelta(minutes=120)\n\n    # Calculate meeting times\n    itinerary = []\n\n    # Meeting with Mark at Embarcadero\n    travel_to_em = travel_times[(\"North Beach\", \"Embarcadero\")]\n    start_mark = max(arrival_time + timedelta(minutes=travel_to_em), mark_start)\n    end_mark = start_mark + mark_meeting_duration\n    \n    if end_mark <= mark_end:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Embarcadero\",\n            \"person\": \"Mark\",\n            \"start_time\": format_time(start_mark),\n            \"end_time\": format_time(end_mark),\n        })\n        \n        # Travel to Pacific Heights for Karen\n        travel_to_karen = travel_times[(\"Embarcadero\", \"Pacific Heights\")]\n        travel_to_northbeach_return = travel_times[(\"Embarcadero\", \"North Beach\")]\n        \n        # Time after the meeting with Mark\n        available_time_after_mark = end_mark + timedelta(minutes=travel_to_karen)\n\n        # Check if we can meet Karen after meeting Mark\n        if available_time_after_mark <= karen_start:\n            # Travel to North Beach to return to Pacific Heights\n            travel_to_north_karen = travel_times[(\"North Beach\", \"Pacific Heights\")]\n            arrive_at_karen = karen_start + timedelta(minutes=travel_to_north_karen)\n            if arrive_at_karen + karen_meeting_duration <= karen_end:\n                itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": \"Pacific Heights\",\n                    \"person\": \"Karen\",\n                    \"start_time\": format_time(arrive_at_karen),\n                    \"end_time\": format_time(arrive_at_karen + karen_meeting_duration),\n                })\n    \n    return {\n        \"itinerary\": itinerary\n    }\n\nschedule = calculate_meeting_schedule()\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_143"
+        }
+    ]
+}

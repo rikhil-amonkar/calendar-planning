@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "17:19",
+                        "end_time": "19:04"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the locations and travel times\nlocations = {\n    \"Embarcadero\": {},\n    \"Golden Gate Park\": {},\n    \"Haight-Ashbury\": {},\n    \"Bayview\": {},\n    \"Presidio\": {},\n    \"Financial District\": {}\n}\n\ntravel_times = {\n    (\"Embarcadero\", \"Golden Gate Park\"): 25,\n    (\"Embarcadero\", \"Haight-Ashbury\"): 21,\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Embarcadero\", \"Presidio\"): 20,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    (\"Golden Gate Park\", \"Embarcadero\"): 25,\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Bayview\"): 23,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Haight-Ashbury\", \"Embarcadero\"): 20,\n    (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"Presidio\"): 15,\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Bayview\", \"Golden Gate Park\"): 22,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Presidio\"): 31,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Presidio\", \"Embarcadero\"): 20,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Haight-Ashbury\"): 15,\n    (\"Presidio\", \"Bayview\"): 31,\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Financial District\", \"Embarcadero\"): 4,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Financial District\", \"Haight-Ashbury\"): 19,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Presidio\"): 22\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"Golden Gate Park\", \"person\": \"Mary\", \"start_time\": 8.75, \"end_time\": 11.75, \"duration\": 45},\n    {\"location\": \"Haight-Ashbury\", \"person\": \"Kevin\", \"start_time\": 10.25, \"end_time\": 16.25, \"duration\": 90},\n    {\"location\": \"Bayview\", \"person\": \"Deborah\", \"start_time\": 15, \"end_time\": 19.25, \"duration\": 120},\n    {\"location\": \"Presidio\", \"person\": \"Stephanie\", \"start_time\": 10, \"end_time\": 17.25, \"duration\": 120},\n    {\"location\": \"Financial District\", \"person\": \"Emily\", \"start_time\": 11.5, \"end_time\": 21.75, \"duration\": 105}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Embarcadero\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_479"
+        }
+    ]
+}

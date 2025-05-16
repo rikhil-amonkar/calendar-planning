@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "9:30",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "10:38",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "11:35",
+                        "end_time": "12:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "15:24",
+                        "end_time": "17:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Ronald",
+                        "start_time": "17:51",
+                        "end_time": "18:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Steven",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "9:30",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "10:38",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "11:35",
+                        "end_time": "12:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "15:24",
+                        "end_time": "17:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Ronald",
+                        "start_time": "17:51",
+                        "end_time": "18:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Steven",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport sys\n\n# Convert time in minutes (since midnight) to a string H:MM in 24-hour format.\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Travel times data as a nested dictionary.\ntravel_times = {\n    \"Pacific Heights\": {\n        \"Golden Gate Park\": 15,\n        \"The Castro\": 16,\n        \"Bayview\": 22,\n        \"Marina District\": 6,\n        \"Union Square\": 12,\n        \"Sunset District\": 21,\n        \"Alamo Square\": 10,\n        \"Financial District\": 13,\n        \"Mission District\": 15\n    },\n    \"Golden Gate Park\": {\n        \"Pacific Heights\": 16,\n        \"The Castro\": 13,\n        \"Bayview\": 23,\n        \"Marina District\": 16,\n        \"Union Square\": 22,\n        \"Sunset District\": 10,\n        \"Alamo Square\": 9,\n        \"Financial District\": 26,\n        \"Mission District\": 17\n    },\n    \"The Castro\": {\n        \"Pacific Heights\": 16,\n        \"Golden Gate Park\": 11,\n        \"Bayview\": 19,\n        \"Marina District\": 21,\n        \"Union Square\": 19,\n        \"Sunset District\": 17,\n        \"Alamo Square\": 8,\n        \"Financial District\": 21,\n        \"Mission District\": 7\n    },\n    \"Bayview\": {\n        \"Pacific Heights\": 23,\n        \"Golden Gate Park\": 22,\n        \"The Castro\": 19,\n        \"Marina District\": 27,\n        \"Union Square\": 18,\n        \"Sunset District\": 23,\n        \"Alamo Square\": 16,\n        \"Financial District\": 19,\n        \"Mission District\": 13\n    },\n    \"Marina District\": {\n        \"Pacific Heights\": 7,\n        \"Golden Gate Park\": 18,\n        \"The Castro\": 22,\n        \"Bayview\": 27,\n        \"Union Square\": 16,\n        \"Sunset District\": 19,\n        \"Alamo Square\": 15,\n        \"Financial District\": 17,\n        \"Mission District\": 20\n    },\n    \"Union Square\": {\n        \"Pacific Heights\": 15,\n        \"Golden Gate Park\": 22,\n        \"The Castro\": 17,\n        \"Bayview\": 15,\n        \"Marina District\": 18,\n        \"Sunset District\": 27,\n        \"Alamo Square\": 15,\n        \"Financial District\": 9,\n        \"Mission District\": 14\n    },\n    \"Sunset District\": {\n        \"Pacific Heights\": 21,\n        \"Golden Gate Park\": 11,\n        \"The Castro\": 17,\n        \"Bayview\": 22,\n        \"Marina District\": 21,\n        \"Union Square\": 30,\n        \"Alamo Square\": 17,\n        \"Financial District\": 30,\n        \"Mission District\": 25\n    },\n    \"Alamo Square\": {\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 9,\n        \"The Castro\": 8,\n        \"Bayview\": 16,\n        \"Marina District\": 15,\n        \"Union Square\": 14,\n        \"Sunset District\": 16,\n        \"Financial District\": 17,\n        \"Mission District\": 10\n    },\n    \"Financial District\": {\n        \"Pacific Heights\": 13,\n        \"Golden Gate Park\": 23,\n        \"The Castro\": 20,\n        \"Bayview\": 19,\n        \"Marina District\": 15,\n        \"Union Square\": 9,\n        \"Sunset District\": 30,\n        \"Alamo Square\": 17,\n        \"Mission District\": 15\n    },\n    \"Mission District\": {\n        \"Pacific Heights\": 16,\n        \"Golden Gate Park\": 17,\n        \"The Castro\": 7,\n        \"Bayview\": 14,\n        \"Marina District\": 19,\n        \"Union Square\": 15,\n        \"Sunset District\": 24,\n        \"Alamo Square\": 11,\n        \"Financial District\": 15\n    }\n}\n\n# Define the meeting constraints as a list of dictionaries.\n# Times are in minutes from midnight.\nmeetings = [\n    {\n        \"person\": \"Helen\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": 9*60 + 30,   # 9:30\n        \"avail_end\": 12*60 + 15,    # 12:15\n        \"min_duration\": 45\n    },\n    {\n        \"person\": \"Steven\",\n        \"location\": \"The Castro\",\n        \"avail_start\": 20*60 + 15,  # 20:15\n        \"avail_end\": 22*60,         # 22:00\n        \"min_duration\": 105\n    },\n    {\n        \"person\": \"Deborah\",\n        \"location\": \"Bayview\",\n        \"avail_start\": 8*60 + 30,   # 8:30\n        \"avail_end\": 12*60,         # 12:00\n        \"min_duration\": 30\n    },\n    {\n        \"person\": \"Matthew\",\n        \"location\": \"Marina District\",\n        \"avail_start\": 9*60 + 15,   # 9:15\n        \"avail_end\": 14*60 + 15,    # 14:15\n        \"min_duration\": 45\n    },\n    {\n        \"person\": \"Joseph\",\n        \"location\": \"Union Square\",\n        \"avail_start\": 14*60 + 15,  # 14:15\n        \"avail_end\": 18*60 + 45,    # 18:45\n        \"min_duration\": 120\n    },\n    {\n        \"person\": \"Ronald\",\n        \"location\": \"Sunset District\",\n        \"avail_start\": 16*60,       # 16:00\n        \"avail_end\": 20*60 + 45,     # 20:45\n        \"min_duration\": 60\n    },\n    {\n        \"person\": \"Robert\",\n        \"location\": \"Alamo Square\",\n        \"avail_start\": 18*60 + 30,   # 18:30\n        \"avail_end\": 21*60 + 15,     # 21:15\n        \"min_duration\": 120\n    },\n    {\n        \"person\": \"Rebecca\",\n        \"location\": \"Financial District\",\n        \"avail_start\": 14*60 + 45,   # 14:45\n        \"avail_end\": 16*60 + 15,     # 16:15\n        \"min_duration\": 30\n    },\n    {\n        \"person\": \"Elizabeth\",\n        \"location\": \"Mission District\",\n        \"avail_start\": 18*60 + 30,   # 18:30\n        \"avail_end\": 21*60,          # 21:00\n        \"min_duration\": 120\n    }\n]\n\n# Initial start: arriving at Pacific Heights at 9:00.\nstart_time = 9 * 60  # 540 minutes\nstart_location = \"Pacific Heights\"\n\n# We'll perform a depth-first search to try all orders meeting feasibility.\n# We want to maximize the number of meetings scheduled.\nbest_schedule = []\nbest_count = 0\n\ndef dfs(current_time, current_location, remaining_meetings, current_itinerary):\n    global best_schedule, best_count\n    # If current itinerary is better than best so far, update.\n    if len(current_itinerary) > best_count:\n        best_count = len(current_itinerary)\n        best_schedule = current_itinerary[:]\n    # Try each remaining meeting.\n    for i, meeting in enumerate(remaining_meetings):\n        # Get travel time from current location to meeting's location.\n        if current_location not in travel_times or meeting[\"location\"] not in travel_times[current_location]:\n            continue  # no route defined\n        travel_time = travel_times[current_location][meeting[\"location\"]]\n        arrival_time = current_time + travel_time\n        # The meeting can only start at max(arrival_time, avail_start).\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"min_duration\"]\n        # Check if meeting_end is within the available window.\n        if meeting_end > meeting[\"avail_end\"]:\n            continue  # Cannot meet this friend.\n        # Create an itinerary entry\n        entry = {\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"person\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        }\n        # Prepare new itinerary and remaining meetings.\n        new_itinerary = current_itinerary + [entry]\n        new_remaining = remaining_meetings[:i] + remaining_meetings[i+1:]\n        # Continue search from the end of this meeting.\n        dfs(meeting_end, meeting[\"location\"], new_remaining, new_itinerary)\n\ndef main():\n    global best_schedule, best_count\n    dfs(start_time, start_location, meetings, [])\n    # Prepare JSON output structure.\n    output = { \"itinerary\": best_schedule }\n    # Print JSON-formatted output.\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_835"
+        }
+    ]
+}

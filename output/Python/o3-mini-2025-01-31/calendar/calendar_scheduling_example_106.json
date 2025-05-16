@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "11:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "11:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import time, datetime, timedelta\n\n# Define a helper function to convert time string to minutes since midnight\ndef time_to_minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\n# Define a helper function to convert minutes since midnight to time string in HH:MM format\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Define working hours (in minutes)\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\n\n# Meeting duration in minutes\nmeeting_duration = 60\n\n# Define busy slots for each participant as tuples (start, end) in minutes\nbusy_slots = {\n    \"Olivia\": [(\"12:30\", \"13:30\"), (\"14:30\", \"15:00\"), (\"16:30\", \"17:00\")],\n    \"Anna\": [],  # Free full day\n    \"Virginia\": [(\"09:00\", \"10:00\"), (\"11:30\", \"16:00\"), (\"16:30\", \"17:00\")],\n    \"Paul\": [(\"09:00\", \"09:30\"), (\"11:00\", \"11:30\"), (\"13:00\", \"14:00\"), (\"14:30\", \"16:00\"), (\"16:30\", \"17:00\")]\n}\n\n# Function to determine free intervals from busy intervals within work hours\ndef get_free_intervals(busy_periods):\n    # sort busy periods by start time (in minutes)\n    busy_periods_minutes = sorted([(time_to_minutes(start), time_to_minutes(end)) for start, end in busy_periods])\n    free_intervals = []\n    current_start = work_start\n\n    for start, end in busy_periods_minutes:\n        if start > current_start:\n            free_intervals.append((current_start, start))\n        current_start = max(current_start, end)\n    if current_start < work_end:\n        free_intervals.append((current_start, work_end))\n    return free_intervals\n\n# Get free intervals for each participant\nfree_intervals = {person: get_free_intervals(busy_slots[person]) for person in busy_slots}\n\n# A function to get the intersection between two lists of intervals\ndef intersect_intervals(intervals1, intervals2):\n    i, j = 0, 0\n    intersections = []\n    while i < len(intervals1) and j < len(intervals2):\n        # calculate the intersection of intervals1[i] and intervals2[j]\n        start = max(intervals1[i][0], intervals2[j][0])\n        end = min(intervals1[i][1], intervals2[j][1])\n        if start < end:\n            intersections.append((start, end))\n        # move forward in whichever interval ends earlier\n        if intervals1[i][1] < intervals2[j][1]:\n            i += 1\n        else:\n            j += 1\n    return intersections\n\n# Find common free intervals among all participants\nparticipants = list(busy_slots.keys())\ncommon_free = free_intervals[participants[0]]\nfor person in participants[1:]:\n    common_free = intersect_intervals(common_free, free_intervals[person])\n\n# Now find a common free interval that can hold the meeting duration\nmeeting_slot = None\nfor start, end in common_free:\n    if end - start >= meeting_duration:\n        meeting_slot = (start, start + meeting_duration)\n        break\n\n# Define the day of the week\nmeeting_day = \"Monday\"\n\nif meeting_slot:\n    start_time_str = minutes_to_time(meeting_slot[0])\n    end_time_str = minutes_to_time(meeting_slot[1])\n    print(f\"{meeting_day} {start_time_str}:{end_time_str}\")\nelse:\n    print(\"No available meeting slot found.\")\n'''",
+            "count": "calendar_scheduling_example_106"
+        }
+    ]
+}

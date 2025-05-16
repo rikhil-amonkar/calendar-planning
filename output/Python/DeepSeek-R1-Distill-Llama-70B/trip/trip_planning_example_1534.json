@@ -1,0 +1,89 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 21-24",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 25-28",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I'm trying to solve this problem where I need to plan a trip through 10 European cities over 25 days, using only direct flights. There are a bunch of constraints about how long to stay in each city and specific time windows for events like weddings, conferences, and meeting friends.\n\nFirst, I'll list out all the cities and their required stays:\n- Warsaw: 4 days\n- Venice: 3 days\n- Vilnius: 3 days\n- Salzburg: 4 days (with a wedding between days 22-25)\n- Amsterdam: 2 days\n- Barcelona: 5 days (meeting friends between days 2-6)\n- Paris: 2 days (workshop between days 1-2)\n- Hamburg: 4 days (conference between days 19-22)\n- Florence: 5 days\n- Tallinn: 2 days (meeting a friend between days 11-12)\n\nNext, I'll look at the flight connections to see how these cities are linked. The goal is to find a path that connects all cities without backtracking too much, respecting all the time constraints.\n\nStarting with Paris makes sense because there's a workshop on days 1-2. From Paris, I can fly to Barcelona, which is a major hub and has a lot of connections. Barcelona needs to be visited for 5 days, and the friends are there between days 2-6, so arriving on day 2 works perfectly.\n\nFrom Barcelona, I can go to Amsterdam since there's a direct flight. Amsterdam is a 2-day stay, and from there, I can reach Warsaw, which is a 4-day visit. Warsaw connects to Venice, which needs a 3-day stay. Venice then connects back to Barcelona, but since we've already been there, maybe we can go to Florence instead, which is a 5-day stay and has connections to other cities.\n\nAfter Florence, heading to Hamburg makes sense for the 4-day conference. From Hamburg, Salzburg is the next stop for the wedding, which needs to be between days 22-25. Finally, we can fly back to Paris to wrap up the trip within the 25-day timeframe.\n\nI need to make sure that each transition between cities happens on the same day, so the last day in one city is the flight day, and the first day in the next city starts on that same day. Also, I have to ensure that all the event dates are respected and that the total days add up correctly without exceeding the 25-day limit.\n\nI'll outline the itinerary step by step, ensuring each city's duration and event constraints are met, and that each flight connection is valid. Then, I'll structure this into a JSON format as required.\n</think>\n\n```python\nimport json\n\n# Define the cities and their required durations\ncities = {\n    'Paris': 2,\n    'Barcelona': 5,\n    'Amsterdam': 2,\n    'Warsaw': 4,\n    'Venice': 3,\n    'Vilnius': 3,\n    'Salzburg': 4,\n    'Hamburg': 4,\n    'Florence': 5,\n    'Tallinn': 2\n}\n\n# Define flight connections\nflight_connections = {\n    'Paris': {'Venice', 'Amsterdam', 'Hamburg', 'Vilnius', 'Florence', 'Barcelona', 'Warsaw', 'Tallinn'},\n    'Barcelona': {'Amsterdam', 'Warsaw', 'Hamburg', 'Florence', 'Venice', 'Tallinn', 'Paris'},\n    'Amsterdam': {'Warsaw', 'Vilnius', 'Hamburg', 'Florence', 'Venice', 'Tallinn', 'Paris', 'Barcelona'},\n    'Warsaw': {'Venice', 'Hamburg', 'Paris', 'Amsterdam', 'Tallinn', 'Vilnius'},\n    'Venice': {'Hamburg', 'Amsterdam', 'Barcelona', 'Paris', 'Florence'},\n    'Vilnius': {'Warsaw', 'Paris', 'Amsterdam', 'Tallinn'},\n    'Salzburg': set(),\n    'Hamburg': {'Salzburg', 'Amsterdam', 'Barcelona', 'Warsaw', 'Paris', 'Venice', 'Florence'},\n    'Florence': {'Amsterdam', 'Paris', 'Barcelona', 'Venice', 'Hamburg'},\n    'Tallinn': {'Warsaw', 'Vilnius', 'Amsterdam', 'Paris', 'Barcelona'}\n}\n\nitinerary = []\n\n# Start with Paris\ncurrent_day = 1\nend_day = current_day + cities['Paris'] - 1\nitinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': 'Paris'})\ncurrent_day = end_day + 1\n\n# Fly to Barcelona\nflight_day = 2\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Paris', 'to': 'Barcelona'})\n\n# Stay in Barcelona\nstart_day = flight_day\nend_day = start_day + cities['Barcelona'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Barcelona'})\ncurrent_day = end_day + 1\n\n# Fly to Amsterdam\nflight_day = 7\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Barcelona', 'to': 'Amsterdam'})\n\n# Stay in Amsterdam\nstart_day = flight_day\nend_day = start_day + cities['Amsterdam'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Amsterdam'})\ncurrent_day = end_day + 1\n\n# Fly to Warsaw\nflight_day = 9\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Amsterdam', 'to': 'Warsaw'})\n\n# Stay in Warsaw\nstart_day = flight_day\nend_day = start_day + cities['Warsaw'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Warsaw'})\ncurrent_day = end_day + 1\n\n# Fly to Venice\nflight_day = 13\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Warsaw', 'to': 'Venice'})\n\n# Stay in Venice\nstart_day = flight_day\nend_day = start_day + cities['Venice'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Venice'})\ncurrent_day = end_day + 1\n\n# Fly to Florence\nflight_day = 16\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Venice', 'to': 'Florence'})\n\n# Stay in Florence\nstart_day = flight_day\nend_day = start_day + cities['Florence'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Florence'})\ncurrent_day = end_day + 1\n\n# Fly to Hamburg\nflight_day = 21\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Florence', 'to': 'Hamburg'})\n\n# Stay in Hamburg\nstart_day = flight_day\nend_day = start_day + cities['Hamburg'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Hamburg'})\ncurrent_day = end_day + 1\n\n# Fly to Salzburg\nflight_day = 25\nitinerary.append({'flying': f'Day {flight_day}-{flight_day}', 'from': 'Hamburg', 'to': 'Salzburg'})\n\n# Stay in Salzburg\nstart_day = flight_day\nend_day = start_day + cities['Salzburg'] - 1\nitinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': 'Salzburg'})\ncurrent_day = end_day + 1\n\n# Output the itinerary\nprint(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_1534"
+        }
+    ]
+}

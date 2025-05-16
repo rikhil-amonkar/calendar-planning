@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joshua",
+                        "start_time": "10:30",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Kimberly",
+                        "start_time": "15:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "16:03",
+                        "end_time": "16:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Betty",
+                        "start_time": "16:57",
+                        "end_time": "17:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Daniel",
+                        "start_time": "18:30",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Elizabeth",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    'Union Square': {\n        'Presidio': 24, 'Alamo Square': 15, 'Marina District': 18, 'Financial District': 9,\n        'Nob Hill': 9, 'Sunset District': 27, 'Chinatown': 7, 'Russian Hill': 13,\n        'North Beach': 10, 'Haight-Ashbury': 18\n    },\n    'Presidio': {\n        'Union Square': 22, 'Alamo Square': 19, 'Marina District': 11, 'Financial District': 23,\n        'Nob Hill': 18, 'Sunset District': 15, 'Chinatown': 21, 'Russian Hill': 14,\n        'North Beach': 18, 'Haight-Ashbury': 15\n    },\n    'Alamo Square': {\n        'Union Square': 14, 'Presidio': 17, 'Marina District': 15, 'Financial District': 17,\n        'Nob Hill': 11, 'Sunset District': 16, 'Chinatown': 15, 'Russian Hill': 13,\n        'North Beach': 15, 'Haight-Ashbury': 5\n    },\n    'Marina District': {\n        'Union Square': 16, 'Presidio': 10, 'Alamo Square': 15, 'Financial District': 17,\n        'Nob Hill': 12, 'Sunset District': 19, 'Chinatown': 15, 'Russian Hill': 8,\n        'North Beach': 11, 'Haight-Ashbury': 16\n    },\n    'Financial District': {\n        'Union Square': 9, 'Presidio': 22, 'Alamo Square': 17, 'Marina District': 15,\n        'Nob Hill': 8, 'Sunset District': 30, 'Chinatown': 5, 'Russian Hill': 11,\n        'North Beach': 7, 'Haight-Ashbury': 19\n    },\n    'Nob Hill': {\n        'Union Square': 7, 'Presidio': 17, 'Alamo Square': 11, 'Marina District': 11,\n        'Financial District': 9, 'Sunset District': 24, 'Chinatown': 6, 'Russian Hill': 5,\n        'North Beach': 8, 'Haight-Ashbury': 13\n    },\n    'Sunset District': {\n        'Union Square': 30, 'Presidio': 16, 'Alamo Square': 17, 'Marina District': 21,\n        'Financial District': 30, 'Nob Hill': 27, 'Chinatown': 30, 'Russian Hill': 24,\n        'North Beach': 28, 'Haight-Ashbury': 15\n    },\n    'Chinatown': {\n        'Union Square': 7, 'Presidio': 19, 'Alamo Square': 17, 'Marina District': 12,\n        'Financial District': 5, 'Nob Hill': 9, 'Sunset District': 29, 'Russian Hill': 7,\n        'North Beach': 3, 'Haight-Ashbury': 19\n    },\n    'Russian Hill': {\n        'Union Square': 10, 'Presidio': 14, 'Alamo Square': 15, 'Marina District': 7,\n        'Financial District': 11, 'Nob Hill': 5, 'Sunset District': 23, 'Chinatown': 9,\n        'North Beach': 5, 'Haight-Ashbury': 17\n    },\n    'North Beach': {\n        'Union Square': 7, 'Presidio': 17, 'Alamo Square': 16, 'Marina District': 9,\n        'Financial District': 8, 'Nob Hill': 7, 'Sunset District': 27, 'Chinatown': 6,\n        'Russian Hill': 4, 'Haight-Ashbury': 18\n    },\n    'Haight-Ashbury': {\n        'Union Square': 19, 'Presidio': 15, 'Alamo Square': 5, 'Marina District': 17,\n        'Financial District': 21, 'Nob Hill': 15, 'Sunset District': 15, 'Chinatown': 19,\n        'Russian Hill': 17, 'North Beach': 19\n    }\n}\n\n# Friend constraints\nfriends = [\n    {'name': 'Kimberly', 'location': 'Presidio', 'start': 15.5, 'end': 16.0, 'duration': 0.25},\n    {'name': 'Elizabeth', 'location': 'Alamo Square', 'start': 19.25, 'end': 20.25, 'duration': 0.25},\n    {'name': 'Joshua', 'location': 'Marina District', 'start': 10.5, 'end': 14.25, 'duration': 0.75},\n    {'name': 'Sandra', 'location': 'Financial District', 'start': 19.5, 'end': 20.25, 'duration': 0.75},\n    {'name': 'Kenneth', 'location': 'Nob Hill', 'start': 12.75, 'end': 21.75, 'duration': 0.5},\n    {'name': 'Betty', 'location': 'Sunset District', 'start': 14.0, 'end': 19.0, 'duration': 1.0},\n    {'name': 'Deborah', 'location': 'Chinatown', 'start': 17.25, 'end': 20.5, 'duration': 0.25},\n    {'name': 'Barbara', 'location': 'Russian Hill', 'start': 17.5, 'end': 21.25, 'duration': 2.0},\n    {'name': 'Steven', 'location': 'North Beach', 'start': 17.75, 'end': 20.75, 'duration': 1.5},\n    {'name': 'Daniel', 'location': 'Haight-Ashbury', 'start': 18.5, 'end': 18.75, 'duration': 0.25}\n]\n\ndef time_to_float(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours + minutes / 60.0\n\ndef float_to_time(time_float):\n    hours = int(time_float)\n    minutes = int((time_float - hours) * 60)\n    return f\"{hours}:{minutes:02d}\"\n\ndef get_travel_time(from_loc, to_loc):\n    return travel_times[from_loc][to_loc] / 60.0\n\ndef is_schedule_valid(schedule):\n    current_time = 9.0  # Start at Union Square at 9:00 AM\n    current_location = 'Union Square'\n    \n    itinerary = []\n    \n    for friend in schedule:\n        # Travel to friend's location\n        travel_time = get_travel_time(current_location, friend['location'])\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet during their available time\n        meeting_start = max(arrival_time, friend['start'])\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > friend['end']:\n            return None  # Can't meet for required duration\n        \n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': float_to_time(meeting_start),\n            'end_time': float_to_time(meeting_end)\n        })\n        \n        current_time = meeting_end\n        current_location = friend['location']\n    \n    return itinerary\n\ndef evaluate_schedule(schedule):\n    itinerary = is_schedule_valid(schedule)\n    if itinerary is None:\n        return -1\n    return len(itinerary)  # Maximize number of meetings\n\ndef find_best_schedule():\n    best_score = -1\n    best_itinerary = []\n    \n    # We'll try permutations of the friends, but limit to a reasonable number\n    # due to computational constraints (10! is too large)\n    for _ in range(1000):\n        import random\n        sample = random.sample(friends, len(friends))\n        score = evaluate_schedule(sample)\n        if score > best_score:\n            best_score = score\n            best_itinerary = is_schedule_valid(sample)\n    \n    return best_itinerary\n\ndef main():\n    itinerary = find_best_schedule()\n    if not itinerary:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    \n    # Convert to the required output format\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_912"
+        }
+    ]
+}

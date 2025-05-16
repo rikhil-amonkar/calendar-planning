@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_itinerary():\n    # Define cities and their required days\n    cities = {\n        'Paris': 5,\n        'Warsaw': 2,\n        'Krakow': 2,\n        'Tallinn': 2,\n        'Riga': 2,\n        'Copenhagen': 5,\n        'Helsinki': 5,\n        'Oslo': 5,\n        'Santorini': 2,\n        'Lyon': 4\n    }\n    \n    # Define constraints\n    constraints = {\n        'Paris': {'meet_friends': (4, 8)},\n        'Krakow': {'workshop': (17, 18)},\n        'Riga': {'wedding': (23, 24)},\n        'Helsinki': {'meet_friend': (18, 22)},\n        'Santorini': {'visit_relatives': (12, 13)}\n    }\n    \n    # Define direct flights (undirected graph)\n    direct_flights = {\n        'Warsaw': ['Riga', 'Tallinn', 'Copenhagen', 'Paris', 'Helsinki', 'Oslo', 'Krakow'],\n        'Riga': ['Warsaw', 'Paris', 'Oslo', 'Helsinki', 'Tallinn', 'Copenhagen'],\n        'Tallinn': ['Warsaw', 'Oslo', 'Helsinki', 'Copenhagen', 'Riga'],\n        'Copenhagen': ['Helsinki', 'Warsaw', 'Lyon', 'Oslo', 'Krakow', 'Riga', 'Tallinn', 'Paris', 'Santorini'],\n        'Helsinki': ['Copenhagen', 'Oslo', 'Warsaw', 'Paris', 'Krakow', 'Riga', 'Tallinn'],\n        'Oslo': ['Lyon', 'Paris', 'Copenhagen', 'Warsaw', 'Riga', 'Tallinn', 'Helsinki', 'Krakow', 'Santorini'],\n        'Krakow': ['Helsinki', 'Warsaw', 'Copenhagen', 'Paris', 'Oslo'],\n        'Paris': ['Lyon', 'Oslo', 'Copenhagen', 'Warsaw', 'Riga', 'Tallinn', 'Helsinki', 'Krakow'],\n        'Santorini': ['Copenhagen', 'Oslo'],\n        'Lyon': ['Paris', 'Copenhagen', 'Oslo']\n    }\n    \n    # Generate all possible city orders that visit all cities\n    city_names = list(cities.keys())\n    \n    # We'll use a heuristic approach since full permutation is too expensive\n    # Start with Paris since it has early constraints\n    start_city = 'Paris'\n    remaining_cities = city_names.copy()\n    remaining_cities.remove(start_city)\n    \n    # Try permutations of remaining cities\n    best_itinerary = None\n    best_score = float('inf')\n    \n    # Limit permutations to make it computationally feasible\n    for _ in range(1000):  # Adjust based on needed precision vs performance\n        import random\n        random.shuffle(remaining_cities)\n        candidate_order = [start_city] + remaining_cities\n        \n        # Check if order is feasible based on flights\n        feasible = True\n        for i in range(len(candidate_order)-1):\n            if candidate_order[i+1] not in direct_flights[candidate_order[i]]:\n                feasible = False\n                break\n        if not feasible:\n            continue\n        \n        # Try to schedule this order\n        itinerary = []\n        current_day = 1\n        prev_city = None\n        \n        for city in candidate_order:\n            if prev_city is not None:\n                # Add flight day\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': city\n                })\n                current_day += 1  # Assume flights take 1 day\n            \n            # Add stay\n            stay_duration = cities[city]\n            end_day = current_day + stay_duration - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            \n            # Check constraints\n            if city in constraints:\n                for constraint, (start, end) in constraints[city].items():\n                    if not (current_day <= start and end <= end_day):\n                        feasible = False\n                        break\n                if not feasible:\n                    break\n            \n            prev_city = city\n            current_day = end_day + 1\n        \n        if feasible and current_day - 1 <= 25:\n            # Calculate a score (lower is better)\n            score = current_day - 1  # Total days used\n            if score < best_score:\n                best_score = score\n                best_itinerary = itinerary.copy()\n    \n    if best_itinerary is None:\n        return []  # No feasible itinerary found\n    \n    return best_itinerary\n\ndef main():\n    itinerary = find_itinerary()\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1509"
+        }
+    ]
+}

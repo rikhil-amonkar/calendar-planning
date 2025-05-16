@@ -1,0 +1,53 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 13-19",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 21-26",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 10-16",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 16-21",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 21\n    cities = {\n        'Manchester': {'duration': 3, 'constraints': {'wedding': (1, 3)}},\n        'Venice': {'duration': 7, 'constraints': {'workshop': (3, 9)}},\n        'Istanbul': {'duration': 7, 'constraints': {}},\n        'Krakow': {'duration': 6, 'constraints': {}},\n        'Lyon': {'duration': 2, 'constraints': {}}\n    }\n    \n    direct_flights = {\n        'Manchester': ['Venice', 'Istanbul', 'Krakow'],\n        'Venice': ['Manchester', 'Istanbul', 'Lyon'],\n        'Istanbul': ['Manchester', 'Venice', 'Krakow', 'Lyon'],\n        'Krakow': ['Istanbul', 'Manchester'],\n        'Lyon': ['Venice', 'Istanbul']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    current_day = 1\n    \n    # Manchester must be first due to wedding constraint (day 1-3)\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Manchester\"][\"duration\"] - 1}', 'place': 'Manchester'})\n    current_day += cities[\"Manchester\"][\"duration\"]\n    \n    # Next, Venice must be visited by day 9 (workshop constraint)\n    # Check if we can fly directly from Manchester to Venice\n    if 'Venice' in direct_flights['Manchester']:\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Manchester', 'to': 'Venice'})\n        current_day += 1  # travel day\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + cities[\"Venice\"][\"duration\"] - 1}', 'place': 'Venice'})\n        current_day += cities[\"Venice\"][\"duration\"]\n    else:\n        # Find an intermediate city (shouldn't happen based on given flights)\n        pass\n    \n    # Now, assign remaining cities: Istanbul, Krakow, Lyon\n    remaining_cities = ['Istanbul', 'Krakow', 'Lyon']\n    remaining_durations = {city: cities[city]['duration'] for city in remaining_cities}\n    \n    # Function to find next city with direct flight\n    def find_next_city(current_city, remaining):\n        for city in remaining:\n            if city in direct_flights[current_city]:\n                return city\n        return None\n    \n    current_city = 'Venice'\n    while remaining_cities and current_day <= total_days:\n        next_city = find_next_city(current_city, remaining_cities)\n        if not next_city:\n            # No direct flight found (shouldn't happen with given constraints)\n            break\n        \n        # Add flight and stay\n        itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n        current_day += 1\n        stay_duration = remaining_durations[next_city]\n        itinerary.append({'day_range': f'Day {current_day}-{current_day + stay_duration - 1}', 'place': next_city})\n        current_day += stay_duration\n        remaining_cities.remove(next_city)\n        current_city = next_city\n    \n    # Verify all days are allocated\n    if current_day < total_days:\n        # Add remaining days to last city (if any)\n        last_stay = itinerary[-1]\n        if last_stay.get('place'):\n            new_end_day = last_stay['day_range'].split('-')[1].replace('Day ', '')\n            new_end_day = int(new_end_day) + (total_days - current_day + 1)\n            itinerary[-1]['day_range'] = f'Day {last_stay[\"day_range\"].split(\"-\")[0]}-{new_end_day}'\n    \n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_587"
+        }
+    ]
+}

@@ -1,0 +1,69 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "London"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the input parameters\ntrip_days = 17\ncities = {\n    'Venice': {'duration': 3, 'conference_day': (5, 7)},\n    'London': {'duration': 3},\n    'Lisbon': {'duration': 4},\n    'Brussels': {'duration': 2, 'conference_day': (1, 2)},\n    'Reykjavik': {'duration': 3},\n    'Santorini': {'duration': 3},\n    'Madrid': {'duration': 5, 'wedding_day': (7, 11)},\n}\n\n# Define the direct flight connections\ndirect_flights = {\n    'Venice': ['Madrid', 'Brussels', 'Santorini', 'Lisbon', 'London'],\n    'Madrid': ['London', 'Santorini', 'Reykjavik', 'Venice', 'Lisbon'],\n    'Lisbon': ['Reykjavik', 'Venice', 'London', 'Madrid', 'Brussels'],\n    'Brussels': ['Venice', 'London', 'Lisbon', 'Reykjavik', 'Madrid'],\n    'Reykjavik': ['Lisbon', 'Madrid', 'London'],\n    'Santorini': ['Venice', 'Madrid', 'London'],\n    'London': ['Brussels', 'Madrid', 'Reykjavik', 'Santorini', 'Venice'],\n}\n\n# Initialize the itinerary\nitinerary = []\ncurrent_day = 1\n\n# Schedule Brussels first for the conference\nitinerary.append({'day_range': 'Day 1-2', 'place': 'Brussels'})\ncurrent_day += 2\n\n# Schedule Venice after the conference\nitinerary.append({'day_range': 'Day 3-7', 'place': 'Venice'})\ncurrent_day += 4\n\n# Schedule Madrid for the wedding\nitinerary.append({'day_range': 'Day 8-12', 'place': 'Madrid'})\ncurrent_day += 5\n\n# Schedule Lisbon next\nitinerary.append({'day_range': 'Day 13-16', 'place': 'Lisbon'})\ncurrent_day += 4\n\n# Schedule Santorini after Lisbon\nitinerary.append({'day_range': 'Day 13-15', 'place': 'Santorini'})\ncurrent_day += 3\n\n# Lastly, schedule London\nitinerary.append({'day_range': 'Day 16-17', 'place': 'London'})\ncurrent_day += 2\n\n# Add flights to the itinerary\nflights = [\n    {'flying': 'Day 2-3', 'from': 'Brussels', 'to': 'Venice'},\n    {'flying': 'Day 7-8', 'from': 'Venice', 'to': 'Madrid'},\n    {'flying': 'Day 12-13', 'from': 'Madrid', 'to': 'Lisbon'},\n    {'flying': 'Day 15-16', 'from': 'Lisbon', 'to': 'Santorini'},\n    {'flying': 'Day 16-17', 'from': 'Santorini', 'to': 'London'},\n]\n\n# Combine flights and itinerary\nitinerary_final = []\nfor flight in flights:\n    itinerary_final.append(flight)\n\nfor day in itinerary:\n    itinerary_final.append(day)\n\n# Output the result as a JSON-formatted dictionary\nprint(json.dumps(itinerary_final, indent=4))\n```",
+            "count": "trip_planning_example_895"
+        }
+    ]
+}

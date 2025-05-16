@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\ndef time_to_minutes(time_str):\n    \"\"\"Converts a time string 'HH:MM' to minutes after midnight.\"\"\"\n    t = datetime.strptime(time_str, \"%H:%M\")\n    return t.hour * 60 + t.minute\n\ndef minutes_to_time(minutes):\n    \"\"\"Converts minutes after midnight to a time string 'HH:MM'.\"\"\"\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define the workday boundaries\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# Free intervals for each participant are defined in minutes after midnight.\n# Kimberly's free intervals on Monday (excluding her meetings)\nkimberly_free = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"10:00\")),\n    (time_to_minutes(\"10:30\"), time_to_minutes(\"11:00\")),\n    (time_to_minutes(\"12:00\"), time_to_minutes(\"16:00\")),\n    (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n]\n\n# Megan is free all day, but prefers to avoid meetings before 10:00.\n# So we consider her free time starting at 10:00.\nmegan_free = [\n    (time_to_minutes(\"10:00\"), time_to_minutes(\"17:00\"))\n]\n\n# Marie's free intervals on Monday (complement of her meetings)\nmarie_free = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"10:00\")),\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n    (time_to_minutes(\"15:00\"), time_to_minutes(\"16:00\")),\n    (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n]\n\n# Diana's free intervals on Monday (complement of her meetings)\ndiana_free = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"09:30\")),\n    (time_to_minutes(\"10:00\"), time_to_minutes(\"10:30\")),\n    (time_to_minutes(\"14:30\"), time_to_minutes(\"15:30\"))\n]\n\n# Function to find common available slot among participants\ndef find_common_slot(free_times_lists, duration):\n    \"\"\"\n    Given a list of lists containing free intervals for each participant and the meeting duration,\n    find a common interval that satisfies the duration.\n    Each free interval is a tuple (start, end) in minutes.\n    \"\"\"\n    # We'll iterate over the possible slots in the workday.\n    # We consider times starting from the latest overall free start time.\n    candidate = work_start\n    while candidate + duration <= work_end:\n        slot_start = candidate\n        slot_end = candidate + duration\n        valid = True\n        for free in free_times_lists:\n            # Check if the meeting [slot_start, slot_end] can be fully contained in at least one free interval\n            in_interval = any((slot_start >= interval[0] and slot_end <= interval[1]) for interval in free)\n            if not in_interval:\n                valid = False\n                break\n        if valid:\n            return slot_start, slot_end\n        candidate += 1  # increment candidate minute by minute\n    return None\n\n# List of free times for all participants\nall_free_times = [kimberly_free, megan_free, marie_free, diana_free]\n\ncommon_slot = find_common_slot(all_free_times, meeting_duration)\n\nif common_slot:\n    start_time = minutes_to_time(common_slot[0])\n    end_time = minutes_to_time(common_slot[1])\n    day = \"Monday\"\n    # Output in the format HH:MM:HH:MM and the day\n    print(f\"{day} {start_time}:{end_time}\")\nelse:\n    print(\"No suitable meeting time found.\")\n'''",
+            "count": "calendar_scheduling_example_185"
+        }
+    ]
+}

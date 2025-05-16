@@ -1,0 +1,61 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Milan"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the constraints\n    trip_days = 18\n    city_durations = {\n        \"Tallinn\": 2,\n        \"Bucharest\": 4,\n        \"Seville\": 5,\n        \"Stockholm\": 5,\n        \"Munich\": 5,\n        \"Milan\": 2,\n    }\n\n    visits = [\n        {\"city\": \"Tallinn\", \"days\": city_durations[\"Tallinn\"]},\n        {\"city\": \"Bucharest\", \"days\": city_durations[\"Bucharest\"], \"days_range\": (1, 4)},\n        {\"city\": \"Seville\", \"days\": city_durations[\"Seville\"], \"friends_range\": (8, 12)},\n        {\"city\": \"Stockholm\", \"days\": city_durations[\"Stockholm\"]},\n        {\"city\": \"Munich\", \"days\": city_durations[\"Munich\"], \"wedding_range\": (4, 8)},\n        {\"city\": \"Milan\", \"days\": city_durations[\"Milan\"]},\n    ]\n\n    # The full itinerary list\n    itinerary = []\n    current_day = 1\n    \n    # Plan the trip based on constraints\n    for visit in visits:\n        city = visit[\"city\"]\n        duration = visit[\"days\"]\n        \n        # For Bucharest\n        if city == \"Bucharest\":\n            itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + duration - 1}\", \"place\": city})\n            current_day += duration\n        \n        # Transition to Munich for the wedding\n        elif city == \"Munich\":\n            if current_day <= 4:  # Wedding can be attended\n                itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + duration - 1}\", \"place\": city})\n                current_day += duration\n        \n        # For Seville, ensure friends are met\n        elif city == \"Seville\":\n            if current_day + duration - 1 <= 12:  # Make sure ends before day 12\n                itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + duration - 1}\", \"place\": city})\n                current_day += duration\n        \n        # For Stockholm\n        elif city == \"Stockholm\":\n            itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + duration - 1}\", \"place\": city})\n            current_day += duration\n        \n        # For Milan, this should be included last based on flight connection\n        elif city == \"Milan\":\n            itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + duration - 1}\", \"place\": city})\n            current_day += duration\n        \n        # For Tallinn, add at the start\n        elif city == \"Tallinn\":\n            itinerary.insert(0, {\"day_range\": f\"Day {current_day}-{current_day + duration - 1}\", \"place\": city})\n            current_day += duration\n    \n    # Plan transitions based on direct flights\n    transitions = [\n        {\"flying\": f\"Day {current_day-2}-{current_day-2}\", \"from\": \"Tallinn\", \"to\": \"Bucharest\"},  # Day 1\n        {\"flying\": f\"Day {current_day-1}-{current_day-1}\", \"from\": \"Bucharest\", \"to\": \"Munich\"},  # Day 5\n        {\"flying\": f\"Day {current_day-1}-{current_day-1}\", \"from\": \"Munich\", \"to\": \"Seville\"},  # Day 8\n        {\"flying\": f\"Day {current_day-1}-{current_day-1}\", \"from\": \"Seville\", \"to\": \"Stockholm\"},  # Day 13\n        {\"flying\": f\"Day {current_day-1}-{current_day-1}\", \"from\": \"Stockholm\", \"to\": \"Milan\"},  # Day 18\n    ]\n    \n    # Combine itineraries and transitions\n    full_itinerary = []\n    \n    for part in transitions:\n        full_itinerary.append(part)\n    for part in itinerary:\n        full_itinerary.append(part)\n\n    return json.dumps(full_itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_664"
+        }
+    ]
+}

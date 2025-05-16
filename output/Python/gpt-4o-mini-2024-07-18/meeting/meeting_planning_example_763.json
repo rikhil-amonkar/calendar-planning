@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mark",
+                        "start_time": "15:57",
+                        "end_time": "16:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Richard",
+                        "start_time": "16:52",
+                        "end_time": "18:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Margaret",
+                        "start_time": "18:28",
+                        "end_time": "18:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:50",
+                        "end_time": "20:20"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times (in minutes) as a nested dictionary\ntravel_times = {\n    \"Chinatown\": {\n        \"Embarcadero\": 5,\n        \"Pacific Heights\": 10,\n        \"Russian Hill\": 7,\n        \"Haight-Ashbury\": 19,\n        \"Golden Gate Park\": 23,\n        \"Fisherman's Wharf\": 8,\n        \"Sunset District\": 29,\n        \"The Castro\": 22\n    },\n    \"Embarcadero\": {\n        \"Chinatown\": 7,\n        \"Pacific Heights\": 11,\n        \"Russian Hill\": 8,\n        \"Haight-Ashbury\": 21,\n        \"Golden Gate Park\": 25,\n        \"Fisherman's Wharf\": 6,\n        \"Sunset District\": 30,\n        \"The Castro\": 25\n    },\n    \"Pacific Heights\": {\n        \"Chinatown\": 11,\n        \"Embarcadero\": 10,\n        \"Russian Hill\": 7,\n        \"Haight-Ashbury\": 11,\n        \"Golden Gate Park\": 15,\n        \"Fisherman's Wharf\": 13,\n        \"Sunset District\": 21,\n        \"The Castro\": 16\n    },\n    \"Russian Hill\": {\n        \"Chinatown\": 9,\n        \"Embarcadero\": 8,\n        \"Pacific Heights\": 7,\n        \"Haight-Ashbury\": 17,\n        \"Golden Gate Park\": 21,\n        \"Fisherman's Wharf\": 7,\n        \"Sunset District\": 23,\n        \"The Castro\": 21\n    },\n    \"Haight-Ashbury\": {\n        \"Chinatown\": 19,\n        \"Embarcadero\": 20,\n        \"Pacific Heights\": 12,\n        \"Russian Hill\": 17,\n        \"Golden Gate Park\": 7,\n        \"Fisherman's Wharf\": 23,\n        \"Sunset District\": 15,\n        \"The Castro\": 6\n    },\n    \"Golden Gate Park\": {\n        \"Chinatown\": 23,\n        \"Embarcadero\": 25,\n        \"Pacific Heights\": 16,\n        \"Russian Hill\": 19,\n        \"Haight-Ashbury\": 7,\n        \"Fisherman's Wharf\": 24,\n        \"Sunset District\": 10,\n        \"The Castro\": 13\n    },\n    \"Fisherman's Wharf\": {\n        \"Chinatown\": 12,\n        \"Embarcadero\": 8,\n        \"Pacific Heights\": 12,\n        \"Russian Hill\": 7,\n        \"Haight-Ashbury\": 22,\n        \"Golden Gate Park\": 25,\n        \"Sunset District\": 29,\n        \"The Castro\": 27\n    },\n    \"Sunset District\": {\n        \"Chinatown\": 30,\n        \"Embarcadero\": 30,\n        \"Pacific Heights\": 21,\n        \"Russian Hill\": 24,\n        \"Haight-Ashbury\": 15,\n        \"Golden Gate Park\": 11,\n        \"Fisherman's Wharf\": 29,\n        \"The Castro\": 17\n    },\n    \"The Castro\": {\n        \"Chinatown\": 22,\n        \"Embarcadero\": 22,\n        \"Pacific Heights\": 16,\n        \"Russian Hill\": 18,\n        \"Haight-Ashbury\": 6,\n        \"Golden Gate Park\": 11,\n        \"Fisherman's Wharf\": 24,\n        \"Sunset District\": 17\n    }\n}\n\n# Define meeting constraints\nmeetings = {\n    \"Richard\": {\"location\": \"Embarcadero\", \"available\": (datetime.strptime('15:15', '%H:%M'), datetime.strptime('18:45', '%H:%M')), \"duration\": 90},\n    \"Mark\": {\"location\": \"Pacific Heights\", \"available\": (datetime.strptime('15:00', '%H:%M'), datetime.strptime('17:00', '%H:%M')), \"duration\": 45},\n    \"Matthew\": {\"location\": \"Russian Hill\", \"available\": (datetime.strptime('17:30', '%H:%M'), datetime.strptime('21:00', '%H:%M')), \"duration\": 90},\n    \"Rebecca\": {\"location\": \"Haight-Ashbury\", \"available\": (datetime.strptime('14:45', '%H:%M'), datetime.strptime('18:00', '%H:%M')), \"duration\": 60},\n    \"Melissa\": {\"location\": \"Golden Gate Park\", \"available\": (datetime.strptime('13:45', '%H:%M'), datetime.strptime('17:30', '%H:%M')), \"duration\": 90},\n    \"Margaret\": {\"location\": \"Fisherman's Wharf\", \"available\": (datetime.strptime('14:45', '%H:%M'), datetime.strptime('20:15', '%H:%M')), \"duration\": 15},\n    \"Emily\": {\"location\": \"Sunset District\", \"available\": (datetime.strptime('15:45', '%H:%M'), datetime.strptime('17:00', '%H:%M')), \"duration\": 45},\n    \"George\": {\"location\": \"The Castro\", \"available\": (datetime.strptime('14:00', '%H:%M'), datetime.strptime('16:15', '%H:%M')), \"duration\": 75},\n}\n\n# Calculate and build itinerary\ndef schedule_meetings():\n    start_time = datetime.strptime('09:00', '%H:%M')\n    end_time = datetime.strptime('21:00', '%H:%M')\n    itinerary = []\n    current_time = start_time\n    current_location = \"Chinatown\"\n\n    while current_time < end_time:\n        for person, details in meetings.items():\n            location = details['location']\n            available_start, available_end = details['available']\n            duration = details['duration']\n\n            travel_time = travel_times[current_location][location]\n            start_meeting_time = current_time + timedelta(minutes=travel_time)\n\n            if start_meeting_time < available_start:\n                current_time = available_start - timedelta(minutes=travel_time)\n                start_meeting_time = current_time + timedelta(minutes=travel_time)\n\n            end_meeting_time = start_meeting_time + timedelta(minutes=duration)\n\n            if available_start <= start_meeting_time < available_end and end_meeting_time <= available_end:\n                itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": location,\n                    \"person\": person,\n                    \"start_time\": start_meeting_time.strftime('%H:%M'),\n                    \"end_time\": end_meeting_time.strftime('%H:%M')\n                })\n                current_time = end_meeting_time + timedelta(minutes=travel_time)\n                current_location = location\n                break\n    return {\"itinerary\": itinerary}\n\n# Execute scheduling\nresult = schedule_meetings()\n\n# Output result in JSON format\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_763"
+        }
+    ]
+}

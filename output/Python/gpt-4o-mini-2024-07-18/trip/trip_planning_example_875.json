@@ -1,0 +1,77 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 21-24",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 26-30",
+                        "place": "Venice"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the trip parameters\ncities = {\n    'Stuttgart': {'stay': 3, 'workshop': (11, 13)},\n    'Edinburgh': {'stay': 4},\n    'Athens': {'stay': 4},\n    'Split': {'stay': 2, 'friends_meeting': (13, 14)},\n    'Krakow': {'stay': 4, 'friends_meeting': (8, 11)},\n    'Venice': {'stay': 5},\n    'Mykonos': {'stay': 4},\n}\n\n# Define the flight connections\nflights = {\n    'Krakow': ['Split', 'Stuttgart', 'Edinburgh'],\n    'Split': ['Athens', 'Stuttgart'],\n    'Edinburgh': ['Krakow', 'Stuttgart', 'Athens', 'Venice'],\n    'Venice': ['Stuttgart', 'Athens', 'Edinburgh'],\n    'Athens': ['Mykonos'],\n    'Stuttgart': ['Athens', 'Split', 'Venice'],\n}\n\n# Initialize itinerary and variables\nitinerary = []\ncurrent_day = 1\nremaining_days = 20\n\n# Helper function to add to itinerary\ndef add_to_itinerary(day_range, place):\n    itinerary.append({'day_range': day_range, 'place': place})\n\n# Schedule\n# Stuttgart (Days 1-3)\nadd_to_itinerary(f'Day {current_day}-{current_day + cities[\"Stuttgart\"][\"stay\"] - 1}', 'Stuttgart')\ncurrent_day += cities['Stuttgart']['stay']\n\n# Krakow (Days 4-7)\nadd_to_itinerary(f'Day {current_day}-{current_day + cities[\"Krakow\"][\"stay\"] - 1}', 'Krakow')\ncurrent_day += cities['Krakow']['stay']\n\n# Edinburgh (Days 8-11) - Meeting friend\nadd_to_itinerary(f'Day {current_day}-{current_day + cities[\"Edinburgh\"][\"stay\"] - 1}', 'Edinburgh')\ncurrent_day += cities['Edinburgh']['stay']\n\n# Stuttgart (Days 11-13) - Workshop\nadd_to_itinerary(f'Day {current_day}-{current_day + cities[\"Stuttgart\"][\"workshop\"][1] - cities[\"Stuttgart\"][\"workshop\"][0] + 1}', 'Stuttgart')\ncurrent_day += (cities['Stuttgart']['workshop'][1] - cities['Stuttgart']['workshop'][0] + 1)\n\n# Split (Days 13-14) - Meeting friends\nadd_to_itinerary(f'Day {current_day}-{current_day + cities[\"Split\"][\"stay\"] - 1}', 'Split')\ncurrent_day += cities['Split']['stay']\n\n# Athens (Days 15-18)\nadd_to_itinerary(f'Day {current_day}-{current_day + cities[\"Athens\"][\"stay\"] - 1}', 'Athens')\ncurrent_day += cities['Athens']['stay']\n\n# Mykonos (Days 19-20)\nadd_to_itinerary(f'Day {current_day}-{current_day + cities[\"Mykonos\"][\"stay\"] - 1}', 'Mykonos')\ncurrent_day += cities['Mykonos']['stay']\n\n# Venice (Days 15-19) integrate with remaining days as necessary\nadd_to_itinerary(f'Day {current_day + 1}-{current_day + cities[\"Venice\"][\"stay\"]}', 'Venice')\n\n# Output the itinerary in JSON format\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_875"
+        }
+    ]
+}

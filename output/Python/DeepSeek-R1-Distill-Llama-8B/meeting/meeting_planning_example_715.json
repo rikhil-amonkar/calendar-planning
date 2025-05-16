@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "9:30",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "10:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joseph",
+                        "start_time": "13:24",
+                        "end_time": "15:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Amanda",
+                        "start_time": "15:25",
+                        "end_time": "17:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "19:31",
+                        "end_time": "21:16"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "Alright, so I'm trying to figure out how to write this Python program that helps schedule meetings in San Francisco based on the given constraints. Let me break it down step by step.\n\nFirst, I need to understand the problem. The user is arriving at Presidio at 9:00 AM and wants to meet as many friends as possible. Each friend has specific availability windows and required meeting durations. The goal is to find the optimal schedule that maximizes the number of meetings without overlapping times, considering the travel times between locations.\n\nLooking at the input, there are travel distances from Presidio to various locations and vice versa. Each person has their own location, availability start and end times, duration they're willing to meet, and the travel time from Presidio to their location.\n\nMy initial thought is to calculate the feasible meeting times for each person. For each person, I need to determine the earliest and latest possible times they can meet, considering their availability and the travel time from Presidio.\n\nI'll start by defining the travel times in a dictionary. Each location will have its travel time from Presidio. Then, I'll create a list of people, each with their details.\n\nNext, I need a function to calculate feasible meeting times. For each person, I'll convert their availability start and end times to minutes since 9:00 AM. I'll adjust these times by adding the travel time to account for the time it takes to get to their location. Then, I'll determine the latest possible start time for the meeting, which is their end time minus their meeting duration. If this latest start time is earlier than the earliest possible start time (9:00 AM), it means no meeting is possible with that person.\n\nOnce I have all feasible meeting times, I'll sort them by their end times. This helps in selecting the earliest ending meetings first, which is a greedy approach to maximize the number of non-overlapping meetings.\n\nAfter sorting, I'll iterate through the feasible meetings and add them to the itinerary if they don't overlap with the previously selected meetings. This ensures that I'm selecting the maximum number of meetings without conflicts.\n\nFinally, I'll format the itinerary into the required JSON structure, converting the times back to the 24-hour format strings.\n\nI also need to make sure that the code runs independently and outputs valid JSON. So, I'll structure the code with functions to keep it modular and ensure that all inputs are correctly handled.\n\nI should test this logic with the given constraints to see if it works. For example, Amanda is available from 2:45 PM to 7:30 PM, so her feasible meeting time would be from 2:45 PM plus travel time (10 minutes) to Marina District, ending by 7:30 PM minus 105 minutes. This should give a window for a meeting.\n\nSimilarly, for Melissa, who is available from 9:30 AM to 5:00 PM, her feasible meeting time would be adjusted by the travel time to The Castro. This helps in determining the earliest and latest possible meetings.\n\nBy following these steps, I can create a program that optimally schedules the meetings based on the given constraints.\n</think>\n\nSOLUTION:\n\n```python\nimport json\n\n# Define travel times from Presidio to each location\ntravel_times = {\n    'Presidio': {\n        'Marina District': 11,\n        'The Castro': 21,\n        'Fisherman's Wharf': 19,\n        'Bayview': 31,\n        'Pacific Heights': 11,\n        'Mission District': 26,\n        'Alamo Square': 19,\n        'Golden Gate Park': 12\n    },\n    'Marina District': {\n        'Presidio': 10,\n        'The Castro': 22,\n        'Fisherman's Wharf': 10,\n        'Bayview': 27,\n        'Pacific Heights': 7,\n        'Mission District': 20,\n        'Alamo Square': 15,\n        'Golden Gate Park': 18\n    },\n    'The Castro': {\n        'Presidio': 20,\n        'Marina District': 21,\n        'Fisherman's Wharf': 24,\n        'Bayview': 19,\n        'Pacific Heights': 16,\n        'Mission District': 7,\n        'Alamo Square': 8,\n        'Golden Gate Park': 11\n    },\n    'Fisherman's Wharf': {\n        'Presidio': 17,\n        'Marina District': 9,\n        'The Castro': 27,\n        'Bayview': 26,\n        'Pacific Heights': 12,\n        'Mission District': 22,\n        'Alamo Square': 21,\n        'Golden Gate Park': 25\n    },\n    'Bayview': {\n        'Presidio': 32,\n        'Marina District': 27,\n        'The Castro': 19,\n        'Fisherman's Wharf': 25,\n        'Pacific Heights': 23,\n        'Mission District': 13,\n        'Alamo Square': 16,\n        'Golden Gate Park': 22\n    },\n    'Pacific Heights': {\n        'Presidio': 11,\n        'Marina District': 6,\n        'The Castro': 16,\n        'Fisherman's Wharf': 13,\n        'Bayview': 22,\n        'Mission District': 15,\n        'Alamo Square': 10,\n        'Golden Gate Park': 15\n    },\n    'Mission District': {\n        'Presidio': 25,\n        'Marina District': 19,\n        'The Castro': 7,\n        'Fisherman's Wharf': 22,\n        'Bayview': 14,\n        'Pacific Heights': 16,\n        'Alamo Square': 11,\n        'Golden Gate Park': 17\n    },\n    'Alamo Square': {\n        'Presidio': 17,\n        'Marina District': 15,\n        'The Castro': 8,\n        'Fisherman's Wharf': 19,\n        'Bayview': 16,\n        'Pacific Heights': 10,\n        'Mission District': 10,\n        'Golden Gate Park': 9\n    },\n    'Golden Gate Park': {\n        'Presidio': 11,\n        'Marina District': 16,\n        'The Castro': 13,\n        'Fisherman's Wharf': 24,\n        'Bayview': 23,\n        'Pacific Heights': 16,\n        'Mission District': 17,\n        'Alamo Square': 9\n    }\n}\n\n# List of people with their details\npeople = [\n    {\n        'name': 'Amanda',\n        'location': 'Marina District',\n        'start_time': '2:45',\n        'end_time': '7:30',\n        'duration': 105,\n        'travel_time': 11\n    },\n    {\n        'name': 'Melissa',\n        'location': 'The Castro',\n        'start_time': '9:30',\n        'end_time': '5:00',\n        'duration': 30,\n        'travel_time': 21\n    },\n    {\n        'name': 'Jeffrey',\n        'location': 'Fisherman's Wharf',\n        'start_time': '12:45',\n        'end_time': '6:45',\n        'duration': 120,\n        'travel_time': 19\n    },\n    {\n        'name': 'Matthew',\n        'location': 'Bayview',\n        'start_time': '10:15',\n        'end_time': '1:15',\n        'duration': 30,\n        'travel_time': 31\n    },\n    {\n        'name': 'Nancy',\n        'location': 'Pacific Heights',\n        'start_time': '5:00',\n        'end_time': '9:30',\n        'duration': 105,\n        'travel_time': 11\n    },\n    {\n        'name': 'Karen',\n        'location': 'Mission District',\n        'start_time': '5:30',\n        'end_time': '8:30',\n        'duration': 105,\n        'travel_time': 26\n    },\n    {\n        'name': 'Robert',\n        'location': 'Alamo Square',\n        'start_time': '11:15',\n        'end_time': '5:30',\n        'duration': 120,\n        'travel_time': 19\n    },\n    {\n        'name': 'Joseph',\n        'location': 'Golden Gate Park',\n        'start_time': '8:30',\n        'end_time': '9:15',\n        'duration': 105,\n        'travel_time': 12\n    }\n]\n\n# Function to calculate feasible meeting times\ndef calculate_feasible_meetings(people, travel_times):\n    meetings = []\n    for person in people:\n        location = person['location']\n        start_time = person['start_time']\n        end_time = person['end_time']\n        duration = person['duration']\n        travel_time = travel_times['Presidio'][location]\n        \n        # Convert times to minutes since 9:00 AM\n        earliest_start_min = (int(start_time.replace(':', '')) * 60) + 540  # 9:00 AM in minutes\n        latest_start_min = (int(end_time.replace(':', '')) * 60) - duration\n        \n        # Ensure earliest start is at least 9:00 AM\n        if earliest_start_min < 540:\n            earliest_start_min = 540\n        \n        if latest_start_min < earliest_start_min:\n            continue  # No possible meeting time\n        \n        meetings.append({\n            'name': person['name'],\n            'location': location,\n            'start_time': earliest_start_min,\n            'end_time': latest_start_min\n        })\n    \n    return meetings\n\n# Calculate feasible meeting times\nfeasible_meetings = calculate_feasible_meetings(people, travel_times)\n\n# Sort meetings by end time\nfeasible_meetings.sort(key=lambda x: x['end_time'])\n\n# Select non-overlapping meetings\nitinerary = []\nfor meeting in feasible_meetings:\n    start = meeting['start_time']\n    end = meeting['end_time']\n    if not itinerary or end <= itinerary[-1]['end_time']:\n        itinerary.append(meeting)\n\n# Convert time to 24-hour format strings\nitinerary = [\n    {\n        'action': 'meet',\n        'location': meeting['location'],\n        'person': meeting['name'],\n        'start_time': f\"{meeting['start_time'] // 60 + (meeting['start_time'] % 60 // 10)}:{meeting['start_time'] % 60 // 10 * 10}\",\n        'end_time': f\"{meeting['end_time'] // 60 + (meeting['end_time'] % 60 // 10)}:{meeting['end_time'] % 60 // 10 * 10}\"\n    }\n    for meeting in itinerary\n]\n\n# Generate JSON output\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_715"
+        }
+    ]
+}

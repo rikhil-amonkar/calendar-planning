@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "14:39",
+                        "end_time": "16:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "16:50",
+                        "end_time": "17:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "17:14",
+                        "end_time": "18:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "18:45",
+                        "end_time": "19:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "14:52",
+                        "end_time": "15:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "15:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "17:37",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "19:02",
+                        "end_time": "19:47"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\nfriends = [\n    {'name': 'Jason', 'location': 'Richmond District', 'available_start': 780, 'available_end': 1245, 'duration': 90},\n    {'name': 'Melissa', 'location': 'North Beach', 'available_start': 1125, 'available_end': 1215, 'duration': 45},\n    {'name': 'Brian', 'location': 'Financial District', 'available_start': 585, 'available_end': 1305, 'duration': 15},\n    {'name': 'Elizabeth', 'location': 'Golden Gate Park', 'available_start': 525, 'available_end': 1290, 'duration': 105},\n    {'name': 'Laura', 'location': 'Union Square', 'available_start': 855, 'available_end': 1170, 'duration': 75}\n]\n\ntravel_times = {\n    ('Presidio', 'Richmond District'):7, ('Presidio', 'North Beach'):18, ('Presidio', 'Financial District'):23,\n    ('Presidio', 'Golden Gate Park'):12, ('Presidio', 'Union Square'):22, ('Richmond District', 'Presidio'):7,\n    ('Richmond District', 'North Beach'):17, ('Richmond District', 'Financial District'):22, ('Richmond District', 'Golden Gate Park'):9,\n    ('Richmond District', 'Union Square'):21, ('North Beach', 'Presidio'):17, ('North Beach', 'Richmond District'):18,\n    ('North Beach', 'Financial District'):8, ('North Beach', 'Golden Gate Park'):22, ('North Beach', 'Union Square'):7,\n    ('Financial District', 'Presidio'):22, ('Financial District', 'Richmond District'):21, ('Financial District', 'North Beach'):7,\n    ('Financial District', 'Golden Gate Park'):23, ('Financial District', 'Union Square'):9, ('Golden Gate Park', 'Presidio'):11,\n    ('Golden Gate Park', 'Richmond District'):7, ('Golden Gate Park', 'North Beach'):24, ('Golden Gate Park', 'Financial District'):26,\n    ('Golden Gate Park', 'Union Square'):22, ('Union Square', 'Presidio'):24, ('Union Square', 'Richmond District'):20,\n    ('Union Square', 'North Beach'):10, ('Union Square', 'Financial District'):9, ('Union Square', 'Golden Gate Park'):22\n}\n\ndef minutes_to_time(m):\n    return f\"{m//60}:{m%60:02d}\"\n\nbest_itinerary = []\nbest_count = 0\nbest_end = float('inf')\n\nfor perm in itertools.permutations(friends):\n    current_time = 540\n    current_loc = 'Presidio'\n    itinerary = []\n    for friend in perm:\n        to = friend['location']\n        travel = travel_times.get((current_loc, to))\n        if not travel:\n            continue\n        arrive = current_time + travel\n        start = max(arrive, friend['available_start'])\n        end = start + friend['duration']\n        if end > friend['available_end']:\n            continue\n        itinerary.append({'start': start, 'end': end, 'loc': to, 'name': friend['name']})\n        current_time = end\n        current_loc = to\n    if len(itinerary) > best_count or (len(itinerary) == best_count and current_time < best_end):\n        best_count = len(itinerary)\n        best_end = current_time\n        best_itinerary = itinerary\n\nformatted = []\nfor meet in best_itinerary:\n    formatted.append({\n        \"action\": \"meet\",\n        \"location\": meet['loc'],\n        \"person\": meet['name'],\n        \"start_time\": minutes_to_time(meet['start']),\n        \"end_time\": minutes_to_time(meet['end'])\n    })\n\nprint(json.dumps({\"itinerary\": formatted}, indent=2))",
+            "count": "meeting_planning_example_423"
+        }
+    ]
+}

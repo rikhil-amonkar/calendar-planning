@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "9:30",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "10:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "11:30",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "13:49",
+                        "end_time": "15:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Amanda",
+                        "start_time": "16:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "18:22",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joseph",
+                        "start_time": "20:22",
+                        "end_time": "22:07"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "9:30",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "10:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joseph",
+                        "start_time": "13:24",
+                        "end_time": "15:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Amanda",
+                        "start_time": "15:25",
+                        "end_time": "17:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "19:31",
+                        "end_time": "21:16"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, so I need to solve this problem where I have to create a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I'll start by understanding the problem thoroughly. The user arrives at Presidio at 9:00 AM and wants to meet friends located in different districts. Each friend has a specific time window during which they are available and a minimum meeting duration. The challenge is to find the best schedule that allows meeting the maximum number of friends without overlapping meetings and considering the travel times between locations.\n\nI'll begin by listing out all the travel times between the various districts. This data will be stored in a dictionary for quick lookup. Each key will be a tuple representing the starting and ending locations, and the value will be the travel time in minutes.\n\nNext, I'll outline the constraints for each friend. Each friend's name, location, available start and end times, and the minimum meeting duration will be stored in a list of dictionaries. This structure will make it easy to iterate over each friend and check their availability.\n\nNow, I need to think about the algorithm to solve this problem. Since the goal is to maximize the number of friends met, a brute-force approach might not be efficient, especially as the number of friends increases. However, given the relatively small number of friends (eight in this case), a backtracking approach could be feasible. Backtracking will allow the program to explore all possible sequences of meetings and select the one that meets the most friends.\n\nThe backtracking function will recursively try to meet each friend, starting from the current location and time. For each friend, it will calculate the earliest possible start time by considering both the travel time from the current location and the friend's availability. If it's possible to meet the friend without exceeding their available time window, the meeting will be added to the itinerary, and the function will proceed to the next friend.\n\nI also need to handle the conversion between minutes and time strings. Since all times are in minutes, I'll create helper functions to convert minutes to a time string (e.g., 540 minutes becomes \"9:00\") and vice versa. This will make it easier to work with the times and display them in the required format.\n\nAnother important aspect is pruning the search space to improve efficiency. If the current path cannot possibly meet more friends than the best solution found so far, the function should stop exploring that path. This is done by checking if the number of friends met plus the remaining possible friends is less than the current best count.\n\nOnce the backtracking function has explored all possible sequences, the best itinerary found will be outputted in the specified JSON format. This will include each meeting's action, location, person, start time, and end time.\n\nI should also ensure that the initial call to the backtracking function starts at the correct location (Presidio) and time (9:00 AM, which is 540 minutes). The function will then recursively explore all possible meetings from there.\n\nFinally, I'll test the code to ensure it runs independently and produces valid JSON output without any errors. This includes verifying that all travel times are correctly accounted for and that no meetings overlap or exceed the friends' availability.\n</think>\n\n```python\nimport json\n\n# Define travel times between locations in minutes\ntravel_times = {\n    ('Presidio', 'Marina District'): 11,\n    ('Presidio', 'The Castro'): 21,\n    ('Presidio', 'Fisherman\\'s Wharf'): 19,\n    ('Presidio', 'Bayview'): 31,\n    ('Presidio', 'Pacific Heights'): 11,\n    ('Presidio', 'Mission District'): 26,\n    ('Presidio', 'Alamo Square'): 19,\n    ('Presidio', 'Golden Gate Park'): 12,\n    ('Marina District', 'Presidio'): 10,\n    ('Marina District', 'The Castro'): 22,\n    ('Marina District', 'Fisherman\\'s Wharf'): 10,\n    ('Marina District', 'Bayview'): 27,\n    ('Marina District', 'Pacific Heights'): 7,\n    ('Marina District', 'Mission District'): 20,\n    ('Marina District', 'Alamo Square'): 15,\n    ('Marina District', 'Golden Gate Park'): 18,\n    ('The Castro', 'Presidio'): 20,\n    ('The Castro', 'Marina District'): 21,\n    ('The Castro', 'Fisherman\\'s Wharf'): 24,\n    ('The Castro', 'Bayview'): 19,\n    ('The Castro', 'Pacific Heights'): 16,\n    ('The Castro', 'Mission District'): 7,\n    ('The Castro', 'Alamo Square'): 8,\n    ('The Castro', 'Golden Gate Park'): 11,\n    ('Fisherman\\'s Wharf', 'Presidio'): 17,\n    ('Fisherman\\'s Wharf', 'Marina District'): 9,\n    ('Fisherman\\'s Wharf', 'The Castro'): 27,\n    ('Fisherman\\'s Wharf', 'Bayview'): 26,\n    ('Fisherman\\'s Wharf', 'Pacific Heights'): 12,\n    ('Fisherman\\'s Wharf', 'Mission District'): 22,\n    ('Fisherman\\'s Wharf', 'Alamo Square'): 21,\n    ('Fisherman\\'s Wharf', 'Golden Gate Park'): 25,\n    ('Bayview', 'Presidio'): 32,\n    ('Bayview', 'Marina District'): 27,\n    ('Bayview', 'The Castro'): 19,\n    ('Bayview', 'Fisherman\\'s Wharf'): 25,\n    ('Bayview', 'Pacific Heights'): 23,\n    ('Bayview', 'Mission District'): 13,\n    ('Bayview', 'Alamo Square'): 16,\n    ('Bayview', 'Golden Gate Park'): 22,\n    ('Pacific Heights', 'Presidio'): 11,\n    ('Pacific Heights', 'Marina District'): 6,\n    ('Pacific Heights', 'The Castro'): 16,\n    ('Pacific Heights', 'Fisherman\\'s Wharf'): 13,\n    ('Pacific Heights', 'Bayview'): 22,\n    ('Pacific Heights', 'Mission District'): 15,\n    ('Pacific Heights', 'Alamo Square'): 10,\n    ('Pacific Heights', 'Golden Gate Park'): 15,\n    ('Mission District', 'Presidio'): 25,\n    ('Mission District', 'Marina District'): 19,\n    ('Mission District', 'The Castro'): 7,\n    ('Mission District', 'Fisherman\\'s Wharf'): 22,\n    ('Mission District', 'Bayview'): 14,\n    ('Mission District', 'Pacific Heights'): 16,\n    ('Mission District', 'Alamo Square'): 11,\n    ('Mission District', 'Golden Gate Park'): 17,\n    ('Alamo Square', 'Presidio'): 17,\n    ('Alamo Square', 'Marina District'): 15,\n    ('Alamo Square', 'The Castro'): 8,\n    ('Alamo Square', 'Fisherman\\'s Wharf'): 19,\n    ('Alamo Square', 'Bayview'): 16,\n    ('Alamo Square', 'Pacific Heights'): 10,\n    ('Alamo Square', 'Mission District'): 10,\n    ('Alamo Square', 'Golden Gate Park'): 9,\n    ('Golden Gate Park', 'Presidio'): 11,\n    ('Golden Gate Park', 'Marina District'): 16,\n    ('Golden Gate Park', 'The Castro'): 13,\n    ('Golden Gate Park', 'Fisherman\\'s Wharf'): 24,\n    ('Golden Gate Park', 'Bayview'): 23,\n    ('Golden Gate Park', 'Pacific Heights'): 16,\n    ('Golden Gate Park', 'Mission District'): 17,\n    ('Golden Gate Park', 'Alamo Square'): 9,\n}\n\n# Define friends with their constraints\nfriends = [\n    {'name': 'Amanda', 'location': 'Marina District', 'start': 990, 'end': 1140, 'duration': 105},\n    {'name': 'Melissa', 'location': 'The Castro', 'start': 570, 'end': 1020, 'duration': 30},\n    {'name': 'Jeffrey', 'location': 'Fisherman\\'s Wharf', 'start': 780, 'end': 1125, 'duration': 120},\n    {'name': 'Matthew', 'location': 'Bayview', 'start': 615, 'end': 810, 'duration': 30},\n    {'name': 'Nancy', 'location': 'Pacific Heights', 'start': 1020, 'end': 1410, 'duration': 105},\n    {'name': 'Karen', 'location': 'Mission District', 'start': 1050, 'end': 1260, 'duration': 105},\n    {'name': 'Robert', 'location': 'Alamo Square', 'start': 690, 'end': 990, 'duration': 120},\n    {'name': 'Joseph', 'location': 'Golden Gate Park', 'start': 510, 'end': 1410, 'duration': 105},\n]\n\ndef convert_minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef convert_time_to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\nbest_itinerary = []\nbest_count = 0\n\ndef backtrack(current_location, current_time, met, itinerary):\n    global best_itinerary, best_count\n\n    # Prune if no better solution possible\n    remaining = len(friends) - len(met)\n    if len(met) + remaining <= best_count:\n        return\n\n    # Update best if current is better\n    if len(met) > best_count:\n        best_count = len(met)\n        best_itinerary = itinerary.copy()\n\n    # Try each possible next friend\n    for friend in friends:\n        if friend['name'] in met:\n            continue\n\n        # Calculate travel time to friend's location\n        travel = travel_times.get((current_location, friend['location']), 0)\n        arrival = current_time + travel\n\n        # Friend's availability\n        start = friend['start']\n        end = friend['end']\n        duration = friend['duration']\n\n        earliest_start = max(arrival, start)\n        latest_start = end - duration\n\n        if earliest_start > latest_start:\n            continue  # Cannot meet this friend\n\n        # Schedule the meeting\n        meeting_start = earliest_start\n        meeting_end = meeting_start + duration\n\n        # Create meeting entry\n        meeting = {\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': convert_minutes_to_time(meeting_start),\n            'end_time': convert_minutes_to_time(meeting_end)\n        }\n\n        # Update the state\n        new_met = set(met)\n        new_met.add(friend['name'])\n        new_itinerary = itinerary.copy()\n        new_itinerary.append(meeting)\n\n        # Update current location and time\n        new_location = friend['location']\n        new_time = meeting_end\n\n        # Recurse\n        backtrack(new_location, new_time, new_met, new_itinerary)\n\n# Initial call\nstart_time = 540  # 9:00 AM in minutes\nbacktrack('Presidio', start_time, set(), [])\n\n# Prepare the output\noutput = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the JSON\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_715"
+        }
+    ]
+}

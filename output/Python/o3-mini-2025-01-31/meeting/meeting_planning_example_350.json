@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mary",
+                        "start_time": "10:00",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "10:56",
+                        "end_time": "12:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Charles",
+                        "start_time": "12:47",
+                        "end_time": "14:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Lisa",
+                        "start_time": "20:30",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mary",
+                        "start_time": "10:00",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "10:56",
+                        "end_time": "12:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Charles",
+                        "start_time": "12:47",
+                        "end_time": "14:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Lisa",
+                        "start_time": "20:30",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper functions to convert between \"H:MM\" string and minutes from midnight.\ndef time_to_minutes(tstr):\n    # tstr is in format \"H:MM\" (e.g., \"9:00\" or \"13:30\")\n    parts = tstr.split(':')\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_time(minutes):\n    hrs = minutes // 60\n    mins = minutes % 60\n    return f\"{hrs}:{mins:02d}\"\n\n# Define travel times in minutes as a dictionary with keys: (from, to)\ntravel_times = {\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    (\"Bayview\", \"Mission District\"): 13,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Pacific Heights\", \"Bayview\"): 22,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n    (\"Pacific Heights\", \"Financial District\"): 13,\n    (\"Mission District\", \"Bayview\"): 15,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"Haight-Ashbury\"): 12,\n    (\"Mission District\", \"Financial District\"): 17,\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n    (\"Haight-Ashbury\", \"Mission District\"): 11,\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Pacific Heights\"): 13,\n    (\"Financial District\", \"Mission District\"): 17,\n    (\"Financial District\", \"Haight-Ashbury\"): 19,\n}\n\n# Define the friend meeting constraints.\n# Each friend is represented as a dictionary.\n# Available times are stored as minutes from midnight.\nfriends = [\n    {\n        \"name\": \"Mary\",\n        \"location\": \"Pacific Heights\",\n        \"available_start\": time_to_minutes(\"10:00\"),\n        \"available_end\": time_to_minutes(\"19:00\"),\n        \"min_duration\": 45\n    },\n    {\n        \"name\": \"Lisa\",\n        \"location\": \"Mission District\",\n        \"available_start\": time_to_minutes(\"20:30\"),\n        \"available_end\": time_to_minutes(\"22:00\"),\n        \"min_duration\": 75\n    },\n    {\n        \"name\": \"Betty\",\n        \"location\": \"Haight-Ashbury\",\n        \"available_start\": time_to_minutes(\"7:15\"),\n        \"available_end\": time_to_minutes(\"17:15\"),\n        \"min_duration\": 90\n    },\n    {\n        \"name\": \"Charles\",\n        \"location\": \"Financial District\",\n        \"available_start\": time_to_minutes(\"11:15\"),\n        \"available_end\": time_to_minutes(\"15:00\"),\n        \"min_duration\": 120\n    }\n]\n\n# Starting parameters\nstart_location = \"Bayview\"\nstart_time = time_to_minutes(\"9:00\")\n\n# Given a sequence (permutation) of friends, simulate the day schedule.\ndef simulate_schedule(friend_sequence):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    \n    for friend in friend_sequence:\n        # Get travel time from current location to friend's location:\n        if (current_location, friend[\"location\"]) in travel_times:\n            travel = travel_times[(current_location, friend[\"location\"])]\n        else:\n            # If missing, consider symmetric travel time (use reverse) or skip.\n            travel = travel_times.get((friend[\"location\"], current_location), None)\n            if travel is None:\n                return None  # invalid travel info\n        arrival_time = current_time + travel\n        # Determine meeting start time by waiting if needed.\n        meeting_start = max(arrival_time, friend[\"available_start\"])\n        meeting_end = meeting_start + friend[\"min_duration\"]\n        # Check if meeting can finish before friend's availability ends.\n        if meeting_end > friend[\"available_end\"]:\n            return None  # schedule not possible with this ordering.\n        # Append meeting event to itinerary.\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        # Update the current time and location.\n        current_time = meeting_end\n        current_location = friend[\"location\"]\n    return itinerary\n\n# We want to maximize the number of meetings. We try all permutations.\nbest_itinerary = None\nmax_meetings = 0\n\nfor r in range(len(friends), 0, -1):\n    # Try all combinations of r friends in order.\n    for subset in itertools.permutations(friends, r):\n        schedule = simulate_schedule(subset)\n        if schedule is not None:\n            if r > max_meetings:\n                max_meetings = r\n                best_itinerary = schedule\n    # If we found an itinerary with all r meetings, break out.\n    if best_itinerary is not None:\n        break\n\n# If a best itinerary is found, output it, otherwise output an empty itinerary.\nresult = {\"itinerary\": best_itinerary if best_itinerary is not None else []}\n\nprint(json.dumps(result))",
+            "count": "meeting_planning_example_350"
+        }
+    ]
+}

@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 22\n    cities = {\n        'Berlin': 5,\n        'Split': 3,\n        'Bucharest': 3,\n        'Riga': 5,\n        'Lisbon': 3,\n        'Tallinn': 4,\n        'Lyon': 5\n    }\n    \n    # Constraints\n    constraints = [\n        {'city': 'Berlin', 'day_range': (1, 5)},\n        {'city': 'Bucharest', 'day_range': (13, 15)},\n        {'city': 'Lyon', 'day_range': (7, 11)}\n    ]\n    \n    # Direct flights\n    direct_flights = {\n        'Lisbon': ['Bucharest', 'Berlin', 'Riga', 'Lyon'],\n        'Berlin': ['Lisbon', 'Riga', 'Split', 'Tallinn'],\n        'Bucharest': ['Lisbon', 'Riga', 'Lyon'],\n        'Riga': ['Bucharest', 'Berlin', 'Lisbon', 'Tallinn'],\n        'Split': ['Lyon', 'Berlin'],\n        'Tallinn': ['Riga', 'Berlin'],\n        'Lyon': ['Split', 'Lisbon', 'Bucharest']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    \n    # Process fixed constraints first\n    # Berlin from day 1 to 5\n    itinerary.append({'day_range': 'Day 1-5', 'place': 'Berlin'})\n    current_city = 'Berlin'\n    current_day = 6\n    \n    # Next constraint: Lyon from day 7 to 11\n    # Need to get to Lyon by day 7\n    # Current day is 6, need to fly on day 6 to arrive in Lyon by day 7\n    # Check direct flights from Berlin to Lyon: No direct flight, need intermediate city\n    \n    # Find path from Berlin to Lyon\n    # Possible paths:\n    # Berlin -> Split -> Lyon\n    # Berlin -> Lisbon -> Lyon\n    # Berlin -> Riga -> Lyon (but no Riga -> Lyon)\n    # Berlin -> Tallinn -> ? (no path)\n    # Best path: Berlin -> Split -> Lyon\n    \n    itinerary.append({'flying': 'Day 5-5', 'from': 'Berlin', 'to': 'Split'})\n    itinerary.append({'day_range': 'Day 5-8', 'place': 'Split'})\n    itinerary.append({'flying': 'Day 8-8', 'from': 'Split', 'to': 'Lyon'})\n    itinerary.append({'day_range': 'Day 8-13', 'place': 'Lyon'})\n    current_city = 'Lyon'\n    current_day = 13\n    \n    # Next constraint: Bucharest from day 13 to 15\n    # Current day is 13, need to be in Bucharest on day 13\n    # Check direct flight from Lyon to Bucharest: Yes\n    itinerary.append({'flying': 'Day 12-12', 'from': 'Lyon', 'to': 'Bucharest'})\n    itinerary.append({'day_range': 'Day 12-15', 'place': 'Bucharest'})\n    current_city = 'Bucharest'\n    current_day = 16\n    \n    # Remaining cities: Riga (5), Lisbon (3), Tallinn (4)\n    # Days left: 16 to 22 (7 days)\n    # Need to fit Riga (5), Lisbon (3), Tallinn (4) but only 7 days\n    # Must combine some stays or adjust durations\n    \n    # Since Tallinn is only reachable from Riga or Berlin, and we're in Bucharest\n    # Path: Bucharest -> Riga -> Tallinn -> ?\n    # Allocate remaining days:\n    # Bucharest -> Riga (16-20), Riga -> Tallinn (20-23) but only have until day 22\n    # So adjust Riga to 16-20, Tallinn 20-22 (2 days instead of 4)\n    \n    # But we have Lisbon to fit in, which connects to Riga\n    # Alternative path: Bucharest -> Riga (16-18), Riga -> Tallinn (18-21), Tallinn -> ? (no flights except Riga)\n    # Doesn't work\n    \n    # Another path: Bucharest -> Riga (16-18), Riga -> Lisbon (18-21), Lisbon -> ? (but need to fit Tallinn)\n    \n    # Best option: Skip Lisbon to fit others\n    itinerary.append({'flying': 'Day 15-15', 'from': 'Bucharest', 'to': 'Riga'})\n    itinerary.append({'day_range': 'Day 15-20', 'place': 'Riga'})\n    itinerary.append({'flying': 'Day 20-20', 'from': 'Riga', 'to': 'Tallinn'})\n    itinerary.append({'day_range': 'Day 20-22', 'place': 'Tallinn'})\n    \n    # Verify all cities are visited\n    visited_cities = set()\n    for item in itinerary:\n        if 'place' in item:\n            visited_cities.add(item['place'])\n    \n    # Check if all cities are visited\n    for city in cities:\n        if city not in visited_cities:\n            # Find a way to include missing city (Lisbon in this case)\n            # Need to adjust itinerary to include Lisbon\n            # Reconstruct with Lisbon\n            itinerary = [\n                {'day_range': 'Day 1-5', 'place': 'Berlin'},\n                {'flying': 'Day 5-5', 'from': 'Berlin', 'to': 'Lisbon'},\n                {'day_range': 'Day 5-8', 'place': 'Lisbon'},\n                {'flying': 'Day 8-8', 'from': 'Lisbon', 'to': 'Lyon'},\n                {'day_range': 'Day 8-12', 'place': 'Lyon'},\n                {'flying': 'Day 12-12', 'from': 'Lyon', 'to': 'Bucharest'},\n                {'day_range': 'Day 12-15', 'place': 'Bucharest'},\n                {'flying': 'Day 15-15', 'from': 'Bucharest', 'to': 'Riga'},\n                {'day_range': 'Day 15-19', 'place': 'Riga'},\n                {'flying': 'Day 19-19', 'from': 'Riga', 'to': 'Tallinn'},\n                {'day_range': 'Day 19-22', 'place': 'Tallinn'}\n            ]\n            # Split is missing, need to include it\n            # Final adjusted itinerary that includes all cities\n            itinerary = [\n                {'day_range': 'Day 1-5', 'place': 'Berlin'},\n                {'flying': 'Day 5-5', 'from': 'Berlin', 'to': 'Split'},\n                {'day_range': 'Day 5-8', 'place': 'Split'},\n                {'flying': 'Day 8-8', 'from': 'Split', 'to': 'Lyon'},\n                {'day_range': 'Day 8-12', 'place': 'Lyon'},\n                {'flying': 'Day 12-12', 'from': 'Lyon', 'to': 'Bucharest'},\n                {'day_range': 'Day 12-15', 'place': 'Bucharest'},\n                {'flying': 'Day 15-15', 'from': 'Bucharest', 'to': 'Riga'},\n                {'day_range': 'Day 15-18', 'place': 'Riga'},\n                {'flying': 'Day 18-18', 'from': 'Riga', 'to': 'Lisbon'},\n                {'day_range': 'Day 18-21', 'place': 'Lisbon'},\n                {'flying': 'Day 21-21', 'from': 'Lisbon', 'to': 'Tallinn'},\n                {'day_range': 'Day 21-22', 'place': 'Tallinn'}\n            ]\n            break\n    \n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_824"
+        }
+    ]
+}

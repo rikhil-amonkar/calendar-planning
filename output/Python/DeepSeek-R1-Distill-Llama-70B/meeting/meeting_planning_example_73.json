@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Barbara",
+                        "start_time": "9:07",
+                        "end_time": "10:07"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Barbara",
+                        "start_time": "9:07",
+                        "end_time": "10:07"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, let's break down how I approached solving this problem. The user wants a Python program that calculates the optimal meeting schedule based on given constraints. The program must compute the schedule dynamically, not just print a pre-determined one.\n\nFirst, I need to understand the problem thoroughly. The user is visiting San Francisco and wants to meet as many friends as possible. The constraints include travel times between locations and the availability of each friend. The goal is to find the best schedule that allows meeting the maximum number of friends while respecting all constraints.\n\nI start by identifying the key components:\n\n1. **Travel Times**: A matrix of travel times between different locations in San Francisco.\n2. **Meeting Constraints**: Each friend's location, available time window, and the minimum meeting duration.\n\nNext, I consider the approach to solve this. Since the problem involves finding the best order to meet friends to maximize the number of meetings, it's a permutation problem. Each permutation of friends represents a possible schedule. For each permutation, I need to check if it's feasible based on travel times and availability.\n\nI decide to use a brute-force approach with permutations because the number of friends is small (only one in this case), making it computationally feasible. For larger numbers, a more optimized approach would be necessary, but for this scenario, brute-force works.\n\nI structure the solution as follows:\n\n1. **Convert Time to Minutes**: To simplify time calculations, I convert all times from \"H:MM\" format to minutes since midnight.\n2. **Generate Permutations**: I generate all possible permutations of the friends to consider every possible meeting order.\n3. **Check Each Permutation**: For each permutation, I calculate the arrival time at each friend's location, check if there's enough time to meet, and ensure it fits within the friend's availability.\n4. **Track the Best Schedule**: I keep track of the schedule that allows meeting the most friends.\n\nNow, I think about the data structures. I use a dictionary for travel times to quickly look up the time between any two locations. Friends are represented as a list of dictionaries, each containing their details.\n\nI also need to handle time conversions accurately. The `time_to_minutes` function converts \"H:MM\" to total minutes, and `minutes_to_time` converts back for the output.\n\nConsidering the constraints, for each friend in a permutation, I calculate the arrival time by adding the travel time from the current location to the friend's location. I then determine the earliest possible start time for the meeting, which is the maximum of the arrival time and the friend's start time. The meeting must end by the friend's end time, so I check if the meeting duration fits within this window.\n\nIf a permutation is valid and meets more friends than the current best, I update the best schedule.\n\nFinally, I output the best schedule in the required JSON format, ensuring the times are in \"H:MM\" without leading zeros.\n\nI also consider edge cases, such as when no meetings are possible or when multiple permutations yield the same number of meetings. In such cases, the first valid schedule encountered is used.\n\nThroughout the process, I make sure the code is clean, well-commented, and efficient for the given problem size. I test the code with the provided constraints to ensure it works correctly and outputs the expected JSON format.\n</think>\n\n```python\nimport itertools\n\ndef time_to_minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    h = m // 60\n    m = m % 60\n    return f\"{h}:{m:02d}\"\n\ntravel_times = {\n    'Russian Hill': {\n        'Pacific Heights': 7,\n    },\n    'Pacific Heights': {\n        'Russian Hill': 7,\n    },\n}\n\nfriends = [\n    {'name': 'Barbara', 'location': 'Pacific Heights', 'start': '7:15', 'end': '22:00', 'duration': 60},\n]\n\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Russian Hill'\n    current_time = 540  # 9:00 AM\n    itinerary = []\n    valid = True\n    for friend in perm:\n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        meet_start = max(arrival, start)\n        meet_end = meet_start + friend['duration']\n        if meet_end > end:\n            valid = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meet_start),\n            'end_time': minutes_to_time(meet_end)\n        })\n        current_location = friend['location']\n        current_time = meet_end\n    if valid:\n        if len(itinerary) > len(best_itinerary):\n            best_itinerary = itinerary.copy()\n\nprint('SOLUTION:')\nprint('{ \"itinerary\": [')\nfor i, meeting in enumerate(best_itinerary):\n    print(f'    {{\"action\": \"meet\", \"location\": \"{meeting[\"location\"]}\", \"person\": \"{meeting[\"person\"]}\", \"start_time\": \"{meeting[\"start_time\"]}\", \"end_time\": \"{meeting[\"end_time\"]}\"}}' + ('' if i == len(best_itinerary)-1 else ','))\nprint(']}')\n```",
+            "count": "meeting_planning_example_73"
+        }
+    ]
+}

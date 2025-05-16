@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "William",
+                        "start_time": "13:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Robert",
+                        "start_time": "14:15",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Mark",
+                        "start_time": "15:19",
+                        "end_time": "16:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Linda",
+                        "start_time": "16:57",
+                        "end_time": "17:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Elizabeth",
+                        "start_time": "17:42",
+                        "end_time": "19:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Rebecca",
+                        "start_time": "19:42",
+                        "end_time": "20:42"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times in minutes\ntravel_times = {\n    ('The Castro', 'Presidio'): 20,\n    ('The Castro', 'Sunset District'): 17,\n    ('The Castro', 'Haight-Ashbury'): 6,\n    ('The Castro', 'Mission District'): 7,\n    ('The Castro', 'Golden Gate Park'): 11,\n    ('The Castro', 'Russian Hill'): 18,\n    ('Presidio', 'The Castro'): 21,\n    ('Presidio', 'Sunset District'): 15,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Presidio', 'Mission District'): 26,\n    ('Presidio', 'Golden Gate Park'): 12,\n    ('Presidio', 'Russian Hill'): 14,\n    ('Sunset District', 'The Castro'): 17,\n    ('Sunset District', 'Presidio'): 16,\n    ('Sunset District', 'Haight-Ashbury'): 15,\n    ('Sunset District', 'Mission District'): 24,\n    ('Sunset District', 'Golden Gate Park'): 11,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Haight-Ashbury', 'The Castro'): 6,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Sunset District'): 15,\n    ('Haight-Ashbury', 'Mission District'): 11,\n    ('Haight-Ashbury', 'Golden Gate Park'): 7,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Mission District', 'The Castro'): 7,\n    ('Mission District', 'Presidio'): 25,\n    ('Mission District', 'Sunset District'): 24,\n    ('Mission District', 'Haight-Ashbury'): 12,\n    ('Mission District', 'Golden Gate Park'): 17,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Golden Gate Park', 'The Castro'): 13,\n    ('Golden Gate Park', 'Presidio'): 11,\n    ('Golden Gate Park', 'Sunset District'): 10,\n    ('Golden Gate Park', 'Haight-Ashbury'): 7,\n    ('Golden Gate Park', 'Mission District'): 17,\n    ('Golden Gate Park', 'Russian Hill'): 19,\n    ('Russian Hill', 'The Castro'): 21,\n    ('Russian Hill', 'Presidio'): 14,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n    ('Russian Hill', 'Mission District'): 16,\n    ('Russian Hill', 'Golden Gate Park'): 21,\n}\n\n# Meeting constraints\nmeetings = {\n    'Rebecca': {'location': 'Presidio', 'start': '18:15', 'end': '20:45', 'duration': 60},\n    'Linda': {'location': 'Sunset District', 'start': '15:30', 'end': '19:45', 'duration': 30},\n    'Elizabeth': {'location': 'Haight-Ashbury', 'start': '17:15', 'end': '19:30', 'duration': 105},\n    'William': {'location': 'Mission District', 'start': '13:15', 'end': '19:30', 'duration': 30},\n    'Robert': {'location': 'Golden Gate Park', 'start': '14:15', 'end': '21:30', 'duration': 45},\n    'Mark': {'location': 'Russian Hill', 'start': '10:00', 'end': '21:15', 'duration': 75},\n}\n\n# Start time at The Castro\nstart_time = datetime.strptime('9:00', '%H:%M')\n\n# Helper function to convert time represented as string to datetime\ndef str_to_time(time_str):\n    return datetime.strptime(time_str, '%H:%M')\n\n# Finding optimal meeting schedule\nitinerary = []\ncurrent_time = start_time\nvisited_locations = set()\n\ndef can_meet(start, end, duration):\n    return (end - start).total_seconds() / 60 >= duration\n\n# Schedule meetings based on available time and travel times\nfor person, details in meetings.items():\n    location = details['location']\n    meeting_start = str_to_time(details['start'])\n    meeting_end = str_to_time(details['end'])\n    duration = details['duration']\n\n    # Check if the current_time allows meeting this person\n    travel_time = travel_times.get((current_time.strftime('%H:%M'), location), float('inf'))\n    if current_time + timedelta(minutes=travel_time) <= meeting_end:\n        # Check if we can meet\n        actual_meeting_start = max(current_time + timedelta(minutes=travel_time), meeting_start)\n        actual_meeting_end = actual_meeting_start + timedelta(minutes=duration)\n\n        if can_meet(actual_meeting_start, actual_meeting_end, duration) and actual_meeting_end <= meeting_end:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": actual_meeting_start.strftime('%H:%M'),\n                \"end_time\": actual_meeting_end.strftime('%H:%M')\n            })\n            # Update the current time for next meeting after we meet\n            current_time = actual_meeting_end\n            visited_locations.add(location)\n\n# Output result as JSON\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_575"
+        }
+    ]
+}

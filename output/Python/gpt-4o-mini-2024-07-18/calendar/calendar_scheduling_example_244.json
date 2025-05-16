@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(participants, duration, work_hours):\n    # Convert work hours to datetime objects\n    work_start = datetime.strptime(work_hours[0], \"%H:%M\")\n    work_end = datetime.strptime(work_hours[1], \"%H:%M\")\n    \n    # Generate all time slots within work hours\n    time_slots = []\n    current_time = work_start\n    while current_time + timedelta(minutes=duration) <= work_end:\n        time_slots.append(current_time)\n        current_time += timedelta(minutes=30)  # Check every half hour\n    \n    # Check each time slot against each participant's schedule\n    for meeting_time in time_slots:\n        meeting_end = meeting_time + timedelta(minutes=duration)\n        if all(not (meeting_time < busy_start < meeting_end or meeting_time < busy_end < meeting_end) \n               for busy_times in participants.values() \n               for busy_start, busy_end in busy_times):\n            return meeting_time.strftime(\"%H:%M\"), meeting_end.strftime(\"%H:%M\")\n    \n    return None\n\n# Existing schedules\nparticipants = {\n    'Walter': [],\n    'Cynthia': [(datetime(2023, 10, 16, 9, 0), datetime(2023, 10, 16, 9, 30)),\n                (datetime(2023, 10, 16, 10, 0), datetime(2023, 10, 16, 10, 30)),\n                (datetime(2023, 10, 16, 13, 30), datetime(2023, 10, 16, 14, 30)),\n                (datetime(2023, 10, 16, 15, 0), datetime(2023, 10, 16, 16, 0))],\n    'Ann': [(datetime(2023, 10, 16, 10, 0), datetime(2023, 10, 16, 11, 0)),\n            (datetime(2023, 10, 16, 13, 0), datetime(2023, 10, 16, 13, 30)),\n            (datetime(2023, 10, 16, 14, 0), datetime(2023, 10, 16, 15, 0)),\n            (datetime(2023, 10, 16, 16, 0), datetime(2023, 10, 16, 16, 30))],\n    'Catherine': [(datetime(2023, 10, 16, 9, 0), datetime(2023, 10, 16, 11, 30)),\n                  (datetime(2023, 10, 16, 12, 30), datetime(2023, 10, 16, 13, 30)),\n                  (datetime(2023, 10, 16, 14, 30), datetime(2023, 10, 16, 17, 0))],\n    'Kyle': [(datetime(2023, 10, 16, 9, 0), datetime(2023, 10, 16, 9, 30)),\n             (datetime(2023, 10, 16, 10, 0), datetime(2023, 10, 16, 11, 30)),\n             (datetime(2023, 10, 16, 12, 0), datetime(2023, 10, 16, 12, 30)),\n             (datetime(2023, 10, 16, 13, 0), datetime(2023, 10, 16, 14, 30)),\n             (datetime(2023, 10, 16, 15, 0), datetime(2023, 10, 16, 16, 0))]\n}\n\nmeeting_duration = 30  # in minutes\nwork_hours = [\"09:00\", \"17:00\"]\nday_of_week = \"Monday\"\n\nmeeting_start, meeting_end = find_meeting_time(participants, meeting_duration, work_hours)\n\nprint(f\"{meeting_start}:{meeting_end}\")\nprint(day_of_week)\n```",
+            "count": "calendar_scheduling_example_244"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the working hours\nworking_hours_start = datetime.strptime(\"09:00\", \"%H:%M\")\nworking_hours_end = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# Existing schedules (busy times)\njuan_busy_times = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n                   (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\"))]\n\nmarilyn_busy_times = [(datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n                      (datetime.strptime(\"12:30\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\"))]\n\nronald_busy_times = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n                     (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                     (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n                     (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))]\n\n# Merge all busy times into a single list\nbusy_times = juan_busy_times + marilyn_busy_times + ronald_busy_times\n\n# Function to find a suitable time slot\ndef find_meeting_time(busy_times, duration, start, end):\n    # Sort busy times\n    busy_times.sort()\n    \n    # Check available time slots\n    current_time = start\n\n    for busy_start, busy_end in busy_times:\n        # Check if there's enough time before the next busy time\n        if current_time + timedelta(minutes=duration) <= busy_start:\n            return current_time, current_time + timedelta(minutes=duration)\n        \n        # Move the current time to the end of the busy time\n        current_time = max(current_time, busy_end)\n    \n    # Check if there's time after all busy schedules until the end of the workday\n    if current_time + timedelta(minutes=duration) <= end:\n        return current_time, current_time + timedelta(minutes=duration)\n\n# Find a meeting time\nmeeting_start, meeting_end = find_meeting_time(busy_times, meeting_duration, working_hours_start, working_hours_end)\n\n# Output the result in specified format\nmeeting_time_range = f\"{meeting_start.strftime('%H:%M')}:{meeting_end.strftime('%H:%M')}\"\nday_of_week = \"Monday\"\n\nprint(meeting_time_range)\nprint(day_of_week)\n```",
+            "count": "calendar_scheduling_example_98"
+        }
+    ]
+}

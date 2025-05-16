@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "17:19",
+                        "end_time": "19:04"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Embarcadero': {\n        'Golden Gate Park': 25,\n        'Haight-Ashbury': 21,\n        'Bayview': 21,\n        'Presidio': 20,\n        'Financial District': 5\n    },\n    'Golden Gate Park': {\n        'Embarcadero': 25,\n        'Haight-Ashbury': 7,\n        'Bayview': 23,\n        'Presidio': 11,\n        'Financial District': 26\n    },\n    'Haight-Ashbury': {\n        'Embarcadero': 20,\n        'Golden Gate Park': 7,\n        'Bayview': 19,\n        'Presidio': 15,\n        'Financial District': 21\n    },\n    'Bayview': {\n        'Embarcadero': 19,\n        'Golden Gate Park': 22,\n        'Haight-Ashbury': 19,\n        'Presidio': 31,\n        'Financial District': 19\n    },\n    'Presidio': {\n        'Embarcadero': 20,\n        'Golden Gate Park': 12,\n        'Haight-Ashbury': 15,\n        'Bayview': 31,\n        'Financial District': 23\n    },\n    'Financial District': {\n        'Embarcadero': 4,\n        'Golden Gate Park': 23,\n        'Haight-Ashbury': 19,\n        'Bayview': 19,\n        'Presidio': 22\n    }\n}\n\n# Constraints\nconstraints = {\n    'Mary': {'start_time': datetime(2024, 7, 26, 8, 45), 'end_time': datetime(2024, 7, 26, 11, 45),'min_time': 45},\n    'Kevin': {'start_time': datetime(2024, 7, 26, 10, 15), 'end_time': datetime(2024, 7, 26, 16, 15),'min_time': 90},\n    'Deborah': {'start_time': datetime(2024, 7, 26, 15, 0), 'end_time': datetime(2024, 7, 26, 19, 15),'min_time': 120},\n    'Stephanie': {'start_time': datetime(2024, 7, 26, 10, 0), 'end_time': datetime(2024, 7, 26, 17, 15),'min_time': 120},\n    'Emily': {'start_time': datetime(2024, 7, 26, 11, 30), 'end_time': datetime(2024, 7, 26, 21, 45),'min_time': 105}\n}\n\n# Start time\nstart_time = datetime(2024, 7, 26, 9, 0)\n\n# Function to calculate travel time\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\n# Function to check if a meeting is possible\ndef is_meeting_possible(meeting_start_time, meeting_end_time, person):\n    person_start_time = constraints[person]['start_time']\n    person_end_time = constraints[person]['end_time']\n    min_time = constraints[person]['min_time']\n    return (meeting_start_time >= person_start_time and meeting_start_time <= person_end_time) or \\\n           (meeting_end_time >= person_start_time and meeting_end_time <= person_end_time) or \\\n           (person_start_time <= meeting_start_time and person_end_time >= meeting_end_time and meeting_end_time - meeting_start_time >= timedelta(minutes=min_time))\n\n# Function to find the optimal meeting schedule\ndef find_optimal_schedule():\n    schedule = []\n    current_time = start_time\n    while current_time < datetime(2024, 7, 26, 23, 59):\n        possible_meetings = []\n        for person in constraints:\n            if is_meeting_possible(current_time, current_time + timedelta(minutes=60), person):\n                possible_meetings.append(person)\n        if possible_meetings:\n            meeting_person = max(possible_meetings, key=lambda person: constraints[person]['min_time'])\n            meeting_time = current_time + timedelta(minutes=constraints[meeting_person]['min_time'])\n            schedule.append({'action':'meet', 'location': 'Embarcadero', 'person': meeting_person,'start_time': current_time.strftime('%H:%M'), 'end_time': meeting_time.strftime('%H:%M')})\n            current_time = meeting_time\n        else:\n            current_time += timedelta(minutes=1)\n    return schedule\n\n# Find the optimal meeting schedule\nschedule = find_optimal_schedule()\n\n# Add travel times to the schedule\nfor i in range(len(schedule) - 1):\n    start_location = schedule[i]['location']\n    end_location = schedule[i+1]['location']\n    travel_time = calculate_travel_time(start_location, end_location)\n    schedule[i]['end_time'] = (datetime.strptime(schedule[i]['end_time'], '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    schedule[i+1]['start_time'] = (datetime.strptime(schedule[i+1]['start_time'], '%H:%M') - timedelta(minutes=travel_time)).strftime('%H:%M')\n\n# Add travel time from Embarcadero to the first meeting location\nschedule[0]['start_time'] = (datetime.strptime(schedule[0]['start_time'], '%H:%M') - timedelta(minutes=calculate_travel_time('Embarcadero', schedule[0]['location']))).strftime('%H:%M')\n\n# Add travel time from the last meeting location to Embarcadero\nschedule[-1]['end_time'] = (datetime.strptime(schedule[-1]['end_time'], '%H:%M') + timedelta(minutes=calculate_travel_time(schedule[-1]['location'], 'Embarcadero'))).strftime('%H:%M')\n\n# Print the schedule as a JSON-formatted dictionary\nprint(json.dumps({'itinerary': schedule}, indent=4))\n\n```",
+            "count": "meeting_planning_example_479"
+        }
+    ]
+}

@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    visited_cities = set()\n    city_stay = {}\n\n    # Initialize city_stay dictionary\n    for city, stay in constraints.items():\n        city_stay[city] = stay\n\n    # Visit Reykjavik\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Reykjavik\"] - 1}', 'place': 'Reykjavik'})\n    visited_cities.add('Reykjavik')\n    current_day += city_stay[\"Reykjavik\"]\n\n    # Visit Oslo\n    if 'Oslo' in direct_flights['Reykjavik']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Reykjavik', 'to': 'Oslo'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Oslo\"] - 1}', 'place': 'Oslo'})\n        visited_cities.add('Oslo')\n        current_day += city_stay[\"Oslo\"]\n    else:\n        raise Exception(\"No direct flight from Reykjavik to Oslo\")\n\n    # Visit Dubrovnik\n    if 'Dubrovnik' in direct_flights['Oslo']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Oslo', 'to': 'Dubrovnik'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Dubrovnik\"] - 1}', 'place': 'Dubrovnik'})\n        visited_cities.add('Dubrovnik')\n        current_day += city_stay[\"Dubrovnik\"]\n    else:\n        raise Exception(\"No direct flight from Oslo to Dubrovnik\")\n\n    # Visit Madrid\n    if 'Madrid' in direct_flights['Dubrovnik']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Dubrovnik', 'to': 'Madrid'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Madrid\"] - 1}', 'place': 'Madrid'})\n        visited_cities.add('Madrid')\n        current_day += city_stay[\"Madrid\"]\n    else:\n        raise Exception(\"No direct flight from Dubrovnik to Madrid\")\n\n    # Visit Lyon\n    if 'Lyon' in direct_flights['Madrid']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Madrid', 'to': 'Lyon'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Lyon\"] - 1}', 'place': 'Lyon'})\n        visited_cities.add('Lyon')\n        current_day += city_stay[\"Lyon\"]\n    else:\n        raise Exception(\"No direct flight from Madrid to Lyon\")\n\n    # Visit London\n    if 'London' in direct_flights['Lyon']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Lyon', 'to': 'London'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"London\"] - 1}', 'place': 'London'})\n        visited_cities.add('London')\n        current_day += city_stay[\"London\"]\n    else:\n        raise Exception(\"No direct flight from Lyon to London\")\n\n    # Visit Warsaw\n    if 'Warsaw' in direct_flights['London']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'London', 'to': 'Warsaw'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Warsaw\"] - 1}', 'place': 'Warsaw'})\n        visited_cities.add('Warsaw')\n        current_day += city_stay[\"Warsaw\"]\n    else:\n        raise Exception(\"No direct flight from London to Warsaw\")\n\n    # Visit Riga\n    if 'Riga' in direct_flights['Warsaw']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Warsaw', 'to': 'Riga'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Riga\"] - 1}', 'place': 'Riga'})\n        visited_cities.add('Riga')\n        current_day += city_stay[\"Riga\"]\n    else:\n        raise Exception(\"No direct flight from Warsaw to Riga\")\n\n    # Check if all cities are visited\n    for city in constraints:\n        if city not in visited_cities:\n            raise Exception(f\"City {city} is not visited\")\n\n    return trip_plan\n\ndef main():\n    constraints = {\n        \"Reykjavik\": 4,\n        \"Riga\": 2,\n        \"Oslo\": 3,\n        \"Lyon\": 5,\n        \"Dubrovnik\": 2,\n        \"Madrid\": 2,\n        \"Warsaw\": 4,\n        \"London\": 3\n    }\n\n    direct_flights = {\n        \"Warsaw\": [\"Reykjavik\", \"Riga\", \"Oslo\", \"London\", \"Madrid\"],\n        \"Oslo\": [\"Madrid\", \"Dubrovnik\", \"Reykjavik\", \"Riga\", \"Lyon\", \"London\"],\n        \"Lyon\": [\"London\", \"Madrid\"],\n        \"Madrid\": [\"London\", \"Lyon\", \"Dubrovnik\"],\n        \"Reykjavik\": [\"Warsaw\", \"Madrid\", \"Oslo\"],\n        \"London\": [\"Reykjavik\", \"Warsaw\", \"Madrid\", \"Lyon\", \"Oslo\"],\n        \"Dubrovnik\": [\"Madrid\"],\n        \"Riga\": [\"Oslo\", \"Warsaw\"]\n    }\n\n    trip_plan = calculate_trip_plan(constraints, direct_flights)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1097"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the meeting duration\nmeeting_duration = timedelta(minutes=30)\n\n# Define the available slots for both days\nmonday_slots = [(9, 0, 10, 0), (10, 30, 17, 0)]\ntuesday_slots = [(9, 30, 10, 30), (11, 30, 12, 30), (13, 30, 14, 30), (16, 0, 17, 0)]\n\n# Function to check if there is enough time for a meeting in the given slots\ndef find_meeting_time(slots):\n    for start_hour, start_minute, end_hour, end_minute in slots:\n        start_time = datetime(2023, 10, 2, start_hour, start_minute)  # Example date only for time calculation\n        end_time = datetime(2023, 10, 2, end_hour, end_minute)\n        \n        if end_time - start_time >= meeting_duration:\n            meeting_start = start_time\n            meeting_end = meeting_start + meeting_duration\n            if meeting_end <= end_time:\n                return meeting_start, meeting_end\n    return None, None\n\n# Check Monday and Tuesday\nmonday_meeting_time = find_meeting_time(monday_slots)\ntuesday_meeting_time = find_meeting_time(tuesday_slots)\n\n# Select the preferred meeting time\nif tuesday_meeting_time[0]:\n    proposed_time = tuesday_meeting_time\n    day = \"Tuesday\"\nelse:\n    proposed_time = monday_meeting_time\n    day = \"Monday\"\n\n# Format the output\noutput_start = proposed_time[0].strftime(\"%H:%M\")\noutput_end = proposed_time[1].strftime(\"%H:%M\")\noutput = f\"{output_start}:{output_end} on {day}\"\n\nprint(output)\n```",
+            "count": "calendar_scheduling_example_625"
+        }
+    ]
+}

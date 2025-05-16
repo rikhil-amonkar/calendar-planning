@@ -1,0 +1,46 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    itinerary = []\n    day_counter = 1\n\n    # 1. Spend 5 days in Seville\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + 4}', 'place': 'Seville'})\n    day_counter += 5\n\n    # 2. Visit Vilnius for 3 days\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Seville', 'to': 'Vilnius'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + 2}', 'place': 'Vilnius'})\n    day_counter += 3\n\n    # 3. Fly to Frankfurt for 5 days\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Vilnius', 'to': 'Frankfurt'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + 4}', 'place': 'Frankfurt'})\n    day_counter += 5\n\n    # 4. Move to Stuttgart between day 7-9\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Frankfurt', 'to': 'Stuttgart'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + 2}', 'place': 'Stuttgart'})\n    day_counter += 3\n\n    # 5. Fly to London (must meet friends between day 9-10)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Stuttgart', 'to': 'London'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + 1}', 'place': 'London'})\n    day_counter += 2\n\n    # 6. London to Santorini for 2 days\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'London', 'to': 'Santorini'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + 1}', 'place': 'Santorini'})\n    day_counter += 2\n\n    # 7. Back to Dublin for 3 days\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Santorini', 'to': 'Dublin'})\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + 2}', 'place': 'Dublin'})\n    day_counter += 3\n\n    # Total days should be 17\n    total_days = day_counter - 1\n    assert total_days == 17, f'Total days should equal 17, but got {total_days}.'\n\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = compute_itinerary()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_813"
+        }
+    ]
+}

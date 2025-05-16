@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jeffrey",
+                        "start_time": "12:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Charles",
+                        "start_time": "13:15",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Robert",
+                        "start_time": "15:18",
+                        "end_time": "16:48"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kimberly",
+                        "start_time": "17:00",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Karen",
+                        "start_time": "18:29",
+                        "end_time": "19:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Brian",
+                        "start_time": "19:49",
+                        "end_time": "20:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Joshua",
+                        "start_time": "21:00",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary\ntravel_times = {\n    \"Sunset District\": {\n        \"Presidio\": 16, \"Nob Hill\": 27, \"Pacific Heights\": 21, \"Mission District\": 25,\n        \"Marina District\": 21, \"North Beach\": 28, \"Russian Hill\": 24, \"Richmond District\": 12,\n        \"Embarcadero\": 30, \"Alamo Square\": 17\n    },\n    \"Presidio\": {\n        \"Sunset District\": 15, \"Nob Hill\": 18, \"Pacific Heights\": 11, \"Mission District\": 26,\n        \"Marina District\": 11, \"North Beach\": 18, \"Russian Hill\": 14, \"Richmond District\": 7,\n        \"Embarcadero\": 20, \"Alamo Square\": 19\n    },\n    \"Nob Hill\": {\n        \"Sunset District\": 24, \"Presidio\": 17, \"Pacific Heights\": 8, \"Mission District\": 13,\n        \"Marina District\": 11, \"North Beach\": 8, \"Russian Hill\": 5, \"Richmond District\": 14,\n        \"Embarcadero\": 9, \"Alamo Square\": 11\n    },\n    \"Pacific Heights\": {\n        \"Sunset District\": 21, \"Presidio\": 11, \"Nob Hill\": 8, \"Mission District\": 15,\n        \"Marina District\": 6, \"North Beach\": 9, \"Russian Hill\": 7, \"Richmond District\": 12,\n        \"Embarcadero\": 10, \"Alamo Square\": 10\n    },\n    \"Mission District\": {\n        \"Sunset District\": 24, \"Presidio\": 25, \"Nob Hill\": 12, \"Pacific Heights\": 16,\n        \"Marina District\": 19, \"North Beach\": 17, \"Russian Hill\": 15, \"Richmond District\": 20,\n        \"Embarcadero\": 19, \"Alamo Square\": 11\n    },\n    \"Marina District\": {\n        \"Sunset District\": 19, \"Presidio\": 10, \"Nob Hill\": 12, \"Pacific Heights\": 7,\n        \"Mission District\": 20, \"North Beach\": 11, \"Russian Hill\": 8, \"Richmond District\": 11,\n        \"Embarcadero\": 14, \"Alamo Square\": 15\n    },\n    \"North Beach\": {\n        \"Sunset District\": 27, \"Presidio\": 17, \"Nob Hill\": 7, \"Pacific Heights\": 8,\n        \"Mission District\": 18, \"Marina District\": 9, \"Russian Hill\": 4, \"Richmond District\": 18,\n        \"Embarcadero\": 6, \"Alamo Square\": 16\n    },\n    \"Russian Hill\": {\n        \"Sunset District\": 23, \"Presidio\": 14, \"Nob Hill\": 5, \"Pacific Heights\": 7,\n        \"Mission District\": 16, \"Marina District\": 7, \"North Beach\": 5, \"Richmond District\": 14,\n        \"Embarcadero\": 8, \"Alamo Square\": 15\n    },\n    \"Richmond District\": {\n        \"Sunset District\": 11, \"Presidio\": 7, \"Nob Hill\": 17, \"Pacific Heights\": 10,\n        \"Mission District\": 20, \"Marina District\": 9, \"North Beach\": 17, \"Russian Hill\": 13,\n        \"Embarcadero\": 19, \"Alamo Square\": 13\n    },\n    \"Embarcadero\": {\n        \"Sunset District\": 30, \"Presidio\": 20, \"Nob Hill\": 10, \"Pacific Heights\": 11,\n        \"Mission District\": 20, \"Marina District\": 12, \"North Beach\": 5, \"Russian Hill\": 8,\n        \"Richmond District\": 21, \"Alamo Square\": 19\n    },\n    \"Alamo Square\": {\n        \"Sunset District\": 16, \"Presidio\": 17, \"Nob Hill\": 11, \"Pacific Heights\": 10,\n        \"Mission District\": 10, \"Marina District\": 15, \"North Beach\": 15, \"Russian Hill\": 13,\n        \"Richmond District\": 11, \"Embarcadero\": 16\n    }\n}\n\n# Friend data\nfriends = [\n    {\"name\": \"Charles\", \"location\": \"Presidio\", \"start\": 13.25, \"end\": 15.0, \"duration\": 1.75},\n    {\"name\": \"Robert\", \"location\": \"Nob Hill\", \"start\": 13.25, \"end\": 17.5, \"duration\": 1.5},\n    {\"name\": \"Nancy\", \"location\": \"Pacific Heights\", \"start\": 14.75, \"end\": 22.0, \"duration\": 1.75},\n    {\"name\": \"Brian\", \"location\": \"Mission District\", \"start\": 15.5, \"end\": 22.0, \"duration\": 1.0},\n    {\"name\": \"Kimberly\", \"location\": \"Marina District\", \"start\": 17.0, \"end\": 19.75, \"duration\": 1.25},\n    {\"name\": \"David\", \"location\": \"North Beach\", \"start\": 14.75, \"end\": 16.5, \"duration\": 1.25},\n    {\"name\": \"William\", \"location\": \"Russian Hill\", \"start\": 12.5, \"end\": 19.25, \"duration\": 2.0},\n    {\"name\": \"Jeffrey\", \"location\": \"Richmond District\", \"start\": 12.0, \"end\": 19.25, \"duration\": 0.75},\n    {\"name\": \"Karen\", \"location\": \"Embarcadero\", \"start\": 14.25, \"end\": 20.75, \"duration\": 1.0},\n    {\"name\": \"Joshua\", \"location\": \"Alamo Square\", \"start\": 18.75, \"end\": 22.0, \"duration\": 1.0}\n]\n\ndef time_to_float(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours + minutes / 60.0\n\ndef float_to_time(time_float):\n    hours = int(time_float)\n    minutes = int((time_float - hours) * 60)\n    return f\"{hours}:{minutes:02d}\"\n\ndef calculate_schedule(order):\n    current_location = \"Sunset District\"\n    current_time = 9.0\n    itinerary = []\n    met_friends = set()\n    \n    for friend_name in order:\n        friend = next(f for f in friends if f[\"name\"] == friend_name)\n        \n        # Travel to friend's location\n        travel_time = travel_times[current_location][friend[\"location\"]] / 60.0\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet this friend\n        meeting_start = max(arrival_time, friend[\"start\"])\n        meeting_end = meeting_start + friend[\"duration\"]\n        \n        if meeting_end > friend[\"end\"]:\n            return None  # Can't meet this friend\n        \n        # Add to itinerary\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": float_to_time(meeting_start),\n            \"end_time\": float_to_time(meeting_end)\n        })\n        \n        met_friends.add(friend[\"name\"])\n        current_location = friend[\"location\"]\n        current_time = meeting_end\n    \n    return itinerary if len(met_friends) == len(friends) else None\n\ndef find_optimal_schedule():\n    friend_names = [f[\"name\"] for f in friends]\n    \n    # Try all possible orders (permutations) of meeting friends\n    for perm in permutations(friend_names):\n        schedule = calculate_schedule(perm)\n        if schedule:\n            return schedule\n    \n    # If no complete schedule found, try to maximize number of meetings\n    max_meetings = 0\n    best_schedule = None\n    \n    for perm in permutations(friend_names):\n        schedule = calculate_schedule(perm)\n        if schedule and len(schedule) > max_meetings:\n            max_meetings = len(schedule)\n            best_schedule = schedule\n    \n    return best_schedule\n\noptimal_schedule = find_optimal_schedule()\n\nif optimal_schedule:\n    result = {\"itinerary\": optimal_schedule}\nelse:\n    result = {\"itinerary\": []}\n\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_974"
+        }
+    ]
+}

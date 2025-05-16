@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "9:31",
+                        "end_time": "10:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Laura",
+                        "start_time": "12:30",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ronald",
+                        "start_time": "13:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "9:31",
+                        "end_time": "10:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Laura",
+                        "start_time": "12:30",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ronald",
+                        "start_time": "13:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule based on given constraints. Let me try to break this down step by step.\n\nFirst, I'll read the problem statement carefully. The user wants to meet as many friends as possible in San Francisco, starting from the Financial District at 9:00 AM. There are five friends located in different districts, each with specific time windows and minimum meeting durations. The goal is to find the best schedule that allows meeting the maximum number of friends without missing any constraints.\n\nI see that the input includes travel times between various districts and the availability of each friend. The output needs to be a JSON-formatted dictionary with the itinerary, including the action, location, person, start time, and end time for each meeting.\n\nSo, the first thing I need to do is represent the travel times and friends' details in a structured way. I'll use dictionaries for both to make it easy to access the data.\n\nNext, I need to consider all possible orders of meeting the friends. Since there are five friends, there are 5! = 120 possible permutations. For each permutation, I'll simulate the schedule to see if it's feasible.\n\nFor each permutation, I'll start at the Financial District at 9:00 AM. Then, for each friend in the permutation, I'll calculate the travel time from the current location to the friend's location. I'll check if I can arrive within the friend's available time window and if the meeting can be completed within their end time.\n\nIf a meeting is feasible, I'll add it to the itinerary and update the current time and location. If not, I'll break out of the loop for that permutation and move to the next one.\n\nI also need to convert the start and end times from minutes since midnight to a readable \"H:MM\" format without leading zeros for hours.\n\nAfter evaluating all permutations, I'll select the one that allows meeting the most friends and output it in the required JSON format.\n\nI should also make sure that the code is self-contained and runs independently, producing valid JSON output when executed.\n\nNow, I'll outline the steps in code:\n\n1. Define the travel times as a dictionary with location tuples as keys and travel times as values.\n2. Define the friends' details, including their name, location, start and end times in minutes, and required meeting duration.\n3. Generate all possible permutations of the friends.\n4. For each permutation, simulate the meeting schedule:\n   - Start at the Financial District at 9:00 AM (540 minutes).\n   - For each friend, calculate the arrival time and check if a meeting is possible.\n   - If feasible, add the meeting to the itinerary and update the current time and location.\n   - If not, break and try the next permutation.\n5. Keep track of the best itinerary that meets the most friends.\n6. Convert the best itinerary to the required JSON format and print it.\n\nI need to ensure that the code correctly handles the time conversions and constraints, and efficiently checks all permutations to find the optimal schedule.\n\nI should also test the code with the given data to make sure it produces the correct output without any errors.\n</think>\n\n```python\nimport itertools\nimport json\n\ntravel_times = {\n    ('Financial District', 'Russian Hill'): 10,\n    ('Financial District', 'Sunset District'): 31,\n    ('Financial District', 'North Beach'): 7,\n    ('Financial District', 'The Castro'): 23,\n    ('Financial District', 'Golden Gate Park'): 23,\n    ('Russian Hill', 'Financial District'): 11,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Russian Hill', 'North Beach'): 5,\n    ('Russian Hill', 'The Castro'): 21,\n    ('Russian Hill', 'Golden Gate Park'): 21,\n    ('Sunset District', 'Financial District'): 30,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Sunset District', 'North Beach'): 29,\n    ('Sunset District', 'The Castro'): 17,\n    ('Sunset District', 'Golden Gate Park'): 11,\n    ('North Beach', 'Financial District'): 8,\n    ('North Beach', 'Russian Hill'): 4,\n    ('North Beach', 'Sunset District'): 27,\n    ('North Beach', 'The Castro'): 22,\n    ('North Beach', 'Golden Gate Park'): 22,\n    ('The Castro', 'Financial District'): 20,\n    ('The Castro', 'Russian Hill'): 18,\n    ('The Castro', 'Sunset District'): 17,\n    ('The Castro', 'North Beach'): 20,\n    ('The Castro', 'Golden Gate Park'): 11,\n    ('Golden Gate Park', 'Financial District'): 26,\n    ('Golden Gate Park', 'Russian Hill'): 19,\n    ('Golden Gate Park', 'Sunset District'): 10,\n    ('Golden Gate Park', 'North Beach'): 24,\n    ('Golden Gate Park', 'The Castro'): 13,\n}\n\nfriends = [\n    {\n        'name': 'Ronald',\n        'location': 'Russian Hill',\n        'start_time': 13 * 60 + 45,  # 1:45 PM\n        'end_time': 17 * 60 + 15,    # 5:15 PM\n        'duration': 105\n    },\n    {\n        'name': 'Patricia',\n        'location': 'Sunset District',\n        'start_time': 9 * 60 + 15,   # 9:15 AM\n        'end_time': 22 * 60 + 0,     # 10:00 PM\n        'duration': 60\n    },\n    {\n        'name': 'Laura',\n        'location': 'North Beach',\n        'start_time': 12 * 60 + 30,  # 12:30 PM\n        'end_time': 12 * 60 + 45,    # 12:45 PM\n        'duration': 15\n    },\n    {\n        'name': 'Emily',\n        'location': 'The Castro',\n        'start_time': 16 * 60 + 15,  # 4:15 PM\n        'end_time': 18 * 60 + 30,    # 6:30 PM\n        'duration': 60\n    },\n    {\n        'name': 'Mary',\n        'location': 'Golden Gate Park',\n        'start_time': 15 * 60 + 0,   # 3:00 PM\n        'end_time': 16 * 60 + 30,    # 4:30 PM\n        'duration': 60\n    },\n]\n\ndef convert_minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\nbest_itinerary = []\nmax_met = 0\n\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_location = 'Financial District'\n    itinerary = []\n    for friend in perm:\n        travel_time = travel_times.get((current_location, friend['location']), None)\n        if travel_time is None:\n            break\n        arrival_time = current_time + travel_time\n        meeting_start = max(arrival_time, friend['start_time'])\n        meeting_end = meeting_start + friend['duration']\n        if meeting_end > friend['end_time']:\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': convert_minutes_to_time(meeting_start),\n            'end_time': convert_minutes_to_time(meeting_end)\n        })\n        current_time = meeting_end\n        current_location = friend['location']\n    if len(itinerary) > max_met:\n        max_met = len(itinerary)\n        best_itinerary = itinerary\n\noutput = {\n    \"itinerary\": best_itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_444"
+        }
+    ]
+}

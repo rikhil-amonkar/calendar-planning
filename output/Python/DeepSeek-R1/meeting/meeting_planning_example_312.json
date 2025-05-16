@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Sarah",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Richard",
+                        "start_time": "11:45",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "13:26",
+                        "end_time": "15:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "18:15",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef main():\n    friends = [\n        {\n            'name': 'Sarah',\n            'location': 'Sunset District',\n            'available_start': 10 * 60 + 45,\n            'available_end': 19 * 60,\n            'duration': 30\n        },\n        {\n            'name': 'Richard',\n            'location': 'Haight-Ashbury',\n            'available_start': 11 * 60 + 45,\n            'available_end': 15 * 60 + 45,\n            'duration': 90\n        },\n        {\n            'name': 'Elizabeth',\n            'location': 'Mission District',\n            'available_start': 11 * 60,\n            'available_end': 17 * 60 + 15,\n            'duration': 120\n        },\n        {\n            'name': 'Michelle',\n            'location': 'Golden Gate Park',\n            'available_start': 18 * 60 + 15,\n            'available_end': 20 * 60 + 45,\n            'duration': 90\n        }\n    ]\n    michelle = friends[3]\n    non_michelle = friends[:3]\n\n    travel_time = {\n        'Richmond District': {'Sunset District': 11, 'Haight-Ashbury': 10, 'Mission District': 20, 'Golden Gate Park': 9},\n        'Sunset District': {'Richmond District': 12, 'Haight-Ashbury': 15, 'Mission District': 24, 'Golden Gate Park': 11},\n        'Haight-Ashbury': {'Richmond District': 10, 'Sunset District': 15, 'Mission District': 11, 'Golden Gate Park': 7},\n        'Mission District': {'Richmond District': 20, 'Sunset District': 24, 'Haight-Ashbury': 12, 'Golden Gate Park': 17},\n        'Golden Gate Park': {'Richmond District': 7, 'Sunset District': 10, 'Haight-Ashbury': 7, 'Mission District': 17}\n    }\n\n    best_schedule = None\n\n    for perm in itertools.permutations(non_michelle):\n        current_location = 'Richmond District'\n        current_time = 540\n        schedule = []\n        valid = True\n\n        for friend in perm:\n            if current_location not in travel_time or friend['location'] not in travel_time[current_location]:\n                valid = False\n                break\n            tt = travel_time[current_location][friend['location']]\n            arrival_time = current_time + tt\n            start = max(arrival_time, friend['available_start'])\n            if start + friend['duration'] > friend['available_end']:\n                valid = False\n                break\n            end = start + friend['duration']\n            schedule.append({\n                'friend': friend,\n                'start': start,\n                'end': end,\n                'location': friend['location']\n            })\n            current_time = end\n            current_location = friend['location']\n\n        if valid:\n            if current_location not in travel_time or michelle['location'] not in travel_time[current_location]:\n                valid = False\n            else:\n                tt = travel_time[current_location][michelle['location']]\n                arrival_time = current_time + tt\n                start = max(arrival_time, michelle['available_start'])\n                if start + michelle['duration'] > michelle['available_end']:\n                    valid = False\n                else:\n                    end = start + michelle['duration']\n                    schedule.append({\n                        'friend': michelle,\n                        'start': start,\n                        'end': end,\n                        'location': michelle['location']\n                    })\n\n        if valid:\n            itinerary = []\n            for entry in schedule:\n                start_h = entry['start'] // 60\n                start_m = entry['start'] % 60\n                end_h = entry['end'] // 60\n                end_m = entry['end'] % 60\n                start_str = f\"{start_h}:{start_m:02d}\"\n                end_str = f\"{end_h}:{end_m:02d}\"\n                itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": entry['location'],\n                    \"person\": entry['friend']['name'],\n                    \"start_time\": start_str,\n                    \"end_time\": end_str\n                })\n            if best_schedule is None or len(itinerary) > len(best_schedule) or (len(itinerary) == len(best_schedule) and schedule[-1]['end'] < best_schedule[-1]['end']):\n                best_schedule = itinerary\n\n    output = {\"itinerary\": best_schedule} if best_schedule else {\"itinerary\": []}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_312"
+        }
+    ]
+}

@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Emily",
+                        "start_time": "9:17",
+                        "end_time": "11:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joseph",
+                        "start_time": "17:15",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Melissa",
+                        "start_time": "19:37",
+                        "end_time": "20:52"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joseph",
+                        "start_time": "18:07",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Melissa",
+                        "start_time": "20:29",
+                        "end_time": "21:44"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef add_minutes(time_str, minutes):\n    dt = parse_time(time_str)\n    dt += timedelta(minutes=minutes)\n    return format_time(dt)\n\ndef compute_schedule():\n    # Input parameters\n    start_location = \"Fisherman's Wharf\"\n    start_time = \"9:00\"\n    \n    # Friend constraints\n    friends = [\n        {\n            \"name\": \"Emily\",\n            \"location\": \"Presidio\",\n            \"available_start\": \"16:15\",\n            \"available_end\": \"21:00\",\n            \"min_duration\": 105,\n            \"travel_times\": {\n                \"Fisherman's Wharf\": 17,\n                \"Presidio\": 0,\n                \"Richmond District\": 7,\n                \"Financial District\": 23\n            }\n        },\n        {\n            \"name\": \"Joseph\",\n            \"location\": \"Richmond District\",\n            \"available_start\": \"17:15\",\n            \"available_end\": \"22:00\",\n            \"min_duration\": 120,\n            \"travel_times\": {\n                \"Fisherman's Wharf\": 18,\n                \"Presidio\": 7,\n                \"Richmond District\": 0,\n                \"Financial District\": 22\n            }\n        },\n        {\n            \"name\": \"Melissa\",\n            \"location\": \"Financial District\",\n            \"available_start\": \"15:45\",\n            \"available_end\": \"21:45\",\n            \"min_duration\": 75,\n            \"travel_times\": {\n                \"Fisherman's Wharf\": 11,\n                \"Presidio\": 23,\n                \"Richmond District\": 22,\n                \"Financial District\": 0\n            }\n        }\n    ]\n    \n    # Travel times lookup\n    travel_times = {\n        \"Fisherman's Wharf\": {\n            \"Presidio\": 17,\n            \"Richmond District\": 18,\n            \"Financial District\": 11\n        },\n        \"Presidio\": {\n            \"Fisherman's Wharf\": 19,\n            \"Richmond District\": 7,\n            \"Financial District\": 23\n        },\n        \"Richmond District\": {\n            \"Fisherman's Wharf\": 18,\n            \"Presidio\": 7,\n            \"Financial District\": 22\n        },\n        \"Financial District\": {\n            \"Fisherman's Wharf\": 10,\n            \"Presidio\": 22,\n            \"Richmond District\": 21\n        }\n    }\n    \n    # Generate all possible meeting orders\n    from itertools import permutations\n    best_schedule = None\n    max_meetings = 0\n    \n    for order in permutations(friends):\n        current_location = start_location\n        current_time = start_time\n        schedule = []\n        meetings = 0\n        \n        for friend in order:\n            # Calculate travel time to friend's location\n            travel_time = travel_times[current_location].get(friend[\"location\"], 0)\n            arrival_time = add_minutes(current_time, travel_time)\n            \n            # Determine meeting window\n            meeting_start = max(arrival_time, friend[\"available_start\"])\n            meeting_end = add_minutes(meeting_start, friend[\"min_duration\"])\n            \n            if parse_time(meeting_end) > parse_time(friend[\"available_end\"]):\n                continue  # Can't meet this friend\n            \n            # Add to schedule\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": friend[\"location\"],\n                \"person\": friend[\"name\"],\n                \"start_time\": meeting_start,\n                \"end_time\": meeting_end\n            })\n            meetings += 1\n            current_location = friend[\"location\"]\n            current_time = meeting_end\n        \n        if meetings > max_meetings or (meetings == max_meetings and best_schedule is None):\n            max_meetings = meetings\n            best_schedule = schedule\n    \n    # If no schedule meets all constraints, try with fewer meetings\n    if max_meetings < len(friends):\n        for order in permutations(friends, 2):\n            current_location = start_location\n            current_time = start_time\n            schedule = []\n            meetings = 0\n            \n            for friend in order:\n                travel_time = travel_times[current_location].get(friend[\"location\"], 0)\n                arrival_time = add_minutes(current_time, travel_time)\n                \n                meeting_start = max(arrival_time, friend[\"available_start\"])\n                meeting_end = add_minutes(meeting_start, friend[\"min_duration\"])\n                \n                if parse_time(meeting_end) > parse_time(friend[\"available_end\"]):\n                    break\n                \n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": friend[\"location\"],\n                    \"person\": friend[\"name\"],\n                    \"start_time\": meeting_start,\n                    \"end_time\": meeting_end\n                })\n                meetings += 1\n                current_location = friend[\"location\"]\n                current_time = meeting_end\n            \n            if meetings > max_meetings:\n                max_meetings = meetings\n                best_schedule = schedule\n    \n    return {\"itinerary\": best_schedule} if best_schedule else {\"itinerary\": []}\n\nresult = compute_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_210"
+        }
+    ]
+}

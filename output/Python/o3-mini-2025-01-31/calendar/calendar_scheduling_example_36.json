@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Meeting parameters\nmeeting_duration = 60  # in minutes\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nlatest_denise_meeting_end = time_to_minutes(\"12:30\")  # Denise doesn't want meetings after 12:30\n\n# Busy schedules (intervals in minutes) for each participant on Monday\nbusy = {\n    \"Ryan\": [\n        (time_to_minutes(\"09:00\"), time_to_minutes(\"09:30\")),\n        (time_to_minutes(\"12:30\"), time_to_minutes(\"13:00\")),\n    ],\n    \"Ruth\": [],  # No busy times for Ruth\n    \"Denise\": [\n        (time_to_minutes(\"09:30\"), time_to_minutes(\"10:30\")),\n        (time_to_minutes(\"12:00\"), time_to_minutes(\"13:00\")),\n        (time_to_minutes(\"14:30\"), time_to_minutes(\"16:30\")),\n    ]\n}\n\ndef is_slot_free(start, end):\n    # Check if meeting slot [start, end) does not conflict with any busy intervals\n    for person in busy:\n        for b_start, b_end in busy[person]:\n            # If meeting starts before busy ends and ends after busy starts, they overlap.\n            if start < b_end and end > b_start:\n                return False\n    return True\n\n# We'll iterate over possible start times within working hours to find the first available one.\navailable_slot = None\nfor start in range(work_start, work_end - meeting_duration + 1):\n    end = start + meeting_duration\n    # Enforce Denise's constraint: meeting must end no later than 12:30.\n    if end > latest_denise_meeting_end:\n        continue\n    if is_slot_free(start, end):\n        available_slot = (start, end)\n        break\n\nif available_slot:\n    start_time_str = minutes_to_time(available_slot[0])\n    end_time_str = minutes_to_time(available_slot[1])\n    # Output in the format: HH:MM:HH:MM along with the day of the week.\n    print(f\"Monday {start_time_str}:{end_time_str}\")\nelse:\n    print(\"No available time slot found.\")\n'''",
+            "count": "calendar_scheduling_example_36"
+        }
+    ]
+}

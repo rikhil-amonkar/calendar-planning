@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "15:00",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Sarah",
+                        "start_time": "16:25",
+                        "end_time": "17:25"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Sarah",
+                        "start_time": "16:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "17:07",
+                        "end_time": "18:22"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\nfriends = [\n    {\n        'name': 'Sarah',\n        'location': 'North Beach',\n        'available_start': 16.0,\n        'available_end': 18.25,\n        'duration': 1.0\n    },\n    {\n        'name': 'Jeffrey',\n        'location': 'Union Square',\n        'available_start': 15.0,\n        'available_end': 22.0,\n        'duration': 1.25\n    },\n    {\n        'name': 'Brian',\n        'location': 'Alamo Square',\n        'available_start': 16.0,\n        'available_end': 17.5,\n        'duration': 1.25\n    }\n]\n\ntravel_times = {\n    ('Sunset District', 'North Beach'): 29,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Alamo Square'): 17,\n    ('North Beach', 'Sunset District'): 27,\n    ('North Beach', 'Union Square'): 7,\n    ('North Beach', 'Alamo Square'): 16,\n    ('Union Square', 'Sunset District'): 26,\n    ('Union Square', 'North Beach'): 10,\n    ('Union Square', 'Alamo Square'): 15,\n    ('Alamo Square', 'Sunset District'): 16,\n    ('Alamo Square', 'North Beach'): 15,\n    ('Alamo Square', 'Union Square'): 14,\n}\n\ndef float_to_time(t):\n    hours = int(t)\n    minutes = int(round((t - hours) * 60))\n    if minutes == 60:\n        hours += 1\n        minutes = 0\n    return f\"{hours}:{minutes:02d}\"\n\nbest_itinerary = []\nmax_friends = 0\nmin_total_time = float('inf')\n\nfor perm_length in range(1, 4):\n    for perm in itertools.permutations(friends, perm_length):\n        current_location = 'Sunset District'\n        current_time = 9.0\n        itinerary = []\n        valid = True\n        visited = set()\n        \n        for friend in perm:\n            if friend['name'] in visited:\n                valid = False\n                break\n            visited.add(friend['name'])\n            key = (current_location, friend['location'])\n            travel = travel_times.get(key)\n            if travel is None:\n                valid = False\n                break\n            arrival = current_time + travel / 60\n            start = max(arrival, friend['available_start'])\n            latest_start = friend['available_end'] - friend['duration']\n            if start > latest_start:\n                valid = False\n                break\n            end = start + friend['duration']\n            if end > friend['available_end']:\n                valid = False\n                break\n            itinerary.append((friend, start, end))\n            current_time = end\n            current_location = friend['location']\n        \n        if valid:\n            num_friends = len(itinerary)\n            if num_friends > max_friends or (num_friends == max_friends and current_time < min_total_time):\n                max_friends = num_friends\n                min_total_time = current_time\n                best_itinerary = itinerary\n\noutput = []\nfor entry in best_itinerary:\n    friend = entry[0]\n    start = entry[1]\n    end = entry[2]\n    output.append({\n        \"action\": \"meet\",\n        \"location\": friend['location'],\n        \"person\": friend['name'],\n        \"start_time\": float_to_time(start),\n        \"end_time\": float_to_time(end)\n    })\n\nprint(json.dumps({\"itinerary\": output}, indent=2))",
+            "count": "meeting_planning_example_225"
+        }
+    ]
+}

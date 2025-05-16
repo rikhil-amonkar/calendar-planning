@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Stephanie",
+                        "start_time": "9:05",
+                        "end_time": "10:35"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "John",
+                        "start_time": "10:52",
+                        "end_time": "11:22"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Stephanie",
+                        "start_time": "9:05",
+                        "end_time": "10:35"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "John",
+                        "start_time": "10:52",
+                        "end_time": "11:22"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef minutes_to_time_str(minutes):\n    # Convert minutes since midnight to H:MM 24-hour format (no leading zero for hour)\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Input parameters (all times in minutes since midnight)\n    # Arrival time at Embarcadero at 9:00AM = 540 minutes\n    start_time = 9 * 60  # 540 minutes\n    \n    # Travel times (in minutes)\n    travel = {\n        (\"Embarcadero\", \"Financial District\"): 5,\n        (\"Embarcadero\", \"Alamo Square\"): 19,\n        (\"Financial District\", \"Embarcadero\"): 4,\n        (\"Financial District\", \"Alamo Square\"): 17,\n        (\"Alamo Square\", \"Embarcadero\"): 17,\n        (\"Alamo Square\", \"Financial District\"): 17\n    }\n    \n    # Meeting constraints and desired durations (in minutes)\n    # Stephanie is available at Financial District from 8:15AM to 11:30AM\n    stephanie_available_start = 8 * 60 + 15  # 8:15AM = 495 minutes\n    stephanie_available_end   = 11 * 60 + 30   # 11:30AM = 690 minutes\n    stephanie_meet_duration   = 90\n\n    # John is available at Alamo Square from 10:15AM to 8:45PM\n    john_available_start = 10 * 60 + 15  # 10:15AM = 615 minutes\n    john_available_end   = 20 * 60 + 45    # 8:45PM = 1245 minutes\n    john_meet_duration   = 30\n\n    # We assume the optimal schedule is to meet Stephanie first then John.\n    # Compute schedule:\n    # 1. Travel from Embarcadero to Financial District:\n    depart_location = \"Embarcadero\"\n    stephanie_location = \"Financial District\"\n    travel_time_to_stephanie = travel[(depart_location, stephanie_location)]\n    arrival_stephanie = start_time + travel_time_to_stephanie\n    # Meeting with Stephanie can start at the later of our arrival or her available start\n    stephanie_meet_start = max(arrival_stephanie, stephanie_available_start)\n    stephanie_meet_end = stephanie_meet_start + stephanie_meet_duration\n    # Ensure that the end time does not exceed her available end time.\n    if stephanie_meet_end > stephanie_available_end:\n        raise ValueError(\"Cannot meet Stephanie for the required duration within her available window.\")\n\n    # 2. Travel from Financial District to Alamo Square for John\n    john_location = \"Alamo Square\"\n    travel_time_to_john = travel[(stephanie_location, john_location)]\n    arrival_john = stephanie_meet_end + travel_time_to_john\n    john_meet_start = max(arrival_john, john_available_start)\n    john_meet_end = john_meet_start + john_meet_duration\n    # Ensure that meeting John does not exceed his available end time.\n    if john_meet_end > john_available_end:\n        raise ValueError(\"Cannot meet John for the required duration within his available window.\")\n\n    # Construct itinerary\n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": stephanie_location,\n            \"person\": \"Stephanie\",\n            \"start_time\": minutes_to_time_str(stephanie_meet_start),\n            \"end_time\": minutes_to_time_str(stephanie_meet_end)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": john_location,\n            \"person\": \"John\",\n            \"start_time\": minutes_to_time_str(john_meet_start),\n            \"end_time\": minutes_to_time_str(john_meet_end)\n        }\n    ]\n\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_125"
+        }
+    ]
+}

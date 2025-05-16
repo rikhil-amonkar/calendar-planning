@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Input Parameters\n    total_days = 16\n    constraints = {\n        \"Oslo\": {\"days\": 2, \"meet_friends\": (3, 4)},\n        \"Stuttgart\": {\"days\": 3},\n        \"Venice\": {\"days\": 4},\n        \"Split\": {\"days\": 4},\n        \"Barcelona\": {\"days\": 3, \"show_days\": (1, 3)},\n        \"Brussels\": {\"days\": 3, \"meet_friend\": (9, 11)},\n        \"Copenhagen\": {\"days\": 3},\n    }\n\n    direct_flights = {\n        \"Venice\": [\"Stuttgart\", \"Barcelona\", \"Brussels\", \"Copenhagen\"],\n        \"Oslo\": [\"Brussels\", \"Split\", \"Venice\", \"Copenhagen\"],\n        \"Split\": [\"Copenhagen\", \"Stuttgart\"],\n        \"Barcelona\": [\"Copenhagen\", \"Venice\", \"Stuttgart\", \"Brussels\", \"Oslo\", \"Split\"],\n        \"Brussels\": [\"Oslo\", \"Venice\", \"Copenhagen\"],\n        \"Copenhagen\": [\"Split\", \"Barcelona\", \"Stuttgart\", \"Brussels\", \"Oslo\"],\n        \"Stuttgart\": [\"Venice\", \"Split\", \"Barcelona\", \"Copenhagen\"],\n    }\n\n    # Calculate the itinerary\n    itinerary = []\n    day_counter = 1\n    \n    # Barcelona for the first 3 days (day 1 to day 3)\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter+2}', 'place': 'Barcelona'})\n    day_counter += 3\n    \n    # From Barcelona to Venice (direct flight)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Barcelona', 'to': 'Venice'})\n    \n    # Venice for 4 days\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter+3}', 'place': 'Venice'})\n    day_counter += 4\n    \n    # From Venice to Stuttgart (direct flight)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Venice', 'to': 'Stuttgart'})\n    \n    # Stuttgart for 3 days\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter+2}', 'place': 'Stuttgart'})\n    day_counter += 3\n    \n    # From Stuttgart to Oslo (direct flight)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Stuttgart', 'to': 'Oslo'})\n    \n    # Oslo for 2 days (with friends visiting)\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter+1}', 'place': 'Oslo'})\n    day_counter += 2\n    \n    # Meeting friends (Day 3-4 of Oslo)\n    day_counter += 1  # increment for friend visiting day\n    \n    # From Oslo to Split (direct flight)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Oslo', 'to': 'Split'})\n    \n    # Split for 4 days\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter+3}', 'place': 'Split'})\n    day_counter += 4\n    \n    # From Split to Copenhagen (direct flight)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Split', 'to': 'Copenhagen'})\n    \n    # Copenhagen for 3 days\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter+2}', 'place': 'Copenhagen'})\n    day_counter += 3\n    \n    # From Copenhagen to Brussels (direct flight)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Copenhagen', 'to': 'Brussels'})\n    \n    # Brussels for 3 days\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter+2}', 'place': 'Brussels'})\n    day_counter += 3\n\n    # Output the itinerary in JSON format\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    print(plan_trip())\n```",
+            "count": "trip_planning_example_995"
+        }
+    ]
+}

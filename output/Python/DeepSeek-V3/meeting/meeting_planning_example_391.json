@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kevin",
+                        "start_time": "9:17",
+                        "end_time": "10:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Kimberly",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Thomas",
+                        "start_time": "19:38",
+                        "end_time": "20:23"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kevin",
+                        "start_time": "9:17",
+                        "end_time": "10:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Kimberly",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Thomas",
+                        "start_time": "19:38",
+                        "end_time": "20:23"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Input data\ntravel_times = {\n    'Sunset District': {\n        'Alamo Square': 17,\n        'Russian Hill': 24,\n        'Presidio': 16,\n        'Financial District': 30\n    },\n    'Alamo Square': {\n        'Sunset District': 16,\n        'Russian Hill': 13,\n        'Presidio': 18,\n        'Financial District': 17\n    },\n    'Russian Hill': {\n        'Sunset District': 23,\n        'Alamo Square': 15,\n        'Presidio': 14,\n        'Financial District': 11\n    },\n    'Presidio': {\n        'Sunset District': 15,\n        'Alamo Square': 18,\n        'Russian Hill': 14,\n        'Financial District': 23\n    },\n    'Financial District': {\n        'Sunset District': 31,\n        'Alamo Square': 17,\n        'Russian Hill': 10,\n        'Presidio': 22\n    }\n}\n\npeople = {\n    'Kevin': {\n        'location': 'Alamo Square',\n        'available_start': '8:15',\n        'available_end': '21:30',\n        'duration': 75\n    },\n    'Kimberly': {\n        'location': 'Russian Hill',\n        'available_start': '8:45',\n        'available_end': '12:30',\n        'duration': 30\n    },\n    'Joseph': {\n        'location': 'Presidio',\n        'available_start': '18:30',\n        'available_end': '19:15',\n        'duration': 45\n    },\n    'Thomas': {\n        'location': 'Financial District',\n        'available_start': '19:00',\n        'available_end': '21:45',\n        'duration': 45\n    }\n}\n\n# Convert all times to minutes\nfor person in people.values():\n    person['available_start_min'] = time_to_minutes(person['available_start'])\n    person['available_end_min'] = time_to_minutes(person['available_end'])\n\ndef calculate_schedule(order):\n    current_location = 'Sunset District'\n    current_time = time_to_minutes('9:00')\n    schedule = []\n    met_people = set()\n    \n    for person_name in order:\n        person = people[person_name]\n        location = person['location']\n        \n        # Travel time\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet this person\n        meeting_start = max(arrival_time, person['available_start_min'])\n        meeting_end = meeting_start + person['duration']\n        \n        if meeting_end > person['available_end_min']:\n            return None  # Can't meet this person\n        \n        # Add to schedule\n        schedule.append({\n            'person': person_name,\n            'location': location,\n            'start_time': meeting_start,\n            'end_time': meeting_end\n        })\n        \n        met_people.add(person_name)\n        current_time = meeting_end\n        current_location = location\n    \n    return {\n        'schedule': schedule,\n        'met_count': len(met_people),\n        'total_people': len(order)\n    }\n\n# Try all possible orders of meeting people\nbest_schedule = None\nbest_met = 0\n\nfor order in permutations(people.keys()):\n    result = calculate_schedule(order)\n    if result and result['met_count'] > best_met:\n        best_met = result['met_count']\n        best_schedule = result['schedule']\n\n# If no schedule meets all, try subsets\nif best_met < len(people):\n    for size in range(len(people)-1, 0, -1):\n        from itertools import combinations\n        for subset in combinations(people.keys(), size):\n            for order in permutations(subset):\n                result = calculate_schedule(order)\n                if result and result['met_count'] > best_met:\n                    best_met = result['met_count']\n                    best_schedule = result['schedule']\n        if best_schedule:\n            break\n\n# Format the output\nitinerary = []\nif best_schedule:\n    for meeting in best_schedule:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting['location'],\n            \"person\": meeting['person'],\n            \"start_time\": minutes_to_time(meeting['start_time']),\n            \"end_time\": minutes_to_time(meeting['end_time'])\n        })\n\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_391"
+        }
+    ]
+}

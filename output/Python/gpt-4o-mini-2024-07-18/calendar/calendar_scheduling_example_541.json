@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the participants' schedules\nkayla_schedule = [(datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n                  (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\"))]\n                  \nrebecca_schedule = [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\")),\n                    (datetime.strptime(\"13:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n                    (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\"))]\n\n# Meeting duration\nmeeting_duration = timedelta(hours=1)\n\n# Define working hours\nstart_of_day = datetime.strptime(\"09:00\", \"%H:%M\")\nend_of_day = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_day = \"Monday\"\n\n# Create a list of all busy times\nbusy_times = kayla_schedule + rebecca_schedule\n\n# Initialize free time slots\nfree_time_slots = []\ncurrent_time = start_of_day\n\n# Find free time slots\nfor busy_start, busy_end in sorted(busy_times):\n    if current_time < busy_start:\n        free_time_slots.append((current_time, busy_start))\n    current_time = max(current_time, busy_end)\n\n# Account for end of day free time\nif current_time < end_of_day:\n    free_time_slots.append((current_time, end_of_day))\n\n# Find a suitable time slot for the meeting\nfor start, end in free_time_slots:\n    if end - start >= meeting_duration:\n        proposed_time_start = start\n        proposed_time_end = start + meeting_duration\n        print(f\"{proposed_time_start.strftime('%H:%M')}:{proposed_time_end.strftime('%H:%M')}\")\n        print(meeting_day)\n        break\n```",
+            "count": "calendar_scheduling_example_541"
+        }
+    ]
+}

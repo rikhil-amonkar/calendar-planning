@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\n# Define participants' schedules\nmegan_schedule = {\n    'Monday': [(9, 0, 13, 0), (13, 30, 14, 0), (14, 0, 15, 30), (15, 30, 17, 0)],\n    'Tuesday': [(9, 0, 9, 30), (9, 30, 12, 0), (12, 30, 16, 0), (16, 0, 17, 0)],\n    'Wednesday': [(9, 0, 9, 30), (9, 30, 10, 0), (10, 0, 10, 30), (10, 30, 11, 30), \n                  (11, 30, 12, 30), (12, 30, 14, 0), (14, 0, 16, 0), (16, 0, 16, 30)],\n    'Thursday': [(9, 0, 13, 30), (13, 30, 15, 0), (15, 0, 15, 30), (15, 30, 17, 0)]\n}\n\ndaniel_schedule = {\n    'Monday': [(9, 0, 10, 0), (10, 0, 11, 30), (11, 30, 12, 30), (12, 30, 15, 0)],\n    'Tuesday': [(9, 0, 10, 0), (10, 0, 10, 30), (10, 30, 17, 0)],\n    'Wednesday': [(9, 0, 9, 0), (9, 0, 10, 0), (10, 0, 10, 30), (10, 30, 11, 30), \n                  (11, 30, 12, 0), (12, 0, 17, 0)],\n    'Thursday': [(9, 0, 12, 0), (12, 0, 12, 30), (12, 30, 14, 30), (14, 30, 15, 0),\n                 (15, 0, 15, 30), (15, 30, 17, 0)]\n}\n\n# Function to convert time to minutes\ndef time_to_minutes(hour, minute):\n    return hour * 60 + minute\n\n# Find available meeting slots\ndef find_meeting_time(schedule_a, schedule_b, duration=60):\n    for day in schedule_a.keys():\n        busy_times = schedule_a[day] + schedule_b[day]\n        busy_times.sort()\n        \n        # Flatten the busy times into a free time schedule\n        free_times = []\n        last_end = 9 * 60  # Start at 9:00\n        \n        for start, end in busy_times:\n            if last_end < time_to_minutes(start, 0):\n                free_times.append((last_end, time_to_minutes(start, 0)))\n            last_end = max(last_end, time_to_minutes(end, 0))\n        \n        # End at 17:00\n        if last_end < 17 * 60:\n            free_times.append((last_end, 17 * 60)) \n        \n        # Check for a time slot that fits the meeting duration\n        for start, end in free_times:\n            if end - start >= duration:\n                return day, start, start + duration\n            \n    return None\n\n# Find the earliest available time slot for Megan and Daniel\nday, start_time, end_time = find_meeting_time(megan_schedule, daniel_schedule)\n\n# Convert back to hours and minutes\nstart_hour = start_time // 60\nstart_minute = start_time % 60\nend_hour = end_time // 60\nend_minute = end_time % 60\n\n# Output the proposed time\nprint(f\"{start_hour:02}:{start_minute:02}:{end_hour:02}:{end_minute:02}\")\nprint(day)\n```",
+            "count": "calendar_scheduling_example_865"
+        }
+    ]
+}

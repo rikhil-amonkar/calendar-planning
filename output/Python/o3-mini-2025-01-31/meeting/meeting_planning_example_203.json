@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "9:13",
+                        "end_time": "10:28"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "11:12",
+                        "end_time": "12:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Robert",
+                        "start_time": "12:42",
+                        "end_time": "14:12"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\nfrom datetime import timedelta, datetime\n\ndef minutes_to_time(minutes):\n    # Convert minutes from midnight into H:MM 24-hour format without leading zeros for hours.\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Define travel times in minutes between locations.\n    travel_times = {\n        (\"Financial District\", \"Fisherman's Wharf\"): 10,\n        (\"Financial District\", \"Pacific Heights\"): 13,\n        (\"Financial District\", \"Mission District\"): 17,\n        (\"Fisherman's Wharf\", \"Financial District\"): 11,\n        (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n        (\"Fisherman's Wharf\", \"Mission District\"): 22,\n        (\"Pacific Heights\", \"Financial District\"): 13,\n        (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n        (\"Pacific Heights\", \"Mission District\"): 15,\n        (\"Mission District\", \"Financial District\"): 17,\n        (\"Mission District\", \"Fisherman's Wharf\"): 22,\n        (\"Mission District\", \"Pacific Heights\"): 16,\n    }\n    \n    # Meeting constraints and participant details.\n    # Times in minutes from midnight.\n    fd_arrival = 9 * 60  # 9:00\n    # David: available at Fisherman's Wharf from 10:45 to 15:30, need min 15 minutes.\n    david_location = \"Fisherman's Wharf\"\n    david_start_available = 10 * 60 + 45  # 10:45\n    david_end_available   = 15 * 60 + 30   # 15:30\n    david_min_meeting = 15\n    \n    # Timothy: available at Pacific Heights from 9:00 to 15:30, need min 75 minutes.\n    timothy_location = \"Pacific Heights\"\n    timothy_start_available = 9 * 60  # 9:00\n    timothy_end_available   = 15 * 60 + 30   # 15:30\n    timothy_min_meeting = 75\n    \n    # Robert: available at Mission District from 12:15 to 19:45, need min 90 minutes.\n    robert_location = \"Mission District\"\n    robert_start_available = 12 * 60 + 15   # 12:15\n    robert_end_available   = 19 * 60 + 45   # 19:45\n    robert_min_meeting = 90\n\n    itinerary = []\n    \n    # We plan the following route:\n    # 1. Start at Financial District at 9:00. Travel to Pacific Heights to meet Timothy.\n    # 2. Meet Timothy for at least 75 minutes.\n    # 3. Travel from Pacific Heights to Fisherman's Wharf to meet David (available from 10:45).\n    # 4. Meet David for at least 15 minutes.\n    # 5. Travel from Fisherman's Wharf to Mission District to meet Robert (available from 12:15).\n    # 6. Meet Robert for at least 90 minutes.\n    \n    # Starting point: Financial District at 9:00.\n    current_location = \"Financial District\"\n    current_time = fd_arrival  # minutes from midnight\n\n    # 1. Travel from Financial District to Pacific Heights.\n    travel_time = travel_times[(current_location, timothy_location)]\n    current_time += travel_time  # arrival time at Pacific Heights\n    timothy_meet_start = current_time  # start meeting Timothy at arrival.\n    # Ensure meeting cannot start before participant's available time.\n    if timothy_meet_start < timothy_start_available:\n        timothy_meet_start = timothy_start_available\n        current_time = timothy_meet_start\n\n    # 2. Schedule meeting with Timothy.\n    # Schedule exactly the minimum required meeting time.\n    timothy_meet_duration = timothy_min_meeting\n    timothy_meet_end = timothy_meet_start + timothy_meet_duration\n    # Also ensure that the meeting does not go past Timothy's availability end.\n    if timothy_meet_end > timothy_end_available:\n        raise Exception(\"Cannot schedule meeting with Timothy within his availability window.\")\n\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": timothy_location,\n        \"person\": \"Timothy\",\n        \"start_time\": minutes_to_time(timothy_meet_start),\n        \"end_time\": minutes_to_time(timothy_meet_end)\n    })\n\n    # Update current time and location.\n    current_time = timothy_meet_end\n    current_location = timothy_location\n\n    # 3. Travel from Pacific Heights to Fisherman's Wharf for David.\n    travel_time = travel_times[(current_location, david_location)]\n    current_time += travel_time\n    # Wait if arriving before David's available start.\n    if current_time < david_start_available:\n        current_time = david_start_available\n    david_meet_start = current_time\n\n    # 4. Schedule meeting with David.\n    david_meet_duration = david_min_meeting\n    david_meet_end = david_meet_start + david_meet_duration\n    if david_meet_end > david_end_available:\n        raise Exception(\"Cannot schedule meeting with David within his availability window.\")\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": david_location,\n        \"person\": \"David\",\n        \"start_time\": minutes_to_time(david_meet_start),\n        \"end_time\": minutes_to_time(david_meet_end)\n    })\n\n    # Update current time and location.\n    current_time = david_meet_end\n    current_location = david_location\n\n    # 5. Travel from Fisherman's Wharf to Mission District for Robert.\n    travel_time = travel_times[(current_location, robert_location)]\n    current_time += travel_time\n    # Wait if arriving before Robert's available start.\n    if current_time < robert_start_available:\n        current_time = robert_start_available\n    robert_meet_start = current_time\n\n    # 6. Schedule meeting with Robert.\n    robert_meet_duration = robert_min_meeting\n    robert_meet_end = robert_meet_start + robert_meet_duration\n    if robert_meet_end > robert_end_available:\n        raise Exception(\"Cannot schedule meeting with Robert within his availability window.\")\n\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": robert_location,\n        \"person\": \"Robert\",\n        \"start_time\": minutes_to_time(robert_meet_start),\n        \"end_time\": minutes_to_time(robert_meet_end)\n    })\n\n    # Prepare the JSON result.\n    schedule = {\"itinerary\": itinerary}\n    print(json.dumps(schedule, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_203"
+        }
+    ]
+}

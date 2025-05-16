@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Participants' schedules: (start_time, end_time)\nschedules = {\n    \"Andrea\": [(datetime(2023, 10, 2, 9, 30), datetime(2023, 10, 2, 10, 30)),\n                (datetime(2023, 10, 2, 13, 30), datetime(2023, 10, 2, 14, 30))],\n    \"Ruth\": [(datetime(2023, 10, 2, 12, 30), datetime(2023, 10, 2, 13, 0)),\n             (datetime(2023, 10, 2, 15, 0), datetime(2023, 10, 2, 15, 30))],\n    \"Steven\": [(datetime(2023, 10, 2, 10, 0), datetime(2023, 10, 2, 10, 30)),\n               (datetime(2023, 10, 2, 11, 0), datetime(2023, 10, 2, 11, 30)),\n               (datetime(2023, 10, 2, 12, 0), datetime(2023, 10, 2, 12, 30)),\n               (datetime(2023, 10, 2, 13, 30), datetime(2023, 10, 2, 14, 0)),\n               (datetime(2023, 10, 2, 15, 0), datetime(2023, 10, 2, 16, 0))],\n    \"Grace\": [],\n    \"Kyle\": [(datetime(2023, 10, 2, 9, 0), datetime(2023, 10, 2, 9, 30)),\n             (datetime(2023, 10, 2, 10, 30), datetime(2023, 10, 2, 12, 0)),\n             (datetime(2023, 10, 2, 12, 30), datetime(2023, 10, 2, 13, 0)),\n             (datetime(2023, 10, 2, 13, 30), datetime(2023, 10, 2, 15, 0)),\n             (datetime(2023, 10, 2, 15, 30), datetime(2023, 10, 2, 16, 0)),\n             (datetime(2023, 10, 2, 16, 30), datetime(2023, 10, 2, 17, 0))],\n    \"Elijah\": [(datetime(2023, 10, 2, 9, 0), datetime(2023, 10, 2, 11, 0)),\n               (datetime(2023, 10, 2, 11, 30), datetime(2023, 10, 2, 13, 0)),\n               (datetime(2023, 10, 2, 13, 30), datetime(2023, 10, 2, 14, 0)),\n               (datetime(2023, 10, 2, 15, 30), datetime(2023, 10, 2, 16, 0)),\n               (datetime(2023, 10, 2, 16, 30), datetime(2023, 10, 2, 17, 0))],\n    \"Lori\": [(datetime(2023, 10, 2, 9, 0), datetime(2023, 10, 2, 9, 30)),\n             (datetime(2023, 10, 2, 10, 0), datetime(2023, 10, 2, 11, 30)),\n             (datetime(2023, 10, 2, 12, 0), datetime(2023, 10, 2, 13, 30)),\n             (datetime(2023, 10, 2, 14, 0), datetime(2023, 10, 2, 16, 0)),\n             (datetime(2023, 10, 2, 16, 30), datetime(2023, 10, 2, 17, 0))]\n}\n\nmeeting_duration = timedelta(minutes=30)\nwork_start = datetime(2023, 10, 2, 9, 0)\nwork_end = datetime(2023, 10, 2, 17, 0)\n\ndef is_time_available(start, end):\n    for participant, busy_slots in schedules.items():\n        for busy_start, busy_end in busy_slots:\n            if busy_start < end and start < busy_end:\n                return False\n    return True\n\n# Check for available slots\ncurrent_time = work_start\nwhile current_time + meeting_duration <= work_end:\n    if is_time_available(current_time, current_time + meeting_duration):\n        proposed_start = current_time\n        proposed_end = current_time + meeting_duration\n        print(f\"{proposed_start.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')}, Monday\")\n        break\n    current_time += timedelta(minutes=1)\n```",
+            "count": "calendar_scheduling_example_457"
+        }
+    ]
+}

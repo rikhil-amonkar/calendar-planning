@@ -1,0 +1,94 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joshua",
+                        "start_time": "9:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "12:00",
+                        "end_time": "19:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Joseph",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Joseph",
+                        "start_time": "9:15",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Carol",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Joshua",
+                        "start_time": "11:04",
+                        "end_time": "12:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "13:10",
+                        "end_time": "14:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "14:43",
+                        "end_time": "16:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Matthew",
+                        "start_time": "17:05",
+                        "end_time": "17:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Paul",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Rebecca",
+                        "start_time": "19:41",
+                        "end_time": "20:26"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Marina District': {'Embarcadero': 14, 'Bayview': 27, 'Union Square': 16, 'Chinatown': 15, 'Sunset District': 19, 'Golden Gate Park': 18, 'Financial District': 17, 'Haight-Ashbury': 16, 'Mission District': 20},\n    'Embarcadero': {'Marina District': 12, 'Bayview': 21, 'Union Square': 10, 'Chinatown': 7, 'Sunset District': 30, 'Golden Gate Park': 25, 'Financial District': 5, 'Haight-Ashbury': 21, 'Mission District': 20},\n    'Bayview': {'Marina District': 27, 'Embarcadero': 19, 'Union Square': 18, 'Chinatown': 19, 'Sunset District': 23, 'Golden Gate Park': 22, 'Financial District': 19, 'Haight-Ashbury': 19, 'Mission District': 13},\n    'Union Square': {'Marina District': 18, 'Embarcadero': 11, 'Bayview': 15, 'Chinatown': 7, 'Sunset District': 27, 'Golden Gate Park': 22, 'Financial District': 9, 'Haight-Ashbury': 18, 'Mission District': 14},\n    'Chinatown': {'Marina District': 12, 'Embarcadero': 5, 'Bayview': 20, 'Union Square': 7, 'Sunset District': 29, 'Golden Gate Park': 23, 'Financial District': 5, 'Haight-Ashbury': 19, 'Mission District': 17},\n    'Sunset District': {'Marina District': 21, 'Embarcadero': 30, 'Bayview': 22, 'Union Square': 30, 'Chinatown': 30, 'Golden Gate Park': 11, 'Financial District': 30, 'Haight-Ashbury': 15, 'Mission District': 25},\n    'Golden Gate Park': {'Marina District': 16, 'Embarcadero': 25, 'Bayview': 23, 'Union Square': 22, 'Chinatown': 23, 'Sunset District': 10, 'Financial District': 26, 'Haight-Ashbury': 7, 'Mission District': 17},\n    'Financial District': {'Marina District': 15, 'Embarcadero': 4, 'Bayview': 19, 'Union Square': 9, 'Chinatown': 5, 'Sunset District': 30, 'Golden Gate Park': 23, 'Haight-Ashbury': 19, 'Mission District': 17},\n    'Haight-Ashbury': {'Marina District': 17, 'Embarcadero': 20, 'Bayview': 18, 'Union Square': 19, 'Chinatown': 19, 'Sunset District': 15, 'Golden Gate Park': 7, 'Financial District': 21, 'Mission District': 11},\n    'Mission District': {'Marina District': 19, 'Embarcadero': 19, 'Bayview': 14, 'Union Square': 15, 'Chinatown': 16, 'Sunset District': 24, 'Golden Gate Park': 17, 'Financial District': 15, 'Haight-Ashbury': 12}\n}\n\n# Constraints\nconstraints = {\n    'Joshua': {'location': 'Embarcadero','start_time': '09:45', 'end_time': '18:00','required_time': 105},\n    'Jeffrey': {'location': 'Bayview','start_time': '09:45', 'end_time': '20:15','required_time': 75},\n    'Charles': {'location': 'Union Square','start_time': '10:45', 'end_time': '20:15','required_time': 120},\n    'Joseph': {'location': 'Chinatown','start_time': '07:00', 'end_time': '15:30','required_time': 60},\n    'Elizabeth': {'location': 'Sunset District','start_time': '09:00', 'end_time': '09:45','required_time': 45},\n    'Matthew': {'location': 'Golden Gate Park','start_time': '11:00', 'end_time': '19:30','required_time': 45},\n    'Carol': {'location': 'Financial District','start_time': '10:45', 'end_time': '11:15','required_time': 15},\n    'Paul': {'location': 'Haight-Ashbury','start_time': '19:15', 'end_time': '20:30','required_time': 15},\n    'Rebecca': {'location': 'Mission District','start_time': '17:00', 'end_time': '22:45','required_time': 45}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\ndef is_valid_meeting(person, start_time, end_time, required_time):\n    return (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=required_time)).time() <= datetime.strptime(end_time, '%H:%M').time()\n\ndef schedule_meeting(person, start_time, end_time, required_time, location):\n    travel_time = calculate_travel_time('Marina District', location)\n    start_time = (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    end_time = (datetime.strptime(end_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    return is_valid_meeting(person, start_time, end_time, required_time)\n\ndef generate_itinerary():\n    itinerary = []\n    start_time = '09:00'\n    end_time = '12:00'\n    \n    for person in constraints:\n        location = constraints[person]['location']\n        start_person_time = constraints[person]['start_time']\n        end_person_time = constraints[person]['end_time']\n        required_time = constraints[person]['required_time']\n        \n        if schedule_meeting(person, start_time, end_time, required_time, location):\n            itinerary.append({\n                'action':'meet',\n                'location': location,\n                'person': person,\n'start_time': start_time,\n                'end_time': end_time\n            })\n            start_time = end_time\n            end_time = (datetime.strptime(end_person_time, '%H:%M') + timedelta(minutes=required_time)).strftime('%H:%M')\n    \n    return itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_813"
+        }
+    ]
+}

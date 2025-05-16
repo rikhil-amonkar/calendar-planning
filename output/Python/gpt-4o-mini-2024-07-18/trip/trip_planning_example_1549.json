@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Lisbon"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 24-26",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 26-28",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the trip constraints\ncity_stays = {\n    \"Prague\": 5,\n    \"Tallinn\": 3,\n    \"Warsaw\": 2,\n    \"Porto\": 3,\n    \"Naples\": 5,\n    \"Milan\": 3,\n    \"Lisbon\": 5,\n    \"Santorini\": 5,\n    \"Riga\": 4,\n    \"Stockholm\": 2,\n}\n\n# Add specific constraints\nconstraints = {\n    \"Tallinn\": {\"days\": [18, 19, 20]},  # visit relatives in Tallinn\n    \"Milan\": {\"days\": [24, 25, 26]},     # meet friend in Milan\n}\n\n# Define the direct flight connections\ndirect_flights = {\n    \"Riga\": [\"Prague\", \"Tallinn\", \"Milan\", \"Warsaw\", \"Stockholm\"],\n    \"Prague\": [\"Riga\", \"Milan\", \"Tallinn\"],\n    \"Tallinn\": [\"Riga\", \"Warsaw\"],\n    \"Warsaw\": [\"Naples\", \"Lisbon\", \"Milan\", \"Tallinn\", \"Prague\", \"Porto\"],\n    \"Porto\": [\"Lisbon\", \"Milan\", \"Warsaw\"],\n    \"Milan\": [\"Prague\", \"Naples\", \"Porto\", \"Warsaw\", \"Santorini\", \"Stockholm\"],\n    \"Lisbon\": [\"Porto\", \"Warsaw\", \"Milan\", \"Riga\", \"Prague\"],\n    \"Naples\": [\"Warsaw\", \"Milan\", \"Santorini\"],\n    \"Santorini\": [\"Milan\", \"Stockholm\"],\n    \"Stockholm\": [\"Riga\", \"Milan\", \"Lisbon\"],\n}\n\n# Plan days for the trip\ndef plan_trip():\n    itinerary = []\n    current_day = 1\n    city_sequence = [\n        (\"Prague\", 5),\n        (\"Riga\", 4),\n        (\"Tallinn\", 3),\n        (\"Warsaw\", 2),\n        (\"Milan\", 3),\n        (\"Lisbon\", 5),\n        (\"Porto\", 3),\n        (\"Naples\", 5),\n        (\"Santorini\", 5),\n        (\"Stockholm\", 2),\n    ]\n\n    for city, duration in city_sequence:\n        # Handle specific constraints\n        if city == \"Tallinn\" and (current_day + duration > 20):\n            continue # Skip to Tallinn when days exceed day 20\n        \n        # Adjust days for visiting relatives or friends\n        if city == \"Tallinn\" and current_day == 18:\n            itinerary.append({\"day_range\": f\"Day {current_day}-{current_day+duration-1}\", \"place\": city})\n            current_day += duration\n            continue\n        \n        if city == \"Milan\" and current_day == 24:\n            itinerary.append({\"day_range\": f\"Day {current_day}-{current_day+duration-1}\", \"place\": city})\n            current_day += duration\n            continue\n            \n        # Add city stay to itinerary\n        if current_day + duration <= 29:  # ensure we do not exceed 28 days\n            itinerary.append({\"day_range\": f\"Day {current_day}-{current_day+duration-1}\", \"place\": city})\n            current_day += duration\n            \n            # Add direct flight transition only if it's not the end of the trip\n            if current_day <= 28:\n                next_city = city_sequence[city_sequence.index((city, duration)) + 1][0]\n                itinerary.append({\n                    \"flying\": f\"Day {current_day-1}-{current_day-1}\",\n                    \"from\": city,\n                    \"to\": next_city\n                }) \n                current_day += 1  # increment for travel day\n            \n    return itinerary\n\n# Run the trip planning logic\ntrip_plan = plan_trip()\n\n# Output the result as a JSON-formatted dictionary\nprint(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_1549"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days to consider\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']\n    \n    # Laura's busy times in minutes since midnight for each day\n    laura_busy = {\n        'Monday': [(10*60 + 30, 11*60), (12*60 + 30, 13*60), (14*60 + 30, 15*60 + 30), (16*60, 17*60)],\n        'Tuesday': [(9*60 + 30, 10*60), (11*60, 11*60 + 30), (13*60, 13*60 + 30), (14*60 + 30, 15*60), (16*60, 17*60)],\n        'Wednesday': [(11*60 + 30, 12*60), (12*60 + 30, 13*60), (15*60 + 30, 16*60 + 30)],\n        'Thursday': [(10*60 + 30, 11*60), (12*60, 13*60 + 30), (15*60, 15*60 + 30), (16*60, 16*60 + 30)]\n    }\n    \n    # Philip's busy times in minutes since midnight for each day\n    philip_busy = {\n        'Monday': [(9*60, 17*60)],\n        'Tuesday': [(9*60, 11*60), (11*60 + 30, 12*60), (13*60, 13*60 + 30), (14*60, 14*60 + 30), (15*60, 16*60 + 30)],\n        'Wednesday': [(9*60, 10*60), (11*60, 12*60), (12*60 + 30, 16*60), (16*60 + 30, 17*60)],\n        'Thursday': [(9*60, 10*60 + 30), (11*60, 12*60 + 30), (13*60, 17*60)]\n    }\n    \n    meeting_duration = 60  # 1 hour in minutes\n    \n    # Iterate through each day (excluding Wednesday for Philip)\n    for day in days:\n        if day == 'Wednesday':\n            continue  # Philip can't meet on Wednesday\n        \n        # Get busy intervals for both participants\n        laura_day = laura_busy.get(day, [])\n        philip_day = philip_busy.get(day, [])\n        \n        # Combine and sort all busy intervals\n        all_busy = laura_day + philip_day\n        all_busy.sort()\n        \n        # Find free intervals\n        free_intervals = []\n        prev_end = work_start\n        \n        for start, end in all_busy:\n            if start > prev_end:\n                free_intervals.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        \n        if prev_end < work_end:\n            free_intervals.append((prev_end, work_end))\n        \n        # Check each free interval for availability\n        for start, end in free_intervals:\n            available_duration = end - start\n            if available_duration >= meeting_duration:\n                meeting_start = start\n                meeting_end = meeting_start + meeting_duration\n                # Format the time as HH:MM:HH:MM\n                start_hh = meeting_start // 60\n                start_mm = meeting_start % 60\n                end_hh = meeting_end // 60\n                end_mm = meeting_end % 60\n                time_str = f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\"\n                print(f\"{day}: {time_str}\")\n                return\n    \n    print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_825"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, meeting_duration, work_hours_start, work_hours_end):\n    # Convert time strings to minutes since start of day for easier calculation\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n\n    # Convert minutes back to time string\n    def minutes_to_time(minutes):\n        hh = minutes // 60\n        mm = minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n\n    work_start = time_to_minutes(work_hours_start)\n    work_end = time_to_minutes(work_hours_end)\n    duration = meeting_duration * 60\n\n    # Initialize the list of busy intervals for all participants\n    busy_intervals = []\n    for schedule in participants_schedules:\n        for interval in schedule:\n            start, end = map(time_to_minutes, interval.split(':'))\n            busy_intervals.append((start, end))\n\n    # Sort all busy intervals by start time\n    busy_intervals.sort()\n\n    # Find the earliest time when everyone is free\n    current_time = work_start\n    for start, end in busy_intervals:\n        if start > current_time:\n            if start - current_time >= duration:\n                return minutes_to_time(current_time), minutes_to_time(current_time + duration)\n            else:\n                current_time = end\n        else:\n            if end > current_time:\n                current_time = end\n        if current_time + duration > work_end:\n            break\n\n    # Check the remaining time after the last meeting\n    if current_time + duration <= work_end:\n        return minutes_to_time(current_time), minutes_to_time(current_time + duration)\n    else:\n        return None\n\n# Define participants' schedules\nparticipants_schedules = [\n    [\"11:30:12:00\", \"14:00:14:30\"],  # John\n    [\"12:00:12:30\", \"14:00:15:00\", \"15:30:16:00\"],  # Megan\n    [],  # Brandon\n    [\"09:00:09:30\", \"10:00:10:30\", \"11:00:14:30\", \"15:00:16:00\", \"16:30:17:00\"],  # Kimberly\n    [\"10:00:11:00\", \"11:30:14:00\", \"15:00:15:30\"],  # Sean\n    [\"09:00:09:30\", \"10:30:12:00\", \"13:00:14:30\", \"16:00:16:30\"],  # Lori\n]\n\nmeeting_duration = 0.5  # half an hour\nwork_hours_start = \"09:00\"\nwork_hours_end = \"17:00\"\nday_of_week = \"Monday\"\n\n# Find the meeting time\nmeeting_time = find_meeting_time(participants_schedules, meeting_duration, work_hours_start, work_hours_end)\n\nif meeting_time:\n    start_time, end_time = meeting_time\n    print(f\"{start_time}:{end_time}\")\n    print(day_of_week)\nelse:\n    print(\"No suitable time found.\")\n```",
+            "count": "calendar_scheduling_example_337"
+        }
+    ]
+}

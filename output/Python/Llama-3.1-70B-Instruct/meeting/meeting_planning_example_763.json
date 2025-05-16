@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mark",
+                        "start_time": "15:57",
+                        "end_time": "16:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Richard",
+                        "start_time": "16:52",
+                        "end_time": "18:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Margaret",
+                        "start_time": "18:28",
+                        "end_time": "18:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:50",
+                        "end_time": "20:20"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define travel times between locations\ntravel_times = {\n    'Chinatown': {'Embarcadero': 5, 'Pacific Heights': 10, 'Russian Hill': 7, 'Haight-Ashbury': 19, 'Golden Gate Park': 23, 'Fisherman\\'s Wharf': 8, 'Sunset District': 29, 'The Castro': 22},\n    'Embarcadero': {'Chinatown': 7, 'Pacific Heights': 11, 'Russian Hill': 8, 'Haight-Ashbury': 21, 'Golden Gate Park': 25, 'Fisherman\\'s Wharf': 6, 'Sunset District': 30, 'The Castro': 25},\n    'Pacific Heights': {'Chinatown': 11, 'Embarcadero': 10, 'Russian Hill': 7, 'Haight-Ashbury': 11, 'Golden Gate Park': 15, 'Fisherman\\'s Wharf': 13, 'Sunset District': 21, 'The Castro': 16},\n    'Russian Hill': {'Chinatown': 9, 'Embarcadero': 8, 'Pacific Heights': 7, 'Haight-Ashbury': 17, 'Golden Gate Park': 21, 'Fisherman\\'s Wharf': 7, 'Sunset District': 23, 'The Castro': 21},\n    'Haight-Ashbury': {'Chinatown': 19, 'Embarcadero': 20, 'Pacific Heights': 12, 'Russian Hill': 17, 'Golden Gate Park': 7, 'Fisherman\\'s Wharf': 23, 'Sunset District': 15, 'The Castro': 6},\n    'Golden Gate Park': {'Chinatown': 23, 'Embarcadero': 25, 'Pacific Heights': 16, 'Russian Hill': 19, 'Haight-Ashbury': 7, 'Fisherman\\'s Wharf': 24, 'Sunset District': 10, 'The Castro': 13},\n    'Fisherman\\'s Wharf': {'Chinatown': 12, 'Embarcadero': 8, 'Pacific Heights': 12, 'Russian Hill': 7, 'Haight-Ashbury': 22, 'Golden Gate Park': 25, 'Sunset District': 27, 'The Castro': 27},\n    'Sunset District': {'Chinatown': 30, 'Embarcadero': 30, 'Pacific Heights': 21, 'Russian Hill': 24, 'Haight-Ashbury': 15, 'Golden Gate Park': 11, 'Fisherman\\'s Wharf': 29, 'The Castro': 17},\n    'The Castro': {'Chinatown': 22, 'Embarcadero': 22, 'Pacific Heights': 16, 'Russian Hill': 18, 'Haight-Ashbury': 6, 'Golden Gate Park': 11, 'Fisherman\\'s Wharf': 24, 'Sunset District': 17}\n}\n\n# Define meeting constraints\nmeetings = {\n    'Richard': {'location': 'Embarcadero','start_time': '15:15', 'end_time': '18:45', 'duration': 90},\n    'Mark': {'location': 'Pacific Heights','start_time': '15:00', 'end_time': '17:00', 'duration': 45},\n    'Matthew': {'location': 'Russian Hill','start_time': '17:30', 'end_time': '21:00', 'duration': 90},\n    'Rebecca': {'location': 'Haight-Ashbury','start_time': '14:45', 'end_time': '18:00', 'duration': 60},\n    'Melissa': {'location': 'Golden Gate Park','start_time': '13:45', 'end_time': '17:30', 'duration': 90},\n    'Margaret': {'location': 'Fisherman\\'s Wharf','start_time': '14:45', 'end_time': '20:15', 'duration': 15},\n    'Emily': {'location': 'Sunset District','start_time': '15:45', 'end_time': '17:00', 'duration': 45},\n    'George': {'location': 'The Castro','start_time': '14:00', 'end_time': '16:15', 'duration': 75}\n}\n\ndef calculate_meeting_time(current_time, travel_time, meeting_duration):\n    meeting_start_time = add_time(current_time, travel_time)\n    meeting_end_time = add_time(meeting_start_time, meeting_duration)\n    return meeting_start_time, meeting_end_time\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef is_meeting_possible(current_time, meeting_start_time, meeting_end_time):\n    return meeting_start_time <= current_time < meeting_end_time\n\ndef plan_meetings():\n    current_time = '09:00'\n    current_location = 'Chinatown'\n    itinerary = []\n\n    for person, meeting in meetings.items():\n        travel_time = travel_times[current_location][meeting['location']]\n        meeting_start_time, meeting_end_time = calculate_meeting_time(current_time, travel_time, meeting['duration'])\n        if is_meeting_possible(meeting_start_time, meeting['start_time'], meeting['end_time']):\n            itinerary.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': person,\n           'start_time': meeting_start_time,\n                'end_time': meeting_end_time\n            })\n            current_time = meeting_end_time\n            current_location = meeting['location']\n\n    return itinerary\n\ndef main():\n    itinerary = plan_meetings()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_763"
+        }
+    ]
+}

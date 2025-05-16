@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Margaret",
+                        "start_time": "9:30",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kimberly",
+                        "start_time": "13:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "13:47",
+                        "end_time": "15:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kenneth",
+                        "start_time": "19:30",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Margaret",
+                        "start_time": "12:52",
+                        "end_time": "13:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kimberly",
+                        "start_time": "13:47",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:19",
+                        "end_time": "15:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kenneth",
+                        "start_time": "19:30",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times in a dictionary\ntravel_times = {\n    (\"Richmond District\", \"Marina District\"): 9,\n    (\"Richmond District\", \"Chinatown\"): 20,\n    (\"Richmond District\", \"Financial District\"): 22,\n    (\"Richmond District\", \"Bayview\"): 26,\n    (\"Richmond District\", \"Union Square\"): 21,\n    (\"Marina District\", \"Richmond District\"): 11,\n    (\"Marina District\", \"Chinatown\"): 16,\n    (\"Marina District\", \"Financial District\"): 17,\n    (\"Marina District\", \"Bayview\"): 27,\n    (\"Marina District\", \"Union Square\"): 16,\n    (\"Chinatown\", \"Richmond District\"): 20,\n    (\"Chinatown\", \"Marina District\"): 12,\n    (\"Chinatown\", \"Financial District\"): 5,\n    (\"Chinatown\", \"Bayview\"): 22,\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Financial District\", \"Richmond District\"): 21,\n    (\"Financial District\", \"Marina District\"): 15,\n    (\"Financial District\", \"Chinatown\"): 5,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Bayview\", \"Richmond District\"): 25,\n    (\"Bayview\", \"Marina District\"): 25,\n    (\"Bayview\", \"Chinatown\"): 18,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Bayview\", \"Union Square\"): 17,\n    (\"Union Square\", \"Richmond District\"): 20,\n    (\"Union Square\", \"Marina District\"): 18,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Financial District\"): 9,\n    (\"Union Square\", \"Bayview\"): 15,\n}\n\n# Define meeting constraints\nconstraints = {\n    \"Kimberly\": {\"location\": \"Marina District\", \"available\": (datetime.strptime(\"13:15\", \"%H:%M\"), datetime.strptime(\"16:45\", \"%H:%M\")), \"duration\": timedelta(minutes=15)},\n    \"Robert\": {\"location\": \"Chinatown\", \"available\": (datetime.strptime(\"12:15\", \"%H:%M\"), datetime.strptime(\"20:15\", \"%H:%M\")), \"duration\": timedelta(minutes=15)},\n    \"Rebecca\": {\"location\": \"Financial District\", \"available\": (datetime.strptime(\"13:15\", \"%H:%M\"), datetime.strptime(\"16:45\", \"%H:%M\")), \"duration\": timedelta(minutes=75)},\n    \"Margaret\": {\"location\": \"Bayview\", \"available\": (datetime.strptime(\"9:30\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")), \"duration\": timedelta(minutes=30)},\n    \"Kenneth\": {\"location\": \"Union Square\", \"available\": (datetime.strptime(\"19:30\", \"%H:%M\"), datetime.strptime(\"21:15\", \"%H:%M\")), \"duration\": timedelta(minutes=75)},\n}\n\n# Initialize meeting schedule\nitinerary = []\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Function to add meeting to the itinerary\ndef add_meeting(person, location, start, duration):\n    end = start + duration\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": start.strftime(\"%H:%M\"),\n        \"end_time\": end.strftime(\"%H:%M\"),\n    })\n    return end\n\n# Schedule meetings\ncurrent_time = start_time\ncurrent_location = \"Richmond District\"\n\n# Meeting with Margaret first\nif current_time < constraints[\"Margaret\"][\"available\"][1]:\n    travel_time = travel_times[(current_location, \"Bayview\")]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < constraints[\"Margaret\"][\"available\"][1]:\n        meeting_start = max(current_time, constraints[\"Margaret\"][\"available\"][0])\n        current_time = add_meeting(\"Margaret\", \"Bayview\", meeting_start, constraints[\"Margaret\"][\"duration\"])\n        current_location = \"Bayview\"\n\n# Meeting with Robert\nif current_time < constraints[\"Robert\"][\"available\"][1]:\n    travel_time = travel_times[(current_location, \"Chinatown\")]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < constraints[\"Robert\"][\"available\"][1]:\n        meeting_start = max(current_time, constraints[\"Robert\"][\"available\"][0])\n        current_time = add_meeting(\"Robert\", \"Chinatown\", meeting_start, constraints[\"Robert\"][\"duration\"])\n        current_location = \"Chinatown\"\n\n# Meeting with Kimberly\nif current_time < constraints[\"Kimberly\"][\"available\"][1]:\n    travel_time = travel_times[(current_location, \"Marina District\")]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < constraints[\"Kimberly\"][\"available\"][1]:\n        meeting_start = max(current_time, constraints[\"Kimberly\"][\"available\"][0])\n        current_time = add_meeting(\"Kimberly\", \"Marina District\", meeting_start, constraints[\"Kimberly\"][\"duration\"])\n        current_location = \"Marina District\"\n\n# Meeting with Rebecca\nif current_time < constraints[\"Rebecca\"][\"available\"][1]:\n    travel_time = travel_times[(current_location, \"Financial District\")]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < constraints[\"Rebecca\"][\"available\"][1]:\n        meeting_start = max(current_time, constraints[\"Rebecca\"][\"available\"][0])\n        current_time = add_meeting(\"Rebecca\", \"Financial District\", meeting_start, constraints[\"Rebecca\"][\"duration\"])\n        current_location = \"Financial District\"\n\n# Meeting with Kenneth\nif current_time < constraints[\"Kenneth\"][\"available\"][1]:\n    travel_time = travel_times[(current_location, \"Union Square\")]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < constraints[\"Kenneth\"][\"available\"][1]:\n        meeting_start = max(current_time, constraints[\"Kenneth\"][\"available\"][0])\n        current_time = add_meeting(\"Kenneth\", \"Union Square\", meeting_start, constraints[\"Kenneth\"][\"duration\"])\n        current_location = \"Union Square\"\n\n# Convert the itinerary to JSON\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_446"
+        }
+    ]
+}

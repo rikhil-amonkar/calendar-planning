@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "17:00",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "19:19",
+                        "end_time": "21:04"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "17:19",
+                        "end_time": "19:04"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I'm trying to solve this problem where I need to write a Python program that calculates the optimal meeting schedule for a day in San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations. \n\nFirst, I'll start by understanding the problem thoroughly. The user arrives at the Embarcadero at 9:00 AM and wants to meet five friends located in different areas of the city. Each friend has specific time windows during which they are available, and each meeting requires a minimum duration. The challenge is to find the best order to meet these friends so that the maximum number of meetings can be attended without any time conflicts and considering the travel times between locations.\n\nLooking at the input parameters, I see that there are travel times between various locations and constraints for each friend. The friends are Mary at Golden Gate Park, Kevin at Haight-Ashbury, Deborah at Bayview, Stephanie at Presidio, and Emily at Financial District. Each has their own available time slots and required meeting durations.\n\nI need to generate a Python program that takes these parameters and computes the optimal schedule. The output should be a JSON-formatted dictionary with the itinerary, specifying the action (meet), location, person, start time, and end time for each meeting.\n\nTo approach this, I think I should first represent the travel times and friends' data in a structured way. Using dictionaries for travel times and a list of dictionaries for friends seems appropriate. Each friend's dictionary should include their name, location, start and end times in minutes since midnight, and the required duration of the meeting.\n\nNext, I need to convert the times from minutes since midnight to 'H:MM' format for the output. A helper function, `minutes_to_time`, can handle this conversion.\n\nThe core of the problem is to find the optimal order of meetings. Since there are five friends, there are 5! (120) possible permutations of the meeting order. For each permutation, I'll simulate the schedule, checking if each meeting can be attended without conflicting with the previous one and respecting the friend's availability.\n\nFor each permutation, I'll start at the Embarcadero at 9:00 AM and calculate the arrival time at each friend's location. If the arrival time is within the friend's available window, I'll schedule the meeting, update the current time and location, and move to the next friend. If a meeting can't be scheduled, I'll skip that friend and proceed to the next one in the permutation.\n\nAfter evaluating all permutations, I'll select the one that allows the maximum number of meetings and use it as the optimal schedule.\n\nI'll need to handle the travel times by checking the dictionary for each possible route. If a route isn't found, I'll skip that meeting. Also, I must ensure that the meeting doesn't end after the friend's availability window.\n\nFinally, I'll format the best itinerary into the required JSON structure and print it.\n\nI should test the code to make sure it runs independently and outputs valid JSON. It's important to ensure that all edge cases are handled, such as meetings ending exactly at the end of the availability window or starting immediately after arrival.\n\nOverall, the approach involves generating all possible meeting orders, simulating each schedule, and selecting the one that meets the most friends. This brute-force method is feasible given the small number of friends, and it ensures that the optimal schedule is found.\n</think>\n\n```python\nimport itertools\n\ntravel_times = {\n    ('Embarcadero', 'Golden Gate Park'): 25,\n    ('Embarcadero', 'Haight-Ashbury'): 21,\n    ('Embarcadero', 'Bayview'): 21,\n    ('Embarcadero', 'Presidio'): 20,\n    ('Embarcadero', 'Financial District'): 5,\n    ('Golden Gate Park', 'Embarcadero'): 25,\n    ('Golden Gate Park', 'Haight-Ashbury'): 7,\n    ('Golden Gate Park', 'Bayview'): 23,\n    ('Golden Gate Park', 'Presidio'): 11,\n    ('Golden Gate Park', 'Financial District'): 26,\n    ('Haight-Ashbury', 'Embarcadero'): 20,\n    ('Haight-Ashbury', 'Golden Gate Park'): 7,\n    ('Haight-Ashbury', 'Bayview'): 18,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Financial District'): 21,\n    ('Bayview', 'Embarcadero'): 19,\n    ('Bayview', 'Golden Gate Park'): 22,\n    ('Bayview', 'Haight-Ashbury'): 19,\n    ('Bayview', 'Presidio'): 31,\n    ('Bayview', 'Financial District'): 19,\n    ('Presidio', 'Embarcadero'): 20,\n    ('Presidio', 'Golden Gate Park'): 12,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Presidio', 'Bayview'): 31,\n    ('Presidio', 'Financial District'): 23,\n    ('Financial District', 'Embarcadero'): 4,\n    ('Financial District', 'Golden Gate Park'): 23,\n    ('Financial District', 'Haight-Ashbury'): 19,\n    ('Financial District', 'Bayview'): 19,\n    ('Financial District', 'Presidio'): 22,\n}\n\nfriends = [\n    {\n        'name': 'Mary',\n        'location': 'Golden Gate Park',\n        'start': 525,  # 8:45 AM\n        'end': 705,    # 11:45 AM\n        'duration': 45\n    },\n    {\n        'name': 'Kevin',\n        'location': 'Haight-Ashbury',\n        'start': 615,  # 10:15 AM\n        'end': 975,    # 16:15 (4:15 PM)\n        'duration': 90\n    },\n    {\n        'name': 'Deborah',\n        'location': 'Bayview',\n        'start': 1020, # 17:00 (5:00 PM)\n        'end': 1350,  # 22:15 (10:15 PM)\n        'duration': 120\n    },\n    {\n        'name': 'Stephanie',\n        'location': 'Presidio',\n        'start': 600,  # 10:00 AM\n        'end': 1035,  # 17:15 (5:15 PM)\n        'duration': 120\n    },\n    {\n        'name': 'Emily',\n        'location': 'Financial District',\n        'start': 690,  # 11:30 AM\n        'end': 1410,  # 23:45 (11:45 PM)\n        'duration': 105\n    }\n]\n\ndef minutes_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours}:{mins:02d}\"\n\nbest_itinerary = []\nmax_meetings = 0\n\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM\n    current_location = 'Embarcadero'\n    itinerary = []\n    \n    for friend in perm:\n        travel = travel_times.get((current_location, friend['location']), None)\n        if travel is None:\n            continue\n        \n        arrival = current_time + travel\n        meeting_start = max(arrival, friend['start'])\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > friend['end']:\n            continue\n        \n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        current_time = meeting_end\n        current_location = friend['location']\n    \n    if len(itinerary) > max_meetings:\n        max_meetings = len(itinerary)\n        best_itinerary = itinerary\n\noutput = {\n    \"itinerary\": best_itinerary\n}\n\nimport json\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_479"
+        }
+    ]
+}

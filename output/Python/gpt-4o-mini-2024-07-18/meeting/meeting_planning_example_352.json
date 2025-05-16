@@ -1,0 +1,66 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Sandra",
+                        "start_time": "9:00",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Nancy",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Karen",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joseph",
+                        "start_time": "12:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Sandra",
+                        "start_time": "14:19",
+                        "end_time": "15:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Nancy",
+                        "start_time": "15:46",
+                        "end_time": "17:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Karen",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times in a minutes dictionary\ntravel_times = {\n    (\"Union Square\", \"Nob Hill\"): 9,\n    (\"Union Square\", \"Haight-Ashbury\"): 18,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Marina District\"): 18,\n    (\"Nob Hill\", \"Union Square\"): 7,\n    (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n    (\"Nob Hill\", \"Chinatown\"): 6,\n    (\"Nob Hill\", \"Marina District\"): 11,\n    (\"Haight-Ashbury\", \"Union Square\"): 17,\n    (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n    (\"Haight-Ashbury\", \"Chinatown\"): 19,\n    (\"Haight-Ashbury\", \"Marina District\"): 17,\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Chinatown\", \"Nob Hill\"): 8,\n    (\"Chinatown\", \"Haight-Ashbury\"): 19,\n    (\"Chinatown\", \"Marina District\"): 12,\n    (\"Marina District\", \"Union Square\"): 16,\n    (\"Marina District\", \"Nob Hill\"): 12,\n    (\"Marina District\", \"Haight-Ashbury\"): 16,\n    (\"Marina District\", \"Chinatown\"): 16\n}\n\n# Define meeting constraints\nconstraints = {\n    \"Karen\": {\"location\": \"Nob Hill\", \"available_from\": \"21:15\", \"available_to\": \"21:45\", \"duration\": 30},\n    \"Joseph\": {\"location\": \"Haight-Ashbury\", \"available_from\": \"12:30\", \"available_to\": \"19:45\", \"duration\": 90},\n    \"Sandra\": {\"location\": \"Chinatown\", \"available_from\": \"07:15\", \"available_to\": \"19:15\", \"duration\": 75},\n    \"Nancy\": {\"location\": \"Marina District\", \"available_from\": \"11:00\", \"available_to\": \"20:15\", \"duration\": 105}\n}\n\n# Define start time at Union Square\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Function to convert string to datetime\ndef str_to_time(s):\n    return datetime.strptime(s, \"%H:%M\")\n\n# Function to create a meeting schedule\ndef create_schedule():\n    schedule = []\n    current_time = start_time\n\n    # Meet Sandra\n    sandra_start = max(str_to_time(constraints[\"Sandra\"][\"available_from\"]), current_time)\n    sandra_end = sandra_start + timedelta(minutes=constraints[\"Sandra\"][\"duration\"])\n    if sandra_end <= str_to_time(constraints[\"Sandra\"][\"available_to\"]):\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Chinatown\",\n            \"person\": \"Sandra\",\n            \"start_time\": sandra_start.strftime(\"%H:%M\"),\n            \"end_time\": sandra_end.strftime(\"%H:%M\")\n        })\n        current_time = sandra_end + timedelta(minutes=travel_times[(\"Chinatown\", \"Marina District\")])\n\n    # Meet Nancy\n    nancy_start = max(str_to_time(constraints[\"Nancy\"][\"available_from\"]), current_time)\n    nancy_end = nancy_start + timedelta(minutes=constraints[\"Nancy\"][\"duration\"])\n    if nancy_end <= str_to_time(constraints[\"Nancy\"][\"available_to\"]):\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Marina District\",\n            \"person\": \"Nancy\",\n            \"start_time\": nancy_start.strftime(\"%H:%M\"),\n            \"end_time\": nancy_end.strftime(\"%H:%M\")\n        })\n        current_time = nancy_end + timedelta(minutes=travel_times[(\"Marina District\", \"Nob Hill\")])\n\n    # Meet Karen\n    karen_start = max(str_to_time(constraints[\"Karen\"][\"available_from\"]), current_time)\n    karen_end = karen_start + timedelta(minutes=constraints[\"Karen\"][\"duration\"])\n    if karen_end <= str_to_time(constraints[\"Karen\"][\"available_to\"]):\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Nob Hill\",\n            \"person\": \"Karen\",\n            \"start_time\": karen_start.strftime(\"%H:%M\"),\n            \"end_time\": karen_end.strftime(\"%H:%M\")\n        })\n        current_time = karen_end + timedelta(minutes=travel_times[(\"Nob Hill\", \"Haight-Ashbury\")])\n\n    # Meet Joseph\n    joseph_start = max(str_to_time(constraints[\"Joseph\"][\"available_from\"]), current_time)\n    joseph_end = joseph_start + timedelta(minutes=constraints[\"Joseph\"][\"duration\"])\n    if joseph_end <= str_to_time(constraints[\"Joseph\"][\"available_to\"]):\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Haight-Ashbury\",\n            \"person\": \"Joseph\",\n            \"start_time\": joseph_start.strftime(\"%H:%M\"),\n            \"end_time\": joseph_end.strftime(\"%H:%M\")\n        })\n\n    return {\n        \"itinerary\": schedule\n    }\n\n# Generate the schedule and print it as JSON\noptimal_schedule = create_schedule()\nprint(json.dumps(optimal_schedule, indent=2))\n```",
+            "count": "meeting_planning_example_352"
+        }
+    ]
+}

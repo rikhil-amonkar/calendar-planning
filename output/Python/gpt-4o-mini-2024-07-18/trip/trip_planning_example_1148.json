@@ -1,0 +1,85 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 4-4",
+                        "place": "Lisbon (Workshop)"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Lyon (Annual Show)"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    itinerary = []\n    \n    # Total days for each segment\n    days_in_lisbon = 2\n    days_in_dubrovnik = 5\n    days_in_copenhagen = 5\n    days_in_prague = 3\n    days_in_tallinn = 2\n    days_in_stockholm = 4\n    days_in_split = 3\n    days_in_lyon = 2\n\n    # Workshop in Lisbon (between day 4 and day 5)\n    workshop_days = (4, 5)\n\n    # Meeting a friend in Tallinn (between day 1 and day 2)\n    friend_meeting_days = (1, 2)\n\n    # Wedding in Stockholm (between day 13 and day 16)\n    wedding_days = (13, 16)\n\n    # Annual show in Lyon (day 18 to day 19)\n    annual_show_days = (18, 19)\n    \n    # Define the trip\n    # Day 1-2: Tallinn (meet friend)\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Tallinn'})\n    \n    # Day 3: Fly from Tallinn to Lisbon\n    itinerary.append({'flying': 'Day 3-3', 'from': 'Tallinn', 'to': 'Lisbon'})\n    \n    # Day 3-4: Lisbon\n    itinerary.append({'day_range': 'Day 3-4', 'place': 'Lisbon'})\n    \n    # Day 4: Workshop day in Lisbon (day 4)\n    itinerary.append({'day_range': 'Day 4-4', 'place': 'Lisbon (Workshop)'})\n    \n    # Day 5: Lisbon to Dubrovnik (after workshop, no overlap)\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Lisbon', 'to': 'Dubrovnik'})\n    \n    # Day 5-9: Dubrovnik\n    itinerary.append({'day_range': 'Day 5-9', 'place': 'Dubrovnik'})\n    \n    # Day 10: Dubrovnik to Copenhagen\n    itinerary.append({'flying': 'Day 10-10', 'from': 'Dubrovnik', 'to': 'Copenhagen'})\n    \n    # Day 10-14: Copenhagen\n    itinerary.append({'day_range': 'Day 10-14', 'place': 'Copenhagen'})\n    \n    # Day 15: Copenhagen to Stockholm\n    itinerary.append({'flying': 'Day 15-15', 'from': 'Copenhagen', 'to': 'Stockholm'})\n    \n    # Day 15-18: Stockholm (includes wedding)\n    itinerary.append({'day_range': 'Day 15-18', 'place': 'Stockholm'})\n    \n    # Day 18: Stockholm to Lyon (before annual show)\n    itinerary.append({'flying': 'Day 18-18', 'from': 'Stockholm', 'to': 'Lyon'})\n    \n    # Day 18-19: Lyon (annual show)\n    itinerary.append({'day_range': 'Day 18-19', 'place': 'Lyon (Annual Show)'})\n    \n    # We still need to cover Prague and Split\n    # Day 14: Copenhagen to Prague (after staying in Copenhagen)\n    itinerary.append({'flying': 'Day 14-14', 'from': 'Copenhagen', 'to': 'Prague'})\n    \n    # Day 14-16: Prague\n    itinerary.append({'day_range': 'Day 14-16', 'place': 'Prague'})\n    \n    # Day 16: Prague to Split\n    itinerary.append({'flying': 'Day 16-16', 'from': 'Prague', 'to': 'Split'})\n    \n    # Day 16-18: Split\n    itinerary.append({'day_range': 'Day 16-18', 'place': 'Split'})\n    \n    # Format output as JSON\n    return json.dumps(itinerary, indent=4)\n\n# Calculate and print the itinerary\nif __name__ == \"__main__\":\n    trip_itinerary = compute_itinerary()\n    print(trip_itinerary)\n```",
+            "count": "trip_planning_example_1148"
+        }
+    ]
+}

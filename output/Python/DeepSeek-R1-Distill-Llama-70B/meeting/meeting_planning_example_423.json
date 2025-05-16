@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "14:52",
+                        "end_time": "15:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "15:16",
+                        "end_time": "16:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "18:45",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "19:52",
+                        "end_time": "21:37"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "14:52",
+                        "end_time": "15:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "15:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "17:37",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "19:02",
+                        "end_time": "19:47"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I'm trying to solve this problem where I need to write a Python program that calculates the optimal meeting schedule based on the given constraints. Let me break down what I need to do.\n\nFirst, I need to understand the problem thoroughly. The goal is to meet as many friends as possible in San Francisco, considering their availability and the travel times between different locations. The program should compute the schedule dynamically, not just print a pre-determined answer.\n\nLet's start by listing out the input parameters. The travel times between various districts are given, and there are constraints for each friend, including their location, available time window, and the minimum meeting duration. The user arrives at Presidio at 9:00 AM.\n\nI need to structure the data. The travel times can be stored in a dictionary where the keys are tuples of locations, and the values are the travel times in minutes. Similarly, each friend's information can be stored in a list of dictionaries, each containing their name, location, start and end times, and the required meeting duration.\n\nNext, I need to think about the algorithm. Since the goal is to maximize the number of friends met, a backtracking approach seems suitable. This algorithm will explore all possible sequences of meetings, checking if each meeting can fit into the schedule without overlapping and respecting travel times.\n\nI'll need to convert time from minutes to a 24-hour format for the output. Also, I should handle the time calculations carefully to ensure that the travel time and meeting duration are correctly accounted for.\n\nLet me outline the steps:\n\n1. **Define the Travel Times**: Create a dictionary to store travel times between each pair of locations.\n\n2. **Define Friends' Constraints**: Create a list of dictionaries, each representing a friend's details.\n\n3. **Backtracking Function**: Implement a recursive function that tries to meet each friend in all possible orders, checking feasibility at each step.\n\n4. **Time Conversion**: Functions to convert minutes to \"H:MM\" format and vice versa will be helpful.\n\n5. **Pruning**: To optimize, the algorithm should prune paths where the remaining possible meetings cannot exceed the current best solution.\n\n6. **Track the Best Schedule**: Keep track of the best schedule found so far, updating it whenever a better schedule is found.\n\nNow, considering the constraints:\n\n- The user starts at Presidio at 9:00 AM (540 minutes since midnight).\n- Each friend has specific time windows and meeting durations.\n- Travel times must be considered when moving from one location to another.\n\nPotential issues to watch out for:\n\n- **Time Overlaps**: Ensuring that meetings do not overlap and that travel times are included.\n- **Feasibility Check**: For each potential meeting, check if it's possible to arrive on time and meet for the required duration within the friend's availability.\n- **Efficiency**: Since backtracking can be computationally intensive, especially with many friends, pruning is essential to keep the solution efficient.\n\nLet me think about the data structures. The travel times can be a dictionary with tuples as keys, such as `travel_times[(loc1, loc2)] = minutes`. For friends, each entry will have 'name', 'location', 'start', 'end', and 'duration'.\n\nThe backtracking function will need to keep track of the current location, the current time, the set of friends met so far, and the itinerary. At each step, it tries to meet an unmet friend, calculates the earliest possible start time, and proceeds if feasible.\n\nI'll also need to handle the conversion of times correctly. For example, 9:00 AM is 540 minutes, and 13:30 is 810 minutes.\n\nTesting the code is crucial. I'll need to ensure that the schedule respects all constraints, including travel times and friend availability.\n\nFinally, the output should be a JSON-formatted dictionary with the itinerary, including each meeting's action, location, person, start time, and end time in \"H:MM\" format.\n\nI think I have a good plan. Now, I'll proceed to write the code, making sure to structure it clearly and handle all edge cases.\n</think>\n\n```python\nimport json\n\n# Define travel times between locations in minutes\ntravel_times = {\n    ('Presidio', 'Richmond District'): 7,\n    ('Presidio', 'North Beach'): 18,\n    ('Presidio', 'Financial District'): 23,\n    ('Presidio', 'Golden Gate Park'): 12,\n    ('Presidio', 'Union Square'): 22,\n    ('Richmond District', 'Presidio'): 7,\n    ('Richmond District', 'North Beach'): 17,\n    ('Richmond District', 'Financial District'): 22,\n    ('Richmond District', 'Golden Gate Park'): 9,\n    ('Richmond District', 'Union Square'): 21,\n    ('North Beach', 'Presidio'): 17,\n    ('North Beach', 'Richmond District'): 18,\n    ('North Beach', 'Financial District'): 8,\n    ('North Beach', 'Golden Gate Park'): 22,\n    ('North Beach', 'Union Square'): 7,\n    ('Financial District', 'Presidio'): 22,\n    ('Financial District', 'Richmond District'): 21,\n    ('Financial District', 'North Beach'): 7,\n    ('Financial District', 'Golden Gate Park'): 23,\n    ('Financial District', 'Union Square'): 9,\n    ('Golden Gate Park', 'Presidio'): 11,\n    ('Golden Gate Park', 'Richmond District'): 7,\n    ('Golden Gate Park', 'North Beach'): 24,\n    ('Golden Gate Park', 'Financial District'): 26,\n    ('Golden Gate Park', 'Union Square'): 22,\n    ('Union Square', 'Presidio'): 24,\n    ('Union Square', 'Richmond District'): 20,\n    ('Union Square', 'North Beach'): 10,\n    ('Union Square', 'Financial District'): 9,\n    ('Union Square', 'Golden Gate Park'): 22,\n}\n\n# Define friends with their constraints\nfriends = [\n    {'name': 'Jason', 'location': 'Richmond District', 'start': 780, 'end': 1260, 'duration': 90},\n    {'name': 'Melissa', 'location': 'North Beach', 'start': 1125, 'end': 1230, 'duration': 45},\n    {'name': 'Brian', 'location': 'Financial District', 'start': 585, 'end': 1425, 'duration': 15},\n    {'name': 'Elizabeth', 'location': 'Golden Gate Park', 'start': 525, 'end': 1410, 'duration': 105},\n    {'name': 'Laura', 'location': 'Union Square', 'start': 810, 'end': 1120, 'duration': 75},\n]\n\ndef convert_minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef convert_time_to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\nbest_itinerary = []\nbest_count = 0\n\ndef backtrack(current_location, current_time, met, itinerary):\n    global best_itinerary, best_count\n\n    # Prune if no better solution possible\n    remaining = len(friends) - len(met)\n    if len(met) + remaining <= best_count:\n        return\n\n    # Update best if current is better\n    if len(met) > best_count:\n        best_count = len(met)\n        best_itinerary = itinerary.copy()\n\n    # Try each possible next friend\n    for friend in friends:\n        if friend['name'] in met:\n            continue\n\n        # Calculate travel time to friend's location\n        travel = travel_times.get((current_location, friend['location']), 0)\n        arrival = current_time + travel\n\n        # Friend's availability\n        start = friend['start']\n        end = friend['end']\n        duration = friend['duration']\n\n        earliest_start = max(arrival, start)\n        latest_start = end - duration\n\n        if earliest_start > latest_start:\n            continue  # Cannot meet this friend\n\n        # Schedule the meeting\n        meeting_start = earliest_start\n        meeting_end = meeting_start + duration\n\n        # Create meeting entry\n        meeting = {\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': convert_minutes_to_time(meeting_start),\n            'end_time': convert_minutes_to_time(meeting_end)\n        }\n\n        # Update the state\n        new_met = set(met)\n        new_met.add(friend['name'])\n        new_itinerary = itinerary.copy()\n        new_itinerary.append(meeting)\n\n        # Update current location and time\n        new_location = friend['location']\n        new_time = meeting_end\n\n        # Recurse\n        backtrack(new_location, new_time, new_met, new_itinerary)\n\n# Initial call\nstart_time = 540  # 9:00 AM in minutes\nbacktrack('Presidio', start_time, set(), [])\n\n# Prepare the output\noutput = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the JSON\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_423"
+        }
+    ]
+}

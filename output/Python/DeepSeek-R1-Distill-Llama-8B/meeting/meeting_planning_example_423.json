@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "14:52",
+                        "end_time": "15:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "15:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "17:37",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "19:02",
+                        "end_time": "19:47"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "Okay, so I need to help this user create a Python program that schedules meetings in San Francisco. The goal is to meet as many friends as possible, considering travel times and each person's availability. Let me break this down.\n\nFirst, I'll look at the input parameters. The user provided travel distances between Presidio and several locations, and also listed the constraints for each person. Each person has a specific location they'll be at during certain hours, and each meeting requires a minimum duration.\n\nI remember from the previous example that the solution involved calculating feasible meeting times for each person, sorting them by end time, and then selecting the earliest ending meetings first to maximize the number of non-overlapping meetings. That approach makes sense because it allows us to fit as many meetings as possible without overlaps.\n\nSo, I'll start by defining the travel times from Presidio to each location. That's a big part of the problem because without knowing the travel times, we can't determine the actual meeting times. Each location has its own travel time from Presidio, so I'll create a dictionary for that.\n\nNext, I'll list all the people with their details: the location they'll be at, their availability window, the minimum meeting duration, and the travel time from Presidio to their location. This will be another list of dictionaries.\n\nThen, I need a function to calculate the feasible meeting times for each person. For each person, I'll determine the earliest and latest possible start times considering their availability and the travel time. The earliest start time can't be before 9:00 AM, and the latest start time is their end time minus the minimum meeting duration. If the latest start time is earlier than the earliest, it means no meeting is possible, so we skip that person.\n\nOnce I have all feasible meeting times, I'll sort them by their end times. This helps in selecting the earliest ending meetings first, which is a greedy approach to maximize the number of meetings.\n\nAfter sorting, I'll iterate through the feasible meetings and add them to the itinerary if they don't overlap with the previously selected meetings. This ensures that each meeting is scheduled without conflicting with others.\n\nFinally, I'll format the itinerary as a JSON object, converting the times into the required 24-hour format strings. The output should be a JSON-formatted dictionary with the \"itinerary\" key containing the list of meetings.\n\nI should also make sure the code runs independently and outputs valid JSON without any additional text. Testing the code with the given constraints should yield the optimal schedule.\n</think>\n\nSOLUTION:\n\n```python\nimport json\n\n# Define travel times from Presidio to each location\ntravel_times = {\n    'Presidio': {\n        'Richmond District': 7,\n        'North Beach': 18,\n        'Financial District': 23,\n        'Golden Gate Park': 12,\n        'Union Square': 22\n    },\n    'Richmond District': {\n        'Presidio': 7,\n        'North Beach': 17,\n        'Financial District': 22,\n        'Golden Gate Park': 9,\n        'Union Square': 21\n    },\n    'North Beach': {\n        'Presidio': 17,\n        'Richmond District': 18,\n        'Financial District': 7,\n        'Golden Gate Park': 22,\n        'Union Square': 7\n    },\n    'Financial District': {\n        'Presidio': 22,\n        'Richmond District': 21,\n        'North Beach': 7,\n        'Golden Gate Park': 23,\n        'Union Square': 9\n    },\n    'Golden Gate Park': {\n        'Presidio': 12,\n        'Richmond District': 7,\n        'North Beach': 24,\n        'Financial District': 26,\n        'Union Square': 22\n    },\n    'Union Square': {\n        'Presidio': 24,\n        'Richmond District': 20,\n        'North Beach': 10,\n        'Financial District': 9,\n        'Golden Gate Park': 22\n    }\n}\n\n# List of people with their details\npeople = [\n    {\n        'name': 'Jason',\n        'location': 'Richmond District',\n        'start_time': '1:00',\n        'end_time': '8:45',\n        'duration': 90,\n        'travel_time': 7\n    },\n    {\n        'name': 'Melissa',\n        'location': 'North Beach',\n        'start_time': '6:45',\n        'end_time': '8:15',\n        'duration': 45,\n        'travel_time': 18\n    },\n    {\n        'name': 'Brian',\n        'location': 'Financial District',\n        'start_time': '9:45',\n        'end_time': '9:45',\n        'duration': 15,\n        'travel_time': 23\n    },\n    {\n        'name': 'Elizabeth',\n        'location': 'Golden Gate Park',\n        'start_time': '8:45',\n        'end_time': '9:30',\n        'duration': 105,\n        'travel_time': 12\n    },\n    {\n        'name': 'Laura',\n        'location': 'Union Square',\n        'start_time': '2:15',\n        'end_time': '7:30',\n        'duration': 75,\n        'travel_time': 24\n    }\n]\n\n# Function to calculate feasible meeting times\ndef calculate_feasible_meetings(people, travel_times):\n    meetings = []\n    for person in people:\n        location = person['location']\n        start_time = person['start_time']\n        end_time = person['end_time']\n        duration = person['duration']\n        travel_time = travel_times['Presidio'][location]\n        \n        # Convert times to minutes since 9:00 AM\n        earliest_start_min = (int(start_time.replace(':', '')) * 60) + 540  # 9:00 AM in minutes\n        latest_start_min = (int(end_time.replace(':', '')) * 60) - duration\n        \n        # Ensure earliest start is at least 9:00 AM\n        if earliest_start_min < 540:\n            earliest_start_min = 540\n        \n        if latest_start_min < earliest_start_min:\n            continue  # No possible meeting time\n        \n        meetings.append({\n            'name': person['name'],\n            'location': location,\n            'start_time': earliest_start_min,\n            'end_time': latest_start_min\n        ])\n    \n    return meetings\n\n# Calculate feasible meeting times\nfeasible_meetings = calculate_feasible_meetings(people, travel_times)\n\n# Sort meetings by end time\nfeasible_meetings.sort(key=lambda x: x['end_time'])\n\n# Select non-overlapping meetings\nitinerary = []\nfor meeting in feasible_meetings:\n    start = meeting['start_time']\n    end = meeting['end_time']\n    if not itinerary or end <= itinerary[-1]['end_time']:\n        itinerary.append(meeting)\n\n# Convert time to 24-hour format strings\nitinerary = [\n    {\n        'action': 'meet',\n        'location': meeting['location'],\n        'person': meeting['name'],\n        'start_time': f\"{meeting['start_time'] // 60 + (meeting['start_time'] % 60 // 10)}:{meeting['start_time'] % 60 // 10 * 10}\",\n        'end_time': f\"{meeting['end_time'] // 60 + (meeting['end_time'] % 60 // 10)}:{meeting['end_time'] % 60 // 10 * 10}\"\n    }\n    for meeting in itinerary\n]\n\n# Generate JSON output\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_423"
+        }
+    ]
+}

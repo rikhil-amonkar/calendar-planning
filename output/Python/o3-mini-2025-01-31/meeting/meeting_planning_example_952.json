@@ -1,0 +1,129 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "11:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Elizabeth",
+                        "start_time": "12:11",
+                        "end_time": "13:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Brian",
+                        "start_time": "13:34",
+                        "end_time": "15:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Anthony",
+                        "start_time": "15:12",
+                        "end_time": "15:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "15:53",
+                        "end_time": "17:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Deborah",
+                        "start_time": "17:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kimberly",
+                        "start_time": "19:00",
+                        "end_time": "19:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "20:00",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Richard",
+                        "start_time": "11:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Elizabeth",
+                        "start_time": "12:11",
+                        "end_time": "13:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Brian",
+                        "start_time": "13:34",
+                        "end_time": "15:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Anthony",
+                        "start_time": "15:12",
+                        "end_time": "15:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Ashley",
+                        "start_time": "15:53",
+                        "end_time": "17:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Deborah",
+                        "start_time": "17:42",
+                        "end_time": "18:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kimberly",
+                        "start_time": "18:57",
+                        "end_time": "19:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "20:00",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper functions to convert time strings and perform time arithmetic.\ndef str_to_time(timestr):\n    # timestr is like \"9:00\" (24-hour, no leading zero)\n    return datetime.strptime(timestr, \"%H:%M\")\n\ndef time_to_str(time_obj):\n    return time_obj.strftime(\"%-H:%M\") if hasattr(time_obj, 'strftime') else time_obj.strftime(\"%#H:%M\")\n\ndef add_minutes(time_obj, minutes):\n    return time_obj + timedelta(minutes=minutes)\n\n# Travel times dictionary: keys are tuples (origin, destination)\ntravel_times = {\n    (\"Bayview\", \"North Beach\"): 22,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Nob Hill\"): 20,\n    (\"Bayview\", \"Golden Gate Park\"): 22,\n    (\"Bayview\", \"Union Square\"): 18,\n    (\"Bayview\", \"Alamo Square\"): 16,\n    (\"Bayview\", \"Presidio\"): 32,\n    (\"Bayview\", \"Chinatown\"): 19,\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    \n    (\"North Beach\", \"Bayview\"): 25,\n    (\"North Beach\", \"Fisherman's Wharf\"): 5,\n    (\"North Beach\", \"Haight-Ashbury\"): 18,\n    (\"North Beach\", \"Nob Hill\"): 7,\n    (\"North Beach\", \"Golden Gate Park\"): 22,\n    (\"North Beach\", \"Union Square\"): 7,\n    (\"North Beach\", \"Alamo Square\"): 16,\n    (\"North Beach\", \"Presidio\"): 17,\n    (\"North Beach\", \"Chinatown\"): 6,\n    (\"North Beach\", \"Pacific Heights\"): 8,\n    \n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Fisherman's Wharf\", \"North Beach\"): 6,\n    (\"Fisherman's Wharf\", \"Haight-Ashbury\"): 23,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"Golden Gate Park\"): 25,\n    (\"Fisherman's Wharf\", \"Union Square\"): 13,\n    (\"Fisherman's Wharf\", \"Alamo Square\"): 21,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    \n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"North Beach\"): 19,\n    (\"Haight-Ashbury\", \"Fisherman's Wharf\"): 23,\n    (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n    (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n    (\"Haight-Ashbury\", \"Union Square\"): 19,\n    (\"Haight-Ashbury\", \"Alamo Square\"): 5,\n    (\"Haight-Ashbury\", \"Presidio\"): 15,\n    (\"Haight-Ashbury\", \"Chinatown\"): 19,\n    (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n    \n    (\"Nob Hill\", \"Bayview\"): 19,\n    (\"Nob Hill\", \"North Beach\"): 8,\n    (\"Nob Hill\", \"Fisherman's Wharf\"): 10,\n    (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n    (\"Nob Hill\", \"Golden Gate Park\"): 17,\n    (\"Nob Hill\", \"Union Square\"): 7,\n    (\"Nob Hill\", \"Alamo Square\"): 11,\n    (\"Nob Hill\", \"Presidio\"): 17,\n    (\"Nob Hill\", \"Chinatown\"): 6,\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    \n    (\"Golden Gate Park\", \"Bayview\"): 23,\n    (\"Golden Gate Park\", \"North Beach\"): 23,\n    (\"Golden Gate Park\", \"Fisherman's Wharf\"): 24,\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Nob Hill\"): 20,\n    (\"Golden Gate Park\", \"Union Square\"): 22,\n    (\"Golden Gate Park\", \"Alamo Square\"): 9,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Chinatown\"): 23,\n    (\"Golden Gate Park\", \"Pacific Heights\"): 16,\n    \n    (\"Union Square\", \"Bayview\"): 15,\n    (\"Union Square\", \"North Beach\"): 10,\n    (\"Union Square\", \"Fisherman's Wharf\"): 15,\n    (\"Union Square\", \"Haight-Ashbury\"): 18,\n    (\"Union Square\", \"Nob Hill\"): 9,\n    (\"Union Square\", \"Golden Gate Park\"): 22,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Union Square\", \"Presidio\"): 24,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Pacific Heights\"): 15,\n    \n    (\"Alamo Square\", \"Bayview\"): 16,\n    (\"Alamo Square\", \"North Beach\"): 15,\n    (\"Alamo Square\", \"Fisherman's Wharf\"): 19,\n    (\"Alamo Square\", \"Haight-Ashbury\"): 5,\n    (\"Alamo Square\", \"Nob Hill\"): 11,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Presidio\"): 17,\n    (\"Alamo Square\", \"Chinatown\"): 15,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    \n    (\"Presidio\", \"Bayview\"): 31,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Haight-Ashbury\"): 15,\n    (\"Presidio\", \"Nob Hill\"): 18,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Presidio\", \"Alamo Square\"): 19,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Pacific Heights\"): 11,\n    \n    (\"Chinatown\", \"Bayview\"): 20,\n    (\"Chinatown\", \"North Beach\"): 3,\n    (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n    (\"Chinatown\", \"Haight-Ashbury\"): 19,\n    (\"Chinatown\", \"Nob Hill\"): 9,\n    (\"Chinatown\", \"Golden Gate Park\"): 23,\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Chinatown\", \"Pacific Heights\"): 10,\n    \n    (\"Pacific Heights\", \"Bayview\"): 22,\n    (\"Pacific Heights\", \"North Beach\"): 9,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"Golden Gate Park\"): 15,\n    (\"Pacific Heights\", \"Union Square\"): 12,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n    (\"Pacific Heights\", \"Presidio\"): 11,\n    (\"Pacific Heights\", \"Chinatown\"): 11\n}\n\n# Meeting constraints for each friend: their location, available window, minimum meeting duration (in minutes)\nmeetings = [\n    {\"person\": \"Brian\", \"location\": \"North Beach\", \"avail_start\": \"13:00\", \"avail_end\": \"19:00\", \"min_duration\": 90},\n    {\"person\": \"Richard\", \"location\": \"Fisherman's Wharf\", \"avail_start\": \"11:00\", \"avail_end\": \"12:45\", \"min_duration\": 60},\n    {\"person\": \"Ashley\", \"location\": \"Haight-Ashbury\", \"avail_start\": \"15:00\", \"avail_end\": \"20:30\", \"min_duration\": 90},\n    {\"person\": \"Elizabeth\", \"location\": \"Nob Hill\", \"avail_start\": \"11:45\", \"avail_end\": \"18:30\", \"min_duration\": 75},\n    {\"person\": \"Jessica\", \"location\": \"Golden Gate Park\", \"avail_start\": \"20:00\", \"avail_end\": \"21:45\", \"min_duration\": 105},\n    {\"person\": \"Deborah\", \"location\": \"Union Square\", \"avail_start\": \"17:30\", \"avail_end\": \"22:00\", \"min_duration\": 60},\n    {\"person\": \"Kimberly\", \"location\": \"Alamo Square\", \"avail_start\": \"17:30\", \"avail_end\": \"21:15\", \"min_duration\": 45},\n    {\"person\": \"Matthew\", \"location\": \"Presidio\", \"avail_start\": \"8:15\",  \"avail_end\": \"9:00\",  \"min_duration\": 15},\n    {\"person\": \"Kenneth\", \"location\": \"Chinatown\", \"avail_start\": \"13:45\", \"avail_end\": \"19:30\", \"min_duration\": 105},\n    {\"person\": \"Anthony\", \"location\": \"Pacific Heights\", \"avail_start\": \"14:15\", \"avail_end\": \"16:00\", \"min_duration\": 30}\n]\n\n# Our starting constraints:\nstart_location = \"Bayview\"\nstart_time = str_to_time(\"9:00\")\n\n# Note: Since meeting with Matthew (Presidio 8:15-9:00) is not possible (arrival is Bayview 9:00),\n# we will skip Matthew.\n\n# We now choose an itinerary order that maximizes the number of meetings.\n# After analysis and adjustments, the following order meets 8 friends:\n# 1. Richard at Fisherman's Wharf\n# 2. Elizabeth at Nob Hill\n# 3. Brian at North Beach\n# 4. Anthony at Pacific Heights\n# 5. Kenneth at Chinatown\n# 6. Deborah at Union Square\n# 7. Kimberly at Alamo Square\n# 8. Jessica at Golden Gate Park\n#\n# The computed schedule factors in travel times and minimum meeting durations.\n# (Ashley is skipped in this schedule to allow all others to fit.)\n\n# Define a function to compute departure time so that arrival is exactly a required time\ndef compute_departure(arrival_target, from_loc, to_loc):\n    travel = travel_times.get((from_loc, to_loc))\n    return arrival_target - timedelta(minutes=travel)\n\n# We'll build the itinerary step by step.\nitinerary = []\n\ncurrent_location = start_location\ncurrent_time = start_time\n\n# 1. Travel from Bayview to Fisherman's Wharf to meet Richard.\n# Richard's available start is 11:00. We want to arrive exactly at 11:00.\ntarget_arrival = str_to_time(\"11:00\")\n# Compute departure time: departure = target_arrival - travel time.\ndep_time = compute_departure(target_arrival, current_location, \"Fisherman's Wharf\")\n# Wait until departure if needed.\nif current_time < dep_time:\n    current_time = dep_time\n# Travel:\ncurrent_time = target_arrival  # arrival at Fisherman's Wharf\n\n# 1. Richard meeting at Fisherman's Wharf.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Richard\")\n# Schedule meeting: start at 11:00, meeting min 60 => end at 12:00.\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\n# Check that meeting ends before availability ends.\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"Fisherman's Wharf\",\n    \"person\": \"Richard\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"Fisherman's Wharf\"\n\n# 2. Travel from Fisherman's Wharf to Nob Hill for Elizabeth.\ntravel = travel_times.get((current_location, \"Nob Hill\"))\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Nob Hill\"\n# Elizabeth's available start is 11:45, so if we arrive earlier, wait until that.\neliz_avail_start = str_to_time(\"11:45\")\nif current_time < eliz_avail_start:\n    current_time = eliz_avail_start\n\n# 2. Elizabeth meeting at Nob Hill; min duration 75.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Elizabeth\")\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"Nob Hill\",\n    \"person\": \"Elizabeth\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"Nob Hill\"\n\n# 3. Travel from Nob Hill to North Beach for Brian.\ntravel = travel_times.get((current_location, \"North Beach\"))\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"North Beach\"\n# Brian available start is 13:00; if arriving early, wait.\nbrian_avail_start = str_to_time(\"13:00\")\nif current_time < brian_avail_start:\n    current_time = brian_avail_start\n\n# 3. Brian meeting at North Beach; min duration 90.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Brian\")\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"North Beach\",\n    \"person\": \"Brian\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"North Beach\"\n\n# 4. Travel from North Beach to Pacific Heights for Anthony.\ntravel = travel_times.get((current_location, \"Pacific Heights\"))\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Pacific Heights\"\n# Anthony available from 14:15; if needed, wait.\nanthony_avail_start = str_to_time(\"14:15\")\nif current_time < anthony_avail_start:\n    current_time = anthony_avail_start\n\n# 4. Anthony meeting at Pacific Heights; min duration 30.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Anthony\")\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"Pacific Heights\",\n    \"person\": \"Anthony\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"Pacific Heights\"\n\n# 5. Travel from Pacific Heights to Chinatown for Kenneth.\ntravel = travel_times.get((current_location, \"Chinatown\"))\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Chinatown\"\n# Kenneth available from 13:45; we are past that, so no wait.\n# 5. Kenneth meeting at Chinatown; min duration 105.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Kenneth\")\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"Chinatown\",\n    \"person\": \"Kenneth\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"Chinatown\"\n\n# 6. Travel from Chinatown to Union Square for Deborah.\ntravel = travel_times.get((current_location, \"Union Square\"))\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Union Square\"\n# Deborah available from 17:30; wait if needed.\ndeborah_avail_start = str_to_time(\"17:30\")\nif current_time < deborah_avail_start:\n    current_time = deborah_avail_start\n\n# 6. Deborah meeting at Union Square; min duration 60.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Deborah\")\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"Union Square\",\n    \"person\": \"Deborah\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"Union Square\"\n\n# 7. Travel from Union Square to Alamo Square for Kimberly.\ntravel = travel_times.get((current_location, \"Alamo Square\"))\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Alamo Square\"\n# Kimberly available from 17:30; if needed, wait.\nkimberly_avail_start = str_to_time(\"17:30\")\nif current_time < kimberly_avail_start:\n    current_time = kimberly_avail_start\n\n# 7. Kimberly meeting at Alamo Square; min duration 45.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Kimberly\")\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"Alamo Square\",\n    \"person\": \"Kimberly\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"Alamo Square\"\n\n# 8. Travel from Alamo Square to Golden Gate Park for Jessica.\ntravel = travel_times.get((current_location, \"Golden Gate Park\"))\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Golden Gate Park\"\n# Jessica is available starting at 20:00. Wait if needed.\njessica_avail_start = str_to_time(\"20:00\")\nif current_time < jessica_avail_start:\n    current_time = jessica_avail_start\n\n# 8. Jessica meeting at Golden Gate Park; min duration 105.\nmeeting = next(m for m in meetings if m[\"person\"] == \"Jessica\")\nm_start = current_time\nm_end = add_minutes(m_start, meeting[\"min_duration\"])\navail_end = str_to_time(meeting[\"avail_end\"])\nif m_end > avail_end:\n    m_end = avail_end\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": \"Golden Gate Park\",\n    \"person\": \"Jessica\",\n    \"start_time\": time_to_str(m_start),\n    \"end_time\": time_to_str(m_end)\n})\ncurrent_time = m_end\ncurrent_location = \"Golden Gate Park\"\n\n# Build final output dictionary.\noutput = {\n    \"itinerary\": itinerary\n}\n\n# Print the JSON-formatted result.\nprint(json.dumps(output, indent=2))\n",
+            "count": "meeting_planning_example_952"
+        }
+    ]
+}

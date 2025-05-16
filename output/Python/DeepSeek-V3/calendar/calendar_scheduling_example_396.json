@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, day, work_hours, duration):\n    start_work, end_work = work_hours\n    busy_times = []\n    \n    # Collect all busy times for each participant\n    for schedule in participants_schedules:\n        busy_times.extend(schedule)\n    \n    # Sort all busy times by start time\n    busy_times.sort()\n    \n    # Find free slots by checking gaps between busy times\n    free_slots = []\n    previous_end = start_work\n    \n    for start, end in busy_times:\n        if start > previous_end:\n            free_slots.append((previous_end, start))\n        previous_end = max(previous_end, end)\n    \n    # Check the slot after the last busy time\n    if previous_end < end_work:\n        free_slots.append((previous_end, end_work))\n    \n    # Merge overlapping or adjacent busy times (not needed here as we process all at once)\n    # Now find the first free slot that can fit the duration\n    for slot_start, slot_end in free_slots:\n        if (slot_end - slot_start) >= duration:\n            return (slot_start, slot_start + duration)\n    \n    return None\n\ndef main():\n    # Define participants' schedules in 24-hour format as (start, end) tuples in minutes since 9:00 (540)\n    # Convert all times to minutes since midnight for easier calculation\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n    \n    def minutes_to_time(minutes):\n        hh = minutes // 60\n        mm = minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n    \n    # Participants' schedules in (start, end) in minutes since midnight\n    andrea = []\n    jack = [(time_to_minutes('9:00'), time_to_minutes('9:30')), (time_to_minutes('14:00'), time_to_minutes('14:30'))]\n    madison = [(time_to_minutes('9:30'), time_to_minutes('10:30')), (time_to_minutes('13:00'), time_to_minutes('14:00')), \n               (time_to_minutes('15:00'), time_to_minutes('15:30')), (time_to_minutes('16:30'), time_to_minutes('17:00'))]\n    rachel = [(time_to_minutes('9:30'), time_to_minutes('10:30')), (time_to_minutes('11:00'), time_to_minutes('11:30')), \n              (time_to_minutes('12:00'), time_to_minutes('13:30')), (time_to_minutes('14:30'), time_to_minutes('15:30')), \n              (time_to_minutes('16:00'), time_to_minutes('17:00'))]\n    douglas = [(time_to_minutes('9:00'), time_to_minutes('11:30')), (time_to_minutes('12:00'), time_to_minutes('16:30'))]\n    ryan = [(time_to_minutes('9:00'), time_to_minutes('9:30')), (time_to_minutes('13:00'), time_to_minutes('14:00')), \n            (time_to_minutes('14:30'), time_to_minutes('17:00'))]\n    \n    participants_schedules = [andrea, jack, madison, rachel, douglas, ryan]\n    day = \"Monday\"\n    work_hours = (time_to_minutes('9:00'), time_to_minutes('17:00'))\n    duration = 30  # minutes\n    \n    # Find the meeting time\n    meeting_time = find_meeting_time(participants_schedules, day, work_hours, duration)\n    \n    if meeting_time:\n        start, end = meeting_time\n        start_time = minutes_to_time(start)\n        end_time = minutes_to_time(end)\n        print(f\"{start_time}:{end_time}:{day}\")\n    else:\n        print(\"No suitable time found.\")\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "calendar_scheduling_example_396"
+        }
+    ]
+}

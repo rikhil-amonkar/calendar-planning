@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Karen",
+                        "start_time": "9:25",
+                        "end_time": "9:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "10:06",
+                        "end_time": "11:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Betty",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Karen",
+                        "start_time": "9:25",
+                        "end_time": "9:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "10:06",
+                        "end_time": "11:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Betty",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\nimport itertools\n\ndef parse_time(time_str):\n    # time_str in format \"H:MM\" (24-hour)\n    parts = time_str.split(':')\n    return datetime(2023, 1, 1, int(parts[0]), int(parts[1]))\n\ndef format_time(dt):\n    # Format time as H:MM without a leading zero for hour.\n    return f\"{dt.hour}:{dt.strftime('%M')}\"\n\ndef add_minutes(dt, minutes):\n    return dt + timedelta(minutes=minutes)\n\n# Travel times in minutes between locations\ntravel_times = {\n    \"Bayview\": {\n        \"Embarcadero\": 19,\n        \"Fisherman's Wharf\": 25,\n        \"Financial District\": 19,\n        \"Bayview\": 0\n    },\n    \"Embarcadero\": {\n        \"Bayview\": 21,\n        \"Fisherman's Wharf\": 6,\n        \"Financial District\": 5,\n        \"Embarcadero\": 0\n    },\n    \"Fisherman's Wharf\": {\n        \"Bayview\": 26,\n        \"Embarcadero\": 8,\n        \"Financial District\": 11,\n        \"Fisherman's Wharf\": 0\n    },\n    \"Financial District\": {\n        \"Bayview\": 19,\n        \"Embarcadero\": 4,\n        \"Fisherman's Wharf\": 10,\n        \"Financial District\": 0\n    }\n}\n\n# Meeting constraints for each friend\n# Each meeting is represented as a dictionary with:\n# person, location, available_start, available_end, and min_duration (in minutes)\nmeetings = [\n    {\n        \"person\": \"Betty\",\n        \"location\": \"Embarcadero\",\n        \"available_start\": parse_time(\"19:45\"),\n        \"available_end\": parse_time(\"21:45\"),\n        \"min_duration\": 15\n    },\n    {\n        \"person\": \"Karen\",\n        \"location\": \"Fisherman's Wharf\",\n        \"available_start\": parse_time(\"8:45\"),\n        \"available_end\": parse_time(\"15:00\"),\n        \"min_duration\": 30\n    },\n    {\n        \"person\": \"Anthony\",\n        \"location\": \"Financial District\",\n        \"available_start\": parse_time(\"9:15\"),\n        \"available_end\": parse_time(\"21:30\"),\n        \"min_duration\": 105\n    }\n]\n\n# Starting point and time\nstart_location = \"Bayview\"\nstart_time = parse_time(\"9:00\")\n\ndef schedule_for_order(order):\n    \"\"\"\n    Given an order (a tuple of meeting dicts),\n    compute the itinerary with meeting start and end times.\n    Returns tuple (itinerary, total_wait, final_time) if valid, otherwise None.\n    \"\"\"\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    total_wait = 0\n\n    for meeting in order:\n        # Compute travel time from current location to meeting location.\n        travel = travel_times[current_location][meeting[\"location\"]]\n        arrival_time = add_minutes(current_time, travel)\n        # Meeting can only start when the friend is available\n        meeting_start = arrival_time if arrival_time >= meeting[\"available_start\"] else meeting[\"available_start\"]\n        # Waiting time is the delay if arrived before available_start\n        wait = (meeting_start - arrival_time).total_seconds()/60\n        total_wait += wait\n        meeting_end = add_minutes(meeting_start, meeting[\"min_duration\"])\n        # Check if meeting end exceeds friend's available end\n        if meeting_end > meeting[\"available_end\"]:\n            return None  # schedule not possible\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"person\"],\n            \"start_time\": meeting_start,\n            \"end_time\": meeting_end\n        })\n        # Update current time and location\n        current_time = meeting_end\n        current_location = meeting[\"location\"]\n    return (itinerary, total_wait, current_time)\n\ndef select_best_schedule():\n    best_schedule = None\n    best_wait = None\n    # Consider all permutations of the meetings (order matters)\n    for perm in itertools.permutations(meetings):\n        result = schedule_for_order(perm)\n        if result is not None:\n            itinerary, total_wait, final_time = result\n            # We'll choose the schedule that finishes earliest (or minimizes waiting time)\n            if best_schedule is None or final_time < best_schedule[2]:\n                best_schedule = (itinerary, total_wait, final_time)\n    return best_schedule\n\ndef main():\n    best = select_best_schedule()\n    if best is None:\n        output = {\"itinerary\": []}\n    else:\n        itinerary, total_wait, final_time = best\n        # Format the itinerary times as strings in H:MM (24-hour format)\n        formatted_itinerary = []\n        for meet in itinerary:\n            formatted_itinerary.append({\n                \"action\": meet[\"action\"],\n                \"location\": meet[\"location\"],\n                \"person\": meet[\"person\"],\n                \"start_time\": format_time(meet[\"start_time\"]),\n                \"end_time\": format_time(meet[\"end_time\"])\n            })\n        output = {\"itinerary\": formatted_itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_263"
+        }
+    ]
+}

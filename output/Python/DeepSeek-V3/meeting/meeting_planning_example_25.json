@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "David",
+                        "start_time": "16:00",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "David",
+                        "start_time": "16:00",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Input parameters\narrival_time = \"9:00\"\ndavid_available_start = \"16:00\"\ndavid_available_end = \"21:45\"\nmeeting_duration = 105\ntravel_time_park_to_chinatown = 23\ntravel_time_chinatown_to_park = 23\n\n# Convert times to minutes\ncurrent_time = time_to_minutes(arrival_time)\ndavid_start = time_to_minutes(david_available_start)\ndavid_end = time_to_minutes(david_available_end)\n\n# Calculate latest possible departure from Golden Gate Park to meet David\nlatest_departure_to_meet_david = david_end - meeting_duration - travel_time_park_to_chinatown\n\n# Calculate possible meeting time with David\nif latest_departure_to_meet_david >= current_time + travel_time_park_to_chinatown:\n    # We can go directly to meet David\n    meet_start = max(david_start, current_time + travel_time_park_to_chinatown)\n    meet_end = meet_start + meeting_duration\n    if meet_end <= david_end:\n        itinerary = [\n            {\n                \"action\": \"travel\",\n                \"location\": \"Golden Gate Park to Chinatown\",\n                \"person\": \"You\",\n                \"start_time\": minutes_to_time(current_time),\n                \"end_time\": minutes_to_time(current_time + travel_time_park_to_chinatown)\n            },\n            {\n                \"action\": \"meet\",\n                \"location\": \"Chinatown\",\n                \"person\": \"David\",\n                \"start_time\": minutes_to_time(meet_start),\n                \"end_time\": minutes_to_time(meet_end)\n            }\n        ]\n    else:\n        itinerary = []\nelse:\n    itinerary = []\n\nresult = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_25"
+        }
+    ]
+}

@@ -1,0 +1,69 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 24-28",
+                        "place": "Paris"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Vienna"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters\n    constraints = {\n        'total_days': 20,\n        'city_stays': {\n            'Paris': 5,\n            'Florence': 3,\n            'Vienna': 2,\n            'Porto': 3,\n            'Munich': 5,\n            'Nice': 5,\n            'Warsaw': 3,\n        },\n        'workshop_days': {\n            'Porto': (1, 3),\n        },\n        'wedding_days': {\n            'Warsaw': (13, 15),\n        },\n        'visit_relatives': {\n            'Vienna': (19, 20),\n        },\n    }\n    \n    # Order of cities to visit based on constraints and direct flights available\n    itinerary = []\n    day_count = 1\n    \n    # Porto (Workshop)\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 2}', 'place': 'Porto'})\n    day_count += 3  # After Porto, we have 3 days there\n\n    # Next, we can fly to Nice or Munich, we will go to Munich as it's the next long stay\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Porto', 'to': 'Munich'})\n    day_count += 1\n\n    # Munich (5 days)\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Munich'})\n    day_count += 5  # After Munich, we have 5 days there\n\n    # From Munich to Vienna (2 days)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Munich', 'to': 'Vienna'})\n    day_count += 1\n\n    # Vienna (2 days)\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Vienna'})\n    day_count += 2  # After Vienna, we have 2 days there\n\n    # Last relatives visit in Vienna\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Vienna', 'to': 'Vienna'})\n    day_count += 0  # No travel, for relatives on 19 and 20\n    \n    # Now, go to Warsaw (3 days) but first fly from Vienna\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Vienna', 'to': 'Warsaw'})\n    day_count += 1\n\n    # Warsaw (3 days, including wedding)\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 2}', 'place': 'Warsaw'})\n    day_count += 3  # After Warsaw, we have 3 days there\n\n    # From Warsaw fly to Nice (5 days)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Warsaw', 'to': 'Nice'})\n    day_count += 1\n\n    # Nice (5 days)\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Nice'})\n    day_count += 5  # After Nice, we have 5 days there\n\n    # From Nice to Paris\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Nice', 'to': 'Paris'})\n    day_count += 1\n\n    # Finally in Paris (5 days)\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Paris'})\n\n    return json.dumps(itinerary, indent=4)\n\n# Run the computation and print the itinerary\nitinerary_output = compute_itinerary()\nprint(itinerary_output)\n```",
+            "count": "trip_planning_example_812"
+        }
+    ]
+}

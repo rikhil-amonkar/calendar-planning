@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Amanda",
+                        "start_time": "19:45",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:09",
+                        "end_time": "9:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "10:45",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the locations and travel times\nlocations = {\n    \"Pacific Heights\": {},\n    \"North Beach\": {},\n    \"Financial District\": {},\n    \"Alamo Square\": {},\n    \"Mission District\": {}\n}\n\ntravel_times = {\n    (\"Pacific Heights\", \"North Beach\"): 9,\n    (\"Pacific Heights\", \"Financial District\"): 13,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"North Beach\", \"Pacific Heights\"): 8,\n    (\"North Beach\", \"Financial District\"): 8,\n    (\"North Beach\", \"Alamo Square\"): 16,\n    (\"North Beach\", \"Mission District\"): 18,\n    (\"Financial District\", \"Pacific Heights\"): 13,\n    (\"Financial District\", \"North Beach\"): 7,\n    (\"Financial District\", \"Alamo Square\"): 17,\n    (\"Financial District\", \"Mission District\"): 17,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    (\"Alamo Square\", \"North Beach\"): 15,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Alamo Square\", \"Mission District\"): 10,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"North Beach\"): 17,\n    (\"Mission District\", \"Financial District\"): 17,\n    (\"Mission District\", \"Alamo Square\"): 11\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"North Beach\", \"person\": \"Helen\", \"start_time\": 9, \"end_time\": 17, \"duration\": 15},\n    {\"location\": \"Financial District\", \"person\": \"Betty\", \"start_time\": 19, \"end_time\": 21.75, \"duration\": 90},\n    {\"location\": \"Alamo Square\", \"person\": \"Amanda\", \"start_time\": 19.75, \"end_time\": 21, \"duration\": 60},\n    {\"location\": \"Mission District\", \"person\": \"Kevin\", \"start_time\": 10.75, \"end_time\": 14.75, \"duration\": 45}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Pacific Heights\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_335"
+        }
+    ]
+}

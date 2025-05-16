@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Thursday",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            "expected_time": {
+                "day": "Thursday",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Define the meeting duration in minutes\nmeeting_duration = timedelta(minutes=30)\n\n# Define work hours\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Define busy schedules for each participant (times are relative to work start)\n# Times are stored as tuples (start, end) where start and end are datetime objects (time only)\n# Note: For simplicity, we use the same reference date.\ndef get_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\nparticipants_busy = {\n    \"Julie\": {\n        # Julie has no meetings the whole week.\n        \"Monday\": [],\n        \"Tuesday\": [],\n        \"Wednesday\": [],\n        \"Thursday\": []\n    },\n    \"Ruth\": {\n        \"Monday\": [(get_time(\"09:00\"), get_time(\"17:00\"))],\n        \"Tuesday\": [(get_time(\"09:00\"), get_time(\"17:00\"))],\n        \"Wednesday\": [(get_time(\"09:00\"), get_time(\"17:00\"))],\n        \"Thursday\": [\n            (get_time(\"09:00\"), get_time(\"11:00\")),\n            (get_time(\"11:30\"), get_time(\"14:30\")),\n            (get_time(\"15:00\"), get_time(\"17:00\"))\n        ]\n    }\n}\n\n# Julie's preference: avoid meetings on Thursday before 11:30.\njulie_prefer_after = {\n    \"Thursday\": get_time(\"11:30\")\n}\n\n# List the candidate days in order\ncandidate_days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\n\ndef is_slot_free(day, start, end):\n    \"\"\"Check if the slot [start, end) is free for all participants.\"\"\"\n    for person, schedule in participants_busy.items():\n        for busy_start, busy_end in schedule[day]:\n            # if the meeting slot overlaps with a busy slot, return False\n            if start < busy_end and busy_start < end:\n                return False\n    # Additional check for Julie's preference\n    if day in julie_prefer_after:\n        pref_start = julie_prefer_after[day]\n        if start < pref_start:\n            return False\n    return True\n\nscheduled_day = None\nscheduled_start = None\nscheduled_end = None\n\n# Try to find a meeting slot on a candidate day\nfor day in candidate_days:\n    # iterate through possible start times (every minute) within working hours\n    current_time = get_time(\"09:00\")\n    while current_time + meeting_duration <= get_time(\"17:00\"):\n        slot_end = current_time + meeting_duration\n        if is_slot_free(day, current_time, slot_end):\n            scheduled_day = day\n            scheduled_start = current_time\n            scheduled_end = slot_end\n            break\n        # move to next minute\n        current_time += timedelta(minutes=1)\n    if scheduled_day is not None:\n        break\n\n# Format the meeting time result as HH:MM:HH:MM and print day.\nif scheduled_day is not None:\n    time_range = scheduled_start.strftime(\"%H:%M\") + \":\" + scheduled_end.strftime(\"%H:%M\")\n    print(f\"Day: {scheduled_day}, Time: {time_range}\")\nelse:\n    print(\"No available meeting slot found.\")\n'''",
+            "count": "calendar_scheduling_example_819"
+        }
+    ]
+}

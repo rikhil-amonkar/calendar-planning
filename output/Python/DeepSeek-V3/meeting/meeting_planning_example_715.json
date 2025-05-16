@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "9:30",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "10:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joseph",
+                        "start_time": "13:24",
+                        "end_time": "15:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Amanda",
+                        "start_time": "15:25",
+                        "end_time": "17:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "19:31",
+                        "end_time": "21:16"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    \"\"\"Convert time string 'H:MM' to minutes since midnight.\"\"\"\n    if isinstance(time_str, str):\n        h, m = map(int, time_str.split(':'))\n        return h * 60 + m\n    return time_str\n\ndef minutes_to_time(minutes):\n    \"\"\"Convert minutes since midnight to time string 'H:MM'.\"\"\"\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Travel times dictionary: {from_location: {to_location: minutes}}\ntravel_times = {\n    'Presidio': {\n        'Marina District': 11,\n        'The Castro': 21,\n        'Fisherman\\'s Wharf': 19,\n        'Bayview': 31,\n        'Pacific Heights': 11,\n        'Mission District': 26,\n        'Alamo Square': 19,\n        'Golden Gate Park': 12\n    },\n    'Marina District': {\n        'Presidio': 10,\n        'The Castro': 22,\n        'Fisherman\\'s Wharf': 10,\n        'Bayview': 27,\n        'Pacific Heights': 7,\n        'Mission District': 20,\n        'Alamo Square': 15,\n        'Golden Gate Park': 18\n    },\n    'The Castro': {\n        'Presidio': 20,\n        'Marina District': 21,\n        'Fisherman\\'s Wharf': 24,\n        'Bayview': 19,\n        'Pacific Heights': 16,\n        'Mission District': 7,\n        'Alamo Square': 8,\n        'Golden Gate Park': 11\n    },\n    'Fisherman\\'s Wharf': {\n        'Presidio': 17,\n        'Marina District': 9,\n        'The Castro': 27,\n        'Bayview': 26,\n        'Pacific Heights': 12,\n        'Mission District': 22,\n        'Alamo Square': 21,\n        'Golden Gate Park': 25\n    },\n    'Bayview': {\n        'Presidio': 32,\n        'Marina District': 27,\n        'The Castro': 19,\n        'Fisherman\\'s Wharf': 25,\n        'Pacific Heights': 23,\n        'Mission District': 13,\n        'Alamo Square': 16,\n        'Golden Gate Park': 22\n    },\n    'Pacific Heights': {\n        'Presidio': 11,\n        'Marina District': 6,\n        'The Castro': 16,\n        'Fisherman\\'s Wharf': 13,\n        'Bayview': 22,\n        'Mission District': 15,\n        'Alamo Square': 10,\n        'Golden Gate Park': 15\n    },\n    'Mission District': {\n        'Presidio': 25,\n        'Marina District': 19,\n        'The Castro': 7,\n        'Fisherman\\'s Wharf': 22,\n        'Bayview': 14,\n        'Pacific Heights': 16,\n        'Alamo Square': 11,\n        'Golden Gate Park': 17\n    },\n    'Alamo Square': {\n        'Presidio': 17,\n        'Marina District': 15,\n        'The Castro': 8,\n        'Fisherman\\'s Wharf': 19,\n        'Bayview': 16,\n        'Pacific Heights': 10,\n        'Mission District': 10,\n        'Golden Gate Park': 9\n    },\n    'Golden Gate Park': {\n        'Presidio': 11,\n        'Marina District': 16,\n        'The Castro': 13,\n        'Fisherman\\'s Wharf': 24,\n        'Bayview': 23,\n        'Pacific Heights': 16,\n        'Mission District': 17,\n        'Alamo Square': 9\n    }\n}\n\n# Friend constraints: name, location, available_start, available_end, min_duration\nfriends = [\n    ('Amanda', 'Marina District', time_to_minutes('14:45'), time_to_minutes('19:30'), 105),\n    ('Melissa', 'The Castro', time_to_minutes('9:30'), time_to_minutes('17:00'), 30),\n    ('Jeffrey', 'Fisherman\\'s Wharf', time_to_minutes('12:45'), time_to_minutes('18:45'), 120),\n    ('Matthew', 'Bayview', time_to_minutes('10:15'), time_to_minutes('13:15'), 30),\n    ('Nancy', 'Pacific Heights', time_to_minutes('17:00'), time_to_minutes('21:30'), 105),\n    ('Karen', 'Mission District', time_to_minutes('17:30'), time_to_minutes('20:30'), 105),\n    ('Robert', 'Alamo Square', time_to_minutes('11:15'), time_to_minutes('17:30'), 120),\n    ('Joseph', 'Golden Gate Park', time_to_minutes('8:30'), time_to_minutes('21:15'), 105)\n]\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes('9:00')  # Start at Presidio at 9:00\n    current_location = 'Presidio'\n    schedule = []\n    \n    for friend_idx in order:\n        name, loc, avail_start, avail_end, min_dur = friends[friend_idx]\n        \n        # Calculate travel time\n        travel_time = travel_times[current_location][loc]\n        arrival_time = current_time + travel_time\n        \n        # Determine meeting window\n        meeting_start = max(arrival_time, avail_start)\n        meeting_end = min(meeting_start + min_dur, avail_end)\n        \n        if meeting_end - meeting_start < min_dur:\n            return None  # Can't meet minimum duration\n        \n        schedule.append({\n            'action': 'meet',\n            'location': loc,\n            'person': name,\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        current_time = meeting_end\n        current_location = loc\n    \n    return schedule\n\ndef evaluate_schedule(schedule):\n    if not schedule:\n        return 0\n    \n    # Count number of friends met\n    return len(schedule)\n\ndef find_optimal_schedule():\n    best_schedule = []\n    best_score = 0\n    \n    # Try all possible orders (with some optimizations)\n    for order in permutations(range(len(friends))):\n        schedule = calculate_schedule(order)\n        score = evaluate_schedule(schedule)\n        \n        if score > best_score:\n            best_score = score\n            best_schedule = schedule\n            if best_score == len(friends):  # Found perfect schedule\n                break\n    \n    return best_schedule\n\ndef main():\n    optimal_schedule = find_optimal_schedule()\n    result = {\n        \"itinerary\": optimal_schedule\n    }\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_715"
+        }
+    ]
+}

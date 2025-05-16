@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "40:00",
+                        "end_time": "40:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "54:30",
+                        "end_time": "31:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Paul",
+                        "start_time": "60:45",
+                        "end_time": "37:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "78:45",
+                        "end_time": "31:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Carol",
+                        "start_time": "98:30",
+                        "end_time": "28:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jeffrey",
+                        "start_time": "115:30",
+                        "end_time": "44:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Patricia",
+                        "start_time": "127:15",
+                        "end_time": "32:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Paul",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "17:32",
+                        "end_time": "18:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:35",
+                        "end_time": "19:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jeffrey",
+                        "start_time": "20:00",
+                        "end_time": "20:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "20:56",
+                        "end_time": "21:26"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_travel_time(origin, destination, travel_times):\n    return travel_times.get((origin, destination), 0)\n\ndef calculate_meeting_time(person, start_time, duration):\n    end_time = (start_time + duration) % 24\n    if end_time < start_time:\n        end_time += 24\n    return f\"{int(start_time):02d}:{int((start_time % 1) * 60):02d}\", f\"{int(end_time):02d}:{int((end_time % 1) * 60):02d}\"\n\ndef plan_meeting(person, location, start_time, duration, travel_times, current_location, current_time):\n    travel_time = calculate_travel_time(current_location, location, travel_times)\n    meeting_start_time, meeting_end_time = calculate_meeting_time(person, current_time + travel_time, duration / 60)\n    return {\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": meeting_start_time,\n        \"end_time\": meeting_end_time\n    }\n\ndef main():\n    travel_times = {\n        (\"Bayview\", \"Nob Hill\"): 20,\n        (\"Bayview\", \"Union Square\"): 17,\n        (\"Bayview\", \"Chinatown\"): 18,\n        (\"Bayview\", \"The Castro\"): 20,\n        (\"Bayview\", \"Presidio\"): 31,\n        (\"Bayview\", \"Pacific Heights\"): 23,\n        (\"Bayview\", \"Russian Hill\"): 23,\n        (\"Nob Hill\", \"Bayview\"): 19,\n        (\"Nob Hill\", \"Union Square\"): 7,\n        (\"Nob Hill\", \"Chinatown\"): 6,\n        (\"Nob Hill\", \"The Castro\"): 17,\n        (\"Nob Hill\", \"Presidio\"): 17,\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Nob Hill\", \"Russian Hill\"): 5,\n        (\"Union Square\", \"Bayview\"): 15,\n        (\"Union Square\", \"Nob Hill\"): 9,\n        (\"Union Square\", \"Chinatown\"): 7,\n        (\"Union Square\", \"The Castro\"): 19,\n        (\"Union Square\", \"Presidio\"): 24,\n        (\"Union Square\", \"Pacific Heights\"): 15,\n        (\"Union Square\", \"Russian Hill\"): 13,\n        (\"Chinatown\", \"Bayview\"): 22,\n        (\"Chinatown\", \"Nob Hill\"): 8,\n        (\"Chinatown\", \"Union Square\"): 7,\n        (\"Chinatown\", \"The Castro\"): 22,\n        (\"Chinatown\", \"Presidio\"): 19,\n        (\"Chinatown\", \"Pacific Heights\"): 10,\n        (\"Chinatown\", \"Russian Hill\"): 7,\n        (\"The Castro\", \"Bayview\"): 19,\n        (\"The Castro\", \"Nob Hill\"): 16,\n        (\"The Castro\", \"Union Square\"): 19,\n        (\"The Castro\", \"Chinatown\"): 20,\n        (\"The Castro\", \"Presidio\"): 20,\n        (\"The Castro\", \"Pacific Heights\"): 16,\n        (\"The Castro\", \"Russian Hill\"): 18,\n        (\"Presidio\", \"Bayview\"): 31,\n        (\"Presidio\", \"Nob Hill\"): 18,\n        (\"Presidio\", \"Union Square\"): 22,\n        (\"Presidio\", \"Chinatown\"): 21,\n        (\"Presidio\", \"The Castro\"): 21,\n        (\"Presidio\", \"Pacific Heights\"): 11,\n        (\"Presidio\", \"Russian Hill\"): 14,\n        (\"Pacific Heights\", \"Bayview\"): 22,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"Union Square\"): 12,\n        (\"Pacific Heights\", \"Chinatown\"): 11,\n        (\"Pacific Heights\", \"The Castro\"): 16,\n        (\"Pacific Heights\", \"Presidio\"): 11,\n        (\"Pacific Heights\", \"Russian Hill\"): 7,\n        (\"Russian Hill\", \"Bayview\"): 23,\n        (\"Russian Hill\", \"Nob Hill\"): 5,\n        (\"Russian Hill\", \"Union Square\"): 11,\n        (\"Russian Hill\", \"Chinatown\"): 9,\n        (\"Russian Hill\", \"The Castro\"): 21,\n        (\"Russian Hill\", \"Presidio\"): 14,\n        (\"Russian Hill\", \"Pacific Heights\"): 7\n    }\n\n    meetings = [\n        {\"person\": \"Nancy\", \"location\": \"Presidio\", \"start_time\": 11.75, \"end_time\": 22, \"duration\": 30},\n        {\"person\": \"Matthew\", \"location\": \"Russian Hill\", \"start_time\": 15.75, \"end_time\": 21.75, \"duration\": 75},\n        {\"person\": \"Karen\", \"location\": \"The Castro\", \"start_time\": 17, \"end_time\": 19, \"duration\": 45},\n        {\"person\": \"Paul\", \"location\": \"Nob Hill\", \"start_time\": 16.25, \"end_time\": 21.25, \"duration\": 60},\n        {\"person\": \"Jeffrey\", \"location\": \"Pacific Heights\", \"start_time\": 20, \"end_time\": 20.75, \"duration\": 45},\n        {\"person\": \"Patricia\", \"location\": \"Chinatown\", \"start_time\": 20, \"end_time\": 21.75, \"duration\": 75},\n        {\"person\": \"Carol\", \"location\": \"Union Square\", \"start_time\": 18, \"end_time\": 20.25, \"duration\": 120}\n    ]\n\n    itinerary = []\n    current_location = \"Bayview\"\n    current_time = 9\n\n    # Sort meetings by start time\n    meetings.sort(key=lambda x: x[\"start_time\"])\n\n    for meeting in meetings:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"], travel_times)\n        if current_time + travel_time < meeting[\"start_time\"]:\n            current_time = meeting[\"start_time\"] - travel_time\n        itinerary.append(plan_meeting(meeting[\"person\"], meeting[\"location\"], current_time + travel_time, meeting[\"duration\"], travel_times, current_location, current_time))\n        current_location = meeting[\"location\"]\n        current_time += travel_time + meeting[\"duration\"] / 60\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_695"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, work_hours_start, work_hours_end, meeting_duration, days):\n    for day in days:\n        # Initialize available time for the day\n        available_start = work_hours_start\n        available_end = work_hours_end\n        \n        # Collect all busy times for the day for all participants\n        busy_times = []\n        for participant in participants_schedules:\n            if day in participant:\n                busy_times.extend(participant[day])\n        \n        # Sort busy times by start time\n        busy_times.sort()\n        \n        # Find available slots\n        current_time = available_start\n        for busy_start, busy_end in busy_times:\n            if busy_start > current_time:\n                # Check if the slot is long enough\n                if busy_start - current_time >= meeting_duration:\n                    return day, (current_time, current_time + meeting_duration)\n            # Update current_time to the end of the busy slot\n            if busy_end > current_time:\n                current_time = busy_end\n        \n        # Check the remaining time after the last busy slot\n        if available_end - current_time >= meeting_duration:\n            return day, (current_time, current_time + meeting_duration)\n    \n    return None, None\n\ndef main():\n    # Define participants' schedules\n    patricia_schedule = {\n        'Monday': [(10.0, 10.5), (11.5, 12.0), (13.0, 13.5), (14.5, 15.5), (16.0, 16.5)],\n        'Tuesday': [(10.0, 10.5), (11.0, 12.0), (14.0, 16.0), (16.5, 17.0)]\n    }\n    \n    jesse_schedule = {\n        'Monday': [(9.0, 17.0)],\n        'Tuesday': [(11.0, 11.5), (12.0, 12.5), (13.0, 14.0), (14.5, 15.0), (15.5, 17.0)]\n    }\n    \n    participants_schedules = [patricia_schedule, jesse_schedule]\n    \n    # Define meeting constraints\n    work_hours_start = 9.0\n    work_hours_end = 17.0\n    meeting_duration = 1.0\n    days = ['Monday', 'Tuesday']\n    \n    # Find meeting time\n    day, time_range = find_meeting_time(participants_schedules, work_hours_start, work_hours_end, meeting_duration, days)\n    \n    if day and time_range:\n        start_hour = int(time_range[0])\n        start_min = int((time_range[0] - start_hour) * 60)\n        end_hour = int(time_range[1])\n        end_min = int((time_range[1] - end_hour) * 60)\n        \n        print(f\"{day}, {{{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}}}\")\n    else:\n        print(\"No suitable time found.\")\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "calendar_scheduling_example_626"
+        }
+    ]
+}

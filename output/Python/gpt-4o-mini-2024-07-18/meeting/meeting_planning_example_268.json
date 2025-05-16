@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Timothy",
+                        "start_time": "12:10",
+                        "end_time": "13:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "14:13",
+                        "end_time": "15:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "15:27",
+                        "end_time": "16:27"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Mark",
+                        "start_time": "18:45",
+                        "end_time": "19:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "19:59",
+                        "end_time": "20:59"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times in minutes\ntravel_times = {\n    (\"Golden Gate Park\", \"Alamo Square\"): 10,\n    (\"Golden Gate Park\", \"Presidio\"): 11,\n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Alamo Square\", \"Golden Gate Park\"): 9,\n    (\"Alamo Square\", \"Presidio\"): 18,\n    (\"Alamo Square\", \"Russian Hill\"): 13,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Alamo Square\"): 18,\n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Russian Hill\", \"Golden Gate Park\"): 21,\n    (\"Russian Hill\", \"Alamo Square\"): 15,\n    (\"Russian Hill\", \"Presidio\"): 14,\n}\n\n# Meeting constraints\nmeetings = {\n    \"Timothy\": {\n        \"location\": \"Alamo Square\",\n        \"available_from\": datetime.strptime(\"12:00\", \"%H:%M\"),\n        \"available_to\": datetime.strptime(\"16:15\", \"%H:%M\"),\n        \"min_duration\": timedelta(minutes=105)\n    },\n    \"Mark\": {\n        \"location\": \"Presidio\",\n        \"available_from\": datetime.strptime(\"18:45\", \"%H:%M\"),\n        \"available_to\": datetime.strptime(\"21:00\", \"%H:%M\"),\n        \"min_duration\": timedelta(minutes=60)\n    },\n    \"Joseph\": {\n        \"location\": \"Russian Hill\",\n        \"available_from\": datetime.strptime(\"16:45\", \"%H:%M\"),\n        \"available_to\": datetime.strptime(\"21:30\", \"%H:%M\"),\n        \"min_duration\": timedelta(minutes=60)\n    }\n}\n\n# Start time at Golden Gate Park\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\nitinerary = []\n\n# Function to calculate the optimal schedule\ndef calculate_schedule(start_time, travel_times, meetings):\n    current_time = start_time\n\n    # Meeting with Timothy\n    if current_time < meetings[\"Timothy\"][\"available_from\"]:\n        current_time = meetings[\"Timothy\"][\"available_from\"]\n    \n    travel_to_timothy = travel_times[(\"Golden Gate Park\", \"Alamo Square\")]\n    \n    if current_time + timedelta(minutes=travel_to_timothy) < meetings[\"Timothy\"][\"available_to\"]:\n        meet_start_time = current_time + timedelta(minutes=travel_to_timothy)\n        meet_end_time = meet_start_time + meetings[\"Timothy\"][\"min_duration\"]\n        if meet_end_time <= meetings[\"Timothy\"][\"available_to\"]:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Alamo Square\",\n                \"person\": \"Timothy\",\n                \"start_time\": meet_start_time.strftime(\"%H:%M\"),\n                \"end_time\": meet_end_time.strftime(\"%H:%M\"),\n            })\n            \n            # Update current time after meeting Timothy\n            current_time = meet_end_time\n    \n    # Travel to Presidio to meet Mark\n    travel_to_mark = travel_times[(\"Alamo Square\", \"Presidio\")]\n    if current_time + timedelta(minutes=travel_to_mark) < meetings[\"Mark\"][\"available_to\"]:\n        current_time += timedelta(minutes=travel_to_mark)\n        meet_start_time = current_time\n        meet_end_time = meet_start_time + meetings[\"Mark\"][\"min_duration\"]\n        \n        if meet_end_time <= meetings[\"Mark\"][\"available_to\"]:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Presidio\",\n                \"person\": \"Mark\",\n                \"start_time\": meet_start_time.strftime(\"%H:%M\"),\n                \"end_time\": meet_end_time.strftime(\"%H:%M\"),\n            })\n            \n            # Update current time after meeting Mark\n            current_time = meet_end_time\n\n    # Travel to Russian Hill to meet Joseph\n    travel_to_joseph = travel_times[(\"Presidio\", \"Russian Hill\")]\n    if current_time + timedelta(minutes=travel_to_joseph) < meetings[\"Joseph\"][\"available_to\"]:\n        current_time += timedelta(minutes=travel_to_joseph)\n        meet_start_time = current_time\n        meet_end_time = meet_start_time + meetings[\"Joseph\"][\"min_duration\"]\n        \n        if meet_end_time <= meetings[\"Joseph\"][\"available_to\"]:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Russian Hill\",\n                \"person\": \"Joseph\",\n                \"start_time\": meet_start_time.strftime(\"%H:%M\"),\n                \"end_time\": meet_end_time.strftime(\"%H:%M\"),\n            })\n\n# Calculate the schedule\ncalculate_schedule(start_time, travel_times, meetings)\n\n# Output the result as JSON\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_268"
+        }
+    ]
+}

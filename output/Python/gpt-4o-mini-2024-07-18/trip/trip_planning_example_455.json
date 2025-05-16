@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 10-15",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 19-25",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 2-7",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 15-21",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Define the trip constraints\n    days_total = 21\n    stays = {\n        'Reykjavik': 7,\n        'Riga': 2,\n        'Warsaw': 3,\n        'Istanbul': 6,\n        'Krakow': 7\n    }\n    travel_days = {\n        'Riga': ['Istanbul'],\n        'Istanbul': ['Warsaw', 'Krakow'],\n        'Warsaw': ['Reykjavik', 'Istanbul'],\n        'Reykjavik': ['Warsaw'],\n        'Krakow': ['Istanbul', 'Warsaw'],\n    }\n    \n    itinerary = []\n    current_day = 1\n\n    # Visit Reykjavik\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Reykjavik\"] - 1}', 'place': 'Reykjavik'})\n    current_day += stays[\"Reykjavik\"]\n\n    # Meet friend in Riga between Day 1 and Day 2\n    # Hence, we jump to Riga\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Reykjavik', 'to': 'Riga'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Riga\"] - 1}', 'place': 'Riga'})\n    current_day += stays[\"Riga\"]\n\n    # Fly to Istanbul for wedding\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Riga', 'to': 'Istanbul'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Istanbul\"] - 1}', 'place': 'Istanbul'})\n    current_day += stays[\"Istanbul\"]\n\n    # Now travel to Warsaw\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Istanbul', 'to': 'Warsaw'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Warsaw\"] - 1}', 'place': 'Warsaw'})\n    current_day += stays[\"Warsaw\"]\n\n    # Finally, travel to Krakow\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Warsaw', 'to': 'Krakow'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + stays[\"Krakow\"] - 1}', 'place': 'Krakow'})\n    current_day += stays[\"Krakow\"]\n\n    return itinerary\n\ndef main():\n    itinerary = compute_itinerary()\n    print(json.dumps(itinerary, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_455"
+        }
+    ]
+}

@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Melissa",
+                        "start_time": "13:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Rebecca",
+                        "start_time": "15:22",
+                        "end_time": "16:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Richard",
+                        "start_time": "16:42",
+                        "end_time": "18:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Margaret",
+                        "start_time": "18:18",
+                        "end_time": "18:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:40",
+                        "end_time": "20:10"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mark",
+                        "start_time": "15:57",
+                        "end_time": "16:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Richard",
+                        "start_time": "16:52",
+                        "end_time": "18:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Margaret",
+                        "start_time": "18:28",
+                        "end_time": "18:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:50",
+                        "end_time": "20:20"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Locations and travel times\nlocations = [\n    \"Chinatown\", \"Embarcadero\", \"Pacific Heights\", \"Russian Hill\", \n    \"Haight-Ashbury\", \"Golden Gate Park\", \"Fisherman's Wharf\", \n    \"Sunset District\", \"The Castro\"\n]\n\ntravel_times = {\n    \"Chinatown\": {\"Embarcadero\": 5, \"Pacific Heights\": 10, \"Russian Hill\": 7, \"Haight-Ashbury\": 19, \n                  \"Golden Gate Park\": 23, \"Fisherman's Wharf\": 8, \"Sunset District\": 29, \"The Castro\": 22},\n    \"Embarcadero\": {\"Chinatown\": 7, \"Pacific Heights\": 11, \"Russian Hill\": 8, \"Haight-Ashbury\": 21, \n                    \"Golden Gate Park\": 25, \"Fisherman's Wharf\": 6, \"Sunset District\": 30, \"The Castro\": 25},\n    \"Pacific Heights\": {\"Chinatown\": 11, \"Embarcadero\": 10, \"Russian Hill\": 7, \"Haight-Ashbury\": 11, \n                        \"Golden Gate Park\": 15, \"Fisherman's Wharf\": 13, \"Sunset District\": 21, \"The Castro\": 16},\n    \"Russian Hill\": {\"Chinatown\": 9, \"Embarcadero\": 8, \"Pacific Heights\": 7, \"Haight-Ashbury\": 17, \n                     \"Golden Gate Park\": 21, \"Fisherman's Wharf\": 7, \"Sunset District\": 23, \"The Castro\": 21},\n    \"Haight-Ashbury\": {\"Chinatown\": 19, \"Embarcadero\": 20, \"Pacific Heights\": 12, \"Russian Hill\": 17, \n                       \"Golden Gate Park\": 7, \"Fisherman's Wharf\": 23, \"Sunset District\": 15, \"The Castro\": 6},\n    \"Golden Gate Park\": {\"Chinatown\": 23, \"Embarcadero\": 25, \"Pacific Heights\": 16, \"Russian Hill\": 19, \n                         \"Haight-Ashbury\": 7, \"Fisherman's Wharf\": 24, \"Sunset District\": 10, \"The Castro\": 13},\n    \"Fisherman's Wharf\": {\"Chinatown\": 12, \"Embarcadero\": 8, \"Pacific Heights\": 12, \"Russian Hill\": 7, \n                          \"Haight-Ashbury\": 22, \"Golden Gate Park\": 25, \"Sunset District\": 27, \"The Castro\": 27},\n    \"Sunset District\": {\"Chinatown\": 30, \"Embarcadero\": 30, \"Pacific Heights\": 21, \"Russian Hill\": 24, \n                        \"Haight-Ashbury\": 15, \"Golden Gate Park\": 11, \"Fisherman's Wharf\": 29, \"The Castro\": 17},\n    \"The Castro\": {\"Chinatown\": 22, \"Embarcadero\": 22, \"Pacific Heights\": 16, \"Russian Hill\": 18, \n                   \"Haight-Ashbury\": 6, \"Golden Gate Park\": 11, \"Fisherman's Wharf\": 24, \"Sunset District\": 17}\n}\n\n# Friends data\nfriends = [\n    {\"name\": \"Richard\", \"location\": \"Embarcadero\", \"start\": \"15:15\", \"end\": \"18:45\", \"duration\": 90},\n    {\"name\": \"Mark\", \"location\": \"Pacific Heights\", \"start\": \"15:00\", \"end\": \"17:00\", \"duration\": 45},\n    {\"name\": \"Matthew\", \"location\": \"Russian Hill\", \"start\": \"17:30\", \"end\": \"21:00\", \"duration\": 90},\n    {\"name\": \"Rebecca\", \"location\": \"Haight-Ashbury\", \"start\": \"14:45\", \"end\": \"18:00\", \"duration\": 60},\n    {\"name\": \"Melissa\", \"location\": \"Golden Gate Park\", \"start\": \"13:45\", \"end\": \"17:30\", \"duration\": 90},\n    {\"name\": \"Margaret\", \"location\": \"Fisherman's Wharf\", \"start\": \"14:45\", \"end\": \"20:15\", \"duration\": 15},\n    {\"name\": \"Emily\", \"location\": \"Sunset District\", \"start\": \"15:45\", \"end\": \"17:00\", \"duration\": 45},\n    {\"name\": \"George\", \"location\": \"The Castro\", \"start\": \"14:00\", \"end\": \"16:15\", \"duration\": 75}\n]\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes(\"9:00\")\n    current_location = \"Chinatown\"\n    schedule = []\n    met_friends = set()\n    \n    for friend_name in order:\n        friend = next(f for f in friends if f[\"name\"] == friend_name)\n        location = friend[\"location\"]\n        travel_time = travel_times[current_location][location]\n        \n        arrival_time = current_time + travel_time\n        start_window = time_to_minutes(friend[\"start\"])\n        end_window = time_to_minutes(friend[\"end\"])\n        duration = friend[\"duration\"]\n        \n        # Calculate possible meeting start time\n        meeting_start = max(arrival_time, start_window)\n        meeting_end = meeting_start + duration\n        \n        if meeting_end > end_window:\n            # Try to start earlier if possible\n            meeting_start = end_window - duration\n            if meeting_start < start_window:\n                continue  # Can't meet this friend\n        \n        if meeting_start < arrival_time:\n            continue  # Can't meet this friend\n        \n        # Add to schedule\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": location,\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        met_friends.add(friend[\"name\"])\n        current_time = meeting_end\n        current_location = location\n    \n    return schedule, len(met_friends)\n\n# Try different orders to maximize number of friends met\nbest_schedule = []\nmax_friends = 0\n\n# We'll try permutations of friends who have earlier availability first to optimize\nearly_friends = [\"George\", \"Melissa\", \"Margaret\", \"Rebecca\", \"Mark\", \"Richard\", \"Emily\", \"Matthew\"]\n\n# Try a reasonable number of permutations (not all 40320)\nfor _ in range(1000):\n    import random\n    random.shuffle(early_friends)\n    schedule, count = calculate_schedule(early_friends)\n    if count > max_friends:\n        max_friends = count\n        best_schedule = schedule\n    if max_friends == 8:\n        break\n\n# Output the best schedule found\noutput = {\n    \"itinerary\": best_schedule\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_763"
+        }
+    ]
+}

@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:52",
+                        "end_time": "11:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:22",
+                        "end_time": "13:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary: travel_times[from_location][to_location] = minutes\ntravel_times = {\n    'Embarcadero': {\n        'Richmond District': 21,\n        'Union Square': 10,\n        'Financial District': 5,\n        'Pacific Heights': 11,\n        'Nob Hill': 10,\n        'Bayview': 21\n    },\n    'Richmond District': {\n        'Embarcadero': 19,\n        'Union Square': 21,\n        'Financial District': 22,\n        'Pacific Heights': 10,\n        'Nob Hill': 17,\n        'Bayview': 26\n    },\n    'Union Square': {\n        'Embarcadero': 11,\n        'Richmond District': 20,\n        'Financial District': 9,\n        'Pacific Heights': 15,\n        'Nob Hill': 9,\n        'Bayview': 15\n    },\n    'Financial District': {\n        'Embarcadero': 4,\n        'Richmond District': 21,\n        'Union Square': 9,\n        'Pacific Heights': 13,\n        'Nob Hill': 8,\n        'Bayview': 19\n    },\n    'Pacific Heights': {\n        'Embarcadero': 10,\n        'Richmond District': 12,\n        'Union Square': 12,\n        'Financial District': 13,\n        'Nob Hill': 8,\n        'Bayview': 22\n    },\n    'Nob Hill': {\n        'Embarcadero': 9,\n        'Richmond District': 14,\n        'Union Square': 7,\n        'Financial District': 9,\n        'Pacific Heights': 8,\n        'Bayview': 19\n    },\n    'Bayview': {\n        'Embarcadero': 19,\n        'Richmond District': 25,\n        'Union Square': 17,\n        'Financial District': 19,\n        'Pacific Heights': 23,\n        'Nob Hill': 20\n    }\n}\n\n# Friend data: name, location, available_start, available_end, min_duration\nfriends = [\n    ('Kenneth', 'Richmond District', 21.25, 22.0, 0.5),\n    ('Lisa', 'Union Square', 9.0, 16.5, 0.75),\n    ('Joshua', 'Financial District', 12.0, 15.25, 0.25),\n    ('Nancy', 'Pacific Heights', 8.0, 11.5, 1.5),\n    ('Andrew', 'Nob Hill', 11.5, 20.25, 1.0),\n    ('John', 'Bayview', 16.75, 21.5, 1.25)\n]\n\ndef time_to_float(time_str):\n    if isinstance(time_str, float):\n        return time_str\n    hours, minutes = map(float, time_str.split(':'))\n    return hours + minutes / 60.0\n\ndef float_to_time(time_float):\n    hours = int(time_float)\n    minutes = int((time_float - hours) * 60)\n    return f\"{hours}:{minutes:02d}\"\n\ndef calculate_schedule(order):\n    current_time = 9.0  # Start at Embarcadero at 9:00\n    current_location = 'Embarcadero'\n    schedule = []\n    met_friends = set()\n    \n    for friend_idx in order:\n        name, location, avail_start, avail_end, min_duration = friends[friend_idx]\n        \n        # Calculate travel time\n        travel_time = travel_times[current_location].get(location, 0) / 60.0\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet this friend\n        meeting_start = max(arrival_time, avail_start)\n        meeting_end = meeting_start + min_duration\n        \n        if meeting_end <= avail_end:\n            # Add travel and meeting to schedule\n            if travel_time > 0:\n                schedule.append({\n                    \"action\": \"travel\",\n                    \"from\": current_location,\n                    \"to\": location,\n                    \"start_time\": float_to_time(current_time),\n                    \"end_time\": float_to_time(arrival_time)\n                })\n            \n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": name,\n                \"start_time\": float_to_time(meeting_start),\n                \"end_time\": float_to_time(meeting_end)\n            })\n            \n            met_friends.add(friend_idx)\n            current_time = meeting_end\n            current_location = location\n        else:\n            # Can't meet this friend, skip\n            continue\n    \n    return schedule, len(met_friends)\n\ndef find_optimal_schedule():\n    best_schedule = []\n    max_meetings = 0\n    \n    # Try all possible meeting orders (permutations of friends)\n    for order in permutations(range(len(friends))):\n        schedule, num_meetings = calculate_schedule(order)\n        if num_meetings > max_meetings:\n            max_meetings = num_meetings\n            best_schedule = schedule\n        elif num_meetings == max_meetings and len(schedule) > 0:\n            # Prefer schedules that end earlier\n            last_meeting_end = time_to_float(schedule[-1]['end_time'])\n            current_last_end = time_to_float(best_schedule[-1]['end_time']) if best_schedule else 24.0\n            if last_meeting_end < current_last_end:\n                best_schedule = schedule\n    \n    # Filter out travel segments for the final itinerary\n    itinerary = [item for item in best_schedule if item['action'] == 'meet']\n    return itinerary\n\ndef main():\n    itinerary = find_optimal_schedule()\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_546"
+        }
+    ]
+}

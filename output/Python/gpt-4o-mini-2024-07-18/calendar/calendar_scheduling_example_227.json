@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Scheduling constraints\nmeeting_duration = timedelta(minutes=30)\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Participants' availability\ndavid_busy = [(datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n               (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\"))]\n\ndouglas_busy = [(datetime.strptime(\"9:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n                 (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n                 (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n                 (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\"))]\n\nralph_busy = [(datetime.strptime(\"9:00\", \"%H:%M\"), datetime.strptime(\"9:30\", \"%H:%M\")),\n               (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n               (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n               (datetime.strptime(\"13:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n               (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n               (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n\njordan_busy = [(datetime.strptime(\"9:00\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n                 (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                 (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n                 (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n                 (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n\nparticipants_busy = [david_busy, douglas_busy, ralph_busy, jordan_busy]\n\ndef is_time_available(start_time, duration):\n    end_time = start_time + duration\n    for busy_slots in participants_busy:\n        for busy_start, busy_end in busy_slots:\n            if (start_time < busy_end and end_time > busy_start):\n                return False\n    return True\n\n# Searching for a suitable time slot starting from 14:00\nproposed_start = datetime.strptime(\"14:00\", \"%H:%M\")\n\nwhile proposed_start + meeting_duration <= work_end:\n    if is_time_available(proposed_start, meeting_duration):\n        proposed_end = proposed_start + meeting_duration\n        print(f\"{proposed_start.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')}\\nMonday\")\n        break\n    proposed_start += timedelta(minutes=1)\n```",
+            "count": "calendar_scheduling_example_227"
+        }
+    ]
+}

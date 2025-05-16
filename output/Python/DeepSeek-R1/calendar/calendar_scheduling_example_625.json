@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "{15:30",
+                "end_time": "16:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    work_hours = {'start': 9 * 60, 'end': 17 * 60}  # 9:00 to 17:00 in minutes\n    meeting_duration = 30  # minutes\n\n    # Harold's blocked times in minutes since midnight (Tuesday)\n    harold_blocked_tuesday = [\n        (9 * 60, 9 * 60 + 30),     # 09:00-09:30\n        (10 * 60 + 30, 11 * 60 + 30),  # 10:30-11:30\n        (12 * 60 + 30, 13 * 60 + 30),  # 12:30-13:30\n        (14 * 60 + 30, 15 * 60 + 30),  # 14:30-15:30\n        (16 * 60, 17 * 60)        # 16:00-17:00\n    ]\n    \n    # Check Tuesday after 14:30 first due to preference\n    possible_slots = []\n    \n    # Check available slot between 15:30-16:00 on Tuesday\n    start_candidate = 15 * 60 + 30  # 15:30\n    end_candidate = start_candidate + meeting_duration\n    if end_candidate <= 16 * 60:\n        # Check against blocked times\n        conflict = False\n        for block_start, block_end in harold_blocked_tuesday:\n            if start_candidate < block_end and end_candidate > block_start:\n                conflict = True\n                break\n        if not conflict:\n            possible_slots.append(('Tuesday', start_candidate, end_candidate))\n    \n    if possible_slots:\n        day, start, end = possible_slots[0]\n        return f\"{day}: {format_time(start)}-{format_time(end)}\"\n    \n    # If Tuesday not possible, check Monday (though preference is to avoid)\n    harold_blocked_monday = [\n        (9 * 60, 10 * 60),       # 09:00-10:00\n        (10 * 60 + 30, 17 * 60)  # 10:30-17:00\n    ]\n    # Check available slot between 10:00-10:30 on Monday\n    start_candidate = 10 * 60  # 10:00\n    end_candidate = start_candidate + meeting_duration\n    if end_candidate <= 10 * 60 + 30:\n        conflict = False\n        for block_start, block_end in harold_blocked_monday:\n            if start_candidate < block_end and end_candidate > block_start:\n                conflict = True\n                break\n        if not conflict:\n            return f\"Monday: {format_time(start_candidate)}-{format_time(end_candidate)}\"\n    \n    return \"No suitable time found\"\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\nresult = find_meeting_time()\nprint(result)\n'''",
+            "count": "calendar_scheduling_example_625"
+        }
+    ]
+}

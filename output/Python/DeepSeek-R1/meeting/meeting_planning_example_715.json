@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "9:30",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "10:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joseph",
+                        "start_time": "11:11",
+                        "end_time": "12:56"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "13:05",
+                        "end_time": "15:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Amanda",
+                        "start_time": "15:20",
+                        "end_time": "17:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jeffrey",
+                        "start_time": "17:15",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "19:27",
+                        "end_time": "21:12"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Melissa",
+                        "start_time": "9:30",
+                        "end_time": "10:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "10:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joseph",
+                        "start_time": "13:24",
+                        "end_time": "15:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Amanda",
+                        "start_time": "15:25",
+                        "end_time": "17:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Karen",
+                        "start_time": "17:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "19:31",
+                        "end_time": "21:16"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport heapq\nimport json\n\ndef time_to_minutes(timestr):\n    time_format = '%I:%M%p'\n    dt = datetime.strptime(timestr, time_format)\n    return dt.hour * 60 + dt.minute\n\ndef minutes_to_time(mins):\n    hours = mins // 60\n    minutes = mins % 60\n    return f\"{hours}:{minutes:02}\"\n\nfriends = [\n    {'name': 'Amanda', 'location': 'Marina District', 'start': 885, 'end': 1170, 'duration': 105},\n    {'name': 'Melissa', 'location': 'The Castro', 'start': 570, 'end': 1020, 'duration': 30},\n    {'name': 'Jeffrey', 'location': 'Fisherman\\'s Wharf', 'start': 765, 'end': 1170, 'duration': 120},\n    {'name': 'Matthew', 'location': 'Bayview', 'start': 615, 'end': 795, 'duration': 30},\n    {'name': 'Nancy', 'location': 'Pacific Heights', 'start': 1020, 'end': 1290, 'duration': 105},\n    {'name': 'Karen', 'location': 'Mission District', 'start': 1050, 'end': 1230, 'duration': 105},\n    {'name': 'Robert', 'location': 'Alamo Square', 'start': 675, 'end': 1050, 'duration': 120},\n    {'name': 'Joseph', 'location': 'Golden Gate Park', 'start': 510, 'end': 1275, 'duration': 105}\n]\n\ntravel_time = {\n    'Presidio': {'Marina District': 11, 'The Castro': 21, 'Fisherman\\'s Wharf': 19, 'Bayview': 31, 'Pacific Heights': 11, 'Mission District': 26, 'Alamo Square': 19, 'Golden Gate Park': 12},\n    'Marina District': {'Presidio': 10, 'The Castro': 22, 'Fisherman\\'s Wharf': 10, 'Bayview': 27, 'Pacific Heights': 7, 'Mission District': 20, 'Alamo Square': 15, 'Golden Gate Park': 18},\n    'The Castro': {'Presidio': 20, 'Marina District': 21, 'Fisherman\\'s Wharf': 24, 'Bayview': 19, 'Pacific Heights': 16, 'Mission District': 7, 'Alamo Square': 8, 'Golden Gate Park': 11},\n    'Fisherman\\'s Wharf': {'Presidio': 17, 'Marina District': 9, 'The Castro': 27, 'Bayview': 26, 'Pacific Heights': 12, 'Mission District': 22, 'Alamo Square': 21, 'Golden Gate Park': 25},\n    'Bayview': {'Presidio': 32, 'Marina District': 27, 'The Castro': 19, 'Fisherman\\'s Wharf': 25, 'Pacific Heights': 23, 'Mission District': 13, 'Alamo Square': 16, 'Golden Gate Park': 22},\n    'Pacific Heights': {'Presidio': 11, 'Marina District': 6, 'The Castro': 16, 'Fisherman\\'s Wharf': 13, 'Bayview': 22, 'Mission District': 15, 'Alamo Square': 10, 'Golden Gate Park': 15},\n    'Mission District': {'Presidio': 25, 'Marina District': 19, 'The Castro': 7, 'Fisherman\\'s Wharf': 22, 'Bayview': 14, 'Pacific Heights': 16, 'Alamo Square': 11, 'Golden Gate Park': 17},\n    'Alamo Square': {'Presidio': 17, 'Marina District': 15, 'The Castro': 8, 'Fisherman\\'s Wharf': 19, 'Bayview': 16, 'Pacific Heights': 10, 'Mission District': 10, 'Golden Gate Park': 9},\n    'Golden Gate Park': {'Presidio': 11, 'Marina District': 16, 'The Castro': 13, 'Fisherman\\'s Wharf': 24, 'Bayview': 23, 'Pacific Heights': 16, 'Mission District': 17, 'Alamo Square': 9}\n}\n\nheap = []\nheapq.heappush(heap, (0, 540, 'Presidio', 0, []))\nbest_times = {}\nmax_friends = 0\nbest_itinerary = []\n\nwhile heap:\n    priority, current_time, current_loc, met_mask, itinerary = heapq.heappop(heap)\n    num_met = -priority\n\n    if num_met > max_friends:\n        max_friends = num_met\n        best_itinerary = itinerary\n\n    if num_met == len(friends):\n        break\n\n    key = (current_loc, met_mask)\n    if key in best_times and best_times[key] <= current_time:\n        continue\n    best_times[key] = current_time\n\n    for idx, friend in enumerate(friends):\n        if not (met_mask & (1 << idx)):\n            to_loc = friend['location']\n            travel_duration = travel_time[current_loc].get(to_loc, float('inf'))\n            if travel_duration == float('inf'):\n                continue\n\n            arrival_time = current_time + travel_duration\n            start_time = max(arrival_time, friend['start'])\n            end_time = start_time + friend['duration']\n\n            if end_time > friend['end']:\n                continue\n\n            new_met_mask = met_mask | (1 << idx)\n            new_priority = -(num_met + 1)\n            new_itinerary = itinerary + [{\n                'action': 'meet',\n                'location': to_loc,\n                'person': friend['name'],\n                'start_time': minutes_to_time(start_time),\n                'end_time': minutes_to_time(end_time)\n            }]\n\n            new_key = (to_loc, new_met_mask)\n            if new_key not in best_times or end_time < best_times.get(new_key, float('inf')):\n                heapq.heappush(heap, (new_priority, end_time, to_loc, new_met_mask, new_itinerary))\n\nprint(json.dumps({'itinerary': best_itinerary}))\n```",
+            "count": "meeting_planning_example_715"
+        }
+    ]
+}

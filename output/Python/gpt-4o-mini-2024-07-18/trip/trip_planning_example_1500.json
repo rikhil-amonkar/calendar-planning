@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 28-32",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 34-38",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 40-41",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 43-46",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 17-21",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 25-28",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    # Define the travel constraints\n    itinerary = []\n    day_count = 0\n\n    # London: Days 1-3 (Annual Show)\n    itinerary.append({'day_range': 'Day 1-3', 'place': 'London'})\n    day_count += 3\n\n    # London to Milan (Day 3): Meet friends and spend 4 days\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'London', 'to': 'Milan'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Milan'})\n    day_count += 4  # Spend 4 more days in Milan\n\n    # Milan to Zurich (Day 7)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Milan', 'to': 'Zurich'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Zurich'})\n    day_count += 2  # Spend 2 days in Zurich\n\n    # Days 7 and 8: Conference in Zurich\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Zurich'})\n    day_count += 2 \n\n    # Zurich to Hamburg (Day 10)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Zurich', 'to': 'Hamburg'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Hamburg'})\n    day_count += 5  # Spend 5 days in Hamburg\n\n    # Hamburg to Bucharest (Day 15)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Hamburg', 'to': 'Bucharest'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Bucharest'})\n    day_count += 2  # Spend 2 days in Bucharest\n\n    # Bucharest to Barcelona (Day 17)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Bucharest', 'to': 'Barcelona'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Barcelona'})\n    day_count += 4  # Spend 4 days in Barcelona\n\n    # Barcelona to Reykjavik (Day 21)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Barcelona', 'to': 'Reykjavik'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Reykjavik'})\n    day_count += 5  # Spend 5 days in Reykjavik\n\n    # Reykjavik to Stuttgart (Day 26)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Reykjavik', 'to': 'Stuttgart'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 4}', 'place': 'Stuttgart'})\n    day_count += 5  # Spend 5 days in Stuttgart\n\n    # Stuttgart to Stockholm (Day 31)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Stuttgart', 'to': 'Stockholm'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 1}', 'place': 'Stockholm'})\n    day_count += 2  # Spend 2 days in Stockholm\n\n    # Stockholm to Tallinn (Day 33)\n    itinerary.append({'flying': f'Day {day_count}-{day_count}', 'from': 'Stockholm', 'to': 'Tallinn'})\n    day_count += 1\n    itinerary.append({'day_range': f'Day {day_count}-{day_count + 3}', 'place': 'Tallinn'})\n    day_count += 4  # Spend 4 days in Tallinn\n\n    # Output the itinerary as a JSON-formatted dictionary\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    result = create_itinerary()\n    print(result)\n```",
+            "count": "trip_planning_example_1500"
+        }
+    ]
+}

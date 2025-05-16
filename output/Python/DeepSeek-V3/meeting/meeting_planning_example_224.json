@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Melissa",
+                        "start_time": "9:25",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Melissa",
+                        "start_time": "9:25",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, '%H:%M')\n\ndef format_time(dt):\n    return dt.strftime('%-H:%M')\n\ndef main():\n    # Travel times in minutes between locations\n    travel_times = {\n        'Fisherman\\'s Wharf': {\n            'Golden Gate Park': 25,\n            'Presidio': 17,\n            'Richmond District': 18\n        },\n        'Golden Gate Park': {\n            'Fisherman\\'s Wharf': 24,\n            'Presidio': 11,\n            'Richmond District': 7\n        },\n        'Presidio': {\n            'Fisherman\\'s Wharf': 19,\n            'Golden Gate Park': 12,\n            'Richmond District': 7\n        },\n        'Richmond District': {\n            'Fisherman\\'s Wharf': 18,\n            'Golden Gate Park': 9,\n            'Presidio': 7\n        }\n    }\n\n    # Constraints\n    current_location = 'Fisherman\\'s Wharf'\n    current_time = parse_time('9:00')\n    \n    friends = [\n        {\n            'name': 'Melissa',\n            'location': 'Golden Gate Park',\n            'available_start': parse_time('8:30'),\n            'available_end': parse_time('20:00'),\n            'min_duration': 15\n        },\n        {\n            'name': 'Nancy',\n            'location': 'Presidio',\n            'available_start': parse_time('19:45'),\n            'available_end': parse_time('22:00'),\n            'min_duration': 105\n        },\n        {\n            'name': 'Emily',\n            'location': 'Richmond District',\n            'available_start': parse_time('16:45'),\n            'available_end': parse_time('22:00'),\n            'min_duration': 120\n        }\n    ]\n\n    itinerary = []\n\n    # Try to meet Melissa first (earliest available)\n    melissa = friends[0]\n    travel_time = travel_times[current_location][melissa['location']]\n    arrival_time = current_time + timedelta(minutes=travel_time)\n    \n    # Check if we can meet Melissa\n    if arrival_time <= melissa['available_end']:\n        start_time = max(arrival_time, melissa['available_start'])\n        end_time = start_time + timedelta(minutes=melissa['min_duration'])\n        if end_time <= melissa['available_end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': melissa['location'],\n                'person': melissa['name'],\n                'start_time': format_time(start_time),\n                'end_time': format_time(end_time)\n            })\n            current_time = end_time\n            current_location = melissa['location']\n\n    # Now try to meet Emily (next earliest available)\n    emily = friends[2]\n    travel_time = travel_times[current_location][emily['location']]\n    arrival_time = current_time + timedelta(minutes=travel_time)\n    \n    if arrival_time <= emily['available_end']:\n        start_time = max(arrival_time, emily['available_start'])\n        end_time = start_time + timedelta(minutes=emily['min_duration'])\n        if end_time <= emily['available_end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': emily['location'],\n                'person': emily['name'],\n                'start_time': format_time(start_time),\n                'end_time': format_time(end_time)\n            })\n            current_time = end_time\n            current_location = emily['location']\n\n    # Finally try to meet Nancy (latest available)\n    nancy = friends[1]\n    travel_time = travel_times[current_location][nancy['location']]\n    arrival_time = current_time + timedelta(minutes=travel_time)\n    \n    if arrival_time <= nancy['available_end']:\n        start_time = max(arrival_time, nancy['available_start'])\n        end_time = start_time + timedelta(minutes=nancy['min_duration'])\n        if end_time <= nancy['available_end']:\n            itinerary.append({\n                'action': 'meet',\n                'location': nancy['location'],\n                'person': nancy['name'],\n                'start_time': format_time(start_time),\n                'end_time': format_time(end_time)\n            })\n\n    # Output the itinerary\n    print(json.dumps({'itinerary': itinerary}, indent=2))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_224"
+        }
+    ]
+}

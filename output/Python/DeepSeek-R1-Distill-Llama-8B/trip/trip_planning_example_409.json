@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 9-15",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I'm faced with creating an optimal 12-day trip visiting five cities: Hamburg, Zurich, Helsinki, Bucharest, and Split. The constraints include specific stays and event timings in Zurich and Split. Let's break this down step by step.\n\n### Initial Approach\n1. **Start in Zurich**: The trip begins in Zurich for 3 days, attending a wedding on days 1-3.\n2. **Fly to Hamburg**: From Zurich, fly to Hamburg on day 3.\n3. **Stay in Hamburg**: Spend 2 days here.\n4. **Fly to Helsinki**: From Hamburg, fly to Helsinki on day 4.\n5. **Stay in Helsinki**: Spend 2 days here.\n6. **Fly to Bucharest**: From Helsinki, fly to Bucharest on day 6.\n7. **Stay in Bucharest**: Spend 2 days here.\n8. **Fly to Split**: From Bucharest, fly to Split on day 8.\n9. **Stay in Split**: Spend 7 days here, attending a conference on days 4-10.\n\n### Flight and Stay Adjustments\n- **Zurich to Hamburg**: Day 3.\n- **Hamburg to Helsinki**: Day 4.\n- **Helsinki to Bucharest**: Day 6.\n- **Bucharest to Split**: Day 8.\n\n### Day Calculation Adjustments\n- **Zurich**: Days 1-3.\n- **Hamburg**: Days 4-5.\n- **Helsinki**: Days 6-7.\n- **Bucharest**: Days 8-9.\n- **Split**: Days 10-16.\n\n### Final Itinerary\n1. **Zurich**: Days 1-3.\n2. **Hamburg**: Days 4-5.\n3. **Helsinki**: Days 6-7.\n4. **Bucharest**: Days 8-9.\n5. **Split**: Days 10-16.\n\n### Challenges\n- Ensuring that each flight day aligns perfectly with the end of one stay and the start of the next.\n- Adhering to the exact event timings in Zurich and Split.\n- Properly handling the trip's end date in Split.\n\n### Solution Code\n```python\nimport json\n\n# Define input parameters\nstart_city = \"Zurich\"\nend_city = \"Split\"\nstay_zurich_days = 3\nstay_hamburg_days = 2\nstay_helsinki_days = 2\nstay_bucharest_days = 2\nstay_split_days = 7\n\nwedding_zurich_start_day = 1\nwedding_zurich_end_day = 3\nconference_split_start_day = 4\nconference_split_end_day = 10\n\n# Create a dictionary to hold the flight information and cities\nflight_data = {\n    \"flights\": [],\n    \"cities\": []\n}\n\n# Initialize the itinerary with the starting city\nflight_data[\"cities\"].append({\n    \"place\": start_city,\n    \"day_range\": f\"Day {wedding_zurich_start_day}-{wedding_zurich_end_day}\"\n})\n\n# Determine the optimal flight routes based on constraints\n# From Zurich to Hamburg on day 3\nflight_data[\"flights\"].append({\n    \"flying\": \"Day 3-3\",\n    \"from\": \"Zurich\",\n    \"to\": \"Hamburg\"\n})\nflight_data[\"cities\"].append({\n    \"place\": \"Hamburg\",\n    \"day_range\": f\"Day 4-{4 + stay_hamburg_days - 1}\"\n})\n\n# From Hamburg to Helsinki on day 4\nflight_data[\"flights\"].append({\n    \"flying\": \"Day 4-4\",\n    \"from\": \"Hamburg\",\n    \"to\": \"Helsinki\"\n})\nflight_data[\"cities\"].append({\n    \"place\": \"Helsinki\",\n    \"day_range\": f\"Day 5-{5 + stay_helsinki_days - 1}\"\n})\n\n# From Helsinki to Bucharest on day 6\nflight_data[\"flights\"].append({\n    \"flying\": \"Day 6-6\",\n    \"from\": \"Helsinki\",\n    \"to\": \"Bucharest\"\n})\nflight_data[\"cities\"].append({\n    \"place\": \"Bucharest\",\n    \"day_range\": f\"Day 7-{7 + stay_bucharest_days - 1}\"\n})\n\n# From Bucharest to Split on day 8\nflight_data[\"flights\"].append({\n    \"flying\": \"Day 8-8\",\n    \"from\": \"Bucharest\",\n    \"to\": \"Split\"\n})\nflight_data[\"cities\"].append({\n    \"place\": \"Split\",\n    \"day_range\": f\"Day 9-{9 + stay_split_days - 1}\"\n})\n\n# Convert the data to the required JSON format\noutput = []\nfor city in flight_data[\"cities\"]:\n    output.append({\n        \"day_range\": city[\"day_range\"],\n        \"place\": city[\"place\"]\n    })\nfor flight in flight_data[\"flights\"]:\n    output.append({\n        \"flying\": flight[\"flying\"],\n        \"from\": flight[\"from\"],\n        \"to\": flight[\"to\"]\n    })\n\n# Print the JSON output\nprint(json.dumps(output))\n```\n\n### Explanation\n- **Zurich**: The trip starts in Zurich on day 1 for 3 days, attending the wedding on days 1-3.\n- **Hamburg**: Fly from Zurich to Hamburg on day 3, stay for 2 days (days 4-5).\n- **Helsinki**: Fly from Hamburg to Helsinki on day 4, stay for 2 days (days 6-7).\n- **Bucharest**: Fly from Helsinki to Bucharest on day 6, stay for 2 days (days 8-9).\n- **Split**: Fly from Bucharest to Split on day 8, stay for 7 days (days 9-15), attending the conference on days 4-10.\n\nThis itinerary ensures that all constraints are met, including event timings in Zurich and Split, while utilizing direct flights between cities. Each flight transition occurs on the same day as the departure and arrival, ensuring seamless travel between locations.",
+            "count": "trip_planning_example_409"
+        }
+    ]
+}

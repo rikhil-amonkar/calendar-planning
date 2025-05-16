@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and meeting duration\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    meeting_duration = 30  # minutes\n\n    # Participants' schedules and constraints\n    schedules = {\n        'Wayne': [],\n        'Melissa': [(10 * 60, 11 * 60), (12.5 * 60, 14 * 60), (15 * 60, 15.5 * 60)],\n        'Catherine': [],\n        'Gregory': [(12.5 * 60, 13 * 60), (15.5 * 60, 16 * 60)],\n        'Victoria': [(9 * 60, 9.5 * 60), (10.5 * 60, 11.5 * 60), (13 * 60, 14 * 60), (14.5 * 60, 15 * 60), (15.5 * 60, 16.5 * 60)],\n        'Thomas': [(10 * 60, 12 * 60), (12.5 * 60, 13 * 60), (14.5 * 60, 16 * 60)],\n        'Jennifer': [(9 * 60, 9.5 * 60), (10 * 60, 10.5 * 60), (11 * 60, 13 * 60), (13.5 * 60, 14.5 * 60), (15 * 60, 15.5 * 60), (16 * 60, 16.5 * 60)],\n    }\n\n    # Wayne's preference: avoid before 14:00\n    wayne_preference_start = 14 * 60\n\n    # Generate busy intervals for all participants except Wayne\n    busy_intervals = []\n    for person, intervals in schedules.items():\n        if person != 'Wayne':\n            for interval in intervals:\n                busy_intervals.append(interval)\n\n    # Add Wayne's preference as a busy interval if before 14:00\n    busy_intervals.append((work_start, wayne_preference_start))\n\n    # Sort busy intervals by start time\n    busy_intervals.sort()\n\n    # Find free slots by checking gaps between busy intervals\n    free_slots = []\n    previous_end = work_start\n\n    for interval in busy_intervals:\n        start, end = interval\n        if start > previous_end:\n            free_slots.append((previous_end, start))\n        previous_end = max(previous_end, end)\n\n    # Check the remaining time after the last busy interval\n    if previous_end < work_end:\n        free_slots.append((previous_end, work_end))\n\n    # Find the first free slot that can accommodate the meeting\n    for slot in free_slots:\n        start, end = slot\n        if end - start >= meeting_duration:\n            meeting_start = start\n            meeting_end = meeting_start + meeting_duration\n            # Format the time as HH:MM:HH:MM\n            start_hh = int(meeting_start // 60)\n            start_mm = int(meeting_start % 60)\n            end_hh = int(meeting_end // 60)\n            end_mm = int(meeting_end % 60)\n            return f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\"\n\n    return \"No suitable time found\"\n\nmeeting_time = find_meeting_time()\nprint(f\"Monday:{meeting_time}\")\n```",
+            "count": "calendar_scheduling_example_458"
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "9:23",
+                        "end_time": "10:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "13:53",
+                        "end_time": "14:38"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef compute_optimal_schedule():\n    # Input parameters\n    travel_times = {\n        (\"Financial District\", \"Chinatown\"): 5,\n        (\"Financial District\", \"Golden Gate Park\"): 23,\n        (\"Chinatown\", \"Financial District\"): 5,\n        (\"Chinatown\", \"Golden Gate Park\"): 23,\n        (\"Golden Gate Park\", \"Financial District\"): 26,\n        (\"Golden Gate Park\", \"Chinatown\"): 23\n    }\n    \n    current_location = \"Financial District\"\n    current_time = parse_time(\"9:00\")\n    \n    kenneth_available_start = parse_time(\"12:00\")\n    kenneth_available_end = parse_time(\"15:00\")\n    kenneth_min_duration = timedelta(minutes=90)\n    \n    barbara_available_start = parse_time(\"8:15\")\n    barbara_available_end = parse_time(\"19:00\")\n    barbara_min_duration = timedelta(minutes=45)\n    \n    itinerary = []\n    \n    # Option 1: Meet Kenneth first, then Barbara\n    option1 = []\n    time = current_time\n    location = current_location\n    \n    # Travel to Chinatown to meet Kenneth\n    travel_time = travel_times[(location, \"Chinatown\")]\n    time += timedelta(minutes=travel_time)\n    location = \"Chinatown\"\n    \n    # Meet Kenneth\n    kenneth_start = max(time, kenneth_available_start)\n    kenneth_end = min(kenneth_start + kenneth_min_duration, kenneth_available_end)\n    if kenneth_end - kenneth_start >= kenneth_min_duration:\n        option1.append({\n            \"action\": \"meet\",\n            \"location\": \"Chinatown\",\n            \"person\": \"Kenneth\",\n            \"start_time\": format_time(kenneth_start),\n            \"end_time\": format_time(kenneth_end)\n        })\n        time = kenneth_end\n        \n        # Travel to Golden Gate Park to meet Barbara\n        travel_time = travel_times[(location, \"Golden Gate Park\")]\n        time += timedelta(minutes=travel_time)\n        location = \"Golden Gate Park\"\n        \n        # Meet Barbara\n        barbara_start = max(time, barbara_available_start)\n        barbara_end = min(barbara_start + barbara_min_duration, barbara_available_end)\n        if barbara_end - barbara_start >= barbara_min_duration:\n            option1.append({\n                \"action\": \"meet\",\n                \"location\": \"Golden Gate Park\",\n                \"person\": \"Barbara\",\n                \"start_time\": format_time(barbara_start),\n                \"end_time\": format_time(barbara_end)\n            })\n    \n    # Option 2: Meet Barbara first, then Kenneth\n    option2 = []\n    time = current_time\n    location = current_location\n    \n    # Travel to Golden Gate Park to meet Barbara\n    travel_time = travel_times[(location, \"Golden Gate Park\")]\n    time += timedelta(minutes=travel_time)\n    location = \"Golden Gate Park\"\n    \n    # Meet Barbara\n    barbara_start = max(time, barbara_available_start)\n    barbara_end = min(barbara_start + barbara_min_duration, barbara_available_end)\n    if barbara_end - barbara_start >= barbara_min_duration:\n        option2.append({\n            \"action\": \"meet\",\n            \"location\": \"Golden Gate Park\",\n            \"person\": \"Barbara\",\n            \"start_time\": format_time(barbara_start),\n            \"end_time\": format_time(barbara_end)\n        })\n        time = barbara_end\n        \n        # Travel to Chinatown to meet Kenneth\n        travel_time = travel_times[(location, \"Chinatown\")]\n        time += timedelta(minutes=travel_time)\n        location = \"Chinatown\"\n        \n        # Meet Kenneth\n        kenneth_start = max(time, kenneth_available_start)\n        kenneth_end = min(kenneth_start + kenneth_min_duration, kenneth_available_end)\n        if kenneth_end - kenneth_start >= kenneth_min_duration:\n            option2.append({\n                \"action\": \"meet\",\n                \"location\": \"Chinatown\",\n                \"person\": \"Kenneth\",\n                \"start_time\": format_time(kenneth_start),\n                \"end_time\": format_time(kenneth_end)\n            })\n    \n    # Determine the best option\n    if len(option1) == 2 and len(option2) == 2:\n        # Both options are valid, choose the one that finishes earlier\n        option1_end = parse_time(option1[-1][\"end_time\"])\n        option2_end = parse_time(option2[-1][\"end_time\"])\n        itinerary = option1 if option1_end <= option2_end else option2\n    elif len(option1) == 2:\n        itinerary = option1\n    elif len(option2) == 2:\n        itinerary = option2\n    else:\n        # Try to meet at least one person\n        if len(option1) > 0 or len(option2) > 0:\n            itinerary = option1 if len(option1) > len(option2) else option2\n    \n    return {\"itinerary\": itinerary}\n\nresult = compute_optimal_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_137"
+        }
+    ]
+}

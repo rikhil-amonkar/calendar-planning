@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "9:15",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Betty",
+                        "start_time": "11:32",
+                        "end_time": "12:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "David",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Betty",
+                        "start_time": "10:15",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "David",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "14:48",
+                        "end_time": "16:48"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\nfriends = [\n    {\n        'name': 'Betty',\n        'location': 'Presidio',\n        'available_start': time_to_min('10:15'),\n        'available_end': time_to_min('21:30'),\n        'duration': 45\n    },\n    {\n        'name': 'David',\n        'location': 'Richmond District',\n        'available_start': time_to_min('13:00'),\n        'available_end': time_to_min('20:15'),\n        'duration': 90\n    },\n    {\n        'name': 'Barbara',\n        'location': \"Fisherman's Wharf\",\n        'available_start': time_to_min('9:15'),\n        'available_end': time_to_min('20:15'),\n        'duration': 120\n    }\n]\n\ntravel_times = {\n    'Embarcadero': {'Presidio': 20, 'Richmond District': 21, \"Fisherman's Wharf\": 6},\n    'Presidio': {'Embarcadero': 20, 'Richmond District': 7, \"Fisherman's Wharf\": 19},\n    'Richmond District': {'Embarcadero': 19, 'Presidio': 7, \"Fisherman's Wharf\": 18},\n    \"Fisherman's Wharf\": {'Embarcadero': 8, 'Presidio': 17, 'Richmond District': 18}\n}\n\nbest_schedule = []\nmax_met = 0\nmin_end = float('inf')\n\nfor perm in itertools.permutations(friends):\n    current_loc = 'Embarcadero'\n    current_time = time_to_min('9:00')\n    schedule = []\n    for friend in perm:\n        travel = travel_times[current_loc].get(friend['location'], 0)\n        arrive = current_time + travel\n        if arrive < friend['available_start']:\n            arrive = friend['available_start']\n        if arrive + friend['duration'] <= friend['available_end']:\n            schedule.append({\n                'action': 'meet',\n                'location': friend['location'],\n                'person': friend['name'],\n                'start_time': min_to_time(arrive),\n                'end_time': min_to_time(arrive + friend['duration'])\n            })\n            current_time = arrive + friend['duration']\n            current_loc = friend['location']\n    met = len(schedule)\n    end_time = current_time if met > 0 else 0\n    if met > max_met or (met == max_met and end_time < min_end):\n        max_met = met\n        best_schedule = schedule\n        min_end = end_time\n\nprint(json.dumps({'itinerary': best_schedule}, indent=2))\n```",
+            "count": "meeting_planning_example_258"
+        }
+    ]
+}

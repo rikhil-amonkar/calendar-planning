@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "{9:00",
+                "end_time": "9:30}"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "{9:00",
+                "end_time": "9:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef format_time(minutes):\n    return f\"{minutes // 60:02d}:{minutes % 60:02d}\"\n\ndef find_meeting_slot():\n    work_start = parse_time(\"09:00\")\n    work_end = parse_time(\"17:00\")\n    duration = 30\n\n    # Define busy intervals in minutes (Tuesday only since Monday is full for Albert)\n    shirley_busy = [(parse_time(\"09:30\"), parse_time(\"10:00\"))]\n    albert_busy = [\n        (parse_time(\"09:30\"), parse_time(\"11:00\")),\n        (parse_time(\"11:30\"), parse_time(\"12:30\")),\n        (parse_time(\"13:00\"), parse_time(\"16:00\")),\n        (parse_time(\"16:30\"), parse_time(\"17:00\"))\n    ]\n\n    # Generate free slots for both\n    def get_free_slots(busy_slots, day_start, day_end):\n        slots = []\n        current = day_start\n        for start, end in sorted(busy_slots):\n            if current < start:\n                slots.append((current, start))\n            current = max(current, end)\n        if current < day_end:\n            slots.append((current, day_end))\n        return slots\n\n    shirley_free = get_free_slots(shirley_busy, work_start, work_end)\n    albert_free = get_free_slots(albert_busy, work_start, work_end)\n\n    # Find overlapping slots with preference handling\n    for s_start, s_end in shirley_free:\n        for a_start, a_end in albert_free:\n            overlap_start = max(s_start, a_start)\n            overlap_end = min(s_end, a_end)\n            if overlap_end - overlap_start >= duration:\n                # Check Shirley's preference for Tuesday before 10:30\n                meeting_end = overlap_start + duration\n                if parse_time(\"10:30\") >= meeting_end:\n                    return \"Tuesday\", (overlap_start, meeting_end)\n                return \"Tuesday\", (overlap_start, overlap_start + duration)\n\n    return None\n\nday, (start, end) = find_meeting_slot()\nprint(f\"{day} {format_time(start)}:{format_time(end)}\")\n'''",
+            "count": "calendar_scheduling_example_658"
+        }
+    ]
+}

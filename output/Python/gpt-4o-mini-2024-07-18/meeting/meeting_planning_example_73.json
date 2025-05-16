@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Barbara",
+                        "start_time": "9:07",
+                        "end_time": "10:07"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Barbara",
+                        "start_time": "9:07",
+                        "end_time": "10:07"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define input parameters\narrival_time_russian_hill = datetime.strptime(\"09:00\", \"%H:%M\")\nbarbara_availability_start = datetime.strptime(\"07:15\", \"%H:%M\")\nbarbara_availability_end = datetime.strptime(\"22:00\", \"%H:%M\")\nminimum_meeting_duration = timedelta(minutes=60)\ntravel_time_russian_hill_to_pacific_heights = timedelta(minutes=7)\ntravel_time_pacific_heights_to_russian_hill = timedelta(minutes=7)\n\n# Compute the potential meeting time window\nlatest_start_meeting_time = barbara_availability_end - minimum_meeting_duration\nearliest_end_meeting_time = barbara_availability_start + minimum_meeting_duration\n\n# Check if a valid meeting time is possible\nif arrival_time_russian_hill >= latest_start_meeting_time or arrival_time_russian_hill >= barbara_availability_end:\n    itinerary = []\nelse:\n    # Calculate the latest possible start time from Russian Hill\n    first_possible_meeting_time = arrival_time_russian_hill + travel_time_russian_hill_to_pacific_heights\n    if first_possible_meeting_time < barbara_availability_start:\n        first_possible_meeting_time = barbara_availability_start\n\n    # Calculate the end time for the meeting\n    meeting_end_time = first_possible_meeting_time + minimum_meeting_duration\n    \n    # Verify if the meeting end time is within Barbara's availability\n    if meeting_end_time <= barbara_availability_end:\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Pacific Heights\",\n                \"person\": \"Barbara\",\n                \"start_time\": first_possible_meeting_time.strftime(\"%H:%M\"),\n                \"end_time\": meeting_end_time.strftime(\"%H:%M\")\n            }\n        ]\n    else:\n        itinerary = []\n\n# Output the result in JSON format\nresult = {\"itinerary\": itinerary}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_73"
+        }
+    ]
+}

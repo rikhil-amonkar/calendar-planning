@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Participants' existing schedules\njames_schedule = [(datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n                  (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\"))]\n\njohn_schedule = [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n                 (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n                 (datetime.strptime(\"12:30\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n                 (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))]\n\n# Meeting duration\nmeeting_duration = timedelta(hours=1)\n\n# Work hours\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\ndate = \"Monday\"\n\n# Find available slot\ndef find_available_slot(james_schedule, john_schedule, work_start, work_end, meeting_duration):\n    # Create a list of all busy times\n    busy_times = james_schedule + john_schedule\n    # Add work hours as busy times if necessary\n    busy_times.append((work_start, work_end))\n    \n    # Sort busy times\n    busy_times.sort()\n\n    # Check for available time slots\n    last_end_time = work_start\n    for start, end in busy_times:\n        if last_end_time + meeting_duration <= start:  # Check if we have enough time before the next busy time\n            return last_end_time.strftime(\"%H:%M\"), (last_end_time + meeting_duration).strftime(\"%H:%M\")\n        last_end_time = max(last_end_time, end)\n\n    return None  # No available slot found\n\ntime_slot = find_available_slot(james_schedule, john_schedule, work_start, work_end, meeting_duration)\nif time_slot:\n    print(f\"{time_slot[0]}:{time_slot[1]} {date}\")\nelse:\n    print(\"No available time slot found.\")\n```",
+            "count": "calendar_scheduling_example_543"
+        }
+    ]
+}

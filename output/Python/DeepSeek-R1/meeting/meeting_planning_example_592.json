@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "9:30",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Sandra",
+                        "start_time": "13:53",
+                        "end_time": "14:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mark",
+                        "start_time": "14:25",
+                        "end_time": "14:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Carol",
+                        "start_time": "18:15",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "James",
+                        "start_time": "20:0",
+                        "end_time": "22:0"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "9:30",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mark",
+                        "start_time": "14:08",
+                        "end_time": "14:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Sandra",
+                        "start_time": "14:43",
+                        "end_time": "14:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Carol",
+                        "start_time": "18:15",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "James",
+                        "start_time": "20:00",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\nfrom itertools import permutations\n\ndef time_to_min(t_str):\n    h, m = map(int, t_str.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    return f\"{m // 60}:{m % 60:02d}\"\n\ntravel_times = {\n    'North Beach': {'Pacific Heights':8, 'Chinatown':6, 'Union Square':7, 'Mission District':18, 'Golden Gate Park':22, 'Nob Hill':7},\n    'Pacific Heights': {'North Beach':9, 'Chinatown':11, 'Union Square':12, 'Mission District':15, 'Golden Gate Park':15, 'Nob Hill':8},\n    'Chinatown': {'North Beach':3, 'Pacific Heights':10, 'Union Square':7, 'Mission District':18, 'Golden Gate Park':23, 'Nob Hill':8},\n    'Union Square': {'North Beach':10, 'Pacific Heights':15, 'Chinatown':7, 'Mission District':14, 'Golden Gate Park':22, 'Nob Hill':9},\n    'Mission District': {'North Beach':17, 'Pacific Heights':16, 'Chinatown':16, 'Union Square':15, 'Golden Gate Park':17, 'Nob Hill':12},\n    'Golden Gate Park': {'North Beach':24, 'Pacific Heights':16, 'Chinatown':23, 'Union Square':22, 'Mission District':17, 'Nob Hill':20},\n    'Nob Hill': {'North Beach':8, 'Pacific Heights':8, 'Chinatown':6, 'Union Square':7, 'Mission District':13, 'Golden Gate Park':17}\n}\n\nfriends = [\n    {'name':'Jeffrey', 'loc':'Union Square', 'start':time_to_min('9:30'), 'end':time_to_min('15:30'), 'dur':120},\n    {'name':'Robert', 'loc':'Chinatown', 'start':time_to_min('12:15'), 'end':time_to_min('16:45'), 'dur':90},\n    {'name':'Sandra', 'loc':'Nob Hill', 'start':time_to_min('8:00'), 'end':time_to_min('15:30'), 'dur':15},\n    {'name':'Mark', 'loc':'Golden Gate Park', 'start':time_to_min('11:30'), 'end':time_to_min('17:45'), 'dur':15},\n    {'name':'Carol', 'loc':'Mission District', 'start':time_to_min('18:15'), 'end':time_to_min('21:15'), 'dur':15},\n    {'name':'James', 'loc':'Pacific Heights', 'start':time_to_min('20:00'), 'end':time_to_min('22:00'), 'dur':120}\n]\n\nnon_james = [f for f in friends if f['name'] != 'James']\nbest = []\n\nfor order in permutations(non_james):\n    schedule = []\n    current = 'North Beach'\n    time = time_to_min('9:00')\n    valid = True\n    \n    for friend in order:\n        travel = travel_times[current][friend['loc']]\n        arrive = time + travel\n        start = max(arrive, friend['start'])\n        if start + friend['dur'] > friend['end']:\n            valid = False\n            break\n        schedule.append({\n            'action':'meet', 'location':friend['loc'], 'person':friend['name'],\n            'start_time':min_to_time(start).replace(':0', ':') if min_to_time(start).endswith(':00') else min_to_time(start),\n            'end_time':min_to_time(start + friend['dur']).replace(':0', ':') if min_to_time(start + friend['dur']).endswith(':00') else min_to_time(start + friend['dur'])\n        })\n        time = start + friend['dur']\n        current = friend['loc']\n    \n    if valid:\n        james_travel = travel_times[current]['Pacific Heights']\n        arrive_j = time + james_travel\n        start_j = max(arrive_j, friends[-1]['start'])\n        if start_j + friends[-1]['dur'] > friends[-1]['end']:\n            continue\n        schedule.append({\n            'action':'meet', 'location':'Pacific Heights', 'person':'James',\n            'start_time':min_to_time(start_j).replace(':0', ':') if min_to_time(start_j).endswith(':00') else min_to_time(start_j),\n            'end_time':min_to_time(start_j + 120).replace(':0', ':') if min_to_time(start_j + 120).endswith(':00') else min_to_time(start_j + 120)\n        })\n        if len(schedule) > len(best):\n            best = schedule\n\nprint(json.dumps({'itinerary': best}, indent=2))",
+            "count": "meeting_planning_example_592"
+        }
+    ]
+}

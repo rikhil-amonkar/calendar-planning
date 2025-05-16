@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule based on the given constraints. The user wants to meet as many friends as possible, so the goal is to maximize the number of friends met while respecting all the travel times and meeting duration constraints.\n\nFirst, I'll start by understanding the input parameters. The user is visiting San Francisco and starts at Embarcadero at 9:00 AM. There are several friends located in different districts, each available during specific time windows. The program needs to compute the best schedule considering travel times and meeting durations.\n\nI'll structure the solution by first defining the travel times between each pair of locations. This will be a dictionary where each key is a location, and its value is another dictionary mapping to other locations with the travel time in minutes.\n\nNext, I'll define the friends' data. Each friend has a name, location, start and end times, and a minimum meeting duration. These will be stored in a list of dictionaries.\n\nSince the problem requires trying different schedules to find the optimal one, I'll use permutations to generate all possible orders of meeting friends. For each permutation, I'll simulate the day, calculating the arrival times and ensuring that each meeting fits within the friend's availability and the required duration.\n\nI'll convert time strings to minutes to make calculations easier. This helps in determining the earliest arrival time and checking if a meeting can fit within the available window.\n\nFor each permutation, I'll start at Embarcadero and keep track of the current time and location. I'll iterate through each friend in the permutation, calculate the travel time to their location, and determine the earliest possible meeting start time. If the meeting can't fit within the friend's availability, I'll break out of the loop and try the next permutation.\n\nIf a valid meeting time is found, I'll add it to the temporary itinerary and update the current time and location. After processing all permutations, the itinerary with the most meetings will be selected as the best.\n\nFinally, I'll output the best itinerary in the required JSON format, ensuring that times are in the correct 24-hour format without leading zeros.\n\nI need to make sure the code is efficient, handles all edge cases, and correctly computes the optimal schedule by considering all possible permutations and constraints.\n</think>\n\n```python\nimport itertools\nimport json\n\n# Travel times in minutes between locations\ntravel_times = {\n    'Embarcadero': {\n        'Richmond District': 21,\n        'Union Square': 10,\n        'Financial District': 5,\n        'Pacific Heights': 11,\n        'Nob Hill': 10,\n        'Bayview': 21,\n    },\n    'Richmond District': {\n        'Embarcadero': 19,\n        'Union Square': 21,\n        'Financial District': 22,\n        'Pacific Heights': 10,\n        'Nob Hill': 17,\n        'Bayview': 26,\n    },\n    'Union Square': {\n        'Embarcadero': 11,\n        'Richmond District': 20,\n        'Financial District': 9,\n        'Pacific Heights': 15,\n        'Nob Hill': 9,\n        'Bayview': 15,\n    },\n    'Financial District': {\n        'Embarcadero': 4,\n        'Richmond District': 21,\n        'Union Square': 9,\n        'Pacific Heights': 13,\n        'Nob Hill': 8,\n        'Bayview': 19,\n    },\n    'Pacific Heights': {\n        'Embarcadero': 10,\n        'Richmond District': 12,\n        'Union Square': 12,\n        'Financial District': 13,\n        'Nob Hill': 8,\n        'Bayview': 22,\n    },\n    'Nob Hill': {\n        'Embarcadero': 9,\n        'Richmond District': 14,\n        'Union Square': 7,\n        'Financial District': 9,\n        'Pacific Heights': 8,\n        'Bayview': 19,\n    },\n    'Bayview': {\n        'Embarcadero': 19,\n        'Richmond District': 25,\n        'Union Square': 17,\n        'Financial District': 19,\n        'Pacific Heights': 23,\n        'Nob Hill': 20,\n    }\n}\n\n# Friends' data\nfriends = [\n    {\n        'name': 'Kenneth',\n        'location': 'Richmond District',\n        'start': '21:15',\n        'end': '22:00',\n        'duration': 30,\n    },\n    {\n        'name': 'Lisa',\n        'location': 'Union Square',\n        'start': '9:00',\n        'end': '16:30',\n        'duration': 45,\n    },\n    {\n        'name': 'Joshua',\n        'location': 'Financial District',\n        'start': '12:00',\n        'end': '15:15',\n        'duration': 15,\n    },\n    {\n        'name': 'Nancy',\n        'location': 'Pacific Heights',\n        'start': '8:00',\n        'end': '11:30',\n        'duration': 90,\n    },\n    {\n        'name': 'Andrew',\n        'location': 'Nob Hill',\n        'start': '11:30',\n        'end': '20:15',\n        'duration': 60,\n    },\n    {\n        'name': 'John',\n        'location': 'Bayview',\n        'start': '16:45',\n        'end': '21:30',\n        'duration': 75,\n    },\n]\n\nbest_itinerary = []\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Try all possible permutations of friends\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM in minutes\n    current_location = 'Embarcadero'\n    temp_itinerary = []\n    \n    for friend in perm:\n        # Convert friend's time window to minutes\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        \n        # Get travel time from current_location to friend's location\n        if current_location not in travel_times or friend['location'] not in travel_times[current_location]:\n            break  # No path available\n        \n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        \n        # Determine meeting start time\n        meeting_start = max(arrival, start)\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > end:\n            break  # Cannot meet this friend\n        \n        # Add to temporary itinerary\n        temp_itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location\n        current_time = meeting_end\n        current_location = friend['location']\n    \n    # Update best itinerary if this permutation is better\n    if len(temp_itinerary) > len(best_itinerary):\n        best_itinerary = temp_itinerary\n\n# Prepare the result\nresult = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the result as JSON\nprint(json.dumps(result))\n```",
+            "count": "meeting_planning_example_546"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    \n    # Convert all schedules to minutes for easier comparison\n    # Juan's busy times: 9:00-10:30, 15:30-16:00\n    juan_busy = [(9 * 60, 10 * 60 + 30), (15 * 60 + 30, 16 * 60)]\n    # Marilyn's busy times: 11:00-11:30, 12:30-13:00\n    marilyn_busy = [(11 * 60, 11 * 60 + 30), (12 * 60 + 30, 13 * 60)]\n    # Ronald's busy times: 9:00-10:30, 12:00-12:30, 13:00-13:30, 14:00-16:30\n    ronald_busy = [(9 * 60, 10 * 60 + 30), (12 * 60, 12 * 60 + 30), \n                   (13 * 60, 13 * 60 + 30), (14 * 60, 16 * 60 + 30)]\n    \n    # Juan cannot meet after 16:00, so adjust his work_end\n    juan_work_end = 16 * 60\n    \n    # Meeting duration is 30 minutes\n    duration = 30\n    \n    # Iterate through all possible time slots in work hours\n    for start in range(work_start, work_end - duration + 1, 15):  # Check every 15 minutes\n        end = start + duration\n        # Check if the time slot is within Juan's adjusted work hours\n        if end > juan_work_end:\n            continue\n        # Check if the time slot is free for all participants\n        juan_free = all(not (busy_start <= start < busy_end or busy_start < end <= busy_end) \n                       for busy_start, busy_end in juan_busy)\n        marilyn_free = all(not (busy_start <= start < busy_end or busy_start < end <= busy_end) \n                           for busy_start, busy_end in marilyn_busy)\n        ronald_free = all(not (busy_start <= start < busy_end or busy_start < end <= busy_end) \n                       for busy_start, busy_end in ronald_busy)\n        \n        if juan_free and marilyn_free and ronald_free:\n            # Convert start and end back to HH:MM format\n            start_hh = start // 60\n            start_mm = start % 60\n            end_hh = end // 60\n            end_mm = end % 60\n            return f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\", \"Monday\"\n    \n    return \"No suitable time found\", \"Monday\"\n\n# Execute the function and print the result\ntime_range, day = find_meeting_time()\nprint(f\"{time_range} {day}\")\n```",
+            "count": "calendar_scheduling_example_98"
+        }
+    ]
+}

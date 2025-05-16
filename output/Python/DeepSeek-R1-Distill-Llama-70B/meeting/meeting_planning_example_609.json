@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "David",
+                        "start_time": "9:18",
+                        "end_time": "10:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kenneth",
+                        "start_time": "14:00",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Deborah",
+                        "start_time": "16:09",
+                        "end_time": "17:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "17:55",
+                        "end_time": "18:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Karen",
+                        "start_time": "18:31",
+                        "end_time": "18:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Charles",
+                        "start_time": "21:45",
+                        "end_time": "22:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering travel times and each friend's availability. \n\nFirst, I'll start by understanding the problem thoroughly. The user arrives at a specific location at a certain time, and there are several friends located in different areas around the city. Each friend has a time window during which they're available, and there's a minimum duration required for each meeting. The program needs to compute the best schedule that allows meeting the maximum number of friends without violating any constraints.\n\nLooking at the input parameters, I see that there's a list of travel times between various locations. These are symmetric, meaning the travel time from location A to B is the same as from B to A. That's helpful because it simplifies the travel time lookup.\n\nNext, I need to process the friends' data. Each friend has a name, location, start time, end time, and the minimum duration required for the meeting. The program needs to consider all possible permutations of these friends to determine the optimal schedule.\n\nI'll need to convert the time strings into minutes to make calculations easier. For example, \"9:00\" becomes 540 minutes (9 hours * 60 minutes). Similarly, I'll need a function to convert minutes back to time strings for the final output.\n\nThe core of the solution involves trying all possible permutations of the friends to find the best itinerary. For each permutation, I'll simulate the day, starting from the initial location and time, and try to meet each friend in the order specified by the permutation. I'll calculate the travel time to each friend's location, check if there's enough time to meet them within their availability, and keep track of the best schedule that meets the most friends.\n\nI'll also need to handle cases where it's impossible to meet a friend due to time constraints or lack of a travel path. In such cases, that permutation is discarded, and I'll try the next one.\n\nOnce all permutations are evaluated, the best itinerary is the one that includes the maximum number of meetings. The result is then formatted as a JSON dictionary and printed.\n\nI should also consider optimizing the code for performance, but given the constraints, a brute-force approach with permutations might be feasible since the number of friends is manageable.\n\nFinally, I'll test the code to ensure it handles edge cases, such as when no meetings are possible or when the best schedule involves meeting all friends.\n</think>\n\n```python\nimport itertools\nimport json\n\n# Travel times in minutes between locations\ntravel_times = {\n    'Chinatown': {\n        'Mission District': 18,\n        'Alamo Square': 17,\n        'Pacific Heights': 10,\n        'Union Square': 7,\n        'Golden Gate Park': 23,\n        'Sunset District': 29,\n        'Presidio': 19,\n    },\n    'Mission District': {\n        'Chinatown': 16,\n        'Alamo Square': 11,\n        'Pacific Heights': 16,\n        'Union Square': 15,\n        'Golden Gate Park': 17,\n        'Sunset District': 24,\n        'Presidio': 25,\n    },\n    'Alamo Square': {\n        'Chinatown': 16,\n        'Mission District': 10,\n        'Pacific Heights': 10,\n        'Union Square': 14,\n        'Golden Gate Park': 9,\n        'Sunset District': 16,\n        'Presidio': 18,\n    },\n    'Pacific Heights': {\n        'Chinatown': 11,\n        'Mission District': 15,\n        'Alamo Square': 10,\n        'Union Square': 12,\n        'Golden Gate Park': 15,\n        'Sunset District': 21,\n        'Presidio': 11,\n    },\n    'Union Square': {\n        'Chinatown': 7,\n        'Mission District': 14,\n        'Alamo Square': 15,\n        'Pacific Heights': 15,\n        'Golden Gate Park': 22,\n        'Sunset District': 26,\n        'Presidio': 24,\n    },\n    'Golden Gate Park': {\n        'Chinatown': 23,\n        'Mission District': 17,\n        'Alamo Square': 9,\n        'Pacific Heights': 16,\n        'Union Square': 22,\n        'Sunset District': 10,\n        'Presidio': 11,\n    },\n    'Sunset District': {\n        'Chinatown': 30,\n        'Mission District': 24,\n        'Alamo Square': 17,\n        'Pacific Heights': 21,\n        'Union Square': 30,\n        'Golden Gate Park': 11,\n        'Presidio': 16,\n    },\n    'Presidio': {\n        'Chinatown': 21,\n        'Mission District': 26,\n        'Alamo Square': 18,\n        'Pacific Heights': 11,\n        'Union Square': 22,\n        'Golden Gate Park': 12,\n        'Sunset District': 15,\n    }\n}\n\n# Friends' data\nfriends = [\n    {\n        'name': 'David',\n        'location': 'Mission District',\n        'start': '8:00',\n        'end': '19:45',\n        'duration': 45,\n    },\n    {\n        'name': 'Kenneth',\n        'location': 'Alamo Square',\n        'start': '14:00',\n        'end': '19:45',\n        'duration': 120,\n    },\n    {\n        'name': 'John',\n        'location': 'Pacific Heights',\n        'start': '17:00',\n        'end': '20:00',\n        'duration': 15,\n    },\n    {\n        'name': 'Charles',\n        'location': 'Union Square',\n        'start': '21:45',\n        'end': '22:45',\n        'duration': 60,\n    },\n    {\n        'name': 'Deborah',\n        'location': 'Golden Gate Park',\n        'start': '7:00',\n        'end': '18:15',\n        'duration': 90,\n    },\n    {\n        'name': 'Karen',\n        'location': 'Sunset District',\n        'start': '17:45',\n        'end': '21:15',\n        'duration': 15,\n    },\n    {\n        'name': 'Carol',\n        'location': 'Presidio',\n        'start': '8:15',\n        'end': '9:15',\n        'duration': 30,\n    },\n]\n\nbest_itinerary = []\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Try all possible permutations of friends\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM in minutes\n    current_location = 'Chinatown'\n    temp_itinerary = []\n    \n    for friend in perm:\n        # Convert friend's time window to minutes\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        \n        # Get travel time from current_location to friend's location\n        if current_location not in travel_times or friend['location'] not in travel_times[current_location]:\n            break  # No path available\n        \n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        \n        # Determine meeting start time\n        meeting_start = max(arrival, start)\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > end:\n            break  # Cannot meet this friend\n        \n        # Add to temporary itinerary\n        temp_itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location\n        current_time = meeting_end\n        current_location = friend['location']\n    \n    # Update best itinerary if this permutation is better\n    if len(temp_itinerary) > len(best_itinerary):\n        best_itinerary = temp_itinerary\n\n# Prepare the result\nresult = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the result as JSON\nprint(json.dumps(result))\n```",
+            "count": "meeting_planning_example_609"
+        }
+    ]
+}

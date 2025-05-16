@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joseph",
+                        "start_time": "12:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Sandra",
+                        "start_time": "14:19",
+                        "end_time": "15:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Nancy",
+                        "start_time": "15:46",
+                        "end_time": "17:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Karen",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "Okay, so I'm trying to solve this problem where I need to create a Python program to schedule a meeting itinerary based on certain constraints. The goal is to meet as many friends as possible in San Francisco, starting from Union Square at 9:00 AM. Each friend has their own availability window and minimum meeting duration, and I need to figure out the best way to meet them all without missing any.\n\nFirst, I'll start by understanding the input parameters. There are travel distances between various locations, and each person has specific time windows and minimum meeting durations. My task is to create a program that uses these inputs to determine the optimal schedule.\n\nI think the first step is to convert all the time windows into minutes since 9:00 AM. This will make it easier to calculate travel times and check for overlaps. For example, if someone arrives at 8:15 AM, that's 45 minutes before 9:00 AM, so I'll convert that to -45 minutes.\n\nNext, I'll need a map of all the locations with their travel times between each other. This way, I can look up the time it takes to travel from one location to another. I'll create a nested dictionary where each location points to its neighboring locations and the corresponding travel times.\n\nThen, I'll list all the people with their details: name, location they'll be at, their availability window in minutes, and the minimum meeting duration. I'll store these in a list of dictionaries.\n\nAfter that, I'll sort this list based on the latest possible start time for each meeting. The latest possible start time is calculated by taking their end time and subtracting their minimum meeting duration. This helps in prioritizing the people who can be met earlier, which is crucial for maximizing the number of meetings.\n\nOnce the list is sorted, I'll use a greedy algorithm to schedule the meetings. Starting from Union Square at 9:00 AM, I'll iterate through each person in the sorted list. For each person, I'll calculate the travel time from the current location to their location. If I arrive before their latest possible start time, I'll schedule the meeting, update the current location and time, and move on to the next person.\n\nIf I can't meet a person due to time constraints, I'll skip them and try the next one. This approach ensures that I meet as many people as possible within the given time.\n\nI also need to make sure that the times are formatted correctly in a 24-hour format without leading zeros. For example, 9:00 AM is '9:00', and 12:30 PM is '12:30'.\n\nFinally, I'll output the itinerary as a JSON-formatted dictionary, which includes each meeting's action, location, person, start time, and end time.\n\nI should also test the program to ensure it handles edge cases, like when a meeting can't be scheduled due to time constraints, and that all travel times are correctly accounted for. This way, the program will efficiently compute the optimal meeting schedule based on the given constraints.\n</think>\n\n```python\ndef convert_minutes(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    if hours == 0:\n        return '9:00'\n    else:\n        return f\"{hours}:{mins:02d}\"\n\nlocations = {\n    'Union Square': {\n        'Nob Hill': 9,\n        'Haight-Ashbury': 18,\n        'Chinatown': 7,\n        'Marina District': 18\n    },\n    'Nob Hill': {\n        'Union Square': 7,\n        'Haight-Ashbury': 13,\n        'Chinatown': 6,\n        'Marina District': 11\n    },\n    'Haight-Ashbury': {\n        'Union Square': 17,\n        'Nob Hill': 15,\n        'Chinatown': 19,\n        'Marina District': 17\n    },\n    'Chinatown': {\n        'Union Square': 7,\n        'Nob Hill': 8,\n        'Haight-Ashbury': 19,\n        'Marina District': 12\n    },\n    'Marina District': {\n        'Union Square': 16,\n        'Nob Hill': 12,\n        'Haight-Ashbury': 16,\n        'Chinatown': 16\n    }\n}\n\npeople = [\n    {'name': 'Karen', 'location': 'Nob Hill', 'start': 990, 'end': 1260, 'min': 30},\n    {'name': 'Joseph', 'location': 'Haight-Ashbury', 'start': 570, 'end': 990, 'min': 90},\n    {'name': 'Sandra', 'location': 'Chinatown', 'start': 0, 'end': 990, 'min': 75},\n    {'name': 'Nancy', 'location': 'Marina District', 'start': 330, 'end': 1260, 'min': 105}\n]\n\npeople_sorted = sorted(people, key=lambda x: (x['end'] - x['min']))\n\ncurrent_time = 0\ncurrent_location = 'Union Square'\nitinerary = []\n\nfor person in people_sorted:\n    location = person['location']\n    travel_time = locations[current_location][location]\n    arrival_time = current_time + travel_time\n    latest_start = person['end'] - person['min']\n    if arrival_time <= latest_start:\n        meeting_end = arrival_time + person['min']\n        start_str = convert_minutes(arrival_time)\n        end_str = convert_minutes(meeting_end)\n        itinerary.append({\n            'action': 'meet',\n            'location': location,\n            'person': person['name'],\n            'start_time': start_str,\n            'end_time': end_str\n        })\n        current_time = meeting_end\n        current_location = location\n\nprint(json.dumps(itinerary))\n```",
+            "count": "meeting_planning_example_352"
+        }
+    ]
+}

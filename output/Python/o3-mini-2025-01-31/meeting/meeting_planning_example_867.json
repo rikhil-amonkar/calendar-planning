@@ -1,0 +1,143 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sandra",
+                        "start_time": "9:12",
+                        "end_time": "11:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "11:18",
+                        "end_time": "12:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Amanda",
+                        "start_time": "12:21",
+                        "end_time": "12:36"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "12:53",
+                        "end_time": "14:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Robert",
+                        "start_time": "14:45",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "David",
+                        "start_time": "15:15",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Kimberly",
+                        "start_time": "16:27",
+                        "end_time": "18:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Melissa",
+                        "start_time": "18:24",
+                        "end_time": "18:39"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "19:30",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sandra",
+                        "start_time": "9:12",
+                        "end_time": "11:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Robert",
+                        "start_time": "11:25",
+                        "end_time": "11:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "11:49",
+                        "end_time": "12:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "12:54",
+                        "end_time": "14:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "David",
+                        "start_time": "15:15",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Kimberly",
+                        "start_time": "16:27",
+                        "end_time": "18:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Amanda",
+                        "start_time": "18:23",
+                        "end_time": "18:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Melissa",
+                        "start_time": "18:45",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Thomas",
+                        "start_time": "19:30",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper functions to convert times\ndef str_to_time(t_str):\n    # t_str in format H:MM (24hr) - assume no leading zero necessarily.\n    return datetime.strptime(t_str, \"%H:%M\")\n\ndef time_to_str(dt):\n    # Format without leading zero in hours\n    return dt.strftime(\"%-H:%M\") if hasattr(dt, 'strftime') else dt.strftime(\"%H:%M\")\n\ndef add_minutes(dt, minutes):\n    return dt + timedelta(minutes=minutes)\n\n# Define travel times in minutes as a dictionary of dictionaries\ntravel_times = {\n    \"Haight-Ashbury\": {\"Mission District\": 11, \"Union Square\": 19, \"Pacific Heights\": 12, \"Bayview\": 18, \"Fisherman's Wharf\": 23, \"Marina District\": 17, \"Richmond District\": 10, \"Sunset District\": 15, \"Golden Gate Park\": 7},\n    \"Mission District\": {\"Haight-Ashbury\": 12, \"Union Square\": 15, \"Pacific Heights\": 16, \"Bayview\": 14, \"Fisherman's Wharf\": 22, \"Marina District\": 19, \"Richmond District\": 20, \"Sunset District\": 24, \"Golden Gate Park\": 17},\n    \"Union Square\": {\"Haight-Ashbury\": 18, \"Mission District\": 14, \"Pacific Heights\": 15, \"Bayview\": 15, \"Fisherman's Wharf\": 15, \"Marina District\": 18, \"Richmond District\": 20, \"Sunset District\": 27, \"Golden Gate Park\": 22},\n    \"Pacific Heights\": {\"Haight-Ashbury\": 11, \"Mission District\": 15, \"Union Square\": 12, \"Bayview\": 22, \"Fisherman's Wharf\": 13, \"Marina District\": 6, \"Richmond District\": 12, \"Sunset District\": 21, \"Golden Gate Park\": 15},\n    \"Bayview\": {\"Haight-Ashbury\": 19, \"Mission District\": 13, \"Union Square\": 18, \"Pacific Heights\": 23, \"Fisherman's Wharf\": 25, \"Marina District\": 27, \"Richmond District\": 25, \"Sunset District\": 23, \"Golden Gate Park\": 22},\n    \"Fisherman's Wharf\": {\"Haight-Ashbury\": 22, \"Mission District\": 22, \"Union Square\": 13, \"Pacific Heights\": 12, \"Bayview\": 26, \"Marina District\": 9, \"Richmond District\": 18, \"Sunset District\": 27, \"Golden Gate Park\": 25},\n    \"Marina District\": {\"Haight-Ashbury\": 16, \"Mission District\": 20, \"Union Square\": 16, \"Pacific Heights\": 7, \"Bayview\": 27, \"Fisherman's Wharf\": 10, \"Richmond District\": 11, \"Sunset District\": 19, \"Golden Gate Park\": 18},\n    \"Richmond District\": {\"Haight-Ashbury\": 10, \"Mission District\": 20, \"Union Square\": 21, \"Pacific Heights\": 10, \"Bayview\": 27, \"Fisherman's Wharf\": 18, \"Marina District\": 9, \"Sunset District\": 11, \"Golden Gate Park\": 9},\n    \"Sunset District\": {\"Haight-Ashbury\": 15, \"Mission District\": 25, \"Union Square\": 30, \"Pacific Heights\": 21, \"Bayview\": 22, \"Fisherman's Wharf\": 29, \"Marina District\": 21, \"Richmond District\": 12, \"Golden Gate Park\": 11},\n    \"Golden Gate Park\": {\"Haight-Ashbury\": 7, \"Mission District\": 17, \"Union Square\": 22, \"Pacific Heights\": 16, \"Bayview\": 23, \"Fisherman's Wharf\": 24, \"Marina District\": 16, \"Richmond District\": 7, \"Sunset District\": 10}\n}\n\n# Friends meeting constraints as a list in the planned meeting order.\n# Order determined by manual planning to maximize meeting as many friends as possible.\n# Each meeting: person, location, available start, available end, minimum meeting duration (in minutes)\nmeetings = [\n    {\"person\": \"Sandra\", \"location\": \"Pacific Heights\", \"avail_start\": \"7:00\",    \"avail_end\": \"20:00\", \"min_duration\": 120},\n    {\"person\": \"Kenneth\", \"location\": \"Marina District\", \"avail_start\": \"10:45\", \"avail_end\": \"13:00\", \"min_duration\": 45},\n    {\"person\": \"Amanda\",  \"location\": \"Golden Gate Park\", \"avail_start\": \"7:45\",  \"avail_end\": \"18:45\", \"min_duration\": 15},\n    {\"person\": \"Elizabeth\", \"location\": \"Mission District\", \"avail_start\": \"10:30\", \"avail_end\": \"20:00\", \"min_duration\": 90},\n    {\"person\": \"Robert\", \"location\": \"Fisherman's Wharf\", \"avail_start\": \"10:00\", \"avail_end\": \"15:00\", \"min_duration\": 15},\n    {\"person\": \"David\", \"location\": \"Union Square\", \"avail_start\": \"15:15\", \"avail_end\": \"19:00\", \"min_duration\": 45},\n    {\"person\": \"Kimberly\", \"location\": \"Sunset District\", \"avail_start\": \"10:15\", \"avail_end\": \"18:15\", \"min_duration\": 105},\n    {\"person\": \"Melissa\", \"location\": \"Richmond District\", \"avail_start\": \"18:15\", \"avail_end\": \"20:00\", \"min_duration\": 15},\n    {\"person\": \"Thomas\", \"location\": \"Bayview\", \"avail_start\": \"19:30\", \"avail_end\": \"20:30\", \"min_duration\": 30},\n]\n\n# Starting parameters\nstart_location = \"Haight-Ashbury\"\nstart_time_str = \"9:00\"\ncurrent_time = str_to_time(start_time_str)\ncurrent_location = start_location\n\nitinerary = []\n\n# Function to get travel time between two locations\ndef get_travel_time(orig, dest):\n    if orig == dest:\n        return 0\n    return travel_times.get(orig, {}).get(dest, 9999)\n\n# Process each meeting in sequence\nfor meeting in meetings:\n    # Calculate travel time\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    # Depart current_time and add travel\n    current_time = add_minutes(current_time, travel_time)\n    \n    # The meeting can only start at the later of arrival and the person's available start time\n    meeting_avail_start = str_to_time(meeting[\"avail_start\"])\n    if current_time < meeting_avail_start:\n        current_time = meeting_avail_start  # wait until available\n    meeting_start = current_time\n    \n    # Compute meeting end time by adding minimum meeting duration\n    meeting_end = add_minutes(meeting_start, meeting[\"min_duration\"])\n    \n    # Check if meeting end time is within the person's availability window; if not, skip or adjust.\n    meeting_avail_end = str_to_time(meeting[\"avail_end\"])\n    if meeting_end > meeting_avail_end:\n        # If we cannot meet the minimum duration, then skip meeting (or adjust, here we skip)\n        continue\n\n    # Add meeting to itinerary\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meeting[\"location\"],\n        \"person\": meeting[\"person\"],\n        \"start_time\": time_to_str(meeting_start),\n        \"end_time\": time_to_str(meeting_end)\n    })\n    \n    # Update current_time and current_location\n    current_time = meeting_end\n    current_location = meeting[\"location\"]\n\n# Output the itinerary as JSON\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n",
+            "count": "meeting_planning_example_867"
+        }
+    ]
+}

@@ -1,0 +1,53 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Travel parameters\n    total_days = 13\n    stay_seville = 2\n    stay_stuttgart = 7\n    stay_porto = 3\n    stay_madrid = 4\n    \n    # Itinerary setup\n    itinerary = []\n    \n    # Madrid (Day 1-4)\n    itinerary.append({'day_range': 'Day 1-4', 'place': 'Madrid'})\n    \n    # Seville (Day 5-6)\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Madrid', 'to': 'Seville'})\n    itinerary.append({'day_range': 'Day 5-6', 'place': 'Seville'})\n    \n    # Porto (Day 7-9)\n    itinerary.append({'flying': 'Day 7-7', 'from': 'Seville', 'to': 'Porto'})\n    itinerary.append({'day_range': 'Day 7-9', 'place': 'Porto'})\n    \n    # Stuttgart (Day 10-13)\n    itinerary.append({'flying': 'Day 10-10', 'from': 'Porto', 'to': 'Stuttgart'})\n    itinerary.append({'day_range': 'Day 10-12', 'place': 'Stuttgart'})\n    itinerary.append({'day_range': 'Day 13', 'place': 'Stuttgart'})\n    \n    # Conference days\n    itinerary.append({'conference': 'Day 7 and Day 13', 'city': 'Stuttgart'})\n\n    # Convert to JSON\n    trip_plan_json = json.dumps(itinerary, indent=4)\n    \n    return trip_plan_json\n\n# Run the trip planner and print the output\nif __name__ == \"__main__\":\n    planned_trip = plan_trip()\n    print(planned_trip)\n```",
+            "count": "trip_planning_example_372"
+        }
+    ]
+}

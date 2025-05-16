@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Participants' constraints\n    work_hours_start = 9 * 60  # 9:00 in minutes\n    work_hours_end = 17 * 60    # 17:00 in minutes\n    meeting_duration = 30       # minutes\n    \n    # Albert's busy times in minutes since 9:00\n    albert_busy = [\n        (9 * 60, 10 * 60),      # 9:00-10:00\n        (10 * 60 + 30, 12 * 60), # 10:30-12:00\n        (15 * 60, 16 * 60 + 30)  # 15:00-16:30\n    ]\n    \n    # Albert cannot meet after 11:00\n    albert_cutoff = 11 * 60\n    \n    # Deborah is free all day, so only Albert's schedule matters\n    \n    # Find all possible slots\n    possible_slots = []\n    \n    # Check before Albert's first busy block\n    if work_hours_start + meeting_duration <= albert_busy[0][0]:\n        possible_slots.append((work_hours_start, work_hours_start + meeting_duration))\n    \n    # Check between Albert's busy blocks\n    for i in range(len(albert_busy) - 1):\n        end_previous = albert_busy[i][1]\n        start_next = albert_busy[i + 1][0]\n        if end_previous + meeting_duration <= start_next:\n            possible_slots.append((end_previous, end_previous + meeting_duration))\n    \n    # Check after Albert's last busy block but before his cutoff\n    end_last_busy = albert_busy[-1][1]\n    if end_last_busy + meeting_duration <= albert_cutoff:\n        possible_slots.append((end_last_busy, end_last_busy + meeting_duration))\n    \n    # Also check if there's time before cutoff but not covered by busy blocks\n    # For example, between 12:00 and 15:00, but Albert cannot meet after 11:00\n    # So this is not applicable here\n    \n    # Select the earliest possible slot\n    if possible_slots:\n        chosen_slot = possible_slots[0]\n        start_time = chosen_slot[0]\n        end_time = chosen_slot[1]\n        \n        # Convert minutes back to HH:MM format\n        start_hh = start_time // 60\n        start_mm = start_time % 60\n        end_hh = end_time // 60\n        end_mm = end_time % 60\n        \n        # Format as HH:MM:HH:MM\n        time_range = f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\"\n        day = \"Monday\"\n        \n        print(f\"{time_range}\")\n        print(f\"{day}\")\n    else:\n        print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_544"
+        }
+    ]
+}

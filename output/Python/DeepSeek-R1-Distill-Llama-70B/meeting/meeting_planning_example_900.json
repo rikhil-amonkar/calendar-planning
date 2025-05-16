@@ -1,0 +1,129 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Emily",
+                        "start_time": "11:15",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Karen",
+                        "start_time": "11:45",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "13:00",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "James",
+                        "start_time": "14:31",
+                        "end_time": "16:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Steven",
+                        "start_time": "16:38",
+                        "end_time": "17:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Matthew",
+                        "start_time": "17:29",
+                        "end_time": "18:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "William",
+                        "start_time": "18:33",
+                        "end_time": "20:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Brian",
+                        "start_time": "20:30",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Emily",
+                        "start_time": "11:15",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Karen",
+                        "start_time": "11:45",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "13:00",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "James",
+                        "start_time": "14:31",
+                        "end_time": "16:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Steven",
+                        "start_time": "16:38",
+                        "end_time": "17:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Matthew",
+                        "start_time": "17:29",
+                        "end_time": "18:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "William",
+                        "start_time": "18:33",
+                        "end_time": "20:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Brian",
+                        "start_time": "20:30",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering travel times and each friend's availability. \n\nFirst, I'll look at the input parameters. There are travel times between different districts and constraints for each friend. The constraints include the location, the time window they're available, and the minimum meeting duration.\n\nI think the best approach is to model this as a scheduling problem where I need to find the best order to meet friends. Since the number of friends is manageable (10 in this case), I can use permutations to try all possible orders of meeting them. For each permutation, I'll calculate the schedule and see if it fits within the constraints.\n\nI'll start by defining the travel times between locations in a dictionary. This will allow me to quickly look up how long it takes to move from one district to another.\n\nNext, I'll create a list of friends with their details: name, location, start and end times, and the required meeting duration. I'll convert the time strings into minutes since midnight to make calculations easier.\n\nThe core of the solution is trying all possible permutations of the friends. For each permutation, I'll simulate the day starting at the Richmond District at 9:00 AM. I'll track the current time and location, and for each friend in the permutation, I'll calculate the arrival time and check if a meeting is possible within their availability.\n\nIf a meeting is possible, I'll add it to the itinerary and update the current time and location. If not, I'll break out of the loop for that permutation.\n\nAfter evaluating all permutations, I'll select the one that allows meeting the most friends and output the schedule in the required JSON format.\n\nI also need to make sure the times are converted back to the \"H:MM\" format for the output. I'll write helper functions to convert time strings to minutes and vice versa.\n\nFinally, I'll test the code to ensure it runs independently and produces valid JSON output without any additional text or explanation.\n</think>\n\n```python\nimport itertools\nimport json\n\n# Travel times in minutes between locations\ntravel_times = {\n    'Richmond District': {\n        'The Castro': 16,\n        'Nob Hill': 17,\n        'Marina District': 9,\n        'Pacific Heights': 10,\n        'Haight-Ashbury': 10,\n        'Mission District': 20,\n        'Chinatown': 20,\n        'Russian Hill': 13,\n        'Alamo Square': 13,\n        'Bayview': 27,\n    },\n    'The Castro': {\n        'Richmond District': 16,\n        'Nob Hill': 16,\n        'Marina District': 21,\n        'Pacific Heights': 16,\n        'Haight-Ashbury': 6,\n        'Mission District': 7,\n        'Chinatown': 22,\n        'Russian Hill': 18,\n        'Alamo Square': 8,\n        'Bayview': 19,\n    },\n    'Nob Hill': {\n        'Richmond District': 14,\n        'The Castro': 17,\n        'Marina District': 11,\n        'Pacific Heights': 8,\n        'Haight-Ashbury': 13,\n        'Mission District': 13,\n        'Chinatown': 6,\n        'Russian Hill': 5,\n        'Alamo Square': 11,\n        'Bayview': 19,\n    },\n    'Marina District': {\n        'Richmond District': 11,\n        'The Castro': 22,\n        'Nob Hill': 12,\n        'Pacific Heights': 7,\n        'Haight-Ashbury': 16,\n        'Mission District': 20,\n        'Chinatown': 15,\n        'Russian Hill': 8,\n        'Alamo Square': 15,\n        'Bayview': 27,\n    },\n    'Pacific Heights': {\n        'Richmond District': 12,\n        'The Castro': 16,\n        'Nob Hill': 8,\n        'Marina District': 6,\n        'Haight-Ashbury': 11,\n        'Mission District': 15,\n        'Chinatown': 11,\n        'Russian Hill': 7,\n        'Alamo Square': 10,\n        'Bayview': 22,\n    },\n    'Haight-Ashbury': {\n        'Richmond District': 10,\n        'The Castro': 6,\n        'Nob Hill': 15,\n        'Marina District': 17,\n        'Pacific Heights': 12,\n        'Mission District': 11,\n        'Chinatown': 19,\n        'Russian Hill': 17,\n        'Alamo Square': 5,\n        'Bayview': 18,\n    },\n    'Mission District': {\n        'Richmond District': 20,\n        'The Castro': 7,\n        'Nob Hill': 12,\n        'Marina District': 19,\n        'Pacific Heights': 16,\n        'Haight-Ashbury': 12,\n        'Chinatown': 16,\n        'Russian Hill': 15,\n        'Alamo Square': 11,\n        'Bayview': 14,\n    },\n    'Chinatown': {\n        'Richmond District': 20,\n        'The Castro': 22,\n        'Nob Hill': 9,\n        'Marina District': 12,\n        'Pacific Heights': 10,\n        'Haight-Ashbury': 19,\n        'Mission District': 17,\n        'Russian Hill': 7,\n        'Alamo Square': 17,\n        'Bayview': 20,\n    },\n    'Russian Hill': {\n        'Richmond District': 14,\n        'The Castro': 21,\n        'Nob Hill': 5,\n        'Marina District': 7,\n        'Pacific Heights': 7,\n        'Haight-Ashbury': 17,\n        'Mission District': 16,\n        'Chinatown': 9,\n        'Alamo Square': 15,\n        'Bayview': 23,\n    },\n    'Alamo Square': {\n        'Richmond District': 11,\n        'The Castro': 8,\n        'Nob Hill': 11,\n        'Marina District': 15,\n        'Pacific Heights': 10,\n        'Haight-Ashbury': 5,\n        'Mission District': 10,\n        'Chinatown': 15,\n        'Russian Hill': 13,\n        'Bayview': 16,\n    },\n    'Bayview': {\n        'Richmond District': 25,\n        'The Castro': 19,\n        'Nob Hill': 20,\n        'Marina District': 27,\n        'Pacific Heights': 23,\n        'Haight-Ashbury': 19,\n        'Mission District': 13,\n        'Chinatown': 19,\n        'Russian Hill': 23,\n        'Alamo Square': 16,\n    }\n}\n\n# Friends' data\nfriends = [\n    {\n        'name': 'Matthew',\n        'location': 'The Castro',\n        'start': '16:30',\n        'end': '20:00',\n        'duration': 45,\n    },\n    {\n        'name': 'Rebecca',\n        'location': 'Nob Hill',\n        'start': '15:15',\n        'end': '19:15',\n        'duration': 105,\n    },\n    {\n        'name': 'Brian',\n        'location': 'Marina District',\n        'start': '14:15',\n        'end': '22:00',\n        'duration': 30,\n    },\n    {\n        'name': 'Emily',\n        'location': 'Pacific Heights',\n        'start': '11:15',\n        'end': '19:45',\n        'duration': 15,\n    },\n    {\n        'name': 'Karen',\n        'location': 'Haight-Ashbury',\n        'start': '11:45',\n        'end': '17:30',\n        'duration': 30,\n    },\n    {\n        'name': 'Stephanie',\n        'location': 'Mission District',\n        'start': '13:00',\n        'end': '15:45',\n        'duration': 75,\n    },\n    {\n        'name': 'James',\n        'location': 'Chinatown',\n        'start': '14:30',\n        'end': '19:00',\n        'duration': 120,\n    },\n    {\n        'name': 'Steven',\n        'location': 'Russian Hill',\n        'start': '14:00',\n        'end': '20:00',\n        'duration': 30,\n    },\n    {\n        'name': 'Elizabeth',\n        'location': 'Alamo Square',\n        'start': '13:00',\n        'end': '17:15',\n        'duration': 120,\n    },\n    {\n        'name': 'William',\n        'location': 'Bayview',\n        'start': '18:15',\n        'end': '20:15',\n        'duration': 90,\n    },\n]\n\nbest_itinerary = []\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Try all possible permutations of friends\nfor perm in itertools.permutations(friends):\n    current_time = 540  # 9:00 AM in minutes\n    current_location = 'Richmond District'\n    temp_itinerary = []\n    \n    for friend in perm:\n        # Convert friend's time window to minutes\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        \n        # Get travel time from current_location to friend's location\n        if current_location not in travel_times or friend['location'] not in travel_times[current_location]:\n            break  # No path available\n        \n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        \n        # Determine meeting start time\n        meeting_start = max(arrival, start)\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > end:\n            break  # Cannot meet this friend\n        \n        # Add to temporary itinerary\n        temp_itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location\n        current_time = meeting_end\n        current_location = friend['location']\n    \n    # Update best itinerary if this permutation is better\n    if len(temp_itinerary) > len(best_itinerary):\n        best_itinerary = temp_itinerary\n\n# Prepare the result\nresult = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the result as JSON\nprint(json.dumps(result))\n```",
+            "count": "meeting_planning_example_900"
+        }
+    ]
+}

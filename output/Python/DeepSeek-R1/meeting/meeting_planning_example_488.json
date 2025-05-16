@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "11:58",
+                        "end_time": "12:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\nfriends = [\n    {'name': 'Ronald', 'location': 'Nob Hill', 'start': 600, 'end': 1020, 'duration': 105},\n    {'name': 'Helen', 'location': 'The Castro', 'start': 810, 'end': 1020, 'duration': 120},\n    {'name': 'Joshua', 'location': 'Sunset District', 'start': 855, 'end': 1170, 'duration': 90},\n    {'name': 'Margaret', 'location': 'Haight-Ashbury', 'start': 615, 'end': 1320, 'duration': 60}\n]\n\ntravel_time = {\n    ('Pacific Heights', 'Nob Hill'): 8,\n    ('Pacific Heights', 'Russian Hill'):7,\n    ('Pacific Heights', 'The Castro'):16,\n    ('Pacific Heights', 'Sunset District'):21,\n    ('Pacific Heights', 'Haight-Ashbury'):11,\n    ('Nob Hill', 'Pacific Heights'):8,\n    ('Nob Hill', 'Russian Hill'):5,\n    ('Nob Hill', 'The Castro'):17,\n    ('Nob Hill', 'Sunset District'):25,\n    ('Nob Hill', 'Haight-Ashbury'):13,\n    ('Russian Hill', 'Pacific Heights'):7,\n    ('Russian Hill', 'Nob Hill'):5,\n    ('Russian Hill', 'The Castro'):21,\n    ('Russian Hill', 'Sunset District'):23,\n    ('Russian Hill', 'Haight-Ashbury'):17,\n    ('The Castro', 'Pacific Heights'):16,\n    ('The Castro', 'Nob Hill'):16,\n    ('The Castro', 'Russian Hill'):18,\n    ('The Castro', 'Sunset District'):17,\n    ('The Castro', 'Haight-Ashbury'):6,\n    ('Sunset District', 'Pacific Heights'):21,\n    ('Sunset District', 'Nob Hill'):27,\n    ('Sunset District', 'Russian Hill'):24,\n    ('Sunset District', 'The Castro'):17,\n    ('Sunset District', 'Haight-Ashbury'):15,\n    ('Haight-Ashbury', 'Pacific Heights'):12,\n    ('Haight-Ashbury', 'Nob Hill'):15,\n    ('Haight-Ashbury', 'Russian Hill'):17,\n    ('Haight-Ashbury', 'The Castro'):6,\n    ('Haight-Ashbury', 'Sunset District'):15\n}\n\nbest_count = 0\nbest_meetings = []\nbest_end_time = float('inf')\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Pacific Heights'\n    current_time = 540\n    meetings = []\n    valid = True\n    \n    for friend in perm:\n        to_loc = friend['location']\n        tt_key = (current_location, to_loc)\n        if tt_key not in travel_time:\n            valid = False\n            break\n        tt = travel_time[tt_key]\n        arrival = current_time + tt\n        start = max(arrival, friend['start'])\n        latest_start = friend['end'] - friend['duration']\n        if start > latest_start:\n            valid = False\n            break\n        end = start + friend['duration']\n        if end > friend['end']:\n            valid = False\n            break\n        meetings.append({'friend': friend, 'start': start, 'end': end, 'location': to_loc})\n        current_time = end\n        current_location = to_loc\n    \n    if valid:\n        count = len(meetings)\n        if count > best_count or (count == best_count and current_time < best_end_time):\n            best_count = count\n            best_meetings = meetings\n            best_end_time = current_time\n\ndef min_to_time(m):\n    return f\"{m // 60}:{m % 60:02d}\"\n\nitinerary = []\nfor meet in best_meetings:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meet['location'],\n        \"person\": meet['friend']['name'],\n        \"start_time\": min_to_time(meet['start']),\n        \"end_time\": min_to_time(meet['end'])\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}))",
+            "count": "meeting_planning_example_488"
+        }
+    ]
+}

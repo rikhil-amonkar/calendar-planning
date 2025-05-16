@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(schedules, meeting_duration, day, preferences):\n    for start in range(9, 17, 30):\n        if day == \"Monday\" and start > 15:  # Bobby does not want to meet on Monday after 15:00\n            continue\n        start_time = datetime.strptime(f\"{day} {start:02d}:00\", \"%A %H:%M\")\n        end_time = start_time + timedelta(minutes=meeting_duration)\n        if (start_time not in [datetime.strptime(f\"{day} {s[0]:02d}:{s[0].minute:02d}\", \"%A %H:%M\") for s in schedules]\n                and end_time not in [datetime.strptime(f\"{day} {s[1]:02d}:{s[1].minute:02d}\", \"%A %H:%M\") for s in schedules]):\n            return f\"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')} on {day}\"\n\n    return \"No available time found\"\n\nlisa_schedule = [\n    (datetime.strptime(\"Monday 09:00\", \"%A %H:%M\"), datetime.strptime(\"Monday 10:00\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 10:30\", \"%A %H:%M\"), datetime.strptime(\"Monday 11:30\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 12:30\", \"%A %H:%M\"), datetime.strptime(\"Monday 13:00\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 16:00\", \"%A %H:%M\"), datetime.strptime(\"Monday 16:30\", \"%A %H:%M\")),\n]\n\nbobby_schedule = [\n    (datetime.strptime(\"Monday 09:00\", \"%A %H:%M\"), datetime.strptime(\"Monday 09:30\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 10:00\", \"%A %H:%M\"), datetime.strptime(\"Monday 10:30\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 11:30\", \"%A %H:%M\"), datetime.strptime(\"Monday 12:00\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 15:00\", \"%A %H:%M\"), datetime.strptime(\"Monday 15:30\", \"%A %H:%M\")),\n]\n\nrandy_schedule = [\n    (datetime.strptime(\"Monday 09:30\", \"%A %H:%M\"), datetime.strptime(\"Monday 10:00\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 10:30\", \"%A %H:%M\"), datetime.strptime(\"Monday 11:00\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 11:30\", \"%A %H:%M\"), datetime.strptime(\"Monday 12:30\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 13:00\", \"%A %H:%M\"), datetime.strptime(\"Monday 13:30\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 14:30\", \"%A %H:%M\"), datetime.strptime(\"Monday 15:30\", \"%A %H:%M\")),\n    (datetime.strptime(\"Monday 16:00\", \"%A %H:%M\"), datetime.strptime(\"Monday 16:30\", \"%A %H:%M\")),\n]\n\nmeeting_duration = 30\nday = \"Monday\"\npreferences = {\n    \"Bobby\": [\"after 15:00 on Monday\"]\n}\n\nprint(find_meeting_time(lisa_schedule + bobby_schedule + randy_schedule, meeting_duration, day, preferences))\n```",
+            "count": "calendar_scheduling_example_33"
+        }
+    ]
+}

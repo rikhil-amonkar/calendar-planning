@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Emily",
+                        "start_time": "16:00",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "19:00",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_optimal_schedule():\n    # Input parameters\n    travel_times = {\n        ('North Beach', 'Union Square'): 7,\n        ('North Beach', 'Russian Hill'): 4,\n        ('Union Square', 'North Beach'): 10,\n        ('Union Square', 'Russian Hill'): 13,\n        ('Russian Hill', 'North Beach'): 5,\n        ('Russian Hill', 'Union Square'): 11\n    }\n    \n    # Initial conditions\n    current_location = 'North Beach'\n    current_time = 9 * 60  # 9:00 AM in minutes\n    \n    # Friend constraints\n    emily_location = 'Union Square'\n    emily_start = 16 * 60  # 4:00 PM\n    emily_end = 17 * 60 + 15  # 5:15 PM\n    emily_min_duration = 45\n    \n    margaret_location = 'Russian Hill'\n    margaret_start = 19 * 60  # 7:00 PM\n    margaret_end = 21 * 60  # 9:00 PM\n    margaret_min_duration = 120\n    \n    itinerary = []\n    \n    # First, try to meet Emily\n    # Calculate travel time to Emily\n    travel_to_emily = travel_times[(current_location, emily_location)]\n    arrival_at_emily = current_time + travel_to_emily\n    \n    # Check if we can meet Emily\n    if arrival_at_emily <= emily_end - emily_min_duration:\n        meet_emily_start = max(arrival_at_emily, emily_start)\n        meet_emily_end = meet_emily_start + emily_min_duration\n        if meet_emily_end <= emily_end:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": emily_location,\n                \"person\": \"Emily\",\n                \"start_time\": f\"{meet_emily_start // 60}:{meet_emily_start % 60:02d}\",\n                \"end_time\": f\"{meet_emily_end // 60}:{meet_emily_end % 60:02d}\"\n            })\n            current_location = emily_location\n            current_time = meet_emily_end\n    \n    # Then try to meet Margaret\n    # Calculate travel time to Margaret\n    travel_to_margaret = travel_times[(current_location, margaret_location)]\n    arrival_at_margaret = current_time + travel_to_margaret\n    \n    # Check if we can meet Margaret\n    if arrival_at_margaret <= margaret_end - margaret_min_duration:\n        meet_margaret_start = max(arrival_at_margaret, margaret_start)\n        meet_margaret_end = meet_margaret_start + margaret_min_duration\n        if meet_margaret_end <= margaret_end:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": margaret_location,\n                \"person\": \"Margaret\",\n                \"start_time\": f\"{meet_margaret_start // 60}:{meet_margaret_start % 60:02d}\",\n                \"end_time\": f\"{meet_margaret_end // 60}:{meet_margaret_end % 60:02d}\"\n            })\n    \n    # If we couldn't meet both, try to meet just Margaret\n    if not itinerary:\n        # Reset to initial conditions\n        current_location = 'North Beach'\n        current_time = 9 * 60\n        \n        # Calculate travel time to Margaret\n        travel_to_margaret = travel_times[(current_location, margaret_location)]\n        arrival_at_margaret = current_time + travel_to_margaret\n        \n        # Check if we can meet Margaret\n        if arrival_at_margaret <= margaret_end - margaret_min_duration:\n            meet_margaret_start = max(arrival_at_margaret, margaret_start)\n            meet_margaret_end = meet_margaret_start + margaret_min_duration\n            if meet_margaret_end <= margaret_end:\n                itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": margaret_location,\n                    \"person\": \"Margaret\",\n                    \"start_time\": f\"{meet_margaret_start // 60}:{meet_margaret_start % 60:02d}\",\n                    \"end_time\": f\"{meet_margaret_end // 60}:{meet_margaret_end % 60:02d}\"\n                })\n    \n    return {\"itinerary\": itinerary}\n\nresult = calculate_optimal_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_170"
+        }
+    ]
+}

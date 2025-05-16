@@ -1,0 +1,23 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Daniel",
+                        "start_time": "19:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the locations and travel times\nlocations = {\n    \"Russian Hill\": {},\n    \"Richmond District\": {}\n}\n\ntravel_times = {\n    (\"Russian Hill\", \"Richmond District\"): 14,\n    (\"Richmond District\", \"Russian Hill\"): 13\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"Richmond District\", \"person\": \"Daniel\", \"start_time\": 19, \"end_time\": 20.25, \"duration\": 75}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Russian Hill\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_91"
+        }
+    ]
+}

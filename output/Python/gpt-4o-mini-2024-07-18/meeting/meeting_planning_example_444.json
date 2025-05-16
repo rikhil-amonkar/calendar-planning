@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "9:31",
+                        "end_time": "10:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Laura",
+                        "start_time": "12:30",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ronald",
+                        "start_time": "13:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nfrom itertools import permutations\n\n# Define travel times between locations\ntravel_times = {\n    (\"Financial District\", \"Russian Hill\"): 10,\n    (\"Financial District\", \"Sunset District\"): 31,\n    (\"Financial District\", \"North Beach\"): 7,\n    (\"Financial District\", \"The Castro\"): 23,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Russian Hill\", \"Financial District\"): 11,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"North Beach\"): 5,\n    (\"Russian Hill\", \"The Castro\"): 21,\n    (\"Russian Hill\", \"Golden Gate Park\"): 21,\n    (\"Sunset District\", \"Financial District\"): 30,\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"North Beach\"): 29,\n    (\"Sunset District\", \"The Castro\"): 17,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"North Beach\", \"Financial District\"): 8,\n    (\"North Beach\", \"Russian Hill\"): 4,\n    (\"North Beach\", \"Sunset District\"): 27,\n    (\"North Beach\", \"The Castro\"): 22,\n    (\"North Beach\", \"Golden Gate Park\"): 22,\n    (\"The Castro\", \"Financial District\"): 20,\n    (\"The Castro\", \"Russian Hill\"): 18,\n    (\"The Castro\", \"Sunset District\"): 17,\n    (\"The Castro\", \"North Beach\"): 20,\n    (\"The Castro\", \"Golden Gate Park\"): 11,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"North Beach\"): 24,\n    (\"Golden Gate Park\", \"The Castro\"): 13,\n}\n\n# Meeting constraints\nconstraints = {\n    \"Ronald\": {\"location\": \"Russian Hill\", \"start\": \"13:45\", \"end\": \"17:15\", \"min_duration\": 105},\n    \"Patricia\": {\"location\": \"Sunset District\", \"start\": \"09:15\", \"end\": \"22:00\", \"min_duration\": 60},\n    \"Laura\": {\"location\": \"North Beach\", \"start\": \"12:30\", \"end\": \"12:45\", \"min_duration\": 15},\n    \"Emily\": {\"location\": \"The Castro\", \"start\": \"16:15\", \"end\": \"18:30\", \"min_duration\": 60},\n    \"Mary\": {\"location\": \"Golden Gate Park\", \"start\": \"15:00\", \"end\": \"16:30\", \"min_duration\": 60},\n}\n\n# Meeting schedule\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\ndef convert_to_time_range(start, duration):\n    start_dt = datetime.strptime(start, \"%H:%M\")\n    end_dt = start_dt + timedelta(minutes=duration)\n    return start_dt, end_dt\n\ndef format_time(dt):\n    return dt.strftime(\"%H:%M\")\n\ndef find_schedule():\n    max_meetings = 0\n    best_itinerary = []\n\n    locations = list(constraints.keys())\n    for perm in permutations(locations):\n        current_time = start_time\n        current_itinerary = []\n        meeting_times = {}\n        \n        for person in perm:\n            meeting_info = constraints[person]\n            location = meeting_info[\"location\"]\n            start = meeting_info[\"start\"]\n            end = meeting_info[\"end\"]\n            min_duration = meeting_info[\"min_duration\"]\n            \n            loc_start_dt, loc_end_dt = convert_to_time_range(start, 0)\n            meet_duration = min_duration\n            \n            if location in meeting_times:\n                loc_start_dt = max(loc_start_dt, meeting_times[location][1])\n                \n            if current_time < loc_start_dt:\n                travel_time = travel_times.get((current_itinerary[-1][\"location\"], location)) if current_itinerary else 0\n                arrive_time = current_time + timedelta(minutes=travel_time) if travel_time else current_time\n                \n                if arrive_time < loc_start_dt:\n                    current_time = loc_start_dt\n            \n            travel_time = travel_times.get((current_itinerary[-1][\"location\"], location), 0) if current_itinerary else 0\n            start_meeting_time = current_time + timedelta(minutes=travel_time)\n            \n            if start_meeting_time >= loc_start_dt and start_meeting_time + timedelta(minutes=meet_duration) <= loc_end_dt:\n                end_meeting_time = start_meeting_time + timedelta(minutes=meet_duration)\n                current_itinerary.append({\n                    \"action\": \"meet\",\n                    \"location\": location,\n                    \"person\": person,\n                    \"start_time\": format_time(start_meeting_time),\n                    \"end_time\": format_time(end_meeting_time)\n                })\n                current_time = end_meeting_time\n                meeting_times[location] = (start_meeting_time, end_meeting_time)\n        \n        if len(current_itinerary) > max_meetings:\n            max_meetings = len(current_itinerary)\n            best_itinerary = current_itinerary\n\n    return best_itinerary\n\nif __name__ == \"__main__\":\n    itinerary = find_schedule()\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_444"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60   # 17:00 in minutes\n    days = ['Monday', 'Tuesday']\n    \n    # Define busy slots for each person in minutes since midnight\n    # Format: (day_index, start_min, end_min)\n    russell_busy = [\n        (0, 10 * 60 + 30, 11 * 60),  # Monday 10:30-11:00\n        (1, 13 * 60, 13 * 60 + 30)    # Tuesday 13:00-13:30\n    ]\n    \n    alexander_busy = [\n        (0, 9 * 60, 11 * 60 + 30),    # Monday 9:00-11:30\n        (0, 12 * 60, 14 * 60 + 30),   # Monday 12:00-14:30\n        (0, 15 * 60, 17 * 60),        # Monday 15:00-17:00\n        (1, 9 * 60, 10 * 60),         # Tuesday 9:00-10:00\n        (1, 13 * 60, 14 * 60),        # Tuesday 13:00-14:00\n        (1, 15 * 60, 15 * 60 + 30),  # Tuesday 15:00-15:30\n        (1, 16 * 60, 16 * 60 + 30)    # Tuesday 16:00-16:30\n    ]\n    \n    meeting_duration = 60  # 1 hour in minutes\n    \n    # Check each day for available slots\n    for day_idx in range(2):\n        day = days[day_idx]\n        \n        # Collect all busy slots for both people on this day\n        busy_slots = []\n        \n        # Add Russell's busy slots for the day\n        for slot in russell_busy:\n            if slot[0] == day_idx:\n                busy_slots.append((slot[1], slot[2]))\n        \n        # Add Alexander's busy slots for the day\n        for slot in alexander_busy:\n            if slot[0] == day_idx:\n                busy_slots.append((slot[1], slot[2]))\n        \n        # Sort busy slots by start time\n        busy_slots.sort()\n        \n        # Find free slots between work hours\n        prev_end = work_start\n        free_slots = []\n        \n        for start, end in busy_slots:\n            if start > prev_end:\n                free_slots.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        \n        # Check after last busy slot\n        if prev_end < work_end:\n            free_slots.append((prev_end, work_end))\n        \n        # Check each free slot for availability\n        for slot_start, slot_end in free_slots:\n            available_start = slot_start\n            available_end = slot_end\n            \n            # Ensure the slot is at least meeting_duration long\n            if available_end - available_start >= meeting_duration:\n                # Apply Russell's preference: not Tuesday before 13:30\n                if day == 'Tuesday' and available_start < 13 * 60 + 30:\n                    continue\n                \n                # Found a suitable slot\n                start_hour = available_start // 60\n                start_min = available_start % 60\n                end_hour = (available_start + meeting_duration) // 60\n                end_min = (available_start + meeting_duration) % 60\n                \n                # Format the time as HH:MM:HH:MM\n                time_str = f\"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}\"\n                return day, time_str\n    \n    return None, None\n\nday, time = find_meeting_time()\nprint(f\"{day}: {time}\")\n```",
+            "count": "calendar_scheduling_example_678"
+        }
+    ]
+}

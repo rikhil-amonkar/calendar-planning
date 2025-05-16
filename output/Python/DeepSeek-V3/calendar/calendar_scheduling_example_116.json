@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60   # 17:00 in minutes\n    meeting_duration = 30  # minutes\n\n    # Define each person's busy times in minutes (start, end)\n    adam_busy = [(14 * 60, 15 * 60)]\n    john_busy = [(13 * 60, 13 * 60 + 30),\n                 (14 * 60, 14 * 60 + 30),\n                 (15 * 60 + 30, 16 * 60),\n                 (16 * 60 + 30, 17 * 60)]\n    stephanie_busy = [(9 * 60 + 30, 10 * 60),\n                      (10 * 60 + 30, 11 * 60),\n                      (11 * 60 + 30, 16 * 60),\n                      (16 * 60 + 30, 17 * 60)]\n    anna_busy = [(9 * 60 + 30, 10 * 60),\n                 (12 * 60, 12 * 60 + 30),\n                 (13 * 60, 15 * 60 + 30),\n                 (16 * 60 + 30, 17 * 60)]\n    \n    # Anna's preference: not before 14:30\n    anna_preference_start = 14 * 60 + 30\n\n    # Combine all busy times\n    all_busy = adam_busy + john_busy + stephanie_busy + anna_busy\n\n    # Generate free slots by finding gaps between busy times\n    all_busy.sort()  # Sort by start time\n    free_slots = []\n    previous_end = work_start\n\n    for busy_start, busy_end in all_busy:\n        if busy_start > previous_end:\n            free_slots.append((previous_end, busy_start))\n        previous_end = max(previous_end, busy_end)\n    \n    if previous_end < work_end:\n        free_slots.append((previous_end, work_end))\n\n    # Filter free slots that meet duration and Anna's preference\n    possible_slots = []\n    for slot_start, slot_end in free_slots:\n        if slot_start >= anna_preference_start and (slot_end - slot_start) >= meeting_duration:\n            possible_slots.append((slot_start, slot_end))\n\n    # Select the earliest possible slot\n    if possible_slots:\n        meeting_start = possible_slots[0][0]\n        meeting_end = meeting_start + meeting_duration\n        # Convert back to HH:MM format\n        start_hh = meeting_start // 60\n        start_mm = meeting_start % 60\n        end_hh = meeting_end // 60\n        end_mm = meeting_end % 60\n        print(f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\")\n        print(\"Monday\")\n    else:\n        print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_116"
+        }
+    ]
+}

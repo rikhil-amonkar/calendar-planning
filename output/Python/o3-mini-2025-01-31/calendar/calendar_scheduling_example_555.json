@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Define workday start and end time\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\n\n# Meeting duration (in minutes)\nmeeting_duration = timedelta(minutes=30)\n\n# Randy's busy intervals on Monday (start and end times)\nrandy_busy = [\n    (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n    (datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\")),\n    (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))\n]\n\n# Evelyn's constraint: Cannot meet after 13:00, so effective end time is min(13:00, work_end)\nevelyn_constraint = datetime.strptime(\"13:00\", \"%H:%M\")\neffective_end = min(work_end, evelyn_constraint)\n\ndef is_available(start, end, busy_intervals):\n    for busy_start, busy_end in busy_intervals:\n        # Check if the candidate meeting overlaps with a busy interval\n        if not (end <= busy_start or start >= busy_end):\n            return False\n    return True\n\n# Find the first available time slot for a meeting on Monday that satisfies everyone's schedule\ncandidate = work_start\nmeeting_slot = None\n\nwhile candidate + meeting_duration <= effective_end:\n    meeting_end = candidate + meeting_duration\n    if is_available(candidate, meeting_end, randy_busy):\n        meeting_slot = (candidate, meeting_end)\n        break\n    candidate += timedelta(minutes=1)\n\nif meeting_slot:\n    start_time_str = meeting_slot[0].strftime(\"%H:%M\")\n    end_time_str = meeting_slot[1].strftime(\"%H:%M\")\n    print(f\"Monday {start_time_str}:{end_time_str}\")\nelse:\n    print(\"No available time slot found.\")\n'''",
+            "count": "calendar_scheduling_example_555"
+        }
+    ]
+}

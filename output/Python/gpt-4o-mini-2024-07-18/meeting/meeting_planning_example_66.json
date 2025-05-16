@@ -1,0 +1,23 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define input variables\ntravel_times = {\n    \"Nob Hill to Presidio\": 17,\n    \"Presidio to Nob Hill\": 18\n}\narrival_time_nob_hill = datetime.strptime(\"09:00\", \"%H:%M\")\nrobert_start_time = datetime.strptime(\"11:15\", \"%H:%M\")\nrobert_end_time = datetime.strptime(\"17:45\", \"%H:%M\")  # Meeting can end at this time\nmeet_duration = timedelta(minutes=120)\n\n# Calculate when you can leave Nob Hill to meet Robert\ndef calculate_schedule():\n    # You need to arrive at Presidio before Robert can meet you\n    travel_to_presidio = travel_times[\"Nob Hill to Presidio\"]\n    latest_time_to_leave_nob_hill = robert_start_time - timedelta(minutes=travel_to_presidio)\n    \n    # You can start meeting Robert after arriving at Presidio\n    first_available_meeting_start = robert_start_time\n    meeting_end_time = first_available_meeting_start + meet_duration\n\n    meeting_times = []\n    \n    if latest_time_to_leave_nob_hill < first_available_meeting_start:\n        # You cannot reach Robert in time before he starts meeting\n        return meeting_times\n    \n    # Check if you can meet Robert all at once\n    if meeting_end_time <= robert_end_time:\n        start_presidio_meeting = first_available_meeting_start.strftime(\"%H:%M\")\n        end_presidio_meeting = meeting_end_time.strftime(\"%H:%M\")\n        meeting_times.append({\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Robert\",\n            \"start_time\": start_presidio_meeting,\n            \"end_time\": end_presidio_meeting\n        })\n        return meeting_times\n    \n    # If we cannot meet continuously for 120 minutes within the allowed time, we'll need to adjust\n    # Check for possible shorter meetings that still meet the duration\n    # Break down into two meetings if needed\n    total_meeting_time = 0\n    available_meeting_start = first_available_meeting_start\n    while available_meeting_start < robert_end_time:\n        meeting_end = available_meeting_start + meet_duration\n        if meeting_end <= robert_end_time and total_meeting_time + meet_duration <= timedelta(minutes=240):\n            meeting_times.append({\n                \"action\": \"meet\",\n                \"location\": \"Presidio\",\n                \"person\": \"Robert\",\n                \"start_time\": available_meeting_start.strftime(\"%H:%M\"),\n                \"end_time\": meeting_end.strftime(\"%H:%M\")\n            })\n            total_meeting_time += meet_duration\n            available_meeting_start = meeting_end  # Move start to the end of the last meeting\n        else:\n            break\n\n    return meeting_times\n\n# Run the schedule calculation\nitinerary = calculate_schedule()\n\n# Prepare output in the required JSON format\noutput = {\n    \"itinerary\": itinerary\n}\n\n# Print the JSON formatted output\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_66"
+        }
+    ]
+}

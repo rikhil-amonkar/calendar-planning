@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "9:23",
+                        "end_time": "10:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Nancy",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Jeffrey",
+                        "start_time": "12:47",
+                        "end_time": "13:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "16:45",
+                        "end_time": "17:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Joseph",
+                        "start_time": "9:23",
+                        "end_time": "10:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Nancy",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Jeffrey",
+                        "start_time": "12:47",
+                        "end_time": "13:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "16:45",
+                        "end_time": "17:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\nfriends = [\n    {'name': 'Joseph', 'location': 'Russian Hill', 'available_start': 510, 'available_end': 1155, 'duration': 60},\n    {'name': 'Nancy', 'location': 'Alamo Square', 'available_start': 660, 'available_end': 960, 'duration': 90},\n    {'name': 'Jason', 'location': 'North Beach', 'available_start': 1005, 'available_end': 1305, 'duration': 15},\n    {'name': 'Jeffrey', 'location': 'Financial District', 'available_start': 630, 'available_end': 945, 'duration': 45}\n]\n\ntravel_times = {\n    'Bayview': {'Russian Hill':23,'Alamo Square':16,'North Beach':21,'Financial District':19},\n    'Russian Hill': {'Bayview':23,'Alamo Square':15,'North Beach':5,'Financial District':11},\n    'Alamo Square': {'Bayview':16,'Russian Hill':13,'North Beach':15,'Financial District':17},\n    'North Beach': {'Bayview':22,'Russian Hill':4,'Alamo Square':16,'Financial District':8},\n    'Financial District': {'Bayview':19,'Russian Hill':10,'Alamo Square':17,'North Beach':7}\n}\n\nvalid = []\nfor k in range(4, 0, -1):\n    for perm in itertools.permutations(friends, k):\n        loc = 'Bayview'\n        time = 540\n        sched = []\n        valid_perm = True\n        for p in perm:\n            travel = travel_times[loc][p['location']]\n            arrive = time + travel\n            start = max(arrive, p['available_start'])\n            end = start + p['duration']\n            if end > p['available_end']:\n                valid_perm = False\n                break\n            sched.append((p, start, end))\n            time = end\n            loc = p['location']\n        if valid_perm:\n            valid.append((len(perm), time, sched))\n\nbest = []\nmax_friends = 0\nmin_end = float('inf')\nfor v in valid:\n    if v[0] > max_friends or (v[0] == max_friends and v[1] < min_end):\n        max_friends = v[0]\n        min_end = v[1]\n        best = v[2]\n\ndef fmt(m):\n    h, m = divmod(m, 60)\n    return f\"{h}:{m:02d}\"\n\nitinerary = []\nfor meet in best:\n    person = meet[0]\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": person['location'],\n        \"person\": person['name'],\n        \"start_time\": fmt(meet[1]),\n        \"end_time\": fmt(meet[2])\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_368"
+        }
+    ]
+}

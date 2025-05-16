@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Daniel",
+                        "start_time": "9:26",
+                        "end_time": "11:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Ronald",
+                        "start_time": "11:27",
+                        "end_time": "12:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "13:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "William",
+                        "start_time": "14:39",
+                        "end_time": "14:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Ashley",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Daniel",
+                        "start_time": "9:26",
+                        "end_time": "11:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Ronald",
+                        "start_time": "11:27",
+                        "end_time": "12:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "13:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Ashley",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "William",
+                        "start_time": "19:21",
+                        "end_time": "19:36"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ntravel_times = {\n    ('Presidio', 'Golden Gate Park'): 12,\n    ('Presidio', 'Bayview'): 31,\n    ('Presidio', 'Chinatown'): 21,\n    ('Presidio', 'North Beach'): 18,\n    ('Presidio', 'Mission District'): 26,\n    ('Golden Gate Park', 'Presidio'): 11,\n    ('Golden Gate Park', 'Bayview'): 23,\n    ('Golden Gate Park', 'Chinatown'): 23,\n    ('Golden Gate Park', 'North Beach'): 24,\n    ('Golden Gate Park', 'Mission District'): 17,\n    ('Bayview', 'Presidio'): 31,\n    ('Bayview', 'Golden Gate Park'): 22,\n    ('Bayview', 'Chinatown'): 18,\n    ('Bayview', 'North Beach'): 21,\n    ('Bayview', 'Mission District'): 13,\n    ('Chinatown', 'Presidio'): 19,\n    ('Chinatown', 'Golden Gate Park'): 23,\n    ('Chinatown', 'Bayview'): 22,\n    ('Chinatown', 'North Beach'): 3,\n    ('Chinatown', 'Mission District'): 18,\n    ('North Beach', 'Presidio'): 17,\n    ('North Beach', 'Golden Gate Park'): 22,\n    ('North Beach', 'Bayview'): 22,\n    ('North Beach', 'Chinatown'): 6,\n    ('North Beach', 'Mission District'): 18,\n    ('Mission District', 'Presidio'): 25,\n    ('Mission District', 'Golden Gate Park'): 17,\n    ('Mission District', 'Bayview'): 15,\n    ('Mission District', 'Chinatown'): 16,\n    ('Mission District', 'North Beach'): 17,\n}\n\nfriends = [\n    {'name': 'Jessica', 'location': 'Golden Gate Park', 'start': 13*60+45, 'end':15*60, 'duration':30},\n    {'name': 'Ashley', 'location': 'Bayview', 'start':17*60+15, 'end':20*60, 'duration':105},\n    {'name': 'Ronald', 'location': 'Chinatown', 'start':7*60+15, 'end':14*60+45, 'duration':90},\n    {'name': 'William', 'location': 'North Beach', 'start':13*60+15, 'end':20*60+15, 'duration':15},\n    {'name': 'Daniel', 'location': 'Mission District', 'start':7*60, 'end':11*60+15, 'duration':105},\n]\n\ndef minutes_to_time(m):\n    return f\"{m // 60}:{m % 60:02d}\"\n\nbest_count = 0\nbest_time = float('inf')\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Presidio'\n    current_time = 540\n    itinerary = []\n    met = set()\n    \n    for friend in perm:\n        from_loc = current_location\n        to_loc = friend['location']\n        travel_time = travel_times.get((from_loc, to_loc))\n        if travel_time is None:\n            continue\n        \n        arrival_time = current_time + travel_time\n        if arrival_time > friend['end']:\n            continue\n        \n        start_time = max(arrival_time, friend['start'])\n        if start_time + friend['duration'] > friend['end']:\n            continue\n        \n        itinerary.append({\n            'action': 'meet',\n            'location': to_loc,\n            'person': friend['name'],\n            'start_time': minutes_to_time(start_time),\n            'end_time': minutes_to_time(start_time + friend['duration'])\n        })\n        met.add(friend['name'])\n        current_time = start_time + friend['duration']\n        current_location = to_loc\n    \n    count = len(met)\n    if count > best_count or (count == best_count and current_time < best_time):\n        best_count = count\n        best_time = current_time\n        best_itinerary = itinerary.copy()\n\noutput = {\"itinerary\": best_itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_454"
+        }
+    ]
+}

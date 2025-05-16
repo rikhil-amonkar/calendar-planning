@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days to consider\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    meeting_duration = 30  # minutes\n\n    # Define busy slots for Nicole and Ruth in minutes since start of day\n    nicole_busy = {\n        'Monday': [(9*60, 9*60 + 30), (13*60, 13*60 + 30), (14*60 + 30, 15*60 + 30)],\n        'Tuesday': [(9*60, 9*60 + 30), (11*60 + 30, 13*60 + 30), (14*60 + 30, 15*60 + 30)],\n        'Wednesday': [(10*60, 11*60), (12*60 + 30, 15*60), (16*60, 17*60)]\n    }\n    \n    ruth_busy = {\n        'Monday': [(9*60, 17*60)],  # Entire day blocked\n        'Tuesday': [(9*60, 17*60)],  # Entire day blocked\n        'Wednesday': [\n            (9*60, 10*60 + 30),\n            (11*60, 11*60 + 30),\n            (12*60, 12*60 + 30),\n            (13*60 + 30, 15*60 + 30),\n            (16*60, 16*60 + 30)\n        ]\n    }\n    \n    # Ruth's additional constraint: no meetings after 13:30 on Wednesday\n    ruth_no_meet_after = 13 * 60 + 30  # 13:30 in minutes\n    \n    # Iterate through each day to find a suitable slot\n    for day in days:\n        if day == 'Wednesday':\n            # Adjust work_end for Ruth on Wednesday\n            effective_end = min(work_end, ruth_no_meet_after)\n        else:\n            effective_end = work_end\n        \n        # Generate all possible slots for the day\n        possible_slots = []\n        current_time = work_start\n        \n        # Merge and sort busy slots for both participants\n        all_busy = nicole_busy.get(day, []) + ruth_busy.get(day, [])\n        all_busy.sort()\n        \n        # Find free slots by checking gaps between busy slots\n        for busy_start, busy_end in all_busy:\n            if current_time < busy_start:\n                possible_slots.append((current_time, busy_start))\n            current_time = max(current_time, busy_end)\n        \n        # Check the slot after the last busy slot\n        if current_time < effective_end:\n            possible_slots.append((current_time, effective_end))\n        \n        # Check each possible slot for availability\n        for slot_start, slot_end in possible_slots:\n            slot_duration = slot_end - slot_start\n            if slot_duration >= meeting_duration:\n                # Found a suitable slot\n                start_time = slot_start\n                end_time = start_time + meeting_duration\n                \n                # Format the time as HH:MM\n                def format_time(minutes):\n                    hours = minutes // 60\n                    mins = minutes % 60\n                    return f\"{hours:02d}:{mins:02d}\"\n                \n                start_str = format_time(start_time)\n                end_str = format_time(end_time)\n                return f\"{day}:{start_str}:{end_str}\"\n    \n    return \"No suitable time found.\"\n\n# Run the function and print the result\nprint(find_meeting_time())\n```",
+            "count": "calendar_scheduling_example_791"
+        }
+    ]
+}

@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joshua",
+                        "start_time": "20:45",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Joshua",
+                        "start_time": "20:45",
+                        "end_time": "21:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef compute_meeting_schedule():\n    # Input parameters\n    arrival_time = datetime.strptime('09:00', '%H:%M')\n    travel_to_park = timedelta(minutes=11)\n    travel_back = timedelta(minutes=10)\n    joshua_start = datetime.strptime('20:45', '%H:%M')\n    joshua_end = datetime.strptime('21:45', '%H:%M')\n    minimum_meeting_duration = timedelta(minutes=15)\n\n    # Calculate times\n    depart_for_park_time = arrival_time + travel_to_park\n    meeting_start_time = max(depart_for_park_time, joshua_start)\n    meeting_end_time = meeting_start_time + minimum_meeting_duration\n\n    # Check if the meeting can happen\n    if meeting_end_time <= joshua_end:\n        # Create itinerary\n        itinerary = [\n            {\n                \"action\": \"meet\",\n                \"location\": \"Golden Gate Park\",\n                \"person\": \"Joshua\",\n                \"start_time\": meeting_start_time.strftime('%H:%M'),\n                \"end_time\": meeting_end_time.strftime('%H:%M')\n            }\n        ]\n    else:\n        # No feasible meeting can be arranged\n        itinerary = []\n\n    result = {\n        \"itinerary\": itinerary\n    }\n\n    return json.dumps(result, indent=2)\n\n# Run the function and print the output\nif __name__ == \"__main__\":\n    output = compute_meeting_schedule()\n    print(output)\n```",
+            "count": "meeting_planning_example_88"
+        }
+    ]
+}

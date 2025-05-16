@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\ndef time_to_minutes(time_str):\n    \"\"\"Converts time string HH:MM to minutes from midnight.\"\"\"\n    hours, minutes = map(int, time_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    \"\"\"Converts minutes from midnight to time string HH:MM.\"\"\"\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define working hours and meeting duration (in minutes)\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 30\n\n# Define blocked intervals for each participant in minutes (start, end)\n# Michael: 9:30 to 10:30, 15:00 to 15:30, 16:00 to 16:30\nmichael_busy = [\n    (time_to_minutes(\"09:30\"), time_to_minutes(\"10:30\")),\n    (time_to_minutes(\"15:00\"), time_to_minutes(\"15:30\")),\n    (time_to_minutes(\"16:00\"), time_to_minutes(\"16:30\"))\n]\n\n# Eric's calendar is free, so no blocks\neric_busy = []\n\n# Arthur: 9:00 to 12:00, 13:00 to 15:00, 15:30 to 16:00, 16:30 to 17:00\narthur_busy = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"12:00\")),\n    (time_to_minutes(\"13:00\"), time_to_minutes(\"15:00\")),\n    (time_to_minutes(\"15:30\"), time_to_minutes(\"16:00\")),\n    (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n]\n\n# Combine the busy intervals for all participants\nall_busy = michael_busy + eric_busy + arthur_busy\n\ndef is_time_slot_available(start, duration, busy_intervals):\n    \"\"\"Check if the time slot starting at 'start' with 'duration' minutes is free\n       from any conflicts in the list of busy intervals.\"\"\"\n    end = start + duration\n    for busy_start, busy_end in busy_intervals:\n        # if the meeting overlaps with any busy interval\n        if not (end <= busy_start or start >= busy_end):\n            return False\n    return True\n\n# Find the first available slot from work_start to work_end - meeting_duration\nslot_found = None\nfor start in range(work_start, work_end - meeting_duration + 1):\n    if is_time_slot_available(start, meeting_duration, all_busy):\n        slot_found = (start, start + meeting_duration)\n        break\n\nif slot_found:\n    start_time_str = minutes_to_time(slot_found[0])\n    end_time_str = minutes_to_time(slot_found[1])\n    meeting_day = \"Monday\"\n    # Output in the format: HH:MM:HH:MM and day of the week.\n    print(f\"{meeting_day} {start_time_str}:{end_time_str}\")\nelse:\n    print(\"No available slot found.\")\n'''",
+            "count": "calendar_scheduling_example_82"
+        }
+    ]
+}

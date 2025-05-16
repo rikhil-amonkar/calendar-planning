@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Jason",
+                        "start_time": "13:00",
+                        "end_time": "14:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Brian",
+                        "start_time": "14:52",
+                        "end_time": "15:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Elizabeth",
+                        "start_time": "15:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Laura",
+                        "start_time": "17:37",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "19:02",
+                        "end_time": "19:47"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel distances in minutes\ntravel_times = {\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Presidio\", \"Golden Gate Park\"): 12,\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Richmond District\", \"North Beach\"): 17,\n    (\"Richmond District\", \"Financial District\"): 22,\n    (\"Richmond District\", \"Golden Gate Park\"): 9,\n    (\"Richmond District\", \"Union Square\"): 21,\n    (\"North Beach\", \"Financial District\"): 7,\n    (\"North Beach\", \"Golden Gate Park\"): 22,\n    (\"North Beach\", \"Union Square\"): 7,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Golden Gate Park\", \"Union Square\"): 22,\n}\n\ndef add_minutes(start_time, minutes):\n    return start_time + timedelta(minutes=minutes)\n\n# Meeting constraints\nmeetings = {\n    \"Jason\": {\"location\": \"Richmond District\", \"available_from\": \"13:00\", \"available_to\": \"20:45\", \"min_duration\": 90},\n    \"Melissa\": {\"location\": \"North Beach\", \"available_from\": \"18:45\", \"available_to\": \"20:15\", \"min_duration\": 45},\n    \"Brian\": {\"location\": \"Financial District\", \"available_from\": \"09:45\", \"available_to\": \"21:45\", \"min_duration\": 15},\n    \"Elizabeth\": {\"location\": \"Golden Gate Park\", \"available_from\": \"08:45\", \"available_to\": \"21:30\", \"min_duration\": 105},\n    \"Laura\": {\"location\": \"Union Square\", \"available_from\": \"14:15\", \"available_to\": \"19:30\", \"min_duration\": 75},\n}\n\ndef generate_itinerary():\n    itinerary = []\n    current_time = datetime.strptime(\"09:00\", \"%H:%M\")\n    \n    # Meet Brian first since he is available right after our arrival\n    brian_start = add_minutes(current_time, travel_times[(\"Presidio\", \"Financial District\")])\n    if brian_start < datetime.strptime(meetings[\"Brian\"][\"available_from\"], \"%H:%M\"):\n        brian_start = datetime.strptime(meetings[\"Brian\"][\"available_from\"], \"%H:%M\")\n    \n    brian_end = add_minutes(brian_start, meetings[\"Brian\"][\"min_duration\"])\n    if brian_end > datetime.strptime(meetings[\"Brian\"][\"available_to\"], \"%H:%M\"):\n        raise Exception(\"Unable to meet Brian in available time\")\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Brian\"][\"location\"],\n        \"person\": \"Brian\",\n        \"start_time\": brian_start.strftime(\"%H:%M\"),\n        \"end_time\": brian_end.strftime(\"%H:%M\"),\n    })\n    \n    # Meet Elizabeth next\n    current_time = brian_end\n    elizabeth_start = add_minutes(current_time, travel_times[(\"Financial District\", \"Golden Gate Park\")])\n    \n    if elizabeth_start < datetime.strptime(meetings[\"Elizabeth\"][\"available_from\"], \"%H:%M\"):\n        elizabeth_start = datetime.strptime(meetings[\"Elizabeth\"][\"available_from\"], \"%H:%M\")\n    \n    elizabeth_end = add_minutes(elizabeth_start, meetings[\"Elizabeth\"][\"min_duration\"])\n    if elizabeth_end > datetime.strptime(meetings[\"Elizabeth\"][\"available_to\"], \"%H:%M\"):\n        raise Exception(\"Unable to meet Elizabeth in available time\")\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Elizabeth\"][\"location\"],\n        \"person\": \"Elizabeth\",\n        \"start_time\": elizabeth_start.strftime(\"%H:%M\"),\n        \"end_time\": elizabeth_end.strftime(\"%H:%M\"),\n    })\n    \n    # Meet Jason next\n    current_time = elizabeth_end\n    jason_start = add_minutes(current_time, travel_times[(\"Golden Gate Park\", \"Richmond District\")])\n    \n    if jason_start < datetime.strptime(meetings[\"Jason\"][\"available_from\"], \"%H:%M\"):\n        jason_start = datetime.strptime(meetings[\"Jason\"][\"available_from\"], \"%H:%M\")\n    \n    jason_end = add_minutes(jason_start, meetings[\"Jason\"][\"min_duration\"])\n    if jason_end > datetime.strptime(meetings[\"Jason\"][\"available_to\"], \"%H:%M\"):\n        raise Exception(\"Unable to meet Jason in available time\")\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Jason\"][\"location\"],\n        \"person\": \"Jason\",\n        \"start_time\": jason_start.strftime(\"%H:%M\"),\n        \"end_time\": jason_end.strftime(\"%H:%M\"),\n    })\n    \n    # Meet Laura next\n    current_time = jason_end\n    laura_start = add_minutes(current_time, travel_times[(\"Richmond District\", \"Union Square\")])\n    \n    if laura_start < datetime.strptime(meetings[\"Laura\"][\"available_from\"], \"%H:%M\"):\n        laura_start = datetime.strptime(meetings[\"Laura\"][\"available_from\"], \"%H:%M\")\n    \n    laura_end = add_minutes(laura_start, meetings[\"Laura\"][\"min_duration\"])\n    if laura_end > datetime.strptime(meetings[\"Laura\"][\"available_to\"], \"%H:%M\"):\n        raise Exception(\"Unable to meet Laura in available time\")\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Laura\"][\"location\"],\n        \"person\": \"Laura\",\n        \"start_time\": laura_start.strftime(\"%H:%M\"),\n        \"end_time\": laura_end.strftime(\"%H:%M\"),\n    })\n    \n    # Meet Melissa last\n    current_time = laura_end\n    melissa_start = add_minutes(current_time, travel_times[(\"Union Square\", \"North Beach\")])\n    \n    if melissa_start < datetime.strptime(meetings[\"Melissa\"][\"available_from\"], \"%H:%M\"):\n        melissa_start = datetime.strptime(meetings[\"Melissa\"][\"available_from\"], \"%H:%M\")\n    \n    melissa_end = add_minutes(melissa_start, meetings[\"Melissa\"][\"min_duration\"])\n    if melissa_end > datetime.strptime(meetings[\"Melissa\"][\"available_to\"], \"%H:%M\"):\n        raise Exception(\"Unable to meet Melissa in available time\")\n    \n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Melissa\"][\"location\"],\n        \"person\": \"Melissa\",\n        \"start_time\": melissa_start.strftime(\"%H:%M\"),\n        \"end_time\": melissa_end.strftime(\"%H:%M\"),\n    })\n    \n    return {\"itinerary\": itinerary}\n\nif __name__ == \"__main__\":\n    schedule = generate_itinerary()\n    print(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_423"
+        }
+    ]
+}

@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joshua",
+                        "start_time": "10:30",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Kimberly",
+                        "start_time": "15:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Betty",
+                        "start_time": "16:07",
+                        "end_time": "17:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "17:37",
+                        "end_time": "18:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Sandra",
+                        "start_time": "19:30",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joshua",
+                        "start_time": "10:30",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Kimberly",
+                        "start_time": "15:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "16:03",
+                        "end_time": "16:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Betty",
+                        "start_time": "16:57",
+                        "end_time": "17:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Daniel",
+                        "start_time": "18:30",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Elizabeth",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Dictionary of travel times in minutes\ntravel_times = {\n    \"Union Square\": {\n        \"Presidio\": 24,\n        \"Alamo Square\": 15,\n        \"Marina District\": 18,\n        \"Financial District\": 9,\n        \"Nob Hill\": 9,\n        \"Sunset District\": 27,\n        \"Chinatown\": 7,\n        \"Russian Hill\": 13,\n        \"North Beach\": 10,\n        \"Haight-Ashbury\": 18,\n    },\n    \"Presidio\": {\n        \"Union Square\": 22,\n        \"Alamo Square\": 19,\n        \"Marina District\": 11,\n        \"Financial District\": 23,\n        \"Nob Hill\": 18,\n        \"Sunset District\": 15,\n        \"Chinatown\": 21,\n        \"Russian Hill\": 14,\n        \"North Beach\": 18,\n        \"Haight-Ashbury\": 15,\n    },\n    \"Alamo Square\": {\n        \"Union Square\": 14,\n        \"Presidio\": 17,\n        \"Marina District\": 15,\n        \"Financial District\": 17,\n        \"Nob Hill\": 11,\n        \"Sunset District\": 16,\n        \"Chinatown\": 15,\n        \"Russian Hill\": 13,\n        \"North Beach\": 15,\n        \"Haight-Ashbury\": 5,\n    },\n    \"Marina District\": {\n        \"Union Square\": 16,\n        \"Presidio\": 10,\n        \"Alamo Square\": 15,\n        \"Financial District\": 17,\n        \"Nob Hill\": 12,\n        \"Sunset District\": 19,\n        \"Chinatown\": 15,\n        \"Russian Hill\": 8,\n        \"North Beach\": 11,\n        \"Haight-Ashbury\": 16,\n    },\n    \"Financial District\": {\n        \"Union Square\": 9,\n        \"Presidio\": 22,\n        \"Alamo Square\": 17,\n        \"Marina District\": 15,\n        \"Nob Hill\": 8,\n        \"Sunset District\": 30,\n        \"Chinatown\": 5,\n        \"Russian Hill\": 11,\n        \"North Beach\": 7,\n        \"Haight-Ashbury\": 19,\n    },\n    \"Nob Hill\": {\n        \"Union Square\": 7,\n        \"Presidio\": 17,\n        \"Alamo Square\": 11,\n        \"Marina District\": 11,\n        \"Financial District\": 9,\n        \"Sunset District\": 24,\n        \"Chinatown\": 6,\n        \"Russian Hill\": 5,\n        \"North Beach\": 8,\n        \"Haight-Ashbury\": 13,\n    },\n    \"Sunset District\": {\n        \"Union Square\": 30,\n        \"Presidio\": 16,\n        \"Alamo Square\": 17,\n        \"Marina District\": 21,\n        \"Financial District\": 30,\n        \"Nob Hill\": 27,\n        \"Chinatown\": 30,\n        \"Russian Hill\": 24,\n        \"North Beach\": 28,\n        \"Haight-Ashbury\": 15,\n    },\n    \"Chinatown\": {\n        \"Union Square\": 7,\n        \"Presidio\": 19,\n        \"Alamo Square\": 17,\n        \"Marina District\": 12,\n        \"Financial District\": 5,\n        \"Nob Hill\": 9,\n        \"Sunset District\": 29,\n        \"Russian Hill\": 7,\n        \"North Beach\": 3,\n        \"Haight-Ashbury\": 19,\n    },\n    \"Russian Hill\": {\n        \"Union Square\": 10,\n        \"Presidio\": 14,\n        \"Alamo Square\": 15,\n        \"Marina District\": 7,\n        \"Financial District\": 11,\n        \"Nob Hill\": 5,\n        \"Sunset District\": 23,\n        \"Chinatown\": 9,\n        \"North Beach\": 5,\n        \"Haight-Ashbury\": 17,\n    },\n    \"North Beach\": {\n        \"Union Square\": 7,\n        \"Presidio\": 17,\n        \"Alamo Square\": 16,\n        \"Marina District\": 9,\n        \"Financial District\": 8,\n        \"Nob Hill\": 7,\n        \"Sunset District\": 27,\n        \"Chinatown\": 6,\n        \"Russian Hill\": 4,\n        \"Haight-Ashbury\": 18,\n    },\n    \"Haight-Ashbury\": {\n        \"Union Square\": 19,\n        \"Presidio\": 15,\n        \"Alamo Square\": 5,\n        \"Marina District\": 17,\n        \"Financial District\": 21,\n        \"Nob Hill\": 15,\n        \"Sunset District\": 15,\n        \"Chinatown\": 19,\n        \"Russian Hill\": 17,\n        \"North Beach\": 19,\n    },\n}\n\n# Meeting constraints\nmeetings = {\n    \"Kimberly\": (\"Presidio\", \"15:30\", \"15:45\"),  # 15:30 to 16:00\n    \"Elizabeth\": (\"Alamo Square\", \"19:15\", \"20:15\"),  # 19:15 to 20:15\n    \"Joshua\": (\"Marina District\", \"10:30\", \"14:15\"),  # 10:30 to 14:15\n    \"Sandra\": (\"Financial District\", \"19:30\", \"20:15\"),  # 19:30 to 20:15\n    \"Kenneth\": (\"Nob Hill\", \"12:45\", \"21:45\"),  # whole day\n    \"Betty\": (\"Sunset District\", \"14:00\", \"19:00\"),  # 14:00 to 19:00\n    \"Deborah\": (\"Chinatown\", \"17:15\", \"20:30\"),  # 17:15 to 20:30\n    \"Barbara\": (\"Russian Hill\", \"17:30\", \"21:15\"),  # 17:30 to 21:15\n    \"Steven\": (\"North Beach\", \"17:45\", \"20:45\"),  # 17:45 to 20:45\n    \"Daniel\": (\"Haight-Ashbury\", \"18:30\", \"18:45\"),  # 18:30 to 18:45\n}\n\n# Define function to compute optimal meeting schedule\ndef compute_schedule():\n    schedule = []\n    current_time = datetime.strptime(\"9:00\", \"%H:%M\")\n    \n    # Meeting requirements in minutes\n    meeting_requirements = {\n        \"Kimberly\": 15,\n        \"Elizabeth\": 15,\n        \"Joshua\": 45,\n        \"Sandra\": 45,\n        \"Kenneth\": 30,\n        \"Betty\": 60,\n        \"Deborah\": 15,\n        \"Barbara\": 120,\n        \"Steven\": 90,\n        \"Daniel\": 15,\n    }\n    \n    # Meeting order based on availability\n    meeting_order = [\n        (\"Joshua\", \"10:30\"), \n        (\"Kimberly\", \"15:30\"),\n        (\"Betty\", \"14:00\"),\n        (\"Kenneth\", \"12:45\"),\n        (\"Sandra\", \"19:30\"), \n        (\"Elizabeth\", \"19:15\"),\n        (\"Deborah\", \"17:15\"), \n        (\"Barbara\", \"17:30\"), \n        (\"Steven\", \"17:45\"),\n        (\"Daniel\", \"18:30\"),\n    ]\n    \n    for person, available_time in meeting_order:\n        location, start_time, end_time = meetings[person]\n        start_time_dt = datetime.strptime(start_time, \"%H:%M\")\n        end_time_dt = datetime.strptime(end_time, \"%H:%M\")\n        \n        # Calculate travel time to the meeting location\n        travel_time = travel_times[\"Union Square\"].get(location, 0)\n        arrival_time = current_time + timedelta(minutes=travel_time)\n        \n        if arrival_time <= start_time_dt:\n            # Wait until the meeting can start\n            current_time = start_time_dt\n\n        # Check if we can meet for the required time\n        meeting_time = meeting_requirements[person]\n        meeting_end_time = current_time + timedelta(minutes=meeting_time)\n\n        if meeting_end_time <= end_time_dt:\n            # Schedule the meeting\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": current_time.strftime(\"%H:%M\"),\n                \"end_time\": meeting_end_time.strftime(\"%H:%M\"),\n            })\n            # Update current time\n            current_time = meeting_end_time\n            \n            # Update current location to the meeting place\n            travel_back_time = travel_times[location][\"Union Square\"]\n            current_time += timedelta(minutes=travel_back_time)\n    \n    return {\"itinerary\": schedule}\n\n# Compute the optimal meeting schedule\nitinerary = compute_schedule()\n\n# Print the result as JSON\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "meeting_planning_example_912"
+        }
+    ]
+}

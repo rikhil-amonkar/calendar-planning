@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define working hours and meeting duration\nworking_hours = (9, 17)\nmeeting_duration = timedelta(hours=1)\n\n# Define schedules\ncarl_schedule = {\n    \"Monday\": [(11, 30)],\n    \"Tuesday\": [(14, 30)],\n    \"Wednesday\": [(10, 30), (13, 30)],\n    \"Thursday\": [(13, 30), (16, 30)],\n}\n\nmargaret_schedule = {\n    \"Monday\": [(9, 30), (11, 0), (17, 0)],\n    \"Tuesday\": [(9, 30), (12, 0), (13, 30), (15, 30)],\n    \"Wednesday\": [(9, 30), (12, 0), (12, 30), (14, 30), (15, 0)],\n    \"Thursday\": [(10, 0), (12, 0), (12, 30), (14, 30)],\n}\n\n# Function to check if time is free\ndef is_free(start_time, end_time, schedule):\n    for busy_time in schedule:\n        busy_start = timedelta(hours=busy_time[0], minutes=busy_time[1])\n        busy_end = busy_start + meeting_duration\n        if not (end_time <= busy_start or start_time >= busy_end):\n            return False\n    return True\n\n# Generate possible meeting times\npossible_times = []\n\nfor day in [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]:\n    # Check time slots within working hours\n    for hour in range(working_hours[0], working_hours[1]):\n        # Define start and end time\n        start_time = timedelta(hours=hour)\n        end_time = start_time + meeting_duration\n        \n        # Check if the time slot is free for both participants\n        if is_free(start_time, end_time, carl_schedule.get(day, [])) and \\\n           is_free(start_time, end_time, margaret_schedule.get(day, [])):\n            possible_times.append((day, start_time))\n\n# Filter out Thursday's options if needed\nfinal_times = [(day, time) for day, time in possible_times if day != \"Thursday\"]\n\n# Select the first suitable time\nif final_times:\n    day, time = final_times[0]\n    proposed_time = (f\"{time.seconds // 3600:02}:{(time.seconds // 60) % 60:02}\", \n                     f\"{(time + meeting_duration).seconds // 3600:02}:{((time + meeting_duration).seconds // 60) % 60:02}\")\n    print(f\"{day}: {proposed_time[0]}:{proposed_time[1]}\")\n```\n",
+            "count": "calendar_scheduling_example_858"
+        }
+    ]
+}

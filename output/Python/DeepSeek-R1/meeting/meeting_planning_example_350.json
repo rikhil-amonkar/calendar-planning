@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mary",
+                        "start_time": "10:00",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "10:56",
+                        "end_time": "12:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Charles",
+                        "start_time": "12:47",
+                        "end_time": "14:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Lisa",
+                        "start_time": "20:30",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mary",
+                        "start_time": "10:00",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "10:56",
+                        "end_time": "12:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Charles",
+                        "start_time": "12:47",
+                        "end_time": "14:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Lisa",
+                        "start_time": "20:30",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef minutes_to_time(m):\n    h = m // 60\n    min = m % 60\n    return f\"{h}:{min:02d}\"\n\ntravel_times = {\n    ('Bayview', 'Pacific Heights'): 23,\n    ('Bayview', 'Mission District'):13,\n    ('Bayview', 'Haight-Ashbury'):19,\n    ('Bayview', 'Financial District'):19,\n    ('Pacific Heights', 'Bayview'):22,\n    ('Pacific Heights', 'Mission District'):15,\n    ('Pacific Heights', 'Haight-Ashbury'):11,\n    ('Pacific Heights', 'Financial District'):13,\n    ('Mission District', 'Bayview'):15,\n    ('Mission District', 'Pacific Heights'):16,\n    ('Mission District', 'Haight-Ashbury'):12,\n    ('Mission District', 'Financial District'):17,\n    ('Haight-Ashbury', 'Bayview'):18,\n    ('Haight-Ashbury', 'Pacific Heights'):12,\n    ('Haight-Ashbury', 'Mission District'):11,\n    ('Haight-Ashbury', 'Financial District'):21,\n    ('Financial District', 'Bayview'):19,\n    ('Financial District', 'Pacific Heights'):13,\n    ('Financial District', 'Mission District'):17,\n    ('Financial District', 'Haight-Ashbury'):19,\n}\n\nfriends = [\n    {'name': 'Mary', 'location': 'Pacific Heights', 'start': 10*60, 'end':19*60, 'duration':45},\n    {'name': 'Betty', 'location': 'Haight-Ashbury', 'start':7*60+15, 'end':17*60+15, 'duration':90},\n    {'name': 'Charles', 'location': 'Financial District', 'start':11*60+15, 'end':15*60, 'duration':120},\n    {'name': 'Lisa', 'location': 'Mission District', 'start':20*60+30, 'end':22*60, 'duration':75},\n]\n\ncore_friends = [f for f in friends if f['name'] != 'Lisa']\nlisa = [f for f in friends if f['name'] == 'Lisa'][0]\n\nbest_itinerary = None\n\nfor perm in itertools.permutations(core_friends):\n    current_location = 'Bayview'\n    current_time = 9 * 60\n    itinerary = []\n    possible = True\n    \n    for friend in perm:\n        key = (current_location, friend['location'])\n        if key not in travel_times:\n            possible = False\n            break\n        travel = travel_times[key]\n        arrival = current_time + travel\n        start = max(arrival, friend['start'])\n        end = start + friend['duration']\n        if end > friend['end']:\n            possible = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(start),\n            'end_time': minutes_to_time(end),\n        })\n        current_location = friend['location']\n        current_time = end\n    \n    if possible:\n        key = (current_location, lisa['location'])\n        if key not in travel_times:\n            continue\n        travel = travel_times[key]\n        arrival = current_time + travel\n        start = max(arrival, lisa['start'])\n        end = start + lisa['duration']\n        if end > lisa['end']:\n            continue\n        itinerary.append({\n            'action': 'meet',\n            'location': lisa['location'],\n            'person': lisa['name'],\n            'start_time': minutes_to_time(start),\n            'end_time': minutes_to_time(end),\n        })\n        if best_itinerary is None or len(itinerary) > len(best_itinerary):\n            best_itinerary = itinerary.copy()\n        if len(best_itinerary) == 4:\n            break\n\noutput = {\"itinerary\": best_itinerary} if best_itinerary else {\"itinerary\": []}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_350"
+        }
+    ]
+}

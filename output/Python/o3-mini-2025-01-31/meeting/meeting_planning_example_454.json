@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Daniel",
+                        "start_time": "9:26",
+                        "end_time": "11:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Ronald",
+                        "start_time": "11:27",
+                        "end_time": "12:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "13:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "William",
+                        "start_time": "14:39",
+                        "end_time": "14:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Ashley",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Daniel",
+                        "start_time": "9:26",
+                        "end_time": "11:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Ronald",
+                        "start_time": "11:27",
+                        "end_time": "12:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jessica",
+                        "start_time": "13:45",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Ashley",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "William",
+                        "start_time": "19:21",
+                        "end_time": "19:36"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper function to convert minutes since midnight to \"H:MM\" 24-hour string format.\ndef minutes_to_time_str(total_minutes):\n    hours = total_minutes // 60\n    minutes = total_minutes % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef main():\n    # Meeting parameters (times in minutes)\n    # Start time: 9:00 AM -> 9 * 60 = 540 minutes since midnight\n    start_time = 9 * 60  # 540\n    \n    # Travel times in minutes between locations (as given):\n    travel_times = {\n        (\"Presidio\", \"Golden Gate Park\"): 12,\n        (\"Presidio\", \"Bayview\"): 31,\n        (\"Presidio\", \"Chinatown\"): 21,\n        (\"Presidio\", \"North Beach\"): 18,\n        (\"Presidio\", \"Mission District\"): 26,\n        \n        (\"Golden Gate Park\", \"Presidio\"): 11,\n        (\"Golden Gate Park\", \"Bayview\"): 23,\n        (\"Golden Gate Park\", \"Chinatown\"): 23,\n        (\"Golden Gate Park\", \"North Beach\"): 24,\n        (\"Golden Gate Park\", \"Mission District\"): 17,\n        \n        (\"Bayview\", \"Presidio\"): 31,\n        (\"Bayview\", \"Golden Gate Park\"): 22,\n        (\"Bayview\", \"Chinatown\"): 18,\n        (\"Bayview\", \"North Beach\"): 21,\n        (\"Bayview\", \"Mission District\"): 13,\n        \n        (\"Chinatown\", \"Presidio\"): 19,\n        (\"Chinatown\", \"Golden Gate Park\"): 23,\n        (\"Chinatown\", \"Bayview\"): 22,\n        (\"Chinatown\", \"North Beach\"): 3,\n        (\"Chinatown\", \"Mission District\"): 18,\n        \n        (\"North Beach\", \"Presidio\"): 17,\n        (\"North Beach\", \"Golden Gate Park\"): 22,\n        (\"North Beach\", \"Bayview\"): 22,\n        (\"North Beach\", \"Chinatown\"): 6,\n        (\"North Beach\", \"Mission District\"): 18,\n        \n        (\"Mission District\", \"Presidio\"): 25,\n        (\"Mission District\", \"Golden Gate Park\"): 17,\n        (\"Mission District\", \"Bayview\"): 15,\n        (\"Mission District\", \"Chinatown\"): 16,\n        (\"Mission District\", \"North Beach\"): 17,\n    }\n    \n    # Participants' constraints:\n    # Each person is represented as a dictionary:\n    # \"location\": where the person will be,\n    # \"available_start\": when they are available (in minutes since midnight),\n    # \"available_end\": when they are no longer available,\n    # \"min_duration\": required meeting duration in minutes.\n    meetings = {\n        \"Jessica\": {\"location\": \"Golden Gate Park\", \"available_start\": 13*60+45, \"available_end\": 15*60, \"min_duration\": 30},\n        \"Ashley\": {\"location\": \"Bayview\", \"available_start\": 17*60+15, \"available_end\": 20*60, \"min_duration\": 105},\n        \"Ronald\": {\"location\": \"Chinatown\", \"available_start\": 7*60+15, \"available_end\": 14*60+45, \"min_duration\": 90},\n        \"William\": {\"location\": \"North Beach\", \"available_start\": 13*60+15, \"available_end\": 20*60+15, \"min_duration\": 15},\n        \"Daniel\": {\"location\": \"Mission District\", \"available_start\": 7*60, \"available_end\": 11*60+15, \"min_duration\": 105},\n    }\n    \n    itinerary = []  # To store the scheduled meetings\n    \n    current_time = start_time\n    current_location = \"Presidio\"\n    \n    # We will build the schedule in the following order:\n    # 1. Daniel at Mission District\n    # 2. Ronald at Chinatown\n    # 3. Jessica at Golden Gate Park\n    # 4. William at North Beach\n    # 5. Ashley at Bayview\n    #\n    # The schedule is computed so that we account for travel and waiting times.\n    \n    # 1. Daniel meeting: Travel from Presidio to Mission District\n    travel = travel_times[(current_location, meetings[\"Daniel\"][\"location\"])]\n    current_time += travel  # arrive at Mission District\n    meeting_start = max(current_time, meetings[\"Daniel\"][\"available_start\"])\n    # For Daniel, we must finish by his available_end and provide min_duration.\n    meeting_end = meeting_start + meetings[\"Daniel\"][\"min_duration\"]\n    # Ensure meeting finishes before Daniel's availability end (11:15 -> 675)\n    if meeting_end > meetings[\"Daniel\"][\"available_end\"]:\n        raise ValueError(\"Cannot schedule Daniel meeting within available time.\")\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Daniel\"][\"location\"],\n        \"person\": \"Daniel\",\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    current_time = meeting_end\n    current_location = meetings[\"Daniel\"][\"location\"]\n    \n    # 2. Ronald meeting: Travel from Mission District to Chinatown\n    travel = travel_times[(current_location, meetings[\"Ronald\"][\"location\"])]\n    current_time += travel  # travel time to Chinatown\n    meeting_start = max(current_time, meetings[\"Ronald\"][\"available_start\"])\n    meeting_end = meeting_start + meetings[\"Ronald\"][\"min_duration\"]\n    if meeting_end > meetings[\"Ronald\"][\"available_end\"]:\n        raise ValueError(\"Cannot schedule Ronald meeting within available time.\")\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Ronald\"][\"location\"],\n        \"person\": \"Ronald\",\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    current_time = meeting_end\n    current_location = meetings[\"Ronald\"][\"location\"]\n    \n    # 3. Jessica meeting: Travel from Chinatown to Golden Gate Park\n    travel = travel_times[(current_location, meetings[\"Jessica\"][\"location\"])]\n    current_time += travel  # travel to Golden Gate Park\n    # Jessica available_start is 13:45, so if we arrive earlier, we wait.\n    meeting_start = max(current_time, meetings[\"Jessica\"][\"available_start\"])\n    meeting_end = meeting_start + meetings[\"Jessica\"][\"min_duration\"]\n    if meeting_end > meetings[\"Jessica\"][\"available_end\"]:\n        raise ValueError(\"Cannot schedule Jessica meeting within available time.\")\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Jessica\"][\"location\"],\n        \"person\": \"Jessica\",\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    current_time = meeting_end\n    current_location = meetings[\"Jessica\"][\"location\"]\n    \n    # 4. William meeting: Travel from Golden Gate Park to North Beach\n    travel = travel_times[(current_location, meetings[\"William\"][\"location\"])]\n    current_time += travel  # travel to North Beach\n    meeting_start = max(current_time, meetings[\"William\"][\"available_start\"])\n    meeting_end = meeting_start + meetings[\"William\"][\"min_duration\"]\n    if meeting_end > meetings[\"William\"][\"available_end\"]:\n        raise ValueError(\"Cannot schedule William meeting within available time.\")\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"William\"][\"location\"],\n        \"person\": \"William\",\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    # For Ashley meeting, we may need to wait until a specific departure time.\n    # Current location becomes North Beach.\n    current_location = meetings[\"William\"][\"location\"]\n    \n    # 5. Ashley meeting: We want to arrive at Bayview exactly at her available_start 17:15.\n    desired_arrival = meetings[\"Ashley\"][\"available_start\"]  # 17:15 in minutes\n    # Travel from North Beach to Bayview:\n    travel = travel_times[(current_location, meetings[\"Ashley\"][\"location\"])]\n    # Calculate when we need to leave to arrive exactly at desired_arrival:\n    departure_time_needed = desired_arrival - travel\n    # If current_time is earlier than departure_time_needed, wait until then.\n    if current_time < departure_time_needed:\n        current_time = departure_time_needed\n    # Travel:\n    current_time += travel  # arrive at Bayview (should be desired_arrival)\n    meeting_start = max(current_time, meetings[\"Ashley\"][\"available_start\"])\n    meeting_end = meeting_start + meetings[\"Ashley\"][\"min_duration\"]\n    if meeting_end > meetings[\"Ashley\"][\"available_end\"]:\n        raise ValueError(\"Cannot schedule Ashley meeting within available time.\")\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Ashley\"][\"location\"],\n        \"person\": \"Ashley\",\n        \"start_time\": minutes_to_time_str(meeting_start),\n        \"end_time\": minutes_to_time_str(meeting_end)\n    })\n    \n    # Build final JSON result\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\n    \nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_454"
+        }
+    ]
+}

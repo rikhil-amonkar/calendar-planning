@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 23-25",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 26-27",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 28-29",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 30-34",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the total trip duration and starting day\n    total_days = 25\n    itinerary = []\n\n    # Define stay durations and constraints\n    stays = {\n        \"Valencia\": {\"duration\": 2, \"meet_days\": (3, 4)},\n        \"Oslo\": {\"duration\": 3, \"meet_days\": (13, 15)},\n        \"Lyon\": {\"duration\": 4},\n        \"Prague\": {\"duration\": 3},\n        \"Paris\": {\"duration\": 4},\n        \"Nice\": {\"duration\": 4},\n        \"Seville\": {\"duration\": 5, \"event_days\": (5, 9)},\n        \"Tallinn\": {\"duration\": 2},\n        \"Mykonos\": {\"duration\": 5, \"wedding_days\": (21, 25)},\n        \"Lisbon\": {\"duration\": 2}\n    }\n    \n    # Flight connections\n    flights = {\n        \"Lisbon\": [\"Paris\", \"Seville\"],\n        \"Paris\": [\"Lisbon\", \"Oslo\", \"Nice\", \"Valencia\", \"Lyon\"],\n        \"Lyon\": [\"Nice\", \"Prague\", \"Valencia\"],\n        \"Tallinn\": [\"Oslo\"],\n        \"Prague\": [\"Lyon\", \"Lisbon\", \"Oslo\", \"Paris\"],\n        \"Oslo\": [\"Tallinn\", \"Nice\", \"Paris\", \"Lyon\"],\n        \"Valencia\": [\"Paris\", \"Lisbon\", \"Lyon\", \"Seville\"],\n        \"Nice\": [\"Paris\", \"Lyon\", \"Mykonos\"],\n        \"Seville\": [\"Lisbon\", \"Paris\"],\n        \"Mykonos\": []\n    }\n\n    days = 1\n    visited_cities = []\n    \n    # Start with Valencia\n    visited_cities.append(\"Valencia\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Valencia']['duration'] - 1}\", \"place\": \"Valencia\"})\n    days += stays[\"Valencia\"][\"duration\"]\n    \n    # Meet friends in Valencia\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Valencia\", \"to\": \"Paris\"})\n    visited_cities.append(\"Paris\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Paris']['duration'] - 1}\", \"place\": \"Paris\"})\n    days += stays[\"Paris\"][\"duration\"]\n\n    # Travel to Lyon next\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Paris\", \"to\": \"Lyon\"})\n    visited_cities.append(\"Lyon\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Lyon']['duration'] - 1}\", \"place\": \"Lyon\"})\n    days += stays[\"Lyon\"][\"duration\"]\n\n    # Travel to Nice\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Lyon\", \"to\": \"Nice\"})\n    visited_cities.append(\"Nice\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Nice']['duration'] - 1}\", \"place\": \"Nice\"})\n    days += stays[\"Nice\"][\"duration\"]\n\n    # Travel to Seville\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Nice\", \"to\": \"Seville\"})\n    visited_cities.append(\"Seville\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Seville']['duration'] - 1}\", \"place\": \"Seville\"})\n    days += stays[\"Seville\"][\"duration\"]\n\n    # Now to Oslo\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Seville\", \"to\": \"Oslo\"})\n    visited_cities.append(\"Oslo\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Oslo']['duration'] - 1}\", \"place\": \"Oslo\"})\n    days += stays[\"Oslo\"][\"duration\"]\n\n    # Travel to Prague\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Oslo\", \"to\": \"Prague\"})\n    visited_cities.append(\"Prague\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Prague']['duration'] - 1}\", \"place\": \"Prague\"})\n    days += stays[\"Prague\"][\"duration\"]\n\n    # Travel to Tallinn\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Prague\", \"to\": \"Tallinn\"})\n    visited_cities.append(\"Tallinn\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Tallinn']['duration'] - 1}\", \"place\": \"Tallinn\"})\n    days += stays[\"Tallinn\"][\"duration\"]\n\n    # Travel to Lisbon\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Tallinn\", \"to\": \"Lisbon\"})\n    visited_cities.append(\"Lisbon\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Lisbon']['duration'] - 1}\", \"place\": \"Lisbon\"})\n    days += stays[\"Lisbon\"][\"duration\"]\n\n    # Finally travel to Mykonos\n    itinerary.append({\"flying\": f\"Day {days}-{days}\", \"from\": \"Lisbon\", \"to\": \"Mykonos\"})\n    visited_cities.append(\"Mykonos\")\n    itinerary.append({\"day_range\": f\"Day {days}-{days + stays['Mykonos']['duration'] - 1}\", \"place\": \"Mykonos\"})\n    days += stays[\"Mykonos\"][\"duration\"]\n\n    # Output the itinerary as JSON\n    return json.dumps(itinerary, indent=4)\n\n# Run the trip planner\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_1559"
+        }
+    ]
+}

@@ -1,0 +1,37 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Nancy",
+                        "start_time": "9:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Mary",
+                        "start_time": "11:17",
+                        "end_time": "12:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jessica",
+                        "start_time": "12:48",
+                        "end_time": "13:33"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the locations and travel times\nlocations = {\n    \"Financial District\": {},\n    \"Chinatown\": {},\n    \"Alamo Square\": {},\n    \"Bayview\": {},\n    \"Fisherman's Wharf\": {}\n}\n\ntravel_times = {\n    (\"Financial District\", \"Chinatown\"): 5,\n    (\"Financial District\", \"Alamo Square\"): 17,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Fisherman's Wharf\"): 10,\n    (\"Chinatown\", \"Financial District\"): 5,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Bayview\"): 22,\n    (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Alamo Square\", \"Chinatown\"): 16,\n    (\"Alamo Square\", \"Bayview\"): 16,\n    (\"Alamo Square\", \"Fisherman's Wharf\"): 19,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Bayview\", \"Chinatown\"): 18,\n    (\"Bayview\", \"Alamo Square\"): 16,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n    (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n    (\"Fisherman's Wharf\", \"Alamo Square\"): 20,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"Chinatown\", \"person\": \"Nancy\", \"start_time\": 9.5, \"end_time\": 13.5, \"duration\": 90},\n    {\"location\": \"Alamo Square\", \"person\": \"Mary\", \"start_time\": 7, \"end_time\": 21, \"duration\": 75},\n    {\"location\": \"Bayview\", \"person\": \"Jessica\", \"start_time\": 11.25, \"end_time\": 13.75, \"duration\": 45},\n    {\"location\": \"Fisherman's Wharf\", \"person\": \"Rebecca\", \"start_time\": 7, \"end_time\": 8.5, \"duration\": 45}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Financial District\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_309"
+        }
+    ]
+}

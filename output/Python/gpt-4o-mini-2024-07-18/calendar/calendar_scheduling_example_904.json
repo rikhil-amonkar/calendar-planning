@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "14:00",
+                "end_time": "14:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time():\n    # Meeting duration\n    meeting_duration = timedelta(minutes=30)\n\n    # Participants' busy times\n    daniel_busy_times = [\n        (datetime.strptime('09:30', '%H:%M'), datetime.strptime('10:30', '%H:%M')),\n        (datetime.strptime('12:00', '%H:%M'), datetime.strptime('12:30', '%H:%M')),\n        (datetime.strptime('13:00', '%H:%M'), datetime.strptime('14:00', '%H:%M')),\n        (datetime.strptime('14:30', '%H:%M'), datetime.strptime('15:00', '%H:%M')),\n        (datetime.strptime('15:30', '%H:%M'), datetime.strptime('16:00', '%H:%M')),\n    ]\n    \n    bradley_busy_times = [\n        (datetime.strptime('09:30', '%H:%M'), datetime.strptime('11:00', '%H:%M')),\n        (datetime.strptime('11:30', '%H:%M'), datetime.strptime('12:00', '%H:%M')),\n        (datetime.strptime('12:30', '%H:%M'), datetime.strptime('13:00', '%H:%M')),\n        (datetime.strptime('14:00', '%H:%M'), datetime.strptime('15:00', '%H:%M')),\n    ]\n    \n    # Days of the week\n    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']\n    \n    # Check for available slots\n    for day in days:\n        for hour in range(9, 17):  # Working hours from 9 to 17\n            start_time = datetime.strptime(f'{day} {hour}:00', '%A %H:%M')\n            end_time = start_time + meeting_duration\n            \n            # Check if this time slot is within busy schedules\n            if (end_time.hour < 17):  # Only consider time slots ending before 17:00\n                is_available = True\n                \n                # Check Daniel's availability\n                for start, end in daniel_busy_times:\n                    if (start_time < end and start < end_time):\n                        is_available = False\n                        break\n                \n                if is_available:\n                    # Check Bradley's availability\n                    for start, end in bradley_busy_times:\n                        if (start_time < end and start < end_time):\n                            is_available = False\n                            break\n                    \n                if is_available:\n                    return f'{start_time.strftime(\"%H:%M\")}:{end_time.strftime(\"%H:%M\")}', day\n\n# Call the function and print the output\nmeeting_time, meeting_day = find_meeting_time()\nprint(meeting_time, meeting_day)\n```",
+            "count": "calendar_scheduling_example_904"
+        }
+    ]
+}

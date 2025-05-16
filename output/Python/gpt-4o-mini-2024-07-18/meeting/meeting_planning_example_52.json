@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Barbara",
+                        "start_time": "13:15",
+                        "end_time": "14:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Barbara",
+                        "start_time": "13:15",
+                        "end_time": "14:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Constants for travel distances\nTRAVEL_TIME_RH_TO_RD = 14  # minutes\nTRAVEL_TIME_RD_TO_RH = 13  # minutes\n\n# Meeting constraints\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\nbarbara_start_time = datetime.strptime(\"13:15\", \"%H:%M\")\nbarbara_end_time = datetime.strptime(\"18:15\", \"%H:%M\")\nminimum_meeting_duration = timedelta(minutes=45)\n\n# Function to calculate the meeting schedule\ndef compute_meeting_schedule():\n    # Calculate possible meeting time window\n    meeting_start_time = max(barbara_start_time, arrival_time + timedelta(minutes=TRAVEL_TIME_RH_TO_RD))\n    meeting_end_time = barbara_end_time - minimum_meeting_duration\n    \n    # Check if meeting is possible within the constraints\n    if meeting_start_time + minimum_meeting_duration > meeting_end_time:\n        return None  # No feasible time for the meeting\n    \n    # Schedule the meeting\n    actual_meeting_start_time = meeting_start_time\n    actual_meeting_end_time = actual_meeting_start_time + minimum_meeting_duration\n    \n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": \"Richmond District\",\n            \"person\": \"Barbara\",\n            \"start_time\": actual_meeting_start_time.strftime(\"%H:%M\"),\n            \"end_time\": actual_meeting_end_time.strftime(\"%H:%M\"),\n        }\n    ]\n    \n    return {\"itinerary\": itinerary}\n\n# Compute the schedule\nschedule = compute_meeting_schedule()\n\n# Print the output in JSON format\nif schedule is not None:\n    print(json.dumps(schedule, indent=4))\nelse:\n    print(json.dumps({\"itinerary\": []}, indent=4))\n```",
+            "count": "meeting_planning_example_52"
+        }
+    ]
+}

@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "13:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "14:30",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Brian",
+                        "start_time": "16:37",
+                        "end_time": "17:07"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "13:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Brian",
+                        "start_time": "15:00",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "15:40",
+                        "end_time": "17:40"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom itertools import permutations\n\n# Helper function: convert minutes since midnight to H:MM (24-hour) format\ndef format_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Travel times in minutes between locations (as provided)\ntravel_times = {\n    \"Financial District\": {\n        \"Golden Gate Park\": 23,\n        \"Chinatown\": 5,\n        \"Union Square\": 9,\n        \"Fisherman's Wharf\": 10,\n        \"Pacific Heights\": 13,\n        \"North Beach\": 7\n    },\n    \"Golden Gate Park\": {\n        \"Financial District\": 26,\n        \"Chinatown\": 23,\n        \"Union Square\": 22,\n        \"Fisherman's Wharf\": 24,\n        \"Pacific Heights\": 16,\n        \"North Beach\": 24\n    },\n    \"Chinatown\": {\n        \"Financial District\": 5,\n        \"Golden Gate Park\": 23,\n        \"Union Square\": 7,\n        \"Fisherman's Wharf\": 8,\n        \"Pacific Heights\": 10,\n        \"North Beach\": 3\n    },\n    \"Union Square\": {\n        \"Financial District\": 9,\n        \"Golden Gate Park\": 22,\n        \"Chinatown\": 7,\n        \"Fisherman's Wharf\": 15,\n        \"Pacific Heights\": 15,\n        \"North Beach\": 10\n    },\n    \"Fisherman's Wharf\": {\n        \"Financial District\": 11,\n        \"Golden Gate Park\": 25,\n        \"Chinatown\": 12,\n        \"Union Square\": 13,\n        \"Pacific Heights\": 12,\n        \"North Beach\": 6\n    },\n    \"Pacific Heights\": {\n        \"Financial District\": 13,\n        \"Golden Gate Park\": 15,\n        \"Chinatown\": 11,\n        \"Union Square\": 12,\n        \"Fisherman's Wharf\": 13,\n        \"North Beach\": 9\n    },\n    \"North Beach\": {\n        \"Financial District\": 8,\n        \"Golden Gate Park\": 22,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Fisherman's Wharf\": 5,\n        \"Pacific Heights\": 8\n    }\n}\n\n# Define friend meeting constraints.\n# All times are in minutes since midnight.\nfriends = {\n    \"Stephanie\": {\n        \"location\": \"Golden Gate Park\",\n        \"available_start\": 11 * 60,       # 11:00 -> 660\n        \"available_end\": 15 * 60,         # 15:00 -> 900\n        \"duration\": 105\n    },\n    \"Karen\": {\n        \"location\": \"Chinatown\",\n        \"available_start\": 13 * 60 + 45,  # 13:45 -> 825\n        \"available_end\": 16 * 60 + 30,    # 16:30 -> 990\n        \"duration\": 15\n    },\n    \"Brian\": {\n        \"location\": \"Union Square\",\n        \"available_start\": 15 * 60,       # 15:00 -> 900\n        \"available_end\": 17 * 60 + 15,    # 17:15 -> 1035\n        \"duration\": 30\n    },\n    \"Rebecca\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"available_start\": 8 * 60,       # 8:00 -> 480\n        \"available_end\": 11 * 60 + 15,   # 11:15 -> 675\n        \"duration\": 30\n    },\n    \"Joseph\": {\n        \"location\": \"Pacific Heights\",\n        \"available_start\": 8 * 60 + 15,  # 8:15 -> 495\n        \"available_end\": 9 * 60 + 30,    # 9:30 -> 570\n        \"duration\": 60\n    },\n    \"Steven\": {\n        \"location\": \"North Beach\",\n        \"available_start\": 14 * 60 + 30, # 14:30 -> 870\n        \"available_end\": 20 * 60 + 45,   # 20:45 -> 1245\n        \"duration\": 120\n    }\n}\n\n# Starting conditions: Arrive at Financial District at 9:00AM\nstart_location = \"Financial District\"\nstart_time = 9 * 60  # 9:00 -> 540 minutes\n\n# Use backtracking to find the optimal (maximum meetings) schedule.\nbest_schedule = []\n\ndef backtrack(current_location, current_time, remaining, schedule):\n    global best_schedule\n    # Update best_schedule if current schedule has more meetings\n    if len(schedule) > len(best_schedule):\n        best_schedule = schedule.copy()\n    \n    for friend in list(remaining):\n        details = friends[friend]\n        # If current_location is the same as friend's location, travel time is 0.\n        if current_location == details[\"location\"]:\n            travel = 0\n        else:\n            travel = travel_times[current_location][details[\"location\"]]\n        arrival_time = current_time + travel\n        meeting_start = max(arrival_time, details[\"available_start\"])\n        meeting_end = meeting_start + details[\"duration\"]\n        # Check if meeting can finish before friend leaves.\n        if meeting_end <= details[\"available_end\"]:\n            # Append meeting event to schedule.\n            meeting = {\n                \"person\": friend,\n                \"location\": details[\"location\"],\n                \"start\": meeting_start,\n                \"end\": meeting_end\n            }\n            new_schedule = schedule.copy()\n            new_schedule.append(meeting)\n            new_remaining = remaining.copy()\n            new_remaining.remove(friend)\n            backtrack(details[\"location\"], meeting_end, new_remaining, new_schedule)\n\n# Prepare list of friend names.\nfriend_names = list(friends.keys())\nbacktrack(start_location, start_time, set(friend_names), [])\n\n# Build the itinerary in the expected JSON format using the best_schedule.\nitinerary = []\n# Reconstruct the meeting events with proper formatted times.\ncurrent_loc = start_location\ncurrent_t = start_time\n\nfor event in best_schedule:\n    details = friends[event[\"person\"]]\n    # Compute travel time from current location to friend's location (if different)\n    if current_loc == details[\"location\"]:\n        travel = 0\n    else:\n        travel = travel_times[current_loc][details[\"location\"]]\n    arrival_time = current_t + travel\n    meeting_start = max(arrival_time, details[\"available_start\"])\n    meeting_end = meeting_start + details[\"duration\"]\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": details[\"location\"],\n        \"person\": event[\"person\"],\n        \"start_time\": format_time(meeting_start),\n        \"end_time\": format_time(meeting_end)\n    })\n    current_loc = details[\"location\"]\n    current_t = meeting_end\n\noutput = {\"itinerary\": itinerary}\n\nprint(json.dumps(output, indent=2))\n",
+            "count": "meeting_planning_example_502"
+        }
+    ]
+}

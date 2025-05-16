@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Daniel",
+                        "start_time": "9:12",
+                        "end_time": "9:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kevin",
+                        "start_time": "13:41",
+                        "end_time": "14:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Betty",
+                        "start_time": "14:31",
+                        "end_time": "15:01"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Steven",
+                        "start_time": "16:30",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Lisa",
+                        "start_time": "19:15",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, I need to solve this problem where I have to create a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering travel times and meeting constraints.\n\nFirst, I'll start by understanding the input parameters. There are travel times between different locations and constraints for each friend, including their availability and the minimum meeting duration.\n\nI think the approach should involve generating all possible permutations of the friends and checking each permutation to see if it fits within the constraints. For each permutation, I'll calculate the travel times and ensure that each meeting starts and ends within the friend's available time.\n\nI'll need to convert time strings to minutes to make calculations easier. Then, for each permutation, I'll track the current location and time, adding each meeting to the itinerary if it fits. If a permutation is valid and meets more friends than the current best, I'll update the best itinerary.\n\nI should also make sure to handle the travel times correctly between each location and ensure that the meeting durations don't exceed the friends' availability.\n\nFinally, I'll output the best itinerary in the required JSON format.\n</think>\n\n```python\nimport itertools\n\ndef time_to_minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    h = m // 60\n    m = m % 60\n    return f\"{h}:{m:02d}\"\n\ntravel_times = {\n    'Mission District': {\n        'The Castro': 7,\n        'Nob Hill': 12,\n        'Presidio': 25,\n        'Marina District': 19,\n        'Pacific Heights': 16,\n        'Golden Gate Park': 17,\n        'Chinatown': 16,\n        'Richmond District': 20,\n    },\n    'The Castro': {\n        'Mission District': 7,\n        'Nob Hill': 16,\n        'Presidio': 20,\n        'Marina District': 21,\n        'Pacific Heights': 16,\n        'Golden Gate Park': 11,\n        'Chinatown': 22,\n        'Richmond District': 16,\n    },\n    'Nob Hill': {\n        'Mission District': 13,\n        'The Castro': 17,\n        'Presidio': 17,\n        'Marina District': 11,\n        'Pacific Heights': 8,\n        'Golden Gate Park': 17,\n        'Chinatown': 6,\n        'Richmond District': 14,\n    },\n    'Presidio': {\n        'Mission District': 26,\n        'The Castro': 21,\n        'Nob Hill': 18,\n        'Marina District': 11,\n        'Pacific Heights': 11,\n        'Golden Gate Park': 12,\n        'Chinatown': 21,\n        'Richmond District': 7,\n    },\n    'Marina District': {\n        'Mission District': 20,\n        'The Castro': 22,\n        'Nob Hill': 12,\n        'Presidio': 10,\n        'Pacific Heights': 7,\n        'Golden Gate Park': 18,\n        'Chinatown': 15,\n        'Richmond District': 11,\n    },\n    'Pacific Heights': {\n        'Mission District': 15,\n        'The Castro': 16,\n        'Nob Hill': 8,\n        'Presidio': 11,\n        'Marina District': 6,\n        'Golden Gate Park': 15,\n        'Chinatown': 11,\n        'Richmond District': 12,\n    },\n    'Golden Gate Park': {\n        'Mission District': 17,\n        'The Castro': 13,\n        'Nob Hill': 20,\n        'Presidio': 11,\n        'Marina District': 16,\n        'Pacific Heights': 16,\n        'Chinatown': 23,\n        'Richmond District': 7,\n    },\n    'Chinatown': {\n        'Mission District': 17,\n        'The Castro': 22,\n        'Nob Hill': 9,\n        'Presidio': 19,\n        'Marina District': 12,\n        'Pacific Heights': 10,\n        'Golden Gate Park': 23,\n        'Richmond District': 20,\n    },\n    'Richmond District': {\n        'Mission District': 20,\n        'The Castro': 16,\n        'Nob Hill': 17,\n        'Presidio': 7,\n        'Marina District': 9,\n        'Pacific Heights': 10,\n        'Golden Gate Park': 9,\n        'Chinatown': 20,\n    },\n}\n\nfriends = [\n    {'name': 'Lisa', 'location': 'The Castro', 'start': '19:15', 'end': '21:15', 'duration': 120},\n    {'name': 'Daniel', 'location': 'Nob Hill', 'start': '8:15', 'end': '11:00', 'duration': 15},\n    {'name': 'Elizabeth', 'location': 'Presidio', 'start': '21:15', 'end': '22:15', 'duration': 45},\n    {'name': 'Steven', 'location': 'Marina District', 'start': '16:30', 'end': '20:45', 'duration': 90},\n    {'name': 'Timothy', 'location': 'Pacific Heights', 'start': '12:00', 'end': '18:00', 'duration': 90},\n    {'name': 'Ashley', 'location': 'Golden Gate Park', 'start': '20:45', 'end': '21:45', 'duration': 60},\n    {'name': 'Kevin', 'location': 'Chinatown', 'start': '12:00', 'end': '19:00', 'duration': 30},\n    {'name': 'Betty', 'location': 'Richmond District', 'start': '13:15', 'end': '15:45', 'duration': 30},\n]\n\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Mission District'\n    current_time = 540  # 9:00 AM\n    itinerary = []\n    valid = True\n    for friend in perm:\n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        meet_start = max(arrival, start)\n        meet_end = meet_start + friend['duration']\n        if meet_end > end:\n            valid = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meet_start),\n            'end_time': minutes_to_time(meet_end)\n        })\n        current_location = friend['location']\n        current_time = meet_end\n    if valid:\n        if len(itinerary) > len(best_itinerary):\n            best_itinerary = itinerary.copy()\n\nprint('SOLUTION:')\nprint('{ \"itinerary\": [')\nfor i, meeting in enumerate(best_itinerary):\n    print(f'    {{\"action\": \"meet\", \"location\": \"{meeting[\"location\"]}\", \"person\": \"{meeting[\"person\"]}\", \"start_time\": \"{meeting[\"start_time\"]}\", \"end_time\": \"{meeting[\"end_time\"]}\"}}' + ('' if i == len(best_itinerary)-1 else ','))\nprint(']}')\n```",
+            "count": "meeting_planning_example_701"
+        }
+    ]
+}

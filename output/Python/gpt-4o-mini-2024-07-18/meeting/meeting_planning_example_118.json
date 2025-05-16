@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Richard",
+                        "start_time": "9:17",
+                        "end_time": "11:17"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Richard",
+                        "start_time": "9:17",
+                        "end_time": "11:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Constants for travel times (in minutes)\nTRAVEL_TIMES = {\n    (\"Bayview\", \"Union Square\"): 17,\n    (\"Bayview\", \"Presidio\"): 31,\n    (\"Union Square\", \"Presidio\"): 24,\n}\n\n# Constraints\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\nrichard_availability_start = datetime.strptime(\"08:45\", \"%H:%M\")\nrichard_availability_end = datetime.strptime(\"13:00\", \"%H:%M\")\ncharles_availability_start = datetime.strptime(\"09:45\", \"%H:%M\")\ncharles_availability_end = datetime.strptime(\"13:00\", \"%H:%M\")\nmeeting_duration = timedelta(minutes=120)\n\n# Functions to compute schedules\ndef get_travel_time(from_loc, to_loc):\n    return TRAVEL_TIMES.get((from_loc, to_loc), 0)\n\ndef compute_schedule():\n    schedule = []\n    current_time = arrival_time\n    \n    # First, meet Richard\n    if current_time < richard_availability_start:\n        current_time = richard_availability_start\n        \n    end_time_richard = current_time + meeting_duration\n    if end_time_richard > richard_availability_end:\n        end_time_richard = richard_availability_end\n\n    travel_to_union_square = get_travel_time(\"Bayview\", \"Union Square\")\n    current_time += timedelta(minutes=travel_to_union_square)\n\n    if current_time + meeting_duration <= richard_availability_end:\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Union Square\",\n            \"person\": \"Richard\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": (current_time + meeting_duration).strftime(\"%H:%M\"),\n        })\n        current_time += meeting_duration  # Update current time after meeting\n    \n    # Now, travel to meet Charles\n    travel_to_presidio = get_travel_time(\"Union Square\", \"Presidio\")\n    current_time += timedelta(minutes=travel_to_presidio)\n    \n    if current_time < charles_availability_start:\n        current_time = charles_availability_start\n        \n    end_time_charles = current_time + meeting_duration\n    if end_time_charles > charles_availability_end:\n        end_time_charles = charles_availability_end\n\n    if current_time + meeting_duration <= charles_availability_end:\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Charles\",\n            \"start_time\": current_time.strftime(\"%H:%M\"),\n            \"end_time\": (current_time + meeting_duration).strftime(\"%H:%M\"),\n        })\n    \n    return {\"itinerary\": schedule}\n\n# Computing the schedule\nitinerary = compute_schedule()\n\n# Output the result as JSON\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "meeting_planning_example_118"
+        }
+    ]
+}

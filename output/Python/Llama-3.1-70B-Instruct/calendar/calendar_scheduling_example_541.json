@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(participants, meeting_duration, work_hours, day):\n    \"\"\"\n    Find a suitable time for a meeting based on the participants' schedules and constraints.\n\n    Args:\n    participants (dict): A dictionary where the keys are the participants' names and the values are lists of tuples representing their busy time ranges.\n    meeting_duration (int): The duration of the meeting in minutes.\n    work_hours (tuple): A tuple representing the work hours (start, end) in minutes.\n    day (str): The day of the week.\n\n    Returns:\n    tuple: A tuple representing the proposed meeting time range (start, end) in minutes and the day of the week.\n    \"\"\"\n\n    # Convert work hours to minutes\n    work_start = work_hours[0].split(':')\n    work_start_minutes = int(work_start[0]) * 60 + int(work_start[1])\n    work_end = work_hours[1].split(':')\n    work_end_minutes = int(work_end[0]) * 60 + int(work_end[1])\n\n    # Initialize the proposed meeting time range\n    proposed_time = None\n\n    # Iterate over the possible time ranges\n    for time in range(work_start_minutes, work_end_minutes - meeting_duration + 1):\n        # Assume the current time range is available\n        is_available = True\n\n        # Check if the current time range is available for all participants\n        for participant, busy_times in participants.items():\n            for busy_time in busy_times:\n                busy_start = busy_time[0].split(':')\n                busy_start_minutes = int(busy_start[0]) * 60 + int(busy_start[1])\n                busy_end = busy_time[1].split(':')\n                busy_end_minutes = int(busy_end[0]) * 60 + int(busy_end[1])\n\n                # If the current time range overlaps with a busy time range, it's not available\n                if (time >= busy_start_minutes and time < busy_end_minutes) or (time + meeting_duration > busy_start_minutes and time + meeting_duration <= busy_end_minutes):\n                    is_available = False\n                    break\n\n            # If the current time range is not available, break the loop\n            if not is_available:\n                break\n\n        # If the current time range is available, propose it\n        if is_available:\n            proposed_time = (time, time + meeting_duration)\n            break\n\n    # Convert the proposed meeting time range to HH:MM format\n    proposed_time_start = datetime.strptime(str(proposed_time[0] // 60) + ':' + str(proposed_time[0] % 60), '%H:%M')\n    proposed_time_end = datetime.strptime(str(proposed_time[1] // 60) + ':' + str(proposed_time[1] % 60), '%H:%M')\n\n    return proposed_time_start.strftime('%H:%M') + '-' + proposed_time_end.strftime('%H:%M'), day\n\n\n# Define the participants' schedules\nparticipants = {\n    'Kayla': [('10:00', '10:30'), ('14:30', '16:00')],\n    'Rebecca': [('9:00', '13:00'), ('13:30', '15:00'), ('15:30', '16:00')]\n}\n\n# Define the meeting duration, work hours, and day\nmeeting_duration = 60\nwork_hours = ('9:00', '17:00')\nday = 'Monday'\n\n# Find a suitable time for the meeting\nproposed_time, day = find_meeting_time(participants, meeting_duration, work_hours, day)\n\nprint(f'Proposed meeting time: {proposed_time} on {day}')\n```",
+            "count": "calendar_scheduling_example_541"
+        }
+    ]
+}

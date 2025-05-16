@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60   # 17:00 in minutes\n\n    # Convert schedules to minutes since midnight\n    christine_busy = [\n        (11 * 60, 11 * 60 + 30),   # 11:00-11:30\n        (15 * 60, 15 * 60 + 30)    # 15:00-15:30\n    ]\n    \n    helen_busy = [\n        (9 * 60 + 30, 10 * 60 + 30),  # 9:30-10:30\n        (11 * 60, 11 * 60 + 30),      # 11:00-11:30\n        (12 * 60, 12 * 60 + 30),      # 12:00-12:30\n        (13 * 60 + 30, 16 * 60),      # 13:30-16:00\n        (16 * 60 + 30, 17 * 60)       # 16:30-17:00\n    ]\n    \n    # Helen cannot meet after 15:00\n    helen_no_meet_after = 15 * 60  # 15:00\n    \n    meeting_duration = 30  # minutes\n    \n    # Combine and sort all busy intervals for both participants\n    all_busy = christine_busy + helen_busy\n    all_busy.sort()\n    \n    # Find available slots\n    available_slots = []\n    previous_end = work_start\n    \n    for start, end in all_busy:\n        if start > previous_end:\n            available_slots.append((previous_end, start))\n        previous_end = max(previous_end, end)\n    \n    if work_end > previous_end:\n        available_slots.append((previous_end, work_end))\n    \n    # Filter slots that meet all constraints\n    valid_slots = []\n    for start, end in available_slots:\n        # Ensure slot is at least meeting_duration long\n        if end - start >= meeting_duration:\n            # Ensure Helen can meet (before 15:00)\n            slot_end = start + meeting_duration\n            if slot_end <= helen_no_meet_after:\n                valid_slots.append((start, slot_end))\n    \n    if not valid_slots:\n        return None\n    \n    # Select the earliest valid slot\n    meeting_start, meeting_end = valid_slots[0]\n    \n    # Convert back to HH:MM format\n    def minutes_to_time(minutes):\n        hours = minutes // 60\n        mins = minutes % 60\n        return f\"{hours:02d}:{mins:02d}\"\n    \n    start_time = minutes_to_time(meeting_start)\n    end_time = minutes_to_time(meeting_end)\n    \n    return f\"Monday {start_time}:{end_time}\"\n\n# Execute and print the result\nprint(find_meeting_time())\n```",
+            "count": "calendar_scheduling_example_579"
+        }
+    ]
+}

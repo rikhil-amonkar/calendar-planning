@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "9:16",
+                        "end_time": "9:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "17:00",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joseph",
+                        "start_time": "18:15",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Sarah",
+                        "start_time": "19:04",
+                        "end_time": "20:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Robert",
+                        "start_time": "21:06",
+                        "end_time": "21:21"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define travel times between locations\ntravel_times = {\n    'Golden Gate Park': {'Haight-Ashbury': 7, 'Sunset District': 10, 'Marina District': 16, 'Financial District': 26, 'Union Square': 22},\n    'Haight-Ashbury': {'Golden Gate Park': 7, 'Sunset District': 15, 'Marina District': 17, 'Financial District': 21, 'Union Square': 17},\n    'Sunset District': {'Golden Gate Park': 11, 'Haight-Ashbury': 15, 'Marina District': 21, 'Financial District': 30, 'Union Square': 30},\n    'Marina District': {'Golden Gate Park': 18, 'Haight-Ashbury': 16, 'Sunset District': 19, 'Financial District': 17, 'Union Square': 16},\n    'Financial District': {'Golden Gate Park': 23, 'Haight-Ashbury': 19, 'Sunset District': 31, 'Marina District': 15, 'Union Square': 9},\n    'Union Square': {'Golden Gate Park': 22, 'Haight-Ashbury': 18, 'Sunset District': 26, 'Marina District': 18, 'Financial District': 9}\n}\n\n# Define meeting constraints\nmeetings = {\n    'Sarah': {'location': 'Haight-Ashbury','start_time': '17:00', 'end_time': '21:30', 'duration': 105},\n    'Patricia': {'location': 'Sunset District','start_time': '17:00', 'end_time': '19:45', 'duration': 45},\n    'Matthew': {'location': 'Marina District','start_time': '09:15', 'end_time': '12:00', 'duration': 15},\n    'Joseph': {'location': 'Financial District','start_time': '14:15', 'end_time': '18:45', 'duration': 30},\n    'Robert': {'location': 'Union Square','start_time': '10:15', 'end_time': '21:45', 'duration': 15}\n}\n\ndef calculate_meeting_time(current_time, travel_time, meeting_duration):\n    meeting_start_time = add_time(current_time, travel_time)\n    meeting_end_time = add_time(meeting_start_time, meeting_duration)\n    return meeting_start_time, meeting_end_time\n\ndef add_time(time, minutes):\n    hours, mins = map(int, time.split(':'))\n    mins += minutes\n    hours += mins // 60\n    mins %= 60\n    return f'{hours}:{mins:02d}'\n\ndef is_meeting_possible(current_time, meeting_start_time, meeting_end_time):\n    return meeting_start_time <= current_time < meeting_end_time\n\ndef plan_meetings():\n    current_time = '09:00'\n    current_location = 'Golden Gate Park'\n    itinerary = []\n\n    for person, meeting in meetings.items():\n        travel_time = travel_times[current_location][meeting['location']]\n        meeting_start_time, meeting_end_time = calculate_meeting_time(current_time, travel_time, meeting['duration'])\n        if is_meeting_possible(meeting_start_time, meeting['start_time'], meeting['end_time']):\n            itinerary.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': person,\n           'start_time': meeting_start_time,\n                'end_time': meeting_end_time\n            })\n            current_time = meeting_end_time\n            current_location = meeting['location']\n\n    return itinerary\n\ndef main():\n    itinerary = plan_meetings()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_402"
+        }
+    ]
+}

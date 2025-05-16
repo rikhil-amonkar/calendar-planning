@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "14:00",
+                "end_time": "14:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "14:00",
+                "end_time": "14:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import time, timedelta, datetime\n\n# Define a helper function to convert hours and minutes to minutes from midnight\ndef hm_to_minutes(h, m):\n    return h * 60 + m\n\n# Helper function to convert minutes into HH:MM format string\ndef minutes_to_hm(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Working day start and end in minutes (9:00 to 17:00)\nwork_start = hm_to_minutes(9, 0)\nwork_end = hm_to_minutes(17, 0)\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# Define the busy schedules (in minutes) for each participant on Monday\n# Format: (start, end) where start and end are minutes from midnight.\nbusy_intervals = [\n    # Patrick's busy intervals\n    (hm_to_minutes(9, 0), hm_to_minutes(9, 30)),\n    (hm_to_minutes(10, 0), hm_to_minutes(10, 30)),\n    (hm_to_minutes(13, 30), hm_to_minutes(14, 0)),\n    (hm_to_minutes(16, 0), hm_to_minutes(16, 30)),\n    \n    # Kayla's busy intervals\n    (hm_to_minutes(12, 30), hm_to_minutes(13, 30)),\n    (hm_to_minutes(15, 0), hm_to_minutes(15, 30)),\n    (hm_to_minutes(16, 0), hm_to_minutes(16, 30)),\n    \n    # Carl's busy intervals\n    (hm_to_minutes(10, 30), hm_to_minutes(11, 0)),\n    (hm_to_minutes(12, 0), hm_to_minutes(12, 30)),\n    (hm_to_minutes(13, 0), hm_to_minutes(13, 30)),\n    (hm_to_minutes(14, 30), hm_to_minutes(17, 0)),\n    \n    # Christian's busy intervals\n    (hm_to_minutes(9, 0), hm_to_minutes(12, 30)),\n    (hm_to_minutes(13, 0), hm_to_minutes(14, 0)),\n    (hm_to_minutes(14, 30), hm_to_minutes(17, 0))\n]\n\n# First, sort the intervals by start time\nbusy_intervals.sort(key=lambda interval: interval[0])\n\n# Merge overlapping busy intervals\nmerged_busy = []\nfor interval in busy_intervals:\n    if not merged_busy:\n        merged_busy.append(interval)\n    else:\n        last = merged_busy[-1]\n        # If intervals overlap or touch, merge them.\n        if interval[0] <= last[1]:\n            merged_busy[-1] = (last[0], max(last[1], interval[1]))\n        else:\n            merged_busy.append(interval)\n\n# Find free intervals within the working hours\nfree_intervals = []\n\n# If there is free time before first busy interval\nif work_start < merged_busy[0][0]:\n    free_intervals.append((work_start, merged_busy[0][0]))\n\n# Between merged busy intervals\nfor i in range(len(merged_busy) - 1):\n    free_intervals.append((merged_busy[i][1], merged_busy[i+1][0]))\n\n# If there is free time after the last busy interval\nif merged_busy[-1][1] < work_end:\n    free_intervals.append((merged_busy[-1][1], work_end))\n\n# Look for the first free interval that fits the meeting_duration\nmeeting_slot = None\nfor start, end in free_intervals:\n    if end - start >= meeting_duration:\n        meeting_slot = (start, start + meeting_duration)\n        break\n\n# Format the result\nif meeting_slot:\n    meeting_time_str = f\"{minutes_to_hm(meeting_slot[0])}:{minutes_to_hm(meeting_slot[1])}\"\n    day_of_week = \"Monday\"\n    print(f\"{day_of_week} {meeting_time_str}\")\nelse:\n    print(\"No available slot found during working hours.\")\n'''",
+            "count": "calendar_scheduling_example_172"
+        }
+    ]
+}

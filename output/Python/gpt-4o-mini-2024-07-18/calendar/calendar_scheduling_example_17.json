@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the working hours and the meeting duration\nstart_hour = 9  # 9:00 AM\nend_hour = 17   # 5:00 PM\nmeeting_duration = timedelta(minutes=30)  # 30 minutes\n\n# Define the existing schedules\nmargaret_schedule = [\n    (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n    (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n    (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n    (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n    (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\")),\n]\n\ndonna_schedule = [\n    (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n    (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\")),\n]\n\nhelen_schedule = [\n    (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n    (datetime.strptime(\"10:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n    (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")),\n    (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n    (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n]\n\n# Define the day of the week\nday_of_week = \"Monday\"\n\ndef is_time_slot_available(start, end, schedule):\n    for busy_start, busy_end in schedule:\n        if busy_start < end and start < busy_end:\n            return False\n    return True\n\n# Iterate through each half-hour time slot during working hours to find an available slot\ncurrent_time = datetime.strptime(f\"{day_of_week} {start_hour:02}:00\", \"%A %H:%M\")\n\nwhile current_time + meeting_duration <= datetime.strptime(f\"{day_of_week} {end_hour:02}:00\", \"%A %H:%M\"):\n    meeting_start = current_time\n    meeting_end = current_time + meeting_duration\n    \n    if is_time_slot_available(meeting_start, meeting_end, margaret_schedule) and \\\n       is_time_slot_available(meeting_start, meeting_end, donna_schedule) and \\\n       is_time_slot_available(meeting_start, meeting_end, helen_schedule) and \\\n       meeting_end <= datetime.strptime(f\"{day_of_week} 13:30\", \"%A %H:%M\"):  # Helen's constraint\n        print(f\"{meeting_start.strftime('%H:%M')}:{meeting_end.strftime('%H:%M')}\")\n        print(day_of_week)\n        break\n    \n    current_time += timedelta(minutes=30)  # Move to the next half-hour slot\n```",
+            "count": "calendar_scheduling_example_17"
+        }
+    ]
+}

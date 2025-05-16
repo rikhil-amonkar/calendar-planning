@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "16:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Jessica",
+                        "start_time": "16:45",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "18:30",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "16:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Jessica",
+                        "start_time": "16:45",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "18:30",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\ndef minutes_to_str(m):\n    # convert minutes since midnight to \"H:MM\" 24-hour format (without leading zero for hour)\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\ndef compute_schedule(start_location, start_time, friends, travel_times, order):\n    itinerary = []\n    current_location = start_location\n    current_time = start_time\n    valid = True\n    total_meetings = 0\n    \n    # For each friend in the given order\n    for friend in order:\n        # Calculate travel time from current location to friend's meeting location.\n        if current_location == friend['location']:\n            travel = 0\n        else:\n            travel = travel_times[current_location][friend['location']]\n        arrival_time = current_time + travel\n        # If arriving before availability, must wait until friend is available.\n        meeting_start = max(arrival_time, friend['avail_start'])\n        meeting_end = meeting_start + friend['min_meeting']\n        # Check if meeting fits within friend's availability window.\n        if meeting_end > friend['avail_end']:\n            valid = False\n            break\n        # Append meeting record to itinerary.\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend['location'],\n            \"person\": friend['person'],\n            \"start_time\": minutes_to_str(meeting_start),\n            \"end_time\": minutes_to_str(meeting_end)\n        })\n        # Update current time and location.\n        current_time = meeting_end\n        current_location = friend['location']\n        total_meetings += 1\n    return valid, itinerary, current_time\n\ndef main():\n    # Define travel times (in minutes) as a nested dictionary.\n    travel_times = {\n        \"Bayview\": {\n            \"Embarcadero\": 19,\n            \"Richmond District\": 25,\n            \"Fisherman's Wharf\": 25,\n            \"Bayview\": 0\n        },\n        \"Embarcadero\": {\n            \"Bayview\": 21,\n            \"Richmond District\": 21,\n            \"Fisherman's Wharf\": 6,\n            \"Embarcadero\": 0\n        },\n        \"Richmond District\": {\n            \"Bayview\": 26,\n            \"Embarcadero\": 19,\n            \"Fisherman's Wharf\": 18,\n            \"Richmond District\": 0\n        },\n        \"Fisherman's Wharf\": {\n            \"Bayview\": 26,\n            \"Embarcadero\": 8,\n            \"Richmond District\": 18,\n            \"Fisherman's Wharf\": 0\n        }\n    }\n    \n    # Times in minutes since midnight.\n    # 9:00AM = 9*60 = 540\n    # Jessica: 16:45 = 16*60+45 = 1005, 19:00 = 1140\n    # Sandra: 18:30 = 18*60+30 = 1110, 21:45 = 1305\n    # Jason: 16:00 = 960, 16:45 = 1005\n    friends_data = [\n        {\n            \"person\": \"Jessica\",\n            \"location\": \"Embarcadero\",\n            \"avail_start\": 1005,  # 16:45\n            \"avail_end\": 1140,    # 19:00\n            \"min_meeting\": 30\n        },\n        {\n            \"person\": \"Sandra\",\n            \"location\": \"Richmond District\",\n            \"avail_start\": 1110,  # 18:30\n            \"avail_end\": 1305,    # 21:45\n            \"min_meeting\": 120\n        },\n        {\n            \"person\": \"Jason\",\n            \"location\": \"Fisherman's Wharf\",\n            \"avail_start\": 960,   # 16:00\n            \"avail_end\": 1005,    # 16:45\n            \"min_meeting\": 30\n        }\n    ]\n    \n    start_location = \"Bayview\"\n    start_time = 540  #9:00AM\n    \n    best_itinerary = None\n    best_finish_time = None\n    best_count = 0\n    \n    # Try all permutations of the friends list.\n    for order in itertools.permutations(friends_data):\n        valid, itinerary, finish_time = compute_schedule(start_location, start_time, friends_data, travel_times, order)\n        if valid:\n            count = len(itinerary)\n            # We want to maximize the number of meetings.\n            if count > best_count:\n                best_count = count\n                best_itinerary = itinerary\n                best_finish_time = finish_time\n            elif count == best_count:\n                # tie-breaker: choose one that finishes earlier\n                if best_finish_time is None or finish_time < best_finish_time:\n                    best_itinerary = itinerary\n                    best_finish_time = finish_time\n\n    # If no valid itinerary meeting any friend was found, plan empty itinerary.\n    result = {\"itinerary\": best_itinerary if best_itinerary is not None else []}\n    print(json.dumps(result, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_215"
+        }
+    ]
+}

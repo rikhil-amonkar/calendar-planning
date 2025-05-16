@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 12-10",
+                        "place": "Vienna"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-10",
+                        "place": "Venice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define trip parameters\ntotal_days = 10\nstay_venice = 6\nstay_mykonos = 2\nstay_vienna = 4\nworkshop_days = (5, 10)\n\n# Compute the travel plan\nitinerary = []\n\n# Days in Venice and workshop constraints\nitinerary.append({'day_range': f'Day 1-{stay_venice}', 'place': 'Venice'})\nitinerary.append({'flying': f'Day {stay_venice}-{stay_venice}', 'from': 'Venice', 'to': 'Mykonos'})\nitinerary.append({'day_range': f'Day {stay_venice + 1}-{stay_venice + stay_mykonos}', 'place': 'Mykonos'})\nitinerary.append({'flying': f'Day {stay_venice + stay_mykonos}-{stay_venice + stay_mykonos}', 'from': 'Mykonos', 'to': 'Vienna'})\nitinerary.append({'day_range': f'Day {stay_venice + stay_mykonos + 1}-{total_days}', 'place': 'Vienna'})\n\n# Add workshop days and ensure it's within the Venice stay\nif workshop_days[0] <= stay_venice <= workshop_days[1]:\n    itinerary = [{\n        'day_range': f'Day 1-{workshop_days[0] - 1}', 'place': 'Venice'\n    }] + [{\n        'flying': f'Day {workshop_days[0]}-{workshop_days[0]}', 'from': 'Venice', 'to': 'Mykonos'\n    }] + [{\n        'day_range': f'Day {workshop_days[0] + 1}-{workshop_days[1]}', 'place': 'Venice'\n    }] + [{\n        'flying': f'Day {workshop_days[1] + 1}-{workshop_days[1] + 1}', 'from': 'Venice', 'to': 'Vienna'\n    }] + [{\n        'day_range': f'Day {workshop_days[1] + 2}-{total_days}', 'place': 'Vienna'\n    }]\n    \n# Output the itinerary as JSON\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_21"
+        }
+    ]
+}

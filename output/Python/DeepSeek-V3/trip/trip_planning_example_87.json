@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 7-7",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 7\n    days_in_riga = 2\n    days_in_amsterdam = 2\n    days_in_mykonos = 5\n    relatives_in_riga_between_day = (1, 2)\n    \n    # Direct flights available\n    direct_flights = {\n        'Amsterdam': ['Mykonos'],\n        'Mykonos': ['Amsterdam'],\n        'Riga': ['Amsterdam'],\n        'Amsterdam': ['Riga']\n    }\n    \n    # Validate if the given constraints are possible with direct flights\n    # We need to visit Riga, Amsterdam, and Mykonos with the given days\n    # Total days should sum to 7 (2 + 2 + 5 - overlap if any)\n    # But since we have to spend exactly those days, we need to find a sequence\n    \n    # Possible sequences considering direct flights:\n    # 1. Riga -> Amsterdam -> Mykonos\n    # 2. Riga -> Mykonos (not possible, no direct flight)\n    # 3. Amsterdam -> Riga -> Mykonos (not possible, no direct flight Riga -> Mykonos)\n    # 4. Amsterdam -> Mykonos -> Riga (but Riga needs to be visited between day 1-2)\n    \n    # The only possible sequence is Riga -> Amsterdam -> Mykonos\n    \n    # Verify if the sequence works with the constraints\n    # Day 1-2: Riga (must include relatives visit between day 1-2)\n    # Day 3: Fly to Amsterdam\n    # Day 4-5: Amsterdam\n    # Day 6: Fly to Mykonos\n    # Day 7-11: Mykonos (but we have only 7 days)\n    \n    # This exceeds total days. Need to adjust.\n    \n    # Alternative approach: Since we must spend 5 days in Mykonos, 2 in Riga, and 2 in Amsterdam,\n    # but total is 7, some days must overlap or be shared (which is not possible)\n    # Hence, the constraints are impossible to satisfy exactly.\n    \n    # However, let's try to find the closest possible itinerary\n    \n    # Since Mykonos requires 5 days, we have to prioritize it\n    # Possible sequence: Mykonos -> Amsterdam -> Riga\n    # But no direct flight from Mykonos to Riga\n    \n    # Another sequence: Amsterdam -> Mykonos -> Riga\n    # Day 1-2: Amsterdam\n    # Day 3: Fly to Mykonos\n    # Day 4-8: Mykonos (but only 7 days total)\n    # Then no time for Riga\n    \n    # Another sequence: Riga -> Amsterdam -> Mykonos\n    # Day 1-2: Riga\n    # Day 3: Fly to Amsterdam\n    # Day 4-5: Amsterdam\n    # Day 6: Fly to Mykonos\n    # Day 7: Mykonos (only 1 day, but need 5)\n    \n    # Not possible to satisfy all constraints\n    \n    # Given the constraints, it's impossible to visit all three cities with the exact days specified\n    # So we'll prioritize the constraints in order:\n    # 1. Must spend 2 days in Riga with relatives between day 1-2\n    # 2. Must spend 5 days in Mykonos\n    # 3. Spend 2 days in Amsterdam if possible\n    \n    # The only possible partial itinerary is:\n    # Day 1-2: Riga (satisfies relatives visit)\n    # Day 3: Fly to Amsterdam\n    # Day 4-5: Amsterdam (2 days)\n    # Then no time left for Mykonos\n    \n    # Or:\n    # Day 1-2: Riga\n    # Day 3: Fly to Amsterdam\n    # Day 4: Amsterdam (1 day)\n    # Day 5: Fly to Mykonos\n    # Day 6-7: Mykonos (2 days)\n    # But this doesn't satisfy 5 days in Mykonos or 2 in Amsterdam\n    \n    # Given the impossibility, we'll output the closest possible itinerary\n    \n    itinerary = []\n    \n    # Start with Riga to satisfy relatives visit\n    itinerary.append({'day_range': 'Day 1-2', 'place': 'Riga'})\n    \n    # Fly to Amsterdam on Day 3\n    itinerary.append({'flying': 'Day 3-3', 'from': 'Riga', 'to': 'Amsterdam'})\n    \n    # Stay in Amsterdam for 2 days (Day 4-5)\n    itinerary.append({'day_range': 'Day 4-5', 'place': 'Amsterdam'})\n    \n    # Fly to Mykonos on Day 6\n    itinerary.append({'flying': 'Day 6-6', 'from': 'Amsterdam', 'to': 'Mykonos'})\n    \n    # Stay in Mykonos for the remaining day (Day 7)\n    itinerary.append({'day_range': 'Day 7-7', 'place': 'Mykonos'})\n    \n    # Note: This doesn't satisfy all constraints but is the closest possible\n    \n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_87"
+        }
+    ]
+}

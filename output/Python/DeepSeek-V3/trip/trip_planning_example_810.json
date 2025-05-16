@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Define the cities and their required days\n    cities = {\n        'Berlin': {'days': 3, 'constraints': [{'day': 1, 'event': 'conference'}, {'day': 3, 'event': 'conference'}]},\n        'Nice': {'days': 5, 'constraints': []},\n        'Athens': {'days': 5, 'constraints': []},\n        'Stockholm': {'days': 5, 'constraints': []},\n        'Barcelona': {'days': 2, 'constraints': [{'start_day': 3, 'end_day': 4, 'event': 'workshop'}]},\n        'Vilnius': {'days': 4, 'constraints': []},\n        'Lyon': {'days': 2, 'constraints': [{'start_day': 4, 'end_day': 5, 'event': 'wedding'}]}\n    }\n\n    # Define direct flight connections\n    connections = {\n        'Lyon': ['Nice', 'Barcelona'],\n        'Stockholm': ['Athens', 'Berlin', 'Nice', 'Barcelona'],\n        'Nice': ['Lyon', 'Athens', 'Berlin', 'Barcelona', 'Stockholm'],\n        'Athens': ['Stockholm', 'Nice', 'Berlin', 'Barcelona', 'Vilnius'],\n        'Berlin': ['Athens', 'Nice', 'Barcelona', 'Vilnius', 'Stockholm'],\n        'Barcelona': ['Berlin', 'Nice', 'Athens', 'Stockholm', 'Lyon'],\n        'Vilnius': ['Berlin', 'Athens']\n    }\n\n    # Fixed constraints\n    # Berlin must be first due to day 1 conference\n    # Barcelona workshop between day 3-4\n    # Lyon wedding between day 4-5\n\n    # Generate possible sequences that start with Berlin\n    other_cities = ['Nice', 'Athens', 'Stockholm', 'Barcelona', 'Vilnius', 'Lyon']\n    possible_sequences = permutations(other_cities)\n\n    valid_sequences = []\n    for seq in possible_sequences:\n        full_seq = ['Berlin'] + list(seq)\n        # Check if Barcelona is visited before day 4 (since workshop is between day 3-4)\n        # Check if Lyon is visited before day 5 (since wedding is between day 4-5)\n        # We'll check these during day assignment\n        valid_sequences.append(full_seq)\n\n    # Now, assign days to each sequence and check constraints\n    for sequence in valid_sequences:\n        day_plan = []\n        current_day = 1\n        prev_city = None\n        valid = True\n\n        for city in sequence:\n            if prev_city is not None and city != prev_city:\n                # Add flying day\n                if city not in connections[prev_city]:\n                    valid = False\n                    break\n                day_plan.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': city\n                })\n                current_day += 1\n\n            # Add stay in city\n            stay_days = cities[city]['days']\n            day_plan.append({\n                'day_range': f'Day {current_day}-{current_day + stay_days - 1}',\n                'place': city\n            })\n\n            # Check constraints for this city\n            for constraint in cities[city]['constraints']:\n                if 'day' in constraint:  # Single day constraint (Berlin)\n                    day = constraint['day']\n                    if not (current_day <= day <= current_day + stay_days - 1):\n                        valid = False\n                        break\n                elif 'start_day' in constraint:  # Range constraint (Barcelona, Lyon)\n                    start = constraint['start_day']\n                    end = constraint['end_day']\n                    # The constraint days must be within the city's stay\n                    if not (current_day <= start <= current_day + stay_days - 1 and\n                            current_day <= end <= current_day + stay_days - 1):\n                        valid = False\n                        break\n\n            if not valid:\n                break\n\n            prev_city = city\n            current_day += stay_days\n\n        # Check total days\n        if valid and current_day - 1 == 20:\n            # Additional checks for Barcelona and Lyon constraints\n            barcelona_ok = False\n            lyon_ok = False\n            for entry in day_plan:\n                if 'place' in entry and entry['place'] == 'Barcelona':\n                    start, end = map(int, entry['day_range'].split('Day ')[1].split('-'))\n                    if start <= 3 and end >= 4:\n                        barcelona_ok = True\n                if 'place' in entry and entry['place'] == 'Lyon':\n                    start, end = map(int, entry['day_range'].split('Day ')[1].split('-'))\n                    if start <= 4 and end >= 5:\n                        lyon_ok = True\n            if barcelona_ok and lyon_ok:\n                return day_plan\n\n    return None\n\nitinerary = find_valid_itinerary()\nif itinerary:\n    print(json.dumps(itinerary, indent=2))\nelse:\n    print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n```",
+            "count": "trip_planning_example_810"
+        }
+    ]
+}

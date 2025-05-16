@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "James",
+                        "start_time": "12:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "14:07",
+                        "end_time": "15:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "James",
+                        "start_time": "12:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "14:07",
+                        "end_time": "14:37"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\ndef time_to_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02}\"\n\ntravel_times = {\n    'North Beach': {'Mission District': 18, 'The Castro': 22},\n    'Mission District': {'North Beach': 17, 'The Castro': 7},\n    'The Castro': {'North Beach': 20, 'Mission District': 7}\n}\n\nfriends = [\n    {\n        'name': 'James',\n        'location': 'Mission District',\n        'available_start': 12 * 60 +45,\n        'available_end': 14 * 60,\n        'min_duration': 75\n    },\n    {\n        'name': 'Robert',\n        'location': 'The Castro',\n        'available_start': 12 * 60 +45,\n        'available_end': 15 * 60 +15,\n        'min_duration': 30\n    }\n]\n\nstart_time = 9 * 60\nstart_location = 'North Beach'\n\nbest_itinerary = []\nmax_met = 0\n\nfor perm in itertools.permutations(friends):\n    current_location = start_location\n    current_time = start_time\n    itinerary = []\n    met = 0\n    \n    for friend in perm:\n        travel_time = travel_times[current_location].get(friend['location'])\n        if travel_time is None:\n            break\n        \n        arrival_time = max(current_time + travel_time, friend['available_start'])\n        latest_start = friend['available_end'] - friend['min_duration']\n        \n        if arrival_time > latest_start:\n            break\n        \n        meeting_start = arrival_time\n        meeting_end = friend['available_end']\n        \n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': time_to_str(meeting_start),\n            'end_time': time_to_str(meeting_end)\n        })\n        current_time = meeting_end\n        current_location = friend['location']\n        met += 1\n    \n    if met > max_met or (met == max_met and len(itinerary) > len(best_itinerary)):\n        best_itinerary = itinerary\n        max_met = met\n\nprint(json.dumps({'itinerary': best_itinerary}, indent=2))",
+            "count": "meeting_planning_example_180"
+        }
+    ]
+}

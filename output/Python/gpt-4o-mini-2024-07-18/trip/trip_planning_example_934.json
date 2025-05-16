@@ -1,0 +1,117 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 7-7",
+                        "place": "Brussels (Workshop)"
+                    },
+                    {
+                        "day_range": "Day 8-8",
+                        "place": "Brussels (Workshop)"
+                    },
+                    {
+                        "day_range": "Day 9-9",
+                        "place": "Brussels (Workshop)"
+                    },
+                    {
+                        "day_range": "Day 10-10",
+                        "place": "Brussels (Workshop)"
+                    },
+                    {
+                        "day_range": "Day 11-11",
+                        "place": "Brussels (Workshop)"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 16-16",
+                        "place": "Budapest (Meeting)"
+                    },
+                    {
+                        "day_range": "Day 17-17",
+                        "place": "Budapest (Meeting)"
+                    },
+                    {
+                        "day_range": "Day 26-29",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 4-4",
+                        "place": "Riga (Friends Meeting)"
+                    },
+                    {
+                        "day_range": "Day 5-5",
+                        "place": "Riga (Friends Meeting)"
+                    },
+                    {
+                        "day_range": "Day 6-6",
+                        "place": "Riga (Friends Meeting)"
+                    },
+                    {
+                        "day_range": "Day 7-7",
+                        "place": "Riga (Friends Meeting)"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Budapest"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Define constraints and constraints on the workshops and meetings\n    constraints = {\n        \"Brussels\": {\"days\": 5, \"workshop\": (7, 11)},\n        \"Rome\": {\"days\": 2},\n        \"Dubrovnik\": {\"days\": 3},\n        \"Geneva\": {\"days\": 5},\n        \"Budapest\": {\"days\": 2, \"meeting\": (16, 17)},\n        \"Riga\": {\"days\": 4, \"friends_meeting\": (4, 7)},\n        \"Valencia\": {\"days\": 2}\n    }\n\n    # Set up the plan\n    itinerary = []\n    current_day = 1\n    \n    # Visiting Brussels first\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + constraints[\"Brussels\"][\"days\"] - 1}', 'place': 'Brussels'})\n    current_day += constraints[\"Brussels\"][\"days\"]\n\n    # Workshop in Brussels\n    # Schedule workshop days in Brussels\n    workshop_days = constraints[\"Brussels\"][\"workshop\"]\n    workshop_days_range = range(workshop_days[0], workshop_days[1] + 1)\n\n    for day in workshop_days_range:\n        itinerary.append({'day_range': f'Day {day}-{day}', 'place': 'Brussels (Workshop)'})\n\n    current_day = max(current_day, workshop_days[1] + 1)  # Ensure we continue after workshop\n\n    # Visit Rome\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + constraints[\"Rome\"][\"days\"] - 1}', 'place': 'Rome'})\n    current_day += constraints[\"Rome\"][\"days\"]\n\n    # Visit Valencia\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + constraints[\"Valencia\"][\"days\"] - 1}', 'place': 'Valencia'})\n    current_day += constraints[\"Valencia\"][\"days\"]\n\n    # Visit Geneva\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + constraints[\"Geneva\"][\"days\"] - 1}', 'place': 'Geneva'})\n    current_day += constraints[\"Geneva\"][\"days\"]\n\n    # Visit Dubrovnik\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + constraints[\"Dubrovnik\"][\"days\"] - 1}', 'place': 'Dubrovnik'})\n    current_day += constraints[\"Dubrovnik\"][\"days\"]\n\n    # Visit Budapest\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + constraints[\"Budapest\"][\"days\"] - 1}', 'place': 'Budapest'})\n\n    # Schedule meeting in Budapest\n    meeting_days = constraints[\"Budapest\"][\"meeting\"]\n    meeting_days_range = range(meeting_days[0], meeting_days[1] + 1)\n    \n    for day in meeting_days_range:\n        itinerary.append({'day_range': f'Day {day}-{day}', 'place': 'Budapest (Meeting)'})\n\n    current_day += constraints[\"Budapest\"][\"days\"]\n\n    # Visit Riga\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + constraints[\"Riga\"][\"days\"] - 1}', 'place': 'Riga'})\n    current_day += constraints[\"Riga\"][\"days\"]\n\n    # Schedule friends meeting in Riga\n    friends_meeting_days = constraints[\"Riga\"][\"friends_meeting\"]\n    friends_meeting_days_range = range(friends_meeting_days[0], friends_meeting_days[1] + 1)\n\n    for day in friends_meeting_days_range:\n        itinerary.append({'day_range': f'Day {day}-{day}', 'place': 'Riga (Friends Meeting)'})\n\n    # Return output as JSON\n    return json.dumps(itinerary, indent=4)\n\n# Call the function and print the result\nitinerary_json = compute_itinerary()\nprint(itinerary_json)\n```",
+            "count": "trip_planning_example_934"
+        }
+    ]
+}

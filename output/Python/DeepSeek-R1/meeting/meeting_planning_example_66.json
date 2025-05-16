@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Robert",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours}:{minutes:02d}\"\n\nstart_nob = 9 * 60\ntravel_to_presidio = 17\nrobert_start = 11 * 60 + 15\nrobert_end = 17 * 60 + 45\n\narrival_presidio = start_nob + travel_to_presidio\nmeet_start = max(arrival_presidio, robert_start)\nmeet_end = robert_end\n\nitinerary = []\nif meet_end - meet_start >= 120:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Presidio\",\n        \"person\": \"Robert\",\n        \"start_time\": minutes_to_time(meet_start),\n        \"end_time\": minutes_to_time(meet_end)\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_66"
+        }
+    ]
+}

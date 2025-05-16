@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days to consider\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60   # 17:00 in minutes\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    \n    # Samuel's busy times in minutes since midnight for each day\n    samuel_busy = {\n        'Monday': [(10*60 + 30, 11*60), (12*60, 12*60 + 30), (13*60, 15*60), (15*60 + 30, 16*60 + 30)],\n        'Tuesday': [(9*60, 12*60), (14*60, 15*60 + 30), (16*60 + 30, 17*60)],\n        'Wednesday': [(10*60 + 30, 11*60), (11*60 + 30, 12*60), (12*60 + 30, 13*60), (14*60, 14*60 + 30), (15*60, 16*60)]\n    }\n    \n    # Larry's preferences: avoid Wednesday\n    # Samuel's preferences: avoid Tuesday\n    preferred_days = ['Monday', 'Tuesday']  # Wednesday is last resort\n    \n    # Duration in minutes\n    duration = 30\n    \n    # Iterate through days in order of preference\n    for day in preferred_days + ['Wednesday']:\n        if day == 'Tuesday' and day in preferred_days:\n            continue  # Skip Tuesday as Samuel prefers to avoid it\n        \n        # Get Samuel's busy times for the day\n        busy_times = samuel_busy.get(day, [])\n        \n        # Find all free slots in Samuel's schedule\n        free_slots = []\n        prev_end = work_start\n        \n        for start, end in sorted(busy_times):\n            if start > prev_end:\n                free_slots.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        \n        if work_end > prev_end:\n            free_slots.append((prev_end, work_end))\n        \n        # Check each free slot for availability\n        for slot_start, slot_end in free_slots:\n            if slot_end - slot_start >= duration:\n                # Found a suitable slot\n                start_time = slot_start\n                end_time = start_time + duration\n                \n                # Convert times back to HH:MM format\n                def format_time(minutes):\n                    hours = minutes // 60\n                    mins = minutes % 60\n                    return f\"{hours:02d}:{mins:02d}\"\n                \n                time_range = f\"{format_time(start_time)}:{format_time(end_time)}\"\n                return day, time_range\n    \n    # Fallback (shouldn't reach here as per problem statement)\n    return None, None\n\nday, time_range = find_meeting_time()\nprint(f\"{day}: {time_range}\")\n```",
+            "count": "calendar_scheduling_example_704"
+        }
+    ]
+}

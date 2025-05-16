@@ -1,0 +1,66 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jeffrey",
+                        "start_time": "26:00",
+                        "end_time": "27:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "38:45",
+                        "end_time": "39:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "48:00",
+                        "end_time": "24:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "53:45",
+                        "end_time": "30:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "John",
+                        "start_time": "9:08",
+                        "end_time": "9:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "13:30",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Barbara",
+                        "start_time": "18:00",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_travel_time(origin, destination, travel_times):\n    return travel_times.get((origin, destination), 0)\n\ndef calculate_meeting_time(person, start_time, duration):\n    end_time = (start_time + duration) % 24\n    if end_time < start_time:\n        end_time += 24\n    return f\"{int(start_time):02d}:{int((start_time % 1) * 60):02d}\", f\"{int(end_time):02d}:{int((end_time % 1) * 60):02d}\"\n\ndef plan_meeting(person, location, start_time, duration, travel_times, current_location, current_time):\n    travel_time = calculate_travel_time(current_location, location, travel_times)\n    meeting_start_time, meeting_end_time = calculate_meeting_time(person, current_time + travel_time, duration / 60)\n    return {\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": meeting_start_time,\n        \"end_time\": meeting_end_time\n    }\n\ndef main():\n    travel_times = {\n        (\"Nob Hill\", \"Presidio\"): 17,\n        (\"Nob Hill\", \"North Beach\"): 8,\n        (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n        (\"Nob Hill\", \"Pacific Heights\"): 8,\n        (\"Presidio\", \"Nob Hill\"): 18,\n        (\"Presidio\", \"North Beach\"): 18,\n        (\"Presidio\", \"Fisherman's Wharf\"): 19,\n        (\"Presidio\", \"Pacific Heights\"): 11,\n        (\"North Beach\", \"Nob Hill\"): 7,\n        (\"North Beach\", \"Presidio\"): 17,\n        (\"North Beach\", \"Fisherman's Wharf\"): 5,\n        (\"North Beach\", \"Pacific Heights\"): 8,\n        (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n        (\"Fisherman's Wharf\", \"Presidio\"): 17,\n        (\"Fisherman's Wharf\", \"North Beach\"): 6,\n        (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n        (\"Pacific Heights\", \"Nob Hill\"): 8,\n        (\"Pacific Heights\", \"Presidio\"): 11,\n        (\"Pacific Heights\", \"North Beach\"): 9,\n        (\"Pacific Heights\", \"Fisherman's Wharf\"): 13\n    }\n\n    meetings = [\n        {\"person\": \"John\", \"location\": \"Pacific Heights\", \"start_time\": 9, \"end_time\": 13.5, \"duration\": 15},\n        {\"person\": \"Jeffrey\", \"location\": \"Presidio\", \"start_time\": 8, \"end_time\": 10, \"duration\": 105},\n        {\"person\": \"Steven\", \"location\": \"North Beach\", \"start_time\": 13.5, \"end_time\": 22, \"duration\": 45},\n        {\"person\": \"Barbara\", \"location\": \"Fisherman's Wharf\", \"start_time\": 18, \"end_time\": 21.5, \"duration\": 30}\n    ]\n\n    itinerary = []\n    current_location = \"Nob Hill\"\n    current_time = 9\n\n    # Sort meetings by start time\n    meetings.sort(key=lambda x: x[\"start_time\"])\n\n    for meeting in meetings:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"], travel_times)\n        if current_time + travel_time < meeting[\"start_time\"]:\n            current_time = meeting[\"start_time\"] - travel_time\n        itinerary.append(plan_meeting(meeting[\"person\"], meeting[\"location\"], current_time + travel_time, meeting[\"duration\"], travel_times, current_location, current_time))\n        current_location = meeting[\"location\"]\n        current_time += travel_time + meeting[\"duration\"] / 60\n\n    print(json.dumps({\"itinerary\": itinerary}, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_385"
+        }
+    ]
+}

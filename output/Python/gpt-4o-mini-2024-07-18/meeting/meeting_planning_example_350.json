@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "9:19",
+                        "end_time": "10:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Charles",
+                        "start_time": "11:26",
+                        "end_time": "13:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mary",
+                        "start_time": "14:08",
+                        "end_time": "14:53"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Lisa",
+                        "start_time": "20:30",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Mary",
+                        "start_time": "10:00",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Betty",
+                        "start_time": "10:56",
+                        "end_time": "12:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Charles",
+                        "start_time": "12:47",
+                        "end_time": "14:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Lisa",
+                        "start_time": "20:30",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define the travel distances in minutes\ntravel_times = {\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    (\"Bayview\", \"Mission District\"): 13,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Pacific Heights\", \"Bayview\"): 22,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n    (\"Pacific Heights\", \"Financial District\"): 13,\n    (\"Mission District\", \"Bayview\"): 15,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"Haight-Ashbury\"): 12,\n    (\"Mission District\", \"Financial District\"): 17,\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n    (\"Haight-Ashbury\", \"Mission District\"): 11,\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    (\"Financial District\", \"Bayview\"): 19,\n    (\"Financial District\", \"Pacific Heights\"): 13,\n    (\"Financial District\", \"Mission District\"): 17,\n    (\"Financial District\", \"Haight-Ashbury\"): 19,\n}\n\n# Define meeting constraints\nmeetings = {\n    \"Mary\": {\n        \"location\": \"Pacific Heights\",\n        \"start\": datetime.strptime(\"10:00\", \"%H:%M\"),\n        \"end\": datetime.strptime(\"19:00\", \"%H:%M\"),\n        \"duration\": timedelta(minutes=45)\n    },\n    \"Lisa\": {\n        \"location\": \"Mission District\",\n        \"start\": datetime.strptime(\"20:30\", \"%H:%M\"),\n        \"end\": datetime.strptime(\"22:00\", \"%H:%M\"),\n        \"duration\": timedelta(minutes=75)\n    },\n    \"Betty\": {\n        \"location\": \"Haight-Ashbury\",\n        \"start\": datetime.strptime(\"07:15\", \"%H:%M\"),\n        \"end\": datetime.strptime(\"17:15\", \"%H:%M\"),\n        \"duration\": timedelta(minutes=90)\n    },\n    \"Charles\": {\n        \"location\": \"Financial District\",\n        \"start\": datetime.strptime(\"11:15\", \"%H:%M\"),\n        \"end\": datetime.strptime(\"15:00\", \"%H:%M\"),\n        \"duration\": timedelta(minutes=120)\n    }\n}\n\n# Initialize\ncurrent_time = datetime.strptime(\"09:00\", \"%H:%M\")\nitinerary = []\n\n# Function to schedule a meeting\ndef schedule_meeting(person, meeting_info):\n    global current_time\n    location = meeting_info[\"location\"]\n    meeting_duration = meeting_info[\"duration\"]\n\n    travel_time = travel_times.get((\"Bayview\", location), None)\n    if travel_time is not None:\n        arrival_time = current_time + timedelta(minutes=travel_time)\n\n        # Check if we can meet\n        if arrival_time < meeting_info[\"start\"]:\n            start_time = meeting_info[\"start\"]\n        else:\n            start_time = max(arrival_time, meeting_info[\"start\"])\n\n        end_time = start_time + meeting_duration\n\n        # Check if end time is within the allowable meeting time\n        if end_time <= meeting_info[\"end\"]:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": start_time.strftime(\"%H:%M\"),\n                \"end_time\": end_time.strftime(\"%H:%M\"),\n            })\n            current_time = end_time + timedelta(minutes=travel_times.get((location, \"Bayview\"), 0))\n\n# Schedule meetings one by one\nschedule_meeting(\"Betty\", meetings[\"Betty\"])\nschedule_meeting(\"Charles\", meetings[\"Charles\"])\nschedule_meeting(\"Mary\", meetings[\"Mary\"])\nschedule_meeting(\"Lisa\", meetings[\"Lisa\"])\n\n# Output the result as JSON\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_350"
+        }
+    ]
+}

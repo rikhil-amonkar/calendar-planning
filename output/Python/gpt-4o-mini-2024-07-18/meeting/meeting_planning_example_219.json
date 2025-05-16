@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Emily",
+                        "start_time": "11:45",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Barbara",
+                        "start_time": "16:45",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Emily",
+                        "start_time": "11:45",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Barbara",
+                        "start_time": "16:45",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Constants\nTRAVEL_TIMES = {\n    (\"The Castro\", \"Alamo Square\"): 8,\n    (\"The Castro\", \"Union Square\"): 19,\n    (\"The Castro\", \"Chinatown\"): 20,\n    (\"Alamo Square\", \"The Castro\"): 8,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Chinatown\"): 16,\n    (\"Union Square\", \"The Castro\"): 19,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Chinatown\", \"The Castro\"): 22,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Union Square\"): 7,\n}\n\n# Meeting constraints\nconstraints = {\n    \"Emily\": {\n        \"location\": \"Alamo Square\",\n        \"start_time\": \"11:45\",\n        \"end_time\": \"15:15\",\n        \"min_duration\": 105,\n    },\n    \"Barbara\": {\n        \"location\": \"Union Square\",\n        \"start_time\": \"16:45\",\n        \"end_time\": \"18:15\",\n        \"min_duration\": 60,\n    },\n    \"William\": {\n        \"location\": \"Chinatown\",\n        \"start_time\": \"17:15\",\n        \"end_time\": \"19:00\",\n        \"min_duration\": 105,\n    },\n}\n\ndef time_to_minutes(t):\n    \"\"\"Convert 'HH:MM' time format to minutes since 00:00.\"\"\"\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    \"\"\"Convert minutes since 00:00 back to 'HH:MM' format.\"\"\"\n    h, m = divmod(m, 60)\n    return f\"{h}:{m:02d}\"\n\n# Meeting schedule computation\ndef compute_schedule():\n    start_time = time_to_minutes(\"09:00\")\n    itinerary = []\n    \n    # Meeting Emily\n    emily_start = time_to_minutes(constraints[\"Emily\"][\"start_time\"])\n    emily_end = time_to_minutes(constraints[\"Emily\"][\"end_time\"])\n\n    # Time after traveling from Castro to Alamo Square\n    travel_to_emily = TRAVEL_TIMES[(\"The Castro\", \"Alamo Square\")]\n    travel_to_emily_end_time = start_time + travel_to_emily\n    \n    if travel_to_emily_end_time <= emily_end:\n        meeting_time_with_emily = max(emily_start, travel_to_emily_end_time)\n        emily_meeting_end = meeting_time_with_emily + constraints[\"Emily\"][\"min_duration\"]\n        \n        if emily_meeting_end <= emily_end:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": \"Alamo Square\",\n                \"person\": \"Emily\",\n                \"start_time\": minutes_to_time(meeting_time_with_emily),\n                \"end_time\": minutes_to_time(emily_meeting_end),\n            })\n    \n            # Travel to Union Square\n            travel_to_barbara = TRAVEL_TIMES[(\"Alamo Square\", \"Union Square\")]\n            travel_to_barbara_end_time = emily_meeting_end + travel_to_barbara\n            \n            # Meeting Barbara\n            barbara_start = time_to_minutes(constraints[\"Barbara\"][\"start_time\"])\n            barbara_end = time_to_minutes(constraints[\"Barbara\"][\"end_time\"])\n\n            if travel_to_barbara_end_time <= barbara_end:\n                meeting_time_with_barbara = max(barbara_start, travel_to_barbara_end_time)\n                barbara_meeting_end = meeting_time_with_barbara + constraints[\"Barbara\"][\"min_duration\"]\n                \n                if barbara_meeting_end <= barbara_end:\n                    itinerary.append({\n                        \"action\": \"meet\",\n                        \"location\": \"Union Square\",\n                        \"person\": \"Barbara\",\n                        \"start_time\": minutes_to_time(meeting_time_with_barbara),\n                        \"end_time\": minutes_to_time(barbara_meeting_end),\n                    })\n\n                    # Travel to Chinatown\n                    travel_to_william = TRAVEL_TIMES[(\"Union Square\", \"Chinatown\")]\n                    travel_to_william_end_time = barbara_meeting_end + travel_to_william\n                    \n                    # Meeting William\n                    william_start = time_to_minutes(constraints[\"William\"][\"start_time\"])\n                    william_end = time_to_minutes(constraints[\"William\"][\"end_time\"])\n\n                    if travel_to_william_end_time <= william_end:\n                        meeting_time_with_william = max(william_start, travel_to_william_end_time)\n                        william_meeting_end = meeting_time_with_william + constraints[\"William\"][\"min_duration\"]\n                        \n                        if william_meeting_end <= william_end:\n                            itinerary.append({\n                                \"action\": \"meet\",\n                                \"location\": \"Chinatown\",\n                                \"person\": \"William\",\n                                \"start_time\": minutes_to_time(meeting_time_with_william),\n                                \"end_time\": minutes_to_time(william_meeting_end),\n                            })\n\n    return {\"itinerary\": itinerary}\n\n# Generating the meeting schedule\nschedule = compute_schedule()\n\n# Print the output as JSON\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_219"
+        }
+    ]
+}

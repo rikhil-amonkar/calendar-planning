@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 24-26",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 26-28",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    cities = {\n        'Prague': 5,\n        'Tallinn': 3,\n        'Warsaw': 2,\n        'Porto': 3,\n        'Naples': 5,\n        'Milan': 3,\n        'Lisbon': 5,\n        'Santorini': 5,\n        'Riga': 4,\n        'Stockholm': 2\n    }\n    \n    constraints = [\n        {'city': 'Tallinn', 'day_range': (18, 20)},\n        {'city': 'Milan', 'day_range': (24, 26)},\n        {'city': 'Riga', 'day_range': (5, 8)}\n    ]\n    \n    direct_flights = {\n        'Riga': ['Prague', 'Milan', 'Tallinn', 'Stockholm', 'Warsaw'],\n        'Stockholm': ['Milan', 'Lisbon', 'Santorini', 'Warsaw', 'Prague', 'Tallinn', 'Riga'],\n        'Milan': ['Stockholm', 'Riga', 'Naples', 'Porto', 'Prague', 'Lisbon', 'Santorini', 'Warsaw'],\n        'Lisbon': ['Stockholm', 'Warsaw', 'Naples', 'Porto', 'Prague', 'Riga', 'Milan'],\n        'Naples': ['Warsaw', 'Milan', 'Lisbon', 'Santorini'],\n        'Warsaw': ['Naples', 'Lisbon', 'Stockholm', 'Riga', 'Porto', 'Tallinn', 'Milan', 'Prague'],\n        'Porto': ['Lisbon', 'Milan', 'Warsaw'],\n        'Prague': ['Riga', 'Tallinn', 'Stockholm', 'Lisbon', 'Milan', 'Warsaw'],\n        'Tallinn': ['Riga', 'Prague', 'Stockholm', 'Warsaw'],\n        'Santorini': ['Stockholm', 'Milan', 'Naples']\n    }\n    \n    # Generate all possible city permutations\n    city_names = list(cities.keys())\n    possible_sequences = permutations(city_names)\n    \n    def is_valid_sequence(sequence):\n        # Check if all constraints are met\n        day = 1\n        itinerary = []\n        \n        for i, city in enumerate(sequence):\n            duration = cities[city]\n            end_day = day + duration - 1\n            \n            # Check constraints for this city\n            for constraint in constraints:\n                if constraint['city'] == city:\n                    if not (constraint['day_range'][0] <= day <= constraint['day_range'][1] or \n                           constraint['day_range'][0] <= end_day <= constraint['day_range'][1] or \n                           (day <= constraint['day_range'][0] and end_day >= constraint['day_range'][1])):\n                        return False\n            \n            itinerary.append((city, day, end_day))\n            day = end_day + 1\n            \n            # Check flight connection to next city\n            if i < len(sequence) - 1:\n                next_city = sequence[i + 1]\n                if next_city not in direct_flights[city]:\n                    return False\n        \n        # Check total days\n        total_days = sum(cities[city] for city in sequence)\n        if total_days != 28:\n            return False\n        \n        return True\n    \n    # Find a valid sequence\n    valid_sequence = None\n    for seq in possible_sequences:\n        if is_valid_sequence(seq):\n            valid_sequence = seq\n            break\n    \n    if not valid_sequence:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}))\n        return\n    \n    # Generate itinerary\n    itinerary = []\n    day = 1\n    for i, city in enumerate(valid_sequence):\n        duration = cities[city]\n        end_day = day + duration - 1\n        itinerary.append({'day_range': f'Day {day}-{end_day}', 'place': city})\n        \n        if i < len(valid_sequence) - 1:\n            next_city = valid_sequence[i + 1]\n            itinerary.append({'flying': f'Day {end_day + 1}-{end_day + 1}', 'from': city, 'to': next_city})\n            day = end_day + 2  # +1 for flying day, +1 for next day\n    \n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1549"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    meeting_duration = 30  # minutes\n\n    # Define days to consider (excluding Wednesday and Thursday per Cheryl's preference)\n    days = [\"Monday\", \"Tuesday\"]\n\n    # James's schedule: each day is a list of busy time slots in minutes since midnight\n    james_schedule = {\n        \"Monday\": [\n            (9 * 60, 9 * 60 + 30),    # 9:00-9:30\n            (10 * 60 + 30, 11 * 60),  # 10:30-11:00\n            (12 * 60 + 30, 13 * 60),  # 12:30-13:00\n            (14 * 60 + 30, 15 * 60 + 30),  # 14:30-15:30\n            (16 * 60 + 30, 17 * 60),  # 16:30-17:00\n        ],\n        \"Tuesday\": [\n            (9 * 60, 11 * 60),        # 9:00-11:00\n            (11 * 60 + 30, 12 * 60),  # 11:30-12:00\n            (12 * 60 + 30, 15 * 60 + 30),  # 12:30-15:30\n            (16 * 60, 17 * 60),      # 16:00-17:00\n        ],\n    }\n\n    # Cheryl's schedule is wide open, so only need to check James's schedule\n\n    # Iterate through days in order (Monday, Tuesday)\n    for day in days:\n        busy_slots = james_schedule.get(day, [])\n        # Add boundaries of work hours\n        busy_slots.append((work_end, work_end))  # dummy slot to simplify loop\n\n        # Start checking from the beginning of the work day\n        prev_end = work_start\n        for start, end in busy_slots:\n            if start - prev_end >= meeting_duration:\n                # Found a suitable slot\n                meeting_start = prev_end\n                meeting_end = meeting_start + meeting_duration\n                # Format the time as HH:MM:HH:MM\n                start_hh = meeting_start // 60\n                start_mm = meeting_start % 60\n                end_hh = meeting_end // 60\n                end_mm = meeting_end % 60\n                time_str = f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\"\n                print(f\"{day}: {time_str}\")\n                return\n            prev_end = max(prev_end, end)\n\n    print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_826"
+        }
+    ]
+}

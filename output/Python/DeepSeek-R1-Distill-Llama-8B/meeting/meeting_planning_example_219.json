@@ -1,0 +1,38 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Barbara",
+                        "start_time": "454:0",
+                        "end_time": "614:0"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Emily",
+                        "start_time": "11:45",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Barbara",
+                        "start_time": "16:45",
+                        "end_time": "17:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, let's tackle this problem step by step. So, the user wants me to write a Python program that schedules meetings in San Francisco, starting from The Castro at 9:00 AM. The goal is to meet as many friends as possible within their availability and travel time constraints. \n\nFirst, I need to understand the input parameters. The travel distances are given between various locations, and there are specific constraints for each person regarding their availability and the minimum meeting duration. My task is to compute the optimal schedule that maximizes the number of meetings without overlapping times, considering both travel times and constraints.\n\nI'll start by defining the travel times between The Castro and all other locations. This is crucial because it will help calculate the time required to travel to each meeting location. \n\nNext, I'll outline the constraints for each person. Each person has a specific location they'll be at during certain hours, and they require a minimum meeting duration. For example, Emily is at Alamo Square from 11:45 AM to 3:15 PM and needs at least 105 minutes of meeting time. \n\nMy approach will be to calculate the feasible meeting times for each person. For each person, I'll determine the earliest and latest possible start times for a meeting, considering both their availability and the travel time from The Castro. If the earliest possible start time is after their availability window ends or the latest possible start time is before their availability starts, that person won't be able to meet.\n\nOnce I have all feasible meeting times, I'll sort them by their end times to apply a greedy algorithm. The idea is to select the meeting that ends the earliest first, then the next compatible meeting, and so on. This ensures that I maximize the number of non-overlapping meetings.\n\nI'll then convert the feasible meeting times into a 24-hour format for the final output. The result will be a JSON-formatted dictionary with the itinerary, listing each meeting's location, person, start, and end times.\n\nI'll also need to handle edge cases, such as when a person's availability window and travel time don't allow for a meeting. In such cases, that person will be excluded from the schedule.\n\nFinally, I'll structure the Python code to read the input parameters, compute the feasible meetings, sort them, and generate the optimal itinerary. The code will be self-contained and will output the result as specified.\n</think>\n\nSOLUTION:\n\n```python\nimport json\n\n# Define travel times from The Castro to each location\ntravel_times = {\n    'The Castro': {\n        'Alamo Square': 8,\n        'Union Square': 19,\n        'Chinatown': 20\n    },\n    'Alamo Square': {\n        'The Castro': 8,\n        'Union Square': 14,\n        'Chinatown': 16\n    },\n    'Union Square': {\n        'The Castro': 19,\n        'Alamo Square': 15,\n        'Chinatown': 7\n    },\n    'Chinatown': {\n        'The Castro': 20,\n        'Alamo Square': 17,\n        'Union Square': 7\n    }\n}\n\n# List of people with their details\npeople = [\n    {\n        'name': 'Emily',\n        'location': 'Alamo Square',\n        'start_time': '11:45',\n        'end_time': '3:15',\n        'duration': 105,\n        'travel_time': 8\n    },\n    {\n        'name': 'Barbara',\n        'location': 'Union Square',\n        'start_time': '4:45',\n        'end_time': '6:15',\n        'duration': 60,\n        'travel_time': 19\n    },\n    {\n        'name': 'William',\n        'location': 'Chinatown',\n        'start_time': '5:15',\n        'end_time': '7:00',\n        'duration': 105,\n        'travel_time': 20\n    }\n]\n\n# Function to calculate feasible meeting times\ndef calculate_feasible_meetings(people, travel_times):\n    meetings = []\n    for person in people:\n        location = person['location']\n        start_time = person['start_time']\n        end_time = person['end_time']\n        duration = person['duration']\n        travel_time = travel_times['The Castro'][location]\n        \n        # Convert times to minutes since 9:00 AM\n        earliest_start_min = (int(start_time.replace(':', '')) * 60) + 540  # 9:00 AM in minutes\n        latest_start_min = (int(end_time.replace(':', '')) * 60) - duration\n        \n        # Ensure earliest start is at least 9:00 AM\n        if earliest_start_min < 540:\n            earliest_start_min = 540\n        \n        if latest_start_min < earliest_start_min:\n            continue  # No possible meeting time\n        \n        meetings.append({\n            'name': person['name'],\n            'location': location,\n            'start_time': earliest_start_min,\n            'end_time': latest_start_min\n        })\n    \n    return meetings\n\n# Calculate feasible meeting times\nfeasible_meetings = calculate_feasible_meetings(people, travel_times)\n\n# Sort meetings by end time\nfeasible_meetings.sort(key=lambda x: x['end_time'])\n\n# Select non-overlapping meetings\nitinerary = []\nfor meeting in feasible_meetings:\n    start = meeting['start_time']\n    end = meeting['end_time']\n    if not itinerary or end <= itinerary[-1]['end_time']:\n        itinerary.append(meeting)\n\n# Convert time to 24-hour format strings\nitinerary = [\n    {\n        'action': 'meet',\n        'location': meeting['location'],\n        'person': meeting['name'],\n        'start_time': f\"{meeting['start_time'] // 60 + (meeting['start_time'] % 60 // 10)}:{meeting['start_time'] % 60 // 10 * 10}\",\n        'end_time': f\"{meeting['end_time'] // 60 + (meeting['end_time'] % 60 // 10)}:{meeting['end_time'] % 60 // 10 * 10}\"\n    }\n    for meeting in itinerary\n]\n\n# Generate JSON output\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_219"
+        }
+    ]
+}

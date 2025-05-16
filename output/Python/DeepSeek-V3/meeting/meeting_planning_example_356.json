@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Margaret",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Barbara",
+                        "start_time": "13:45",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kimberly",
+                        "start_time": "14:52",
+                        "end_time": "15:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "20:00",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Margaret",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Barbara",
+                        "start_time": "13:45",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kimberly",
+                        "start_time": "14:52",
+                        "end_time": "15:22"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "20:00",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    if time_str.endswith('AM'):\n        time_str = time_str[:-2].strip()\n        hours, minutes = map(int, time_str.split(':'))\n        if hours == 12:\n            hours = 0\n    elif time_str.endswith('PM'):\n        time_str = time_str[:-2].strip()\n        hours, minutes = map(int, time_str.split(':'))\n        if hours != 12:\n            hours += 12\n    else:\n        hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Travel times in minutes\ntravel_times = {\n    'Bayview': {\n        'North Beach': 21,\n        'Presidio': 31,\n        'Haight-Ashbury': 19,\n        'Union Square': 17\n    },\n    'North Beach': {\n        'Bayview': 22,\n        'Presidio': 17,\n        'Haight-Ashbury': 18,\n        'Union Square': 7\n    },\n    'Presidio': {\n        'Bayview': 31,\n        'North Beach': 18,\n        'Haight-Ashbury': 15,\n        'Union Square': 22\n    },\n    'Haight-Ashbury': {\n        'Bayview': 18,\n        'North Beach': 19,\n        'Presidio': 15,\n        'Union Square': 17\n    },\n    'Union Square': {\n        'Bayview': 15,\n        'North Beach': 10,\n        'Presidio': 24,\n        'Haight-Ashbury': 18\n    }\n}\n\n# Constraints\narrival_time = time_to_minutes('9:00AM')\nfriends = {\n    'Barbara': {\n        'location': 'North Beach',\n        'start': time_to_minutes('1:45PM'),\n        'end': time_to_minutes('8:15PM'),\n        'duration': 60\n    },\n    'Margaret': {\n        'location': 'Presidio',\n        'start': time_to_minutes('10:15AM'),\n        'end': time_to_minutes('3:15PM'),\n        'duration': 30\n    },\n    'Kevin': {\n        'location': 'Haight-Ashbury',\n        'start': time_to_minutes('8:00PM'),\n        'end': time_to_minutes('8:45PM'),\n        'duration': 30\n    },\n    'Kimberly': {\n        'location': 'Union Square',\n        'start': time_to_minutes('7:45AM'),\n        'end': time_to_minutes('4:45PM'),\n        'duration': 30\n    }\n}\n\ndef calculate_schedule(order):\n    current_time = arrival_time\n    current_location = 'Bayview'\n    schedule = []\n    for friend in order:\n        friend_info = friends[friend]\n        location = friend_info['location']\n        travel_time = travel_times[current_location][location]\n        arrival = current_time + travel_time\n        start = max(arrival, friend_info['start'])\n        end = start + friend_info['duration']\n        if end > friend_info['end']:\n            return None\n        schedule.append({\n            'action': 'meet',\n            'location': location,\n            'person': friend,\n            'start_time': minutes_to_time(start),\n            'end_time': minutes_to_time(end)\n        })\n        current_time = end\n        current_location = location\n    return schedule\n\ndef evaluate_schedule(schedule):\n    if not schedule:\n        return -1\n    return len(schedule)\n\nbest_schedule = None\nbest_score = -1\n\n# Try all possible orders of meeting friends\nfor order in permutations(friends.keys()):\n    schedule = calculate_schedule(order)\n    score = evaluate_schedule(schedule)\n    if score > best_score:\n        best_score = score\n        best_schedule = schedule\n\n# Output the best schedule\noutput = {\n    \"itinerary\": best_schedule if best_schedule else []\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_356"
+        }
+    ]
+}

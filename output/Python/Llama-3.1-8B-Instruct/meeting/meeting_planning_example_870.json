@@ -1,0 +1,79 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Carol",
+                        "start_time": "10:15",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kimberly",
+                        "start_time": "14:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Kenneth",
+                        "start_time": "15:01",
+                        "end_time": "15:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "15:51",
+                        "end_time": "17:06"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Sandra",
+                        "start_time": "17:24",
+                        "end_time": "18:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "18:37",
+                        "end_time": "19:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "19:22",
+                        "end_time": "20:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Paul",
+                        "start_time": "21:00",
+                        "end_time": "21:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Linda",
+                        "start_time": "21:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Pacific Heights': {\n        'Marina District': 6,\n        'The Castro': 16,\n        'Richmond District': 12,\n        'Alamo Square': 10,\n        'Financial District': 13,\n        'Presidio': 11,\n        'Mission District': 15,\n        'Nob Hill': 8,\n        'Russian Hill': 7\n    },\n    'Marina District': {\n        'Pacific Heights': 7,\n        'The Castro': 22,\n        'Richmond District': 11,\n        'Alamo Square': 15,\n        'Financial District': 17,\n        'Presidio': 10,\n        'Mission District': 20,\n        'Nob Hill': 12,\n        'Russian Hill': 8\n    },\n    'The Castro': {\n        'Pacific Heights': 16,\n        'Marina District': 21,\n        'Richmond District': 16,\n        'Alamo Square': 8,\n        'Financial District': 21,\n        'Presidio': 20,\n        'Mission District': 7,\n        'Nob Hill': 16,\n        'Russian Hill': 18\n    },\n    'Richmond District': {\n        'Pacific Heights': 10,\n        'Marina District': 9,\n        'The Castro': 16,\n        'Alamo Square': 13,\n        'Financial District': 22,\n        'Presidio': 7,\n        'Mission District': 20,\n        'Nob Hill': 17,\n        'Russian Hill': 13\n    },\n    'Alamo Square': {\n        'Pacific Heights': 10,\n        'Marina District': 15,\n        'The Castro': 8,\n        'Richmond District': 11,\n        'Financial District': 17,\n        'Presidio': 17,\n        'Mission District': 10,\n        'Nob Hill': 11,\n        'Russian Hill': 13\n    },\n    'Financial District': {\n        'Pacific Heights': 13,\n        'Marina District': 15,\n        'The Castro': 20,\n        'Richmond District': 21,\n        'Alamo Square': 17,\n        'Presidio': 22,\n        'Mission District': 17,\n        'Nob Hill': 8,\n        'Russian Hill': 11\n    },\n    'Presidio': {\n        'Pacific Heights': 11,\n        'Marina District': 11,\n        'The Castro': 21,\n        'Richmond District': 7,\n        'Alamo Square': 19,\n        'Financial District': 23,\n        'Mission District': 26,\n        'Nob Hill': 18,\n        'Russian Hill': 14\n    },\n    'Mission District': {\n        'Pacific Heights': 16,\n        'Marina District': 19,\n        'The Castro': 7,\n        'Richmond District': 20,\n        'Alamo Square': 11,\n        'Financial District': 15,\n        'Presidio': 25,\n        'Nob Hill': 12,\n        'Russian Hill': 15\n    },\n    'Nob Hill': {\n        'Pacific Heights': 8,\n        'Marina District': 11,\n        'The Castro': 17,\n        'Richmond District': 14,\n        'Alamo Square': 11,\n        'Financial District': 9,\n        'Presidio': 17,\n        'Mission District': 13,\n        'Russian Hill': 5\n    },\n    'Russian Hill': {\n        'Pacific Heights': 7,\n        'Marina District': 7,\n        'The Castro': 21,\n        'Richmond District': 14,\n        'Alamo Square': 15,\n        'Financial District': 11,\n        'Presidio': 14,\n        'Mission District': 16,\n        'Nob Hill': 5\n    }\n}\n\n# Constraints\nconstraints = {\n    'Linda': {'start_time': datetime(2024, 7, 26, 18, 0), 'end_time': datetime(2024, 7, 26, 20, 0),'min_time': 30},\n    'Kenneth': {'start_time': datetime(2024, 7, 26, 14, 45), 'end_time': datetime(2024, 7, 26, 16, 15),'min_time': 30},\n    'Kimberly': {'start_time': datetime(2024, 7, 26, 14, 15), 'end_time': datetime(2024, 7, 26, 20, 0),'min_time': 30},\n    'Paul': {'start_time': datetime(2024, 7, 26, 21, 0), 'end_time': datetime(2024, 7, 26, 21, 45),'min_time': 15},\n    'Carol': {'start_time': datetime(2024, 7, 26, 10, 15), 'end_time': datetime(2024, 7, 26, 12, 0),'min_time': 60},\n    'Brian': {'start_time': datetime(2024, 7, 26, 10, 0), 'end_time': datetime(2024, 7, 26, 21, 30),'min_time': 75},\n    'Laura': {'start_time': datetime(2024, 7, 26, 16, 15), 'end_time': datetime(2024, 7, 26, 20, 30),'min_time': 30},\n    'Sandra': {'start_time': datetime(2024, 7, 26, 9, 15), 'end_time': datetime(2024, 7, 26, 18, 30),'min_time': 60},\n    'Karen': {'start_time': datetime(2024, 7, 26, 18, 30), 'end_time': datetime(2024, 7, 26, 20, 30),'min_time': 75}\n}\n\n# Start time\nstart_time = datetime(2024, 7, 26, 9, 0)\n\n# Function to calculate travel time\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\n# Function to check if a meeting is possible\ndef is_meeting_possible(meeting_start_time, meeting_end_time, person):\n    person_start_time = constraints[person]['start_time']\n    person_end_time = constraints[person]['end_time']\n    min_time = constraints[person]['min_time']\n    return (meeting_start_time >= person_start_time and meeting_start_time <= person_end_time) or \\\n           (meeting_end_time >= person_start_time and meeting_end_time <= person_end_time) or \\\n           (person_start_time <= meeting_start_time and person_end_time >= meeting_end_time and meeting_end_time - meeting_start_time >= timedelta(minutes=min_time))\n\n# Function to find the optimal meeting schedule\ndef find_optimal_schedule():\n    schedule = []\n    current_time = start_time\n    while current_time < datetime(2024, 7, 26, 23, 59):\n        possible_meetings = []\n        for person in constraints:\n            if is_meeting_possible(current_time, current_time + timedelta(minutes=60), person):\n                possible_meetings.append(person)\n        if possible_meetings:\n            meeting_person = max(possible_meetings, key=lambda person: constraints[person]['min_time'])\n            meeting_time = current_time + timedelta(minutes=constraints[meeting_person]['min_time'])\n            schedule.append({'action':'meet', 'location': 'Pacific Heights', 'person': meeting_person,'start_time': current_time.strftime('%H:%M'), 'end_time': meeting_time.strftime('%H:%M')})\n            current_time = meeting_time\n        else:\n            current_time += timedelta(minutes=1)\n    return schedule\n\n# Find the optimal meeting schedule\nschedule = find_optimal_schedule()\n\n# Add travel times to the schedule\nfor i in range(len(schedule) - 1):\n    start_location = schedule[i]['location']\n    end_location = schedule[i+1]['location']\n    travel_time = calculate_travel_time(start_location, end_location)\n    schedule[i]['end_time'] = (datetime.strptime(schedule[i]['end_time'], '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    schedule[i+1]['start_time'] = (datetime.strptime(schedule[i+1]['start_time'], '%H:%M') - timedelta(minutes=travel_time)).strftime('%H:%M')\n\n# Add travel time from Pacific Heights to the first meeting location\nschedule[0]['start_time'] = (datetime.strptime(schedule[0]['start_time'], '%H:%M') - timedelta(minutes=calculate_travel_time('Pacific Heights', schedule[0]['location']))).strftime('%H:%M')\n\n# Add travel time from the last meeting location to Pacific Heights\nschedule[-1]['end_time'] = (datetime.strptime(schedule[-1]['end_time'], '%H:%M') + timedelta(minutes=calculate_travel_time(schedule[-1]['location'], 'Pacific Heights'))).strftime('%H:%M')\n\n# Print the schedule as a JSON-formatted dictionary\nprint(json.dumps({'itinerary': schedule}, indent=4))\n\n```",
+            "count": "meeting_planning_example_870"
+        }
+    ]
+}

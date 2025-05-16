@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the meeting duration and participants' work hours\nmeeting_duration = timedelta(minutes=30)\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\ndays = ['Monday', 'Tuesday', 'Wednesday']\n\n# Define participants' schedules\ntyler_schedule = {\n    'Tuesday': [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n                (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\"))],\n    'Wednesday': [(datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n                  (datetime.strptime(\"12:30\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\")),\n                  (datetime.strptime(\"13:30\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")),\n                  (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n}\n\nruth_schedule = {\n    'Monday': [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n               (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\")),\n               (datetime.strptime(\"12:30\", \"%H:%M\"), datetime.strptime(\"14:30\", \"%H:%M\")),\n               (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n               (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    'Tuesday': [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    'Wednesday': [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n}\n\n# Function to check if time slot is available\ndef is_time_available(schedule, start_time, end_time):\n    for busy_start, busy_end in schedule:\n        if (start_time < busy_end and end_time > busy_start):\n            return False\n    return True\n\n# Main logic to find a suitable time for the meeting\ndef find_meeting_time():\n    for day in days:\n        if day in tyler_schedule or day in ruth_schedule:\n            day_start = work_start\n            while day_start + meeting_duration <= work_end:\n                day_end = day_start + meeting_duration\n                \n                tyler_available = True\n                ruth_available = True\n                \n                if day in tyler_schedule:\n                    tyler_available = is_time_available(tyler_schedule[day], day_start, day_end)\n                if day in ruth_schedule:\n                    ruth_available = is_time_available(ruth_schedule[day], day_start, day_end)\n                \n                # Check if both are available at this time\n                if tyler_available and ruth_available:\n                    return f\"{day_start.strftime('%H:%M')}:{day_end.strftime('%H:%M')}:{day}\"\n                \n                day_start += timedelta(minutes=10)  # Check next slot\n\n# Output the result\nmeeting_time = find_meeting_time()\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_724"
+        }
+    ]
+}

@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "11:47",
+                        "end_time": "12:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:56",
+                        "end_time": "13:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:0"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef time_to_min(t_str):\n    hours, mins = map(int, t_str.split(':'))\n    return hours * 60 + mins\n\ndef min_to_time(m):\n    hours, mins = divmod(m, 60)\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    'Embarcadero': {'Richmond District':21,'Union Square':10,'Financial District':5,'Pacific Heights':11,'Nob Hill':10,'Bayview':21},\n    'Richmond District':{'Embarcadero':19,'Union Square':21,'Financial District':22,'Pacific Heights':10,'Nob Hill':17,'Bayview':26},\n    'Union Square':{'Embarcadero':11,'Richmond District':20,'Financial District':9,'Pacific Heights':15,'Nob Hill':9,'Bayview':15},\n    'Financial District':{'Embarcadero':4,'Richmond District':21,'Union Square':9,'Pacific Heights':13,'Nob Hill':8,'Bayview':19},\n    'Pacific Heights':{'Embarcadero':10,'Richmond District':12,'Union Square':12,'Financial District':13,'Nob Hill':8,'Bayview':22},\n    'Nob Hill':{'Embarcadero':9,'Richmond District':14,'Union Square':7,'Financial District':9,'Pacific Heights':8,'Bayview':19},\n    'Bayview':{'Embarcadero':19,'Richmond District':25,'Union Square':17,'Financial District':19,'Pacific Heights':23,'Nob Hill':20}\n}\n\nfriends = [\n    {'name':'Nancy','location':'Pacific Heights','start':'8:00','end':'11:30','duration':90},\n    {'name':'Lisa','location':'Union Square','start':'9:00','end':'16:30','duration':45},\n    {'name':'Andrew','location':'Nob Hill','start':'11:30','end':'20:15','duration':60},\n    {'name':'Joshua','location':'Financial District','start':'12:00','end':'15:15','duration':15},\n    {'name':'John','location':'Bayview','start':'16:45','end':'21:30','duration':75},\n    {'name':'Kenneth','location':'Richmond District','start':'21:15','end':'22:00','duration':30}\n]\n\nitinerary = []\ncurrent_loc = 'Embarcadero'\ncurrent_time = time_to_min('9:00')\n\nfor f in friends:\n    loc = f['location']\n    start = time_to_min(f['start'])\n    end = time_to_min(f['end'])\n    dur = f['duration']\n    travel = travel_times[current_loc][loc]\n    arrive = current_time + travel\n    start_time = max(arrive, start)\n    if start_time + dur > end:\n        continue\n    itinerary.append({\n        'action':'meet',\n        'location':loc,\n        'person':f['name'],\n        'start_time':min_to_time(start_time).replace(':0', ':') if min_to_time(start_time).endswith(':00') else min_to_time(start_time).lstrip('0'),\n        'end_time':min_to_time(start_time + dur).replace(':0', ':') if min_to_time(start_time + dur).endswith(':00') else min_to_time(start_time + dur).lstrip('0')\n    })\n    current_time = start_time + dur\n    current_loc = loc\n\nprint(json.dumps({'itinerary':itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_546"
+        }
+    ]
+}

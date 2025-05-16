@@ -1,0 +1,32 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 9\n    cities = {\n        'Nice': {'days': 2},\n        'Stockholm': {'days': 5},\n        'Split': {'days': 3, 'fixed_days': [7, 9]},\n        'Vienna': {'days': 2, 'workshop': (1, 2)}\n    }\n    \n    direct_flights = {\n        'Vienna': ['Stockholm', 'Nice', 'Split'],\n        'Stockholm': ['Vienna', 'Nice', 'Split'],\n        'Nice': ['Vienna', 'Stockholm'],\n        'Split': ['Vienna', 'Stockholm']\n    }\n    \n    # Generate all possible city orders\n    city_names = list(cities.keys())\n    possible_orders = permutations(city_names)\n    \n    valid_itineraries = []\n    \n    for order in possible_orders:\n        itinerary = []\n        current_day = 1\n        remaining_cities = list(order)\n        prev_city = None\n        \n        while remaining_cities and current_day <= total_days:\n            current_city = remaining_cities[0]\n            \n            # Check if we can fly to this city\n            if prev_city and current_city not in direct_flights[prev_city]:\n                break\n                \n            # Handle Vienna workshop constraint\n            if current_city == 'Vienna':\n                if current_day > 2:\n                    break  # Workshop must be between day 1-2\n                stay_days = cities['Vienna']['days']\n                if current_day + stay_days - 1 > 2:\n                    break  # Would extend beyond workshop days\n                \n            # Handle Split conference days\n            if current_city == 'Split':\n                required_days = cities['Split']['fixed_days']\n                last_day = current_day + cities['Split']['days'] - 1\n                if not (7 >= current_day and 9 <= last_day):\n                    break  # Doesn't cover both conference days\n                \n            # Check if we can allocate required days\n            required_days = cities[current_city]['days']\n            if current_day + required_days - 1 > total_days:\n                break\n                \n            # Add flight if not first city\n            if prev_city:\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': current_city\n                })\n            \n            # Add stay\n            end_day = current_day + required_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': current_city\n            })\n            \n            # Update for next iteration\n            prev_city = current_city\n            current_day = end_day + 1\n            remaining_cities.pop(0)\n        \n        # Check if all cities were visited and all days are accounted for\n        if not remaining_cities and current_day > total_days:\n            # Check all constraints are satisfied\n            valid = True\n            \n            # Check Split conference days\n            split_days = []\n            for item in itinerary:\n                if item.get('place') == 'Split':\n                    start, end = map(int, item['day_range'].split(' ')[1].split('-'))\n                    split_days.extend(range(start, end + 1))\n            if not (7 in split_days and 9 in split_days):\n                valid = False\n                \n            # Check Vienna workshop\n            vienna_days = []\n            for item in itinerary:\n                if item.get('place') == 'Vienna':\n                    start, end = map(int, item['day_range'].split(' ')[1].split('-'))\n                    vienna_days.extend(range(start, end + 1))\n            if not any(day in vienna_days for day in [1, 2]):\n                valid = False\n                \n            if valid:\n                valid_itineraries.append(itinerary)\n    \n    # Select the first valid itinerary (all should be equivalent in days)\n    if valid_itineraries:\n        return valid_itineraries[0]\n    else:\n        return []\n\ndef main():\n    itinerary = calculate_itinerary()\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_371"
+        }
+    ]
+}

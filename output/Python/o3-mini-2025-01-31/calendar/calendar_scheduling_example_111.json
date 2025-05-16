@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import datetime, timedelta\n\n# Helper functions to convert between \"HH:MM\" strings and minutes since midnight\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(\":\"))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    return f\"{minutes//60:02d}:{minutes%60:02d}\"\n\n# Define the work day boundaries for Monday in minutes\nwork_start = time_to_minutes(\"09:00\")\nwork_end   = time_to_minutes(\"17:00\")\nmeeting_duration = 30  # in minutes\n\n# Busy intervals for each participant (start, end) in HH:MM format\nschedules = {\n    \"Gregory\": [(\"09:00\", \"10:00\"), (\"10:30\", \"11:30\"), (\"12:30\", \"13:00\"), (\"13:30\", \"14:00\")],\n    \"Natalie\": [],  # Natalie is free the entire day\n    \"Christine\": [(\"09:00\", \"11:30\"), (\"13:30\", \"17:00\")],\n    \"Vincent\": [(\"09:00\", \"09:30\"), (\"10:30\", \"12:00\"), (\"12:30\", \"14:00\"), (\"14:30\", \"17:00\")]\n}\n\n# Convert busy intervals to minutes\ndef convert_schedule(busy_intervals):\n    return [(time_to_minutes(start), time_to_minutes(end)) for start, end in busy_intervals]\n\nconverted_schedules = {person: convert_schedule(busy)\n                       for person, busy in schedules.items()}\n\n# Given a list of busy intervals for a participant and the work day boundaries,\n# compute the free intervals\ndef get_free_intervals(busy_intervals, start=work_start, end=work_end):\n    # Sort intervals\n    busy_intervals = sorted(busy_intervals, key=lambda x: x[0])\n    free_intervals = []\n    current_start = start\n\n    for b_start, b_end in busy_intervals:\n        if b_start > current_start:\n            free_intervals.append((current_start, b_start))\n        current_start = max(current_start, b_end)\n    if current_start < end:\n        free_intervals.append((current_start, end))\n    return free_intervals\n\n# Calculate free intervals for each person\nfree_times = {person: get_free_intervals(busy)\n              for person, busy in converted_schedules.items()}\n\n# Function to compute intersection of two interval lists\ndef intersect_intervals(list1, list2):\n    i, j = 0, 0\n    intersection = []\n    while i < len(list1) and j < len(list2):\n        start1, end1 = list1[i]\n        start2, end2 = list2[j]\n        # Find the intersection of these two intervals\n        start_int = max(start1, start2)\n        end_int = min(end1, end2)\n        if start_int < end_int:\n            intersection.append((start_int, end_int))\n        # Move on from the interval that ends first\n        if end1 < end2:\n            i += 1\n        else:\n            j += 1\n    return intersection\n\n# Compute the common free intervals for all participants\nparticipants = list(free_times.keys())\ncommon_free = free_times[participants[0]]\nfor person in participants[1:]:\n    common_free = intersect_intervals(common_free, free_times[person])\n\n# Now, from the common free intervals, pick the first interval\n# that is at least meeting_duration minutes long.\nmeeting_time = None\nfor start, end in common_free:\n    if end - start >= meeting_duration:\n        meeting_time = (start, start + meeting_duration)\n        break\n\nif meeting_time:\n    start_str = minutes_to_time(meeting_time[0])\n    end_str = minutes_to_time(meeting_time[1])\n    day = \"Monday\"\n    print(f\"{day} {start_str}:{end_str}\")\nelse:\n    print(\"No available time slot found.\")\n'''",
+            "count": "calendar_scheduling_example_111"
+        }
+    ]
+}

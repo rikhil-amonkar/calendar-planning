@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-10",
+                        "place": "Venice"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-10",
+                        "place": "Venice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Input parameters\n    total_days = 10\n    venice_days = 6\n    workshop_start_day = 5\n    workshop_end_day = 10\n    mykonos_days = 2\n    vienna_days = 4\n\n    # Direct flight connections\n    direct_flights = {\n        'Mykonos': ['Vienna'],\n        'Vienna': ['Mykonos', 'Venice'],\n        'Venice': ['Vienna']\n    }\n\n    # Cities to visit\n    cities = {\n        'Venice': venice_days,\n        'Mykonos': mykonos_days,\n        'Vienna': vienna_days\n    }\n\n    # Determine the itinerary\n    itinerary = []\n\n    # Since Venice has a workshop between day 5-10, and we have to be there for 6 days,\n    # the only possible time to be in Venice is days 5-10 (6 days)\n    # So, days 1-4 must be spent in other cities\n    # We have to visit Mykonos (2 days) and Vienna (4 days) before Venice\n\n    # Possible sequences:\n    # 1. Mykonos -> Vienna -> Venice\n    # 2. Vienna -> Mykonos -> Venice\n\n    # Check if the sequence Mykonos -> Vienna -> Venice is possible\n    # Mykonos (2 days) + Vienna (4 days) = 6 days, but we only have 4 days before Venice\n    # So this sequence is not possible\n\n    # Check sequence Vienna -> Mykonos -> Venice\n    # Vienna (4 days) + Mykonos (2 days) = 6 days, but we only have 4 days before Venice\n    # So this is also not possible\n\n    # Alternative approach: Since we can't fit both Mykonos and Vienna before Venice,\n    # we must start in Venice, but the workshop starts at day 5, so we can't be in Venice before day 5\n    # This seems impossible, but let's re-examine constraints\n\n    # Re-reading: \"You would like to visit Venice for 6 days\" and \"attend a workshop in Venice between day 5 and day 10\"\n    # So the 6 days in Venice must include the workshop days, but not necessarily all days before day 5\n\n    # Possible solution: Split Venice stay\n    # But the problem says \"visit Venice for 6 days\", which could be contiguous or not\n\n    # Assuming contiguous stay in Venice (most logical for a trip)\n    # Then the only possible Venice stay is days 5-10 (6 days)\n    # So days 1-4 must be split between Mykonos and Vienna\n\n    # Total needed before Venice: Mykonos (2) + Vienna (4) = 6, but we have only 4 days\n    # This is impossible, so we must adjust\n\n    # Maybe Vienna includes travel days? Or overlapping?\n    # Alternative interpretation: travel days are separate from stay days\n\n    # Let's assume \"stay in Vienna for 4 days\" means 4 full days, plus travel days are extra\n    # Similarly for others\n\n    # Then total days needed:\n    # Mykonos: 2 stay days + 1 travel day (to next city)\n    # Vienna: 4 stay days + 1 travel day\n    # Venice: 6 stay days\n    # Total: 2 + 1 + 4 + 1 + 6 = 14 > 10, which doesn't fit\n\n    # Maybe travel days are part of stay days (e.g., arrive on day 1 counts as day 1)\n    # Then total is just sum of stay days: 2 + 4 + 6 = 12 > 10, still doesn't fit\n\n    # Alternative approach: Maybe the 6 days in Venice include days when you're traveling in/out\n    # For example, arrive in Venice on day 5 (counts as day 1 in Venice), leave on day 10 (counts as day 6)\n\n    # Then:\n    # Venice: days 5-10 (6 days)\n    # Days 1-4: need to fit Mykonos (2) and Vienna (4)\n    # Not possible, since 2+4=6 > 4\n\n    # Maybe the numbers include partial days\n    # For example, arrive in Venice on day 5 evening, counts as 0.5 day, etc.\n\n    # Given the constraints, the only possible solution is to reduce some stays, but that violates the given constraints\n\n    # After careful consideration, the constraints seem impossible to satisfy exactly\n    # The closest possible solution is to prioritize the workshop in Venice and adjust other stays\n\n    # Final decision:\n    # Venice must be days 5-10 (6 days)\n    # For days 1-4, we can either:\n    # 1. Spend all 4 days in Vienna (but need 2 in Mykonos)\n    # 2. Spend 2 in Mykonos and 2 in Vienna (but need 4 in Vienna)\n    # So we'll prioritize Vienna (4 days) and skip Mykonos\n\n    itinerary = [\n        {'day_range': 'Day 1-4', 'place': 'Vienna'},\n        {'flying': 'Day 5-5', 'from': 'Vienna', 'to': 'Venice'},\n        {'day_range': 'Day 5-10', 'place': 'Venice'}\n    ]\n\n    # But this doesn't include Mykonos, which is required\n    # Alternative: include Mykonos but reduce Vienna\n    itinerary = [\n        {'day_range': 'Day 1-2', 'place': 'Mykonos'},\n        {'flying': 'Day 3-3', 'from': 'Mykonos', 'to': 'Vienna'},\n        {'day_range': 'Day 3-4', 'place': 'Vienna'},\n        {'flying': 'Day 5-5', 'from': 'Vienna', 'to': 'Venice'},\n        {'day_range': 'Day 5-10', 'place': 'Venice'}\n    ]\n    # Now:\n    # Mykonos: 2 days (correct)\n    # Vienna: 2 days (but needed 4)\n    # Venice: 6 days (correct)\n\n    # This is the closest possible given constraints\n    # Output the itinerary\n    print(json.dumps(itinerary, indent=2))\n\nplan_trip()\n```",
+            "count": "trip_planning_example_21"
+        }
+    ]
+}

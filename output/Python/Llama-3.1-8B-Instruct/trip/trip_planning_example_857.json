@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nimport itertools\n\n# Input parameters\ncities = {\n    'Porto': 2,\n    'Geneva': 3,\n    'Mykonos': 3,\n    'Manchester': 4,\n    'Hamburg': 5,\n    'Naples': 5,\n    'Frankfurt': 2\n}\n\nconstraints = {\n    'Porto': ['Frankfurt', 'Geneva'],\n    'Geneva': ['Mykonos', 'Manchester', 'Frankfurt', 'Porto', 'Naples'],\n    'Mykonos': ['Geneva', 'Naples', 'Manchester'],\n    'Manchester': ['Geneva', 'Naples', 'Frankfurt', 'Hamburg', 'Porto'],\n    'Hamburg': ['Frankfurt', 'Geneva', 'Porto', 'Manchester', 'Naples'],\n    'Naples': ['Mykonos', 'Manchester', 'Geneva', 'Frankfurt', 'Hamburg'],\n    'Frankfurt': ['Naples', 'Geneva', 'Porto', 'Manchester', 'Hamburg']\n}\n\n# Direct flights\nflights = {\n    ('Hamburg', 'Frankfurt'): 1,\n    ('Naples', 'Mykonos'): 1,\n    ('Hamburg', 'Porto'): 1,\n    ('Hamburg', 'Geneva'): 1,\n    ('Mykonos', 'Geneva'): 1,\n    ('Frankfurt', 'Geneva'): 1,\n    ('Frankfurt', 'Porto'): 1,\n    ('Geneva', 'Porto'): 1,\n    ('Geneva', 'Manchester'): 1,\n    ('Naples', 'Manchester'): 1,\n    ('Frankfurt', 'Naples'): 1,\n    ('Frankfurt', 'Manchester'): 1,\n    ('Naples', 'Geneva'): 1,\n    ('Porto', 'Manchester'): 1,\n    ('Hamburg', 'Manchester'): 1\n}\n\ndef compute_itinerary(cities, constraints, flights, total_days):\n    # Initialize the itinerary\n    itinerary = []\n    current_city = None\n    current_day = 1\n\n    # Visit each city\n    for city, duration in cities.items():\n        # Find the next city to visit\n        next_cities = constraints[city]\n        if current_city is not None:\n            next_cities = [c for c in next_cities if flights.get((current_city, c), 0) > 0]\n\n        # Find the first available city to visit\n        next_city = None\n        for c in next_cities:\n            if current_day + duration <= total_days and flights.get((current_city, c), 0) > 0:\n                next_city = c\n                break\n\n        # Add the current city to the itinerary\n        if current_city is not None:\n            itinerary.append({'day_range': f'Day {current_day}-{current_day + duration - 1}', 'place': current_city})\n\n        # Add the flight to the next city\n        if next_city is not None:\n            itinerary.append({'flying': f'Day {current_day + duration - 1}-{current_day + duration - 1}', 'from': current_city, 'to': next_city})\n\n        # Update the current city and day\n        current_city = next_city\n        current_day += duration\n\n    # Add the last city to the itinerary\n    if current_city is not None:\n        itinerary.append({'day_range': f'Day {current_day - cities[current_city]}-{current_day - 1}', 'place': current_city})\n\n    return itinerary\n\n# Compute the itinerary\nitinerary = compute_itinerary(cities, constraints, flights, 18)\n\n# Print the itinerary as JSON\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_857"
+        }
+    ]
+}

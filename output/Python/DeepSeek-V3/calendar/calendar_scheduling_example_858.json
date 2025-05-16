@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time():\n    # Define work hours and days to consider\n    work_start = datetime.strptime(\"09:00\", \"%H:%M\").time()\n    work_end = datetime.strptime(\"17:00\", \"%H:%M\").time()\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\n    \n    # Define busy times for each participant per day\n    carl_busy = {\n        \"Monday\": [(\"11:00\", \"11:30\")],\n        \"Tuesday\": [(\"14:30\", \"15:00\")],\n        \"Wednesday\": [(\"10:00\", \"11:30\"), (\"13:00\", \"13:30\")],\n        \"Thursday\": [(\"13:30\", \"14:00\"), (\"16:00\", \"16:30\")]\n    }\n    \n    margaret_busy = {\n        \"Monday\": [(\"09:00\", \"10:30\"), (\"11:00\", \"17:00\")],\n        \"Tuesday\": [(\"09:30\", \"12:00\"), (\"13:30\", \"14:00\"), (\"15:30\", \"17:00\")],\n        \"Wednesday\": [(\"09:30\", \"12:00\"), (\"12:30\", \"13:00\"), (\"13:30\", \"14:30\"), (\"15:00\", \"17:00\")],\n        \"Thursday\": [(\"10:00\", \"12:00\"), (\"12:30\", \"14:00\"), (\"14:30\", \"17:00\")]\n    }\n    \n    # Convert busy times to datetime.time for easier comparison\n    def parse_busy_times(busy_dict):\n        parsed = {}\n        for day, slots in busy_dict.items():\n            parsed[day] = []\n            for start, end in slots:\n                start_time = datetime.strptime(start, \"%H:%M\").time()\n                end_time = datetime.strptime(end, \"%H:%M\").time()\n                parsed[day].append((start_time, end_time))\n        return parsed\n    \n    carl_busy_parsed = parse_busy_times(carl_busy)\n    margaret_busy_parsed = parse_busy_times(margaret_busy)\n    \n    # Check if a time slot is available for both participants\n    def is_available(day, start_time, end_time):\n        # Check Carl's availability\n        for busy_start, busy_end in carl_busy_parsed.get(day, []):\n            if not (end_time <= busy_start or start_time >= busy_end):\n                return False\n        # Check Margaret's availability\n        for busy_start, busy_end in margaret_busy_parsed.get(day, []):\n            if not (end_time <= busy_start or start_time >= busy_end):\n                return False\n        return True\n    \n    # Iterate through each day (excluding Thursday first due to Carl's preference)\n    preferred_days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\n    # Move Thursday to the end of the list to prioritize other days\n    preferred_days.remove(\"Thursday\")\n    preferred_days.append(\"Thursday\")\n    \n    meeting_duration = timedelta(hours=1)\n    time_slot = timedelta(minutes=30)  # Check every 30 minutes\n    \n    for day in preferred_days:\n        current_time = datetime.combine(datetime.today(), work_start)\n        end_time = datetime.combine(datetime.today(), work_end)\n        \n        while current_time + meeting_duration <= end_time:\n            slot_start = current_time.time()\n            slot_end = (current_time + meeting_duration).time()\n            \n            if is_available(day, slot_start, slot_end):\n                # Format the output as HH:MM:HH:MM\n                start_str = slot_start.strftime(\"%H:%M\")\n                end_str = slot_end.strftime(\"%H:%M\")\n                print(f\"{day}: {start_str}:{end_str}\")\n                return\n            \n            current_time += time_slot\n    \n    print(\"No suitable time found.\")\n\nfind_meeting_time()\n```",
+            "count": "calendar_scheduling_example_858"
+        }
+    ]
+}

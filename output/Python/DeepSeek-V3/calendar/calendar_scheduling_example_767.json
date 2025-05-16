@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "15:30",
+                "end_time": "16:30"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "15:30",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days to consider\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60   # 17:00 in minutes\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    meeting_duration = 60  # minutes\n\n    # Define blocked times for each participant per day in minutes since midnight\n    martha_blocked = {\n        'Monday': [(16 * 60, 17 * 60)],\n        'Tuesday': [(15 * 60, 15 * 60 + 30)],\n        'Wednesday': [(10 * 60, 11 * 60), (14 * 60, 14 * 60 + 30)]\n    }\n\n    beverly_blocked = {\n        'Monday': [(9 * 60, 13 * 60 + 30), (14 * 60, 17 * 60)],\n        'Tuesday': [(9 * 60, 17 * 60)],\n        'Wednesday': [(9 * 60 + 30, 15 * 60 + 30), (16 * 60 + 30, 17 * 60)]\n    }\n\n    # Iterate through each day to find a suitable time slot\n    for day in days:\n        # Collect all blocked times for both participants\n        blocked_times = martha_blocked.get(day, []) + beverly_blocked.get(day, [])\n        blocked_times.sort()  # Sort by start time\n\n        # Check available slots between work hours\n        current_time = work_start\n        for block_start, block_end in blocked_times:\n            if current_time + meeting_duration <= block_start:\n                # Found a suitable slot\n                start_h = current_time // 60\n                start_m = current_time % 60\n                end_h = (current_time + meeting_duration) // 60\n                end_m = (current_time + meeting_duration) % 60\n                return day, f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n            # Update current_time to the end of the current block if it's later\n            if block_end > current_time:\n                current_time = block_end\n        # Check after the last block\n        if current_time + meeting_duration <= work_end:\n            start_h = current_time // 60\n            start_m = current_time % 60\n            end_h = (current_time + meeting_duration) // 60\n            end_m = (current_time + meeting_duration) % 60\n            return day, f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n\n    return \"No suitable time found\", \"\"\n\n# Execute the function and print the result\nday, time_slot = find_meeting_time()\nprint(f\"{day}: {time_slot}\")\n```",
+            "count": "calendar_scheduling_example_767"
+        }
+    ]
+}

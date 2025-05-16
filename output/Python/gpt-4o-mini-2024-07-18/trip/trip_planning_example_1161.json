@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 17-21",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Constants\n    total_days = 18\n    itinerary = []\n\n    # Trip Constraints\n    trip_details = {\n        \"Mykonos\": {\"days\": 4, \"meet_relatives\": (15, 18)},\n        \"Krakow\": {\"days\": 5},\n        \"Vilnius\": {\"days\": 2},\n        \"Helsinki\": {\"days\": 2},\n        \"Dubrovnik\": {\"days\": 3, \"show_days\": (2, 4)},\n        \"Oslo\": {\"days\": 2, \"meet_friends\": (1, 2)},\n        \"Madrid\": {\"days\": 5},\n        \"Paris\": {\"days\": 2}\n    }\n\n    # Direct flights mapping\n    direct_flights = {\n        'Oslo': ['Krakow', 'Paris', 'Madrid', 'Helsinki', 'Vilnius', 'Dubrovnik'],\n        'Krakow': ['Oslo', 'Vilnius', 'Paris'],\n        'Vilnius': ['Helsinki', 'Krakow', 'Paris'],\n        'Helsinki': ['Oslo', 'Vilnius', 'Krakow', 'Madrid', 'Paris', 'Dubrovnik'],\n        'Dubrovnik': ['Helsinki', 'Madrid', 'Oslo'],\n        'Madrid': ['Paris', 'Mykonos', 'Dubrovnik', 'Oslo'],\n        'Paris': ['Oslo', 'Madrid', 'Krakow', 'Vilnius'],\n        'Mykonos': []\n    }\n\n    # Itinerary calculation\n    current_day = 1\n    current_location = 'Oslo'\n    \n    # Meeting Friends in Oslo\n    itinerary.append({'day_range': 'Day 1-2', 'place': current_location})\n    \n    # Traveling to Dubrovnik for the show\n    current_day += 2\n    current_location = 'Dubrovnik'\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Oslo', 'to': 'Dubrovnik'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': current_location})\n    \n    # (Day 5 onward)\n    current_day += 3\n\n    # Traveling to Krakow\n    current_location = 'Krakow'\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Dubrovnik', 'to': 'Krakow'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': current_location})\n    \n    current_day += 5\n    \n    # Traveling to Vilnius\n    current_location = 'Vilnius'\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Krakow', 'to': 'Vilnius'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': current_location})\n\n    current_day += 2\n\n    # Traveling to Helsinki\n    current_location = 'Helsinki'\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vilnius', 'to': 'Helsinki'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': current_location})\n\n    current_day += 2\n\n    # Traveling to Paris\n    current_location = 'Paris'\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Helsinki', 'to': 'Paris'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': current_location})\n\n    current_day += 2\n\n    # Traveling to Madrid\n    current_location = 'Madrid'\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Paris', 'to': 'Madrid'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': current_location})\n\n    current_day += 5\n\n    # Traveling to Mykonos\n    current_location = 'Mykonos'\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Madrid', 'to': 'Mykonos'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': current_location})\n\n    current_day += 4\n\n    # Final JSON output\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    print(plan_trip())\n```",
+            "count": "trip_planning_example_1161"
+        }
+    ]
+}

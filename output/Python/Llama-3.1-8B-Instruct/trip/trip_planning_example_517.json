@@ -1,0 +1,36 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Dubrovnik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nimport itertools\n\n# Input parameters\ncities = {\n    'Dubrovnik': 5,\n    'Warsaw': 2,\n    'Stuttgart': 7,\n    'Bucharest': 6,\n    'Copenhagen': 3\n}\n\nconstraints = {\n    'Dubrovnik': ['Copenhagen'],\n    'Warsaw': ['Stuttgart', 'Copenhagen'],\n    'Stuttgart': ['Copenhagen', 'Warsaw'],\n    'Bucharest': ['Copenhagen', 'Warsaw'],\n    'Copenhagen': ['Dubrovnik', 'Stuttgart', 'Warsaw', 'Bucharest']\n}\n\n# Direct flights\nflights = {\n    ('Warsaw', 'Copenhagen'): 1,\n    ('Stuttgart', 'Copenhagen'): 1,\n    ('Warsaw', 'Stuttgart'): 1,\n    ('Bucharest', 'Copenhagen'): 1,\n    ('Bucharest', 'Warsaw'): 1,\n    ('Copenhagen', 'Dubrovnik'): 1\n}\n\ndef compute_itinerary(cities, constraints, flights, total_days):\n    # Initialize the itinerary\n    itinerary = []\n    current_city = None\n    current_day = 1\n\n    # Visit each city\n    for city, duration in cities.items():\n        # Find the next city to visit\n        next_cities = constraints[city]\n        if current_city is not None:\n            next_cities = [c for c in next_cities if flights.get((current_city, c), 0) > 0]\n\n        # Find the first available city to visit\n        next_city = None\n        for c in next_cities:\n            if current_day + duration <= total_days and flights.get((current_city, c), 0) > 0:\n                next_city = c\n                break\n\n        # Add the current city to the itinerary\n        if current_city is not None:\n            itinerary.append({'day_range': f'Day {current_day}-{current_day + duration - 1}', 'place': current_city})\n\n        # Add the flight to the next city\n        if next_city is not None:\n            itinerary.append({'flying': f'Day {current_day + duration - 1}-{current_day + duration - 1}', 'from': current_city, 'to': next_city})\n\n        # Update the current city and day\n        current_city = next_city\n        current_day += duration\n\n    # Add the last city to the itinerary\n    if current_city is not None:\n        itinerary.append({'day_range': f'Day {current_day - cities[current_city]}-{current_day - 1}', 'place': current_city})\n\n    return itinerary\n\n# Compute the itinerary\nitinerary = compute_itinerary(cities, constraints, flights, 19)\n\n# Print the itinerary as JSON\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_517"
+        }
+    ]
+}

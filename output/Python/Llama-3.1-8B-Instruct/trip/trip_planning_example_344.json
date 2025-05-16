@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 0-5",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 17-17",
+                        "place": "Zurich"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom collections import defaultdict\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Valencia': 6,\n            'Athens': 6,\n            'Naples': 5,\n            'Zurich': 6\n        }\n        self.flights = {\n            ('Valencia', 'Naples'): 1,\n            ('Valencia', 'Athens'): 1,\n            ('Athens', 'Naples'): 1,\n            ('Zurich', 'Naples'): 1,\n            ('Athens', 'Zurich'): 1,\n            ('Zurich', 'Valencia'): 1\n        }\n        self.conference = {'Athens': (1, 6)}\n        self.wedding = {'Naples': (16, 20)}\n\n    def plan_trip(self):\n        trip = []\n        days = 0\n        current_city = None\n        for city, duration in self.cities.items():\n            if city in self.conference:\n                start_day, end_day = self.conference[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            elif city in self.wedding:\n                start_day, end_day = self.wedding[city]\n                trip.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                days += end_day - start_day\n            else:\n                if current_city is not None:\n                    for flight, duration in self.flights.items():\n                        if flight[0] == current_city:\n                            trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                            days += 1\n                trip.append({'day_range': f'Day {days}-{days + duration - 1}', 'place': city})\n                days += duration\n                current_city = city\n        if current_city is not None:\n            for flight, duration in self.flights.items():\n                if flight[0] == current_city:\n                    trip.append({'flying': f'Day {days}-{days}', 'from': current_city, 'to': flight[1]})\n                    days += 1\n        return trip\n\n    def output_json(self, trip):\n        return json.dumps(trip, indent=4)\n\ndef main():\n    planner = TripPlanner()\n    trip = planner.plan_trip()\n    print(planner.output_json(trip))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_344"
+        }
+    ]
+}

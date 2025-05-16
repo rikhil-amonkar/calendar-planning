@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "9:13",
+                        "end_time": "10:28"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Laura",
+                        "start_time": "11:45",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Deborah",
+                        "start_time": "13:05",
+                        "end_time": "14:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Steven",
+                        "start_time": "15:03",
+                        "end_time": "17:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Jason",
+                        "start_time": "17:08",
+                        "end_time": "18:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Elizabeth",
+                        "start_time": "18:44",
+                        "end_time": "19:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Carol",
+                        "start_time": "21:30",
+                        "end_time": "22:30"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Constants for travel times\ntravel_times = {\n    ('Golden Gate Park', 'Haight-Ashbury'): 7,\n    ('Golden Gate Park', 'Fisherman\\'s Wharf'): 24,\n    ('Golden Gate Park', 'The Castro'): 13,\n    ('Golden Gate Park', 'Chinatown'): 23,\n    ('Golden Gate Park', 'Alamo Square'): 10,\n    ('Golden Gate Park', 'North Beach'): 24,\n    ('Golden Gate Park', 'Russian Hill'): 19,\n    ('Haight-Ashbury', 'Fisherman\\'s Wharf'): 23,\n    ('Haight-Ashbury', 'The Castro'): 6,\n    ('Haight-Ashbury', 'Chinatown'): 19,\n    ('Haight-Ashbury', 'Alamo Square'): 5,\n    ('Haight-Ashbury', 'North Beach'): 19,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Fisherman\\'s Wharf', 'The Castro'): 26,\n    ('Fisherman\\'s Wharf', 'Chinatown'): 12,\n    ('Fisherman\\'s Wharf', 'Alamo Square'): 20,\n    ('Fisherman\\'s Wharf', 'North Beach'): 6,\n    ('Fisherman\\'s Wharf', 'Russian Hill'): 7,\n    ('The Castro', 'Chinatown'): 22,\n    ('The Castro', 'Alamo Square'): 8,\n    ('The Castro', 'North Beach'): 20,\n    ('The Castro', 'Russian Hill'): 18,\n    ('Chinatown', 'North Beach'): 3,\n    ('Chinatown', 'Russian Hill'): 7,\n    ('Alamo Square', 'North Beach'): 15,\n    ('Alamo Square', 'Russian Hill'): 13,\n    ('North Beach', 'Russian Hill'): 5,\n}\n\n# Meeting constraints\nparticipants = {\n    \"Carol\": {\"location\": \"Haight-Ashbury\", \"available\": (datetime.strptime(\"21:30\", \"%H:%M\"), datetime.strptime(\"22:30\", \"%H:%M\")), \"duration\": 60},\n    \"Laura\": {\"location\": \"Fisherman\\'s Wharf\", \"available\": (datetime.strptime(\"11:45\", \"%H:%M\"), datetime.strptime(\"21:30\", \"%H:%M\")), \"duration\": 60},\n    \"Karen\": {\"location\": \"The Castro\", \"available\": (datetime.strptime(\"07:15\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")), \"duration\": 75},\n    \"Elizabeth\": {\"location\": \"Chinatown\", \"available\": (datetime.strptime(\"12:15\", \"%H:%M\"), datetime.strptime(\"21:30\", \"%H:%M\")), \"duration\": 75},\n    \"Deborah\": {\"location\": \"Alamo Square\", \"available\": (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")), \"duration\": 105},\n    \"Jason\": {\"location\": \"North Beach\", \"available\": (datetime.strptime(\"14:45\", \"%H:%M\"), datetime.strptime(\"19:00\", \"%H:%M\")), \"duration\": 90},\n    \"Steven\": {\"location\": \"Russian Hill\", \"available\": (datetime.strptime(\"14:45\", \"%H:%M\"), datetime.strptime(\"18:30\", \"%H:%M\")), \"duration\": 120},\n}\n\n# Start time\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\nitinerary = []\n\n# Function to add a meeting to the itinerary\ndef add_meeting(location, person, start, duration):\n    end = start + timedelta(minutes=duration)\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": start.strftime(\"%H:%M\"),\n        \"end_time\": end.strftime(\"%H:%M\")\n    })\n    return end\n\n# Meeting logic\ncurrent_time = start_time\n\n# Meeting Karen\nif current_time < participants[\"Karen\"][\"available\"][1]:\n    travel_time = travel_times[('Golden Gate Park', 'The Castro')]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < participants[\"Karen\"][\"available\"][0]:\n        current_time = participants[\"Karen\"][\"available\"][0]\n    current_time = add_meeting(\"The Castro\", \"Karen\", current_time, participants[\"Karen\"][\"duration\"])\n\n# Meeting Deborah\nif current_time < participants[\"Deborah\"][\"available\"][1]:\n    travel_time = travel_times[('The Castro', 'Alamo Square')]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < participants[\"Deborah\"][\"available\"][0]:\n        current_time = participants[\"Deborah\"][\"available\"][0]\n    current_time = add_meeting(\"Alamo Square\", \"Deborah\", current_time, participants[\"Deborah\"][\"duration\"])\n\n# Meeting Jason\nif current_time < participants[\"Jason\"][\"available\"][1]:\n    travel_time = travel_times[('Alamo Square', 'North Beach')]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < participants[\"Jason\"][\"available\"][0]:\n        current_time = participants[\"Jason\"][\"available\"][0]\n    current_time = add_meeting(\"North Beach\", \"Jason\", current_time, participants[\"Jason\"][\"duration\"])\n\n# Meeting Steven\nif current_time < participants[\"Steven\"][\"available\"][1]:\n    travel_time = travel_times[('North Beach', 'Russian Hill')]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < participants[\"Steven\"][\"available\"][0]:\n        current_time = participants[\"Steven\"][\"available\"][0]\n    current_time = add_meeting(\"Russian Hill\", \"Steven\", current_time, participants[\"Steven\"][\"duration\"])\n\n# Meeting Elizabeth\nif current_time < participants[\"Elizabeth\"][\"available\"][1]:\n    travel_time = travel_times[('Russian Hill', 'Chinatown')]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < participants[\"Elizabeth\"][\"available\"][0]:\n        current_time = participants[\"Elizabeth\"][\"available\"][0]\n    current_time = add_meeting(\"Chinatown\", \"Elizabeth\", current_time, participants[\"Elizabeth\"][\"duration\"])\n\n# Meeting Laura\nif current_time < participants[\"Laura\"][\"available\"][1]:\n    travel_time = travel_times[('Chinatown', 'Fisherman\\'s Wharf')]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < participants[\"Laura\"][\"available\"][0]:\n        current_time = participants[\"Laura\"][\"available\"][0]\n    current_time = add_meeting(\"Fisherman\\'s Wharf\", \"Laura\", current_time, participants[\"Laura\"][\"duration\"])\n\n# Meeting Carol\nif current_time < participants[\"Carol\"][\"available\"][1]:\n    travel_time = travel_times[('Fisherman\\'s Wharf', 'Haight-Ashbury')]\n    current_time += timedelta(minutes=travel_time)\n    if current_time < participants[\"Carol\"][\"available\"][0]:\n        current_time = participants[\"Carol\"][\"available\"][0]\n    current_time = add_meeting(\"Haight-Ashbury\", \"Carol\", current_time, participants[\"Carol\"][\"duration\"])\n\n# Output the result in JSON format\nresult = {\"itinerary\": itinerary}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_624"
+        }
+    ]
+}

@@ -1,0 +1,80 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Mark",
+                        "start_time": "209:0",
+                        "end_time": "629:10"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Laura",
+                        "start_time": "9:14",
+                        "end_time": "10:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Charles",
+                        "start_time": "11:30",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "14:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Rebecca",
+                        "start_time": "16:24",
+                        "end_time": "17:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:59",
+                        "end_time": "18:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Patricia",
+                        "start_time": "18:46",
+                        "end_time": "19:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Robert",
+                        "start_time": "19:46",
+                        "end_time": "20:16"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Karen",
+                        "start_time": "20:28",
+                        "end_time": "21:28"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to help this person write a Python program to schedule meetings in San Francisco. They want to meet as many friends as possible, so I need to optimize the schedule based on travel times and each person's availability.\n\nFirst, I'll look at the travel distances provided. It seems like the distances are between various neighborhoods, and I need to calculate the time it takes to travel between them. The person is starting at the Marina District at 9:00 AM, so I'll need to consider travel times from there.\n\nNext, I'll look at the constraints. There are several friends in different locations with specific time slots. For example, Charles is at Bayview from 11:30 AM to 2:30 PM, Robert at Sunset District from 4:45 PM to 9:00 PM, Karen at Richmond District from 7:15 PM to 9:30 PM, Rebecca at Nob Hill from 4:15 PM to 8:30 PM, Margaret at Chinatown from 2:15 PM to 7:45 PM, Patricia at Haight-Ashbury from 2:30 PM to 8:30 PM, Mark at North Beach from 2:00 PM to 6:30 PM, Melissa at Russian Hill from 1:00 PM to 7:45 PM, and Laura at Embarcadero from 7:45 AM to 1:15 PM.\n\nI need to figure out the best times and locations to meet each person without overlapping schedules and considering the travel times. The goal is to maximize the number of meetings.\n\nI think the first step is to calculate the travel times from the Marina District to each location. For example, it takes 27 minutes to get to Bayview, 19 minutes to Sunset District, 11 minutes to Richmond District, 12 minutes to Nob Hill, 15 minutes to Chinatown, 16 minutes to Haight-Ashbury, 11 minutes to North Beach, 8 minutes to Russian Hill, and 14 minutes to Embarcadero.\n\nOnce I have these travel times, I can determine the feasible meeting times for each person. For each friend, I'll calculate the earliest and latest possible start times based on their availability and the travel time from the Marina District.\n\nFor example, for Charles at Bayview, I can arrive as early as 11:30 AM plus travel time (27 minutes), so 11:57 AM. His latest meeting end time is 2:30 PM, so I can leave as late as 2:30 PM minus the meeting duration (45 minutes), which is 1:45 PM. So, the meeting can be from 11:57 AM to 2:30 PM.\n\nI'll repeat this process for each friend, calculating their feasible meeting windows. After that, I'll sort these meetings by their end times to pick the earliest ending ones first, which helps in maximizing the number of meetings.\n\nOnce I have all the feasible meetings, I'll select non-overlapping ones, starting with the earliest and moving to the next compatible one. This greedy algorithm approach should give me the optimal schedule.\n\nFinally, I'll convert the meeting times into the required 24-hour format and structure the output as a JSON-formatted dictionary. This way, the program can run independently and provide a valid schedule based on the given constraints.\n```python\nimport json\n\n# Define travel times from Marina District to each location\ntravel_times = {\n    'Marina District': {\n        'Bayview': 27,\n        'Sunset District': 19,\n        'Richmond District': 11,\n        'Nob Hill': 12,\n        'Chinatown': 15,\n        'Haight-Ashbury': 16,\n        'North Beach': 11,\n        'Russian Hill': 8,\n        'Embarcadero': 14\n    },\n    'Bayview': {\n        'Marina District': 27,\n        'Sunset District': 23,\n        'Richmond District': 25,\n        'Nob Hill': 20,\n        'Chinatown': 19,\n        'Haight-Ashbury': 19,\n        'North Beach': 22,\n        'Russian Hill': 23,\n        'Embarcadero': 19\n    },\n    'Sunset District': {\n        'Marina District': 21,\n        'Bayview': 22,\n        'Richmond District': 12,\n        'Nob Hill': 27,\n        'Chinatown': 30,\n        'Haight-Ashbury': 15,\n        'North Beach': 28,\n        'Russian Hill': 24,\n        'Embarcadero': 30\n    },\n    'Richmond District': {\n        'Marina District': 9,\n        'Bayview': 27,\n        'Sunset District': 11,\n        'Nob Hill': 17,\n        'Chinatown': 20,\n        'Haight-Ashbury': 10,\n        'North Beach': 17,\n        'Russian Hill': 13,\n        'Embarcadero': 19\n    },\n    'Nob Hill': {\n        'Marina District': 11,\n        'Bayview': 19,\n        'Sunset District': 24,\n        'Richmond District': 14,\n        'Chinatown': 6,\n        'Haight-Ashbury': 13,\n        'North Beach': 8,\n        'Russian Hill': 5,\n        'Embarcadero': 9\n    },\n    'Chinatown': {\n        'Marina District': 15,\n        'Bayview': 20,\n        'Sunset District': 29,\n        'Richmond District': 20,\n        'Nob Hill': 9,\n        'Haight-Ashbury': 19,\n        'North Beach': 3,\n        'Russian Hill': 7,\n        'Embarcadero': 5\n    },\n    'Haight-Ashbury': {\n        'Marina District': 17,\n        'Bayview': 18,\n        'Sunset District': 15,\n        'Richmond District': 10,\n        'Nob Hill': 15,\n        'Chinatown': 19,\n        'North Beach': 19,\n        'Russian Hill': 17,\n        'Embarcadero': 20\n    },\n    'North Beach': {\n        'Marina District': 9,\n        'Bayview': 25,\n        'Sunset District': 27,\n        'Richmond District': 18,\n        'Nob Hill': 7,\n        'Chinatown': 6,\n        'Haight-Ashbury': 18,\n        'Russian Hill': 4,\n        'Embarcadero': 6\n    },\n    'Russian Hill': {\n        'Marina District': 8,\n        'Bayview': 23,\n        'Sunset District': 23,\n        'Richmond District': 13,\n        'Nob Hill': 5,\n        'Chinatown': 9,\n        'Haight-Ashbury': 17,\n        'North Beach': 5,\n        'Embarcadero': 8\n    },\n    'Embarcadero': {\n        'Marina District': 14,\n        'Bayview': 21,\n        'Sunset District': 30,\n        'Richmond District': 21,\n        'Nob Hill': 10,\n        'Chinatown': 7,\n        'Haight-Ashbury': 21,\n        'North Beach': 5,\n        'Russian Hill': 8\n    }\n}\n\n# List of people with their details\npeople = [\n    {\n        'name': 'Charles',\n        'location': 'Bayview',\n        'start_time': '11:30',\n        'end_time': '2:30',\n        'duration': 45,\n        'travel_time': 27\n    },\n    {\n        'name': 'Robert',\n        'location': 'Sunset District',\n        'start_time': '4:45',\n        'end_time': '9:00',\n        'duration': 30,\n        'travel_time': 19\n    },\n    {\n        'name': 'Karen',\n        'location': 'Richmond District',\n        'start_time': '7:15',\n        'end_time': '9:30',\n        'duration': 60,\n        'travel_time': 11\n    },\n    {\n        'name': 'Rebecca',\n        'location': 'Nob Hill',\n        'start_time': '4:15',\n        'end_time': '8:30',\n        'duration': 90,\n        'travel_time': 12\n    },\n    {\n        'name': 'Margaret',\n        'location': 'Chinatown',\n        'start_time': '2:15',\n        'end_time': '7:45',\n        'duration': 120,\n        'travel_time': 15\n    },\n    {\n        'name': 'Patricia',\n        'location': 'Haight-Ashbury',\n        'start_time': '2:30',\n        'end_time': '8:30',\n        'duration': 45,\n        'travel_time': 16\n    },\n    {\n        'name': 'Mark',\n        'location': 'North Beach',\n        'start_time': '2:00',\n        'end_time': '6:30',\n        'duration': 105,\n        'travel_time': 11\n    },\n    {\n        'name': 'Melissa',\n        'location': 'Russian Hill',\n        'start_time': '1:00',\n        'end_time': '7:45',\n        'duration': 30,\n        'travel_time': 8\n    },\n    {\n        'name': 'Laura',\n        'location': 'Embarcadero',\n        'start_time': '7:45',\n        'end_time': '1:15',\n        'duration': 105,\n        'travel_time': 14\n    }\n]\n\n# Function to calculate feasible meeting times\ndef calculate_feasible_meetings(people, travel_times):\n    meetings = []\n    for person in people:\n        location = person['location']\n        start_time = person['start_time']\n        end_time = person['end_time']\n        duration = person['duration']\n        travel_time = travel_times['Marina District'][location]\n        \n        # Convert times to minutes since 9:00 AM\n        earliest_start_min = (int(start_time.replace(':', '')) * 60) + 540  # 9:00 AM in minutes\n        latest_start_min = (int(end_time.replace(':', '')) * 60) - duration\n        \n        # Ensure earliest start is at least 9:00 AM\n        if earliest_start_min < 540:\n            earliest_start_min = 540\n        \n        if latest_start_min < earliest_start_min:\n            continue  # No possible meeting time\n        \n        meetings.append({\n            'name': person['name'],\n            'location': location,\n            'start_time': earliest_start_min,\n            'end_time': latest_start_min\n        })\n    \n    return meetings\n\n# Calculate feasible meeting times\nfeasible_meetings = calculate_feasible_meetings(people, travel_times)\n\n# Sort meetings by end time\nfeasible_meetings.sort(key=lambda x: x['end_time'])\n\n# Select non-overlapping meetings\nitinerary = []\nfor meeting in feasible_meetings:\n    start = meeting['start_time']\n    end = meeting['end_time']\n    if not itinerary or end <= itinerary[-1]['end_time']:\n        itinerary.append(meeting)\n\n# Convert time to 24-hour format strings\nitinerary = [\n    {\n        'action': 'meet',\n        'location': meeting['location'],\n        'person': meeting['name'],\n        'start_time': f\"{meeting['start_time'] // 60 + (meeting['start_time'] % 60 // 10)}:{meeting['start_time'] % 60 // 10 * 10}\",\n        'end_time': f\"{meeting['end_time'] // 60 + (meeting['end_time'] % 60 // 10)}:{meeting['end_time'] % 60 // 10 * 10}\"\n    }\n    for meeting in itinerary\n]\n\n# Generate JSON output\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_892"
+        }
+    ]
+}

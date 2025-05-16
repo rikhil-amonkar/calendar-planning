@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Karen",
+                        "start_time": "9:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Barbara",
+                        "start_time": "11:17",
+                        "end_time": "12:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Matthew",
+                        "start_time": "12:52",
+                        "end_time": "13:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "13:52",
+                        "end_time": "15:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "David",
+                        "start_time": "15:54",
+                        "end_time": "17:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Linda",
+                        "start_time": "18:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "19:27",
+                        "end_time": "20:57"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\nfriends = [\n    {'name': 'Karen', 'location': 'Financial District', 'start': 570, 'end': 765, 'min_duration': 90},\n    {'name': 'David', 'location': 'The Castro', 'start': 540, 'end': 1080, 'min_duration': 120},\n    {'name': 'Barbara', 'location': 'Alamo Square', 'start': 600, 'end': 1170, 'min_duration': 90},\n    {'name': 'Matthew', 'location': 'Haight-Ashbury', 'start': 615, 'end': 930, 'min_duration': 45},\n    {'name': 'Andrew', 'location': 'Nob Hill', 'start': 705, 'end': 1005, 'min_duration': 105},\n    {'name': 'Kevin', 'location': 'Sunset District', 'start': 600, 'end': 1065, 'min_duration': 120},\n    {'name': 'Nancy', 'location': 'Golden Gate Park', 'start': 1005, 'end': 1200, 'min_duration': 105},\n    {'name': 'Linda', 'location': 'Bayview', 'start': 1095, 'end': 1185, 'min_duration': 45},\n    {'name': 'Mark', 'location': 'Marina District', 'start': 1125, 'end': 1260, 'min_duration': 90}\n]\n\ntravel_times = {\n    'Russian Hill': {'Marina District': 7, 'Financial District': 11, 'Alamo Square': 15, 'Golden Gate Park': 21, 'The Castro': 21, 'Bayview': 23, 'Sunset District': 23, 'Haight-Ashbury': 17, 'Nob Hill': 5},\n    'Marina District': {'Russian Hill': 8, 'Financial District': 17, 'Alamo Square': 15, 'Golden Gate Park': 18, 'The Castro': 22, 'Bayview': 27, 'Sunset District': 19, 'Haight-Ashbury': 16, 'Nob Hill': 12},\n    'Financial District': {'Russian Hill': 11, 'Marina District': 15, 'Alamo Square': 17, 'Golden Gate Park': 23, 'The Castro': 20, 'Bayview': 19, 'Sunset District': 30, 'Haight-Ashbury': 19, 'Nob Hill': 8},\n    'Alamo Square': {'Russian Hill': 13, 'Marina District': 15, 'Financial District': 17, 'Golden Gate Park': 9, 'The Castro': 8, 'Bayview': 16, 'Sunset District': 16, 'Haight-Ashbury': 5, 'Nob Hill': 11},\n    'Golden Gate Park': {'Russian Hill': 19, 'Marina District': 16, 'Financial District': 26, 'Alamo Square': 9, 'The Castro': 13, 'Bayview': 23, 'Sunset District': 10, 'Haight-Ashbury': 7, 'Nob Hill': 20},\n    'The Castro': {'Russian Hill': 18, 'Marina District': 21, 'Financial District': 21, 'Alamo Square': 8, 'Golden Gate Park': 11, 'Bayview': 19, 'Sunset District': 17, 'Haight-Ashbury': 6, 'Nob Hill': 16},\n    'Bayview': {'Russian Hill': 23, 'Marina District': 27, 'Financial District': 19, 'Alamo Square': 16, 'Golden Gate Park': 22, 'The Castro': 19, 'Sunset District': 23, 'Haight-Ashbury': 19, 'Nob Hill': 20},\n    'Sunset District': {'Russian Hill': 24, 'Marina District': 21, 'Financial District': 30, 'Alamo Square': 17, 'Golden Gate Park': 11, 'The Castro': 17, 'Bayview': 22, 'Haight-Ashbury': 15, 'Nob Hill': 27},\n    'Haight-Ashbury': {'Russian Hill': 17, 'Marina District': 17, 'Financial District': 21, 'Alamo Square': 5, 'Golden Gate Park': 7, 'The Castro': 6, 'Bayview': 18, 'Sunset District': 15, 'Nob Hill': 15},\n    'Nob Hill': {'Russian Hill': 5, 'Marina District': 11, 'Financial District': 9, 'Alamo Square': 11, 'Golden Gate Park': 17, 'The Castro': 17, 'Bayview': 19, 'Sunset District': 24, 'Haight-Ashbury': 13}\n}\n\ndef time_str(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\".replace(\":00\", \"\").replace(\":0\", \":\")\n\ndef main():\n    best = []\n    \n    def backtrack(current_loc, current_time, met, itinerary):\n        nonlocal best\n        if len(itinerary) > len(best):\n            best = itinerary.copy()\n        elif len(itinerary) == len(best) and itinerary:\n            if itinerary[-1]['end'] < best[-1]['end']:\n                best = itinerary.copy()\n        for friend in friends:\n            if friend['name'] in met:\n                continue\n            from_loc = current_loc\n            to_loc = friend['location']\n            if from_loc not in travel_times or to_loc not in travel_times[from_loc]:\n                continue\n            travel = travel_times[from_loc][to_loc]\n            arrive = current_time + travel\n            start = max(arrive, friend['start'])\n            end = start + friend['min_duration']\n            if end > friend['end']:\n                continue\n            new_met = met | {friend['name']}\n            new_entry = {\n                'action': 'meet',\n                'location': to_loc,\n                'person': friend['name'],\n                'start_time': start,\n                'end_time': end\n            }\n            backtrack(to_loc, end, new_met, itinerary + [new_entry])\n    \n    backtrack('Russian Hill', 540, set(), [])\n    \n    output = {\"itinerary\": []}\n    for entry in best:\n        output[\"itinerary\"].append({\n            \"action\": \"meet\",\n            \"location\": entry['location'],\n            \"person\": entry['person'],\n            \"start_time\": time_str(entry['start_time']),\n            \"end_time\": time_str(entry['end_time'])\n        })\n    \n    print(json.dumps(output))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_885"
+        }
+    ]
+}

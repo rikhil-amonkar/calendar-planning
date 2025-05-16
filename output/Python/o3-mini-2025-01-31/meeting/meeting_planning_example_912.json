@@ -1,0 +1,115 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joshua",
+                        "start_time": "10:30",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "12:45",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Betty",
+                        "start_time": "14:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Kimberly",
+                        "start_time": "15:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "17:15",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "17:45",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Sandra",
+                        "start_time": "19:30",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Joshua",
+                        "start_time": "10:30",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Kimberly",
+                        "start_time": "15:30",
+                        "end_time": "15:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "16:03",
+                        "end_time": "16:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Betty",
+                        "start_time": "16:57",
+                        "end_time": "17:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Daniel",
+                        "start_time": "18:30",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Elizabeth",
+                        "start_time": "19:15",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Deborah",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper functions for time arithmetic.\ndef minutes_to_time_str(total_minutes):\n    # total_minutes is minutes from midnight\n    hours = total_minutes // 60\n    minutes = total_minutes % 60\n    # Format as H:MM using 24-hour time (no leading zero for hour)\n    return f\"{hours}:{minutes:02d}\"\n\ndef add_minutes(time_in_minutes, mins):\n    return time_in_minutes + mins\n\n# Define the meeting windows and minimum durations (in minutes)\n# Times are expressed as minutes from midnight.\n# 9:00 is 9*60 = 540.\n# Meeting windows (start, end) and required durations:\n# Joshua at Marina District: window 10:30 (630) to 14:15 (855), duration 45\n# Kenneth at Nob Hill: window 12:45 (765) to 21:45 (1305), duration 30\n# Betty at Sunset District: window 14:00 (840) to 19:00 (1140), duration 60\n# Kimberly at Presidio: window 15:30 (930) to 16:00 (960), duration 15\n# Deborah at Chinatown: window 17:15 (1035) to 20:30 (1230), duration 15\n# Steven at North Beach: window 17:45 (1065) to 20:45 (1245), duration 90\n# Sandra at Financial District: window 19:30 (1170) to 20:15 (1215), duration 45\n# (Other friends exist but due to time window conflicts, we choose the optimal subset that maximizes number of meetings)\nmeeting_info = {\n    \"Joshua\": {\"location\": \"Marina District\", \"window_start\": 630, \"window_end\": 855, \"duration\": 45},\n    \"Kenneth\": {\"location\": \"Nob Hill\", \"window_start\": 765, \"window_end\": 1305, \"duration\": 30},\n    \"Betty\": {\"location\": \"Sunset District\", \"window_start\": 840, \"window_end\": 1140, \"duration\": 60},\n    \"Kimberly\": {\"location\": \"Presidio\", \"window_start\": 930, \"window_end\": 960, \"duration\": 15},\n    \"Deborah\": {\"location\": \"Chinatown\", \"window_start\": 1035, \"window_end\": 1230, \"duration\": 15},\n    \"Steven\": {\"location\": \"North Beach\", \"window_start\": 1065, \"window_end\": 1245, \"duration\": 90},\n    \"Sandra\": {\"location\": \"Financial District\", \"window_start\": 1170, \"window_end\": 1215, \"duration\": 45},\n}\n\n# Define travel times between locations (in minutes)\n# We'll use the given travel times as a dictionary where key is a tuple (from, to)\ntravel_times = {\n    (\"Union Square\", \"Presidio\"): 24,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Union Square\", \"Marina District\"): 18,\n    (\"Union Square\", \"Financial District\"): 9,\n    (\"Union Square\", \"Nob Hill\"): 9,\n    (\"Union Square\", \"Sunset District\"): 27,\n    (\"Union Square\", \"Chinatown\"): 7,\n    (\"Union Square\", \"Russian Hill\"): 13,\n    (\"Union Square\", \"North Beach\"): 10,\n    (\"Union Square\", \"Haight-Ashbury\"): 18,\n\n    (\"Presidio\", \"Union Square\"): 22,\n    (\"Presidio\", \"Alamo Square\"): 19,\n    (\"Presidio\", \"Marina District\"): 11,\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Presidio\", \"Nob Hill\"): 18,\n    (\"Presidio\", \"Sunset District\"): 15,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Haight-Ashbury\"): 15,\n\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"Presidio\"): 17,\n    (\"Alamo Square\", \"Marina District\"): 15,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Alamo Square\", \"Nob Hill\"): 11,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"Chinatown\"): 15,\n    (\"Alamo Square\", \"Russian Hill\"): 13,\n    (\"Alamo Square\", \"North Beach\"): 15,\n    (\"Alamo Square\", \"Haight-Ashbury\"): 5,\n\n    (\"Marina District\", \"Union Square\"): 16,\n    (\"Marina District\", \"Presidio\"): 10,\n    (\"Marina District\", \"Alamo Square\"): 15,\n    (\"Marina District\", \"Financial District\"): 17,\n    (\"Marina District\", \"Nob Hill\"): 12,\n    (\"Marina District\", \"Sunset District\"): 19,\n    (\"Marina District\", \"Chinatown\"): 15,\n    (\"Marina District\", \"Russian Hill\"): 8,\n    (\"Marina District\", \"North Beach\"): 11,\n    (\"Marina District\", \"Haight-Ashbury\"): 16,\n\n    (\"Financial District\", \"Union Square\"): 9,\n    (\"Financial District\", \"Presidio\"): 22,\n    (\"Financial District\", \"Alamo Square\"): 17,\n    (\"Financial District\", \"Marina District\"): 15,\n    (\"Financial District\", \"Nob Hill\"): 8,\n    (\"Financial District\", \"Sunset District\"): 30,\n    (\"Financial District\", \"Chinatown\"): 5,\n    (\"Financial District\", \"Russian Hill\"): 11,\n    (\"Financial District\", \"North Beach\"): 7,\n    (\"Financial District\", \"Haight-Ashbury\"): 19,\n\n    (\"Nob Hill\", \"Union Square\"): 7,\n    (\"Nob Hill\", \"Presidio\"): 17,\n    (\"Nob Hill\", \"Alamo Square\"): 11,\n    (\"Nob Hill\", \"Marina District\"): 11,\n    (\"Nob Hill\", \"Financial District\"): 9,\n    (\"Nob Hill\", \"Sunset District\"): 24,\n    (\"Nob Hill\", \"Chinatown\"): 6,\n    (\"Nob Hill\", \"Russian Hill\"): 5,\n    (\"Nob Hill\", \"North Beach\"): 8,\n    (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n\n    (\"Sunset District\", \"Union Square\"): 30,\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"Sunset District\", \"Marina District\"): 21,\n    (\"Sunset District\", \"Financial District\"): 30,\n    (\"Sunset District\", \"Nob Hill\"): 27,\n    (\"Sunset District\", \"Chinatown\"): 30,\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"North Beach\"): 28,\n    (\"Sunset District\", \"Haight-Ashbury\"): 15,\n\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Marina District\"): 12,\n    (\"Chinatown\", \"Financial District\"): 5,\n    (\"Chinatown\", \"Nob Hill\"): 9,\n    (\"Chinatown\", \"Sunset District\"): 29,\n    (\"Chinatown\", \"Russian Hill\"): 7,\n    (\"Chinatown\", \"North Beach\"): 3,\n    (\"Chinatown\", \"Haight-Ashbury\"): 19,\n\n    (\"Russian Hill\", \"Union Square\"): 10,\n    (\"Russian Hill\", \"Presidio\"): 14,\n    (\"Russian Hill\", \"Alamo Square\"): 15,\n    (\"Russian Hill\", \"Marina District\"): 7,\n    (\"Russian Hill\", \"Financial District\"): 11,\n    (\"Russian Hill\", \"Nob Hill\"): 5,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"Chinatown\"): 9,\n    (\"Russian Hill\", \"North Beach\"): 5,\n    (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n\n    (\"North Beach\", \"Union Square\"): 7,\n    (\"North Beach\", \"Presidio\"): 17,\n    (\"North Beach\", \"Alamo Square\"): 16,\n    (\"North Beach\", \"Marina District\"): 9,\n    (\"North Beach\", \"Financial District\"): 8,\n    (\"North Beach\", \"Nob Hill\"): 7,\n    (\"North Beach\", \"Sunset District\"): 27,\n    (\"North Beach\", \"Chinatown\"): 6,\n    (\"North Beach\", \"Russian Hill\"): 4,\n    (\"North Beach\", \"Haight-Ashbury\"): 18,\n\n    (\"Haight-Ashbury\", \"Union Square\"): 19,\n    (\"Haight-Ashbury\", \"Presidio\"): 15,\n    (\"Haight-Ashbury\", \"Alamo Square\"): 5,\n    (\"Haight-Ashbury\", \"Marina District\"): 17,\n    (\"Haight-Ashbury\", \"Financial District\"): 21,\n    (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n    (\"Haight-Ashbury\", \"Sunset District\"): 15,\n    (\"Haight-Ashbury\", \"Chinatown\"): 19,\n    (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n    (\"Haight-Ashbury\", \"North Beach\"): 19,\n}\n\n# Our plan:\n# Start at Union Square at 9:00 (540 minutes)\n# 1. Go to Marina District for Joshua.\n# 2. Then to Nob Hill for Kenneth.\n# 3. Then to Sunset District for Betty.\n# 4. Then to Presidio for Kimberly.\n# 5. In the evening, from Presidio go to Chinatown for Deborah.\n# 6. Then to North Beach for Steven.\n# 7. Then to Financial District for Sandra.\n#\n# We compute each leg sequentially taking into account travel times and waiting for the meeting windows.\n\nitinerary = []\n\n# Start time at Union Square, 9:00am (540 minutes)\ncurrent_time = 540\ncurrent_location = \"Union Square\"\n\n# Leg 1: Travel to Marina District for Joshua\ntravel = travel_times[(current_location, \"Marina District\")]\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Marina District\"\n# Wait until Joshua's window opens:\nstart_meeting = max(current_time, meeting_info[\"Joshua\"][\"window_start\"])\nend_meeting = start_meeting + meeting_info[\"Joshua\"][\"duration\"]\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": meeting_info[\"Joshua\"][\"location\"],\n    \"person\": \"Joshua\",\n    \"start_time\": minutes_to_time_str(start_meeting),\n    \"end_time\": minutes_to_time_str(end_meeting)\n})\ncurrent_time = end_meeting  # finish meeting here\n\n# Leg 2: Travel from Marina District to Nob Hill for Kenneth\ntravel = travel_times[(current_location, \"Nob Hill\")]\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Nob Hill\"\nstart_meeting = max(current_time, meeting_info[\"Kenneth\"][\"window_start\"])\nend_meeting = start_meeting + meeting_info[\"Kenneth\"][\"duration\"]\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": meeting_info[\"Kenneth\"][\"location\"],\n    \"person\": \"Kenneth\",\n    \"start_time\": minutes_to_time_str(start_meeting),\n    \"end_time\": minutes_to_time_str(end_meeting)\n})\ncurrent_time = end_meeting\n\n# Leg 3: Travel from Nob Hill to Sunset District for Betty\ntravel = travel_times[(current_location, \"Sunset District\")]\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Sunset District\"\nstart_meeting = max(current_time, meeting_info[\"Betty\"][\"window_start\"])\nend_meeting = start_meeting + meeting_info[\"Betty\"][\"duration\"]\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": meeting_info[\"Betty\"][\"location\"],\n    \"person\": \"Betty\",\n    \"start_time\": minutes_to_time_str(start_meeting),\n    \"end_time\": minutes_to_time_str(end_meeting)\n})\ncurrent_time = end_meeting\n\n# Leg 4: Travel from Sunset District to Presidio for Kimberly\ntravel = travel_times[(current_location, \"Presidio\")]\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Presidio\"\nstart_meeting = max(current_time, meeting_info[\"Kimberly\"][\"window_start\"])\nend_meeting = start_meeting + meeting_info[\"Kimberly\"][\"duration\"]\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": meeting_info[\"Kimberly\"][\"location\"],\n    \"person\": \"Kimberly\",\n    \"start_time\": minutes_to_time_str(start_meeting),\n    \"end_time\": minutes_to_time_str(end_meeting)\n})\ncurrent_time = end_meeting\n\n# Evening block:\n# Leg 5: From Presidio to Chinatown for Deborah\ntravel = travel_times[(current_location, \"Chinatown\")]\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Chinatown\"\nstart_meeting = max(current_time, meeting_info[\"Deborah\"][\"window_start\"])\nend_meeting = start_meeting + meeting_info[\"Deborah\"][\"duration\"]\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": meeting_info[\"Deborah\"][\"location\"],\n    \"person\": \"Deborah\",\n    \"start_time\": minutes_to_time_str(start_meeting),\n    \"end_time\": minutes_to_time_str(end_meeting)\n})\ncurrent_time = end_meeting\n\n# Leg 6: From Chinatown to North Beach for Steven\ntravel = travel_times[(current_location, \"North Beach\")]\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"North Beach\"\nstart_meeting = max(current_time, meeting_info[\"Steven\"][\"window_start\"])\nend_meeting = start_meeting + meeting_info[\"Steven\"][\"duration\"]\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": meeting_info[\"Steven\"][\"location\"],\n    \"person\": \"Steven\",\n    \"start_time\": minutes_to_time_str(start_meeting),\n    \"end_time\": minutes_to_time_str(end_meeting)\n})\ncurrent_time = end_meeting\n\n# Leg 7: From North Beach to Financial District for Sandra\ntravel = travel_times[(current_location, \"Financial District\")]\ncurrent_time = add_minutes(current_time, travel)\ncurrent_location = \"Financial District\"\nstart_meeting = max(current_time, meeting_info[\"Sandra\"][\"window_start\"])\nend_meeting = start_meeting + meeting_info[\"Sandra\"][\"duration\"]\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": meeting_info[\"Sandra\"][\"location\"],\n    \"person\": \"Sandra\",\n    \"start_time\": minutes_to_time_str(start_meeting),\n    \"end_time\": minutes_to_time_str(end_meeting)\n})\ncurrent_time = end_meeting\n\n# Build final itinerary dictionary\nresult = {\"itinerary\": itinerary}\n\n# Output the resulting schedule as JSON\nprint(json.dumps(result, indent=2))",
+            "count": "meeting_planning_example_912"
+        }
+    ]
+}

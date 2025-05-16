@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "13:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Brian",
+                        "start_time": "15:00",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "15:40",
+                        "end_time": "17:40"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I'll start by understanding the input parameters. There are several locations with travel times between them, and each friend has a specific location, available time window, and a minimum meeting duration. The program needs to compute the best schedule that fits all these constraints.\n\nI think the best approach is to model this as a permutation problem where I try all possible orders of meeting friends and check which order allows meeting the maximum number of friends within their available times. Since there are 6 friends, the number of permutations is 6! = 720, which is manageable for a brute-force approach.\n\nI'll need to represent the travel times in a dictionary for quick lookup. Each location will have another dictionary mapping to the travel time to other locations.\n\nNext, I'll define the friends' data with their name, location, start time, end time, and the minimum duration required for the meeting.\n\nThe main logic will involve iterating over all possible permutations of the friends. For each permutation, I'll simulate the schedule starting from the Financial District at 9:00 AM. For each friend in the permutation, I'll calculate the arrival time, determine the meeting start and end times, and check if it fits within the friend's availability. If any meeting doesn't fit, I'll mark that permutation as invalid and move to the next one.\n\nI'll keep track of the best itinerary, which is the one that allows meeting the most friends. If a valid permutation allows meeting more friends than the current best, I'll update the best itinerary.\n\nOnce all permutations are processed, I'll output the best itinerary in the required JSON format.\n\nI also need to handle time conversions between minutes and HH:MM format for easier calculations and output. The time_to_minutes function will convert a time string to the total number of minutes since midnight, and minutes_to_time will convert it back to HH:MM format.\n\nFinally, I'll make sure the program is self-contained, doesn't have any external dependencies, and runs independently to produce valid JSON output.\n</think>\n\n```python\nimport itertools\n\ndef time_to_minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    h = m // 60\n    m = m % 60\n    return f\"{h}:{m:02d}\"\n\ntravel_times = {\n    'Financial District': {\n        'Golden Gate Park': 23,\n        'Chinatown': 5,\n        'Union Square': 9,\n        'Fisherman\\'s Wharf': 10,\n        'Pacific Heights': 13,\n        'North Beach': 7,\n    },\n    'Golden Gate Park': {\n        'Financial District': 26,\n        'Chinatown': 23,\n        'Union Square': 22,\n        'Fisherman\\'s Wharf': 24,\n        'Pacific Heights': 16,\n        'North Beach': 24,\n    },\n    'Chinatown': {\n        'Financial District': 5,\n        'Golden Gate Park': 23,\n        'Union Square': 7,\n        'Fisherman\\'s Wharf': 8,\n        'Pacific Heights': 10,\n        'North Beach': 3,\n    },\n    'Union Square': {\n        'Financial District': 9,\n        'Golden Gate Park': 22,\n        'Chinatown': 7,\n        'Fisherman\\'s Wharf': 15,\n        'Pacific Heights': 15,\n        'North Beach': 10,\n    },\n    'Fisherman\\'s Wharf': {\n        'Financial District': 11,\n        'Golden Gate Park': 25,\n        'Chinatown': 12,\n        'Union Square': 13,\n        'Pacific Heights': 12,\n        'North Beach': 6,\n    },\n    'Pacific Heights': {\n        'Financial District': 13,\n        'Golden Gate Park': 15,\n        'Chinatown': 11,\n        'Union Square': 12,\n        'Fisherman\\'s Wharf': 13,\n        'North Beach': 9,\n    },\n    'North Beach': {\n        'Financial District': 8,\n        'Golden Gate Park': 22,\n        'Chinatown': 6,\n        'Union Square': 7,\n        'Fisherman\\'s Wharf': 5,\n        'Pacific Heights': 8,\n    },\n}\n\nfriends = [\n    {'name': 'Stephanie', 'location': 'Golden Gate Park', 'start': '11:00', 'end': '15:00', 'duration': 105},\n    {'name': 'Karen', 'location': 'Chinatown', 'start': '13:45', 'end': '16:30', 'duration': 15},\n    {'name': 'Brian', 'location': 'Union Square', 'start': '15:00', 'end': '17:15', 'duration': 30},\n    {'name': 'Rebecca', 'location': 'Fisherman\\'s Wharf', 'start': '8:00', 'end': '11:15', 'duration': 30},\n    {'name': 'Joseph', 'location': 'Pacific Heights', 'start': '8:15', 'end': '9:30', 'duration': 60},\n    {'name': 'Steven', 'location': 'North Beach', 'start': '14:30', 'end': '20:45', 'duration': 120},\n]\n\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Financial District'\n    current_time = 540  # 9:00 AM\n    itinerary = []\n    valid = True\n    for friend in perm:\n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        meet_start = max(arrival, start)\n        meet_end = meet_start + friend['duration']\n        if meet_end > end:\n            valid = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meet_start),\n            'end_time': minutes_to_time(meet_end)\n        })\n        current_location = friend['location']\n        current_time = meet_end\n    if valid:\n        if len(itinerary) > len(best_itinerary):\n            best_itinerary = itinerary.copy()\n\nprint('SOLUTION:')\nprint('{ \"itinerary\": [')\nfor i, meeting in enumerate(best_itinerary):\n    print(f'    {{\"action\": \"meet\", \"location\": \"{meeting[\"location\"]}\", \"person\": \"{meeting[\"person\"]}\", \"start_time\": \"{meeting[\"start_time\"]}\", \"end_time\": \"{meeting[\"end_time\"]}\"}}' + ('' if i == len(best_itinerary)-1 else ','))\nprint(']}')\n```",
+            "count": "meeting_planning_example_502"
+        }
+    ]
+}

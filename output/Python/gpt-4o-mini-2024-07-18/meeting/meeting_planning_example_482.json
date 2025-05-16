@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Sandra",
+                        "start_time": "13:00",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Brian",
+                        "start_time": "13:38",
+                        "end_time": "15:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "15:45",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times (in minutes)\ntravel_times = {\n    (\"Haight-Ashbury\", \"Mission District\"): 11,\n    (\"Haight-Ashbury\", \"Bayview\"): 18,\n    (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n    (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n    (\"Haight-Ashbury\", \"Fisherman's Wharf\"): 23,\n    (\"Mission District\", \"Haight-Ashbury\"): 12,\n    (\"Mission District\", \"Bayview\"): 15,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"Russian Hill\"): 15,\n    (\"Mission District\", \"Fisherman's Wharf\"): 22,\n    (\"Bayview\", \"Haight-Ashbury\"): 19,\n    (\"Bayview\", \"Mission District\"): 13,\n    (\"Bayview\", \"Pacific Heights\"): 23,\n    (\"Bayview\", \"Russian Hill\"): 23,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Pacific Heights\", \"Bayview\"): 22,\n    (\"Pacific Heights\", \"Russian Hill\"): 7,\n    (\"Pacific Heights\", \"Fisherman's Wharf\"): 13,\n    (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n    (\"Russian Hill\", \"Mission District\"): 16,\n    (\"Russian Hill\", \"Bayview\"): 23,\n    (\"Russian Hill\", \"Pacific Heights\"): 7,\n    (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n    (\"Fisherman's Wharf\", \"Haight-Ashbury\"): 22,\n    (\"Fisherman's Wharf\", \"Mission District\"): 22,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Fisherman's Wharf\", \"Pacific Heights\"): 12,\n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n}\n\n# Define meeting constraints\nconstraints = {\n    \"Stephanie\": {\"location\": \"Mission District\", \"available\": (datetime(2023, 1, 1, 8, 15), datetime(2023, 1, 1, 13, 45)), \"duration\": 90},\n    \"Sandra\": {\"location\": \"Bayview\", \"available\": (datetime(2023, 1, 1, 13, 0), datetime(2023, 1, 1, 19, 30)), \"duration\": 15},\n    \"Richard\": {\"location\": \"Pacific Heights\", \"available\": (datetime(2023, 1, 1, 7, 15), datetime(2023, 1, 1, 10, 15)), \"duration\": 75},\n    \"Brian\": {\"location\": \"Russian Hill\", \"available\": (datetime(2023, 1, 1, 12, 15), datetime(2023, 1, 1, 16, 0)), \"duration\": 120},\n    \"Jason\": {\"location\": \"Fisherman's Wharf\", \"available\": (datetime(2023, 1, 1, 8, 30), datetime(2023, 1, 1, 17, 45)), \"duration\": 60},\n}\n\n# Helper function to add minutes to a time\ndef add_minutes(start_time, minutes):\n    return start_time + timedelta(minutes=minutes)\n\n# Starting point\ncurrent_time = datetime(2023, 1, 1, 9, 0)  # Start at Haight-Ashbury at 9:00 AM\nitinerary = []\n\ndef schedule_meeting(person, current_time):\n    meeting_info = constraints[person]\n    location = meeting_info[\"location\"]\n    start_time_window, end_time_window = meeting_info[\"available\"]\n    duration = meeting_info[\"duration\"]\n    \n    travel_time = travel_times[(current_time.strftime(\"%A\"), location)] if (current_time.strftime(\"%A\"), location) in travel_times else None\n    if travel_time is None:\n        # Reverse travel time lookup\n        travel_time = travel_times.get((location, current_time.strftime(\"%A\")), None)\n    \n    if travel_time is not None:\n        arrival_time = current_time + timedelta(minutes=travel_time)\n        meeting_start_time = max(arrival_time, start_time_window)\n        meeting_end_time = meeting_start_time + timedelta(minutes=duration)\n        \n        if meeting_end_time <= end_time_window:\n            # Add meeting to itinerary\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": location,\n                \"person\": person,\n                \"start_time\": meeting_start_time.strftime(\"%H:%M\"),\n                \"end_time\": meeting_end_time.strftime(\"%H:%M\"),\n            })\n            # Update the current time\n            return meeting_end_time\n    return current_time\n\n# Schedule meetings\ncurrent_time = schedule_meeting(\"Richard\", current_time)  # Meet Richard first\ncurrent_time = schedule_meeting(\"Stephanie\", current_time)  # Meet Stephanie next\ncurrent_time = schedule_meeting(\"Jason\", current_time)      # Meet Jason next\ncurrent_time = schedule_meeting(\"Brian\", current_time)      # Meet Brian next\ncurrent_time = schedule_meeting(\"Sandra\", current_time)     # Meet Sandra last\n\n# Output the final itinerary as JSON\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_482"
+        }
+    ]
+}

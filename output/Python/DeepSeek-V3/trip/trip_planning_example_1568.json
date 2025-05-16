@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    cities = {\n        'Prague': {'duration': 5, 'constraints': [{'range': (5, 9), 'event': 'annual show'}]},\n        'Brussels': {'duration': 2, 'constraints': []},\n        'Riga': {'duration': 2, 'constraints': [{'range': (15, 16), 'event': 'meet friends'}]},\n        'Munich': {'duration': 2, 'constraints': []},\n        'Seville': {'duration': 3, 'constraints': []},\n        'Stockholm': {'duration': 2, 'constraints': [{'range': (16, 17), 'event': 'conference'}]},\n        'Istanbul': {'duration': 2, 'constraints': []},\n        'Amsterdam': {'duration': 3, 'constraints': []},\n        'Vienna': {'duration': 5, 'constraints': [{'range': (1, 5), 'event': 'meet friend'}]},\n        'Split': {'duration': 3, 'constraints': [{'range': (11, 13), 'event': 'visit relatives'}]}\n    }\n\n    direct_flights = {\n        'Riga': ['Stockholm', 'Munich', 'Brussels', 'Amsterdam', 'Prague', 'Vienna', 'Istanbul'],\n        'Stockholm': ['Riga', 'Brussels', 'Amsterdam', 'Vienna', 'Istanbul', 'Prague', 'Split', 'Munich'],\n        'Brussels': ['Stockholm', 'Vienna', 'Munich', 'Istanbul', 'Prague', 'Riga', 'Seville'],\n        'Munich': ['Istanbul', 'Amsterdam', 'Brussels', 'Prague', 'Stockholm', 'Split', 'Riga', 'Seville'],\n        'Istanbul': ['Munich', 'Riga', 'Amsterdam', 'Stockholm', 'Brussels', 'Prague', 'Vienna'],\n        'Prague': ['Split', 'Munich', 'Amsterdam', 'Brussels', 'Istanbul', 'Vienna', 'Stockholm', 'Riga'],\n        'Amsterdam': ['Munich', 'Split', 'Stockholm', 'Seville', 'Riga', 'Vienna', 'Istanbul', 'Prague'],\n        'Vienna': ['Brussels', 'Riga', 'Stockholm', 'Istanbul', 'Seville', 'Split', 'Amsterdam', 'Munich', 'Prague'],\n        'Seville': ['Brussels', 'Amsterdam', 'Vienna', 'Munich'],\n        'Split': ['Prague', 'Stockholm', 'Amsterdam', 'Munich', 'Vienna']\n    }\n\n    # Fixed constraints\n    fixed_assignments = {\n        1: 'Vienna',\n        2: 'Vienna',\n        3: 'Vienna',\n        4: 'Vienna',\n        5: 'Vienna',\n        6: 'Prague',\n        7: 'Prague',\n        8: 'Prague',\n        9: 'Prague',\n        15: 'Riga',\n        16: 'Stockholm',\n        17: 'Stockholm',\n        11: 'Split',\n        12: 'Split',\n        13: 'Split'\n    }\n\n    # Initialize schedule\n    schedule = {}\n    for day in range(1, 21):\n        if day in fixed_assignments:\n            schedule[day] = fixed_assignments[day]\n\n    # Assign remaining cities\n    remaining_cities = {city: data for city, data in cities.items() if city not in ['Vienna', 'Prague', 'Riga', 'Stockholm', 'Split']}\n    remaining_days = [day for day in range(1, 21) if day not in fixed_assignments]\n\n    # Try permutations to fit remaining cities\n    city_order = list(remaining_cities.keys())\n    best_schedule = None\n\n    for perm in permutations(city_order):\n        temp_schedule = schedule.copy()\n        current_city = None\n        remaining_days_copy = remaining_days.copy()\n        success = True\n\n        for city in perm:\n            duration = remaining_cities[city]['duration']\n            assigned = False\n\n            for i in range(len(remaining_days_copy) - duration + 1):\n                start_day = remaining_days_copy[i]\n                end_day = start_day + duration - 1\n\n                if end_day > 20:\n                    continue\n\n                # Check if all days in range are available\n                valid = True\n                for d in range(start_day, end_day + 1):\n                    if d not in remaining_days_copy:\n                        valid = False\n                        break\n\n                if not valid:\n                    continue\n\n                # Check flight connection\n                if current_city is not None:\n                    prev_city = temp_schedule[start_day - 1]\n                    if city not in direct_flights.get(prev_city, []):\n                        valid = False\n\n                if valid:\n                    for d in range(start_day, end_day + 1):\n                        temp_schedule[d] = city\n                        remaining_days_copy.remove(d)\n                    current_city = city\n                    assigned = True\n                    break\n\n            if not assigned:\n                success = False\n                break\n\n        if success:\n            best_schedule = temp_schedule\n            break\n\n    if not best_schedule:\n        print(\"No valid itinerary found\")\n        return\n\n    # Generate JSON output\n    itinerary = []\n    current_place = best_schedule[1]\n    start_day = 1\n\n    for day in range(2, 21):\n        if best_schedule[day] != current_place:\n            itinerary.append({'day_range': f'Day {start_day}-{day-1}', 'place': current_place})\n            itinerary.append({'flying': f'Day {day-1}-{day}', 'from': current_place, 'to': best_schedule[day]})\n            current_place = best_schedule[day]\n            start_day = day\n\n    itinerary.append({'day_range': f'Day {start_day}-20', 'place': current_place})\n\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1568"
+        }
+    ]
+}

@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Paul",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "17:32",
+                        "end_time": "18:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:35",
+                        "end_time": "19:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jeffrey",
+                        "start_time": "20:00",
+                        "end_time": "20:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "20:56",
+                        "end_time": "21:26"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, I need to solve this problem where I have to create a Python program to optimize a meeting schedule based on given constraints. The goal is to meet as many friends as possible, considering travel times and each person's availability.\n\nFirst, I'll start by understanding the input parameters. The travel times are provided as a dictionary where each key is a location, and the value is another dictionary containing travel times to other locations. The constraints specify the arrival time at Bayview and each person's availability and the minimum meeting duration.\n\nMy approach should be to prioritize the meetings based on the duration required. Starting with the person needing the longest meeting time makes sense because meeting them first allows more time for other shorter meetings. So, I'll sort the people by their required duration in descending order.\n\nNext, I'll iterate over each person in this sorted list. For each person, I'll calculate the earliest possible start time by adding the travel time from the current location to their location. I'll then check if this time falls within their availability window. If it does, I'll calculate the latest possible start time to maximize the remaining time for other meetings.\n\nIf a meeting is feasible, I'll update the current location and time to reflect the end of this meeting. This process continues until no more meetings can be scheduled.\n\nI also need to handle the conversion of times from strings to datetime objects for easier manipulation. After determining the meeting times, I'll convert them back to the required string format for the output.\n\nFinally, I'll structure the output as a JSON-formatted dictionary with the itinerary. Each meeting will be an entry in the itinerary list, containing the action, location, person, start time, and end time.\n\nI'll make sure to test the code with the given data to ensure it correctly calculates the optimal schedule, considering all constraints and travel times.\n</think>\n\nSOLUTION:\n\n```python\n# Read the input parameters and create a dictionary of travel times\ntravel_times = {\n    'Bayview': {\n        'Nob Hill': 20,\n        'Union Square': 17,\n        'Chinatown': 18,\n        'The Castro': 20,\n        'Presidio': 31,\n        'Pacific Heights': 23,\n        'Russian Hill': 23,\n    },\n    'Nob Hill': {\n        'Bayview': 19,\n        'Union Square': 7,\n        'Chinatown': 6,\n        'The Castro': 17,\n        'Presidio': 17,\n        'Pacific Heights': 8,\n        'Russian Hill': 5,\n    },\n    'Union Square': {\n        'Bayview': 15,\n        'Nob Hill': 9,\n        'Chinatown': 7,\n        'The Castro': 19,\n        'Presidio': 24,\n        'Pacific Heights': 15,\n        'Russian Hill': 13,\n    },\n    'Chinatown': {\n        'Bayview': 22,\n        'Nob Hill': 8,\n        'Union Square': 7,\n        'The Castro': 22,\n        'Presidio': 19,\n        'Pacific Heights': 10,\n        'Russian Hill': 7,\n    },\n    'The Castro': {\n        'Bayview': 19,\n        'Nob Hill': 16,\n        'Union Square': 19,\n        'Chinatown': 20,\n        'Presidio': 20,\n        'Pacific Heights': 16,\n        'Russian Hill': 18,\n    },\n    'Presidio': {\n        'Bayview': 31,\n        'Nob Hill': 18,\n        'Union Square': 22,\n        'Chinatown': 21,\n        'The Castro': 21,\n        'Pacific Heights': 11,\n        'Russian Hill': 14,\n    },\n    'Pacific Heights': {\n        'Bayview': 22,\n        'Nob Hill': 8,\n        'Union Square': 12,\n        'Chinatown': 11,\n        'The Castro': 16,\n        'Presidio': 11,\n        'Russian Hill': 7,\n    },\n    'Russian Hill': {\n        'Bayview': 23,\n        'Nob Hill': 5,\n        'Union Square': 11,\n        'Chinatown': 9,\n        'The Castro': 21,\n        'Presidio': 14,\n        'Pacific Heights': 7,\n    }\n}\n\n# Define the current location and time\ncurrent_location = 'Bayview'\ncurrent_time = '9:00'\n\nitinerary = []\n\n# List of people with their constraints\npeople = [\n    {'name': 'Paul', 'location': 'Nob Hill', 'start': '16:15', 'end': '21:15', 'duration': 60},\n    {'name': 'Carol', 'location': 'Union Square', 'start': '18:00', 'end': '20:15', 'duration': 120},\n    {'name': 'Patricia', 'location': 'Chinatown', 'start': '20:00', 'end': '21:30', 'duration': 75},\n    {'name': 'Karen', 'location': 'The Castro', 'start': '17:00', 'end': '19:00', 'duration': 45},\n    {'name': 'Nancy', 'location': 'Presidio', 'start': '11:45', 'end': '22:00', 'duration': 30},\n    {'name': 'Jeffrey', 'location': 'Pacific Heights', 'start': '20:00', 'end': '20:45', 'duration': 45},\n    {'name': 'Matthew', 'location': 'Russian Hill', 'start': '15:45', 'end': '21:45', 'duration': 75},\n]\n\n# Sort people by duration in descending order\npeople_sorted = sorted(people, key=lambda x: -x['duration'])\n\nimport datetime\n\nfor person in people_sorted:\n    # Calculate the latest possible start time considering current location and travel time\n    location = person['location']\n    if current_location not in travel_times:\n        continue  # Skip if current location is not in the travel times\n    if location not in travel_times[current_location]:\n        continue  # Skip if location is not reachable from current location\n    travel_time = travel_times[current_location][location]\n    \n    # Convert current_time to datetime object\n    current_dt = datetime.datetime.strptime(current_time, \"%H:%M\")\n    \n    # Calculate earliest possible start time\n    earliest_possible_start = current_dt + datetime.timedelta(minutes=travel_time)\n    earliest_possible_start = earliest_possible_start.replace(second=0, microsecond=0)\n    \n    # Check if earliest possible start is within the person's availability\n    start_dt = datetime.datetime.strptime(person['start'], \"%H:%M\")\n    end_dt = datetime.datetime.strptime(person['end'], \"%H:%M\")\n    \n    if earliest_possible_start > end_dt:\n        continue  # Not possible to meet this person\n    \n    # Ensure that the meeting duration fits within the person's availability\n    if (end_dt - earliest_possible_start).total_seconds() < (person['duration'] * 60):\n        continue  # Not enough time to meet\n    \n    # Calculate the latest possible start time to maximize remaining time\n    latest_possible_start = end_dt - datetime.timedelta(minutes=person['duration'])\n    if latest_possible_start < current_dt:\n        latest_possible_start = current_dt\n    \n    # Choose the latest possible start time\n    start_dt = latest_possible_start\n    \n    # Check if the calculated start time is valid\n    if start_dt < current_dt:\n        continue  # Not possible to meet this person\n    \n    # Create the meeting entry\n    meeting = {\n        'action': 'meet',\n        'location': location,\n        'person': person['name'],\n        'start_time': start_dt.strftime(\"%H:%M\"),\n        'end_time': (start_dt + datetime.timedelta(minutes=person['duration'])).strftime(\"%H:%M\")\n    }\n    itinerary.append(meeting)\n    \n    # Update current location and time\n    current_location = location\n    current_time = meeting['end_time']\n\n# Convert the itinerary to JSON format\nimport json\nprint(json.dumps(itinerary))\n```",
+            "count": "meeting_planning_example_695"
+        }
+    ]
+}

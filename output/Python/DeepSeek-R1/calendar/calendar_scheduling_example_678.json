@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "{14:00",
+                "end_time": "15:00}"
+            },
+            "has_error": true,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Define work hours and days\n    work_hours = {'start': 9 * 60, 'end': 17 * 60}  # In minutes\n    days = ['Monday', 'Tuesday']\n    \n    # Convert schedules to minutes since midnight\n    russell_busy = {\n        'Monday': [(10*60 + 30, 11*60)],\n        'Tuesday': [(13*60, 13*60 + 30)]\n    }\n    \n    alexander_busy = {\n        'Monday': [(9*60, 11*60 + 30), (12*60, 14*60 + 30), (15*60, 17*60)],\n        'Tuesday': [(9*60, 10*60), (13*60, 14*60), (15*60, 15*60 + 30), (16*60, 16*60 + 30)]\n    }\n    \n    # Check each day\n    for day in days:\n        # Get free slots for both\n        free_slots = []\n        \n        # Generate possible slots considering work hours and Russell's Tuesday preference\n        for start in range(work_hours['start'], work_hours['end'] - 60 + 1, 15):\n            end = start + 60\n            if day == 'Tuesday' and end <= 13*60 + 30:  # Russell's Tuesday preference\n                continue\n            \n            # Check Russell's availability\n            russell_available = True\n            for busy_start, busy_end in russell_busy.get(day, []):\n                if not (end <= busy_start or start >= busy_end):\n                    russell_available = False\n                    break\n            \n            # Check Alexander's availability\n            alexander_available = True\n            for busy_start, busy_end in alexander_busy.get(day, []):\n                if not (end <= busy_start or start >= busy_end):\n                    alexander_available = False\n                    break\n            \n            if russell_available and alexander_available:\n                free_slots.append((start, end))\n        \n        # Find first suitable slot\n        if free_slots:\n            start, end = free_slots[0]\n            return (f\"{day}:{start//60:02}:{start%60:02}:{end//60:02}:{end%60:02}\")\n    \n    return \"No slot found\"\n\nresult = find_meeting_time()\nday, time_part = result.split(':')\nstart_h, start_m, end_h, end_m = map(int, time_part.split(':'))\nprint(f\"{day}:{start_h:02}:{start_m:02}:{end_h:02}:{end_m:02}\")\n'''",
+            "count": "calendar_scheduling_example_678"
+        }
+    ]
+}

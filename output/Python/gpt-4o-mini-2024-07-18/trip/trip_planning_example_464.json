@@ -1,0 +1,61 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 9-14",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Initialize trip constraints\n    total_days = 18\n    itinerary = []\n\n    # Define days allocated to each city based on the constraints\n    krakow_days = 5\n    frankfurt_days = 4\n    oslas_days = 3\n    dubrovnik_days = 5\n    naples_days = 5\n\n    # Define city visit order based on given parameters and available direct flights\n    # Day 1 to Day 5 in Krakow\n    itinerary.append({'day_range': 'Day 1-5', 'place': 'Krakow'})\n\n    # Travel from Krakow to Frankfurt (Day 5)\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Krakow', 'to': 'Frankfurt'})\n\n    # Day 5 to Day 9 in Frankfurt\n    itinerary.append({'day_range': 'Day 5-9', 'place': 'Frankfurt'})\n\n    # Travel from Frankfurt to Dubrovnik (Day 9)\n    itinerary.append({'flying': 'Day 9-9', 'from': 'Frankfurt', 'to': 'Dubrovnik'})\n\n    # Day 9 to Day 14 in Dubrovnik\n    itinerary.append({'day_range': 'Day 9-14', 'place': 'Dubrovnik'})\n\n    # Day 5 to Day 9 in Dubrovnik, friends meet in this period\n    itinerary.append({'day_range': 'Day 5-9', 'place': 'Dubrovnik', 'note': 'Meet friends'})\n\n    # Travel from Dubrovnik to Naples (Day 14)\n    itinerary.append({'flying': 'Day 14-14', 'from': 'Dubrovnik', 'to': 'Naples'})\n\n    # Day 14 to Day 19 in Naples\n    itinerary.append({'day_range': 'Day 14-18', 'place': 'Naples'})\n\n    # Travel from Naples to Oslo (Day 18)\n    itinerary.append({'flying': 'Day 18-18', 'from': 'Naples', 'to': 'Oslo'})\n\n    # Day 18 to Day 18 in Oslo (meeting relatives)\n    itinerary.append({'day_range': 'Day 16-18', 'place': 'Oslo', 'note': 'Visit relatives'})\n\n    # Output the entire itinerary as JSON\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_464"
+        }
+    ]
+}

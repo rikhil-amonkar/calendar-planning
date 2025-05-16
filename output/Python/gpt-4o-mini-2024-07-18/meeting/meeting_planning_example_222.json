@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:08",
+                        "end_time": "11:08"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:08",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kimberly",
+                        "start_time": "16:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Patricia",
+                        "start_time": "18:00",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Defining travel times in minutes\ntravel_times = {\n    (\"Nob Hill\", \"North Beach\"): 8,\n    (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n    (\"Nob Hill\", \"Bayview\"): 19,\n    (\"North Beach\", \"Nob Hill\"): 7,\n    (\"North Beach\", \"Fisherman's Wharf\"): 5,\n    (\"North Beach\", \"Bayview\"): 22,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"North Beach\"): 6,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Bayview\", \"Nob Hill\"): 20,\n    (\"Bayview\", \"North Beach\"): 21,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n}\n\n# Defining meeting constraints\nconstraints = {\n    \"Helen\": {\n        \"location\": \"North Beach\",\n        \"start_time\": \"7:00\",\n        \"end_time\": \"16:45\",\n        \"duration\": 120\n    },\n    \"Kimberly\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"start_time\": \"16:30\",\n        \"end_time\": \"21:00\",\n        \"duration\": 45\n    },\n    \"Patricia\": {\n        \"location\": \"Bayview\",\n        \"start_time\": \"18:00\",\n        \"end_time\": \"21:15\",\n        \"duration\": 120\n    },\n}\n\n# Start time at Nob Hill\narrival_time_nob_hill = datetime.strptime(\"9:00\", \"%H:%M\")\n\n# Calculating the optimal schedule\ndef calculate_schedule():\n    schedule = []\n    \n    # Meeting Helen\n    start_meeting_helen = arrival_time_nob_hill + timedelta(minutes=travel_times[(\"Nob Hill\", \"North Beach\")])\n    end_meeting_helen = start_meeting_helen + timedelta(minutes=constraints[\"Helen\"][\"duration\"])\n\n    if start_meeting_helen.time() >= datetime.strptime(constraints[\"Helen\"][\"start_time\"], \"%H:%M\").time() and \\\n       end_meeting_helen.time() <= datetime.strptime(constraints[\"Helen\"][\"end_time\"], \"%H:%M\").time():\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": constraints[\"Helen\"][\"location\"],\n            \"person\": \"Helen\",\n            \"start_time\": start_meeting_helen.strftime(\"%H:%M\"),\n            \"end_time\": end_meeting_helen.strftime(\"%H:%M\"),\n        })\n        \n        # Travel to Fisherman's Wharf to meet Kimberly after meeting Helen\n        travel_to_kimberly = travel_times[(\"North Beach\", \"Fisherman's Wharf\")]\n        start_meeting_kimberly = end_meeting_helen + timedelta(minutes=travel_to_kimberly)\n        end_meeting_kimberly = start_meeting_kimberly + timedelta(minutes=constraints[\"Kimberly\"][\"duration\"])\n\n        if start_meeting_kimberly.time() >= datetime.strptime(constraints[\"Kimberly\"][\"start_time\"], \"%H:%M\").time() and \\\n           end_meeting_kimberly.time() <= datetime.strptime(constraints[\"Kimberly\"][\"end_time\"], \"%H:%M\").time():\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": constraints[\"Kimberly\"][\"location\"],\n                \"person\": \"Kimberly\",\n                \"start_time\": start_meeting_kimberly.strftime(\"%H:%M\"),\n                \"end_time\": end_meeting_kimberly.strftime(\"%H:%M\"),\n            })\n\n            # Travel to Bayview to meet Patricia after meeting Kimberly\n            travel_to_patricia = travel_times[(\"Fisherman's Wharf\", \"Bayview\")]\n            start_meeting_patricia = end_meeting_kimberly + timedelta(minutes=travel_to_patricia)\n            end_meeting_patricia = start_meeting_patricia + timedelta(minutes=constraints[\"Patricia\"][\"duration\"])\n\n            if start_meeting_patricia.time() >= datetime.strptime(constraints[\"Patricia\"][\"start_time\"], \"%H:%M\").time() and \\\n               end_meeting_patricia.time() <= datetime.strptime(constraints[\"Patricia\"][\"end_time\"], \"%H:%M\").time():\n                schedule.append({\n                    \"action\": \"meet\",\n                    \"location\": constraints[\"Patricia\"][\"location\"],\n                    \"person\": \"Patricia\",\n                    \"start_time\": start_meeting_patricia.strftime(\"%H:%M\"),\n                    \"end_time\": end_meeting_patricia.strftime(\"%H:%M\"),\n                })\n\n    return schedule\n\n# Create the itinerary\nitinerary = calculate_schedule()\n\n# Format into JSON output\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_222"
+        }
+    ]
+}

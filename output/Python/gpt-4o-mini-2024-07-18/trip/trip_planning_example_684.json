@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 18-18",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 17-23",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    itinerary = []\n    current_day = 1\n\n    # Stay in Amsterdam for 4 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Amsterdam'})\n    current_day += 4\n\n    # Visiting relatives in Amsterdam from Day 5 to Day 8\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Amsterdam'})\n    current_day += 4  # Now at Day 9\n\n    # Travel to Edinburgh (direct flight)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Amsterdam', 'to': 'Edinburgh'})\n    # Stay in Edinburgh for 5 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Edinburgh'})\n    current_day += 5  # Now at Day 14\n\n    # Travel to Berlin (direct flight)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Edinburgh', 'to': 'Berlin'})\n    # Stay in Berlin for 4 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Berlin'})\n    current_day += 4  # Now at Day 18\n\n    # Meeting friend in Berlin (between Day 16 and Day 19 is valid)\n    itinerary.append({'day_range': f'Day {current_day}-{current_day}', 'place': 'Berlin'})\n    current_day += 1  # Now at Day 19\n\n    # Travel to Vienna (direct flight)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Berlin', 'to': 'Vienna'})\n    # Stay in Vienna for 5 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Vienna'})\n    current_day += 5  # Now at Day 24\n    \n    # Since we only have 23 days, we need to finalize the layout.\n    # Adjust the last city's stay (Vienna) to end on Day 23 \n    itinerary[-1]['day_range'] = f'Day {current_day - 5}-{23}'  # Modify last entry to fit\n\n    # Travel to Reykjavik (direct flight)\n    current_day = 12  # Workshop in Reykjavik starts\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vienna', 'to': 'Reykjavik'})\n    # Stay for workshop till day 16\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Reykjavik'})\n    current_day += 5  # Now at Day 17 (We won't exceed Day 23)\n\n    # Remaining days in Reykjavik\n    if current_day < 23:\n        itinerary.append({'day_range': f'Day {current_day}-{23}', 'place': 'Reykjavik'})\n\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = compute_itinerary()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_684"
+        }
+    ]
+}

@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "13:13",
+                        "end_time": "13:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "18:51",
+                        "end_time": "20:21"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "Okay, I'm faced with this problem where I need to write a Python program to help someone plan their day in San Francisco by meeting as many friends as possible. The person starts at Union Square at 9:00 AM and has several friends available at different times and locations with specific duration requirements. The goal is to find the optimal schedule that fits all travel times and constraints.\n\nFirst, I need to understand the problem fully. The key points are:\n\n1. **Starting Point**: Union Square at 9:00 AM.\n2. **Friends' Availability**: Each friend has a specific location and time window when they're available to meet. Each meeting requires a minimum duration.\n3. **Travel Distances**: A dictionary of travel times between various locations in San Francisco.\n4. **Objective**: To meet as many friends as possible without overlapping schedules, considering both the friends' availability and the travel time needed to reach them.\n\n### Approach\nThe approach to solve this problem involves the following steps:\n\n1. **Define Travel Distances**: Create a dictionary to store the travel times between each pair of locations.\n2. **Parse Friends' Data**: Convert each friend's availability into a dictionary with their location, time window, and required meeting duration.\n3. **Calculate Possible Meeting Times**: For each friend, determine the earliest and latest possible start times for a meeting, considering their availability and the required duration.\n4. **Check Feasibility**: For each possible meeting time with one friend, ensure that it doesn't conflict with the next friend's availability, considering travel times.\n5. **Construct Itinerary**: Once a valid schedule is found, construct the itinerary and convert it into the required JSON format.\n\n### Solution Code\n```python\nfrom datetime import time, timedelta\n\n# Define travel distances between locations\ndistance = {\n    ('Union Square', 'Golden Gate Park'): 22,\n    ('Union Square', 'Pacific Heights'): 15,\n    ('Union Square', 'Presidio'): 24,\n    ('Union Square', 'Chinatown'): 7,\n    ('Union Square', 'The Castro'): 19,\n    ('Golden Gate Park', 'Union Square'): 22,\n    ('Golden Gate Park', 'Pacific Heights'): 16,\n    ('Golden Gate Park', 'Presidio'): 11,\n    ('Golden Gate Park', 'Chinatown'): 23,\n    ('Golden Gate Park', 'The Castro'): 13,\n    ('Pacific Heights', 'Union Square'): 12,\n    ('Pacific Heights', 'Golden Gate Park'): 15,\n    ('Pacific Heights', 'Presidio'): 11,\n    ('Pacific Heights', 'Chinatown'): 11,\n    ('Pacific Heights', 'The Castro'): 16,\n    ('Presidio', 'Union Square'): 22,\n    ('Presidio', 'Golden Gate Park'): 12,\n    ('Presidio', 'Pacific Heights'): 11,\n    ('Presidio', 'Chinatown'): 21,\n    ('Presidio', 'The Castro'): 21,\n    ('Chinatown', 'Union Square'): 7,\n    ('Chinatown', 'Golden Gate Park'): 23,\n    ('Chinatown', 'Pacific Heights'): 10,\n    ('Chinatown', 'Presidio'): 19,\n    ('Chinatown', 'The Castro'): 22,\n    ('The Castro', 'Union Square'): 19,\n    ('The Castro', 'Golden Gate Park'): 11,\n    ('The Castro', 'Pacific Heights'): 16,\n    ('The Castro', 'Presidio'): 20,\n}\n\nfriends = [\n    {\n        'name': 'Andrew',\n        'location': 'Golden Gate Park',\n        'start_time': time(11, 45),\n        'end_time': time(14, 30),\n        'duration': 75\n    },\n    {\n        'name': 'Sarah',\n        'location': 'Pacific Heights',\n        'start_time': time(16, 15),\n        'end_time': time(18, 45),\n        'duration': 15\n    },\n    {\n        'name': 'Nancy',\n        'location': 'Presidio',\n        'start_time': time(17, 30),\n        'end_time': time(19, 15),\n        'duration': 60\n    },\n    {\n        'name': 'Rebecca',\n        'location': 'Chinatown',\n        'start_time': time(9, 45),\n        'end_time': time(21, 30),\n        'duration': 90\n    },\n    {\n        'name': 'Robert',\n        'location': 'The Castro',\n        'start_time': time(8, 30),\n        'end_time': time(12, 15),\n        'duration': 30\n    }\n]\n\nitinerary = []\n\ncurrent_time = time(9, 0)\n\n# Try to meet each friend in the order of their availability\nfor friend in friends:\n    # Check if current_time allows meeting this friend\n    if current_time > friend['end_time']:\n        continue\n    \n    # Calculate latest possible start time for this meeting\n    latest_start = friend['end_time'] - timedelta(minutes=friend['duration'])\n    if latest_start < current_time:\n        continue\n    \n    # Generate possible start times within the window\n    possible_start_times = []\n    for hour in range(current_time.hour, latest_start.hour + 1):\n        for minute in range(0, 60, 15):\n            possible_start = time(hour, minute)\n            if possible_start < current_time:\n                continue\n            possible_start_times.append(possible_start)\n    \n    # Try each possible start time\n    for possible_start in possible_start_times:\n        # Calculate travel time to the friend's location\n        travel_time = distance[('Union Square', friend['location'])]\n        arrival_time = possible_start + timedelta(minutes=travel_time)\n        departure_time = arrival_time + timedelta(minutes=friend['duration'])\n        \n        # Check if arrival and departure fit within the friend's availability\n        if arrival_time < friend['start_time'] or departure_time > friend['end_time']:\n            continue\n        \n        # Add this meeting to the itinerary\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': possible_start.strftime(\"%H:%M\"),\n            'end_time': departure_time.strftime(\"%H:%M\")\n        })\n        \n        # Update current_time to departure_time\n        current_time = departure_time\n        # Break to proceed to the next friend\n        break\n\n# Convert the itinerary list to a dictionary\nitinerary_dict = {\n    \"itinerary\": []\n}\nfor item in itinerary:\n    start = item['start_time']\n    end = item['end_time']\n    location = item['location']\n    person = item['person']\n    itinerary_dict[\"itinerary\"].append({\n        \"action\": \"meet\",\n        \"location\": location,\n        \"person\": person,\n        \"start_time\": start,\n        \"end_time\": end\n    })\n\nprint(json.dumps(itinerary_dict))\n```\n\n### Explanation\n1. **Travel Distances**: The `distance` dictionary holds the time it takes to travel between each pair of locations.\n2. **Friends' Data**: The `friends` list contains dictionaries for each friend, specifying their location, availability window, and required meeting duration.\n3. **Itinerary Construction**: The program iterates over each friend, checking if their availability overlaps with the current time. For each feasible meeting, it calculates the possible start times, checks if the meeting can fit within the friend's availability, and adds it to the itinerary.\n4. **Output**: The itinerary is converted into a JSON dictionary and printed.\n\nThis approach ensures that the optimal schedule is found by considering each friend's availability and travel times, aiming to maximize the number of meetings.",
+            "count": "meeting_planning_example_403"
+        }
+    ]
+}

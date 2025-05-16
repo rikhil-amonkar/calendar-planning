@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "9:13",
+                        "end_time": "10:28"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Robert",
+                        "start_time": "12:15",
+                        "end_time": "13:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "11:12",
+                        "end_time": "12:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Robert",
+                        "start_time": "12:42",
+                        "end_time": "14:12"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport itertools\nimport json\n\ndef time_to_min(t_str):\n    h, m = map(int, t_str.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    h = m // 60\n    m = m % 60\n    return f\"{h}:{m:02d}\"\n\nfriends_data = [\n    {\n        'name': 'David',\n        'location': 'Fisherman\\'s Wharf',\n        'start': time_to_min('10:45'),\n        'end': time_to_min('15:30'),\n        'duration': 15\n    },\n    {\n        'name': 'Timothy',\n        'location': 'Pacific Heights',\n        'start': time_to_min('9:00'),\n        'end': time_to_min('15:30'),\n        'duration': 75\n    },\n    {\n        'name': 'Robert',\n        'location': 'Mission District',\n        'start': time_to_min('12:15'),\n        'end': time_to_min('19:45'),\n        'duration': 90\n    }\n]\n\ntravel_times = {\n    'Financial District': {\n        'Fisherman\\'s Wharf': 10,\n        'Pacific Heights': 13,\n        'Mission District': 17\n    },\n    'Fisherman\\'s Wharf': {\n        'Financial District': 11,\n        'Pacific Heights': 12,\n        'Mission District': 22\n    },\n    'Pacific Heights': {\n        'Financial District': 13,\n        'Fisherman\\'s Wharf': 13,\n        'Mission District': 15\n    },\n    'Mission District': {\n        'Financial District': 17,\n        'Fisherman\\'s Wharf': 22,\n        'Pacific Heights': 16\n    }\n}\n\nbest_schedule = None\nmax_friends = 0\nmin_end_time = float('inf')\n\nfor perm in itertools.permutations(friends_data):\n    current_location = 'Financial District'\n    current_time = time_to_min('9:00')\n    temp_itinerary = []\n    valid = True\n    \n    for friend in perm:\n        to_loc = friend['location']\n        travel_time = travel_times[current_location].get(to_loc, 0)\n        arrival_time = current_time + travel_time\n        \n        if arrival_time > friend['end']:\n            valid = False\n            break\n        \n        meeting_start = max(arrival_time, friend['start'])\n        meeting_end = meeting_start + friend['duration']\n        \n        if meeting_end > friend['end']:\n            valid = False\n            break\n        \n        temp_itinerary.append({\n            'action': 'meet',\n            'location': to_loc,\n            'person': friend['name'],\n            'start_time': min_to_time(meeting_start),\n            'end_time': min_to_time(meeting_end)\n        })\n        \n        current_time = meeting_end\n        current_location = to_loc\n    \n    if valid:\n        num_met = len(perm)\n        if num_met > max_friends or (num_met == max_friends and current_time < min_end_time):\n            max_friends = num_met\n            min_end_time = current_time\n            best_schedule = temp_itinerary.copy()\n\noutput = {\"itinerary\": best_schedule} if best_schedule else {\"itinerary\": []}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_203"
+        }
+    ]
+}

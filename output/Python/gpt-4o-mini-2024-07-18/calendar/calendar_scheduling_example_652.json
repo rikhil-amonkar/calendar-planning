@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n# Define the existing schedules\njesse_schedule = {\n    \"Monday\": [(9, 17)],\n    \"Tuesday\": [(9, 9.5), (13, 13.5), (14, 15)]\n}\n\nlawrence_schedule = {\n    \"Monday\": [(9, 17)],\n    \"Tuesday\": [(9.5, 10.5), (11.5, 12.5), (13, 13.5), (14.5, 15), (15.5, 16.5)]\n}\n\n# Meeting duration in hours\nmeeting_duration = 0.5\n\n# Function to find available time\ndef find_meeting_time(jesse_schedule, lawrence_schedule, meeting_duration):\n    for day in [\"Monday\", \"Tuesday\"]:\n        jesse_busy_times = jesse_schedule[day]\n        lawrence_busy_times = lawrence_schedule[day]\n\n        # Create a list of all busy times\n        busy_times = jesse_busy_times + lawrence_busy_times\n        \n        # Include work hours\n        if day == \"Monday\":\n            busy_times.append((9, 17))\n        elif day == \"Tuesday\":\n            busy_times.append((9, 16.5))\n\n        # Sort and merge busy times\n        busy_times.sort()\n        merged_busy_times = []\n        for start, end in busy_times:\n            if not merged_busy_times or merged_busy_times[-1][1] < start:\n                merged_busy_times.append((start, end))\n            else:\n                merged_busy_times[-1] = (merged_busy_times[-1][0], max(merged_busy_times[-1][1], end))\n        \n        # Find gaps in the merged busy times\n        last_end = 9  # Work hours start at 9\n        for start, end in merged_busy_times:\n            if last_end + meeting_duration <= start:\n                return f\"{day} {last_end:.2f} {last_end + meeting_duration:.2f}\"\n            last_end = end\n        \n        # Check after the last booked time until the end of the workday\n        if last_end + meeting_duration <= (17 if day == \"Monday\" else 16.5):\n            return f\"{day} {last_end:.2f} {last_end + meeting_duration:.2f}\"\n\n# Call the function and print the result\nmeeting_time = find_meeting_time(jesse_schedule, lawrence_schedule, meeting_duration)\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_652"
+        }
+    ]
+}

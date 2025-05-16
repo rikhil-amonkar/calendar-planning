@@ -1,0 +1,77 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 6-6",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    cities = list(constraints.keys())\n    unvisited_cities = cities.copy()\n    current_city = None\n\n    # Start with Venice\n    current_city = 'Venice'\n    unvisited_cities.remove(current_city)\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': current_city})\n    current_day += 5\n\n    # Attend an annual show in Venice between day 1 and day 5\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day}', 'place': current_city})\n    current_day += 1\n\n    # Visit Barcelona\n    next_city = 'Barcelona'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Frankfurt\n    next_city = 'Frankfurt'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Salzburg\n    next_city = 'Salzburg'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Stuttgart\n    next_city = 'Stuttgart'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Stockholm\n    next_city = 'Stockholm'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n    current_city = next_city\n    current_day += constraints[next_city]\n\n    # Visit Florence\n    next_city = 'Florence'\n    unvisited_cities.remove(next_city)\n    trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': current_city, 'to': next_city})\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + constraints[next_city] - 1}', 'place': next_city})\n\n    return trip_plan\n\nconstraints = {\n    'Salzburg': 4,\n    'Stockholm': 2,\n    'Venice': 5,\n    'Frankfurt': 4,\n    'Florence': 4,\n    'Barcelona': 2,\n    'Stuttgart': 3\n}\n\ndirect_flights = [\n    ['Barcelona', 'Frankfurt'],\n    ['Florence', 'Frankfurt'],\n    ['Stockholm', 'Barcelona'],\n    ['Barcelona', 'Florence'],\n    ['Venice', 'Barcelona'],\n    ['Stuttgart', 'Barcelona'],\n    ['Frankfurt', 'Salzburg'],\n    ['Stockholm', 'Frankfurt'],\n    ['Stuttgart', 'Stockholm'],\n    ['Stuttgart', 'Frankfurt'],\n    ['Venice', 'Stuttgart'],\n    ['Venice', 'Frankfurt']\n]\n\ntrip_plan = calculate_trip_plan(constraints, direct_flights)\nprint(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_953"
+        }
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Joseph",
+                        "start_time": "9:24",
+                        "end_time": "10:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "11:16",
+                        "end_time": "11:46"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Barbara",
+                        "start_time": "12:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Jeffrey",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Travel times in minutes\ntravel_times = {\n    'Golden Gate Park': {\n        'Fisherman\\'s Wharf': 24,\n        'Bayview': 23,\n        'Mission District': 17,\n        'Embarcadero': 25,\n        'Financial District': 26\n    },\n    'Fisherman\\'s Wharf': {\n        'Golden Gate Park': 25,\n        'Bayview': 26,\n        'Mission District': 22,\n        'Embarcadero': 8,\n        'Financial District': 11\n    },\n    'Bayview': {\n        'Golden Gate Park': 22,\n        'Fisherman\\'s Wharf': 25,\n        'Mission District': 13,\n        'Embarcadero': 19,\n        'Financial District': 19\n    },\n    'Mission District': {\n        'Golden Gate Park': 17,\n        'Fisherman\\'s Wharf': 22,\n        'Bayview': 15,\n        'Embarcadero': 19,\n        'Financial District': 17\n    },\n    'Embarcadero': {\n        'Golden Gate Park': 25,\n        'Fisherman\\'s Wharf': 6,\n        'Bayview': 21,\n        'Mission District': 20,\n        'Financial District': 5\n    },\n    'Financial District': {\n        'Golden Gate Park': 23,\n        'Fisherman\\'s Wharf': 10,\n        'Bayview': 19,\n        'Mission District': 17,\n        'Embarcadero': 4\n    }\n}\n\n# People and their constraints\npeople = [\n    {\n        'name': 'Joseph',\n        'location': 'Fisherman\\'s Wharf',\n        'available_start': '8:00',\n        'available_end': '17:30',\n        'min_duration': 90\n    },\n    {\n        'name': 'Jeffrey',\n        'location': 'Bayview',\n        'available_start': '17:30',\n        'available_end': '21:30',\n        'min_duration': 60\n    },\n    {\n        'name': 'Kevin',\n        'location': 'Mission District',\n        'available_start': '11:15',\n        'available_end': '15:15',\n        'min_duration': 30\n    },\n    {\n        'name': 'David',\n        'location': 'Embarcadero',\n        'available_start': '8:15',\n        'available_end': '9:00',\n        'min_duration': 30\n    },\n    {\n        'name': 'Barbara',\n        'location': 'Financial District',\n        'available_start': '10:30',\n        'available_end': '16:30',\n        'min_duration': 15\n    }\n]\n\ndef calculate_schedule(order):\n    current_time = time_to_minutes('9:00')\n    current_location = 'Golden Gate Park'\n    schedule = []\n    met_people = set()\n    \n    for person_name in order:\n        person = next(p for p in people if p['name'] == person_name)\n        location = person['location']\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        available_start = time_to_minutes(person['available_start'])\n        available_end = time_to_minutes(person['available_end'])\n        min_duration = person['min_duration']\n        \n        # Calculate meeting window\n        meeting_start = max(arrival_time, available_start)\n        meeting_end = meeting_start + min_duration\n        \n        if meeting_end > available_end:\n            return None  # Can't meet this person\n        \n        schedule.append({\n            'action': 'meet',\n            'location': location,\n            'person': person['name'],\n            'start_time': minutes_to_time(meeting_start),\n            'end_time': minutes_to_time(meeting_end)\n        })\n        \n        met_people.add(person['name'])\n        current_time = meeting_end\n        current_location = location\n    \n    # Check if we can meet Jeffrey after all other meetings\n    jeffrey = next(p for p in people if p['name'] == 'Jeffrey')\n    if 'Jeffrey' not in met_people:\n        location = jeffrey['location']\n        travel_time = travel_times[current_location][location]\n        arrival_time = current_time + travel_time\n        \n        available_start = time_to_minutes(jeffrey['available_start'])\n        available_end = time_to_minutes(jeffrey['available_end'])\n        min_duration = jeffrey['min_duration']\n        \n        meeting_start = max(arrival_time, available_start)\n        meeting_end = meeting_start + min_duration\n        \n        if meeting_end <= available_end:\n            schedule.append({\n                'action': 'meet',\n                'location': location,\n                'person': 'Jeffrey',\n                'start_time': minutes_to_time(meeting_start),\n                'end_time': minutes_to_time(meeting_end)\n            })\n            met_people.add('Jeffrey')\n    \n    return schedule if len(met_people) >= 3 else None  # At least meet 3 people\n\n# Generate all possible orders of meeting people (excluding Jeffrey initially)\npeople_names = [p['name'] for p in people if p['name'] != 'Jeffrey']\nall_orders = list(permutations(people_names))\n\nbest_schedule = None\nmax_people_met = 0\n\nfor order in all_orders:\n    schedule = calculate_schedule(order)\n    if schedule:\n        people_met = len(set(item['person'] for item in schedule))\n        if people_met > max_people_met or (people_met == max_people_met and len(schedule) > len(best_schedule or [])):\n            best_schedule = schedule\n            max_people_met = people_met\n\nif not best_schedule:\n    best_schedule = []\n\noutput = {\n    \"itinerary\": best_schedule\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_432"
+        }
+    ]
+}

@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Sarah",
+                        "start_time": "9:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Richard",
+                        "start_time": "12:00",
+                        "end_time": "19:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Sarah",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Richard",
+                        "start_time": "11:45",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "13:26",
+                        "end_time": "15:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "18:15",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Richmond District': {'Sunset District': 11, 'Haight-Ashbury': 10, 'Mission District': 20, 'Golden Gate Park': 9},\n    'Sunset District': {'Richmond District': 12, 'Haight-Ashbury': 15, 'Mission District': 24, 'Golden Gate Park': 11},\n    'Haight-Ashbury': {'Richmond District': 10, 'Sunset District': 15, 'Mission District': 11, 'Golden Gate Park': 7},\n    'Mission District': {'Richmond District': 20, 'Sunset District': 24, 'Haight-Ashbury': 12, 'Golden Gate Park': 17},\n    'Golden Gate Park': {'Richmond District': 7, 'Sunset District': 10, 'Haight-Ashbury': 7, 'Mission District': 17}\n}\n\n# Constraints\nconstraints = {\n    'Sarah': {'location': 'Sunset District','start_time': '10:45', 'end_time': '19:00','required_time': 30},\n    'Richard': {'location': 'Haight-Ashbury','start_time': '11:45', 'end_time': '15:45','required_time': 90},\n    'Elizabeth': {'location': 'Mission District','start_time': '11:00', 'end_time': '17:15','required_time': 120},\n    'Michelle': {'location': 'Golden Gate Park','start_time': '18:15', 'end_time': '20:45','required_time': 90}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\ndef is_valid_meeting(person, start_time, end_time, required_time):\n    return (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=required_time)).time() <= datetime.strptime(end_time, '%H:%M').time()\n\ndef schedule_meeting(person, start_time, end_time, required_time, location):\n    travel_time = calculate_travel_time('Richmond District', location)\n    start_time = (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    end_time = (datetime.strptime(end_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    return is_valid_meeting(person, start_time, end_time, required_time)\n\ndef generate_itinerary():\n    itinerary = []\n    start_time = '09:00'\n    end_time = '12:00'\n    \n    for person in constraints:\n        location = constraints[person]['location']\n        start_person_time = constraints[person]['start_time']\n        end_person_time = constraints[person]['end_time']\n        required_time = constraints[person]['required_time']\n        \n        if schedule_meeting(person, start_time, end_time, required_time, location):\n            itinerary.append({\n                'action':'meet',\n                'location': location,\n                'person': person,\n'start_time': start_time,\n                'end_time': end_time\n            })\n            start_time = end_time\n            end_time = (datetime.strptime(end_person_time, '%H:%M') + timedelta(minutes=required_time)).strftime('%H:%M')\n    \n    return itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_312"
+        }
+    ]
+}

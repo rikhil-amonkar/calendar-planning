@@ -1,0 +1,36 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 14-19",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 20\n    city_days = {\n        'Hamburg': 7,\n        'Munich': 6,\n        'Manchester': 2,\n        'Lyon': 2,\n        'Split': 7\n    }\n    \n    # Constraints\n    manchester_constraint = {'day_range': (19, 20), 'place': 'Manchester'}\n    lyon_constraint = {'day_range': (13, 14), 'place': 'Lyon'}\n    \n    # Direct flights\n    direct_flights = {\n        'Split': ['Munich', 'Lyon', 'Hamburg', 'Manchester'],\n        'Munich': ['Split', 'Manchester', 'Hamburg', 'Lyon'],\n        'Manchester': ['Munich', 'Hamburg', 'Split'],\n        'Hamburg': ['Manchester', 'Munich', 'Split'],\n        'Lyon': ['Split', 'Munich']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    \n    # Assign constrained days first\n    days_allocated = [False] * (total_days + 1)  # 1-based indexing\n    \n    # Assign Manchester constraint (days 19-20)\n    for day in range(manchester_constraint['day_range'][0], manchester_constraint['day_range'][1] + 1):\n        days_allocated[day] = True\n    \n    # Assign Lyon constraint (days 13-14)\n    for day in range(lyon_constraint['day_range'][0], lyon_constraint['day_range'][1] + 1):\n        days_allocated[day] = True\n    \n    # Assign remaining days to cities\n    remaining_city_days = city_days.copy()\n    remaining_city_days['Manchester'] -= 2  # already allocated 2 days\n    remaining_city_days['Lyon'] -= 2  # already allocated 2 days\n    \n    # Function to find available days for a city\n    def find_available_days(city, required_days):\n        available_ranges = []\n        start = None\n        consecutive = 0\n        \n        for day in range(1, total_days + 1):\n            if not days_allocated[day]:\n                if start is None:\n                    start = day\n                consecutive += 1\n                if consecutive == required_days:\n                    available_ranges.append((start, day))\n                    start = None\n                    consecutive = 0\n            else:\n                start = None\n                consecutive = 0\n        \n        return available_ranges\n    \n    # Assign Split first (7 days is the largest remaining block)\n    split_ranges = find_available_days('Split', remaining_city_days['Split'])\n    if not split_ranges:\n        return {\"error\": \"Cannot allocate Split days\"}\n    \n    # Choose the earliest possible range for Split\n    split_start, split_end = split_ranges[0]\n    for day in range(split_start, split_end + 1):\n        days_allocated[day] = True\n    itinerary.append({'day_range': f'Day {split_start}-{split_end}', 'place': 'Split'})\n    remaining_city_days['Split'] = 0\n    \n    # Assign Hamburg next (7 days)\n    hamburg_ranges = find_available_days('Hamburg', remaining_city_days['Hamburg'])\n    if not hamburg_ranges:\n        return {\"error\": \"Cannot allocate Hamburg days\"}\n    \n    # Choose range that allows flight from Split\n    for range_ in hamburg_ranges:\n        start, end = range_\n        # Check if there's a flight from Split to Hamburg\n        if 'Hamburg' in direct_flights['Split']:\n            # Add flight from Split to Hamburg\n            itinerary.append({'flying': f'Day {split_end}-{split_end}', 'from': 'Split', 'to': 'Hamburg'})\n            # Add Hamburg stay\n            itinerary.append({'day_range': f'Day {start}-{end}', 'place': 'Hamburg'})\n            for day in range(start, end + 1):\n                days_allocated[day] = True\n            remaining_city_days['Hamburg'] = 0\n            break\n    \n    # Assign Munich next (6 days)\n    munich_ranges = find_available_days('Munich', remaining_city_days['Munich'])\n    if not munich_ranges:\n        return {\"error\": \"Cannot allocate Munich days\"}\n    \n    # Choose range that allows flight from Hamburg\n    for range_ in munich_ranges:\n        start, end = range_\n        if 'Munich' in direct_flights['Hamburg']:\n            # Add flight from Hamburg to Munich\n            itinerary.append({'flying': f'Day {end_prev}-{end_prev}', 'from': 'Hamburg', 'to': 'Munich'})\n            # Add Munich stay\n            itinerary.append({'day_range': f'Day {start}-{end}', 'place': 'Munich'})\n            for day in range(start, end + 1):\n                days_allocated[day] = True\n            remaining_city_days['Munich'] = 0\n            end_prev = end\n            break\n    \n    # Assign Lyon (already constrained days 13-14)\n    # Check if we need to add flight to Lyon\n    # Find previous city before Lyon\n    prev_city = None\n    for entry in reversed(itinerary):\n        if 'place' in entry:\n            prev_city = entry['place']\n            break\n    \n    if prev_city and 'Lyon' in direct_flights[prev_city]:\n        # Add flight to Lyon\n        itinerary.append({'flying': f'Day {lyon_constraint[\"day_range\"][0]-1}-{lyon_constraint[\"day_range\"][0]-1}', \n                         'from': prev_city, 'to': 'Lyon'})\n    itinerary.append({'day_range': f'Day {lyon_constraint[\"day_range\"][0]}-{lyon_constraint[\"day_range\"][1]}', 'place': 'Lyon'})\n    \n    # Assign Manchester (already constrained days 19-20)\n    # Find previous city before Manchester\n    prev_city = None\n    for entry in reversed(itinerary):\n        if 'place' in entry:\n            prev_city = entry['place']\n            break\n    \n    if prev_city and 'Manchester' in direct_flights[prev_city]:\n        # Add flight to Manchester\n        itinerary.append({'flying': f'Day {manchester_constraint[\"day_range\"][0]-1}-{manchester_constraint[\"day_range\"][0]-1}', \n                         'from': prev_city, 'to': 'Manchester'})\n    itinerary.append({'day_range': f'Day {manchester_constraint[\"day_range\"][0]}-{manchester_constraint[\"day_range\"][1]}', 'place': 'Manchester'})\n    \n    return itinerary\n\n# Calculate and print itinerary\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_500"
+        }
+    ]
+}

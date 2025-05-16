@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Participants' schedules\ngregory_schedule = [(datetime.strptime('09:00', '%H:%M'), datetime.strptime('10:00', '%H:%M')),\n                    (datetime.strptime('10:30', '%H:%M'), datetime.strptime('11:30', '%H:%M')),\n                    (datetime.strptime('12:30', '%H:%M'), datetime.strptime('13:00', '%H:%M')),\n                    (datetime.strptime('13:30', '%H:%M'), datetime.strptime('14:00', '%H:%M'))]\n\nnatalie_schedule = []  # Natalie is available all day\n\nchristine_schedule = [(datetime.strptime('09:00', '%H:%M'), datetime.strptime('11:30', '%H:%M')),\n                      (datetime.strptime('13:30', '%H:%M'), datetime.strptime('17:00', '%H:%M'))]\n\nvincent_schedule = [(datetime.strptime('09:00', '%H:%M'), datetime.strptime('09:30', '%H:%M')),\n                    (datetime.strptime('10:30', '%H:%M'), datetime.strptime('12:00', '%H:%M')),\n                    (datetime.strptime('12:30', '%H:%M'), datetime.strptime('14:00', '%H:%M')),\n                    (datetime.strptime('14:30', '%H:%M'), datetime.strptime('17:00', '%H:%M'))]\n\n# Work hours\nwork_start = datetime.strptime('09:00', '%H:%M')\nwork_end = datetime.strptime('17:00', '%H:%M')\nmeeting_duration = timedelta(minutes=30)\n\n# Find available slots\ndef find_available_slots(schedule):\n    available_slots = []\n    current_time = work_start\n\n    for start, end in sorted(schedule):\n        # Check for time slot before this blocked time\n        if current_time < start:\n            available_slots.append((current_time, start))\n        current_time = max(current_time, end)\n\n    # Check for any available time after the last meeting until end of work hours\n    if current_time < work_end:\n        available_slots.append((current_time, work_end))\n    \n    return available_slots\n\n# Get available slots for each participant\ngregory_slots = find_available_slots(gregory_schedule)\nnatalie_slots = [(work_start, work_end)]  # Natalie is available all day\nchristine_slots = find_available_slots(christine_schedule)\nvincent_slots = find_available_slots(vincent_schedule)\n\n# Function to find a common available meeting time\ndef find_meeting_time(slots_list):\n    for start, end in slots_list[0]:\n        # Check if this slot can fit all other schedules\n        meeting_time = start\n        if meeting_time + meeting_duration <= end:  # First person time slot\n            can_schedule = True\n            for slots in slots_list[1:]:\n                # Check for availability in other participants' slots\n                if not any(s_start <= meeting_time < s_end for s_start, s_end in slots):\n                    can_schedule = False\n                    break\n            if can_schedule:\n                return meeting_time\n    return None\n\n# Collecting all available slots\nall_slots = [gregory_slots, natalie_slots, christine_slots, vincent_slots]\n\n# Finding meeting time\nmeeting_start = find_meeting_time(all_slots)\nmeeting_end = meeting_start + meeting_duration\n\n# Output result\nif meeting_start:\n    day_of_week = \"Monday\"\n    print(f\"{meeting_start.strftime('%H:%M')}:{meeting_end.strftime('%H:%M')} - {day_of_week}\")\n```",
+            "count": "calendar_scheduling_example_111"
+        }
+    ]
+}

@@ -1,0 +1,30 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    "None"
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define trip constraints\n    total_days = 7\n    days_madrid = 4\n    days_dublin = 3\n    days_tallinn = 2\n    workshop_days = (6, 7)  # inclusive\n\n    # Check the feasibility of the itinerary\n    total_spent_days = days_madrid + days_dublin + days_tallinn\n    if total_spent_days != total_days:\n        raise ValueError(\"The days allocated to cities do not sum up to total days.\")\n\n    # Create the itinerary based on the constraints\n    itinerary = []\n\n    # Day 1 to Day 4 in Madrid\n    itinerary.append({'day_range': 'Day 1-4', 'place': 'Madrid'})\n\n    # Day 5 flying to Dublin\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Madrid', 'to': 'Dublin'})\n\n    # Day 5 to Day 7 in Dublin\n    itinerary.append({'day_range': 'Day 5-5', 'place': 'Dublin'})\n    \n    # Day 6 to Day 7 is workshop in Tallinn\n    # Day 6 flying to Tallinn from Dublin\n    itinerary.append({'flying': 'Day 6-6', 'from': 'Dublin', 'to': 'Tallinn'})\n    \n    # Day 6 to Day 7 in Tallinn\n    itinerary.append({'day_range': 'Day 6-7', 'place': 'Tallinn'})\n    \n    # Convert itinerary to JSON format\n    return json.dumps(itinerary, indent=4)\n\n# Output the trip plan in JSON format\nprint(plan_trip())\n```",
+            "count": "trip_planning_example_142"
+        }
+    ]
+}

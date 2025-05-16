@@ -1,0 +1,122 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Charles",
+                        "start_time": "9:27",
+                        "end_time": "10:12"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Robert",
+                        "start_time": "10:35",
+                        "end_time": "11:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Karen",
+                        "start_time": "11:17",
+                        "end_time": "12:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Rebecca",
+                        "start_time": "12:34",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "14:10",
+                        "end_time": "16:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Patricia",
+                        "start_time": "16:29",
+                        "end_time": "17:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:31",
+                        "end_time": "18:01"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Laura",
+                        "start_time": "9:14",
+                        "end_time": "10:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Charles",
+                        "start_time": "11:30",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "14:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Rebecca",
+                        "start_time": "16:24",
+                        "end_time": "17:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:59",
+                        "end_time": "18:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Patricia",
+                        "start_time": "18:46",
+                        "end_time": "19:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Robert",
+                        "start_time": "19:46",
+                        "end_time": "20:16"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Karen",
+                        "start_time": "20:28",
+                        "end_time": "21:28"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times between locations\ntravel_times = {\n    'Marina District': {'Bayview': 27, 'Sunset District': 19, 'Richmond District': 11, 'Nob Hill': 12, 'Chinatown': 15, 'Haight-Ashbury': 16, 'North Beach': 11, 'Russian Hill': 8, 'Embarcadero': 14},\n    'Bayview': {'Marina District': 27, 'Sunset District': 23, 'Richmond District': 25, 'Nob Hill': 20, 'Chinatown': 19, 'Haight-Ashbury': 19, 'North Beach': 22, 'Russian Hill': 23, 'Embarcadero': 19},\n    'Sunset District': {'Marina District': 21, 'Bayview': 22, 'Richmond District': 12, 'Nob Hill': 27, 'Chinatown': 30, 'Haight-Ashbury': 15, 'North Beach': 28, 'Russian Hill': 24, 'Embarcadero': 30},\n    'Richmond District': {'Marina District': 9, 'Bayview': 27, 'Sunset District': 11, 'Nob Hill': 17, 'Chinatown': 20, 'Haight-Ashbury': 10, 'North Beach': 17, 'Russian Hill': 13, 'Embarcadero': 19},\n    'Nob Hill': {'Marina District': 11, 'Bayview': 19, 'Sunset District': 24, 'Richmond District': 14, 'Chinatown': 6, 'Haight-Ashbury': 13, 'North Beach': 8, 'Russian Hill': 5, 'Embarcadero': 9},\n    'Chinatown': {'Marina District': 12, 'Bayview': 20, 'Sunset District': 29, 'Richmond District': 20, 'Nob Hill': 9, 'Haight-Ashbury': 19, 'North Beach': 3, 'Russian Hill': 7, 'Embarcadero': 5},\n    'Haight-Ashbury': {'Marina District': 17, 'Bayview': 18, 'Sunset District': 15, 'Richmond District': 10, 'Nob Hill': 15, 'Chinatown': 19, 'North Beach': 19, 'Russian Hill': 17, 'Embarcadero': 20},\n    'North Beach': {'Marina District': 9, 'Bayview': 25, 'Sunset District': 27, 'Richmond District': 18, 'Nob Hill': 7, 'Chinatown': 6, 'Haight-Ashbury': 18, 'Russian Hill': 4, 'Embarcadero': 6},\n    'Russian Hill': {'Marina District': 7, 'Bayview': 23, 'Sunset District': 23, 'Richmond District': 14, 'Nob Hill': 5, 'Chinatown': 9, 'Haight-Ashbury': 17, 'North Beach': 5, 'Embarcadero': 8},\n    'Embarcadero': {'Marina District': 12, 'Bayview': 21, 'Sunset District': 30, 'Richmond District': 21, 'Nob Hill': 10, 'Chinatown': 7, 'Haight-Ashbury': 21, 'North Beach': 5, 'Russian Hill': 8}\n}\n\n# Define meeting constraints\nmeetings = [\n    {'person': 'Charles', 'location': 'Bayview','start_time': '11:30', 'end_time': '14:30','min_time': 45},\n    {'person': 'Robert', 'location': 'Sunset District','start_time': '16:45', 'end_time': '21:00','min_time': 30},\n    {'person': 'Karen', 'location': 'Richmond District','start_time': '19:15', 'end_time': '21:30','min_time': 60},\n    {'person': 'Rebecca', 'location': 'Nob Hill','start_time': '16:15', 'end_time': '20:30','min_time': 90},\n    {'person': 'Margaret', 'location': 'Chinatown','start_time': '14:15', 'end_time': '19:45','min_time': 120},\n    {'person': 'Patricia', 'location': 'Haight-Ashbury','start_time': '14:30', 'end_time': '20:30','min_time': 45},\n    {'person': 'Mark', 'location': 'North Beach','start_time': '14:00', 'end_time': '18:30','min_time': 105},\n    {'person': 'Melissa', 'location': 'Russian Hill','start_time': '13:00', 'end_time': '19:45','min_time': 30},\n    {'person': 'Laura', 'location': 'Embarcadero','start_time': '07:45', 'end_time': '13:15','min_time': 105}\n]\n\ndef calculate_meeting_schedule(meetings, travel_times):\n    schedule = []\n    current_time = datetime.strptime('09:00', '%H:%M')\n    current_location = 'Marina District'\n\n    for meeting in meetings:\n        # Calculate travel time to meeting location\n        travel_time = travel_times[current_location][meeting['location']]\n        arrival_time = current_time + timedelta(minutes=travel_time)\n\n        # Check if meeting can be attended\n        meeting_start_time = datetime.strptime(meeting['start_time'], '%H:%M')\n        meeting_end_time = datetime.strptime(meeting['end_time'], '%H:%M')\n        if arrival_time < meeting_end_time and arrival_time + timedelta(minutes=meeting['min_time']) <= meeting_end_time:\n            # Attend meeting\n            meeting_end = min(arrival_time + timedelta(minutes=meeting['min_time']), meeting_end_time)\n            schedule.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': meeting['person'],\n           'start_time': arrival_time.strftime('%H:%M'),\n                'end_time': meeting_end.strftime('%H:%M')\n            })\n            current_time = meeting_end\n            current_location = meeting['location']\n        else:\n            # Skip meeting\n            continue\n\n    return schedule\n\n# Calculate and print meeting schedule\nschedule = calculate_meeting_schedule(meetings, travel_times)\nprint(json.dumps({'itinerary': schedule}, indent=4))\n```",
+            "count": "meeting_planning_example_892"
+        }
+    ]
+}

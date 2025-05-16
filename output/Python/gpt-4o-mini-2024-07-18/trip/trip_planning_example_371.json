@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-1",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 2-2",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 8-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 9-9",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Define trip parameters\n    trip_days = 9\n    stays = {\n        \"Nice\": 2,\n        \"Stockholm\": 5,\n        \"Split\": 3,\n        \"Vienna\": 2\n    }\n    \n    # Conference and workshop constraints\n    conference_days = [7, 9]  # Days when conference is happening\n    workshop_days = [1]        # Workshop happening on Day 1\n\n    itinerary = []\n    \n    # Day 1: Vienna for workshop\n    itinerary.append({'day_range': 'Day 1-1', 'place': 'Vienna'})\n\n    # Day 2: Vienna\n    itinerary.append({'day_range': 'Day 2-2', 'place': 'Vienna'})\n    \n    # Move to Nice on Day 3\n    itinerary.append({'flying': 'Day 2-3', 'from': 'Vienna', 'to': 'Nice'})\n    itinerary.append({'day_range': 'Day 3-4', 'place': 'Nice'})\n    \n    # Move to Stockholm on Day 5\n    itinerary.append({'flying': 'Day 4-5', 'from': 'Nice', 'to': 'Stockholm'})\n    itinerary.append({'day_range': 'Day 5-9', 'place': 'Stockholm'})\n    \n    # Move to Split on Day 6\n    itinerary.append({'flying': 'Day 9-6', 'from': 'Stockholm', 'to': 'Split'})\n    itinerary.append({'day_range': 'Day 6-6', 'place': 'Split'})\n    \n    # Day 7 & 9: Split - attending conferences\n    itinerary.append({'day_range': 'Day 7-7', 'place': 'Split'})\n    \n    # Return to Split attending conference on Day 8\n    itinerary.append({'day_range': 'Day 8-8', 'place': 'Split'})\n    \n    # Move to Vienna on Day 9 for conference\n    itinerary.append({'day_range': 'Day 9-9', 'place': 'Split'})\n    \n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    print(calculate_itinerary())\n```",
+            "count": "trip_planning_example_371"
+        }
+    ]
+}

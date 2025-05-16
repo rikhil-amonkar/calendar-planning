@@ -1,0 +1,36 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_itinerary():\n    # Input parameters\n    total_days = 12\n    city_days = {\n        'Split': 2,\n        'Helsinki': 2,\n        'Reykjavik': 3,\n        'Vilnius': 3,\n        'Geneva': 6\n    }\n    constraints = {\n        'Reykjavik': (10, 12),\n        'Vilnius': (7, 9)\n    }\n    direct_flights = {\n        'Split': ['Helsinki', 'Geneva', 'Vilnius'],\n        'Helsinki': ['Split', 'Geneva', 'Reykjavik', 'Vilnius'],\n        'Geneva': ['Split', 'Helsinki'],\n        'Reykjavik': ['Helsinki'],\n        'Vilnius': ['Helsinki', 'Split']\n    }\n\n    # Generate all possible city orders\n    cities = list(city_days.keys())\n    possible_orders = permutations(cities)\n\n    valid_itineraries = []\n\n    for order in possible_orders:\n        itinerary = []\n        current_day = 1\n        prev_city = None\n        valid = True\n\n        for i, city in enumerate(order):\n            # Check if we can stay in this city for required days\n            required_days = city_days[city]\n            end_day = current_day + required_days - 1\n\n            # Check constraints\n            if city in constraints:\n                constraint_start, constraint_end = constraints[city]\n                if not (current_day <= constraint_end and end_day >= constraint_start):\n                    valid = False\n                    break\n\n            # Check if we can fly to this city\n            if prev_city is not None:\n                if city not in direct_flights[prev_city]:\n                    valid = False\n                    break\n                itinerary.append({\n                    'flying': f'Day {current_day-1}-{current_day-1}',\n                    'from': prev_city,\n                    'to': city\n                })\n\n            # Add stay\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n\n            prev_city = city\n            current_day = end_day + 1\n\n            # Check if we exceeded total days\n            if current_day - 1 > total_days:\n                valid = False\n                break\n\n        # Check if all days are used\n        if valid and (current_day - 1) == total_days:\n            valid_itineraries.append(itinerary)\n\n    # Select the first valid itinerary (all should be equivalent in days)\n    if valid_itineraries:\n        return valid_itineraries[0]\n    else:\n        return None\n\ndef main():\n    itinerary = find_itinerary()\n    if itinerary:\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_440"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "10:30",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "10:30",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\ndef find_meeting_time():\n    # Define work hours and days\n    work_start = 9 * 60  # 9:00 in minutes\n    work_end = 17 * 60    # 17:00 in minutes\n    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']\n    \n    # Define busy times for Nicole and Daniel in minutes since midnight\n    nicole_busy = {\n        'Tuesday': [(16 * 60, 16 * 60 + 30)],\n        'Wednesday': [(15 * 60, 15 * 60 + 30)],\n        'Friday': [(12 * 60, 12 * 60 + 30), (15 * 60 + 30, 16 * 60)]\n    }\n    \n    daniel_busy = {\n        'Monday': [(9 * 60, 12 * 60 + 30), (13 * 60, 13 * 60 + 30), (14 * 60, 16 * 60 + 30)],\n        'Tuesday': [(9 * 60, 10 * 60 + 30), (11 * 60 + 30, 12 * 60 + 30), (13 * 60, 13 * 60 + 30), \n                    (15 * 60, 16 * 60), (16 * 60 + 30, 17 * 60)],\n        'Wednesday': [(9 * 60, 10 * 60), (11 * 60, 12 * 60 + 30), (13 * 60, 13 * 60 + 30), \n                      (14 * 60, 14 * 60 + 30), (16 * 60 + 30, 17 * 60)],\n        'Thursday': [(11 * 60, 12 * 60), (13 * 60, 14 * 60), (15 * 60, 15 * 60 + 30)],\n        'Friday': [(10 * 60, 11 * 60), (11 * 60 + 30, 12 * 60), (12 * 60 + 30, 14 * 60 + 30), \n                   (15 * 60, 15 * 60 + 30), (16 * 60, 16 * 60 + 30)]\n    }\n    \n    meeting_duration = 60  # 1 hour in minutes\n    \n    for day in days:\n        # Collect all busy intervals for the day\n        busy_intervals = []\n        \n        # Add Nicole's busy times\n        if day in nicole_busy:\n            busy_intervals.extend(nicole_busy[day])\n        \n        # Add Daniel's busy times\n        if day in daniel_busy:\n            busy_intervals.extend(daniel_busy[day])\n        \n        # Sort busy intervals by start time\n        busy_intervals.sort()\n        \n        # Find free slots\n        prev_end = work_start\n        free_slots = []\n        \n        for start, end in busy_intervals:\n            if start > prev_end:\n                free_slots.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        \n        # Check after last busy interval\n        if prev_end < work_end:\n            free_slots.append((prev_end, work_end))\n        \n        # Find the first suitable slot\n        for start, end in free_slots:\n            if end - start >= meeting_duration:\n                meeting_start = start\n                meeting_end = meeting_start + meeting_duration\n                # Format the time as HH:MM:HH:MM\n                start_hh = meeting_start // 60\n                start_mm = meeting_start % 60\n                end_hh = meeting_end // 60\n                end_mm = meeting_end % 60\n                time_str = f\"{start_hh:02d}:{start_mm:02d}:{end_hh:02d}:{end_mm:02d}\"\n                return day, time_str\n    \n    return None, None\n\nday, time = find_meeting_time()\nprint(f\"{day}, {time}\")\n```",
+            "count": "calendar_scheduling_example_975"
+        }
+    ]
+}

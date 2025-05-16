@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    \"\"\"Converts HH:MM string to minutes since midnight.\"\"\"\n    h, m = map(int, t.split(\":\"))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    \"\"\"Converts minutes since midnight to HH:MM format.\"\"\"\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h:02d}:{m:02d}\"\n\n# Define working hours\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 60\n\n# Define busy intervals for each participant (start, end) as minutes since midnight\n# Julie's busy intervals on Monday\njulie_busy = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"09:30\")),\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n    (time_to_minutes(\"12:00\"), time_to_minutes(\"12:30\")),\n    (time_to_minutes(\"13:30\"), time_to_minutes(\"14:00\")),\n    (time_to_minutes(\"16:00\"), time_to_minutes(\"17:00\"))\n]\n\n# Sean's busy intervals on Monday\nsean_busy = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"09:30\")),\n    (time_to_minutes(\"13:00\"), time_to_minutes(\"13:30\")),\n    (time_to_minutes(\"15:00\"), time_to_minutes(\"15:30\")),\n    (time_to_minutes(\"16:00\"), time_to_minutes(\"16:30\"))\n]\n\n# Lori's busy intervals on Monday\nlori_busy = [\n    (time_to_minutes(\"10:00\"), time_to_minutes(\"10:30\")),\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"13:00\")),\n    (time_to_minutes(\"15:30\"), time_to_minutes(\"17:00\"))\n]\n\n# Combine all busy intervals as a dictionary for clarity (though we check each separately)\nschedules = {\n    \"Julie\": julie_busy,\n    \"Sean\": sean_busy,\n    \"Lori\": lori_busy,\n}\n\ndef is_free(start, duration, busy_intervals):\n    \"\"\"Check if a person is free for the whole duration starting from 'start'.\n       busy_intervals is a list of (busy_start, busy_end) in minutes.\n    \"\"\"\n    end = start + duration\n    for busy_start, busy_end in busy_intervals:\n        # if the meeting overlaps with a busy interval, return False\n        if start < busy_end and end > busy_start:\n            return False\n    return True\n\ndef find_meeting_slot():\n    # Check every minute candidate starting time from work_start to (work_end - meeting_duration)\n    for candidate in range(work_start, work_end - meeting_duration + 1):\n        if (is_free(candidate, meeting_duration, schedules[\"Julie\"]) and\n            is_free(candidate, meeting_duration, schedules[\"Sean\"]) and\n            is_free(candidate, meeting_duration, schedules[\"Lori\"])):\n            return candidate, candidate + meeting_duration\n    return None\n\nslot = find_meeting_slot()\n\nif slot:\n    start_time = minutes_to_time(slot[0])\n    end_time = minutes_to_time(slot[1])\n    day = \"Monday\"\n    print(f\"{day}, {start_time}:{end_time}\")\nelse:\n    print(\"No available slot satisfies the meeting constraints.\")\n'''",
+            "count": "calendar_scheduling_example_42"
+        }
+    ]
+}

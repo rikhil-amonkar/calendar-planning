@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "11:03",
+                        "end_time": "12:03"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Brian",
+                        "start_time": "12:15",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Sandra",
+                        "start_time": "14:38",
+                        "end_time": "14:53"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Sandra",
+                        "start_time": "13:00",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Brian",
+                        "start_time": "13:38",
+                        "end_time": "15:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Jason",
+                        "start_time": "15:45",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport itertools\nimport json\n\nfriends = [\n    {'name': 'Stephanie', 'location': 'Mission District', 'start': 495, 'end': 825, 'duration': 90},\n    {'name': 'Sandra', 'location': 'Bayview', 'start': 780, 'end': 1170, 'duration': 15},\n    {'name': 'Brian', 'location': 'Russian Hill', 'start': 735, 'end': 960, 'duration': 120},\n    {'name': 'Jason', 'location': \"Fisherman's Wharf\", 'start': 510, 'end': 1065, 'duration': 60}\n]\n\ntravel_times = {\n    ('Haight-Ashbury', 'Mission District'): 11,\n    ('Haight-Ashbury', 'Bayview'): 18,\n    ('Haight-Ashbury', 'Pacific Heights'): 12,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Haight-Ashbury', \"Fisherman's Wharf\"): 23,\n    ('Mission District', 'Haight-Ashbury'): 12,\n    ('Mission District', 'Bayview'): 15,\n    ('Mission District', 'Pacific Heights'): 16,\n    ('Mission District', 'Russian Hill'): 15,\n    ('Mission District', \"Fisherman's Wharf\"): 22,\n    ('Bayview', 'Haight-Ashbury'): 19,\n    ('Bayview', 'Mission District'): 13,\n    ('Bayview', 'Pacific Heights'): 23,\n    ('Bayview', 'Russian Hill'): 23,\n    ('Bayview', \"Fisherman's Wharf\"): 25,\n    ('Pacific Heights', 'Haight-Ashbury'): 11,\n    ('Pacific Heights', 'Mission District'): 15,\n    ('Pacific Heights', 'Bayview'): 22,\n    ('Pacific Heights', 'Russian Hill'): 7,\n    ('Pacific Heights', \"Fisherman's Wharf\"): 13,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n    ('Russian Hill', 'Mission District'): 16,\n    ('Russian Hill', 'Bayview'): 23,\n    ('Russian Hill', 'Pacific Heights'): 7,\n    ('Russian Hill', \"Fisherman's Wharf\"): 7,\n    (\"Fisherman's Wharf\", 'Haight-Ashbury'): 22,\n    (\"Fisherman's Wharf\", 'Mission District'): 22,\n    (\"Fisherman's Wharf\", 'Bayview'): 26,\n    (\"Fisherman's Wharf\", 'Pacific Heights'): 12,\n    (\"Fisherman's Wharf\", 'Russian Hill'): 7\n}\n\ndef min_to_time(m):\n    return f\"{m // 60}:{m % 60:02d}\"\n\nbest_itinerary = []\nbest_count = 0\nbest_end = float('inf')\n\nfor perm in itertools.permutations(friends):\n    current_time = 540\n    current_loc = 'Haight-Ashbury'\n    itinerary = []\n    count = 0\n    valid = True\n    for f in perm:\n        tt = travel_times.get((current_loc, f['location']), None)\n        if tt is None:\n            valid = False\n            break\n        arrive = current_time + tt\n        earliest = max(arrive, f['start'])\n        latest = f['end'] - f['duration']\n        if earliest > latest:\n            valid = False\n            break\n        end = earliest + f['duration']\n        itinerary.append({\n            'action': 'meet',\n            'location': f['location'],\n            'person': f['name'],\n            'start_time': min_to_time(earliest),\n            'end_time': min_to_time(end)\n        })\n        current_time = end\n        current_loc = f['location']\n        count += 1\n    if valid and (count > best_count or (count == best_count and current_time < best_end)):\n        best_count = count\n        best_itinerary = itinerary\n        best_end = current_time\n\nprint(json.dumps({'itinerary': best_itinerary}, separators=(',', ':')))",
+            "count": "meeting_planning_example_482"
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Carol",
+                        "start_time": "11:30",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jessica",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Carol",
+                        "start_time": "11:30",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jessica",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper function to format time without leading zeros in hour\ndef format_time(dt):\n    return f\"{dt.hour}:{dt.minute:02d}\"\n\n# Input parameters and travel times (all in minutes)\nstart_location = \"Richmond District\"\narrival_time = datetime(2023, 1, 1, 9, 0)  # 9:00 AM\n\n# Meeting constraints\n# Carol: at Marina District, available 11:30 to 15:00, need minimum 60 minutes\ncarol_location = \"Marina District\"\ncarol_avail_start = datetime(2023, 1, 1, 11, 30)\ncarol_avail_end   = datetime(2023, 1, 1, 15, 0)\nmin_carol_meeting = timedelta(minutes=60)\n\n# Jessica: at Pacific Heights, available 15:30 to 16:45, need minimum 45 minutes\njessica_location = \"Pacific Heights\"\njessica_avail_start = datetime(2023, 1, 1, 15, 30)\njessica_avail_end   = datetime(2023, 1, 1, 16, 45)\nmin_jessica_meeting = timedelta(minutes=45)\n\n# Travel times dictionary: (from, to) : travel time in minutes\ntravel_times = {\n    (\"Richmond District\", \"Pacific Heights\"): 10,\n    (\"Richmond District\", \"Marina District\"): 9,\n    (\"Pacific Heights\", \"Richmond District\"): 12,\n    (\"Pacific Heights\", \"Marina District\"): 6,\n    (\"Marina District\", \"Richmond District\"): 11,\n    (\"Marina District\", \"Pacific Heights\"): 7\n}\n\n# We want to meet as many friends as possible, so we plan to meet Carol and Jessica.\n# The only feasible order is:\n# 1. Start from Richmond District at 9:00, travel to Marina District (for Carol).\n# 2. Wait until Carol's availability window begins (11:30), meet Carol for at least 60 minutes.\n# 3. After finishing with Carol, travel to Pacific Heights for Jessica.\n# 4. Wait until Jessica is available (15:30) and meet her for at least 45 minutes.\n# We now compute each of these steps.\n\n# Step 1: Travel from Richmond District (start) to Marina District for Carol.\ntravel_time_to_carol = timedelta(minutes=travel_times[(start_location, carol_location)])\narrival_at_carol = arrival_time + travel_time_to_carol\n# If we arrive before Carol is available, we wait until her availability starts.\nmeeting_carol_start = max(arrival_at_carol, carol_avail_start)\n# Meeting Carol for the minimum required duration.\nmeeting_carol_end = meeting_carol_start + min_carol_meeting\n\n# Step 2: Travel from Marina District (Carol's location) to Pacific Heights (Jessica's location)\ntravel_time_to_jessica = timedelta(minutes=travel_times[(carol_location, jessica_location)])\narrival_at_jessica = meeting_carol_end + travel_time_to_jessica\n# Wait until Jessica's availability starts, if needed.\nmeeting_jessica_start = max(arrival_at_jessica, jessica_avail_start)\nmeeting_jessica_end = meeting_jessica_start + min_jessica_meeting\n# Ensure we do not exceed Jessica's availability window.\nif meeting_jessica_end > jessica_avail_end:\n    # Adjust meeting end if necessary (though in our computed schedule it won't happen)\n    meeting_jessica_end = jessica_avail_end\n\n# Build the itinerary output as a JSON object.\nitinerary = [\n    {\n        \"action\": \"meet\",\n        \"location\": carol_location,\n        \"person\": \"Carol\",\n        \"start_time\": format_time(meeting_carol_start),\n        \"end_time\": format_time(meeting_carol_end)\n    },\n    {\n        \"action\": \"meet\",\n        \"location\": jessica_location,\n        \"person\": \"Jessica\",\n        \"start_time\": format_time(meeting_jessica_start),\n        \"end_time\": format_time(meeting_jessica_end)\n    }\n]\n\noutput = {\n    \"itinerary\": itinerary\n}\n\n# Print the JSON-formatted schedule\nprint(json.dumps(output, indent=2))",
+            "count": "meeting_planning_example_115"
+        }
+    ]
+}

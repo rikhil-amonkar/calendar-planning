@@ -1,0 +1,48 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Define the cities and their required days\n    cities = {\n        'Mykonos': 4,\n        'Krakow': 5,\n        'Vilnius': 2,\n        'Helsinki': 2,\n        'Dubrovnik': 3,\n        'Oslo': 2,\n        'Madrid': 5,\n        'Paris': 2\n    }\n    \n    # Define the flight connections\n    flight_connections = {\n        'Oslo': ['Krakow', 'Paris', 'Madrid', 'Helsinki', 'Dubrovnik', 'Vilnius'],\n        'Paris': ['Oslo', 'Madrid', 'Krakow', 'Helsinki', 'Vilnius'],\n        'Madrid': ['Paris', 'Dubrovnik', 'Mykonos', 'Oslo', 'Helsinki'],\n        'Helsinki': ['Vilnius', 'Oslo', 'Krakow', 'Dubrovnik', 'Paris', 'Madrid'],\n        'Dubrovnik': ['Helsinki', 'Madrid', 'Oslo'],\n        'Krakow': ['Oslo', 'Paris', 'Helsinki', 'Vilnius'],\n        'Vilnius': ['Helsinki', 'Oslo', 'Paris', 'Krakow'],\n        'Mykonos': ['Madrid']\n    }\n    \n    # Define constraints\n    constraints = [\n        {'place': 'Mykonos', 'day_range': (15, 18)},\n        {'place': 'Dubrovnik', 'day_range': (2, 4)},\n        {'place': 'Oslo', 'day_range': (1, 2)}\n    ]\n    \n    # Generate all possible permutations of the cities\n    city_names = list(cities.keys())\n    for perm in permutations(city_names):\n        itinerary = []\n        current_day = 1\n        valid = True\n        \n        # Check if Mykonos is at the end\n        if perm[-1] != 'Mykonos':\n            continue\n        \n        # Check if Oslo is first\n        if perm[0] != 'Oslo':\n            continue\n        \n        # Check if Dubrovnik is early enough\n        if 'Dubrovnik' not in perm[:3]:\n            continue\n        \n        # Try to build the itinerary\n        prev_city = None\n        day_usage = [0] * 19  # 1-based indexing for days 1-18\n        \n        for city in perm:\n            duration = cities[city]\n            \n            # Find the earliest start day for this city considering constraints\n            start_day = current_day\n            if city == 'Mykonos':\n                start_day = 15\n            elif city == 'Dubrovnik':\n                start_day = 2\n            elif city == 'Oslo':\n                start_day = 1\n            \n            # Check if the city can fit\n            end_day = start_day + duration - 1\n            if end_day > 18:\n                valid = False\n                break\n            \n            # Check if days are available\n            conflict = False\n            for day in range(start_day, end_day + 1):\n                if day_usage[day] == 1:\n                    conflict = True\n                    break\n            if conflict:\n                valid = False\n                break\n            \n            # Mark days as used\n            for day in range(start_day, end_day + 1):\n                day_usage[day] = 1\n            \n            # Add flight if not first city\n            if prev_city is not None:\n                if city not in flight_connections[prev_city]:\n                    valid = False\n                    break\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': city\n                })\n                current_day += 1  # flight day\n            \n            # Add city stay\n            itinerary.append({\n                'day_range': f'Day {start_day}-{end_day}',\n                'place': city\n            })\n            current_day = end_day + 1\n            prev_city = city\n        \n        if valid:\n            # Verify all constraints are met\n            for entry in itinerary:\n                if 'day_range' in entry:\n                    place = entry['place']\n                    day_range = entry['day_range']\n                    start, end = map(int, day_range.split('Day ')[1].split('-'))\n                    \n                    if place == 'Mykonos' and (start != 15 or end != 18):\n                        valid = False\n                    elif place == 'Dubrovnik' and (start != 2 or end != 4):\n                        valid = False\n                    elif place == 'Oslo' and (start != 1 or end != 2):\n                        valid = False\n            \n            if valid:\n                return itinerary\n    \n    return None\n\ndef main():\n    itinerary = find_valid_itinerary()\n    if itinerary:\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1161"
+        }
+    ]
+}

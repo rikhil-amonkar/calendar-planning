@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\ndef find_meeting_time(participants_schedules, work_hours_start, work_hours_end, duration_minutes):\n    # Convert all time strings to minutes since start of the day\n    def time_to_minutes(time_str):\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n    \n    work_start = time_to_minutes(work_hours_start)\n    work_end = time_to_minutes(work_hours_end)\n    \n    # Initialize the free slots as the entire work day\n    free_slots = [(work_start, work_end)]\n    \n    # Process each participant's schedule to find common free slots\n    for schedule in participants_schedules:\n        busy_slots = []\n        for busy in schedule:\n            start, end = map(time_to_minutes, busy.split(':'))\n            busy_slots.append((start, end))\n        \n        # Sort the busy slots by start time\n        busy_slots.sort()\n        \n        # Calculate free slots for this participant\n        current_free = []\n        prev_end = work_start\n        for start, end in busy_slots:\n            if start > prev_end:\n                current_free.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        if prev_end < work_end:\n            current_free.append((prev_end, work_end))\n        \n        # Intersect current_free with existing free_slots\n        new_free_slots = []\n        i = j = 0\n        while i < len(free_slots) and j < len(current_free):\n            start1, end1 = free_slots[i]\n            start2, end2 = current_free[j]\n            \n            # Find the overlap\n            start = max(start1, start2)\n            end = min(end1, end2)\n            if start < end:\n                new_free_slots.append((start, end))\n            \n            # Move the pointer which ends first\n            if end1 < end2:\n                i += 1\n            else:\n                j += 1\n        \n        free_slots = new_free_slots\n    \n    # Find the first slot that can fit the meeting duration\n    for start, end in free_slots:\n        if end - start >= duration_minutes:\n            # Convert back to HH:MM format\n            def minutes_to_time(minutes):\n                hh = minutes // 60\n                mm = minutes % 60\n                return f\"{hh:02d}:{mm:02d}\"\n            \n            meeting_start = minutes_to_time(start)\n            meeting_end = minutes_to_time(start + duration_minutes)\n            return meeting_start, meeting_end\n    \n    return None\n\n# Define the participants' schedules\nparticipants_schedules = [\n    # Julie's schedule\n    [\"9:00:9:30\", \"11:00:11:30\", \"12:00:12:30\", \"13:30:14:00\", \"16:00:17:00\"],\n    # Sean's schedule\n    [\"9:00:9:30\", \"13:00:13:30\", \"15:00:15:30\", \"16:00:16:30\"],\n    # Lori's schedule\n    [\"10:00:10:30\", \"11:00:13:00\", \"15:30:17:00\"]\n]\n\n# Define work hours and meeting duration\nwork_hours_start = \"9:00\"\nwork_hours_end = \"17:00\"\nduration_minutes = 60  # 1 hour\n\n# Find the meeting time\nmeeting_time = find_meeting_time(participants_schedules, work_hours_start, work_hours_end, duration_minutes)\n\n# Output the result\nif meeting_time:\n    start, end = meeting_time\n    print(f\"{start}:{end}\")\n    print(\"Monday\")\nelse:\n    print(\"No suitable time found.\")\n```",
+            "count": "calendar_scheduling_example_42"
+        }
+    ]
+}

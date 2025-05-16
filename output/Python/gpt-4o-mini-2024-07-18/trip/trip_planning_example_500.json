@@ -1,0 +1,61 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 8-13",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 18-24",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 25-26",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 14-19",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the constraints and parameters\n    trip_days = 20\n    itinerary = []\n\n    # Assign days spent in each city based on the requirements\n    days_hamburg = 7\n    days_munich = 6\n    days_manchester = 2\n    days_lyon = 2\n    days_split = 7\n\n    # Create the itinerary based on the constraints\n    day = 1\n\n    # 1. Hamburg for 7 days\n    itinerary.append({'day_range': f'Day {day}-{day + days_hamburg - 1}', 'place': 'Hamburg'})\n    day += days_hamburg\n\n    # 2. Munich for 6 days\n    itinerary.append({'flying': f'Day {day}-{day}', 'from': 'Hamburg', 'to': 'Munich'})\n    itinerary.append({'day_range': f'Day {day}-{day + days_munich - 1}', 'place': 'Munich'})\n    day += days_munich\n\n    # 3. Manchester for 2 days\n    itinerary.append({'flying': f'Day {day}-{day}', 'from': 'Munich', 'to': 'Manchester'})\n    itinerary.append({'day_range': f'Day {day}-{day + days_manchester - 1}', 'place': 'Manchester'})\n    day += days_manchester\n    \n    # 4. Return to Munich before heading to Lyon\n    itinerary.append({'flying': f'Day {day}-{day}', 'from': 'Manchester', 'to': 'Munich'})\n    \n    # 5. Lyon for 2 days, including the annual show\n    itinerary.append({'flying': f'Day {day}-{day}', 'from': 'Munich', 'to': 'Lyon'})\n    itinerary.append({'day_range': f'Day {day}-{day + days_lyon - 1}', 'place': 'Lyon'})\n    \n    # Annual show in Lyon on a specified day\n    day += days_lyon\n    \n    # 6. Split for 7 days\n    itinerary.append({'flying': f'Day {day}-{day}', 'from': 'Lyon', 'to': 'Split'})\n    itinerary.append({'day_range': f'Day {day}-{day + days_split - 1}', 'place': 'Split'})\n    day += days_split\n\n    # 7. Back to Manchester for relatives visit\n    itinerary.append({'flying': f'Day {day}-{day}', 'from': 'Split', 'to': 'Manchester'})\n    itinerary.append({'day_range': f'Day {day}-{day + 1}', 'place': 'Manchester'})\n    \n    # Prepare final output\n    output = json.dumps(itinerary, indent=4)\n    return output\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_500"
+        }
+    ]
+}

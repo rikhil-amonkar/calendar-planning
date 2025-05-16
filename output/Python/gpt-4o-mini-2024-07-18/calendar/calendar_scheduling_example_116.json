@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define work hours and meeting duration\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(minutes=30)\n\n# Define existing schedules\nschedules = {\n    'Adam': [(datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\"))],\n    'John': [(datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n             (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"14:30\", \"%H:%M\")),\n             (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n             (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    'Stephanie': [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n                  (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n                  (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n                  (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    'Anna': [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n             (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n             (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\")),\n             (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n}\n\n# Anna prefers not to meet before 14:30\npreferred_start = datetime.strptime(\"14:30\", \"%H:%M\")\n\n# Function to check if a time range is available for all participants\ndef is_available(start_time, end_time):\n    for schedule in schedules.values():\n        for busy_start, busy_end in schedule:\n            if start_time < busy_end and end_time > busy_start:\n                return False\n    return True\n\n# Find a suitable time slot\ncurrent_time = max(work_start, preferred_start)\nwhile current_time + meeting_duration <= work_end:\n    if is_available(current_time, current_time + meeting_duration):\n        proposed_start = current_time.strftime(\"%H:%M\")\n        proposed_end = (current_time + meeting_duration).strftime(\"%H:%M\")\n        day_of_week = \"Monday\"\n        print(f\"{proposed_start}:{proposed_end} - {day_of_week}\")\n        break\n    current_time += timedelta(minutes=30)\n```",
+            "count": "calendar_scheduling_example_116"
+        }
+    ]
+}

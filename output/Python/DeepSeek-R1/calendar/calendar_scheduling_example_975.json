@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "{10:30",
+                "end_time": "11:30}"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "{10:30",
+                "end_time": "11:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(s):\n    hours, minutes = map(int, s.split(':'))\n    return hours * 60 + minutes\n\ndef to_time_str(minutes):\n    return f\"{minutes // 60:02d}:{minutes % 60:02d}\"\n\ndays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']\n\nnicole_busy = {\n    'Tuesday': [(16*60, 16*60 + 30)],\n    'Wednesday': [(15*60, 15*60 + 30)],\n    'Friday': [\n        (12*60, 12*60 + 30),\n        (15*60 + 30, 16*60)\n    ],\n}\n\ndaniel_busy = {\n    'Monday': [\n        (9*60, 12*60 + 30),\n        (13*60, 13*60 + 30),\n        (14*60, 16*60 + 30)\n    ],\n    'Tuesday': [\n        (9*60, 10*60 + 30),\n        (11*60 + 30, 12*60 + 30),\n        (13*60, 13*60 + 30),\n        (15*60, 16*60),\n        (16*60 + 30, 17*60)\n    ],\n    'Wednesday': [\n        (9*60, 10*60),\n        (11*60, 12*60 + 30),\n        (13*60, 13*60 + 30),\n        (14*60, 14*60 + 30),\n        (16*60 + 30, 17*60)\n    ],\n    'Thursday': [\n        (11*60, 12*60),\n        (13*60, 14*60),\n        (15*60, 15*60 + 30)\n    ],\n    'Friday': [\n        (10*60, 11*60),\n        (11*60 + 30, 12*60),\n        (12*60 + 30, 14*60 + 30),\n        (15*60, 15*60 + 30),\n        (16*60, 16*60 + 30)\n    ]\n}\n\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals)\n    merged = [sorted_intervals[0]]\n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        if current[0] <= last[1]:\n            merged[-1] = (last[0], max(last[1], current[1]))\n        else:\n            merged.append(current)\n    return merged\n\ndef get_free_intervals(busy_intervals, day):\n    day_start = 9 * 60\n    day_end = 17 * 60\n    intervals = busy_intervals.get(day, [])\n    merged = merge_intervals(intervals)\n    free = []\n    prev_end = day_start\n    for start, end in merged:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = end\n    if prev_end < day_end:\n        free.append((prev_end, day_end))\n    return free\n\ndef find_meeting_slot():\n    for day in days_order:\n        nicole_free = get_free_intervals(nicole_busy, day)\n        daniel_free = get_free_intervals(daniel_busy, day)\n        for n_start, n_end in nicole_free:\n            for d_start, d_end in daniel_free:\n                overlap_start = max(n_start, d_start)\n                overlap_end = min(n_end, d_end)\n                if overlap_end - overlap_start >= 60:\n                    return (\n                        day,\n                        (overlap_start, overlap_start + 60)\n                    )\n    return None\n\nresult = find_meeting_slot()\nif result:\n    day, (start, end) = result\n    print(f\"{day}:{to_time_str(start)}:{to_time_str(end)}\")\nelse:\n    print(\"No slot found\")\n'''",
+            "count": "calendar_scheduling_example_975"
+        }
+    ]
+}

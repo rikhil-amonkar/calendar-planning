@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "14:00",
+                "end_time": "15:00"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define work hours and meeting duration\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(hours=1)\n\n# Define existing schedules\njudith_schedule = {\n    'Monday': [(datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\"))],\n    'Wednesday': [(datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:00\", \"%H:%M\"))],\n}\n\ntimothy_schedule = {\n    'Monday': [\n        (datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n        (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n        (datetime.strptime(\"12:30\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")),\n        (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ],\n    'Tuesday': [\n        (datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\")),\n        (datetime.strptime(\"13:30\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")),\n        (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ],\n    'Wednesday': [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"09:30\", \"%H:%M\")),\n        (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n        (datetime.strptime(\"13:30\", \"%H:%M\"), datetime.strptime(\"14:30\", \"%H:%M\")),\n        (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"15:30\", \"%H:%M\")),\n        (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\")),\n    ],\n}\n\n# Combine schedules and propose a meeting time\ndef find_meeting_time():\n    # Check possible days\n    possible_days = ['Monday', 'Tuesday', 'Wednesday']\n    for day in possible_days:\n        # Get busy times\n        busy_times = judith_schedule.get(day, []) + timothy_schedule.get(day, [])\n        busy_times.sort()  # Sort busy times by start time\n\n        # Find available slot\n        current_time = work_start\n        for start, end in busy_times:\n            # Check for available time before the busy slot\n            if current_time + meeting_duration <= start:\n                return f\"{day}: {current_time.strftime('%H:%M')}:{(current_time + meeting_duration).strftime('%H:%M')}\"\n            current_time = max(current_time, end)\n\n        # Check for availability after the last busy slot until work end\n        if current_time + meeting_duration <= work_end:\n            return f\"{day}: {current_time.strftime('%H:%M')}:{(current_time + meeting_duration).strftime('%H:%M')}\"\n\n    return \"No available time found\"\n\n# Call function to get proposed meeting time\nproposed_time = find_meeting_time()\nprint(proposed_time)\n```",
+            "count": "calendar_scheduling_example_784"
+        }
+    ]
+}

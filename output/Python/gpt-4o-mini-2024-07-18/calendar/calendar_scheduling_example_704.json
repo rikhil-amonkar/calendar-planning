@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the participants' schedules\nlarry_schedule = [(9, 0, 17, 0)]  # Open entire week\nsamuel_schedule = {\n    'Monday': [(10, 30, 11, 0), (12, 0, 12, 30), (13, 0, 15, 0), (15, 30, 16, 30)],\n    'Tuesday': [(9, 0, 12, 0), (14, 0, 15, 30), (16, 30, 17, 0)],\n    'Wednesday': [(10, 30, 11, 0), (11, 30, 12, 0), (12, 30, 13, 0), (14, 0, 14, 30), (15, 0, 16, 0)]\n}\n\n# Meeting constraints\nmeeting_duration = timedelta(minutes=30)\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\npreferred_days = ['Monday', 'Tuesday', 'Wednesday']\nlarry_avoids = ['Wednesday']\nsamuel_avoids = ['Tuesday']\n\ndef find_available_time(schedules):\n    for day in preferred_days:\n        # Skip if Larry wants to avoid this day\n        if day in larry_avoids:\n            continue\n\n        # Get the working hours of the day\n        work_hours = (work_start.hour, work_start.minute, work_end.hour, work_end.minute)\n        free_slots = []\n\n        # Generate free slots for the whole day\n        current_time = work_start\n        while current_time < work_end:\n            slot_start = current_time\n            slot_end = slot_start + meeting_duration\n            \n            # Check if the slot is available\n            is_free = True\n            # Check Samuel's schedule for the day\n            for scheduled_start, scheduled_end in samuel_schedule[day]:\n                scheduled_start_time = datetime.strptime(f\"{scheduled_start}:00\", \"%H:%M:%S\")\n                scheduled_end_time = datetime.strptime(f\"{scheduled_end}:00\", \"%H:%M:%S\")\n                if slot_start < scheduled_end_time and slot_end > scheduled_start_time:\n                    is_free = False\n                    break\n            \n            if is_free and slot_end <= work_end:\n                free_slots.append((slot_start, slot_end))\n            \n            # Move to the next time slot\n            current_time += timedelta(minutes=30)  # Check every 30 minutes\n\n        # Find the earliest available slot\n        if free_slots:\n            earliest_slot = free_slots[0]\n            return earliest_slot[0].strftime(\"%H:%M\") + \":\" + earliest_slot[1].strftime(\"%H:%M\"), day \n\n# Calculate the proposed time\ntime_range, day_of_week = find_available_time(samuel_schedule)\n\nprint(f\"{time_range} {day_of_week}\")\n```",
+            "count": "calendar_scheduling_example_704"
+        }
+    ]
+}

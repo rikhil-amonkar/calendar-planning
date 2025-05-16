@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Stockholm"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nimport itertools\n\n# Input parameters\ncities = {\n    'Riga': 2,\n    'Frankfurt': 3,\n    'Amsterdam': 2,\n    'Vilnius': 5,\n    'London': 2,\n    'Stockholm': 3,\n    'Bucharest': 4\n}\n\nconstraints = {\n    'Riga': ['Vilnius', 'Stockholm'],\n    'Frankfurt': ['Vilnius'],\n    'Amsterdam': ['Stockholm', 'Frankfurt'],\n    'Vilnius': ['Frankfurt', 'Amsterdam'],\n    'London': ['Bucharest'],\n    'Stockholm': ['Riga', 'Bucharest', 'Amsterdam', 'London'],\n    'Bucharest': ['Riga', 'Frankfurt', 'London', 'Stockholm']\n}\n\n# Direct flights\nflights = {\n    ('London', 'Amsterdam'): 1,\n    ('Vilnius', 'Frankfurt'): 1,\n    ('Riga', 'Vilnius'): 1,\n    ('Riga', 'Stockholm'): 1,\n    ('London', 'Bucharest'): 1,\n    ('Amsterdam', 'Stockholm'): 1,\n    ('Amsterdam', 'Frankfurt'): 1,\n    ('Frankfurt', 'Stockholm'): 1,\n    ('Bucharest', 'Riga'): 1,\n    ('Amsterdam', 'Riga'): 1,\n    ('Amsterdam', 'Bucharest'): 1,\n    ('Riga', 'Frankfurt'): 1,\n    ('Bucharest', 'Frankfurt'): 1,\n    ('London', 'Frankfurt'): 1,\n    ('London', 'Stockholm'): 1,\n    ('Amsterdam', 'Vilnius'): 1\n}\n\ndef compute_itinerary(cities, constraints, flights, total_days):\n    # Initialize the itinerary\n    itinerary = []\n    current_city = None\n    current_day = 1\n\n    # Visit each city\n    for city, duration in cities.items():\n        # Find the next city to visit\n        next_cities = constraints[city]\n        if current_city is not None:\n            next_cities = [c for c in next_cities if flights.get((current_city, c), 0) > 0]\n\n        # Find the first available city to visit\n        next_city = None\n        for c in next_cities:\n            if current_day + duration <= total_days and flights.get((current_city, c), 0) > 0:\n                next_city = c\n                break\n\n        # Add the current city to the itinerary\n        if current_city is not None:\n            itinerary.append({'day_range': f'Day {current_day}-{current_day + duration - 1}', 'place': current_city})\n\n        # Add the flight to the next city\n        if next_city is not None:\n            itinerary.append({'flying': f'Day {current_day + duration - 1}-{current_day + duration - 1}', 'from': current_city, 'to': next_city})\n\n        # Update the current city and day\n        current_city = next_city\n        current_day += duration\n\n    # Add the last city to the itinerary\n    if current_city is not None:\n        itinerary.append({'day_range': f'Day {current_day - cities[current_city]}-{current_day - 1}', 'place': current_city})\n\n    return itinerary\n\n# Compute the itinerary\nitinerary = compute_itinerary(cities, constraints, flights, 15)\n\n# Print the itinerary as JSON\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_993"
+        }
+    ]
+}

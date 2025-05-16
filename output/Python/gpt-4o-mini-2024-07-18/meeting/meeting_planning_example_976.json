@@ -1,0 +1,108 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "9:00",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "11:00",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Sarah",
+                        "start_time": "12:30",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Jessica",
+                        "start_time": "14:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Mary",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Charles",
+                        "start_time": "17:15",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Nancy",
+                        "start_time": "19:00",
+                        "end_time": "19:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Thomas",
+                        "start_time": "13:30",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Nancy",
+                        "start_time": "14:45",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Brian",
+                        "start_time": "15:09",
+                        "end_time": "16:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Jessica",
+                        "start_time": "16:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Mary",
+                        "start_time": "18:37",
+                        "end_time": "19:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Matthew",
+                        "start_time": "19:52",
+                        "end_time": "21:52"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Embarcadero\", \"Bayview\"): 21,\n    (\"Embarcadero\", \"Chinatown\"): 7,\n    (\"Embarcadero\", \"Alamo Square\"): 19,\n    (\"Embarcadero\", \"Nob Hill\"): 10,\n    (\"Embarcadero\", \"Presidio\"): 20,\n    (\"Embarcadero\", \"Union Square\"): 10,\n    (\"Embarcadero\", \"The Castro\"): 25,\n    (\"Embarcadero\", \"North Beach\"): 5,\n    (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n    (\"Embarcadero\", \"Marina District\"): 12,\n    (\"Bayview\", \"Chinatown\"): 19,\n    (\"Bayview\", \"Alamo Square\"): 16,\n    (\"Bayview\", \"Nob Hill\"): 20,\n    (\"Bayview\", \"Presidio\"): 32,\n    (\"Bayview\", \"Union Square\"): 18,\n    (\"Bayview\", \"The Castro\"): 19,\n    (\"Bayview\", \"North Beach\"): 22,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Bayview\", \"Marina District\"): 27,\n    (\"Chinatown\", \"Alamo Square\"): 17,\n    (\"Chinatown\", \"Nob Hill\"): 9,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Chinatown\", \"Union Square\"): 7,\n    (\"Chinatown\", \"The Castro\"): 22,\n    (\"Chinatown\", \"North Beach\"): 3,\n    (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n    (\"Chinatown\", \"Marina District\"): 12,\n    (\"Alamo Square\", \"Nob Hill\"): 11,\n    (\"Alamo Square\", \"Presidio\"): 17,\n    (\"Alamo Square\", \"Union Square\"): 14,\n    (\"Alamo Square\", \"The Castro\"): 8,\n    (\"Alamo Square\", \"North Beach\"): 15,\n    (\"Alamo Square\", \"Fisherman's Wharf\"): 19,\n    (\"Nob Hill\", \"Presidio\"): 17,\n    (\"Nob Hill\", \"Union Square\"): 7,\n    (\"Nob Hill\", \"The Castro\"): 17,\n    (\"Nob Hill\", \"North Beach\"): 8,\n    (\"Nob Hill\", \"Fisherman's Wharf\"): 10,\n    (\"Presidio\", \"Union Square\"): 24,\n    (\"Presidio\", \"The Castro\"): 21,\n    (\"Presidio\", \"North Beach\"): 18,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Marina District\"): 11,\n    (\"Union Square\", \"The Castro\"): 17,\n    (\"Union Square\", \"North Beach\"): 10,\n    (\"Union Square\", \"Fisherman's Wharf\"): 15,\n    (\"Union Square\", \"Marina District\"): 18,\n    (\"The Castro\", \"North Beach\"): 20,\n    (\"The Castro\", \"Fisherman's Wharf\"): 24,\n    (\"The Castro\", \"Marina District\"): 21,\n    (\"North Beach\", \"Fisherman's Wharf\"): 6,\n    (\"Marina District\", \"Bayview\"): 27,\n}\n\n# Meeting constraints\nmeetings = {\n    \"Matthew\": {\"location\": \"Bayview\", \"start\": \"19:15\", \"end\": \"22:00\", \"duration\": 120},\n    \"Karen\": {\"location\": \"Chinatown\", \"start\": \"19:15\", \"end\": \"21:15\", \"duration\": 90},\n    \"Sarah\": {\"location\": \"Alamo Square\", \"start\": \"20:00\", \"end\": \"21:45\", \"duration\": 105},\n    \"Jessica\": {\"location\": \"Nob Hill\", \"start\": \"16:30\", \"end\": \"18:45\", \"duration\": 120},\n    \"Stephanie\": {\"location\": \"Presidio\", \"start\": \"07:30\", \"end\": \"10:15\", \"duration\": 60},\n    \"Mary\": {\"location\": \"Union Square\", \"start\": \"16:45\", \"end\": \"21:30\", \"duration\": 60},\n    \"Charles\": {\"location\": \"The Castro\", \"start\": \"16:30\", \"end\": \"22:00\", \"duration\": 105},\n    \"Nancy\": {\"location\": \"North Beach\", \"start\": \"14:45\", \"end\": \"20:00\", \"duration\": 15},\n    \"Thomas\": {\"location\": \"Fisherman's Wharf\", \"start\": \"13:30\", \"end\": \"19:00\", \"duration\": 30},\n    \"Brian\": {\"location\": \"Marina District\", \"start\": \"12:15\", \"end\": \"18:00\", \"duration\": 60},\n}\n\n# Times\narrival_time = datetime.strptime(\"09:00\", \"%H:%M\")\ncurrent_time = arrival_time\n\n# Itinerary\nitinerary = []\n\ndef can_meet(start_time, duration, end_time):\n    return start_time + timedelta(minutes=duration) <= end_time\n\n# Meeting order based on time constraints\nfor person, info in meetings.items():\n    location = info[\"location\"]\n    start_time = datetime.strptime(info[\"start\"], \"%H:%M\")\n    end_time = datetime.strptime(info[\"end\"], \"%H:%M\")\n    duration = info[\"duration\"]\n    \n    # Travel time calculations\n    travel_key = (current_time.strftime(\"%H:%M\"), location)\n    \n    if current_time.strftime(\"%H:%M\") in travel_times:\n        travel_time = travel_times.get((arrival_time.strftime(\"%H:%M\"), location), 0)\n    else:\n        travel_time = 0\n    \n    # Can we meet this person?\n    if can_meet(current_time + timedelta(minutes=travel_time), duration, end_time):\n        # Calculate the meeting start and end times\n        meeting_start = current_time + timedelta(minutes=travel_time)\n        meeting_end = meeting_start + timedelta(minutes=duration)\n        \n        # Add meeting to itinerary\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": location,\n            \"person\": person,\n            \"start_time\": meeting_start.strftime(\"%H:%M\"),\n            \"end_time\": meeting_end.strftime(\"%H:%M\"),\n        })\n        \n        # Update current time to the end of this meeting\n        current_time = meeting_end\n\n# Output as JSON\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=4))\n```",
+            "count": "meeting_planning_example_976"
+        }
+    ]
+}

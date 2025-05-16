@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\n# Define participants' schedules\nterry_schedule = {\n    \"Monday\": [(10, 30), (12, 30), (15, 0)],\n    \"Tuesday\": [(9, 30), (10, 30), (14, 0), (16, 0)],\n    \"Wednesday\": [(9, 30), (11, 0), (13, 0), (15, 0), (16, 30)],\n    \"Thursday\": [(9, 30), (12, 0), (13, 0), (16, 0)],\n    \"Friday\": [(9, 0), (12, 0), (13, 30), (16, 30)],\n}\n\nfrances_schedule = {\n    \"Monday\": [(9, 30), (11, 0), (14, 0), (15, 0)],\n    \"Tuesday\": [(9, 0), (10, 0), (11, 0), (13, 0), (15, 30)],\n    \"Wednesday\": [(9, 30), (10, 30), (11, 30), (16, 30)],\n    \"Thursday\": [(11, 0), (14, 30)],\n    \"Friday\": [(9, 30), (11, 0), (13, 0), (16, 30)],\n}\n\n# Convert booked times to a more usable format\ndef convert_schedule(schedule):\n    available_times = []\n    for day, busy_slots in schedule.items():\n        available_times.append((day, get_available_times(busy_slots)))\n    return available_times\n\n# Find available time slots based on busy schedule\ndef get_available_times(busy_slots):\n    busy_slots = sorted(busy_slots)\n    available_times = []\n    day_start = (9, 0)  # work hours start\n    day_end = (17, 0)   # work hours end\n    \n    last_end = day_start\n    for start, end in busy_slots:\n        if last_end < (start, 0):\n            available_times.append((last_end, (start, 0)))\n        last_end = (end, 0)\n    \n    if last_end < day_end:\n        available_times.append((last_end, day_end))\n    \n    return available_times\n\n# Combine available times for meeting\ndef find_meeting_time(terry_times, frances_times):\n    potential_days = set(terry_times.keys()).intersection(frances_times.keys())\n    \n    for day in potential_days:\n        terry_slots = terry_times[day]\n        frances_slots = frances_times[day]\n        \n        for terry_start, terry_end in terry_slots:\n            for frances_start, frances_end in frances_slots:\n                start_time = max((terry_start, 0), (frances_start, 0))\n                end_time = min((terry_end, 0), (frances_end, 0))\n                \n                if (end_time[0] - start_time[0] >= 0 and (end_time[1] - start_time[1]) >= 30):\n                    return f\"{day} {start_time[0]:02}:{start_time[1]:02}:{start_time[0]:02}:{start_time[1] + 30:02}\"\n\n# Calculate availability\nterry_availability = convert_schedule(terry_schedule)\nfrances_availability = convert_schedule(frances_schedule)\n\n# Find the meeting time\nmeeting_time = find_meeting_time(dict(terry_availability), dict(frances_availability))\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_935"
+        }
+    ]
+}

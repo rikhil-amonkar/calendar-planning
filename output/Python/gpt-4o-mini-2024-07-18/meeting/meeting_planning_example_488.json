@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "9:08",
+                        "end_time": "10:53"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "11:26",
+                        "end_time": "13:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "14:00",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "13:58",
+                        "end_time": "14:58"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"Russian Hill\"): 7,\n    (\"Pacific Heights\", \"The Castro\"): 16,\n    (\"Pacific Heights\", \"Sunset District\"): 21,\n    (\"Pacific Heights\", \"Haight-Ashbury\"): 11,\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    (\"Nob Hill\", \"Russian Hill\"): 5,\n    (\"Nob Hill\", \"The Castro\"): 17,\n    (\"Nob Hill\", \"Sunset District\"): 25,\n    (\"Nob Hill\", \"Haight-Ashbury\"): 13,\n    (\"Russian Hill\", \"Pacific Heights\"): 7,\n    (\"Russian Hill\", \"Nob Hill\"): 5,\n    (\"Russian Hill\", \"The Castro\"): 21,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"Haight-Ashbury\"): 17,\n    (\"The Castro\", \"Pacific Heights\"): 16,\n    (\"The Castro\", \"Nob Hill\"): 16,\n    (\"The Castro\", \"Russian Hill\"): 18,\n    (\"The Castro\", \"Sunset District\"): 17,\n    (\"The Castro\", \"Haight-Ashbury\"): 6,\n    (\"Sunset District\", \"Pacific Heights\"): 21,\n    (\"Sunset District\", \"Nob Hill\"): 27,\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"The Castro\"): 17,\n    (\"Sunset District\", \"Haight-Ashbury\"): 15,\n    (\"Haight-Ashbury\", \"Pacific Heights\"): 12,\n    (\"Haight-Ashbury\", \"Nob Hill\"): 15,\n    (\"Haight-Ashbury\", \"Russian Hill\"): 17,\n    (\"Haight-Ashbury\", \"The Castro\"): 6,\n    (\"Haight-Ashbury\", \"Sunset District\"): 15,\n}\n\n# Meeting constraints\nconstraints = {\n    \"Ronald\": {\"location\": \"Nob Hill\", \"available_from\": \"10:00\", \"available_to\": \"17:00\", \"min_time\": 105},\n    \"Sarah\": {\"location\": \"Russian Hill\", \"available_from\": \"07:15\", \"available_to\": \"09:30\", \"min_time\": 45},\n    \"Helen\": {\"location\": \"The Castro\", \"available_from\": \"13:30\", \"available_to\": \"17:00\", \"min_time\": 120},\n    \"Joshua\": {\"location\": \"Sunset District\", \"available_from\": \"14:15\", \"available_to\": \"19:30\", \"min_time\": 90},\n    \"Margaret\": {\"location\": \"Haight-Ashbury\", \"available_from\": \"10:15\", \"available_to\": \"22:00\", \"min_time\": 60},\n}\n\n# Starting time\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\ncurrent_time = start_time\n\nitinerary = []\n\n# Meeting Sarah first since she is available before everyone else\nif current_time < datetime.strptime(constraints[\"Sarah\"][\"available_to\"], \"%H:%M\"):\n    meet_time = current_time + timedelta(minutes=travel_times[(\"Pacific Heights\", \"Russian Hill\")])\n    if meet_time + timedelta(minutes=constraints[\"Sarah\"][\"min_time\"]) <= datetime.strptime(constraints[\"Sarah\"][\"available_to\"], \"%H:%M\"):\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Russian Hill\",\n            \"person\": \"Sarah\",\n            \"start_time\": meet_time.strftime(\"%H:%M\"),\n            \"end_time\": (meet_time + timedelta(minutes=constraints[\"Sarah\"][\"min_time\"])).strftime(\"%H:%M\"),\n        })\n        current_time = meet_time + timedelta(minutes=constraints[\"Sarah\"][\"min_time\"] + travel_times[(\"Russian Hill\", \"Nob Hill\")])\n\n# Meeting Ronald next \nif current_time < datetime.strptime(constraints[\"Ronald\"][\"available_to\"], \"%H:%M\"):\n    meet_time = current_time + timedelta(minutes=travel_times[(\"Nob Hill\", \"Pacific Heights\")])\n    if meet_time + timedelta(minutes=constraints[\"Ronald\"][\"min_time\"]) <= datetime.strptime(constraints[\"Ronald\"][\"available_to\"], \"%H:%M\"):\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Nob Hill\",\n            \"person\": \"Ronald\",\n            \"start_time\": meet_time.strftime(\"%H:%M\"),\n            \"end_time\": (meet_time + timedelta(minutes=constraints[\"Ronald\"][\"min_time\"])).strftime(\"%H:%M\"),\n        })\n        current_time = meet_time + timedelta(minutes=constraints[\"Ronald\"][\"min_time\"] + travel_times[(\"Nob Hill\", \"The Castro\")])\n\n# Meeting Helen next\nif current_time < datetime.strptime(constraints[\"Helen\"][\"available_to\"], \"%H:%M\"):\n    meet_time = current_time + timedelta(minutes=travel_times[(\"The Castro\", \"Nob Hill\")])\n    if meet_time + timedelta(minutes=constraints[\"Helen\"][\"min_time\"]) <= datetime.strptime(constraints[\"Helen\"][\"available_to\"], \"%H:%M\"):\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"The Castro\",\n            \"person\": \"Helen\",\n            \"start_time\": meet_time.strftime(\"%H:%M\"),\n            \"end_time\": (meet_time + timedelta(minutes=constraints[\"Helen\"][\"min_time\"])).strftime(\"%H:%M\"),\n        })\n        current_time = meet_time + timedelta(minutes=constraints[\"Helen\"][\"min_time\"] + travel_times[(\"The Castro\", \"Sunset District\")])\n\n# Meeting Joshua finally\nif current_time < datetime.strptime(constraints[\"Joshua\"][\"available_to\"], \"%H:%M\"):\n    meet_time = current_time + timedelta(minutes=travel_times[(\"Sunset District\", \"The Castro\")])\n    if meet_time + timedelta(minutes=constraints[\"Joshua\"][\"min_time\"]) <= datetime.strptime(constraints[\"Joshua\"][\"available_to\"], \"%H:%M\"):\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Sunset District\",\n            \"person\": \"Joshua\",\n            \"start_time\": meet_time.strftime(\"%H:%M\"),\n            \"end_time\": (meet_time + timedelta(minutes=constraints[\"Joshua\"][\"min_time\"])).strftime(\"%H:%M\"),\n        })\n\n# Meeting Margaret last\nif current_time < datetime.strptime(constraints[\"Margaret\"][\"available_to\"], \"%H:%M\"):\n    meet_time = current_time + timedelta(minutes=travel_times[(\"Haight-Ashbury\", \"Sunset District\")])\n    if meet_time + timedelta(minutes=constraints[\"Margaret\"][\"min_time\"]) <= datetime.strptime(constraints[\"Margaret\"][\"available_to\"], \"%H:%M\"):\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Haight-Ashbury\",\n            \"person\": \"Margaret\",\n            \"start_time\": meet_time.strftime(\"%H:%M\"),\n            \"end_time\": (meet_time + timedelta(minutes=constraints[\"Margaret\"][\"min_time\"])).strftime(\"%H:%M\"),\n        })\n\n# Output in JSON format\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_488"
+        }
+    ]
+}

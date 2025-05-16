@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:00",
+                        "end_time": "9:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "10:45",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Amanda",
+                        "start_time": "19:45",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:09",
+                        "end_time": "9:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "10:45",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Betty",
+                        "start_time": "19:00",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Pacific Heights\", \"North Beach\"): 9,\n    (\"Pacific Heights\", \"Financial District\"): 13,\n    (\"Pacific Heights\", \"Alamo Square\"): 10,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"North Beach\", \"Pacific Heights\"): 8,\n    (\"North Beach\", \"Financial District\"): 8,\n    (\"North Beach\", \"Alamo Square\"): 16,\n    (\"North Beach\", \"Mission District\"): 18,\n    (\"Financial District\", \"Pacific Heights\"): 13,\n    (\"Financial District\", \"North Beach\"): 7,\n    (\"Financial District\", \"Alamo Square\"): 17,\n    (\"Financial District\", \"Mission District\"): 17,\n    (\"Alamo Square\", \"Pacific Heights\"): 10,\n    (\"Alamo Square\", \"North Beach\"): 15,\n    (\"Alamo Square\", \"Financial District\"): 17,\n    (\"Alamo Square\", \"Mission District\"): 10,\n    (\"Mission District\", \"Pacific Heights\"): 16,\n    (\"Mission District\", \"North Beach\"): 17,\n    (\"Mission District\", \"Financial District\"): 17,\n    (\"Mission District\", \"Alamo Square\"): 11\n}\n\n# Meeting constraints and available times\nmeetings = {\n    \"Helen\": {\"location\": \"North Beach\", \"start\": \"09:00\", \"end\": \"17:00\", \"duration\": 15},\n    \"Betty\": {\"location\": \"Financial District\", \"start\": \"19:00\", \"end\": \"21:45\", \"duration\": 90},\n    \"Amanda\": {\"location\": \"Alamo Square\", \"start\": \"19:45\", \"end\": \"21:00\", \"duration\": 60},\n    \"Kevin\": {\"location\": \"Mission District\", \"start\": \"10:45\", \"end\": \"14:45\", \"duration\": 45},\n}\n\n# Function to convert time string to datetime object\ndef time_str_to_dt(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\n# Function to convert datetime object to time string\ndef dt_to_time_str(dt):\n    return dt.strftime(\"%H:%M\")\n\n# Start at Pacific Heights at 09:00\ncurrent_time = time_str_to_dt(\"09:00\")\nitinerary = []\n\n# Meeting Helen\nhelen_meeting_start = current_time\nhelen_meeting_end = helen_meeting_start + timedelta(minutes=meetings[\"Helen\"][\"duration\"])\n\nif helen_meeting_end <= time_str_to_dt(meetings[\"Helen\"][\"end\"]):\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Helen\"][\"location\"],\n        \"person\": \"Helen\",\n        \"start_time\": dt_to_time_str(helen_meeting_start),\n        \"end_time\": dt_to_time_str(helen_meeting_end)\n    })\n    current_time = helen_meeting_end + timedelta(minutes=travel_times[(\"North Beach\", \"Mission District\")])\n\n# Meeting Kevin\nkevin_meeting_start = max(current_time, time_str_to_dt(meetings[\"Kevin\"][\"start\"]))\nkevin_meeting_end = kevin_meeting_start + timedelta(minutes=meetings[\"Kevin\"][\"duration\"])\n\nif kevin_meeting_end <= time_str_to_dt(meetings[\"Kevin\"][\"end\"]):\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Kevin\"][\"location\"],\n        \"person\": \"Kevin\",\n        \"start_time\": dt_to_time_str(kevin_meeting_start),\n        \"end_time\": dt_to_time_str(kevin_meeting_end)\n    })\n    current_time = kevin_meeting_end + timedelta(minutes=travel_times[(\"Mission District\", \"Alamo Square\")])\n\n# Meeting Amanda\namanda_meeting_start = max(current_time, time_str_to_dt(meetings[\"Amanda\"][\"start\"]))\namanda_meeting_end = amanda_meeting_start + timedelta(minutes=meetings[\"Amanda\"][\"duration\"])\n\nif amanda_meeting_end <= time_str_to_dt(meetings[\"Amanda\"][\"end\"]):\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Amanda\"][\"location\"],\n        \"person\": \"Amanda\",\n        \"start_time\": dt_to_time_str(amanda_meeting_start),\n        \"end_time\": dt_to_time_str(amanda_meeting_end)\n    })\n    current_time = amanda_meeting_end + timedelta(minutes=travel_times[(\"Alamo Square\", \"Financial District\")])\n\n# Meeting Betty\nbetty_meeting_start = max(current_time, time_str_to_dt(meetings[\"Betty\"][\"start\"]))\nbetty_meeting_end = betty_meeting_start + timedelta(minutes=meetings[\"Betty\"][\"duration\"])\n\nif betty_meeting_end <= time_str_to_dt(meetings[\"Betty\"][\"end\"]):\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Betty\"][\"location\"],\n        \"person\": \"Betty\",\n        \"start_time\": dt_to_time_str(betty_meeting_start),\n        \"end_time\": dt_to_time_str(betty_meeting_end)\n    })\n\n# Outputting the itinerary as JSON\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_335"
+        }
+    ]
+}

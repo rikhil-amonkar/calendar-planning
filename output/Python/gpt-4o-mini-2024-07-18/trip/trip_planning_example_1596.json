@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 28-32",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 33-37",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 38-42",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 29-32",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the parameters\ntrip_parameters = {\n    \"total_days\": 32,\n    \"itinerary\": [\n        {\"city\": \"Bucharest\", \"stay\": 2, \"req\": []},\n        {\"city\": \"Krakow\", \"stay\": 4, \"req\": []},\n        {\"city\": \"Munich\", \"stay\": 3, \"req\": [\"workshop\"]},\n        {\"city\": \"Barcelona\", \"stay\": 5, \"req\": []},\n        {\"city\": \"Warsaw\", \"stay\": 5, \"req\": [\"conference\"]},\n        {\"city\": \"Budapest\", \"stay\": 5, \"req\": [\"annual show\"]},\n        {\"city\": \"Stockholm\", \"stay\": 2, \"req\": [\"meet friends\"]},\n        {\"city\": \"Riga\", \"stay\": 5, \"req\": []},\n        {\"city\": \"Edinburgh\", \"stay\": 5, \"req\": [\"meet friend\"]},\n        {\"city\": \"Vienna\", \"stay\": 5, \"req\": []},\n    ],\n    \"constraints\": {\n        \"workshop_munich\": (18, 20),\n        \"conference_warsaw\": [(25, 25), (29, 29)],\n        \"annual_show_budapest\": (9, 13),\n        \"meet_friends_stockholm\": (17, 18),\n        \"meet_friend_edinburgh\": (1, 5)\n    },\n    \"direct_flights\": [\n        (\"Budapest\", \"Munich\"), (\"Bucharest\", \"Riga\"), (\"Munich\", \"Krakow\"),\n        (\"Munich\", \"Warsaw\"), (\"Munich\", \"Bucharest\"), (\"Edinburgh\", \"Stockholm\"),\n        (\"Barcelona\", \"Warsaw\"), (\"Edinburgh\", \"Krakow\"), (\"Barcelona\", \"Munich\"),\n        (\"Stockholm\", \"Krakow\"), (\"Budapest\", \"Vienna\"), (\"Barcelona\", \"Stockholm\"),\n        (\"Stockholm\", \"Munich\"), (\"Edinburgh\", \"Budapest\"), (\"Barcelona\", \"Riga\"),\n        (\"Edinburgh\", \"Barcelona\"), (\"Vienna\", \"Riga\"), (\"Barcelona\", \"Budapest\"),\n        (\"Bucharest\", \"Warsaw\"), (\"Vienna\", \"Krakow\"), (\"Edinburgh\", \"Munich\"),\n        (\"Barcelona\", \"Bucharest\"), (\"Edinburgh\", \"Riga\"), (\"Vienna\", \"Stockholm\"),\n        (\"Warsaw\", \"Krakow\"), (\"Barcelona\", \"Krakow\"), (\"Riga\", \"Munich\"),\n        (\"Vienna\", \"Bucharest\"), (\"Budapest\", \"Warsaw\"), (\"Vienna\", \"Warsaw\"),\n        (\"Barcelona\", \"Vienna\"), (\"Budapest\", \"Bucharest\"), (\"Vienna\", \"Munich\"),\n        (\"Riga\", \"Warsaw\"), (\"Stockholm\", \"Riga\"), (\"Stockholm\", \"Warsaw\"),\n    ]\n}\n\n# Initialize the schedule\nschedule = []\ncurrent_day = 1\n\n# Function to add a city to the schedule\ndef add_city_to_schedule(city, days):\n    global current_day\n    end_day = current_day + days - 1\n    schedule.append({\"day_range\": f\"Day {current_day}-{end_day}\", \"place\": city})\n    current_day = end_day + 1  # Move to the next day after staying\n\n# Create the itinerary based on constraints\n# Start with cities that have major constraints\nfor city_info in trip_parameters[\"itinerary\"]:\n    city = city_info[\"city\"]\n    stay = city_info[\"stay\"]\n    req = city_info[\"req\"]\n\n    if \"workshop\" in req:\n        add_city_to_schedule(\"Munich\", stay)\n    elif \"annual show\" in req:\n        add_city_to_schedule(\"Budapest\", stay)            \n    elif \"conference\" in req:\n        if current_day <= 24:  # Schedule days before the conference\n            add_city_to_schedule(\"Warsaw\", 5)  # Before conference days\n    elif \"meet friends\" in req:\n        add_city_to_schedule(\"Stockholm\", stay)\n    elif \"meet friend\" in req:\n        add_city_to_schedule(\"Edinburgh\", stay)\n    else:\n        add_city_to_schedule(city, stay)\n\n# Adjust the schedule for conferences, workshops, and shows\nschedule = []\n\n# Define the visit order based on constraints\ndays_left = trip_parameters[\"total_days\"]\nchunks = [\n    (\"Edinburgh\", 5),       # Day 1-5\n    (\"Bucharest\", 2),       # Day 6-7\n    (\"Munich\", 3),          # Day 8-10 (includes workshop)\n    (\"Budapest\", 5),        # Day 11-15 (annual show from Day 9-13)\n    (\"Krakow\", 4),          # Day 16-19\n    (\"Stockholm\", 3),       # Day 20-22 (meet friends Day 17-18)\n    (\"Barcelona\", 5),       # Day 23-27\n    (\"Warsaw\", 5),          # Day 28-32 (conference on 25 and 29)\n    (\"Vienna\", 5),          # Day 33-37 (fits post)\n    (\"Riga\", 5)             # Day 38-42 (can also be moved)\n]\n\n# Recalculate\ncurrent_day = 1\nfor city, days in chunks:\n    add_city_to_schedule(city, days)\n\n# Convert to JSON formatted dictionary\noutput_json = json.dumps(schedule, indent=4)\n\n# Print the output\nprint(output_json)\n```",
+            "count": "trip_planning_example_1596"
+        }
+    ]
+}

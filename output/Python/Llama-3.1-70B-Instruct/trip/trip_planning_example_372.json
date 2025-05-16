@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 21-24",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 29-30",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 31-33",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Seville': {'duration': 2, 'fixed_range': None, 'visited': False},\n            'Stuttgart': {'duration': 7, 'fixed_range': (7, 13), 'visited': False},\n            'Porto': {'duration': 3, 'fixed_range': None, 'visited': False},\n            'Madrid': {'duration': 4, 'fixed_range': (1, 4), 'visited': False},\n        }\n        self.direct_flights = [\n            ('Porto', 'Stuttgart'), ('Seville', 'Porto'), ('Madrid', 'Porto'), \n            ('Madrid', 'Seville')\n        ]\n        self.itinerary = []\n        self.current_day = 1\n\n    def plan_trip(self):\n        # Plan fixed ranges first\n        for city, info in self.cities.items():\n            if info['fixed_range']:\n                self.plan_fixed_range(city, info['fixed_range'], info['duration'])\n\n        # Plan remaining cities\n        while any(not info['visited'] for info in self.cities.values()):\n            for city, info in self.cities.items():\n                if not info['visited']:\n                    self.plan_city(city, info['duration'])\n                    break\n\n    def plan_fixed_range(self, city, day_range, duration):\n        start_day, end_day = day_range\n        if start_day > self.current_day:\n            self.plan_gap(start_day - self.current_day)\n        self.plan_city(city, duration)\n        self.current_day += duration\n\n    def plan_city(self, city, duration):\n        self.cities[city]['visited'] = True\n        self.itinerary.append({'day_range': f'Day {self.current_day}-{self.current_day + duration - 1}', 'place': city})\n        self.current_day += duration\n\n    def plan_gap(self, days):\n        self.itinerary.append({'flying': f'Day {self.current_day}-{self.current_day}', 'from': 'None', 'to': 'None'})\n        self.current_day += days\n\n    def plan_transition(self, from_city, to_city):\n        self.itinerary.append({'flying': f'Day {self.current_day}-{self.current_day}', 'from': from_city, 'to': to_city})\n\n    def print_itinerary(self):\n        print(json.dumps(self.itinerary, indent=4))\n\n\nif __name__ == '__main__':\n    planner = TripPlanner()\n    planner.plan_trip()\n    planner.print_itinerary()\n```",
+            "count": "trip_planning_example_372"
+        }
+    ]
+}

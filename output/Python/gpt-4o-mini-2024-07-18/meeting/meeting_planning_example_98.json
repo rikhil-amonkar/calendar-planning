@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Constants\nTRAVEL_TIME_ALAMO_TO_RICHMOND = 12  # in minutes\nTRAVEL_TIME_RICHMOND_TO_ALAMO = 13  # in minutes\nMEETING_DURATION_MINUTES = 45\nARRIVAL_TIME_ALAMO = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Timothy's availability\ntimothy_start = datetime.strptime(\"20:45\", \"%H:%M\")\ntimothy_end = datetime.strptime(\"21:30\", \"%H:%M\")\n\n# Calculate the optimal meeting time considering travel and meeting constraints\ndef find_optimal_meeting_time():\n    # The latest start time for the meeting with Timothy considering travel and meeting duration\n    latest_meeting_start_time = timothy_end - timedelta(minutes=MEETING_DURATION_MINUTES)\n    \n    # Travel from Alamo Square to Richmond District\n    travel_to_timothy = ARRIVAL_TIME_ALAMO + timedelta(minutes=TRAVEL_TIME_ALAMO_TO_RICHMOND)\n    \n    # Check if we can meet Timothy\n    if travel_to_timothy <= latest_meeting_start_time:\n        meeting_start_time = max(travel_to_timothy, timothy_start)\n        meeting_end_time = meeting_start_time + timedelta(minutes=MEETING_DURATION_MINUTES)\n        \n        return [{\n            \"action\": \"meet\",\n            \"location\": \"Richmond District\",\n            \"person\": \"Timothy\",\n            \"start_time\": meeting_start_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_end_time.strftime(\"%H:%M\"),\n        }]\n    \n    return []\n\n# Main execution\ndef main():\n    itinerary = find_optimal_meeting_time()\n    result = {\"itinerary\": itinerary}\n    print(json.dumps(result, indent=2))\n\n# Run the program\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_98"
+        }
+    ]
+}

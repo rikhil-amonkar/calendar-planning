@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "9:30",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "10:38",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "11:35",
+                        "end_time": "12:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "15:24",
+                        "end_time": "17:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Ronald",
+                        "start_time": "17:51",
+                        "end_time": "18:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Steven",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule for someone visiting San Francisco. The goal is to meet as many friends as possible, considering their availability and the travel times between locations.\n\nFirst, I'll look at the input parameters. There are travel times between various locations in San Francisco, and each friend has a specific time window when they're available at a certain location. The program needs to compute the best schedule that fits all these constraints.\n\nI think the first step is to represent the travel times in a structured way, probably using a dictionary where each location maps to another dictionary of reachable locations with their respective travel times in minutes. This will make it easy to look up how long it takes to get from one place to another.\n\nNext, I need to handle the friends' constraints. Each friend has a name, location, start time, end time, and the minimum duration they want to meet. I'll store these in a list of dictionaries for easy iteration.\n\nNow, the main challenge is to generate all possible permutations of the friends and check each permutation to see if it's feasible. For each permutation, I'll simulate the day starting from the initial location (Pacific Heights at 9:00 AM) and calculate the arrival times at each friend's location. I'll make sure that each meeting fits within the friend's availability window and that the total meeting duration is met.\n\nI'll need helper functions to convert time strings to minutes and vice versa. This will make it easier to perform time calculations.\n\nI'll also keep track of the best itinerary found so far, which is the one that includes the most friends. If a new permutation results in a valid schedule with more friends than the current best, I'll update the best itinerary.\n\nOnce all permutations are checked, I'll output the best itinerary in the required JSON format.\n\nI should also consider edge cases, like when no valid schedule is possible or when only a subset of friends can be met. But given the constraints, I think the approach of checking all permutations is feasible, especially since the number of friends isn't too large.\n\nI'll structure the code by first defining the travel times and friends' data. Then, I'll iterate through all possible permutations of friends, compute the schedule for each, and keep track of the best one. Finally, I'll print the best schedule in the specified JSON format.\n\nI need to make sure that the code is self-contained and runs independently without any external libraries, except for itertools which is used for permutations.\n\nOverall, the approach is to brute-force all possible meeting orders, calculate the feasibility of each, and select the one that meets the most friends within their constraints.\n</think>\n\n```python\nimport itertools\n\ndef time_to_minutes(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    h = m // 60\n    m = m % 60\n    return f\"{h}:{m:02d}\"\n\ntravel_times = {\n    'Pacific Heights': {\n        'Golden Gate Park': 15,\n        'The Castro': 16,\n        'Bayview': 22,\n        'Marina District': 6,\n        'Union Square': 12,\n        'Sunset District': 21,\n        'Alamo Square': 10,\n        'Financial District': 13,\n        'Mission District': 15,\n    },\n    'Golden Gate Park': {\n        'Pacific Heights': 16,\n        'The Castro': 13,\n        'Bayview': 23,\n        'Marina District': 16,\n        'Union Square': 22,\n        'Sunset District': 10,\n        'Alamo Square': 9,\n        'Financial District': 26,\n        'Mission District': 17,\n    },\n    'The Castro': {\n        'Pacific Heights': 16,\n        'Golden Gate Park': 11,\n        'Bayview': 19,\n        'Marina District': 21,\n        'Union Square': 19,\n        'Sunset District': 17,\n        'Alamo Square': 8,\n        'Financial District': 21,\n        'Mission District': 7,\n    },\n    'Bayview': {\n        'Pacific Heights': 23,\n        'Golden Gate Park': 22,\n        'The Castro': 19,\n        'Marina District': 27,\n        'Union Square': 18,\n        'Sunset District': 23,\n        'Alamo Square': 16,\n        'Financial District': 19,\n        'Mission District': 13,\n    },\n    'Marina District': {\n        'Pacific Heights': 7,\n        'Golden Gate Park': 18,\n        'The Castro': 22,\n        'Bayview': 27,\n        'Union Square': 16,\n        'Sunset District': 19,\n        'Alamo Square': 15,\n        'Financial District': 17,\n        'Mission District': 20,\n    },\n    'Union Square': {\n        'Pacific Heights': 15,\n        'Golden Gate Park': 22,\n        'The Castro': 17,\n        'Bayview': 15,\n        'Marina District': 18,\n        'Sunset District': 27,\n        'Alamo Square': 15,\n        'Financial District': 9,\n        'Mission District': 14,\n    },\n    'Sunset District': {\n        'Pacific Heights': 21,\n        'Golden Gate Park': 11,\n        'The Castro': 17,\n        'Bayview': 22,\n        'Marina District': 21,\n        'Union Square': 30,\n        'Alamo Square': 17,\n        'Financial District': 30,\n        'Mission District': 25,\n    },\n    'Alamo Square': {\n        'Pacific Heights': 10,\n        'Golden Gate Park': 9,\n        'The Castro': 8,\n        'Bayview': 16,\n        'Marina District': 15,\n        'Union Square': 14,\n        'Sunset District': 16,\n        'Financial District': 17,\n        'Mission District': 10,\n    },\n    'Financial District': {\n        'Pacific Heights': 13,\n        'Golden Gate Park': 23,\n        'The Castro': 20,\n        'Bayview': 19,\n        'Marina District': 15,\n        'Union Square': 9,\n        'Sunset District': 30,\n        'Alamo Square': 17,\n        'Mission District': 17,\n    },\n    'Mission District': {\n        'Pacific Heights': 16,\n        'Golden Gate Park': 17,\n        'The Castro': 7,\n        'Bayview': 14,\n        'Marina District': 19,\n        'Union Square': 15,\n        'Sunset District': 24,\n        'Alamo Square': 11,\n        'Financial District': 15,\n    },\n}\n\nfriends = [\n    {'name': 'Helen', 'location': 'Golden Gate Park', 'start': '9:30', 'end': '12:15', 'duration': 45},\n    {'name': 'Steven', 'location': 'The Castro', 'start': '20:15', 'end': '22:00', 'duration': 105},\n    {'name': 'Deborah', 'location': 'Bayview', 'start': '8:30', 'end': '12:00', 'duration': 30},\n    {'name': 'Matthew', 'location': 'Marina District', 'start': '9:15', 'end': '14:15', 'duration': 45},\n    {'name': 'Joseph', 'location': 'Union Square', 'start': '14:15', 'end': '18:45', 'duration': 120},\n    {'name': 'Ronald', 'location': 'Sunset District', 'start': '16:00', 'end': '20:45', 'duration': 60},\n    {'name': 'Robert', 'location': 'Alamo Square', 'start': '18:30', 'end': '21:15', 'duration': 120},\n    {'name': 'Rebecca', 'location': 'Financial District', 'start': '14:45', 'end': '16:15', 'duration': 30},\n    {'name': 'Elizabeth', 'location': 'Mission District', 'start': '18:30', 'end': '21:00', 'duration': 120},\n]\n\nbest_itinerary = []\n\nfor perm in itertools.permutations(friends):\n    current_location = 'Pacific Heights'\n    current_time = 540  # 9:00 AM\n    itinerary = []\n    valid = True\n    for friend in perm:\n        travel = travel_times[current_location][friend['location']]\n        arrival = current_time + travel\n        start = time_to_minutes(friend['start'])\n        end = time_to_minutes(friend['end'])\n        meet_start = max(arrival, start)\n        meet_end = meet_start + friend['duration']\n        if meet_end > end:\n            valid = False\n            break\n        itinerary.append({\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': minutes_to_time(meet_start),\n            'end_time': minutes_to_time(meet_end)\n        })\n        current_location = friend['location']\n        current_time = meet_end\n    if valid:\n        if len(itinerary) > len(best_itinerary):\n            best_itinerary = itinerary.copy()\n\nprint('SOLUTION:')\nprint('{ \"itinerary\": [')\nfor i, meeting in enumerate(best_itinerary):\n    print(f'    {{\"action\": \"meet\", \"location\": \"{meeting[\"location\"]}\", \"person\": \"{meeting[\"person\"]}\", \"start_time\": \"{meeting[\"start_time\"]}\", \"end_time\": \"{meeting[\"end_time\"]}\"}}' + ('' if i == len(best_itinerary)-1 else ','))\nprint(']}')\n```",
+            "count": "meeting_planning_example_835"
+        }
+    ]
+}

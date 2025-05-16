@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "9:31",
+                        "end_time": "10:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Laura",
+                        "start_time": "12:30",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ronald",
+                        "start_time": "13:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Patricia",
+                        "start_time": "9:31",
+                        "end_time": "10:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Laura",
+                        "start_time": "12:30",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Ronald",
+                        "start_time": "13:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Helper function: convert minutes from midnight to H:MM (24-hour) string (no leading zero for hour)\ndef minutes_to_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Travel times (in minutes) as provided; keys are (from, to)\ntravel_times = {\n    (\"Financial District\", \"Russian Hill\"): 10,\n    (\"Financial District\", \"Sunset District\"): 31,\n    (\"Financial District\", \"North Beach\"): 7,\n    (\"Financial District\", \"The Castro\"): 23,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    \n    (\"Russian Hill\", \"Financial District\"): 11,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"North Beach\"): 5,\n    (\"Russian Hill\", \"The Castro\"): 21,\n    (\"Russian Hill\", \"Golden Gate Park\"): 21,\n    \n    (\"Sunset District\", \"Financial District\"): 30,\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"North Beach\"): 29,\n    (\"Sunset District\", \"The Castro\"): 17,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    \n    (\"North Beach\", \"Financial District\"): 8,\n    (\"North Beach\", \"Russian Hill\"): 5,\n    (\"North Beach\", \"Sunset District\"): 27,\n    (\"North Beach\", \"The Castro\"): 20,\n    (\"North Beach\", \"Golden Gate Park\"): 22,\n    \n    (\"The Castro\", \"Financial District\"): 20,\n    (\"The Castro\", \"Russian Hill\"): 18,\n    (\"The Castro\", \"Sunset District\"): 17,\n    (\"The Castro\", \"North Beach\"): 20,\n    (\"The Castro\", \"Golden Gate Park\"): 11,\n    \n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Golden Gate Park\", \"Russian Hill\"): 19,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"North Beach\"): 24,\n    (\"Golden Gate Park\", \"The Castro\"): 13,\n}\n\n# Meeting data for each friend:\n# Times are in minutes from midnight.\n# Patricia: available at Sunset District from 9:15 (555) to 22:00 (1320), minimum meeting duration 60 minutes.\n# Ronald: available at Russian Hill from 13:45 (825) to 17:15 (1035), min duration 105.\n# Laura: available at North Beach from 12:30 (750) to 12:45 (765), min duration 15.\n# Emily: available at The Castro from 16:15 (975) to 18:30 (1110), min 60.\n# Mary: available at Golden Gate Park from 15:00 (900) to 16:30 (990), min 60.\nmeetings = {\n    \"Patricia\": {\n        \"location\": \"Sunset District\",\n        \"avail_start\": 555,\n        \"avail_end\": 1320,\n        \"duration\": 60,\n    },\n    \"Ronald\": {\n        \"location\": \"Russian Hill\",\n        \"avail_start\": 825,\n        \"avail_end\": 1035,\n        \"duration\": 105,\n    },\n    \"Laura\": {\n        \"location\": \"North Beach\",\n        \"avail_start\": 750,\n        \"avail_end\": 765,\n        \"duration\": 15,\n    },\n    \"Emily\": {\n        \"location\": \"The Castro\",\n        \"avail_start\": 975,\n        \"avail_end\": 1110,\n        \"duration\": 60,\n    },\n    \"Mary\": {\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": 900,\n        \"avail_end\": 990,\n        \"duration\": 60,\n    },\n}\n\n# Starting parameters:\nstart_location = \"Financial District\"\nstart_time = 540  # 9:00 AM is 540 minutes from midnight\n\n# We'll build the schedule in three segments:\n# 1. Pre-Laura meetings: We can schedule Patricia (and possibly others, but Patricia is the only one available early).\n# 2. The fixed appointment: Laura at North Beach (time fixed 12:30-12:45).\n# 3. Post-Laura meetings: among {Ronald, Mary, Emily} we choose an ordering that yields the maximum number of meetings.\n\n# For simplicity, we assume that a meeting is only possible if:\n#   meeting_start = max(arrival_time, avail_start), and meeting_end = meeting_start + duration, and must satisfy meeting_end <= avail_end.\n#   We also add travel times between consecutively scheduled appointments.\n\n# Schedule segment 1: Pre-Laura.\nitinerary = []\n\ncurrent_location = start_location\ncurrent_time = start_time\n\n# We want to meet Patricia early.\nfriend = \"Patricia\"\nfriend_data = meetings[friend]\n# Travel time from start location to Patricia's meeting location:\ntt = travel_times[(current_location, friend_data[\"location\"])]\narrival_time = current_time + tt\n# Meeting cannot start before available start; so meeting start is:\nmeeting_start = max(arrival_time, friend_data[\"avail_start\"])\nmeeting_end = meeting_start + friend_data[\"duration\"]\n# Check feasibility (should be feasible as 9:31 to 10:31):\nif meeting_end <= friend_data[\"avail_end\"]:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": friend_data[\"location\"],\n        \"person\": friend,\n        \"start_time\": minutes_to_time(meeting_start),\n        \"end_time\": minutes_to_time(meeting_end)\n    })\n    current_location = friend_data[\"location\"]\n    current_time = meeting_end\n\n# Now we need to schedule the fixed Laura meeting.\n# We must travel to North Beach from current location.\ntt = travel_times[(current_location, meetings[\"Laura\"][\"location\"])]\narrival_time = current_time + tt\n# Laura's available window is fixed (750 to 765). We assume we wait if arriving early.\nmeeting_start = max(arrival_time, meetings[\"Laura\"][\"avail_start\"])\nmeeting_end = meeting_start + meetings[\"Laura\"][\"duration\"]\n# Only schedule if it fits in Laura's window.\nif meeting_end <= meetings[\"Laura\"][\"avail_end\"]:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": meetings[\"Laura\"][\"location\"],\n        \"person\": \"Laura\",\n        \"start_time\": minutes_to_time(meeting_start),\n        \"end_time\": minutes_to_time(meeting_end)\n    })\n    current_location = meetings[\"Laura\"][\"location\"]\n    current_time = meeting_end\nelse:\n    # If not feasible, abort.\n    print(json.dumps({\"itinerary\": []}))\n    exit(0)\n\n# Post-Laura meetings: choose maximum feasible subset from {Ronald, Mary, Emily}\npost_candidates = [\"Ronald\", \"Mary\", \"Emily\"]\n\ndef simulate_schedule(order, start_location, start_time):\n    \"\"\"Given an ordering of friends (list of names), simulate and return schedule and finish time.\n       Returns (schedule_list, final_time) if feasible, else (None, None).\"\"\"\n    sched = []\n    cur_loc = start_location\n    cur_time = start_time\n    for friend in order:\n        data = meetings[friend]\n        # Determine travel time from current location to friend's location.\n        tt = travel_times.get((cur_loc, data[\"location\"]))\n        if tt is None:\n            # Cannot travel if not defined.\n            return None, None\n        arrival = cur_time + tt\n        m_start = max(arrival, data[\"avail_start\"])\n        m_end = m_start + data[\"duration\"]\n        if m_end > data[\"avail_end\"]:\n            return None, None\n        sched.append({\n            \"action\": \"meet\",\n            \"location\": data[\"location\"],\n            \"person\": friend,\n            \"start_time\": m_start,\n            \"end_time\": m_end\n        })\n        cur_loc = data[\"location\"]\n        cur_time = m_end\n    return sched, cur_time\n\n# We'll search over all permutations (of all lengths) of post_candidates to find the ordering with maximum meetings.\nbest_order = []\nbest_sched = []\nmax_meetings = 0\nbest_finish = None\n\n# We consider non-empty subsets (or even empty, but we want maximum meetings).\nfor r in range(1, len(post_candidates)+1):\n    for order in itertools.permutations(post_candidates, r):\n        sched, finish = simulate_schedule(order, current_location, current_time)\n        if sched is not None:\n            if len(order) > max_meetings:\n                max_meetings = len(order)\n                best_order = order\n                best_sched = sched\n                best_finish = finish\n            # As tie-breaker, choose the schedule that finishes earlier.\n            elif len(order) == max_meetings and best_finish is not None and finish < best_finish:\n                best_order = order\n                best_sched = sched\n                best_finish = finish\n\n# Append the post-Laura schedule (if any) to itinerary.\nif best_sched:\n    # best_sched contains meeting times in minute integers; convert times to proper string format.\n    for meet in best_sched:\n        meet[\"start_time\"] = minutes_to_time(meet[\"start_time\"])\n        meet[\"end_time\"] = minutes_to_time(meet[\"end_time\"])\n        itinerary.append(meet)\n\n# Our final itinerary is what we managed to schedule.\nresult = {\"itinerary\": itinerary}\n\n# Output the JSON-formatted result.\nprint(json.dumps(result, indent=2))\n",
+            "count": "meeting_planning_example_444"
+        }
+    ]
+}

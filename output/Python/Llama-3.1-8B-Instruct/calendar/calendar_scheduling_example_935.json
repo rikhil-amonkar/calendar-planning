@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time(schedules, meeting_duration):\n    # Define the work hours and days\n    work_hours = [(9, 17)]\n    work_days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"]\n\n    # Sort the days based on the preference to avoid more meetings on Tuesday\n    work_days = sorted(work_days, key=lambda x: 1 if x == \"Tuesday\" else 0)\n\n    # Iterate over each day\n    for day in work_days:\n        # Initialize the start time\n        start_time = (9, 0)\n\n        # Iterate over each hour\n        while start_time[0] < 17:\n            # Check if the time is available for both participants\n            if (day in [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"] and\n                start_time not in schedules[0][day] and\n                start_time not in schedules[1][day]):\n                # Check if the meeting duration fits in the available time\n                end_time = (start_time[0] + meeting_duration // 60, start_time[1] + meeting_duration % 60)\n                if end_time <= (17, 0):\n                    # Return the meeting time and day\n                    return f\"{start_time[0]:02d}:{start_time[1]:02d}-{end_time[0]:02d}:{end_time[1]:02d} on {day}\"\n\n            # Move to the next hour\n            start_time = (start_time[0] + 1, 0)\n\n    # If no available time is found, return a message\n    return \"No available time found\"\n\n# Define the schedules\nschedules = [\n    {\n        \"Monday\": [(10, 30), (11, 0), (12, 30), (14, 0), (15, 0), (17, 0)],\n        \"Tuesday\": [(9, 30), (10, 0), (14, 0), (14, 30), (16, 0), (16, 30)],\n        \"Wednesday\": [(9, 30), (10, 30), (11, 0), (12, 0), (13, 0), (13, 30), (15, 0), (16, 0), (16, 30), (17, 0)],\n        \"Thursday\": [(9, 30), (10, 0), (12, 0), (12, 30), (13, 0), (14, 30), (16, 0), (16, 30)],\n        \"Friday\": [(9, 0), (11, 30), (12, 0), (12, 30), (13, 30), (16, 0), (16, 30), (17, 0)]\n    },\n    {\n        \"Monday\": [(9, 30), (11, 0), (11, 30), (13, 0), (14, 0), (14, 30), (15, 0), (16, 0)],\n        \"Tuesday\": [(9, 0), (9, 30), (10, 0), (10, 30), (11, 0), (12, 0), (13, 0), (14, 30), (15, 30), (16, 30)],\n        \"Wednesday\": [(9, 30), (10, 0), (10, 30), (11, 0), (11, 30), (16, 0), (16, 30), (17, 0)],\n        \"Thursday\": [(11, 0), (12, 30), (14, 30), (17, 0)],\n        \"Friday\": [(9, 30), (10, 30), (11, 0), (12, 30), (13, 0), (16, 0), (16, 30), (17, 0)]\n    }\n]\n\n# Define the meeting duration\nmeeting_duration = 30\n\n# Find the meeting time\nmeeting_time = find_meeting_time(schedules, meeting_duration)\n\n# Print the meeting time\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_935"
+        }
+    ]
+}

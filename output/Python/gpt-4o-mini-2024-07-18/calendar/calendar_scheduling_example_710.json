@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the participants' schedules\nschedules = {\n    \"Cheryl\": {\n        \"Monday\": [(0, 9, 0, 9, 30), (0, 11, 30, 13, 0), (0, 15, 30, 16, 0)],\n        \"Tuesday\": [(0, 15, 0, 15, 30)],\n        \"Wednesday\": []\n    },\n    \"Kyle\": {\n        \"Monday\": [(0, 9, 0, 17, 0)],\n        \"Tuesday\": [(0, 9, 30, 17, 0)],\n        \"Wednesday\": [(0, 9, 0, 9, 30), (0, 10, 0, 13, 0), (0, 13, 30, 14, 0), (0, 14, 30, 17, 0)]\n    }\n}\n\n# Meeting duration in minutes\nmeeting_duration = 30\n\n# Work hours\nwork_hours = {\n    \"Monday\": (9, 17),\n    \"Tuesday\": (9, 17),\n    \"Wednesday\": (9, 17)\n}\n\ndef find_available_time():\n    for day in [\"Monday\", \"Tuesday\"]:\n        # Get work hours\n        start_hour, end_hour = work_hours[day]\n\n        # Create a list of busy times\n        busy_times = []\n        for participant in schedules:\n            busy_times.extend(schedules[participant][day])\n        \n        # Sort and merge busy times\n        busy_times.sort()\n        merged_busy_times = []\n        \n        for busy in busy_times:\n            if merged_busy_times and merged_busy_times[-1][1] >= busy[1]:\n                merged_busy_times[-1] = (merged_busy_times[-1][0], max(merged_busy_times[-1][1], busy[1]))\n            else:\n                merged_busy_times.append(busy)\n\n        # Check for free time slots\n        last_end = start_hour * 60  # Convert to minutes\n        for busy in merged_busy_times:\n            busy_start = busy[1] * 60  # Convert to minutes\n            busy_end = busy[3] * 60    # Convert to minutes\n\n            if busy_start - last_end >= meeting_duration:\n                meeting_start = last_end\n                meeting_end = meeting_start + meeting_duration\n                if meeting_end <= busy_start:\n                    return f\"{day}: {meeting_start//60:02}:{meeting_start%60:02}:{meeting_end//60:02}:{meeting_end%60:02}\"\n            \n            last_end = busy_end\n        \n        # Check after the last busy slot until the end of work hours\n        if last_end < end_hour * 60 and (end_hour * 60) - last_end >= meeting_duration:\n            meeting_start = last_end\n            meeting_end = meeting_start + meeting_duration\n            if meeting_end <= end_hour * 60:\n                return f\"{day}: {meeting_start//60:02}:{meeting_start%60:02}:{meeting_end//60:02}:{meeting_end%60:02}\"\n\nresult = find_available_time()\nprint(result)\n```",
+            "count": "calendar_scheduling_example_710"
+        }
+    ]
+}

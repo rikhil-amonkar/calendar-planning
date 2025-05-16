@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define work hours and constraints for Bobby and Michael\nwork_hours = {\n    'Monday': [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))],\n    'Tuesday': [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n}\n\nbobby_busy = {\n    'Monday': [(datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\"))],\n    'Tuesday': [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n        (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n        (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n        (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ]\n}\n\nmichael_busy = {\n    'Monday': [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\")),\n        (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"13:30\", \"%H:%M\")),\n        (datetime.strptime(\"14:00\", \"%H:%M\"), datetime.strptime(\"15:00\", \"%H:%M\")),\n        (datetime.strptime(\"15:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ],\n    'Tuesday': [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"10:30\", \"%H:%M\")),\n        (datetime.strptime(\"11:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n        (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")),\n        (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n        (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ]\n}\n\nmeeting_duration = timedelta(minutes=30)\n\n# Function to find the first available time slot\ndef find_meeting_time():\n    for day, hours in work_hours.items():\n        for work_start, work_end in hours:\n            available_start = work_start\n            while available_start + meeting_duration <= work_end:\n                is_conflict = False\n                for b_start, b_end in bobby_busy.get(day, []):\n                    if not (available_start + meeting_duration <= b_start or available_start >= b_end):\n                        is_conflict = True\n                        break\n                for m_start, m_end in michael_busy.get(day, []):\n                    if not (available_start + meeting_duration <= m_start or available_start >= m_end):\n                        is_conflict = True\n                        break\n                if not is_conflict:\n                    return (available_start, available_start + meeting_duration, day)\n                available_start += timedelta(minutes=1)\n    return None\n\nmeeting_time = find_meeting_time()\nif meeting_time:\n    start_time, end_time, day = meeting_time\n    print(f\"{start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')} {day}\")\n```",
+            "count": "calendar_scheduling_example_640"
+        }
+    ]
+}

@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "9:11",
+                        "end_time": "9:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:45",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:24",
+                        "end_time": "9:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel distances in minutes\ntravel_distances = {\n    'Sunset District': {'Alamo Square': 17, 'Russian Hill': 24, 'Golden Gate Park': 11, 'Mission District': 24},\n    'Alamo Square': {'Sunset District': 16, 'Russian Hill': 13, 'Golden Gate Park': 9, 'Mission District': 10},\n    'Russian Hill': {'Sunset District': 23, 'Alamo Square': 15, 'Golden Gate Park': 21, 'Mission District': 16},\n    'Golden Gate Park': {'Sunset District': 10, 'Alamo Square': 10, 'Russian Hill': 19, 'Mission District': 17},\n    'Mission District': {'Sunset District': 24, 'Alamo Square': 11, 'Russian Hill': 15, 'Golden Gate Park': 17}\n}\n\n# Define meeting constraints\nmeeting_constraints = {\n    'Charles': {'location': 'Alamo Square','start_time': '18:00', 'end_time': '20:45', 'duration': 90},\n    'Margaret': {'location': 'Russian Hill','start_time': '09:00', 'end_time': '16:00', 'duration': 30},\n    'Daniel': {'location': 'Golden Gate Park','start_time': '08:00', 'end_time': '13:30', 'duration': 15},\n    'Stephanie': {'location': 'Mission District','start_time': '20:30', 'end_time': '22:00', 'duration': 90}\n}\n\ndef calculate_meeting_schedule():\n    # Initialize the schedule\n    schedule = []\n    current_location = 'Sunset District'\n    current_time = '9:00'\n\n    # Sort the meeting constraints by start time\n    sorted_constraints = sorted(meeting_constraints.items(), key=lambda x: x[1]['start_time'])\n\n    # Calculate the schedule for each person\n    for person, constraint in sorted_constraints:\n        # Calculate the travel time to the person's location\n        travel_time = travel_distances[current_location][constraint['location']]\n        arrival_time = add_time(current_time, travel_time)\n\n        # Check if we can meet the person within their available time\n        if arrival_time < constraint['start_time']:\n            # Wait until the person is available\n            start_time = constraint['start_time']\n        else:\n            start_time = arrival_time\n\n        # Calculate the end time of the meeting\n        end_time = add_time(start_time, constraint['duration'])\n\n        # Check if the meeting ends within the person's available time\n        if end_time > constraint['end_time']:\n            # We cannot meet the person within their available time\n            continue\n\n        # Add the meeting to the schedule\n        schedule.append({\n            'action':'meet',\n            'location': constraint['location'],\n            'person': person,\n        'start_time': start_time,\n            'end_time': end_time\n        })\n\n        # Update the current location and time\n        current_location = constraint['location']\n        current_time = end_time\n\n    return schedule\n\ndef add_time(time, minutes):\n    dt = datetime.strptime(time, '%H:%M')\n    dt += timedelta(minutes=minutes)\n    return dt.strftime('%H:%M')\n\ndef main():\n    schedule = calculate_meeting_schedule()\n    print(json.dumps({'itinerary': schedule}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_372"
+        }
+    ]
+}

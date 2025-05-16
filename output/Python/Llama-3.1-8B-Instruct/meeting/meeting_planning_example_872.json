@@ -1,0 +1,79 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Jason",
+                        "start_time": "9:21",
+                        "end_time": "10:36"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kenneth",
+                        "start_time": "10:39",
+                        "end_time": "11:09"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "11:18",
+                        "end_time": "12:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Kimberly",
+                        "start_time": "12:47",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Jessica",
+                        "start_time": "14:12",
+                        "end_time": "15:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Brian",
+                        "start_time": "15:47",
+                        "end_time": "16:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Stephanie",
+                        "start_time": "16:57",
+                        "end_time": "18:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Steven",
+                        "start_time": "18:51",
+                        "end_time": "19:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Karen",
+                        "start_time": "21:00",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\nimport itertools\n\n# Define travel distances in minutes\ntravel_distances = {\n    \"Presidio\": {\n        \"Haight-Ashbury\": 15,\n        \"Nob Hill\": 18,\n        \"Russian Hill\": 14,\n        \"North Beach\": 18,\n        \"Chinatown\": 21,\n        \"Union Square\": 22,\n        \"Embarcadero\": 20,\n        \"Financial District\": 23,\n        \"Marina District\": 11\n    },\n    \"Haight-Ashbury\": {\n        \"Presidio\": 15,\n        \"Nob Hill\": 15,\n        \"Russian Hill\": 17,\n        \"North Beach\": 19,\n        \"Chinatown\": 19,\n        \"Union Square\": 19,\n        \"Embarcadero\": 20,\n        \"Financial District\": 21,\n        \"Marina District\": 17\n    },\n    \"Nob Hill\": {\n        \"Presidio\": 17,\n        \"Haight-Ashbury\": 13,\n        \"Russian Hill\": 5,\n        \"North Beach\": 8,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Embarcadero\": 9,\n        \"Financial District\": 9,\n        \"Marina District\": 11\n    },\n    \"Russian Hill\": {\n        \"Presidio\": 14,\n        \"Haight-Ashbury\": 17,\n        \"Nob Hill\": 5,\n        \"North Beach\": 5,\n        \"Chinatown\": 9,\n        \"Union Square\": 10,\n        \"Embarcadero\": 8,\n        \"Financial District\": 11,\n        \"Marina District\": 7\n    },\n    \"North Beach\": {\n        \"Presidio\": 17,\n        \"Haight-Ashbury\": 18,\n        \"Nob Hill\": 7,\n        \"Russian Hill\": 4,\n        \"Chinatown\": 6,\n        \"Union Square\": 7,\n        \"Embarcadero\": 6,\n        \"Financial District\": 8,\n        \"Marina District\": 9\n    },\n    \"Chinatown\": {\n        \"Presidio\": 19,\n        \"Haight-Ashbury\": 19,\n        \"Nob Hill\": 9,\n        \"Russian Hill\": 7,\n        \"North Beach\": 3,\n        \"Union Square\": 7,\n        \"Embarcadero\": 5,\n        \"Financial District\": 5,\n        \"Marina District\": 12\n    },\n    \"Union Square\": {\n        \"Presidio\": 24,\n        \"Haight-Ashbury\": 18,\n        \"Nob Hill\": 9,\n        \"Russian Hill\": 13,\n        \"North Beach\": 10,\n        \"Chinatown\": 7,\n        \"Embarcadero\": 11,\n        \"Financial District\": 9,\n        \"Marina District\": 18\n    },\n    \"Embarcadero\": {\n        \"Presidio\": 20,\n        \"Haight-Ashbury\": 21,\n        \"Nob Hill\": 10,\n        \"Russian Hill\": 8,\n        \"North Beach\": 5,\n        \"Chinatown\": 7,\n        \"Union Square\": 10,\n        \"Financial District\": 5,\n        \"Marina District\": 12\n    },\n    \"Financial District\": {\n        \"Presidio\": 22,\n        \"Haight-Ashbury\": 19,\n        \"Nob Hill\": 8,\n        \"Russian Hill\": 11,\n        \"North Beach\": 7,\n        \"Chinatown\": 5,\n        \"Union Square\": 9,\n        \"Embarcadero\": 4,\n        \"Marina District\": 15\n    },\n    \"Marina District\": {\n        \"Presidio\": 10,\n        \"Haight-Ashbury\": 16,\n        \"Nob Hill\": 12,\n        \"Russian Hill\": 8,\n        \"North Beach\": 11,\n        \"Chinatown\": 15,\n        \"Union Square\": 16,\n        \"Embarcadero\": 14,\n        \"Financial District\": 17\n    }\n}\n\n# Define meeting constraints\nconstraints = {\n    \"Karen\": {\"location\": \"Haight-Ashbury\", \"start_time\": \"21:00\", \"end_time\": \"21:45\", \"duration\": 45},\n    \"Jessica\": {\"location\": \"Nob Hill\", \"start_time\": \"13:45\", \"end_time\": \"21:00\", \"duration\": 90},\n    \"Brian\": {\"location\": \"Russian Hill\", \"start_time\": \"15:30\", \"end_time\": \"21:45\", \"duration\": 60},\n    \"Kenneth\": {\"location\": \"North Beach\", \"start_time\": \"09:45\", \"end_time\": \"21:00\", \"duration\": 30},\n    \"Jason\": {\"location\": \"Chinatown\", \"start_time\": \"08:15\", \"end_time\": \"11:45\", \"duration\": 75},\n    \"Stephanie\": {\"location\": \"Union Square\", \"start_time\": \"14:45\", \"end_time\": \"18:45\", \"duration\": 105},\n    \"Kimberly\": {\"location\": \"Embarcadero\", \"start_time\": \"09:45\", \"end_time\": \"19:30\", \"duration\": 75},\n    \"Steven\": {\"location\": \"Financial District\", \"start_time\": \"07:15\", \"end_time\": \"21:15\", \"duration\": 60},\n    \"Mark\": {\"location\": \"Marina District\", \"start_time\": \"10:15\", \"end_time\": \"13:00\", \"duration\": 75}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\ndef check_constraint(person, start_time, end_time):\n    constraint = constraints[person]\n    if start_time >= constraint[\"start_time\"] and end_time <= constraint[\"end_time\"]:\n        return True\n    return False\n\ndef schedule_meeting(person, start_time, end_time):\n    if check_constraint(person, start_time, end_time):\n        return {\"action\": \"meet\", \"location\": constraints[person][\"location\"], \"person\": person, \"start_time\": start_time, \"end_time\": end_time}\n    return None\n\ndef generate_itinerary():\n    start_time = \"09:00\"\n    end_time = \"21:00\"\n    start_location = \"Presidio\"\n    itinerary = []\n    \n    # Generate all possible meeting times\n    for hour in range(9, 21):\n        for minute in range(0, 60):\n            meeting_time = f\"{hour:02d}:{minute:02d}\"\n            if meeting_time >= constraints[\"Karen\"][\"start_time\"] and meeting_time <= constraints[\"Karen\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Karen\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Jessica\"][\"start_time\"] and meeting_time <= constraints[\"Jessica\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Jessica\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Brian\"][\"start_time\"] and meeting_time <= constraints[\"Brian\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Brian\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Kenneth\"][\"start_time\"] and meeting_time <= constraints[\"Kenneth\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Kenneth\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Jason\"][\"start_time\"] and meeting_time <= constraints[\"Jason\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Jason\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Stephanie\"][\"start_time\"] and meeting_time <= constraints[\"Stephanie\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Stephanie\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Kimberly\"][\"start_time\"] and meeting_time <= constraints[\"Kimberly\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Kimberly\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Steven\"][\"start_time\"] and meeting_time <= constraints[\"Steven\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Steven\", meeting_time, meeting_time))\n            if meeting_time >= constraints[\"Mark\"][\"start_time\"] and meeting_time <= constraints[\"Mark\"][\"end_time\"]:\n                itinerary.append(schedule_meeting(\"Mark\", meeting_time, meeting_time))\n    \n    # Remove duplicates and sort by start time\n    itinerary = list(set(itinerary))\n    itinerary.sort(key=lambda x: x[\"start_time\"])\n    \n    return itinerary\n\ndef optimize_itinerary(itinerary):\n    optimized_itinerary = []\n    current_location = \"Presidio\"\n    for meeting in itinerary:\n        travel_time = calculate_travel_time(current_location, meeting[\"location\"])\n        start_time = datetime.strptime(meeting[\"start_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        end_time = datetime.strptime(meeting[\"end_time\"], \"%H:%M\") + timedelta(minutes=travel_time)\n        optimized_itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": start_time.strftime(\"%H:%M\"), \"end_time\": end_time.strftime(\"%H:%M\")})\n        current_location = meeting[\"location\"]\n    return optimized_itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    optimized_itinerary = optimize_itinerary(itinerary)\n    result = {\"itinerary\": optimized_itinerary}\n    print(json.dumps(result, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_872"
+        }
+    ]
+}

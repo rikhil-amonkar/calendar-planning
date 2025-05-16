@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Carol",
+                        "start_time": "14:00",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jessica",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Carol",
+                        "start_time": "11:30",
+                        "end_time": "12:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jessica",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef time_to_min(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\ndef min_to_time(mins):\n    return f\"{mins // 60}:{mins % 60:02d}\"\n\ntravel_times = {\n    'Richmond District': {'Pacific Heights': 10, 'Marina District': 9},\n    'Pacific Heights': {'Richmond District': 12, 'Marina District': 6},\n    'Marina District': {'Richmond District': 11, 'Pacific Heights': 7}\n}\n\nstart_time = time_to_min('9:00')\ncarol_available = (time_to_min('11:30'), time_to_min('15:00'))\njessica_available = (time_to_min('15:30'), time_to_min('16:45'))\n\nbest = None\nfor carol_start in range(carol_available[1] - 60, carol_available[0] - 1, -1):\n    if carol_start < carol_available[0]:\n        continue\n    departure = carol_start - travel_times['Richmond District']['Marina District']\n    if departure < start_time:\n        continue\n    \n    arrival_jessica = carol_start + 60 + travel_times['Marina District']['Pacific Heights']\n    jessica_start = max(arrival_jessica, jessica_available[0])\n    if jessica_start + 45 > jessica_available[1]:\n        continue\n    \n    best = {\n        'carol': (carol_start, carol_start + 60),\n        'jessica': (jessica_start, jessica_start + 45)\n    }\n    break\n\nitinerary = []\nif best:\n    itinerary.append({\n        \"action\": \"meet\", \"location\": \"Marina District\", \"person\": \"Carol\",\n        \"start_time\": min_to_time(best['carol'][0]), \"end_time\": min_to_time(best['carol'][1])\n    })\n    itinerary.append({\n        \"action\": \"meet\", \"location\": \"Pacific Heights\", \"person\": \"Jessica\",\n        \"start_time\": min_to_time(best['jessica'][0]), \"end_time\": min_to_time(best['jessica'][1])\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_115"
+        }
+    ]
+}

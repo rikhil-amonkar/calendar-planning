@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the participants' schedules\nschedules = {\n    \"Tyler\": [],\n    \"Kelly\": [],\n    \"Stephanie\": [(11, 0), (14, 30)],\n    \"Hannah\": [],\n    \"Joe\": [(9, 0), (10, 0), (12, 30), (14, 0)],\n    \"Diana\": [(9, 0), (11, 30), (13, 0), (14, 30), (16, 0)],\n    \"Deborah\": [(9, 0), (10, 30), (12, 30), (13, 30), (14, 30), (16, 0)]\n}\n\n# Define the work hours\nwork_start = datetime.strptime(\"09:00\", \"%H:%M\")\nwork_end = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(minutes=30)\n\n# Create a list of all busy times\nbusy_times = []\nfor participant, blocks in schedules.items():\n    for block in blocks:\n        busy_start = datetime.combine(work_start.date(), time(*block))\n        busy_end = busy_start + meeting_duration\n        busy_times.append((busy_start, busy_end))\n\n# Sort the busy times\nbusy_times.sort()\n\n# Find the gaps in the schedule\nfree_slots = []\ncurrent_time = work_start\n\nfor busy_start, busy_end in busy_times:\n    if current_time + meeting_duration <= busy_start:\n        free_slots.append((current_time, busy_start))\n    current_time = max(current_time, busy_end)\n\nif current_time + meeting_duration <= work_end:\n    free_slots.append((current_time, work_end))\n\n# Choose the first available time slot\nif free_slots:\n    proposed_start, proposed_end = free_slots[0]\n    proposed_time_range = f\"{proposed_start.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')}\"\n    day_of_week = proposed_start.strftime('%A')\n    print(f'Time range: {{{proposed_time_range}}}, Day: {day_of_week}')\nelse:\n    print(\"No available time slot found.\")\n```",
+            "count": "calendar_scheduling_example_493"
+        }
+    ]
+}

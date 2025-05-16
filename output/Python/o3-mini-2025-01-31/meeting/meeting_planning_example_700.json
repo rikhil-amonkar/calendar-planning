@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "11:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Mary",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "18:26",
+                        "end_time": "19:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "11:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "16:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Mary",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mark",
+                        "start_time": "18:26",
+                        "end_time": "19:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "20:00",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport copy\n\n# Helper: convert time in minutes since midnight to H:MM format (24h, no leading zero for hour)\ndef format_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Travel times dictionary (in minutes) as provided.\ntravel_times = {\n    \"Presidio\": {\n        \"Pacific Heights\": 11,\n        \"Golden Gate Park\": 12,\n        \"Fisherman's Wharf\": 19,\n        \"Marina District\": 11,\n        \"Alamo Square\": 19,\n        \"Sunset District\": 15,\n        \"Nob Hill\": 18,\n        \"North Beach\": 18\n    },\n    \"Pacific Heights\": {\n        \"Presidio\": 11,\n        \"Golden Gate Park\": 15,\n        \"Fisherman's Wharf\": 13,\n        \"Marina District\": 6,\n        \"Alamo Square\": 10,\n        \"Sunset District\": 21,\n        \"Nob Hill\": 8,\n        \"North Beach\": 9\n    },\n    \"Golden Gate Park\": {\n        \"Presidio\": 11,\n        \"Pacific Heights\": 16,\n        \"Fisherman's Wharf\": 24,\n        \"Marina District\": 16,\n        \"Alamo Square\": 9,\n        \"Sunset District\": 10,\n        \"Nob Hill\": 20,\n        \"North Beach\": 23\n    },\n    \"Fisherman's Wharf\": {\n        \"Presidio\": 17,\n        \"Pacific Heights\": 12,\n        \"Golden Gate Park\": 25,\n        \"Marina District\": 9,\n        \"Alamo Square\": 21,\n        \"Sunset District\": 27,\n        \"Nob Hill\": 11,\n        \"North Beach\": 6\n    },\n    \"Marina District\": {\n        \"Presidio\": 10,\n        \"Pacific Heights\": 7,\n        \"Golden Gate Park\": 18,\n        \"Fisherman's Wharf\": 10,\n        \"Alamo Square\": 15,\n        \"Sunset District\": 19,\n        \"Nob Hill\": 12,\n        \"North Beach\": 11\n    },\n    \"Alamo Square\": {\n        \"Presidio\": 17,\n        \"Pacific Heights\": 10,\n        \"Golden Gate Park\": 9,\n        \"Fisherman's Wharf\": 19,\n        \"Marina District\": 15,\n        \"Sunset District\": 16,\n        \"Nob Hill\": 11,\n        \"North Beach\": 15\n    },\n    \"Sunset District\": {\n        \"Presidio\": 16,\n        \"Pacific Heights\": 21,\n        \"Golden Gate Park\": 11,\n        \"Fisherman's Wharf\": 29,\n        \"Marina District\": 21,\n        \"Alamo Square\": 17,\n        \"Nob Hill\": 27,\n        \"North Beach\": 28\n    },\n    \"Nob Hill\": {\n        \"Presidio\": 17,\n        \"Pacific Heights\": 8,\n        \"Golden Gate Park\": 17,\n        \"Fisherman's Wharf\": 10,\n        \"Marina District\": 11,\n        \"Alamo Square\": 11,\n        \"Sunset District\": 24,\n        \"North Beach\": 8\n    },\n    \"North Beach\": {\n        \"Presidio\": 17,\n        \"Pacific Heights\": 8,\n        \"Golden Gate Park\": 22,\n        \"Fisherman's Wharf\": 5,\n        \"Marina District\": 9,\n        \"Alamo Square\": 16,\n        \"Sunset District\": 27,\n        \"Nob Hill\": 7\n    }\n}\n\n# Meetings: each meeting has a location, availability window (in minutes since midnight), and required minimum meeting duration.\n# Times are converted from the given times.\n# Kevin: available at Pacific Heights from 7:15 (435) to 8:45 (525), need 90 minutes.\n# Michelle: Golden Gate Park from 20:00 (1200) to 21:00 (1260), need 15 minutes.\n# Emily: Fisherman's Wharf from 16:15 (975) to 19:00 (1140), need 30 minutes.\n# Mark: Marina District from 18:15 (1095) to 19:45 (1185), need 75 minutes.\n# Barbara: Alamo Square from 17:00 (1020) to 19:00 (1140), need 120 minutes.\n# Laura: Sunset District from 19:00 (1140) to 21:15 (1275), need 75 minutes.\n# Mary: Nob Hill from 17:30 (1050) to 19:00 (1140), need 45 minutes.\n# Helen: North Beach from 11:00 (660) to 12:15 (735), need 45 minutes.\nmeetings = {\n    \"Kevin\": {\n        \"location\": \"Pacific Heights\",\n        \"window_start\": 435,\n        \"window_end\": 525,\n        \"duration\": 90\n    },\n    \"Michelle\": {\n        \"location\": \"Golden Gate Park\",\n        \"window_start\": 1200,\n        \"window_end\": 1260,\n        \"duration\": 15\n    },\n    \"Emily\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"window_start\": 975,\n        \"window_end\": 1140,\n        \"duration\": 30\n    },\n    \"Mark\": {\n        \"location\": \"Marina District\",\n        \"window_start\": 1095,\n        \"window_end\": 1185,\n        \"duration\": 75\n    },\n    \"Barbara\": {\n        \"location\": \"Alamo Square\",\n        \"window_start\": 1020,\n        \"window_end\": 1140,\n        \"duration\": 120\n    },\n    \"Laura\": {\n        \"location\": \"Sunset District\",\n        \"window_start\": 1140,\n        \"window_end\": 1275,\n        \"duration\": 75\n    },\n    \"Mary\": {\n        \"location\": \"Nob Hill\",\n        \"window_start\": 1050,\n        \"window_end\": 1140,\n        \"duration\": 45\n    },\n    \"Helen\": {\n        \"location\": \"North Beach\",\n        \"window_start\": 660,\n        \"window_end\": 735,\n        \"duration\": 45\n    }\n}\n\n# Starting conditions: arrive at Presidio at 9:00 (540 minutes)\nstart_location = \"Presidio\"\nstart_time = 540\n\n# We'll perform DFS to try all orders of meetings that can be feasibly scheduled,\n# taking into account travel times, meeting time windows, and required durations.\nbest_itinerary = []\nbest_count = 0\n\ndef dfs(current_time, current_location, remaining_meetings, current_itinerary):\n    global best_itinerary, best_count\n    # At each step, if no remaining meeting can be scheduled, update best solution if necessary.\n    if len(current_itinerary) > best_count:\n        best_itinerary = copy.deepcopy(current_itinerary)\n        best_count = len(current_itinerary)\n    \n    # Try each remaining meeting\n    for person, info in remaining_meetings.items():\n        destination = info[\"location\"]\n        # Get travel time from current_location to destination\n        if current_location == destination:\n            travel = 0\n        else:\n            travel = travel_times[current_location][destination]\n        arrival_time = current_time + travel\n        # Meeting can only start when both arrived and the meeting window starts.\n        meeting_start = max(arrival_time, info[\"window_start\"])\n        meeting_end = meeting_start + info[\"duration\"]\n        # Check if meeting can finish within the meeting's availability window.\n        if meeting_end <= info[\"window_end\"]:\n            # Create a new itinerary entry\n            entry = {\n                \"action\": \"meet\",\n                \"location\": destination,\n                \"person\": person,\n                \"start_time\": format_time(meeting_start),\n                \"end_time\": format_time(meeting_end)\n            }\n            # Prepare new state\n            new_itinerary = current_itinerary + [entry]\n            new_remaining = remaining_meetings.copy()\n            del new_remaining[person]\n            dfs(meeting_end, destination, new_remaining, new_itinerary)\n\n# Start DFS from the starting point.\ndfs(start_time, start_location, meetings, [])\n\n# Prepare result JSON dictionary.\nresult = {\n    \"itinerary\": best_itinerary\n}\n\n# Output the result as JSON\nprint(json.dumps(result, indent=2))",
+            "count": "meeting_planning_example_700"
+        }
+    ]
+}

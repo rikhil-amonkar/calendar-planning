@@ -1,0 +1,53 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 8-14",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-14",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Trip parameters\n    total_days = 15\n    city_days = {\n        'Paris': 6,\n        'Madrid': 7,\n        'Bucharest': 2,\n        'Seville': 3\n    }\n    \n    # Flight connections (direct flights)\n    flights = {\n        'Paris': ['Bucharest', 'Seville', 'Madrid'],\n        'Bucharest': ['Paris', 'Madrid'],\n        'Madrid': ['Paris', 'Bucharest', 'Seville'],\n        'Seville': ['Paris', 'Madrid']\n    }\n    \n    # Itinerary plan\n    itinerary = []\n    \n    current_day = 1\n    \n    # 1. Stay in Paris for 6 days\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_days[\"Paris\"] - 1}', 'place': 'Paris'})\n    current_day += city_days[\"Paris\"]\n    \n    # 2. Fly to Madrid and stay for 7 days (including annual show days)\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Paris', 'to': 'Madrid'})\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_days[\"Madrid\"] - 1}', 'place': 'Madrid'})\n    current_day += city_days[\"Madrid\"]\n    \n    # 3. Fly to Bucharest for 2 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Madrid', 'to': 'Bucharest'})\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_days[\"Bucharest\"] - 1}', 'place': 'Bucharest'})\n    current_day += city_days[\"Bucharest\"]\n    \n    # 4. Fly to Seville for 3 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Bucharest', 'to': 'Seville'})\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_days[\"Seville\"] - 1}', 'place': 'Seville'})\n    current_day += city_days[\"Seville\"]\n    \n    # 5. Return to Bucharest to visit relatives for 2 days\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Seville', 'to': 'Bucharest'})\n    current_day += 1\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Bucharest'})\n    \n    # Convert to JSON format\n    output = json.dumps(itinerary, indent=4)\n    \n    return output\n\n# Execute itinerary calculation\nif __name__ == \"__main__\":\n    print(calculate_itinerary())\n```",
+            "count": "trip_planning_example_361"
+        }
+    ]
+}

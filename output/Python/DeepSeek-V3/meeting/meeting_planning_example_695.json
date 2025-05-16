@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Paul",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "17:32",
+                        "end_time": "18:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:35",
+                        "end_time": "19:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jeffrey",
+                        "start_time": "20:00",
+                        "end_time": "20:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "20:56",
+                        "end_time": "21:26"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Paul",
+                        "start_time": "16:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Karen",
+                        "start_time": "17:32",
+                        "end_time": "18:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Matthew",
+                        "start_time": "18:35",
+                        "end_time": "19:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Jeffrey",
+                        "start_time": "20:00",
+                        "end_time": "20:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "20:56",
+                        "end_time": "21:26"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input data\nfriends = [\n    {\"name\": \"Paul\", \"location\": \"Nob Hill\", \"available_start\": \"16:15\", \"available_end\": \"21:15\", \"min_duration\": 60},\n    {\"name\": \"Carol\", \"location\": \"Union Square\", \"available_start\": \"18:00\", \"available_end\": \"20:15\", \"min_duration\": 120},\n    {\"name\": \"Patricia\", \"location\": \"Chinatown\", \"available_start\": \"20:00\", \"available_end\": \"21:30\", \"min_duration\": 75},\n    {\"name\": \"Karen\", \"location\": \"The Castro\", \"available_start\": \"17:00\", \"available_end\": \"19:00\", \"min_duration\": 45},\n    {\"name\": \"Nancy\", \"location\": \"Presidio\", \"available_start\": \"11:45\", \"available_end\": \"22:00\", \"min_duration\": 30},\n    {\"name\": \"Jeffrey\", \"location\": \"Pacific Heights\", \"available_start\": \"20:00\", \"available_end\": \"20:45\", \"min_duration\": 45},\n    {\"name\": \"Matthew\", \"location\": \"Russian Hill\", \"available_start\": \"15:45\", \"available_end\": \"21:45\", \"min_duration\": 75}\n]\n\ntravel_times = {\n    \"Bayview\": {\n        \"Nob Hill\": 20, \"Union Square\": 17, \"Chinatown\": 18, \"The Castro\": 20,\n        \"Presidio\": 31, \"Pacific Heights\": 23, \"Russian Hill\": 23\n    },\n    \"Nob Hill\": {\n        \"Bayview\": 19, \"Union Square\": 7, \"Chinatown\": 6, \"The Castro\": 17,\n        \"Presidio\": 17, \"Pacific Heights\": 8, \"Russian Hill\": 5\n    },\n    \"Union Square\": {\n        \"Bayview\": 15, \"Nob Hill\": 9, \"Chinatown\": 7, \"The Castro\": 19,\n        \"Presidio\": 24, \"Pacific Heights\": 15, \"Russian Hill\": 13\n    },\n    \"Chinatown\": {\n        \"Bayview\": 22, \"Nob Hill\": 8, \"Union Square\": 7, \"The Castro\": 22,\n        \"Presidio\": 19, \"Pacific Heights\": 10, \"Russian Hill\": 7\n    },\n    \"The Castro\": {\n        \"Bayview\": 19, \"Nob Hill\": 16, \"Union Square\": 19, \"Chinatown\": 20,\n        \"Presidio\": 20, \"Pacific Heights\": 16, \"Russian Hill\": 18\n    },\n    \"Presidio\": {\n        \"Bayview\": 31, \"Nob Hill\": 18, \"Union Square\": 22, \"Chinatown\": 21,\n        \"The Castro\": 21, \"Pacific Heights\": 11, \"Russian Hill\": 14\n    },\n    \"Pacific Heights\": {\n        \"Bayview\": 22, \"Nob Hill\": 8, \"Union Square\": 12, \"Chinatown\": 11,\n        \"The Castro\": 16, \"Presidio\": 11, \"Russian Hill\": 7\n    },\n    \"Russian Hill\": {\n        \"Bayview\": 23, \"Nob Hill\": 5, \"Union Square\": 11, \"Chinatown\": 9,\n        \"The Castro\": 21, \"Presidio\": 14, \"Pacific Heights\": 7\n    }\n}\n\ndef evaluate_schedule(order):\n    current_time = time_to_minutes(\"9:00\")\n    current_location = \"Bayview\"\n    itinerary = []\n    total_meetings = 0\n    \n    for friend in order:\n        travel_time = travel_times[current_location][friend[\"location\"]]\n        arrival_time = current_time + travel_time\n        available_start = time_to_minutes(friend[\"available_start\"])\n        available_end = time_to_minutes(friend[\"available_end\"])\n        min_duration = friend[\"min_duration\"]\n        \n        # Calculate meeting start and end times\n        meeting_start = max(arrival_time, available_start)\n        meeting_end = min(meeting_start + min_duration, available_end)\n        \n        if meeting_end <= available_end and meeting_end - meeting_start >= min_duration:\n            itinerary.append({\n                \"action\": \"meet\",\n                \"location\": friend[\"location\"],\n                \"person\": friend[\"name\"],\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            })\n            current_time = meeting_end\n            current_location = friend[\"location\"]\n            total_meetings += 1\n        else:\n            return None, 0\n    \n    return itinerary, total_meetings\n\ndef find_optimal_schedule():\n    best_schedule = None\n    max_meetings = 0\n    \n    # Try all permutations of 5 friends (since meeting all 7 is impossible due to time constraints)\n    for perm in permutations(friends, 5):\n        itinerary, total_meetings = evaluate_schedule(perm)\n        if total_meetings > max_meetings:\n            max_meetings = total_meetings\n            best_schedule = itinerary\n    \n    # If no 5-meeting schedule found, try 4\n    if max_meetings < 5:\n        for perm in permutations(friends, 4):\n            itinerary, total_meetings = evaluate_schedule(perm)\n            if total_meetings > max_meetings:\n                max_meetings = total_meetings\n                best_schedule = itinerary\n    \n    # If no 4-meeting schedule found, try 3\n    if max_meetings < 4:\n        for perm in permutations(friends, 3):\n            itinerary, total_meetings = evaluate_schedule(perm)\n            if total_meetings > max_meetings:\n                max_meetings = total_meetings\n                best_schedule = itinerary\n    \n    return best_schedule\n\noptimal_schedule = find_optimal_schedule()\nresult = {\"itinerary\": optimal_schedule} if optimal_schedule else {\"itinerary\": []}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_695"
+        }
+    ]
+}

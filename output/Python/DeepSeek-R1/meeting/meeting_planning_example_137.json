@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "10:52",
+                        "end_time": "11:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "13:53",
+                        "end_time": "14:38"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(t):\n    hours, mins = map(int, t.split(':'))\n    return hours * 60 + mins\n\ndef minutes_to_time(m):\n    hours = m // 60\n    mins = m % 60\n    return f\"{hours}:{mins:02d}\".lstrip('0') if hours != 0 else f\"{hours}:{mins:02d}\"\n\nfriends = [\n    {\n        'name': 'Barbara',\n        'location': 'Golden Gate Park',\n        'available_start': time_to_minutes('8:15'),\n        'available_end': time_to_minutes('19:00'),\n        'duration': 45,\n    },\n    {\n        'name': 'Kenneth',\n        'location': 'Chinatown',\n        'available_start': time_to_minutes('12:00'),\n        'available_end': time_to_minutes('15:00'),\n        'duration': 90,\n    }\n]\n\ntravel_times = {\n    ('Financial District', 'Golden Gate Park'): 23,\n    ('Financial District', 'Chinatown'): 5,\n    ('Chinatown', 'Financial District'): 5,\n    ('Chinatown', 'Golden Gate Park'): 23,\n    ('Golden Gate Park', 'Financial District'): 26,\n    ('Golden Gate Park', 'Chinatown'): 23,\n}\n\nstart_location = 'Financial District'\nstart_time = time_to_minutes('9:00')\n\nbest = {\"friends\": 0, \"end\": float('inf'), \"schedule\": []}\n\nfor perm in permutations(friends):\n    current_loc = start_location\n    current_time = start_time\n    schedule = []\n    valid = True\n    \n    for i, f in enumerate(perm):\n        travel_key = (current_loc, f['location'])\n        if travel_key not in travel_times:\n            valid = False\n            break\n        arrival = current_time + travel_times[travel_key]\n        start = max(arrival, f['available_start'])\n        \n        if i < len(perm)-1:\n            next_travel = travel_times[(f['location'], perm[i+1]['location'])]\n            desired_end = perm[i+1]['available_start'] - next_travel\n            desired_start = desired_end - f['duration']\n            start = max(start, desired_start)\n        \n        end = start + f['duration']\n        if end > f['available_end']:\n            valid = False\n            break\n        \n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": f['location'],\n            \"person\": f['name'],\n            \"start_time\": minutes_to_time(start),\n            \"end_time\": minutes_to_time(end)\n        })\n        current_time = end\n        current_loc = f['location']\n    \n    if valid:\n        met = len(perm)\n        if met > best[\"friends\"] or (met == best[\"friends\"] and current_time < best[\"end\"]):\n            best = {\"friends\": met, \"end\": current_time, \"schedule\": schedule}\n\nprint(json.dumps({\"itinerary\": best[\"schedule\"]}, indent=2))\n```",
+            "count": "meeting_planning_example_137"
+        }
+    ]
+}

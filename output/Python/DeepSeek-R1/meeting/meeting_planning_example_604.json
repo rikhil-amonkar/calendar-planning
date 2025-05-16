@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Joseph",
+                        "start_time": "11:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:30",
+                        "end_time": "15:0"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "15:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Laura",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Joseph",
+                        "start_time": "11:30",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Karen",
+                        "start_time": "14:30",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Kimberly",
+                        "start_time": "15:45",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Laura",
+                        "start_time": "19:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\nimport json\nfrom itertools import permutations\n\ndef parse_time(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    \"Fisherman's Wharf\": {\n        \"The Castro\": 26, \"Golden Gate Park\": 25, \"Embarcadero\": 8,\n        \"Russian Hill\": 7, \"Nob Hill\": 11, \"Alamo Square\": 20, \"North Beach\": 6\n    },\n    \"The Castro\": {\n        \"Fisherman's Wharf\": 24, \"Golden Gate Park\": 11, \"Embarcadero\": 22,\n        \"Russian Hill\": 18, \"Nob Hill\": 16, \"Alamo Square\": 8, \"North Beach\": 20\n    },\n    \"Golden Gate Park\": {\n        \"Fisherman's Wharf\": 24, \"The Castro\": 13, \"Embarcadero\": 25,\n        \"Russian Hill\": 19, \"Nob Hill\": 20, \"Alamo Square\": 10, \"North Beach\": 24\n    },\n    \"Embarcadero\": {\n        \"Fisherman's Wharf\": 6, \"The Castro\": 25, \"Golden Gate Park\": 25,\n        \"Russian Hill\": 8, \"Nob Hill\": 10, \"Alamo Square\": 19, \"North Beach\": 5\n    },\n    \"Russian Hill\": {\n        \"Fisherman's Wharf\": 7, \"The Castro\": 21, \"Golden Gate Park\": 21,\n        \"Embarcadero\": 8, \"Nob Hill\": 5, \"Alamo Square\": 15, \"North Beach\": 5\n    },\n    \"Nob Hill\": {\n        \"Fisherman's Wharf\": 11, \"The Castro\": 17, \"Golden Gate Park\": 17,\n        \"Embarcadero\": 9, \"Russian Hill\": 5, \"Alamo Square\": 11, \"North Beach\": 8\n    },\n    \"Alamo Square\": {\n        \"Fisherman's Wharf\": 19, \"The Castro\": 8, \"Golden Gate Park\": 9,\n        \"Embarcadero\": 17, \"Russian Hill\": 13, \"Nob Hill\": 11, \"North Beach\": 16\n    },\n    \"North Beach\": {\n        \"Fisherman's Wharf\": 5, \"The Castro\": 22, \"Golden Gate Park\": 22,\n        \"Embarcadero\": 6, \"Russian Hill\": 4, \"Nob Hill\": 7, \"Alamo Square\": 16\n    }\n}\n\nfriends = [\n    {\"name\": \"Joseph\", \"location\": \"Alamo Square\", \"start\": parse_time(\"11:30\"), \"end\": parse_time(\"12:45\"), \"duration\": 15},\n    {\"name\": \"Karen\", \"location\": \"Russian Hill\", \"start\": parse_time(\"14:30\"), \"end\": parse_time(\"19:45\"), \"duration\": 30},\n    {\"name\": \"Kimberly\", \"location\": \"North Beach\", \"start\": parse_time(\"15:45\"), \"end\": parse_time(\"19:15\"), \"duration\": 30},\n    {\"name\": \"Laura\", \"location\": \"The Castro\", \"start\": parse_time(\"19:45\"), \"end\": parse_time(\"21:30\"), \"duration\": 105},\n    {\"name\": \"Daniel\", \"location\": \"Golden Gate Park\", \"start\": parse_time(\"21:15\"), \"end\": parse_time(\"21:45\"), \"duration\": 15}\n]\n\nbest_schedule = []\nmax_met = 0\n\nfor perm in permutations(friends):\n    current_loc = \"Fisherman's Wharf\"\n    current_time = parse_time(\"9:00\")\n    schedule = []\n    met = 0\n    \n    for friend in perm:\n        to_loc = friend['location']\n        travel_time = travel_times[current_loc].get(to_loc, float('inf'))\n        if travel_time == float('inf'):\n            break\n        \n        arrival = current_time + travel_time\n        if arrival > friend['end']:\n            continue\n        \n        start = max(arrival, friend['start'])\n        end = start + friend['duration']\n        if end > friend['end']:\n            continue\n        \n        schedule.append((friend, start, end))\n        met += 1\n        current_time = end\n        current_loc = to_loc\n    \n    if met > max_met or (met == max_met and current_time < (parse_time(\"23:59\") if not best_schedule else best_schedule[-1][2])):\n        max_met = met\n        best_schedule = schedule\n\nitinerary = []\nfor entry in best_schedule:\n    friend, start, end = entry\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": friend['location'],\n        \"person\": friend['name'],\n        \"start_time\": format_time(start).replace(':0', ':') if format_time(start).split(':')[1][0] == '0' else format_time(start),\n        \"end_time\": format_time(end).replace(':0', ':') if format_time(end).split(':')[1][0] == '0' else format_time(end)\n    })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))",
+            "count": "meeting_planning_example_604"
+        }
+    ]
+}

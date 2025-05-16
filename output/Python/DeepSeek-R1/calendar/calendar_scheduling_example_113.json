@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{10:00",
+                "end_time": "10:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{10:00",
+                "end_time": "10:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    work_hours = (9 * 60, 17 * 60)\n    participants = {\n        'Bradley': [(570, 600), (750, 780), (810, 840), (930, 960)],\n        'Teresa': [(630, 660), (720, 750), (780, 810), (870, 900)],\n        'Elizabeth': [(540, 570), (630, 690), (780, 810), (870, 900), (930, 1020)],\n        'Christian': [(540, 570), (630, 1020)]\n    }\n\n    for start in range(work_hours[0], work_hours[1] - 30 + 1):\n        end = start + 30\n        conflict = False\n        for busy in participants.values():\n            for s, e in busy:\n                if not (end <= s or start >= e):\n                    conflict = True\n                    break\n            if conflict:\n                break\n        if not conflict:\n            start_hr = start // 60\n            start_min = start % 60\n            end_hr = end // 60\n            end_min = end % 60\n            return f\"Monday {start_hr:02}:{start_min:02}:{end_hr:02}:{end_min:02}\"\n    return \"No time found\"\n\nprint(find_meeting_time())\n'''",
+            "count": "calendar_scheduling_example_113"
+        }
+    ]
+}

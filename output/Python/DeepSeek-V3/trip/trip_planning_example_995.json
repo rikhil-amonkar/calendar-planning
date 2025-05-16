@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Define the cities and their required days\n    cities = {\n        'Oslo': 2,\n        'Stuttgart': 3,\n        'Venice': 4,\n        'Split': 4,\n        'Barcelona': 3,\n        'Brussels': 3,\n        'Copenhagen': 3\n    }\n    \n    # Define the direct flight connections\n    direct_flights = {\n        'Venice': ['Stuttgart', 'Barcelona', 'Brussels', 'Oslo', 'Copenhagen'],\n        'Stuttgart': ['Venice', 'Barcelona', 'Copenhagen', 'Split'],\n        'Oslo': ['Brussels', 'Split', 'Venice', 'Copenhagen', 'Barcelona'],\n        'Split': ['Copenhagen', 'Oslo', 'Stuttgart', 'Barcelona'],\n        'Barcelona': ['Copenhagen', 'Venice', 'Stuttgart', 'Brussels', 'Oslo', 'Split'],\n        'Brussels': ['Oslo', 'Venice', 'Copenhagen', 'Barcelona'],\n        'Copenhagen': ['Split', 'Barcelona', 'Brussels', 'Oslo', 'Venice', 'Stuttgart']\n    }\n    \n    # Define constraints\n    constraints = [\n        {'city': 'Barcelona', 'day_range': (1, 3)},\n        {'city': 'Oslo', 'day_range': (3, 4)},\n        {'city': 'Brussels', 'day_range': (9, 11)}\n    ]\n    \n    # Generate all possible permutations of the cities\n    for perm in permutations(cities.keys()):\n        itinerary = []\n        current_day = 1\n        valid = True\n        \n        # Check if Barcelona is first (due to day 1-3 constraint)\n        if perm[0] != 'Barcelona':\n            continue\n        \n        prev_city = None\n        for city in perm:\n            if prev_city is not None:\n                # Check if there's a direct flight\n                if city not in direct_flights[prev_city]:\n                    valid = False\n                    break\n                # Add flight day\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': city\n                })\n                current_day += 0  # Assuming flight takes 0 days (same day)\n            \n            # Add stay\n            stay_days = cities[city]\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            \n            # Check constraints\n            for constraint in constraints:\n                if constraint['city'] == city:\n                    start, end = constraint['day_range']\n                    if not (current_day <= start and end <= end_day):\n                        valid = False\n                        break\n            if not valid:\n                break\n            \n            prev_city = city\n            current_day = end_day + 1\n        \n        # Check if all days are used (16 days)\n        if valid and current_day - 1 == 16:\n            return itinerary\n    \n    return None\n\ndef main():\n    itinerary = find_valid_itinerary()\n    if itinerary:\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_995"
+        }
+    ]
+}

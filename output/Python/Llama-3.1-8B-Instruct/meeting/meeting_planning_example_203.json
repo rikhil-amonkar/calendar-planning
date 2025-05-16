@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "9:00",
+                        "end_time": "12:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "12:00",
+                        "end_time": "15:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "David",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Timothy",
+                        "start_time": "11:12",
+                        "end_time": "12:27"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Robert",
+                        "start_time": "12:42",
+                        "end_time": "14:12"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    'Financial District': {'Fisherman\\'s Wharf': 10, 'Pacific Heights': 13, 'Mission District': 17},\n    'Fisherman\\'s Wharf': {'Financial District': 11, 'Pacific Heights': 12, 'Mission District': 22},\n    'Pacific Heights': {'Financial District': 13, 'Fisherman\\'s Wharf': 13, 'Mission District': 15},\n    'Mission District': {'Financial District': 17, 'Fisherman\\'s Wharf': 22, 'Pacific Heights': 16}\n}\n\n# Constraints\nconstraints = {\n    'David': {'location': 'Fisherman\\'s Wharf','start_time': '10:45', 'end_time': '15:30','required_time': 15},\n    'Timothy': {'location': 'Pacific Heights','start_time': '09:00', 'end_time': '15:30','required_time': 75},\n    'Robert': {'location': 'Mission District','start_time': '12:15', 'end_time': '19:45','required_time': 90}\n}\n\ndef calculate_travel_time(start_location, end_location):\n    return travel_distances[start_location][end_location]\n\ndef is_valid_meeting(person, start_time, end_time, required_time):\n    return (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=required_time)).time() <= datetime.strptime(end_time, '%H:%M').time()\n\ndef schedule_meeting(person, start_time, end_time, required_time, location):\n    travel_time = calculate_travel_time('Financial District', location)\n    start_time = (datetime.strptime(start_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    end_time = (datetime.strptime(end_time, '%H:%M') + timedelta(minutes=travel_time)).strftime('%H:%M')\n    return is_valid_meeting(person, start_time, end_time, required_time)\n\ndef generate_itinerary():\n    itinerary = []\n    start_time = '09:00'\n    end_time = '12:00'\n    \n    for person in constraints:\n        location = constraints[person]['location']\n        start_person_time = constraints[person]['start_time']\n        end_person_time = constraints[person]['end_time']\n        required_time = constraints[person]['required_time']\n        \n        if schedule_meeting(person, start_time, end_time, required_time, location):\n            itinerary.append({\n                'action':'meet',\n                'location': location,\n                'person': person,\n'start_time': start_time,\n                'end_time': end_time\n            })\n            start_time = end_time\n            end_time = (datetime.strptime(end_person_time, '%H:%M') + timedelta(minutes=required_time)).strftime('%H:%M')\n    \n    return itinerary\n\ndef main():\n    itinerary = generate_itinerary()\n    print(json.dumps({'itinerary': itinerary}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_203"
+        }
+    ]
+}

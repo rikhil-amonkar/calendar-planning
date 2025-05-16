@@ -1,0 +1,143 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "9:52",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Jessica",
+                        "start_time": "20:29",
+                        "end_time": "15:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jason",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "John",
+                        "start_time": "17:34",
+                        "end_time": "17:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "18:06",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "19:16",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Amanda",
+                        "start_time": "20:00",
+                        "end_time": "21:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "22:51",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Rebecca",
+                        "start_time": "13:40",
+                        "end_time": "14:55"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Jessica",
+                        "start_time": "9:13",
+                        "end_time": "11:13"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "John",
+                        "start_time": "11:18",
+                        "end_time": "11:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Nancy",
+                        "start_time": "11:40",
+                        "end_time": "12:25"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Rebecca",
+                        "start_time": "12:49",
+                        "end_time": "14:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jason",
+                        "start_time": "15:15",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Mark",
+                        "start_time": "18:28",
+                        "end_time": "19:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kevin",
+                        "start_time": "20:45",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances (in minutes)\ntravel_distances = {\n    \"Union Square\": {\n        \"Mission District\": 14,\n        \"Fisherman's Wharf\": 15,\n        \"Russian Hill\": 13,\n        \"Marina District\": 18,\n        \"North Beach\": 10,\n        \"Chinatown\": 7,\n        \"Pacific Heights\": 15,\n        \"The Castro\": 17,\n        \"Nob Hill\": 9,\n        \"Sunset District\": 27\n    },\n    \"Mission District\": {\n        \"Union Square\": 15,\n        \"Fisherman's Wharf\": 22,\n        \"Russian Hill\": 15,\n        \"Marina District\": 19,\n        \"North Beach\": 17,\n        \"Chinatown\": 16,\n        \"Pacific Heights\": 16,\n        \"The Castro\": 7,\n        \"Nob Hill\": 12,\n        \"Sunset District\": 24\n    },\n    \"Fisherman's Wharf\": {\n        \"Union Square\": 13,\n        \"Mission District\": 22,\n        \"Russian Hill\": 7,\n        \"Marina District\": 9,\n        \"North Beach\": 6,\n        \"Chinatown\": 12,\n        \"Pacific Heights\": 12,\n        \"The Castro\": 27,\n        \"Nob Hill\": 11,\n        \"Sunset District\": 27\n    },\n    \"Russian Hill\": {\n        \"Union Square\": 10,\n        \"Mission District\": 16,\n        \"Fisherman's Wharf\": 7,\n        \"Marina District\": 7,\n        \"North Beach\": 5,\n        \"Chinatown\": 9,\n        \"Pacific Heights\": 7,\n        \"The Castro\": 21,\n        \"Nob Hill\": 5,\n        \"Sunset District\": 23\n    },\n    \"Marina District\": {\n        \"Union Square\": 16,\n        \"Mission District\": 20,\n        \"Fisherman's Wharf\": 10,\n        \"Russian Hill\": 8,\n        \"North Beach\": 11,\n        \"Chinatown\": 15,\n        \"Pacific Heights\": 7,\n        \"The Castro\": 22,\n        \"Nob Hill\": 12,\n        \"Sunset District\": 19\n    },\n    \"North Beach\": {\n        \"Union Square\": 7,\n        \"Mission District\": 18,\n        \"Fisherman's Wharf\": 5,\n        \"Russian Hill\": 4,\n        \"Marina District\": 9,\n        \"Chinatown\": 6,\n        \"Pacific Heights\": 8,\n        \"The Castro\": 23,\n        \"Nob Hill\": 7,\n        \"Sunset District\": 27\n    },\n    \"Chinatown\": {\n        \"Union Square\": 7,\n        \"Mission District\": 17,\n        \"Fisherman's Wharf\": 8,\n        \"Russian Hill\": 7,\n        \"Marina District\": 12,\n        \"North Beach\": 3,\n        \"Pacific Heights\": 10,\n        \"The Castro\": 22,\n        \"Nob Hill\": 9,\n        \"Sunset District\": 29\n    },\n    \"Pacific Heights\": {\n        \"Union Square\": 12,\n        \"Mission District\": 15,\n        \"Fisherman's Wharf\": 13,\n        \"Russian Hill\": 7,\n        \"Marina District\": 6,\n        \"North Beach\": 9,\n        \"Chinatown\": 11,\n        \"The Castro\": 16,\n        \"Nob Hill\": 8,\n        \"Sunset District\": 21\n    },\n    \"The Castro\": {\n        \"Union Square\": 19,\n        \"Mission District\": 7,\n        \"Fisherman's Wharf\": 24,\n        \"Russian Hill\": 18,\n        \"Marina District\": 21,\n        \"North Beach\": 20,\n        \"Chinatown\": 22,\n        \"Pacific Heights\": 16,\n        \"Nob Hill\": 16,\n        \"Sunset District\": 17\n    },\n    \"Nob Hill\": {\n        \"Union Square\": 7,\n        \"Mission District\": 13,\n        \"Fisherman's Wharf\": 10,\n        \"Russian Hill\": 5,\n        \"Marina District\": 11,\n        \"North Beach\": 8,\n        \"Chinatown\": 6,\n        \"Pacific Heights\": 8,\n        \"The Castro\": 17,\n        \"Sunset District\": 24\n    },\n    \"Sunset District\": {\n        \"Union Square\": 30,\n        \"Mission District\": 25,\n        \"Fisherman's Wharf\": 29,\n        \"Russian Hill\": 24,\n        \"Marina District\": 21,\n        \"North Beach\": 28,\n        \"Chinatown\": 30,\n        \"Pacific Heights\": 21,\n        \"The Castro\": 17,\n        \"Nob Hill\": 27\n    }\n}\n\n# Meeting constraints\nmeetings = [\n    {\"name\": \"Kevin\", \"location\": \"Mission District\", \"start_time\": \"20:45\", \"end_time\": \"21:45\", \"duration\": 60},\n    {\"name\": \"Mark\", \"location\": \"Fisherman's Wharf\", \"start_time\": \"17:15\", \"end_time\": \"20:00\", \"duration\": 90},\n    {\"name\": \"Jessica\", \"location\": \"Russian Hill\", \"start_time\": \"09:00\", \"end_time\": \"15:00\", \"duration\": 120},\n    {\"name\": \"Jason\", \"location\": \"Marina District\", \"start_time\": \"15:15\", \"end_time\": \"21:45\", \"duration\": 120},\n    {\"name\": \"John\", \"location\": \"North Beach\", \"start_time\": \"09:45\", \"end_time\": \"18:00\", \"duration\": 15},\n    {\"name\": \"Karen\", \"location\": \"Chinatown\", \"start_time\": \"16:45\", \"end_time\": \"19:00\", \"duration\": 75},\n    {\"name\": \"Sarah\", \"location\": \"Pacific Heights\", \"start_time\": \"17:30\", \"end_time\": \"18:15\", \"duration\": 45},\n    {\"name\": \"Amanda\", \"location\": \"The Castro\", \"start_time\": \"20:00\", \"end_time\": \"21:15\", \"duration\": 60},\n    {\"name\": \"Nancy\", \"location\": \"Nob Hill\", \"start_time\": \"09:45\", \"end_time\": \"13:00\", \"duration\": 45},\n    {\"name\": \"Rebecca\", \"location\": \"Sunset District\", \"start_time\": \"08:45\", \"end_time\": \"15:00\", \"duration\": 75}\n]\n\ndef calculate_itinerary(meetings, travel_distances):\n    itinerary = []\n    current_location = \"Union Square\"\n    current_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n    for meeting in meetings:\n        travel_time = travel_distances[current_location][meeting[\"location\"]]\n        arrival_time = current_time + timedelta(minutes=travel_time)\n        start_time = datetime.strptime(meeting[\"start_time\"], \"%H:%M\")\n        end_time = datetime.strptime(meeting[\"end_time\"], \"%H:%M\")\n\n        if arrival_time < start_time:\n            wait_time = start_time - arrival_time\n            current_time = start_time\n        else:\n            wait_time = timedelta(0)\n\n        meeting_start_time = max(arrival_time, start_time)\n        meeting_end_time = min(meeting_start_time + timedelta(minutes=meeting[\"duration\"]), end_time)\n\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"name\"],\n            \"start_time\": meeting_start_time.strftime(\"%H:%M\"),\n            \"end_time\": meeting_end_time.strftime(\"%H:%M\")\n        })\n\n        current_time = meeting_end_time + wait_time + timedelta(minutes=travel_time)\n        current_location = meeting[\"location\"]\n\n    return itinerary\n\nitinerary = calculate_itinerary(meetings, travel_distances)\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_940"
+        }
+    ]
+}

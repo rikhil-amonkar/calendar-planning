@@ -1,0 +1,37 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Helen",
+                        "start_time": "9:08",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Kimberly",
+                        "start_time": "16:30",
+                        "end_time": "17:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Patricia",
+                        "start_time": "18:00",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the locations and travel times\nlocations = {\n    \"Nob Hill\": {},\n    \"North Beach\": {},\n    \"Fisherman's Wharf\": {},\n    \"Bayview\": {}\n}\n\ntravel_times = {\n    (\"Nob Hill\", \"North Beach\"): 8,\n    (\"Nob Hill\", \"Fisherman's Wharf\"): 11,\n    (\"Nob Hill\", \"Bayview\"): 19,\n    (\"North Beach\", \"Nob Hill\"): 7,\n    (\"North Beach\", \"Fisherman's Wharf\"): 5,\n    (\"North Beach\", \"Bayview\"): 22,\n    (\"Fisherman's Wharf\", \"Nob Hill\"): 11,\n    (\"Fisherman's Wharf\", \"North Beach\"): 6,\n    (\"Fisherman's Wharf\", \"Bayview\"): 26,\n    (\"Bayview\", \"Nob Hill\"): 20,\n    (\"Bayview\", \"North Beach\"): 21,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25\n}\n\n# Define the meeting constraints\nmeetings = [\n    {\"location\": \"North Beach\", \"person\": \"Helen\", \"start_time\": 7, \"end_time\": 16.75, \"duration\": 120},\n    {\"location\": \"Fisherman's Wharf\", \"person\": \"Kimberly\", \"start_time\": 16.5, \"end_time\": 21, \"duration\": 45},\n    {\"location\": \"Bayview\", \"person\": \"Patricia\", \"start_time\": 18, \"end_time\": 21.25, \"duration\": 120}\n]\n\n# Define the start time and location\nstart_time = 9\nstart_location = \"Nob Hill\"\n\n# Function to calculate the travel time between two locations\ndef get_travel_time(location1, location2):\n    return travel_times.get((location1, location2), float('inf'))\n\n# Function to check if a meeting can be scheduled\ndef can_schedule_meeting(meeting, current_time, current_location):\n    travel_time = get_travel_time(current_location, meeting[\"location\"])\n    if current_time + travel_time > meeting[\"start_time\"]:\n        return False\n    if current_time + travel_time + meeting[\"duration\"] / 60 > meeting[\"end_time\"]:\n        return False\n    return True\n\n# Function to generate the itinerary\ndef generate_itinerary(meetings, start_time, start_location):\n    itinerary = []\n    current_time = start_time\n    current_location = start_location\n    for meeting in meetings:\n        if can_schedule_meeting(meeting, current_time, current_location):\n            travel_time = get_travel_time(current_location, meeting[\"location\"])\n            start_time = max(current_time + travel_time, meeting[\"start_time\"])\n            end_time = start_time + meeting[\"duration\"] / 60\n            itinerary.append({\"action\": \"meet\", \"location\": meeting[\"location\"], \"person\": meeting[\"person\"], \"start_time\": f\"{int(start_time)}:{int((start_time % 1) * 60):02}\", \"end_time\": f\"{int(end_time)}:{int((end_time % 1) * 60):02}\"})\n            current_time = end_time\n            current_location = meeting[\"location\"]\n    return itinerary\n\n# Generate the itinerary\nitinerary = generate_itinerary(meetings, start_time, start_location)\n\n# Print the itinerary in JSON format\nprint(json.dumps({\"itinerary\": itinerary}, indent=4))\n```",
+            "count": "meeting_planning_example_222"
+        }
+    ]
+}

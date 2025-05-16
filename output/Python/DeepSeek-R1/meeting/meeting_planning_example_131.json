@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport json\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ntravel_times = {\n    'Pacific Heights': {'Presidio': 11, 'Marina District': 6},\n    'Presidio': {'Pacific Heights': 11, 'Marina District': 10},\n    'Marina District': {'Pacific Heights': 7, 'Presidio': 10}\n}\n\nitinerary = []\ncurrent_time = 9 * 60  # 9:00 AM\ncurrent_loc = 'Pacific Heights'\n\n# Meet Jason first\ntravel_time = travel_times[current_loc]['Presidio']\narrival = current_time + travel_time\njason_start = max(arrival, 10 * 60)\njason_end = jason_start + 90\n\nif jason_end <= 16 * 60 + 15:\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": \"Presidio\",\n        \"person\": \"Jason\",\n        \"start_time\": format_time(jason_start),\n        \"end_time\": format_time(jason_end)\n    })\n    current_time = jason_end\n    current_loc = 'Presidio'\n\n    # Travel to Marina\n    travel_time = travel_times[current_loc]['Marina District']\n    arrival = current_time + travel_time\n    kenneth_start = max(arrival, 15 * 60 + 30)\n    kenneth_end = min(kenneth_start + 45, 16 * 60 + 45)\n\n    if kenneth_end - kenneth_start >= 45:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Marina District\",\n            \"person\": \"Kenneth\",\n            \"start_time\": format_time(kenneth_start),\n            \"end_time\": format_time(kenneth_end)\n        })\n\nprint(json.dumps({\"itinerary\": itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_131"
+        }
+    ]
+}

@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Sarah",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Richard",
+                        "start_time": "11:45",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "13:26",
+                        "end_time": "15:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "18:15",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Sarah",
+                        "start_time": "10:45",
+                        "end_time": "11:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Richard",
+                        "start_time": "11:45",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Elizabeth",
+                        "start_time": "13:26",
+                        "end_time": "15:26"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Michelle",
+                        "start_time": "18:15",
+                        "end_time": "19:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport itertools\n\ndef time_to_minutes(time_str):\n    # time_str format: \"H:MM\" in 24-hour format\n    parts = time_str.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_timestr(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    # Using no leading zero for hour, but ensuring minute is two-digit if needed.\n    return f\"{hour}:{minute:02d}\"\n\n# Input parameters\nstart_time_str = \"9:00\"  # Arrival at Richmond District\nstart_location = \"Richmond District\"\nstart_time = time_to_minutes(start_time_str)\n\n# Friends meeting constraints\nfriends = [\n    {\n        \"name\": \"Sarah\",\n        \"location\": \"Sunset District\",\n        \"avail_start\": time_to_minutes(\"10:45\"),\n        \"avail_end\": time_to_minutes(\"19:00\"),\n        \"min_duration\": 30\n    },\n    {\n        \"name\": \"Richard\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": time_to_minutes(\"11:45\"),\n        \"avail_end\": time_to_minutes(\"15:45\"),\n        \"min_duration\": 90\n    },\n    {\n        \"name\": \"Elizabeth\",\n        \"location\": \"Mission District\",\n        \"avail_start\": time_to_minutes(\"11:00\"),\n        \"avail_end\": time_to_minutes(\"17:15\"),\n        \"min_duration\": 120\n    },\n    {\n        \"name\": \"Michelle\",\n        \"location\": \"Golden Gate Park\",\n        \"avail_start\": time_to_minutes(\"18:15\"),\n        \"avail_end\": time_to_minutes(\"20:45\"),\n        \"min_duration\": 90\n    }\n]\n\n# Travel times (in minutes) as a dictionary with (from, to) tuples\ntravel_times = {\n    (\"Richmond District\", \"Sunset District\"): 11,\n    (\"Richmond District\", \"Haight-Ashbury\"): 10,\n    (\"Richmond District\", \"Mission District\"): 20,\n    (\"Richmond District\", \"Golden Gate Park\"): 9,\n    (\"Sunset District\", \"Richmond District\"): 12,\n    (\"Sunset District\", \"Haight-Ashbury\"): 15,\n    (\"Sunset District\", \"Mission District\"): 24,\n    (\"Sunset District\", \"Golden Gate Park\"): 11,\n    (\"Haight-Ashbury\", \"Richmond District\"): 10,\n    (\"Haight-Ashbury\", \"Sunset District\"): 15,\n    (\"Haight-Ashbury\", \"Mission District\"): 11,\n    (\"Haight-Ashbury\", \"Golden Gate Park\"): 7,\n    (\"Mission District\", \"Richmond District\"): 20,\n    (\"Mission District\", \"Sunset District\"): 24,\n    (\"Mission District\", \"Haight-Ashbury\"): 12,\n    (\"Mission District\", \"Golden Gate Park\"): 17,\n    (\"Golden Gate Park\", \"Richmond District\"): 7,\n    (\"Golden Gate Park\", \"Sunset District\"): 10,\n    (\"Golden Gate Park\", \"Haight-Ashbury\"): 7,\n    (\"Golden Gate Park\", \"Mission District\"): 17,\n}\n\n# Function to simulate meeting schedule for a given order of friend visits.\ndef simulate_schedule(order):\n    current_time = start_time\n    current_location = start_location\n    itinerary = []\n    \n    for friend in order:\n        # Determine travel time from current location to friend's location\n        travel_key = (current_location, friend[\"location\"])\n        # In case there is no direct key (should be present as per input), we assume not feasible.\n        if travel_key not in travel_times:\n            return None, None\n        travel_time = travel_times[travel_key]\n        arrival_time = current_time + travel_time\n        \n        # Meeting can only start when friend is available.\n        meeting_start = max(arrival_time, friend[\"avail_start\"])\n        meeting_end = meeting_start + friend[\"min_duration\"]\n        \n        # Check if meeting can finish before friend leaves.\n        if meeting_end > friend[\"avail_end\"]:\n            return None, None\n        \n        # Add meeting details to itinerary\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_timestr(meeting_start),\n            \"end_time\": minutes_to_timestr(meeting_end)\n        })\n        \n        # Update current time and location for next travel.\n        current_time = meeting_end\n        current_location = friend[\"location\"]\n    \n    return itinerary, current_time\n\n# We want to maximize the number of friends met.\n# We'll try all permutations of the friends list.\nbest_itinerary = None\nbest_count = 0\nbest_finish_time = None\n\nfor order in itertools.permutations(friends):\n    schedule, finish_time = simulate_schedule(order)\n    if schedule is not None:\n        meeting_count = len(schedule)\n        # We prefer schedules that do more meetings, and tie-breaker: earlier finish time.\n        if meeting_count > best_count or (meeting_count == best_count and (best_finish_time is None or finish_time < best_finish_time)):\n            best_itinerary = schedule\n            best_count = meeting_count\n            best_finish_time = finish_time\n\n# If no full schedule is feasible with all meetings, best_itinerary might be None.\n# For this problem, the computed schedule order should be feasible.\nif best_itinerary is None:\n    result = {\"itinerary\": []}\nelse:\n    result = {\"itinerary\": best_itinerary}\n\n# Output result as JSON-formatted dictionary.\nprint(json.dumps(result, indent=2))\n",
+            "count": "meeting_planning_example_312"
+        }
+    ]
+}

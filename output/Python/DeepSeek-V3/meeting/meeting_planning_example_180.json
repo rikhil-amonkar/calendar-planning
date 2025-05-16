@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "James",
+                        "start_time": "12:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "14:07",
+                        "end_time": "14:37"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "James",
+                        "start_time": "12:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "14:07",
+                        "end_time": "14:37"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef calculate_schedule():\n    # Input parameters\n    arrival_time = parse_time(\"9:00\")\n    james_available_start = parse_time(\"12:45\")\n    james_available_end = parse_time(\"14:00\")\n    james_min_duration = timedelta(minutes=75)\n    robert_available_start = parse_time(\"12:45\")\n    robert_available_end = parse_time(\"15:15\")\n    robert_min_duration = timedelta(minutes=30)\n    \n    # Travel times in minutes\n    travel_times = {\n        (\"North Beach\", \"Mission District\"): 18,\n        (\"North Beach\", \"The Castro\"): 22,\n        (\"Mission District\", \"North Beach\"): 17,\n        (\"Mission District\", \"The Castro\"): 7,\n        (\"The Castro\", \"North Beach\"): 20,\n        (\"The Castro\", \"Mission District\"): 7,\n    }\n    \n    # Possible schedules\n    best_schedule = []\n    max_meetings = 0\n    \n    # Option 1: Meet James only\n    current_location = \"North Beach\"\n    current_time = arrival_time\n    \n    # Travel to Mission District to meet James\n    travel_time = travel_times[(current_location, \"Mission District\")]\n    arrival_at_james = current_time + timedelta(minutes=travel_time)\n    \n    if arrival_at_james <= james_available_end - james_min_duration:\n        meet_james_start = max(arrival_at_james, james_available_start)\n        meet_james_end = meet_james_start + james_min_duration\n        if meet_james_end <= james_available_end:\n            schedule = [\n                {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"James\", \n                 \"start_time\": format_time(meet_james_start), \"end_time\": format_time(meet_james_end)}\n            ]\n            if len(schedule) > max_meetings:\n                best_schedule = schedule\n                max_meetings = len(schedule)\n    \n    # Option 2: Meet Robert only\n    current_location = \"North Beach\"\n    current_time = arrival_time\n    \n    # Travel to The Castro to meet Robert\n    travel_time = travel_times[(current_location, \"The Castro\")]\n    arrival_at_robert = current_time + timedelta(minutes=travel_time)\n    \n    if arrival_at_robert <= robert_available_end - robert_min_duration:\n        meet_robert_start = max(arrival_at_robert, robert_available_start)\n        meet_robert_end = meet_robert_start + robert_min_duration\n        if meet_robert_end <= robert_available_end:\n            schedule = [\n                {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Robert\", \n                 \"start_time\": format_time(meet_robert_start), \"end_time\": format_time(meet_robert_end)}\n            ]\n            if len(schedule) > max_meetings:\n                best_schedule = schedule\n                max_meetings = len(schedule)\n    \n    # Option 3: Meet both (James first)\n    current_location = \"North Beach\"\n    current_time = arrival_time\n    \n    # Travel to Mission District to meet James\n    travel_time = travel_times[(current_location, \"Mission District\")]\n    arrival_at_james = current_time + timedelta(minutes=travel_time)\n    \n    if arrival_at_james <= james_available_end - james_min_duration:\n        meet_james_start = max(arrival_at_james, james_available_start)\n        meet_james_end = meet_james_start + james_min_duration\n        if meet_james_end <= james_available_end:\n            # Travel to The Castro to meet Robert\n            travel_time = travel_times[(\"Mission District\", \"The Castro\")]\n            arrival_at_robert = meet_james_end + timedelta(minutes=travel_time)\n            \n            if arrival_at_robert <= robert_available_end - robert_min_duration:\n                meet_robert_start = max(arrival_at_robert, robert_available_start)\n                meet_robert_end = meet_robert_start + robert_min_duration\n                if meet_robert_end <= robert_available_end:\n                    schedule = [\n                        {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"James\", \n                         \"start_time\": format_time(meet_james_start), \"end_time\": format_time(meet_james_end)},\n                        {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Robert\", \n                         \"start_time\": format_time(meet_robert_start), \"end_time\": format_time(meet_robert_end)}\n                    ]\n                    if len(schedule) > max_meetings:\n                        best_schedule = schedule\n                        max_meetings = len(schedule)\n    \n    # Option 4: Meet both (Robert first)\n    current_location = \"North Beach\"\n    current_time = arrival_time\n    \n    # Travel to The Castro to meet Robert\n    travel_time = travel_times[(current_location, \"The Castro\")]\n    arrival_at_robert = current_time + timedelta(minutes=travel_time)\n    \n    if arrival_at_robert <= robert_available_end - robert_min_duration:\n        meet_robert_start = max(arrival_at_robert, robert_available_start)\n        meet_robert_end = meet_robert_start + robert_min_duration\n        if meet_robert_end <= robert_available_end:\n            # Travel to Mission District to meet James\n            travel_time = travel_times[(\"The Castro\", \"Mission District\")]\n            arrival_at_james = meet_robert_end + timedelta(minutes=travel_time)\n            \n            if arrival_at_james <= james_available_end - james_min_duration:\n                meet_james_start = max(arrival_at_james, james_available_start)\n                meet_james_end = meet_james_start + james_min_duration\n                if meet_james_end <= james_available_end:\n                    schedule = [\n                        {\"action\": \"meet\", \"location\": \"The Castro\", \"person\": \"Robert\", \n                         \"start_time\": format_time(meet_robert_start), \"end_time\": format_time(meet_robert_end)},\n                        {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"James\", \n                         \"start_time\": format_time(meet_james_start), \"end_time\": format_time(meet_james_end)}\n                    ]\n                    if len(schedule) > max_meetings:\n                        best_schedule = schedule\n                        max_meetings = len(schedule)\n    \n    return {\"itinerary\": best_schedule}\n\nif __name__ == \"__main__\":\n    schedule = calculate_schedule()\n    print(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_180"
+        }
+    ]
+}

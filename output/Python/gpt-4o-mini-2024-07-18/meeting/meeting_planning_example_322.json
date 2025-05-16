@@ -1,0 +1,66 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Robert",
+                        "start_time": "9:29",
+                        "end_time": "9:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Michelle",
+                        "start_time": "10:29",
+                        "end_time": "10:44"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "George",
+                        "start_time": "11:00",
+                        "end_time": "11:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Michelle",
+                        "start_time": "9:30",
+                        "end_time": "9:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "George",
+                        "start_time": "10:30",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Robert",
+                        "start_time": "11:19",
+                        "end_time": "11:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "William",
+                        "start_time": "18:30",
+                        "end_time": "20:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define meeting locations and travel times\ntravel_times = {\n    (\"Sunset District\", \"Russian Hill\"): 24,\n    (\"Sunset District\", \"Chinatown\"): 30,\n    (\"Sunset District\", \"Presidio\"): 16,\n    (\"Sunset District\", \"Fisherman's Wharf\"): 29,\n    (\"Russian Hill\", \"Sunset District\"): 23,\n    (\"Russian Hill\", \"Chinatown\"): 9,\n    (\"Russian Hill\", \"Presidio\"): 14,\n    (\"Russian Hill\", \"Fisherman's Wharf\"): 7,\n    (\"Chinatown\", \"Sunset District\"): 29,\n    (\"Chinatown\", \"Russian Hill\"): 7,\n    (\"Chinatown\", \"Presidio\"): 19,\n    (\"Chinatown\", \"Fisherman's Wharf\"): 8,\n    (\"Presidio\", \"Sunset District\"): 15,\n    (\"Presidio\", \"Russian Hill\"): 14,\n    (\"Presidio\", \"Chinatown\"): 21,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Fisherman's Wharf\", \"Sunset District\"): 27,\n    (\"Fisherman's Wharf\", \"Russian Hill\"): 7,\n    (\"Fisherman's Wharf\", \"Chinatown\"): 12,\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n}\n\n# Define participants with their availability and required meeting time\nparticipants = {\n    \"William\": {\"location\": \"Russian Hill\", \"available\": (datetime.strptime(\"18:30\", \"%H:%M\"), datetime.strptime(\"20:45\", \"%H:%M\")), \"min_meeting_time\": timedelta(minutes=105)},\n    \"Michelle\": {\"location\": \"Chinatown\", \"available\": (datetime.strptime(\"08:15\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")), \"min_meeting_time\": timedelta(minutes=15)},\n    \"George\": {\"location\": \"Presidio\", \"available\": (datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"18:45\", \"%H:%M\")), \"min_meeting_time\": timedelta(minutes=30)},\n    \"Robert\": {\"location\": \"Fisherman's Wharf\", \"available\": (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"13:45\", \"%H:%M\")), \"min_meeting_time\": timedelta(minutes=30)},\n}\n\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\nitinerary = []\n\n# Create a method to calculate meeting time slots\ndef can_meet(person, start_time, duration):\n    end_time = start_time + duration\n    av_start, av_end = participants[person][\"available\"]\n    return start_time >= av_start and end_time <= av_end\n\n# Function to compute the meeting schedule\ndef schedule_meetings(start_time, current_location):\n    meetings = []\n\n    # Try to meet each participant in order of priority\n    if can_meet(\"Robert\", start_time + timedelta(minutes=travel_times[(current_location, \"Fisherman's Wharf\")]), participants[\"Robert\"][\"min_meeting_time\"]):\n        meet_start = start_time + timedelta(minutes=travel_times[(current_location, \"Fisherman's Wharf\")])\n        meetings.append({\n            \"action\": \"meet\",\n            \"location\": \"Fisherman's Wharf\",\n            \"person\": \"Robert\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": (meet_start + participants[\"Robert\"][\"min_meeting_time\"]).strftime(\"%H:%M\"),\n        })\n        start_time = meet_start + participants[\"Robert\"][\"min_meeting_time\"]\n\n    if can_meet(\"Michelle\", start_time + timedelta(minutes=travel_times[(current_location, \"Chinatown\")]), participants[\"Michelle\"][\"min_meeting_time\"]):\n        meet_start = start_time + timedelta(minutes=travel_times[(current_location, \"Chinatown\")])\n        meetings.append({\n            \"action\": \"meet\",\n            \"location\": \"Chinatown\",\n            \"person\": \"Michelle\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": (meet_start + participants[\"Michelle\"][\"min_meeting_time\"]).strftime(\"%H:%M\"),\n        })\n        start_time = meet_start + participants[\"Michelle\"][\"min_meeting_time\"]\n\n    if can_meet(\"George\", start_time + timedelta(minutes=travel_times[(current_location, \"Presidio\")]), participants[\"George\"][\"min_meeting_time\"]):\n        meet_start = start_time + timedelta(minutes=travel_times[(current_location, \"Presidio\")])\n        meetings.append({\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"George\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": (meet_start + participants[\"George\"][\"min_meeting_time\"]).strftime(\"%H:%M\"),\n        })\n        start_time = meet_start + participants[\"George\"][\"min_meeting_time\"]\n\n    if can_meet(\"William\", start_time + timedelta(minutes=travel_times[(current_location, \"Russian Hill\")]), participants[\"William\"][\"min_meeting_time\"]):\n        meet_start = start_time + timedelta(minutes=travel_times[(current_location, \"Russian Hill\")])\n        meetings.append({\n            \"action\": \"meet\",\n            \"location\": \"Russian Hill\",\n            \"person\": \"William\",\n            \"start_time\": meet_start.strftime(\"%H:%M\"),\n            \"end_time\": (meet_start + participants[\"William\"][\"min_meeting_time\"]).strftime(\"%H:%M\"),\n        })\n\n    return meetings\n\n# Compute the optimal schedule starting from Sunset District\nitinerary = schedule_meetings(start_time, \"Sunset District\")\n\n# Output in JSON format\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_322"
+        }
+    ]
+}

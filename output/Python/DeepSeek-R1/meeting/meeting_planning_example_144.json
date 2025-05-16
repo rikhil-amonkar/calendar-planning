@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "12:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "13:47",
+                        "end_time": "14:17"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Laura",
+                        "start_time": "12:15",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "13:47",
+                        "end_time": "14:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n```python\nimport datetime\nfrom datetime import datetime as dt, timedelta\nimport itertools\nimport json\n\ndef parse_time(time_str):\n    return dt.strptime(time_str, '%H:%M')\n\ndef time_to_str(dt_obj):\n    return f\"{dt_obj.hour}:{dt_obj.minute:02d}\"\n\ntravel_times = {\n    ('The Castro', 'Mission District'): 7,\n    ('The Castro', 'Financial District'): 20,\n    ('Mission District', 'The Castro'): 7,\n    ('Mission District', 'Financial District'): 17,\n    ('Financial District', 'The Castro'): 23,\n    ('Financial District', 'Mission District'): 17,\n}\n\nfriends = [\n    {\n        'name': 'Laura',\n        'location': 'Mission District',\n        'available_start': '12:15',\n        'available_end': '19:45',\n        'duration': 75,\n    },\n    {\n        'name': 'Anthony',\n        'location': 'Financial District',\n        'available_start': '12:30',\n        'available_end': '14:45',\n        'duration': 30,\n    }\n]\n\nparsed_friends = []\nfor friend in friends:\n    start = parse_time(friend['available_start'])\n    end = parse_time(friend['available_end'])\n    parsed_friend = {\n        'name': friend['name'],\n        'location': friend['location'],\n        'start': dt(year=2000, month=1, day=1, hour=start.hour, minute=start.minute),\n        'end': dt(year=2000, month=1, day=1, hour=end.hour, minute=end.minute),\n        'duration': friend['duration']\n    }\n    parsed_friends.append(parsed_friend)\n\ncurrent_location = 'The Castro'\ncurrent_time = dt(year=2000, month=1, day=1, hour=9, minute=0)\n\nbest_itinerary = None\nbest_end_time = None\n\nfor permutation in itertools.permutations(parsed_friends):\n    temp_time = current_time\n    temp_location = current_location\n    itinerary = []\n    valid = True\n    for friend in permutation:\n        travel_key = (temp_location, friend['location'])\n        if travel_key not in travel_times:\n            valid = False\n            break\n        travel_duration = travel_times[travel_key]\n        arrival_time = temp_time + timedelta(minutes=travel_duration)\n        if arrival_time > friend['end']:\n            valid = False\n            break\n        start_meeting = max(arrival_time, friend['start'])\n        end_meeting = start_meeting + timedelta(minutes=friend['duration'])\n        if end_meeting > friend['end']:\n            valid = False\n            break\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": friend['location'],\n            \"person\": friend['name'],\n            \"start_time\": time_to_str(start_meeting),\n            \"end_time\": time_to_str(end_meeting)\n        })\n        temp_time = end_meeting\n        temp_location = friend['location']\n    if valid and len(itinerary) == len(parsed_friends):\n        if best_itinerary is None or temp_time < best_end_time:\n            best_itinerary = itinerary\n            best_end_time = temp_time\n\noutput = {\"itinerary\": best_itinerary} if best_itinerary else {\"itinerary\": []}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_144"
+        }
+    ]
+}

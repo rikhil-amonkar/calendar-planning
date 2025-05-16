@@ -1,0 +1,23 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Richard",
+                        "start_time": "9:17",
+                        "end_time": "11:17"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef calculate_schedule():\n    # Input parameters\n    arrival_time = parse_time(\"9:00\")\n    richard_available_start = parse_time(\"8:45\")\n    richard_available_end = parse_time(\"13:00\")\n    charles_available_start = parse_time(\"9:45\")\n    charles_available_end = parse_time(\"13:00\")\n    min_meet_richard = timedelta(minutes=120)\n    min_meet_charles = timedelta(minutes=120)\n    \n    # Travel times in minutes\n    travel_times = {\n        (\"Bayview\", \"Union Square\"): 17,\n        (\"Bayview\", \"Presidio\"): 31,\n        (\"Union Square\", \"Bayview\"): 15,\n        (\"Union Square\", \"Presidio\"): 24,\n        (\"Presidio\", \"Bayview\"): 31,\n        (\"Presidio\", \"Union Square\"): 22\n    }\n    \n    # Possible schedules\n    possible_schedules = []\n    \n    # Option 1: Meet Richard first, then Charles\n    # Start with Richard\n    travel_to_richard = timedelta(minutes=travel_times[(\"Bayview\", \"Union Square\")])\n    richard_start = max(arrival_time + travel_to_richard, richard_available_start)\n    richard_end = richard_start + min_meet_richard\n    if richard_end <= richard_available_end:\n        # Then go to Charles\n        travel_to_charles = timedelta(minutes=travel_times[(\"Union Square\", \"Presidio\")])\n        charles_start = max(richard_end + travel_to_charles, charles_available_start)\n        charles_end = charles_start + min_meet_charles\n        if charles_end <= charles_available_end:\n            possible_schedules.append([\n                {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Richard\", \n                 \"start_time\": format_time(richard_start), \"end_time\": format_time(richard_end)},\n                {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Charles\", \n                 \"start_time\": format_time(charles_start), \"end_time\": format_time(charles_end)}\n            ])\n    \n    # Option 2: Meet Charles first, then Richard\n    # Start with Charles\n    travel_to_charles = timedelta(minutes=travel_times[(\"Bayview\", \"Presidio\")])\n    charles_start = max(arrival_time + travel_to_charles, charles_available_start)\n    charles_end = charles_start + min_meet_charles\n    if charles_end <= charles_available_end:\n        # Then go to Richard\n        travel_to_richard = timedelta(minutes=travel_times[(\"Presidio\", \"Union Square\")])\n        richard_start = max(charles_end + travel_to_richard, richard_available_start)\n        richard_end = richard_start + min_meet_richard\n        if richard_end <= richard_available_end:\n            possible_schedules.append([\n                {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Charles\", \n                 \"start_time\": format_time(charles_start), \"end_time\": format_time(charles_end)},\n                {\"action\": \"meet\", \"location\": \"Union Square\", \"person\": \"Richard\", \n                 \"start_time\": format_time(richard_start), \"end_time\": format_time(richard_end)}\n            ])\n    \n    # Select the best schedule (earliest completion time)\n    if possible_schedules:\n        best_schedule = min(possible_schedules, key=lambda s: parse_time(s[-1][\"end_time\"]))\n        return {\"itinerary\": best_schedule}\n    else:\n        return {\"itinerary\": []}\n\nresult = calculate_schedule()\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_118"
+        }
+    ]
+}

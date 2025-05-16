@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "9:23",
+                        "end_time": "11:37"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "13:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Barbara",
+                        "start_time": "13:53",
+                        "end_time": "14:38"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper functions for time manipulation\ndef str_to_time(time_str):\n    # time_str like \"9:00\" in 24h format\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef time_to_str(dt):\n    # Returns time string in H:MM format (strip leading zeros from hour)\n    return f\"{dt.hour}:{dt.minute:02d}\"\n\ndef add_minutes(dt, minutes):\n    return dt + timedelta(minutes=minutes)\n\n# Travel times between locations (in minutes)\ntravel_times = {\n    (\"Financial District\", \"Chinatown\"): 5,\n    (\"Financial District\", \"Golden Gate Park\"): 23,\n    (\"Chinatown\", \"Financial District\"): 5,\n    (\"Chinatown\", \"Golden Gate Park\"): 23,\n    (\"Golden Gate Park\", \"Financial District\"): 26,\n    (\"Golden Gate Park\", \"Chinatown\"): 23\n}\n\n# Meeting constraints and availability\n# Arrival: at Financial District at 9:00\narrival_time_fd = str_to_time(\"9:00\")\n\n# Barbara is at Golden Gate Park from 8:15 to 19:00, minimum meeting: 45 min.\nbarbara_location = \"Golden Gate Park\"\nbarbara_available_start = str_to_time(\"8:15\")\nbarbara_available_end = str_to_time(\"19:00\")\nmin_barbara_meeting = 45  # minutes\n\n# Kenneth is at Chinatown from 12:00 to 15:00, minimum meeting: 90 min.\nkenneth_location = \"Chinatown\"\nkenneth_available_start = str_to_time(\"12:00\")\nkenneth_available_end = str_to_time(\"15:00\")\nmin_kenneth_meeting = 90  # minutes\n\n# Compute itinerary\nitinerary = []\n\n# Step 1: Travel from Financial District to Golden Gate Park to meet Barbara.\nstart_from_fd = arrival_time_fd\ntravel_fd_to_barbara = travel_times[(\"Financial District\", barbara_location)]\nbarbara_meeting_start = add_minutes(start_from_fd, travel_fd_to_barbara)\n# Make sure Barbara is available; if arrival time is before her available start, wait until available_start.\nif barbara_meeting_start < barbara_available_start:\n    barbara_meeting_start = barbara_available_start\n\n# We want to eventually meet Kenneth for 90 minutes in Chinatown starting as early as possible at Kenneth's availability start.\n# To arrive on time to Kenneth, we need to leave Barbara meeting by:\ntravel_barbara_to_kenneth = travel_times[(barbara_location, kenneth_location)]\n# We need to arrive at Kenneth no earlier than his available start (12:00), so departure time from Barbara must be:\nlatest_departure_from_barbara = kenneth_available_start - timedelta(minutes=travel_barbara_to_kenneth)\n\n# We want to allocate at least min_barbara_meeting with Barbara.\n# Our planned Barbara meeting end time must be the minimum between:\n#   (a) latest_departure_from_barbara (to catch Kenneth on time)\n#   (b) what if we choose to extend? But to meet Kenneth\u2019s minimum, we plan to start Kenneth meeting at his available start.\n# So schedule Barbara meeting from barbara_meeting_start until latest_departure_from_barbara,\n# but also enforce that we have at least min_barbara_meeting minutes.\nproposed_barbara_end = latest_departure_from_barbara\n\n# Check if the meeting duration is at least the minimum required.\nduration_barbara = (proposed_barbara_end - barbara_meeting_start).total_seconds() / 60\nif duration_barbara < min_barbara_meeting:\n    # If not enough time, then we adjust by giving the minimum meeting time and then schedule Kenneth meeting later.\n    proposed_barbara_end = add_minutes(barbara_meeting_start, min_barbara_meeting)\n    # But then we must check if arriving at Kenneth is still possible\n    arrival_at_kenneth = add_minutes(proposed_barbara_end, travel_barbara_to_kenneth)\n    if arrival_at_kenneth < kenneth_available_start:\n        # wait until Kenneth becomes available\n        departure_delay = (kenneth_available_start - arrival_at_kenneth).total_seconds()/60\n        proposed_barbara_end = add_minutes(proposed_barbara_end, int(departure_delay))\n        \nbarbara_meeting_end = proposed_barbara_end\n\n# Step 2: Travel from Golden Gate Park to Chinatown for Kenneth.\narrival_at_kenneth = add_minutes(barbara_meeting_end, travel_barbara_to_kenneth)\n# If arrival is before Kenneth is available, then adjust start time to Kenneth_available_start.\nkenneth_meeting_start = kenneth_available_start if arrival_at_kenneth < kenneth_available_start else arrival_at_kenneth\n\n# Schedule Kenneth meeting for at least min_kenneth_meeting minutes.\nkenneth_meeting_end = add_minutes(kenneth_meeting_start, min_kenneth_meeting)\n# Ensure that Kenneth's meeting does not go past his available end time.\nif kenneth_meeting_end > kenneth_available_end:\n    # If it does, adjust meeting start to allow full required duration within his availability.\n    kenneth_meeting_start = kenneth_available_end - timedelta(minutes=min_kenneth_meeting)\n    kenneth_meeting_end = kenneth_available_end\n\n# Build itinerary as list of dicts.\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": barbara_location,\n    \"person\": \"Barbara\",\n    \"start_time\": time_to_str(barbara_meeting_start),\n    \"end_time\": time_to_str(barbara_meeting_end)\n})\nitinerary.append({\n    \"action\": \"meet\",\n    \"location\": kenneth_location,\n    \"person\": \"Kenneth\",\n    \"start_time\": time_to_str(kenneth_meeting_start),\n    \"end_time\": time_to_str(kenneth_meeting_end)\n})\n\n# The final output as a JSON-formatted dictionary.\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))",
+            "count": "meeting_planning_example_137"
+        }
+    ]
+}

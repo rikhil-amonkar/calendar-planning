@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 3-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    # Input parameters\n    total_days = 12\n    cities = {\n        'Prague': {'days': 2},\n        'Berlin': {'days': 3, 'conference_days': [6, 8]},\n        'Tallinn': {'days': 5, 'relatives_days': (8, 12)},\n        'Stockholm': {'days': 5}\n    }\n    \n    direct_flights = {\n        'Berlin': ['Tallinn', 'Stockholm'],\n        'Tallinn': ['Berlin', 'Prague', 'Stockholm'],\n        'Stockholm': ['Tallinn', 'Prague', 'Berlin'],\n        'Prague': ['Tallinn', 'Stockholm']\n    }\n    \n    # Initialize itinerary\n    itinerary = []\n    current_day = 1\n    current_city = None\n    remaining_cities = cities.copy()\n    \n    # Determine the starting city\n    # Must be in Berlin on day 6, so start before that\n    # Possible starting cities: Prague, Stockholm, Tallinn\n    possible_starters = ['Prague', 'Stockholm', 'Tallinn']\n    starter = None\n    \n    for city in possible_starters:\n        if city != 'Berlin':\n            starter = city\n            break\n    \n    current_city = starter\n    stay_duration = cities[starter]['days']\n    end_day = current_day + stay_duration - 1\n    \n    # Add first stay\n    itinerary.append({\n        'day_range': f'Day {current_day}-{end_day}',\n        'place': current_city\n    })\n    \n    current_day = end_day + 1\n    del remaining_cities[current_city]\n    \n    # Next, must be in Berlin by day 6\n    # Current day is after first stay, check if we need to go to Berlin immediately\n    if current_day <= 6:\n        # Need to be in Berlin by day 6\n        next_city = 'Berlin'\n        # Check if there's a direct flight\n        if next_city in direct_flights[current_city]:\n            # Add flight\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': current_city,\n                'to': next_city\n            })\n            current_city = next_city\n            # Determine stay duration in Berlin\n            # Must cover day 6 and day 8\n            # Stay until at least day 8\n            stay_duration = (8 - current_day) + 1\n            end_day = current_day + stay_duration - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': current_city\n            })\n            current_day = end_day + 1\n            del remaining_cities[current_city]\n    \n    # After Berlin, must go to Tallinn for relatives between day 8 and 12\n    if current_day <= 8 and 'Tallinn' in remaining_cities:\n        next_city = 'Tallinn'\n        if next_city in direct_flights[current_city]:\n            itinerary.append({\n                'flying': f'Day {current_day}-{current_day}',\n                'from': current_city,\n                'to': next_city\n            })\n            current_city = next_city\n            # Stay in Tallinn until day 12\n            stay_duration = 12 - current_day + 1\n            end_day = current_day + stay_duration - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': current_city\n            })\n            current_day = end_day + 1\n            del remaining_cities[current_city]\n    \n    # Check if all days are accounted for\n    if current_day <= total_days:\n        # Visit remaining cities if any\n        for city in remaining_cities:\n            if city != current_city and city in direct_flights[current_city]:\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': current_city,\n                    'to': city\n                })\n                current_city = city\n                stay_duration = remaining_cities[city]['days']\n                end_day = current_day + stay_duration - 1\n                if end_day > total_days:\n                    stay_duration = total_days - current_day + 1\n                    end_day = current_day + stay_duration - 1\n                itinerary.append({\n                    'day_range': f'Day {current_day}-{end_day}',\n                    'place': current_city\n                })\n                current_day = end_day + 1\n                del remaining_cities[city]\n                break\n    \n    return itinerary\n\nitinerary = calculate_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_240"
+        }
+    ]
+}

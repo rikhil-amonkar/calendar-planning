@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "15:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Jason",
+                        "start_time": "10:00",
+                        "end_time": "11:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Kenneth",
+                        "start_time": "15:30",
+                        "end_time": "16:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef time_to_minutes(time_str):\n    \"\"\"Convert a time string in H:MM format to minutes after midnight.\"\"\"\n    t = datetime.strptime(time_str, \"%H:%M\")\n    return t.hour * 60 + t.minute\n\ndef minutes_to_time(minutes):\n    \"\"\"Convert minutes after midnight to a time string in H:MM format (24-hour).\"\"\"\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef main():\n    # Input parameters and constraints (in minutes)\n    # Travel times (in minutes)\n    travel = {\n        (\"Pacific Heights\", \"Presidio\"): 11,\n        (\"Pacific Heights\", \"Marina District\"): 6,\n        (\"Presidio\", \"Pacific Heights\"): 11,\n        (\"Presidio\", \"Marina District\"): 10,\n        (\"Marina District\", \"Pacific Heights\"): 7,\n        (\"Marina District\", \"Presidio\"): 10\n    }\n    \n    # Meeting constraints and availability times (in minutes after midnight)\n    start_location = \"Pacific Heights\"\n    arrival_time = time_to_minutes(\"9:00\")\n    \n    # Jason's availability at Presidio\n    jason_location = \"Presidio\"\n    jason_available_start = time_to_minutes(\"10:00\")\n    jason_available_end = time_to_minutes(\"16:15\")\n    jason_min_duration = 90  # minutes\n    \n    # Kenneth's availability at Marina District\n    kenneth_location = \"Marina District\"\n    kenneth_available_start = time_to_minutes(\"15:30\")\n    kenneth_available_end = time_to_minutes(\"16:45\")\n    kenneth_min_duration = 45  # minutes\n\n    # Compute the optimal schedule:\n    # Our goal is to meet both Jason and Kenneth.\n    # Step 1: Travel from Pacific Heights (starting point) to Presidio to meet Jason.\n    time_depart_PH_for_Presidio = arrival_time\n    travel_time_PH_to_Presidio = travel[(start_location, jason_location)]\n    arrival_Presidio = time_depart_PH_for_Presidio + travel_time_PH_to_Presidio\n    # Wait until Jason is available (if needed)\n    meeting_jason_start = max(arrival_Presidio, jason_available_start)\n    \n    # Step 2: Schedule meeting with Jason.\n    # Before meeting Kenneth, we need to be at Marina District by kenneth_available_start.\n    # We are meeting Jason at Presidio and travel from Presidio to Marina District takes:\n    travel_time_Presidio_to_Marina = travel[(jason_location, kenneth_location)]\n    # To start Kenneth's meeting at kenneth_available_start, we must depart Presidio by:\n    depart_Presidio_for_Marina = kenneth_available_start - travel_time_Presidio_to_Marina\n    \n    # Ensure the meeting with Jason is at least his minimum required duration.\n    # We can extend the meeting until depart_Presidio_for_Marina if possible respecting Jason's availability end.\n    meeting_jason_end = min(depart_Presidio_for_Marina, jason_available_end)\n    duration_jason = meeting_jason_end - meeting_jason_start\n    \n    if duration_jason < jason_min_duration:\n        # Not enough time for Jason meeting given travel constraints.\n        raise ValueError(\"Cannot schedule Jason's meeting with the required duration given travel constraints.\")\n    \n    # Step 3: Travel from Presidio to Marina District for Kenneth's meeting.\n    arrival_Marina = depart_Presidio_for_Marina + travel_time_Presidio_to_Marina\n    \n    # Step 4: Schedule meeting with Kenneth.\n    # Kenneth is available from kenneth_available_start, so meeting starts at the later of arrival or availability.\n    meeting_kenneth_start = max(arrival_Marina, kenneth_available_start)\n    # We want to meet him for at least kenneth_min_duration and within his available time.\n    meeting_kenneth_end = meeting_kenneth_start + kenneth_min_duration\n    if meeting_kenneth_end > kenneth_available_end:\n        raise ValueError(\"Cannot schedule Kenneth's meeting with the required duration within his availability.\")\n    \n    itinerary = [\n        {\n            \"action\": \"meet\",\n            \"location\": jason_location,\n            \"person\": \"Jason\",\n            \"start_time\": minutes_to_time(meeting_jason_start),\n            \"end_time\": minutes_to_time(meeting_jason_end)\n        },\n        {\n            \"action\": \"meet\",\n            \"location\": kenneth_location,\n            \"person\": \"Kenneth\",\n            \"start_time\": minutes_to_time(meeting_kenneth_start),\n            \"end_time\": minutes_to_time(meeting_kenneth_end)\n        }\n    ]\n    \n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_131"
+        }
+    ]
+}

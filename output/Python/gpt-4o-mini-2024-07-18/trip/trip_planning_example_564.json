@@ -1,0 +1,53 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 8-14",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the constraints and durations based on the problem statement\n    itinerary = []\n    \n    # Days allocation\n    total_days = 16\n    days_istanbul = 2\n    days_rome = 3\n    days_seville = 4\n    days_naples = 7\n    days_santorini = 4\n\n    # Days spent in Istanbul (Day 6-7 for relatives)\n    itinerary.append({'day_range': 'Day 1-5', 'place': 'Rome'})  # Start in Rome\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Rome', 'to': 'Istanbul'})  # Travel to Istanbul\n    itinerary.append({'day_range': 'Day 6-7', 'place': 'Istanbul'})  # 2 days in Istanbul\n    itinerary.append({'flying': 'Day 7-7', 'from': 'Istanbul', 'to': 'Naples'})  # Travel to Naples\n    itinerary.append({'day_range': 'Day 8-14', 'place': 'Naples'})  # 7 days in Naples\n    itinerary.append({'flying': 'Day 14-14', 'from': 'Naples', 'to': 'Santorini'})  # Travel to Santorini\n    itinerary.append({'day_range': 'Day 15-16', 'place': 'Santorini'})  # 4 days in Santorini (wedding in Day 13-16)\n    \n    # Output the result as a JSON-formatted string\n    return json.dumps(itinerary, indent=2)\n\n# Run the trip planning function\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_564"
+        }
+    ]
+}

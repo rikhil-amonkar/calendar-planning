@@ -1,0 +1,129 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Laura",
+                        "start_time": "9:14",
+                        "end_time": "10:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Charles",
+                        "start_time": "11:30",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "14:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Rebecca",
+                        "start_time": "16:24",
+                        "end_time": "17:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:59",
+                        "end_time": "18:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Patricia",
+                        "start_time": "18:46",
+                        "end_time": "19:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Robert",
+                        "start_time": "19:46",
+                        "end_time": "20:16"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Karen",
+                        "start_time": "20:28",
+                        "end_time": "21:28"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Laura",
+                        "start_time": "9:14",
+                        "end_time": "10:59"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Charles",
+                        "start_time": "11:30",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Margaret",
+                        "start_time": "14:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Rebecca",
+                        "start_time": "16:24",
+                        "end_time": "17:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:59",
+                        "end_time": "18:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Patricia",
+                        "start_time": "18:46",
+                        "end_time": "19:31"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Robert",
+                        "start_time": "19:46",
+                        "end_time": "20:16"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Karen",
+                        "start_time": "20:28",
+                        "end_time": "21:28"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport copy\n\n# Helper functions to convert time\ndef str_to_minutes(timestr):\n    # timestr assumed format \"H:MM\" or \"HH:MM\"\n    parts = timestr.split(\":\")\n    return int(parts[0]) * 60 + int(parts[1])\n\ndef minutes_to_str(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Travel times dictionary: travel_times[from][to] (all given in minutes)\ntravel_times = {\n    \"Marina District\": {\n        \"Bayview\": 27,\n        \"Sunset District\": 19,\n        \"Richmond District\": 11,\n        \"Nob Hill\": 12,\n        \"Chinatown\": 15,\n        \"Haight-Ashbury\": 16,\n        \"North Beach\": 11,\n        \"Russian Hill\": 8,\n        \"Embarcadero\": 14\n    },\n    \"Bayview\": {\n        \"Marina District\": 27,\n        \"Sunset District\": 23,\n        \"Richmond District\": 25,\n        \"Nob Hill\": 20,\n        \"Chinatown\": 19,\n        \"Haight-Ashbury\": 19,\n        \"North Beach\": 22,\n        \"Russian Hill\": 23,\n        \"Embarcadero\": 19\n    },\n    \"Sunset District\": {\n        \"Marina District\": 21,\n        \"Bayview\": 22,\n        \"Richmond District\": 12,\n        \"Nob Hill\": 27,\n        \"Chinatown\": 30,\n        \"Haight-Ashbury\": 15,\n        \"North Beach\": 28,\n        \"Russian Hill\": 24,\n        \"Embarcadero\": 30\n    },\n    \"Richmond District\": {\n        \"Marina District\": 9,\n        \"Bayview\": 27,\n        \"Sunset District\": 11,\n        \"Nob Hill\": 17,\n        \"Chinatown\": 20,\n        \"Haight-Ashbury\": 10,\n        \"North Beach\": 17,\n        \"Russian Hill\": 13,\n        \"Embarcadero\": 19\n    },\n    \"Nob Hill\": {\n        \"Marina District\": 11,\n        \"Bayview\": 19,\n        \"Sunset District\": 24,\n        \"Richmond District\": 14,\n        \"Chinatown\": 6,\n        \"Haight-Ashbury\": 13,\n        \"North Beach\": 8,\n        \"Russian Hill\": 5,\n        \"Embarcadero\": 9\n    },\n    \"Chinatown\": {\n        \"Marina District\": 12,\n        \"Bayview\": 20,\n        \"Sunset District\": 29,\n        \"Richmond District\": 20,\n        \"Nob Hill\": 9,\n        \"Haight-Ashbury\": 19,\n        \"North Beach\": 3,\n        \"Russian Hill\": 7,\n        \"Embarcadero\": 5\n    },\n    \"Haight-Ashbury\": {\n        \"Marina District\": 17,\n        \"Bayview\": 18,\n        \"Sunset District\": 15,\n        \"Richmond District\": 10,\n        \"Nob Hill\": 15,\n        \"Chinatown\": 19,\n        \"North Beach\": 19,\n        \"Russian Hill\": 17,\n        \"Embarcadero\": 20\n    },\n    \"North Beach\": {\n        \"Marina District\": 9,\n        \"Bayview\": 25,\n        \"Sunset District\": 27,\n        \"Richmond District\": 18,\n        \"Nob Hill\": 7,\n        \"Chinatown\": 6,\n        \"Haight-Ashbury\": 18,\n        \"Russian Hill\": 4,\n        \"Embarcadero\": 6\n    },\n    \"Russian Hill\": {\n        \"Marina District\": 7,\n        \"Bayview\": 23,\n        \"Sunset District\": 23,\n        \"Richmond District\": 14,\n        \"Nob Hill\": 5,\n        \"Chinatown\": 9,\n        \"Haight-Ashbury\": 17,\n        \"North Beach\": 5,\n        \"Embarcadero\": 8\n    },\n    \"Embarcadero\": {\n        \"Marina District\": 12,\n        \"Bayview\": 21,\n        \"Sunset District\": 30,\n        \"Richmond District\": 21,\n        \"Nob Hill\": 10,\n        \"Chinatown\": 7,\n        \"Haight-Ashbury\": 21,\n        \"North Beach\": 5,\n        \"Russian Hill\": 8\n    }\n}\n\n# Meeting constraints\n# Each meeting is represented as a dictionary\n# \"person\": person's name, \"location\": meeting location,\n# \"avail_start\": available start time in minutes since midnight,\n# \"avail_end\": available end time,\n# \"duration\": required meeting minutes.\nmeetings = [\n    { \"person\": \"Charles\", \"location\": \"Bayview\", \"avail_start\": str_to_minutes(\"11:30\"), \"avail_end\": str_to_minutes(\"14:30\"), \"duration\": 45 },\n    { \"person\": \"Robert\", \"location\": \"Sunset District\", \"avail_start\": str_to_minutes(\"16:45\"), \"avail_end\": str_to_minutes(\"21:00\"), \"duration\": 30 },\n    { \"person\": \"Karen\", \"location\": \"Richmond District\", \"avail_start\": str_to_minutes(\"19:15\"), \"avail_end\": str_to_minutes(\"21:30\"), \"duration\": 60 },\n    { \"person\": \"Rebecca\", \"location\": \"Nob Hill\", \"avail_start\": str_to_minutes(\"16:15\"), \"avail_end\": str_to_minutes(\"20:30\"), \"duration\": 90 },\n    { \"person\": \"Margaret\", \"location\": \"Chinatown\", \"avail_start\": str_to_minutes(\"14:15\"), \"avail_end\": str_to_minutes(\"19:45\"), \"duration\": 120 },\n    { \"person\": \"Patricia\", \"location\": \"Haight-Ashbury\", \"avail_start\": str_to_minutes(\"14:30\"), \"avail_end\": str_to_minutes(\"20:30\"), \"duration\": 45 },\n    { \"person\": \"Mark\", \"location\": \"North Beach\", \"avail_start\": str_to_minutes(\"14:00\"), \"avail_end\": str_to_minutes(\"18:30\"), \"duration\": 105 },\n    { \"person\": \"Melissa\", \"location\": \"Russian Hill\", \"avail_start\": str_to_minutes(\"13:00\"), \"avail_end\": str_to_minutes(\"19:45\"), \"duration\": 30 },\n    { \"person\": \"Laura\", \"location\": \"Embarcadero\", \"avail_start\": str_to_minutes(\"7:45\"), \"avail_end\": str_to_minutes(\"13:15\"), \"duration\": 105 }\n]\n\n# Start location and time\nstart_location = \"Marina District\"\nstart_time = str_to_minutes(\"9:00\")\n\n# Global variable to keep the best itinerary (max meetings)\nbest_itinerary = []\nbest_count = 0\n\n# Recursive DFS to explore possible sequences meeting constraints.\ndef dfs(current_location, current_time, remaining_meetings, itinerary):\n    global best_itinerary, best_count\n    updated = False\n    for i, meeting in enumerate(remaining_meetings):\n        # Travel time from current location to meeting location\n        travel_time = travel_times[current_location][meeting[\"location\"]]\n        arrival_time = current_time + travel_time\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"duration\"]\n        # Check if meeting can be scheduled within availability window.\n        if meeting_end <= meeting[\"avail_end\"]:\n            # Create meeting event and continue DFS\n            event = {\n                \"action\": \"meet\",\n                \"location\": meeting[\"location\"],\n                \"person\": meeting[\"person\"],\n                \"start_time\": minutes_to_str(meeting_start),\n                \"end_time\": minutes_to_str(meeting_end)\n            }\n            new_itinerary = itinerary + [event]\n            new_remaining = remaining_meetings[:i] + remaining_meetings[i+1:]\n            dfs(meeting[\"location\"], meeting_end, new_remaining, new_itinerary)\n            updated = True\n    # If no further meeting can be added, update best itinerary if count is higher.\n    if not updated:\n        if len(itinerary) > best_count:\n            best_count = len(itinerary)\n            best_itinerary = itinerary\n\n# Run DFS starting from initial location and time.\ndfs(start_location, start_time, meetings, [])\n\n# Prepare output data\noutput = {\n    \"itinerary\": best_itinerary\n}\n\n# Print result as JSON formatted dictionary.\nprint(json.dumps(output, indent=2))",
+            "count": "meeting_planning_example_892"
+        }
+    ]
+}

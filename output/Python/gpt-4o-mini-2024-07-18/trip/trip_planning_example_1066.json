@@ -1,0 +1,77 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "London"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Madrid"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Defining the constraints\n    trip_duration = 21\n    destinations = {\n        \"Brussels\": 4,\n        \"Bucharest\": 3,\n        \"Stuttgart\": 4,\n        \"Mykonos\": 2,\n        \"Madrid\": 2,\n        \"Helsinki\": 5,\n        \"Split\": 3,\n        \"London\": 5\n    }\n    \n    # Constraints on conference days in Madrid\n    conference_days = [20, 21]\n    \n    # Possible direct flight connections\n    flights = {\n        \"Helsinki\": [\"London\", \"Madrid\", \"Brussels\", \"Split\"],\n        \"London\": [\"Helsinki\", \"Madrid\", \"Brussels\", \"Bucharest\", \"Mykonos\", \"Split\", \"Stuttgart\"],\n        \"Split\": [\"Helsinki\", \"Madrid\", \"London\", \"Stuttgart\"],\n        \"Madrid\": [\"Split\", \"Mykonos\", \"Brussels\", \"Bucharest\", \"London\"],\n        \"Brussels\": [\"London\", \"Bucharest\", \"Madrid\", \"Helsinki\"],\n        \"Bucharest\": [\"London\", \"Brussels\", \"Madrid\"],\n        \"Stuttgart\": [\"London\", \"Split\"],\n        \"Mykonos\": [\"Madrid\", \"London\"]\n    }\n    \n    itinerary = []\n    day_counter = 1\n    current_location = None\n    \n    # Plan the trip in accordance with the constraints\n    # Day 1: Start in Brussels for 4 days\n    current_location = \"Brussels\"\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + destinations[\"Brussels\"] - 1}', 'place': current_location})\n    day_counter += destinations[\"Brussels\"]\n    \n    # Day 5: Fly to Stuttgart (meeting friend must happen in Stuttgart between days 1 and 4)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': current_location, 'to': 'Stuttgart'})\n    current_location = \"Stuttgart\"\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + destinations[\"Stuttgart\"] - 1}', 'place': current_location})\n    day_counter += destinations[\"Stuttgart\"]\n    \n    # Day 9: Fly to Mykonos\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': current_location, 'to': 'Mykonos'})\n    current_location = \"Mykonos\"\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + destinations[\"Mykonos\"] - 1}', 'place': current_location})\n    day_counter += destinations[\"Mykonos\"]\n    \n    # Day 11: Fly to Madrid (need to be in Madrid for days 20 and 21)\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': current_location, 'to': 'Madrid'})\n    current_location = \"Madrid\"\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + destinations[\"Madrid\"] - 1}', 'place': current_location})\n    day_counter += destinations[\"Madrid\"]\n    \n    # Day 13: Fly to Helsinki\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': current_location, 'to': 'Helsinki'})\n    current_location = \"Helsinki\"\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + destinations[\"Helsinki\"] - 1}', 'place': current_location})\n    day_counter += destinations[\"Helsinki\"]\n    \n    # Day 18: Fly to Split\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': current_location, 'to': 'Split'})\n    current_location = \"Split\"\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + destinations[\"Split\"] - 1}', 'place': current_location})\n    day_counter += destinations[\"Split\"]\n    \n    # Day 21: Fly to London\n    itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': current_location, 'to': 'London'})\n    current_location = \"London\"\n    itinerary.append({'day_range': f'Day {day_counter}-{day_counter + destinations[\"London\"] - 1}', 'place': current_location})\n    day_counter += destinations[\"London\"]\n    \n    # Convert itinerary to JSON\n    json_output = json.dumps(itinerary, indent=4)\n    \n    return json_output\n\nif __name__ == \"__main__\":\n    result = plan_trip()\n    print(result)\n```",
+            "count": "trip_planning_example_1066"
+        }
+    ]
+}

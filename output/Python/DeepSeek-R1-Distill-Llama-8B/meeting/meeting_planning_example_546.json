@@ -1,0 +1,58 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Nancy",
+                        "start_time": "9:11",
+                        "end_time": "10:41"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Lisa",
+                        "start_time": "10:53",
+                        "end_time": "11:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Joshua",
+                        "start_time": "12:00",
+                        "end_time": "12:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "12:23",
+                        "end_time": "13:23"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "John",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, let's tackle this problem step by step. The goal is to create a Python program that optimizes a meeting schedule based on the given constraints. The program should compute the best possible schedule by considering travel times and each person's availability.\n\n### Step 1: Read and Organize Travel Times\nThe travel times are provided in a nested dictionary format. Each location has a dictionary of travel times to other locations. I'll need to access these times efficiently during the scheduling process.\n\n### Step 2: Define the Current Location and Time\nThe user starts at Embarcadero at 9:00 AM. This will be the initial location and time for the schedule.\n\n### Step 3: List of People with Constraints\nEach person has a specific location, availability window, and minimum meeting duration. These constraints need to be parsed and processed in a way that allows the program to check feasibility and calculate meeting times.\n\n### Step 4: Sort People by Meeting Duration\nTo maximize the number of meetings, it makes sense to prioritize meeting the person who requires the longest duration first. This way, we ensure that the most time-consuming meetings are scheduled without conflicts.\n\n### Step 5: Iterate Over Each Person and Calculate Feasibility\nFor each person, the program will:\n1. Calculate the earliest possible start time based on the current location and travel time.\n2. Check if this time falls within the person's availability window.\n3. Ensure there's enough time to meet the person's minimum duration requirement.\n4. If feasible, schedule the meeting at the latest possible start time to allow for maximum flexibility in subsequent meetings.\n\n### Step 6: Update Current Location and Time\nAfter scheduling a meeting, the current location and time are updated to reflect the end time of the last meeting.\n\n### Step 7: Convert Itinerary to JSON\nOnce all feasible meetings are scheduled, the itinerary is converted into a JSON-formatted dictionary as specified.\n\n### Potential Challenges\n- **Travel Time Calculations**: Ensuring that the program correctly accesses and uses the travel times from the provided dictionary.\n- **Time Zone Handling**: All times are in the same 24-hour format, so no conversion is needed.\n- **Availability Windows**: Correctly parsing and comparing start and end times to ensure meetings fit within the available windows.\n- **Meeting Duration Check**: Verifying that each meeting has enough time allocated based on the person's minimum requirement.\n\n### Solution Code\nThe provided code reads the travel times, processes each person's constraints, and calculates the optimal meeting schedule. It prioritizes longer meetings first to maximize the number of meetings. The itinerary is then converted to JSON and printed.\n\n```python\n# Read the input parameters and create a dictionary of travel times\ntravel_times = {\n    'Embarcadero': {\n        'Richmond District': 21,\n        'Union Square': 10,\n        'Financial District': 5,\n        'Pacific Heights': 11,\n        'Nob Hill': 10,\n        'Bayview': 21,\n    },\n    'Richmond District': {\n        'Embarcadero': 19,\n        'Union Square': 21,\n        'Financial District': 22,\n        'Pacific Heights': 10,\n        'Nob Hill': 17,\n        'Bayview': 26,\n    },\n    'Union Square': {\n        'Embarcadero': 11,\n        'Richmond District': 20,\n        'Financial District': 9,\n        'Pacific Heights': 15,\n        'Nob Hill': 9,\n        'Bayview': 15,\n    },\n    'Financial District': {\n        'Embarcadero': 4,\n        'Richmond District': 21,\n        'Union Square': 9,\n        'Pacific Heights': 13,\n        'Nob Hill': 8,\n        'Bayview': 19,\n    },\n    'Pacific Heights': {\n        'Embarcadero': 10,\n        'Richmond District': 12,\n        'Union Square': 12,\n        'Financial District': 13,\n        'Nob Hill': 8,\n        'Bayview': 22,\n    },\n    'Nob Hill': {\n        'Embarcadero': 9,\n        'Richmond District': 14,\n        'Union Square': 7,\n        'Financial District': 9,\n        'Pacific Heights': 8,\n        'Bayview': 19,\n    },\n    'Bayview': {\n        'Embarcadero': 19,\n        'Richmond District': 25,\n        'Union Square': 17,\n        'Financial District': 19,\n        'Pacific Heights': 23,\n        'Nob Hill': 20,\n    }\n}\n\n# Define the current location and time\ncurrent_location = 'Embarcadero'\ncurrent_time = '9:00'\n\nitinerary = []\n\n# List of people with their constraints\npeople = [\n    {'name': 'Kenneth', 'location': 'Richmond District', 'start': '21:15', 'end': '22:00', 'duration': 30},\n    {'name': 'Lisa', 'location': 'Union Square', 'start': '9:00', 'end': '16:30', 'duration': 45},\n    {'name': 'Joshua', 'location': 'Financial District', 'start': '12:00', 'end': '13:15', 'duration': 15},\n    {'name': 'Nancy', 'location': 'Pacific Heights', 'start': '8:00', 'end': '11:30', 'duration': 90},\n    {'name': 'Andrew', 'location': 'Nob Hill', 'start': '11:30', 'end': '20:15', 'duration': 60},\n    {'name': 'John', 'location': 'Bayview', 'start': '16:45', 'end': '21:30', 'duration': 75},\n]\n\n# Sort people by duration in descending order\npeople_sorted = sorted(people, key=lambda x: -x['duration'])\n\nimport datetime\n\nfor person in people_sorted:\n    # Calculate the latest possible start time considering current location and travel time\n    location = person['location']\n    if current_location not in travel_times:\n        continue  # Skip if current location is not in the travel times\n    if location not in travel_times[current_location]:\n        continue  # Skip if location is not reachable from current location\n    travel_time = travel_times[current_location][location]\n    \n    # Convert current_time to datetime object\n    current_dt = datetime.datetime.strptime(current_time, \"%H:%M\")\n    \n    # Calculate earliest possible start time\n    earliest_possible_start = current_dt + datetime.timedelta(minutes=travel_time)\n    earliest_possible_start = earliest_possible_start.replace(second=0, microsecond=0)\n    \n    # Check if earliest possible start is within the person's availability\n    start_dt = datetime.datetime.strptime(person['start'], \"%H:%M\")\n    end_dt = datetime.datetime.strptime(person['end'], \"%H:%M\")\n    \n    if earliest_possible_start > end_dt:\n        continue  # Not possible to meet this person\n    \n    # Ensure that the meeting duration fits within the person's availability\n    if (end_dt - earliest_possible_start).total_seconds() < (person['duration'] * 60):\n        continue  # Not enough time to meet\n    \n    # Calculate the latest possible start time to maximize remaining time\n    latest_possible_start = end_dt - datetime.timedelta(minutes=person['duration'])\n    if latest_possible_start < current_dt:\n        latest_possible_start = current_dt\n    \n    # Choose the latest possible start time\n    start_dt = latest_possible_start\n    \n    # Check if the calculated start time is valid\n    if start_dt < current_dt:\n        continue  # Not possible to meet this person\n    \n    # Create the meeting entry\n    meeting = {\n        'action': 'meet',\n        'location': location,\n        'person': person['name'],\n        'start_time': start_dt.strftime(\"%H:%M\"),\n        'end_time': (start_dt + datetime.timedelta(minutes=person['duration'])).strftime(\"%H:%M\")\n    }\n    itinerary.append(meeting)\n    \n    # Update current location and time\n    current_location = location\n    current_time = meeting['end_time']\n\n# Convert the itinerary to JSON format\nimport json\nprint(json.dumps(itinerary))\n```",
+            "count": "meeting_planning_example_546"
+        }
+    ]
+}

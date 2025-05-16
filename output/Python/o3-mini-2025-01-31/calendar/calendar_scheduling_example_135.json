@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import time, datetime\n\ndef time_to_minutes(t):\n    return t.hour * 60 + t.minute\n\ndef minutes_to_time_str(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\n# Define meeting day and duration in minutes.\nday = \"Monday\"\nmeeting_duration = 30\n\n# Define free intervals for each participant (in minutes from 0:00)\n# Work hours: 9:00 - 17:00 => 540 - 1020 minutes\n# Eric: free all day --> [540, 1020]\neric_free = [(540, 1020)]\n\n# Ashley's busy intervals: 10:00-10:30, 11:00-12:00, 12:30-13:00, 15:00-16:00\n# So her free intervals within work hours:\nashley_free = [(540, 600),    # 9:00-10:00\n               (630, 660),    # 10:30-11:00\n               (720, 750),    # 12:00-12:30\n               (780, 900),    # 13:00-15:00\n               (960, 1020)]   # 16:00-17:00\n\n# Ronald's busy intervals: 9:00-9:30, 10:00-11:30, 12:30-14:00, 14:30-17:00\nronald_free = [(570, 600),    # 9:30-10:00\n               (690, 750),    # 11:30-12:30\n               (840, 870)]    # 14:00-14:30\n\n# Larry's busy intervals: 9:00-12:00, 13:00-17:00\nlarry_free = [(720, 780)]     # 12:00-13:00\n\ndef intersect_intervals(intervals1, intervals2):\n    \"\"\"Intersect two lists of intervals.\"\"\"\n    result = []\n    for start1, end1 in intervals1:\n        for start2, end2 in intervals2:\n            start = max(start1, start2)\n            end = min(end1, end2)\n            if end - start >= meeting_duration:\n                result.append((start, end))\n    return result\n\n# Compute the intersection of all free intervals\ncommon_free = eric_free\nfor free in [ashley_free, ronald_free, larry_free]:\n    common_free = intersect_intervals(common_free, free)\n\n# From the intersected free intervals, choose the earliest slot that can accommodate the meeting.\nmeeting_start = None\nfor start, end in common_free:\n    if end - start >= meeting_duration:\n        meeting_start = start\n        break\n\nif meeting_start is not None:\n    meeting_end = meeting_start + meeting_duration\n    start_str = minutes_to_time_str(meeting_start)\n    end_str = minutes_to_time_str(meeting_end)\n    # Output in the required format HH:MM:HH:MM along with day\n    print(f\"{day} {start_str}:{end_str}\")\nelse:\n    print(\"No available time slot found.\")\n'''",
+            "count": "calendar_scheduling_example_135"
+        }
+    ]
+}

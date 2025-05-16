@@ -1,0 +1,108 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "David",
+                        "start_time": "9:23",
+                        "end_time": "9:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Charles",
+                        "start_time": "17:15",
+                        "end_time": "17:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Ronald",
+                        "start_time": "18:15",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "David",
+                        "start_time": "9:23",
+                        "end_time": "9:38"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "William",
+                        "start_time": "9:54",
+                        "end_time": "10:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Kimberly",
+                        "start_time": "11:13",
+                        "end_time": "12:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Mary",
+                        "start_time": "14:45",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "15:42",
+                        "end_time": "17:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Charles",
+                        "start_time": "17:56",
+                        "end_time": "18:11"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Ronald",
+                        "start_time": "18:30",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Kenneth",
+                        "start_time": "21:15",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times dictionary (from -> to -> minutes)\ntravel_times = {\n    \"Russian Hill\": {\n        \"Sunset District\": 23,\n        \"Union Square\": 10,\n        \"Nob Hill\": 5,\n        \"Marina District\": 7,\n        \"Richmond District\": 14,\n        \"Financial District\": 11,\n        \"Embarcadero\": 8,\n        \"The Castro\": 21,\n        \"Alamo Square\": 15,\n        \"Presidio\": 14\n    },\n    \"Sunset District\": {\n        \"Russian Hill\": 24,\n        \"Union Square\": 30,\n        \"Nob Hill\": 27,\n        \"Marina District\": 21,\n        \"Richmond District\": 12,\n        \"Financial District\": 30,\n        \"Embarcadero\": 30,\n        \"The Castro\": 17,\n        \"Alamo Square\": 17,\n        \"Presidio\": 16\n    },\n    \"Union Square\": {\n        \"Russian Hill\": 13,\n        \"Sunset District\": 27,\n        \"Nob Hill\": 9,\n        \"Marina District\": 18,\n        \"Richmond District\": 20,\n        \"Financial District\": 9,\n        \"Embarcadero\": 11,\n        \"The Castro\": 17,\n        \"Alamo Square\": 15,\n        \"Presidio\": 24\n    },\n    \"Nob Hill\": {\n        \"Russian Hill\": 5,\n        \"Sunset District\": 24,\n        \"Union Square\": 7,\n        \"Marina District\": 11,\n        \"Richmond District\": 14,\n        \"Financial District\": 9,\n        \"Embarcadero\": 9,\n        \"The Castro\": 17,\n        \"Alamo Square\": 11,\n        \"Presidio\": 17\n    },\n    \"Marina District\": {\n        \"Russian Hill\": 8,\n        \"Sunset District\": 19,\n        \"Union Square\": 16,\n        \"Nob Hill\": 12,\n        \"Richmond District\": 11,\n        \"Financial District\": 17,\n        \"Embarcadero\": 14,\n        \"The Castro\": 22,\n        \"Alamo Square\": 15,\n        \"Presidio\": 10\n    },\n    \"Richmond District\": {\n        \"Russian Hill\": 13,\n        \"Sunset District\": 11,\n        \"Union Square\": 21,\n        \"Nob Hill\": 17,\n        \"Marina District\": 9,\n        \"Financial District\": 22,\n        \"Embarcadero\": 19,\n        \"The Castro\": 16,\n        \"Alamo Square\": 13,\n        \"Presidio\": 7\n    },\n    \"Financial District\": {\n        \"Russian Hill\": 11,\n        \"Sunset District\": 30,\n        \"Union Square\": 9,\n        \"Nob Hill\": 8,\n        \"Marina District\": 15,\n        \"Richmond District\": 21,\n        \"Embarcadero\": 4,\n        \"The Castro\": 20,\n        \"Alamo Square\": 17,\n        \"Presidio\": 22\n    },\n    \"Embarcadero\": {\n        \"Russian Hill\": 8,\n        \"Sunset District\": 30,\n        \"Union Square\": 10,\n        \"Nob Hill\": 10,\n        \"Marina District\": 12,\n        \"Richmond District\": 21,\n        \"Financial District\": 5,\n        \"The Castro\": 25,\n        \"Alamo Square\": 19,\n        \"Presidio\": 20\n    },\n    \"The Castro\": {\n        \"Russian Hill\": 18,\n        \"Sunset District\": 17,\n        \"Union Square\": 19,\n        \"Nob Hill\": 16,\n        \"Marina District\": 21,\n        \"Richmond District\": 16,\n        \"Financial District\": 21,\n        \"Embarcadero\": 22,\n        \"Alamo Square\": 8,\n        \"Presidio\": 20\n    },\n    \"Alamo Square\": {\n        \"Russian Hill\": 13,\n        \"Sunset District\": 16,\n        \"Union Square\": 14,\n        \"Nob Hill\": 11,\n        \"Marina District\": 15,\n        \"Richmond District\": 11,\n        \"Financial District\": 17,\n        \"Embarcadero\": 16,\n        \"The Castro\": 8,\n        \"Presidio\": 17\n    },\n    \"Presidio\": {\n        \"Russian Hill\": 14,\n        \"Sunset District\": 15,\n        \"Union Square\": 22,\n        \"Nob Hill\": 18,\n        \"Marina District\": 11,\n        \"Richmond District\": 7,\n        \"Financial District\": 23,\n        \"Embarcadero\": 20,\n        \"The Castro\": 21,\n        \"Alamo Square\": 19\n    }\n}\n\n# Friend constraints\nfriends = [\n    {\"name\": \"David\", \"location\": \"Sunset District\", \"start\": \"9:15\", \"end\": \"22:00\", \"min_duration\": 15},\n    {\"name\": \"Kenneth\", \"location\": \"Union Square\", \"start\": \"21:15\", \"end\": \"21:45\", \"min_duration\": 15},\n    {\"name\": \"Patricia\", \"location\": \"Nob Hill\", \"start\": \"15:00\", \"end\": \"19:15\", \"min_duration\": 120},\n    {\"name\": \"Mary\", \"location\": \"Marina District\", \"start\": \"14:45\", \"end\": \"16:45\", \"min_duration\": 45},\n    {\"name\": \"Charles\", \"location\": \"Richmond District\", \"start\": \"17:15\", \"end\": \"21:00\", \"min_duration\": 15},\n    {\"name\": \"Joshua\", \"location\": \"Financial District\", \"start\": \"14:30\", \"end\": \"17:15\", \"min_duration\": 90},\n    {\"name\": \"Ronald\", \"location\": \"Embarcadero\", \"start\": \"18:15\", \"end\": \"20:45\", \"min_duration\": 30},\n    {\"name\": \"George\", \"location\": \"The Castro\", \"start\": \"14:15\", \"end\": \"19:00\", \"min_duration\": 105},\n    {\"name\": \"Kimberly\", \"location\": \"Alamo Square\", \"start\": \"9:00\", \"end\": \"14:30\", \"min_duration\": 105},\n    {\"name\": \"William\", \"location\": \"Presidio\", \"start\": \"7:00\", \"end\": \"12:45\", \"min_duration\": 60}\n]\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Convert friend times to minutes\nfor friend in friends:\n    friend[\"start_min\"] = time_to_minutes(friend[\"start\"])\n    friend[\"end_min\"] = time_to_minutes(friend[\"end\"])\n\ndef calculate_schedule(order):\n    current_location = \"Russian Hill\"\n    current_time = time_to_minutes(\"9:00\")\n    schedule = []\n    remaining_friends = friends.copy()\n    \n    for friend_name in order:\n        friend = next(f for f in remaining_friends if f[\"name\"] == friend_name)\n        remaining_friends.remove(friend)\n        \n        # Calculate travel time\n        travel_time = travel_times[current_location][friend[\"location\"]]\n        arrival_time = current_time + travel_time\n        \n        # Check if we can meet\n        meeting_start = max(arrival_time, friend[\"start_min\"])\n        meeting_end = meeting_start + friend[\"min_duration\"]\n        \n        if meeting_end > friend[\"end_min\"]:\n            return None  # Can't meet this friend\n        \n        # Add to schedule\n        schedule.append({\n            \"action\": \"meet\",\n            \"location\": friend[\"location\"],\n            \"person\": friend[\"name\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        current_location = friend[\"location\"]\n        current_time = meeting_end\n    \n    return schedule\n\ndef evaluate_schedule(schedule):\n    if not schedule:\n        return -1\n    return len(schedule)\n\n# Try different orders to maximize number of friends met\nbest_schedule = []\nbest_score = 0\n\n# We'll prioritize friends with tighter time windows first\nfriend_names = [f[\"name\"] for f in friends]\n# Try all possible permutations is too expensive, so we'll try a reasonable subset\nfor perm in permutations(friend_names, min(5, len(friend_names))):\n    schedule = calculate_schedule(perm)\n    score = evaluate_schedule(schedule)\n    if score > best_score:\n        best_score = score\n        best_schedule = schedule\n\n# If no schedule meets all, try to find one that meets most\nif best_score < len(friends):\n    for friend in friends:\n        single_schedule = calculate_schedule([friend[\"name\"]])\n        if single_schedule and evaluate_schedule(single_schedule) > best_score:\n            best_score = evaluate_schedule(single_schedule)\n            best_schedule = single_schedule\n\n# After some attempts, build a reasonable schedule manually if needed\nif not best_schedule:\n    # Build a schedule that meets the most critical friends\n    manual_order = [\"Kimberly\", \"William\", \"Joshua\", \"Mary\", \"Patricia\", \"George\", \"Charles\", \"Ronald\", \"Kenneth\", \"David\"]\n    best_schedule = calculate_schedule(manual_order)\n    if not best_schedule:\n        manual_order = [\"Kimberly\", \"William\", \"Joshua\", \"Mary\", \"Patricia\"]\n        best_schedule = calculate_schedule(manual_order)\n\n# Prepare output\noutput = {\n    \"itinerary\": best_schedule if best_schedule else []\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_937"
+        }
+    ]
+}

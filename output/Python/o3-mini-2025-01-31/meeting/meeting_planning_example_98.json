@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Timothy",
+                        "start_time": "20:45",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\ndef add_minutes(time_obj, minutes):\n    return time_obj + timedelta(minutes=minutes)\n\ndef format_time(dt):\n    # Format time in H:MM (24-hour) format without a leading zero for the hour.\n    # Remove any leading zero from hour.\n    # For example, if dt.strftime('%H:%M') returns \"09:00\", we want \"9:00\".\n    # We can convert hour to int and then format.\n    return f\"{int(dt.strftime('%H'))}:{dt.strftime('%M')}\"\n\ndef main():\n    # Input parameters (all times use a dummy date, here 2023-01-01)\n    arrival_str = \"9:00\"  # arrival at Alamo Square\n    timothy_avail_start_str = \"20:45\"  # 8:45PM in 24h format\n    timothy_avail_end_str = \"21:30\"    # 9:30PM in 24h format\n    required_meeting_duration = 45  # in minutes\n\n    # Travel distances (in minutes)\n    travel_alamo_to_richmond = 12\n    travel_richmond_to_alamo = 13\n\n    # Base date for our datetime objects\n    base_date = \"2023-01-01 \"\n\n    # Parse arrival and availability times into datetime objects\n    arrival_time = datetime.strptime(base_date + arrival_str, \"%Y-%m-%d %H:%M\")\n    timothy_start = datetime.strptime(base_date + timothy_avail_start_str, \"%Y-%m-%d %H:%M\")\n    timothy_end = datetime.strptime(base_date + timothy_avail_end_str, \"%Y-%m-%d %H:%M\")\n\n    # To meet Timothy, we need to leave Alamo Square in time to reach Richmond District by his availability start.\n    # Calculate required departure time from Alamo Square\n    departure_time = timothy_start - timedelta(minutes=travel_alamo_to_richmond)\n    \n    # Check feasibility: We must have arrived at the meeting point area in time \n    if arrival_time > departure_time:\n        # If arrival is later than the required departure time, it's not possible to meet Timothy.\n        itinerary = {\"itinerary\": []}\n    else:\n        # The meeting with Timothy is scheduled at his location.\n        # The meeting can start at his available start time and last for 45 minutes.\n        meeting_start = timothy_start\n        meeting_end = meeting_start + timedelta(minutes=required_meeting_duration)\n        \n        # Ensure the meeting does not exceed Timothy's available time window.\n        if meeting_end > timothy_end:\n            # If the meeting end time exceeds his availability, adjust the meeting_end to his available end time.\n            meeting_end = timothy_end\n        \n        # Check if the actual meeting duration meets the requirement (should be at least 45 minutes).\n        actual_duration = (meeting_end - meeting_start).seconds // 60\n        if actual_duration < required_meeting_duration:\n            itinerary = {\"itinerary\": []}\n        else:\n            # Create itinerary object. We include two events:\n            # 1. Departing from Alamo Square (calculated as departure_time) with travel detail embedded.\n            #    While the instructions require an action \"meet\", we include this as a planning step.\n            # 2. Meeting with Timothy at Richmond District.\n            # However, to follow the required JSON structure exactly where each event uses \"action\": \"meet\",\n            # we include only the meeting event.\n            \n            meeting_event = {\n                \"action\": \"meet\",\n                \"location\": \"Richmond District\",\n                \"person\": \"Timothy\",\n                \"start_time\": format_time(meeting_start),\n                \"end_time\": format_time(meeting_end)\n            }\n            itinerary = {\"itinerary\": [meeting_event]}\n    \n    # Output the itinerary as a JSON formatted dictionary\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_98"
+        }
+    ]
+}

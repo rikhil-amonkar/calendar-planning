@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "13:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "14:30",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Brian",
+                        "start_time": "16:37",
+                        "end_time": "17:07"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Rebecca",
+                        "start_time": "9:10",
+                        "end_time": "9:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Stephanie",
+                        "start_time": "11:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Karen",
+                        "start_time": "13:45",
+                        "end_time": "14:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Brian",
+                        "start_time": "15:00",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Steven",
+                        "start_time": "15:40",
+                        "end_time": "17:40"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel distances in minutes\ntravel_distances = {\n    'Financial District': {'Golden Gate Park': 23, 'Chinatown': 5, 'Union Square': 9, 'Fisherman\\'s Wharf': 10, 'Pacific Heights': 13, 'North Beach': 7},\n    'Golden Gate Park': {'Financial District': 26, 'Chinatown': 23, 'Union Square': 22, 'Fisherman\\'s Wharf': 24, 'Pacific Heights': 16, 'North Beach': 24},\n    'Chinatown': {'Financial District': 5, 'Golden Gate Park': 23, 'Union Square': 7, 'Fisherman\\'s Wharf': 8, 'Pacific Heights': 10, 'North Beach': 3},\n    'Union Square': {'Financial District': 9, 'Golden Gate Park': 22, 'Chinatown': 7, 'Fisherman\\'s Wharf': 15, 'Pacific Heights': 15, 'North Beach': 10},\n    'Fisherman\\'s Wharf': {'Financial District': 11, 'Golden Gate Park': 25, 'Chinatown': 12, 'Union Square': 13, 'Pacific Heights': 12, 'North Beach': 6},\n    'Pacific Heights': {'Financial District': 13, 'Golden Gate Park': 15, 'Chinatown': 11, 'Union Square': 12, 'Fisherman\\'s Wharf': 13, 'North Beach': 9},\n    'North Beach': {'Financial District': 8, 'Golden Gate Park': 22, 'Chinatown': 6, 'Union Square': 7, 'Fisherman\\'s Wharf': 5, 'Pacific Heights': 8}\n}\n\n# Define meeting constraints\nmeeting_constraints = {\n    'Stephanie': {'location': 'Golden Gate Park','start_time': '11:00', 'end_time': '15:00', 'duration': 105},\n    'Karen': {'location': 'Chinatown','start_time': '13:45', 'end_time': '16:30', 'duration': 15},\n    'Brian': {'location': 'Union Square','start_time': '15:00', 'end_time': '17:15', 'duration': 30},\n    'Rebecca': {'location': 'Fisherman\\'s Wharf','start_time': '08:00', 'end_time': '11:15', 'duration': 30},\n    'Joseph': {'location': 'Pacific Heights','start_time': '08:15', 'end_time': '09:30', 'duration': 60},\n    'Steven': {'location': 'North Beach','start_time': '14:30', 'end_time': '20:45', 'duration': 120}\n}\n\ndef calculate_meeting_schedule():\n    # Initialize the schedule\n    schedule = []\n    current_location = 'Financial District'\n    current_time = '9:00'\n\n    # Sort the meeting constraints by start time\n    sorted_constraints = sorted(meeting_constraints.items(), key=lambda x: x[1]['start_time'])\n\n    # Calculate the schedule for each person\n    for person, constraint in sorted_constraints:\n        # Calculate the travel time to the person's location\n        travel_time = travel_distances[current_location][constraint['location']]\n        arrival_time = add_time(current_time, travel_time)\n\n        # Check if we can meet the person within their available time\n        if arrival_time < constraint['start_time']:\n            # Wait until the person is available\n            start_time = constraint['start_time']\n        else:\n            start_time = arrival_time\n\n        # Calculate the end time of the meeting\n        end_time = add_time(start_time, constraint['duration'])\n\n        # Check if the meeting ends within the person's available time\n        if end_time > constraint['end_time']:\n            # We cannot meet the person within their available time\n            continue\n\n        # Add the meeting to the schedule\n        schedule.append({\n            'action':'meet',\n            'location': constraint['location'],\n            'person': person,\n         'start_time': start_time,\n            'end_time': end_time\n        })\n\n        # Update the current location and time\n        current_location = constraint['location']\n        current_time = end_time\n\n    return schedule\n\ndef add_time(time, minutes):\n    dt = datetime.strptime(time, '%H:%M')\n    dt += timedelta(minutes=minutes)\n    return dt.strftime('%H:%M')\n\ndef main():\n    schedule = calculate_meeting_schedule()\n    print(json.dumps({'itinerary': schedule}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_502"
+        }
+    ]
+}

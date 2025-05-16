@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "{10:00",
+                "end_time": "10:30}"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{10:00",
+                "end_time": "10:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 30\nday = \"Monday\"\n\n# Albert's busy time blocks in minutes (start, end)\nalbert_busy = [\n    (time_to_minutes(\"09:00\"), time_to_minutes(\"10:00\")),\n    (time_to_minutes(\"10:30\"), time_to_minutes(\"12:00\")),\n    (time_to_minutes(\"15:00\"), time_to_minutes(\"16:30\"))\n]\n\n# Albert can't meet after 11:00\nmax_end_time = time_to_minutes(\"11:00\")\n\n# Generate free slots considering work hours and busy times\nfree_slots = []\nprevious_end = work_start\n\nfor start, end in sorted(albert_busy + [(work_end, work_end)]):\n    if start > previous_end:\n        free_start = previous_end\n        free_end = min(start, max_end_time)\n        if free_end > free_start:\n            free_slots.append((free_start, free_end))\n    previous_end = max(previous_end, end)\n\n# Find the first slot that can accommodate the meeting\nfor slot_start, slot_end in free_slots:\n    if slot_end - slot_start >= meeting_duration:\n        meeting_start = slot_start\n        meeting_end = meeting_start + meeting_duration\n        # Ensure meeting doesn't exceed the allowed end time\n        if meeting_end <= max_end_time:\n            print(f\"{day}:{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}\")\n            exit()\n\n# Fallback (though problem states a solution exists)\nprint(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_544"
+        }
+    ]
+}

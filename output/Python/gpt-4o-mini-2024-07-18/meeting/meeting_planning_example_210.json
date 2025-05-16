@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Melissa",
+                        "start_time": "15:45",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joseph",
+                        "start_time": "17:21",
+                        "end_time": "19:21"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Emily",
+                        "start_time": "16:15",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Joseph",
+                        "start_time": "18:07",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Melissa",
+                        "start_time": "20:29",
+                        "end_time": "21:44"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times in minutes\ntravel_times = {\n    (\"Fisherman's Wharf\", \"Presidio\"): 17,\n    (\"Fisherman's Wharf\", \"Richmond District\"): 18,\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n    (\"Presidio\", \"Fisherman's Wharf\"): 19,\n    (\"Presidio\", \"Richmond District\"): 7,\n    (\"Presidio\", \"Financial District\"): 23,\n    (\"Richmond District\", \"Fisherman's Wharf\"): 18,\n    (\"Richmond District\", \"Presidio\"): 7,\n    (\"Richmond District\", \"Financial District\"): 22,\n    (\"Financial District\", \"Fisherman's Wharf\"): 10,\n    (\"Financial District\", \"Presidio\"): 22,\n    (\"Financial District\", \"Richmond District\"): 21,\n}\n\n# Define constraints\narrival_time = datetime.strptime('09:00', '%H:%M')\nmeetings = {\n    \"Emily\": {\n        \"location\": \"Presidio\",\n        \"available_start\": datetime.strptime('16:15', '%H:%M'),\n        \"available_end\": datetime.strptime('21:00', '%H:%M'),\n        \"min_duration\": 105,  # in minutes\n    },\n    \"Joseph\": {\n        \"location\": \"Richmond District\",\n        \"available_start\": datetime.strptime('17:15', '%H:%M'),\n        \"available_end\": datetime.strptime('22:00', '%H:%M'),\n        \"min_duration\": 120,  # in minutes\n    },\n    \"Melissa\": {\n        \"location\": \"Financial District\",\n        \"available_start\": datetime.strptime('15:45', '%H:%M'),\n        \"available_end\": datetime.strptime('21:45', '%H:%M'),\n        \"min_duration\": 75,  # in minutes\n    },\n}\n\n# Generate meeting schedule\nitinerary = []\ncurrent_time = arrival_time\n\n# Meet Melissa first as she is available before others\nif current_time < meetings[\"Melissa\"][\"available_end\"]:\n    travel_time = travel_times[(\"Fisherman's Wharf\", \"Financial District\")]\n    start_time_melissa = max(current_time + timedelta(minutes=travel_time), meetings[\"Melissa\"][\"available_start\"])\n    end_time_melissa = start_time_melissa + timedelta(minutes=meetings[\"Melissa\"][\"min_duration\"])\n    \n    # Check if meeting with Melissa ends before she is unavailable\n    if end_time_melissa <= meetings[\"Melissa\"][\"available_end\"]:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Financial District\",\n            \"person\": \"Melissa\",\n            \"start_time\": start_time_melissa.strftime('%H:%M'),\n            \"end_time\": end_time_melissa.strftime('%H:%M'),\n        })\n        current_time = end_time_melissa\n\n# Now meet Joseph\nif current_time < meetings[\"Joseph\"][\"available_end\"]:\n    travel_time = travel_times[(\"Financial District\", \"Richmond District\")]\n    start_time_joseph = max(current_time + timedelta(minutes=travel_time), meetings[\"Joseph\"][\"available_start\"])\n    end_time_joseph = start_time_joseph + timedelta(minutes=meetings[\"Joseph\"][\"min_duration\"])\n    \n    # Check if meeting with Joseph ends before he is unavailable\n    if end_time_joseph <= meetings[\"Joseph\"][\"available_end\"]:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Richmond District\",\n            \"person\": \"Joseph\",\n            \"start_time\": start_time_joseph.strftime('%H:%M'),\n            \"end_time\": end_time_joseph.strftime('%H:%M'),\n        })\n        current_time = end_time_joseph\n\n# Lastly, meet Emily\nif current_time < meetings[\"Emily\"][\"available_end\"]:\n    travel_time = travel_times[(\"Richmond District\", \"Presidio\")]\n    start_time_emily = max(current_time + timedelta(minutes=travel_time), meetings[\"Emily\"][\"available_start\"])\n    end_time_emily = start_time_emily + timedelta(minutes=meetings[\"Emily\"][\"min_duration\"])\n    \n    # Check if meeting with Emily ends before she is unavailable\n    if end_time_emily <= meetings[\"Emily\"][\"available_end\"]:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Presidio\",\n            \"person\": \"Emily\",\n            \"start_time\": start_time_emily.strftime('%H:%M'),\n            \"end_time\": end_time_emily.strftime('%H:%M'),\n        })\n\n# Output the itinerary in JSON format\noutput = {\n    \"itinerary\": itinerary\n}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_210"
+        }
+    ]
+}

@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:24",
+                        "end_time": "9:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Margaret",
+                        "start_time": "9:24",
+                        "end_time": "9:54"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Daniel",
+                        "start_time": "10:15",
+                        "end_time": "10:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Charles",
+                        "start_time": "18:00",
+                        "end_time": "19:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Stephanie",
+                        "start_time": "20:30",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\n# Travel times in minutes\ntravel_times = {\n    'Sunset District': {\n        'Alamo Square': 17,\n        'Russian Hill': 24,\n        'Golden Gate Park': 11,\n        'Mission District': 24\n    },\n    'Alamo Square': {\n        'Sunset District': 16,\n        'Russian Hill': 13,\n        'Golden Gate Park': 9,\n        'Mission District': 10\n    },\n    'Russian Hill': {\n        'Sunset District': 23,\n        'Alamo Square': 15,\n        'Golden Gate Park': 21,\n        'Mission District': 16\n    },\n    'Golden Gate Park': {\n        'Sunset District': 10,\n        'Alamo Square': 10,\n        'Russian Hill': 19,\n        'Mission District': 17\n    },\n    'Mission District': {\n        'Sunset District': 24,\n        'Alamo Square': 11,\n        'Russian Hill': 15,\n        'Golden Gate Park': 17\n    }\n}\n\n# Friend availability\nfriends = {\n    'Charles': {\n        'location': 'Alamo Square',\n        'start': 18 * 60,  # 6:00 PM in minutes\n        'end': 20 * 60 + 45,  # 8:45 PM in minutes\n        'duration': 90  # minutes\n    },\n    'Margaret': {\n        'location': 'Russian Hill',\n        'start': 9 * 60,  # 9:00 AM in minutes\n        'end': 16 * 60,  # 4:00 PM in minutes\n        'duration': 30  # minutes\n    },\n    'Daniel': {\n        'location': 'Golden Gate Park',\n        'start': 8 * 60,  # 8:00 AM in minutes\n        'end': 13 * 60 + 30,  # 1:30 PM in minutes\n        'duration': 15  # minutes\n    },\n    'Stephanie': {\n        'location': 'Mission District',\n        'start': 20 * 60 + 30,  # 8:30 PM in minutes\n        'end': 22 * 60,  # 10:00 PM in minutes\n        'duration': 90  # minutes\n    }\n}\n\ndef time_to_str(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef find_best_schedule():\n    best_schedule = None\n    max_meetings = 0\n    \n    # Try all possible orders of meeting friends\n    for order in permutations(friends.keys()):\n        current_location = 'Sunset District'\n        current_time = 9 * 60  # 9:00 AM\n        schedule = []\n        meetings = 0\n        \n        for person in order:\n            friend = friends[person]\n            location = friend['location']\n            travel_time = travel_times[current_location][location]\n            arrival_time = current_time + travel_time\n            \n            # Calculate possible meeting window\n            meeting_start = max(arrival_time, friend['start'])\n            meeting_end = meeting_start + friend['duration']\n            \n            if meeting_end > friend['end']:\n                # Can't meet this friend in this order\n                break\n                \n            schedule.append({\n                'action': 'meet',\n                'location': location,\n                'person': person,\n                'start_time': time_to_str(meeting_start),\n                'end_time': time_to_str(meeting_end)\n            })\n            \n            current_time = meeting_end\n            current_location = location\n            meetings += 1\n        \n        if meetings > max_meetings or (meetings == max_meetings and current_time < best_schedule['end_time']):\n            max_meetings = meetings\n            best_schedule = {\n                'itinerary': schedule,\n                'end_time': current_time\n            }\n    \n    return best_schedule['itinerary'] if best_schedule else []\n\ndef main():\n    itinerary = find_best_schedule()\n    print(json.dumps({'itinerary': itinerary}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "meeting_planning_example_372"
+        }
+    ]
+}

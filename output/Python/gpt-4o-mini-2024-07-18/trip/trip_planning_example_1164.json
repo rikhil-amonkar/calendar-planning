@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef create_itinerary():\n    itinerary = []\n    \n    # Define days allocated to each city and constraints\n    days = {\n        \"Reykjavik\": 2,\n        \"Stockholm\": 2,\n        \"Porto\": 5,\n        \"Nice\": 3,\n        \"Venice\": 4,\n        \"Vienna\": 3,\n        \"Split\": 3,\n        \"Copenhagen\": 2\n    }\n    \n    # Define travel order based on constraints\n    travel_plan = [\n        (\"Reykjavik\", 1, 2),\n        (\"Stockholm\", 3, 4),\n        (\"Copenhagen\", 10, 11),  # Before Vienna\n        (\"Vienna\", 11, 13),\n        (\"Porto\", 13, 17),\n        (\"Nice\", 5, 7),\n        (\"Venice\", 8, 11),\n        (\"Split\", 10, 12)\n    ]\n    \n    current_day = 1\n    \n    # Add Reykjavik to itinerary\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Reykjavik'})\n    current_day += 2  # Move to next available day\n    \n    # Adding Stockholm\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Reykjavik', 'to': 'Stockholm'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Stockholm'})\n    current_day += 2  # Move to next day\n    \n    # Adding Nice\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Stockholm', 'to': 'Nice'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Nice'})\n    current_day += 3  # Move to next day\n    \n    # Adding Venice\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Nice', 'to': 'Venice'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Venice'})\n    current_day += 4  # Move to next day\n    \n    # Adding Split\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Venice', 'to': 'Split'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Split'})\n    current_day += 3  # Move to next day\n    \n    # Adding Vienna\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Split', 'to': 'Vienna'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 2}', 'place': 'Vienna'})\n    current_day += 3  # Move to next day\n    \n    # Adding Copenhagen\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Vienna', 'to': 'Copenhagen'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 1}', 'place': 'Copenhagen'})\n    current_day += 2  # Move to next day\n    \n    # Finally, adding Porto for the wedding\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Copenhagen', 'to': 'Porto'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Porto'})\n    \n    # Convert itinerary to JSON format\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    print(create_itinerary())\n```",
+            "count": "trip_planning_example_1164"
+        }
+    ]
+}

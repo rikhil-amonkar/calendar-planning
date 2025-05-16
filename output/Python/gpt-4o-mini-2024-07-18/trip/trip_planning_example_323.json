@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the trip parameters\n    total_days = 16\n    stay_split = 5\n    show_days_split = (7, 11) # Days from 7 to 11 in Split\n    stay_oslo = 2\n    stay_london = 7\n    stay_porto = 5\n\n    # Create a schedule list to hold the itinerary\n    itinerary = []\n    \n    # Day 1-7: Stay in London\n    itinerary.append({'day_range': 'Day 1-7', 'place': 'London'})\n    \n    # Day 7-11: Stay in Split (for the annual show)\n    itinerary.append({'flying': 'Day 7-7', 'from': 'London', 'to': 'Split'})\n    itinerary.append({'day_range': 'Day 7-11', 'place': 'Split'})\n\n    # Day 11-12: Fly from Split to Oslo\n    itinerary.append({'flying': 'Day 11-11', 'from': 'Split', 'to': 'Oslo'})\n    itinerary.append({'day_range': 'Day 11-12', 'place': 'Oslo'})\n\n    # Day 12-14: Fly from Oslo to Porto\n    itinerary.append({'flying': 'Day 12-12', 'from': 'Oslo', 'to': 'Porto'})\n    itinerary.append({'day_range': 'Day 12-16', 'place': 'Porto'})\n\n    # Return the output in JSON format\n    return json.dumps(itinerary, indent=4)\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_323"
+        }
+    ]
+}

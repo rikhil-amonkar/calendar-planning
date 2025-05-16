@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "9:08",
+                        "end_time": "10:53"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "11:10",
+                        "end_time": "13:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "13:27",
+                        "end_time": "14:57"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "15:12",
+                        "end_time": "16:12"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Ronald",
+                        "start_time": "10:00",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Helen",
+                        "start_time": "13:30",
+                        "end_time": "15:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Joshua",
+                        "start_time": "15:47",
+                        "end_time": "17:17"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Margaret",
+                        "start_time": "17:32",
+                        "end_time": "18:32"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel times between locations\ntravel_times = {\n    'Pacific Heights': {'Nob Hill': 8, 'Russian Hill': 7, 'The Castro': 16, 'Sunset District': 21, 'Haight-Ashbury': 11},\n    'Nob Hill': {'Pacific Heights': 8, 'Russian Hill': 5, 'The Castro': 17, 'Sunset District': 25, 'Haight-Ashbury': 13},\n    'Russian Hill': {'Pacific Heights': 7, 'Nob Hill': 5, 'The Castro': 21, 'Sunset District': 23, 'Haight-Ashbury': 17},\n    'The Castro': {'Pacific Heights': 16, 'Nob Hill': 16, 'Russian Hill': 18, 'Sunset District': 17, 'Haight-Ashbury': 6},\n    'Sunset District': {'Pacific Heights': 21, 'Nob Hill': 27, 'Russian Hill': 24, 'The Castro': 17, 'Haight-Ashbury': 15},\n    'Haight-Ashbury': {'Pacific Heights': 12, 'Nob Hill': 15, 'Russian Hill': 17, 'The Castro': 6, 'Sunset District': 15}\n}\n\n# Define meeting constraints\nmeetings = [\n    {'person': 'Ronald', 'location': 'Nob Hill','start_time': '10:00', 'end_time': '17:00','min_time': 105},\n    {'person': 'Sarah', 'location': 'Russian Hill','start_time': '07:15', 'end_time': '09:30','min_time': 45},\n    {'person': 'Helen', 'location': 'The Castro','start_time': '13:30', 'end_time': '17:00','min_time': 120},\n    {'person': 'Joshua', 'location': 'Sunset District','start_time': '14:15', 'end_time': '19:30','min_time': 90},\n    {'person': 'Margaret', 'location': 'Haight-Ashbury','start_time': '10:15', 'end_time': '22:00','min_time': 60}\n]\n\ndef calculate_meeting_schedule(meetings, travel_times):\n    schedule = []\n    current_time = datetime.strptime('09:00', '%H:%M')\n    current_location = 'Pacific Heights'\n\n    for meeting in meetings:\n        # Calculate travel time to meeting location\n        travel_time = travel_times[current_location][meeting['location']]\n        arrival_time = current_time + timedelta(minutes=travel_time)\n\n        # Check if meeting can be attended\n        meeting_start_time = datetime.strptime(meeting['start_time'], '%H:%M')\n        meeting_end_time = datetime.strptime(meeting['end_time'], '%H:%M')\n        if arrival_time < meeting_end_time and arrival_time + timedelta(minutes=meeting['min_time']) <= meeting_end_time:\n            # Attend meeting\n            meeting_end = min(arrival_time + timedelta(minutes=meeting['min_time']), meeting_end_time)\n            schedule.append({\n                'action':'meet',\n                'location': meeting['location'],\n                'person': meeting['person'],\n          'start_time': arrival_time.strftime('%H:%M'),\n                'end_time': meeting_end.strftime('%H:%M')\n            })\n            current_time = meeting_end\n            current_location = meeting['location']\n        else:\n            # Skip meeting\n            continue\n\n    return schedule\n\n# Calculate and print meeting schedule\nschedule = calculate_meeting_schedule(meetings, travel_times)\nprint(json.dumps({'itinerary': schedule}, indent=4))\n```",
+            "count": "meeting_planning_example_488"
+        }
+    ]
+}

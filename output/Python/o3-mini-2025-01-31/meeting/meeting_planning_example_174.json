@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Kenneth",
+                        "start_time": "12:00",
+                        "end_time": "12:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Thomas",
+                        "start_time": "15:30",
+                        "end_time": "16:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nfrom datetime import datetime, timedelta\n\n# Helper functions for time conversion\ndef str_to_minutes(time_str):\n    # time_str in format \"H:MM\" (24-hour format)\n    t = datetime.strptime(time_str, \"%H:%M\")\n    return t.hour * 60 + t.minute\n\ndef minutes_to_str(minutes):\n    # Converts minutes (since midnight) to \"H:MM\" format without leading zero in hour.\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\n# Input parameters:\n# Arrival time at Nob Hill\nnob_hill_arrival = str_to_minutes(\"9:00\")\n\n# Meeting windows and minimum durations:\n# Kenneth at Mission District: available 12:00 to 15:45, needs at least 45 minutes.\nkenneth_available_start = str_to_minutes(\"12:00\")\nkenneth_available_end   = str_to_minutes(\"15:45\")\nkenneth_min_duration = 45\n\n# Thomas at Pacific Heights: available 15:30 to 19:15, needs at least 75 minutes.\nthomas_available_start = str_to_minutes(\"15:30\")\nthomas_available_end   = str_to_minutes(\"19:15\")\nthomas_min_duration = 75\n\n# Travel times (in minutes) between locations:\ntravel_times = {\n    (\"Nob Hill\", \"Pacific Heights\"): 8,\n    (\"Nob Hill\", \"Mission District\"): 13,\n    (\"Pacific Heights\", \"Nob Hill\"): 8,\n    (\"Pacific Heights\", \"Mission District\"): 15,\n    (\"Mission District\", \"Nob Hill\"): 12,\n    (\"Mission District\", \"Pacific Heights\"): 16\n}\n\n# The goal is to meet as many friends as possible while respecting their availability windows\n# and minimum meeting durations. We can attempt to use an algorithmic approach by exploring the logical options.\n#\n# One way to meet both friends is to visit Kenneth first at Mission District during his available window,\n# then proceed to Pacific Heights to meet Thomas in his window.\n#\n# Steps:\n# 1. Start at Nob Hill at 9:00.\n# 2. Plan to reach Mission District exactly when Kenneth becomes available (12:00).\n#    Compute departure time from Nob Hill: departure = Kenneth start time - travel time from Nob Hill to Mission District.\ndep_time_nob_to_md = kenneth_available_start - travel_times[(\"Nob Hill\", \"Mission District\")]\nif dep_time_nob_to_md < nob_hill_arrival:\n    # If the computed departure time is before arrival, wait until arrival.\n    dep_time_nob_to_md = nob_hill_arrival\n\n# Arrival at Mission District when meeting Kenneth.\nkenneth_meet_start = kenneth_available_start\nkenneth_meet_end = kenneth_meet_start + kenneth_min_duration\nif kenneth_meet_end > kenneth_available_end:\n    # If meeting cannot be accommodated in Kenneth's available window, then skip meeting.\n    raise ValueError(\"Cannot schedule Kenneth meeting within his available time.\")\n\n# 3. After meeting Kenneth, travel from Mission District to Pacific Heights.\ndeparture_md = kenneth_meet_end\narrival_ph = departure_md + travel_times[(\"Mission District\", \"Pacific Heights\")]\n\n# 4. Wait until Thomas is available at Pacific Heights. If arrival is earlier than his available start, schedule the meeting at his available start.\nthomas_meet_start = max(arrival_ph, thomas_available_start)\nthomas_meet_end = thomas_meet_start + thomas_min_duration\nif thomas_meet_end > thomas_available_end:\n    # If meeting Thomas cannot be accommodated, then skip his meeting.\n    raise ValueError(\"Cannot schedule Thomas meeting within his available time.\")\n\n# Build itinerary as a list of meeting dictionaries; we include only meeting events.\nitinerary = [\n    {\n        \"action\": \"meet\",\n        \"location\": \"Mission District\",\n        \"person\": \"Kenneth\",\n        \"start_time\": minutes_to_str(kenneth_meet_start),\n        \"end_time\": minutes_to_str(kenneth_meet_end)\n    },\n    {\n        \"action\": \"meet\",\n        \"location\": \"Pacific Heights\",\n        \"person\": \"Thomas\",\n        \"start_time\": minutes_to_str(thomas_meet_start),\n        \"end_time\": minutes_to_str(thomas_meet_end)\n    }\n]\n\n# Create the final schedule dictionary.\nschedule = {\"itinerary\": itinerary}\n\n# Output the result as JSON.\nprint(json.dumps(schedule, indent=2))",
+            "count": "meeting_planning_example_174"
+        }
+    ]
+}

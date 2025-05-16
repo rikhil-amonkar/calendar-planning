@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "{10:00",
+                "end_time": "11:00}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\nparticipants = {\n    'Olivia': [(time_to_min('12:30'), time_to_min('13:30')), \n               (time_to_min('14:30'), time_to_min('15:00')), \n               (time_to_min('16:30'), time_to_min('17:00'))],\n    'Virginia': [(time_to_min('9:00'), time_to_min('10:00')), \n                 (time_to_min('11:30'), time_to_min('16:00')), \n                 (time_to_min('16:30'), time_to_min('17:00'))],\n    'Paul': [(time_to_min('9:00'), time_to_min('9:30')), \n             (time_to_min('11:00'), time_to_min('11:30')), \n             (time_to_min('13:00'), time_to_min('14:00')), \n             (time_to_min('14:30'), time_to_min('16:00')), \n             (time_to_min('16:30'), time_to_min('17:00'))]\n}\n\nwork_start = time_to_min('09:00')\nwork_end = time_to_min('17:00')\nduration = 60\n\nfor start in range(work_start, work_end - duration + 1):\n    end = start + duration\n    valid = True\n    for person, blocks in participants.items():\n        for s, e in blocks:\n            if not (end <= s or start >= e):\n                valid = False\n                break\n        if not valid:\n            break\n    if valid:\n        print(f\"{min_to_time(start)}-{min_to_time(end)}\")\n        print(\"Monday\")\n        exit()\n\nprint(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_106"
+        }
+    ]
+}

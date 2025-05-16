@@ -1,0 +1,108 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "9:22",
+                        "end_time": "9:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "10:19",
+                        "end_time": "11:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "11:22",
+                        "end_time": "12:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "14:15",
+                        "end_time": "16:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Ronald",
+                        "start_time": "16:42",
+                        "end_time": "17:42"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Robert",
+                        "start_time": "18:30",
+                        "end_time": "20:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "9:30",
+                        "end_time": "10:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "10:38",
+                        "end_time": "11:08"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Matthew",
+                        "start_time": "11:35",
+                        "end_time": "12:20"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Rebecca",
+                        "start_time": "14:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Joseph",
+                        "start_time": "15:24",
+                        "end_time": "17:24"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Ronald",
+                        "start_time": "17:51",
+                        "end_time": "18:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Steven",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define travel distances in minutes\ntravel_distances = {\n    'Pacific Heights': {'Golden Gate Park': 15, 'The Castro': 16, 'Bayview': 22, 'Marina District': 6, 'Union Square': 12, 'Sunset District': 21, 'Alamo Square': 10, 'Financial District': 13, 'Mission District': 15},\n    'Golden Gate Park': {'Pacific Heights': 16, 'The Castro': 13, 'Bayview': 23, 'Marina District': 16, 'Union Square': 22, 'Sunset District': 10, 'Alamo Square': 9, 'Financial District': 26, 'Mission District': 17},\n    'The Castro': {'Pacific Heights': 16, 'Golden Gate Park': 11, 'Bayview': 19, 'Marina District': 21, 'Union Square': 19, 'Sunset District': 17, 'Alamo Square': 8, 'Financial District': 21, 'Mission District': 7},\n    'Bayview': {'Pacific Heights': 23, 'Golden Gate Park': 22, 'The Castro': 19, 'Marina District': 27, 'Union Square': 18, 'Sunset District': 23, 'Alamo Square': 16, 'Financial District': 19, 'Mission District': 13},\n    'Marina District': {'Pacific Heights': 7, 'Golden Gate Park': 18, 'The Castro': 22, 'Bayview': 27, 'Union Square': 16, 'Sunset District': 19, 'Alamo Square': 15, 'Financial District': 17, 'Mission District': 20},\n    'Union Square': {'Pacific Heights': 15, 'Golden Gate Park': 22, 'The Castro': 17, 'Bayview': 15, 'Marina District': 18, 'Sunset District': 27, 'Alamo Square': 15, 'Financial District': 9, 'Mission District': 14},\n    'Sunset District': {'Pacific Heights': 21, 'Golden Gate Park': 11, 'The Castro': 17, 'Bayview': 22, 'Marina District': 21, 'Union Square': 30, 'Alamo Square': 17, 'Financial District': 30, 'Mission District': 25},\n    'Alamo Square': {'Pacific Heights': 10, 'Golden Gate Park': 9, 'The Castro': 8, 'Bayview': 16, 'Marina District': 15, 'Union Square': 14, 'Sunset District': 16, 'Financial District': 17, 'Mission District': 10},\n    'Financial District': {'Pacific Heights': 13, 'Golden Gate Park': 23, 'The Castro': 20, 'Bayview': 19, 'Marina District': 15, 'Union Square': 9, 'Sunset District': 30, 'Alamo Square': 17, 'Mission District': 17},\n    'Mission District': {'Pacific Heights': 16, 'Golden Gate Park': 17, 'The Castro': 7, 'Bayview': 14, 'Marina District': 19, 'Union Square': 15, 'Sunset District': 24, 'Alamo Square': 11, 'Financial District': 15}\n}\n\n# Define meeting constraints\nmeeting_constraints = {\n    'Helen': {'location': 'Golden Gate Park','start_time': '09:30', 'end_time': '12:15', 'duration': 45},\n    'Steven': {'location': 'The Castro','start_time': '20:15', 'end_time': '22:00', 'duration': 105},\n    'Deborah': {'location': 'Bayview','start_time': '08:30', 'end_time': '12:00', 'duration': 30},\n    'Matthew': {'location': 'Marina District','start_time': '09:15', 'end_time': '14:15', 'duration': 45},\n    'Joseph': {'location': 'Union Square','start_time': '14:15', 'end_time': '18:45', 'duration': 120},\n    'Ronald': {'location': 'Sunset District','start_time': '16:00', 'end_time': '20:45', 'duration': 60},\n    'Robert': {'location': 'Alamo Square','start_time': '18:30', 'end_time': '21:15', 'duration': 120},\n    'Rebecca': {'location': 'Financial District','start_time': '14:45', 'end_time': '16:15', 'duration': 30},\n    'Elizabeth': {'location': 'Mission District','start_time': '18:30', 'end_time': '21:00', 'duration': 120}\n}\n\ndef calculate_meeting_schedule():\n    # Initialize the schedule\n    schedule = []\n    current_location = 'Pacific Heights'\n    current_time = '9:00'\n\n    # Sort the meeting constraints by start time\n    sorted_constraints = sorted(meeting_constraints.items(), key=lambda x: x[1]['start_time'])\n\n    # Calculate the schedule for each person\n    for person, constraint in sorted_constraints:\n        # Calculate the travel time to the person's location\n        travel_time = travel_distances[current_location][constraint['location']]\n        arrival_time = add_time(current_time, travel_time)\n\n        # Check if we can meet the person within their available time\n        if arrival_time < constraint['start_time']:\n            # Wait until the person is available\n            start_time = constraint['start_time']\n        else:\n            start_time = arrival_time\n\n        # Calculate the end time of the meeting\n        end_time = add_time(start_time, constraint['duration'])\n\n        # Check if the meeting ends within the person's available time\n        if end_time > constraint['end_time']:\n            # We cannot meet the person within their available time\n            continue\n\n        # Add the meeting to the schedule\n        schedule.append({\n            'action':'meet',\n            'location': constraint['location'],\n            'person': person,\n          'start_time': start_time,\n            'end_time': end_time\n        })\n\n        # Update the current location and time\n        current_location = constraint['location']\n        current_time = end_time\n\n    return schedule\n\ndef add_time(time, minutes):\n    dt = datetime.strptime(time, '%H:%M')\n    dt += timedelta(minutes=minutes)\n    return dt.strftime('%H:%M')\n\ndef main():\n    schedule = calculate_meeting_schedule()\n    print(json.dumps({'itinerary': schedule}, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "meeting_planning_example_835"
+        }
+    ]
+}

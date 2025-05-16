@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "{15:30",
+                "end_time": "16:30}"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "{15:30",
+                "end_time": "16:30}"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Define work hours and days to check\n    work_hours = (9, 17)\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    \n    # Define blocked time ranges in minutes since 9:00 (540 minutes)\n    martha_blocked = {\n        'Monday': [(16*60, 17*60)],\n        'Tuesday': [(15*60, 15*60+30)],\n        'Wednesday': [(10*60, 11*60), (14*60, 14*60+30)]\n    }\n    \n    beverly_blocked = {\n        'Monday': [(9*60, 13*60+30), (14*60, 17*60)],\n        'Tuesday': [(9*60, 17*60)],\n        'Wednesday': [(9*60+30, 15*60+30), (16*60+30, 17*60)]\n    }\n    \n    # Check each day for available slots\n    for day in days:\n        # Convert work hours to minutes\n        start = work_hours[0] * 60\n        end = work_hours[1] * 60\n        \n        # Get blocked times for both participants\n        m_blocks = martha_blocked.get(day, [])\n        b_blocks = beverly_blocked.get(day, [])\n        \n        # Combine and sort all blocked times\n        all_blocks = sorted(m_blocks + b_blocks, key=lambda x: x[0])\n        \n        # Find free intervals\n        current_time = start\n        free_slots = []\n        \n        for block in all_blocks:\n            if block[0] > current_time:\n                free_slots.append((current_time, block[0]))\n            current_time = max(current_time, block[1])\n        if current_time < end:\n            free_slots.append((current_time, end))\n        \n        # Check for a 60-minute slot\n        for slot in free_slots:\n            slot_duration = slot[1] - slot[0]\n            if slot_duration >= 60:\n                # Found suitable slot\n                start_time = slot[0]\n                meeting_end = start_time + 60\n                # Convert back to HH:MM format\n                start_h = start_time // 60\n                start_m = start_time % 60\n                end_h = meeting_end // 60\n                end_m = meeting_end % 60\n                return (\n                    day,\n                    f\"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}\"\n                )\n    \n    return None\n\nresult = find_meeting_time()\nif result:\n    print(f\"{result[0]} {result[1]}\")\nelse:\n    print(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_767"
+        }
+    ]
+}

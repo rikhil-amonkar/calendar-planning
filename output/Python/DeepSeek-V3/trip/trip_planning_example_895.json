@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_valid_itinerary():\n    # Define cities and their required days\n    cities = {\n        'Brussels': 2,\n        'Venice': 3,\n        'Madrid': 5,\n        'London': 3,\n        'Lisbon': 4,\n        'Reykjavik': 3,\n        'Santorini': 3\n    }\n    \n    # Define flight connections (undirected)\n    flights = {\n        'Venice': ['Madrid', 'Brussels', 'Santorini', 'Lisbon', 'London'],\n        'Madrid': ['Venice', 'Reykjavik', 'London', 'Santorini', 'Lisbon', 'Brussels'],\n        'Lisbon': ['Reykjavik', 'Venice', 'London', 'Madrid', 'Brussels'],\n        'Reykjavik': ['Lisbon', 'Madrid', 'London', 'Brussels'],\n        'Brussels': ['Venice', 'London', 'Lisbon', 'Madrid', 'Reykjavik'],\n        'London': ['Brussels', 'Madrid', 'Santorini', 'Lisbon', 'Reykjavik', 'Venice'],\n        'Santorini': ['Venice', 'Madrid', 'London']\n    }\n    \n    # Fixed constraints\n    fixed_events = [\n        {'place': 'Brussels', 'day_range': (1, 2)},\n        {'place': 'Venice', 'day_range': (5, 7)},\n        {'place': 'Madrid', 'day_range': (7, 11)}\n    ]\n    \n    # Other cities to place (excluding fixed days)\n    remaining_days = 17\n    fixed_days = set()\n    for event in fixed_events:\n        start, end = event['day_range']\n        fixed_days.update(range(start, end + 1))\n        remaining_days -= (end - start + 1)\n    \n    # Other cities and their days\n    other_cities = {\n        'London': 3,\n        'Lisbon': 4,\n        'Reykjavik': 3,\n        'Santorini': 3\n    }\n    \n    # Generate possible orders for other cities\n    city_names = list(other_cities.keys())\n    city_days = list(other_cities.values())\n    \n    # Try all permutations of remaining cities\n    for perm in permutations(city_names):\n        itinerary = []\n        current_day = 1\n        day_allocations = {}\n        \n        # Place fixed events first\n        for event in fixed_events:\n            start, end = event['day_range']\n            day_allocations.update({day: event['place'] for day in range(start, end + 1)})\n        \n        # Try to place remaining cities in available days\n        remaining_cities = list(perm)\n        remaining_days_list = city_days.copy()\n        \n        for day in range(1, 18):\n            if day in day_allocations:\n                continue\n            \n            if not remaining_cities:\n                break\n            \n            current_city = remaining_cities[0]\n            if day_allocations.get(day - 1) == current_city or (day == 1 and not day_allocations.get(1)):\n                # Continue current city if possible\n                day_allocations[day] = current_city\n                remaining_days_list[0] -= 1\n                if remaining_days_list[0] == 0:\n                    remaining_cities.pop(0)\n                    remaining_days_list.pop(0)\n            else:\n                # Need to fly to next city\n                prev_city = None\n                for d in range(day - 1, 0, -1):\n                    if d in day_allocations:\n                        prev_city = day_allocations[d]\n                        break\n                \n                if prev_city is None:\n                    prev_city = 'Brussels'  # Starting point\n                \n                next_city = remaining_cities[0]\n                if next_city in flights.get(prev_city, []):\n                    day_allocations[day] = next_city\n                    remaining_days_list[0] -= 1\n                    if remaining_days_list[0] == 0:\n                        remaining_cities.pop(0)\n                        remaining_days_list.pop(0)\n                else:\n                    break\n        \n        # Check if all cities are placed\n        if len(remaining_cities) == 0:\n            # Convert day_allocations to itinerary\n            itinerary = []\n            current_place = None\n            start_day = 1\n            \n            for day in range(1, 18):\n                place = day_allocations.get(day)\n                if place != current_place:\n                    if current_place is not None:\n                        itinerary.append({\n                            'day_range': f'Day {start_day}-{day - 1}',\n                            'place': current_place\n                        })\n                    if place is not None:\n                        # Add flight if not first location\n                        if current_place is not None:\n                            itinerary.append({\n                                'flying': f'Day {day}-{day}',\n                                'from': current_place,\n                                'to': place\n                            })\n                    start_day = day\n                    current_place = place\n            \n            if current_place is not None:\n                itinerary.append({\n                    'day_range': f'Day {start_day}-17',\n                    'place': current_place\n                })\n            \n            return itinerary\n    \n    return None\n\ndef main():\n    itinerary = find_valid_itinerary()\n    if itinerary:\n        print(json.dumps(itinerary, indent=2))\n    else:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_895"
+        }
+    ]
+}

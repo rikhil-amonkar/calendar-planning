@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "9:19",
+                        "end_time": "9:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "13:23",
+                        "end_time": "14:53"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Andrew",
+                        "start_time": "11:45",
+                        "end_time": "13:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Robert",
+                        "start_time": "13:13",
+                        "end_time": "13:43"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Sarah",
+                        "start_time": "16:15",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Nancy",
+                        "start_time": "17:30",
+                        "end_time": "18:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Rebecca",
+                        "start_time": "18:51",
+                        "end_time": "20:21"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\n\ndef time_to_minutes(time_str):\n    # Converts time string \"H:MM\" to minutes since midnight.\n    parts = time_str.split(':')\n    hour = int(parts[0])\n    minute = int(parts[1])\n    return hour * 60 + minute\n\ndef minutes_to_time(minutes):\n    # Converts minutes since midnight to \"H:MM\" (24-hour format, no leading zero for hour)\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02d}\"\n\ndef main():\n    # Define travel times dictionary (in minutes)\n    travel = {\n        \"Union Square\": {\n            \"Golden Gate Park\": 22,\n            \"Pacific Heights\": 15,\n            \"Presidio\": 24,\n            \"Chinatown\": 7,\n            \"The Castro\": 19\n        },\n        \"Golden Gate Park\": {\n            \"Union Square\": 22,\n            \"Pacific Heights\": 16,\n            \"Presidio\": 11,\n            \"Chinatown\": 23,\n            \"The Castro\": 13\n        },\n        \"Pacific Heights\": {\n            \"Union Square\": 12,\n            \"Golden Gate Park\": 15,\n            \"Presidio\": 11,\n            \"Chinatown\": 11,\n            \"The Castro\": 16\n        },\n        \"Presidio\": {\n            \"Union Square\": 22,\n            \"Golden Gate Park\": 12,\n            \"Pacific Heights\": 11,\n            \"Chinatown\": 21,\n            \"The Castro\": 21\n        },\n        \"Chinatown\": {\n            \"Union Square\": 7,\n            \"Golden Gate Park\": 23,\n            \"Pacific Heights\": 10,\n            \"Presidio\": 19,\n            \"The Castro\": 22\n        },\n        \"The Castro\": {\n            \"Union Square\": 19,\n            \"Golden Gate Park\": 11,\n            \"Pacific Heights\": 16,\n            \"Presidio\": 20,\n            \"Chinatown\": 20\n        }\n    }\n    \n    # Meeting constraints for friends.\n    # Each friend is represented as a dict with location, available window and required meeting duration in minutes.\n    meetings = [\n        {\n            \"person\": \"Robert\",\n            \"location\": \"The Castro\",\n            \"available_start\": \"8:30\",\n            \"available_end\": \"14:15\",\n            \"duration\": 30\n        },\n        {\n            \"person\": \"Andrew\",\n            \"location\": \"Golden Gate Park\",\n            \"available_start\": \"11:45\",\n            \"available_end\": \"14:30\",\n            \"duration\": 75\n        },\n        {\n            \"person\": \"Rebecca\",\n            \"location\": \"Chinatown\",\n            \"available_start\": \"9:45\",\n            \"available_end\": \"21:30\",\n            \"duration\": 90\n        },\n        {\n            \"person\": \"Sarah\",\n            \"location\": \"Pacific Heights\",\n            \"available_start\": \"16:15\",\n            \"available_end\": \"18:45\",\n            \"duration\": 15\n        },\n        {\n            \"person\": \"Nancy\",\n            \"location\": \"Presidio\",\n            \"available_start\": \"17:30\",\n            \"available_end\": \"19:15\",\n            \"duration\": 60\n        }\n    ]\n    \n    # Our chosen ordering based on feasibility and minimizing waiting times.\n    # Starting location and time.\n    current_location = \"Union Square\"\n    current_time = time_to_minutes(\"9:00\")\n    \n    itinerary = []\n    \n    for meeting in meetings:\n        # Calculate travel time from current location to meeting location.\n        travel_time = travel[current_location][meeting[\"location\"]]\n        # Arrival time at the meeting location.\n        arrival_time = current_time + travel_time\n        # Convert available start time of the meeting to minutes.\n        available_start = time_to_minutes(meeting[\"available_start\"])\n        available_end = time_to_minutes(meeting[\"available_end\"])\n        \n        # The meeting can only start when friend is available.\n        meeting_start = max(arrival_time, available_start)\n        meeting_end = meeting_start + meeting[\"duration\"]\n        \n        # Check if meeting can be finished within the available window.\n        if meeting_end > available_end:\n            # If not feasible, print error (in a real scenario we might try alternative ordering)\n            raise ValueError(f\"Cannot schedule meeting with {meeting['person']} within available window.\")\n        \n        # Append meeting to itinerary.\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": meeting[\"location\"],\n            \"person\": meeting[\"person\"],\n            \"start_time\": minutes_to_time(meeting_start),\n            \"end_time\": minutes_to_time(meeting_end)\n        })\n        \n        # Update current time and location after meeting.\n        current_time = meeting_end\n        current_location = meeting[\"location\"]\n    \n    # Create final schedule dictionary.\n    schedule = {\"itinerary\": itinerary}\n    \n    # Output the schedule as JSON-formatted dictionary.\n    print(json.dumps(schedule, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
+            "count": "meeting_planning_example_403"
+        }
+    ]
+}

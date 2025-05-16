@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Function to find a suitable time for a meeting\ndef find_meeting_time():\n    # Participants' busy schedules\n    busy_times = {\n        'Jose': [(datetime(2023, 10, 23, 11, 0), datetime(2023, 10, 23, 11, 30)),\n                 (datetime(2023, 10, 23, 12, 30), datetime(2023, 10, 23, 13, 0))],\n        'Keith': [(datetime(2023, 10, 23, 14, 0), datetime(2023, 10, 23, 14, 30)),\n                  (datetime(2023, 10, 23, 15, 0), datetime(2023, 10, 23, 15, 30))],\n        'Logan': [(datetime(2023, 10, 23, 9, 0), datetime(2023, 10, 23, 10, 0)),\n                  (datetime(2023, 10, 23, 12, 0), datetime(2023, 10, 23, 12, 30)),\n                  (datetime(2023, 10, 23, 15, 0), datetime(2023, 10, 23, 15, 30))],\n        'Megan': [(datetime(2023, 10, 23, 9, 0), datetime(2023, 10, 23, 10, 30)),\n                  (datetime(2023, 10, 23, 11, 0), datetime(2023, 10, 23, 12, 0)),\n                  (datetime(2023, 10, 23, 13, 0), datetime(2023, 10, 23, 13, 30)),\n                  (datetime(2023, 10, 23, 14, 30), datetime(2023, 10, 23, 16, 30))],\n        'Gary': [(datetime(2023, 10, 23, 9, 0), datetime(2023, 10, 23, 9, 30)),\n                 (datetime(2023, 10, 23, 10, 0), datetime(2023, 10, 23, 10, 30)),\n                 (datetime(2023, 10, 23, 11, 30), datetime(2023, 10, 23, 13, 0)),\n                 (datetime(2023, 10, 23, 13, 30), datetime(2023, 10, 23, 14, 0)),\n                 (datetime(2023, 10, 23, 14, 30), datetime(2023, 10, 23, 16, 30))],\n        'Bobby': [(datetime(2023, 10, 23, 11, 0), datetime(2023, 10, 23, 11, 30)),\n                  (datetime(2023, 10, 23, 12, 0), datetime(2023, 10, 23, 12, 30)),\n                  (datetime(2023, 10, 23, 13, 0), datetime(2023, 10, 23, 16, 0))]\n    }\n    \n    # Available meeting time slots\n    meeting_duration = timedelta(minutes=30)\n    meeting_end_time = datetime(2023, 10, 23, 15, 30)\n    \n    # Define the work hours\n    start_time = datetime(2023, 10, 23, 9, 0)\n    end_time = datetime(2023, 10, 23, 17, 0)\n\n    for start in range(0, (end_time - start_time).seconds // 60, 30):\n        proposed_start = start_time + timedelta(minutes=start)\n        proposed_end = proposed_start + meeting_duration\n        \n        if proposed_end > end_time or proposed_start > meeting_end_time:\n            continue\n        \n        if all(not (proposed_start < end and proposed_end > start) for busy in busy_times.values() for start, end in busy):\n            return f\"{proposed_start.strftime('%H:%M')}:{proposed_end.strftime('%H:%M')}\", \"Monday\"\n\n# Output the proposed meeting time\nproposed_time, day = find_meeting_time()\nprint(proposed_time, day)\n```",
+            "count": "calendar_scheduling_example_325"
+        }
+    ]
+}

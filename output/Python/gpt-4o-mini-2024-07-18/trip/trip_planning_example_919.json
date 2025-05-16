@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 25-27",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters\ndays_total = 15\ncities = {\n    \"Vienna\": {\"days\": 4, \"conference_days\": [1, 4]},\n    \"Milan\": {\"days\": 2},\n    \"Rome\": {\"days\": 3},\n    \"Riga\": {\"days\": 2},\n    \"Lisbon\": {\"days\": 3, \"relatives_days\": [11, 12, 13]},\n    \"Vilnius\": {\"days\": 4},\n    \"Oslo\": {\"days\": 3, \"friend_days\": [13, 14, 15]}\n}\n\ndirect_flights = {\n    \"Riga\": [\"Oslo\", \"Milan\", \"Vienna\", \"Lisbon\"],\n    \"Oslo\": [\"Rome\", \"Milan\", \"Lisbon\", \"Vienna\", \"Vilnius\"],\n    \"Rome\": [\"Riga\", \"Lisbon\", \"Oslo\"],\n    \"Vienna\": [\"Milan\", \"Vilnius\", \"Lisbon\", \"Riga\", \"Rome\"],\n    \"Milan\": [\"Oslo\", \"Vienna\", \"Riga\", \"Lisbon\"],\n    \"Vilnius\": [\"Oslo\", \"Vienna\", \"Riga\", \"Milan\"],\n    \"Lisbon\": [\"Oslo\", \"Vienna\", \"Riga\", \"Milan\", \"Rome\"]\n}\n\nitinerary = []\ncurrent_day = 1\n\n# Implementing the trip plan creation\ndef add_city_to_itinerary(city, start_day, duration):\n    itinerary.append({\"day_range\": f\"Day {start_day}-{start_day + duration - 1}\", \"place\": city})\n\ndef add_flight_to_itinerary(from_city, to_city, flight_day):\n    itinerary.append({\"flying\": f\"Day {flight_day}-{flight_day}\", \"from\": from_city, \"to\": to_city})\n\n# Step 1: Start in Vienna for the conference and tourism\nadd_city_to_itinerary(\"Vienna\", current_day, 4)\ncurrent_day += 4\n\n# Step 2: Move to Milan (direct flight from Vienna)\nadd_flight_to_itinerary(\"Vienna\", \"Milan\", current_day)\ncurrent_day += 1\nadd_city_to_itinerary(\"Milan\", current_day, 2)\ncurrent_day += 2\n\n# Step 3: Travel to Rome (direct flight from Milan)\nadd_flight_to_itinerary(\"Milan\", \"Rome\", current_day)\ncurrent_day += 1\nadd_city_to_itinerary(\"Rome\", current_day, 3)\ncurrent_day += 3\n\n# Step 4: Go to Riga (direct flight from Rome)\nadd_flight_to_itinerary(\"Rome\", \"Riga\", current_day)\ncurrent_day += 1\nadd_city_to_itinerary(\"Riga\", current_day, 2)\ncurrent_day += 2\n\n# Step 5: Travel to Lisbon (direct flight from Riga)\nadd_flight_to_itinerary(\"Riga\", \"Lisbon\", current_day)\ncurrent_day += 1\nadd_city_to_itinerary(\"Lisbon\", current_day, 3)\ncurrent_day += 3\n\n# Step 6: Visit relatives in Lisbon (already within the Lisbon stay)\n\n# Step 7: Move to Vilnius (direct flight from Lisbon)\nadd_flight_to_itinerary(\"Lisbon\", \"Vilnius\", current_day)\ncurrent_day += 1\nadd_city_to_itinerary(\"Vilnius\", current_day, 4)\ncurrent_day += 4\n\n# Step 8: Finally, fly to Oslo (direct flight from Vilnius)\nadd_flight_to_itinerary(\"Vilnius\", \"Oslo\", current_day)\ncurrent_day += 1\nadd_city_to_itinerary(\"Oslo\", current_day, 3)\n\n# Output the final itinerary in JSON format\noutput_json = json.dumps(itinerary, indent=4)\nprint(output_json)\n```",
+            "count": "trip_planning_example_919"
+        }
+    ]
+}

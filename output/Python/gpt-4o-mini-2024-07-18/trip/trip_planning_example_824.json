@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day {current_day}-{current_day + 2}",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day {current_day}-{current_day + 4}",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day {current_day}-{current_day + 3}",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day {current_day}-{current_day + 2}",
+                        "place": "Lisbon"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define trip parameters\ntrip_plan = {\n    'cities': {\n        'Berlin': {'days': 5, 'start_day': 1, 'event': 'annual show'},\n        'Split': {'days': 3, 'start_day': None},\n        'Bucharest': {'days': 3, 'start_day': 13},\n        'Riga': {'days': 5, 'start_day': None},\n        'Lisbon': {'days': 3, 'start_day': None},\n        'Tallinn': {'days': 4, 'start_day': None},\n        'Lyon': {'days': 5, 'start_day': 7, 'event': 'wedding'}\n    },\n    'direct_flights': [\n        ('Lisbon', 'Bucharest'), ('Berlin', 'Lisbon'), ('Bucharest', 'Riga'),\n        ('Berlin', 'Riga'), ('Split', 'Lyon'), ('Lisbon', 'Riga'),\n        ('Riga', 'Tallinn'), ('Berlin', 'Split'), ('Lyon', 'Lisbon'),\n        ('Berlin', 'Tallinn'), ('Lyon', 'Bucharest')\n    ],\n    'total_days': 22\n}\n\n# Create initial itinerary based on the constraints\nitinerary = []\ncurrent_day = 1\n\n# Add Berlin stay\nitinerary.append({'day_range': 'Day 1-5', 'place': 'Berlin'})\ncurrent_day += 5\n\n# Add wedding in Lyon\nitinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Berlin', 'to': 'Lyon'})\ncurrent_day += 1\nitinerary.append({'day_range': 'Day 7-11', 'place': 'Lyon'})\ncurrent_day += 5\n\n# Add Split after Lyon\nitinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Lyon', 'to': 'Split'})\ncurrent_day += 1\nitinerary.append({'day_range': 'Day {current_day}-{current_day + 2}', 'place': 'Split'})\ncurrent_day += 3\n\n# Add Bucharest\nitinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Split', 'to': 'Bucharest'})\ncurrent_day += 1\nitinerary.append({'day_range': 'Day 13-15', 'place': 'Bucharest'})\ncurrent_day += 3\n\n# Add Riga\nitinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Bucharest', 'to': 'Riga'})\ncurrent_day += 1\nitinerary.append({'day_range': 'Day {current_day}-{current_day + 4}', 'place': 'Riga'})\ncurrent_day += 5\n\n# Add Tallinn\nitinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Riga', 'to': 'Tallinn'})\ncurrent_day += 1\nitinerary.append({'day_range': 'Day {current_day}-{current_day + 3}', 'place': 'Tallinn'})\ncurrent_day += 4\n\n# Add Lisbon\nitinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Tallinn', 'to': 'Lisbon'})\ncurrent_day += 1\nitinerary.append({'day_range': 'Day {current_day}-{current_day + 2}', 'place': 'Lisbon'})\ncurrent_day += 3\n\n# Output result as JSON\noutput_json = json.dumps(itinerary, indent=4)\nprint(output_json)\n```",
+            "count": "trip_planning_example_824"
+        }
+    ]
+}

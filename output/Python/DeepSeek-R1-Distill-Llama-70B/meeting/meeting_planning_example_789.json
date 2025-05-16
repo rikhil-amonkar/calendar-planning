@@ -1,0 +1,108 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Betty",
+                        "start_time": "9:13",
+                        "end_time": "10:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Melissa",
+                        "start_time": "11:13",
+                        "end_time": "12:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Timothy",
+                        "start_time": "13:15",
+                        "end_time": "14:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joshua",
+                        "start_time": "15:00",
+                        "end_time": "16:30"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jeffrey",
+                        "start_time": "16:47",
+                        "end_time": "17:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "James",
+                        "start_time": "17:59",
+                        "end_time": "19:29"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Emily",
+                        "start_time": "21:00",
+                        "end_time": "23:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Betty",
+                        "start_time": "9:13",
+                        "end_time": "10:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Melissa",
+                        "start_time": "11:13",
+                        "end_time": "12:58"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joshua",
+                        "start_time": "13:03",
+                        "end_time": "14:33"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Jeffrey",
+                        "start_time": "14:50",
+                        "end_time": "15:35"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "James",
+                        "start_time": "16:02",
+                        "end_time": "17:32"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Sunset District",
+                        "person": "Emily",
+                        "start_time": "19:30",
+                        "end_time": "21:30"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, I need to solve this problem where I have to write a Python program that calculates the optimal meeting schedule for visiting as many friends as possible in San Francisco, considering their availability and travel times between locations. The solution involves using a backtracking algorithm to explore all possible meeting sequences and select the one that maximizes the number of friends met.\n\nFirst, I'll start by understanding the problem. The user arrives at Union Square at 9:00 AM and wants to meet friends located in different districts, each with specific time windows and meeting durations. The goal is to find a schedule that allows meeting the maximum number of friends without overlapping meetings and considering travel times.\n\nI'll need to process the travel times between each pair of districts provided. This data will be stored in a dictionary for quick lookup. Each friend's availability, location, and required meeting duration are stored in a list of dictionaries.\n\nNext, I'll use a backtracking algorithm to explore all possible sequences of meetings. For each friend, I'll calculate the earliest possible start time considering travel from the current location and the friend's availability. If feasible, the meeting is added to the itinerary, and the algorithm proceeds to the next friend.\n\nI'll also implement pruning to improve efficiency. If the remaining possible meetings cannot exceed the current best solution, the algorithm will stop exploring that path.\n\nFinally, I'll prepare the output as a JSON-formatted dictionary with the schedule and print it.\n\nI'll make sure the code runs independently and outputs valid JSON when executed.\n</think>\n\n```python\nimport json\n\n# Define travel times between locations in minutes\ntravel_times = {\n    ('Union Square', 'Russian Hill'): 13,\n    ('Union Square', 'Alamo Square'): 15,\n    ('Union Square', 'Haight-Ashbury'): 18,\n    ('Union Square', 'Marina District'): 18,\n    ('Union Square', 'Bayview'): 15,\n    ('Union Square', 'Chinatown'): 7,\n    ('Union Square', 'Presidio'): 24,\n    ('Union Square', 'Sunset District'): 27,\n    ('Russian Hill', 'Union Square'): 10,\n    ('Russian Hill', 'Alamo Square'): 15,\n    ('Russian Hill', 'Haight-Ashbury'): 17,\n    ('Russian Hill', 'Marina District'): 7,\n    ('Russian Hill', 'Bayview'): 23,\n    ('Russian Hill', 'Chinatown'): 9,\n    ('Russian Hill', 'Presidio'): 14,\n    ('Russian Hill', 'Sunset District'): 23,\n    ('Alamo Square', 'Union Square'): 14,\n    ('Alamo Square', 'Russian Hill'): 13,\n    ('Alamo Square', 'Haight-Ashbury'): 5,\n    ('Alamo Square', 'Marina District'): 15,\n    ('Alamo Square', 'Bayview'): 16,\n    ('Alamo Square', 'Chinatown'): 15,\n    ('Alamo Square', 'Presidio'): 17,\n    ('Alamo Square', 'Sunset District'): 16,\n    ('Haight-Ashbury', 'Union Square'): 19,\n    ('Haight-Ashbury', 'Russian Hill'): 17,\n    ('Haight-Ashbury', 'Alamo Square'): 5,\n    ('Haight-Ashbury', 'Marina District'): 17,\n    ('Haight-Ashbury', 'Bayview'): 18,\n    ('Haight-Ashbury', 'Chinatown'): 19,\n    ('Haight-Ashbury', 'Presidio'): 15,\n    ('Haight-Ashbury', 'Sunset District'): 15,\n    ('Marina District', 'Union Square'): 16,\n    ('Marina District', 'Russian Hill'): 8,\n    ('Marina District', 'Alamo Square'): 15,\n    ('Marina District', 'Haight-Ashbury'): 16,\n    ('Marina District', 'Bayview'): 27,\n    ('Marina District', 'Chinatown'): 15,\n    ('Marina District', 'Presidio'): 10,\n    ('Marina District', 'Sunset District'): 19,\n    ('Bayview', 'Union Square'): 18,\n    ('Bayview', 'Russian Hill'): 23,\n    ('Bayview', 'Alamo Square'): 16,\n    ('Bayview', 'Haight-Ashbury'): 19,\n    ('Bayview', 'Marina District'): 27,\n    ('Bayview', 'Chinatown'): 19,\n    ('Bayview', 'Presidio'): 32,\n    ('Bayview', 'Sunset District'): 23,\n    ('Chinatown', 'Union Square'): 7,\n    ('Chinatown', 'Russian Hill'): 7,\n    ('Chinatown', 'Alamo Square'): 17,\n    ('Chinatown', 'Haight-Ashbury'): 19,\n    ('Chinatown', 'Marina District'): 12,\n    ('Chinatown', 'Bayview'): 20,\n    ('Chinatown', 'Presidio'): 19,\n    ('Chinatown', 'Sunset District'): 29,\n    ('Presidio', 'Union Square'): 22,\n    ('Presidio', 'Russian Hill'): 14,\n    ('Presidio', 'Alamo Square'): 19,\n    ('Presidio', 'Haight-Ashbury'): 15,\n    ('Presidio', 'Marina District'): 11,\n    ('Presidio', 'Bayview'): 31,\n    ('Presidio', 'Chinatown'): 21,\n    ('Presidio', 'Sunset District'): 15,\n    ('Sunset District', 'Union Square'): 30,\n    ('Sunset District', 'Russian Hill'): 24,\n    ('Sunset District', 'Alamo Square'): 17,\n    ('Sunset District', 'Haight-Ashbury'): 15,\n    ('Sunset District', 'Marina District'): 21,\n    ('Sunset District', 'Bayview'): 22,\n    ('Sunset District', 'Chinatown'): 30,\n    ('Sunset District', 'Presidio'): 16,\n}\n\n# Define friends with their constraints\nfriends = [\n    {'name': 'Betty', 'location': 'Russian Hill', 'start': 420, 'end': 1140, 'duration': 105},\n    {'name': 'Melissa', 'location': 'Alamo Square', 'start': 570, 'end': 1035, 'duration': 105},\n    {'name': 'Joshua', 'location': 'Haight-Ashbury', 'start': 735, 'end': 1140, 'duration': 90},\n    {'name': 'Jeffrey', 'location': 'Marina District', 'start': 735, 'end': 1080, 'duration': 45},\n    {'name': 'James', 'location': 'Bayview', 'start': 450, 'end': 1320, 'duration': 90},\n    {'name': 'Anthony', 'location': 'Chinatown', 'start': 705, 'end': 810, 'duration': 75},\n    {'name': 'Timothy', 'location': 'Presidio', 'start': 750, 'end': 930, 'duration': 90},\n    {'name': 'Emily', 'location': 'Sunset District', 'start': 1260, 'end': 1470, 'duration': 120},\n]\n\ndef convert_minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\ndef convert_time_to_minutes(time_str):\n    hours, mins = map(int, time_str.split(':'))\n    return hours * 60 + mins\n\nbest_itinerary = []\nbest_count = 0\n\ndef backtrack(current_location, current_time, met, itinerary):\n    global best_itinerary, best_count\n\n    # Prune if no better solution possible\n    remaining = len(friends) - len(met)\n    if len(met) + remaining <= best_count:\n        return\n\n    # Update best if current is better\n    if len(met) > best_count:\n        best_count = len(met)\n        best_itinerary = itinerary.copy()\n\n    # Try each possible next friend\n    for friend in friends:\n        if friend['name'] in met:\n            continue\n\n        # Calculate travel time to friend's location\n        travel = travel_times.get((current_location, friend['location']), 0)\n        arrival = current_time + travel\n\n        # Friend's availability\n        start = friend['start']\n        end = friend['end']\n        duration = friend['duration']\n\n        earliest_start = max(arrival, start)\n        latest_start = end - duration\n\n        if earliest_start > latest_start:\n            continue  # Cannot meet this friend\n\n        # Schedule the meeting\n        meeting_start = earliest_start\n        meeting_end = meeting_start + duration\n\n        # Create meeting entry\n        meeting = {\n            'action': 'meet',\n            'location': friend['location'],\n            'person': friend['name'],\n            'start_time': convert_minutes_to_time(meeting_start),\n            'end_time': convert_minutes_to_time(meeting_end)\n        }\n\n        # Update the state\n        new_met = set(met)\n        new_met.add(friend['name'])\n        new_itinerary = itinerary.copy()\n        new_itinerary.append(meeting)\n\n        # Update current location and time\n        new_location = friend['location']\n        new_time = meeting_end\n\n        # Recurse\n        backtrack(new_location, new_time, new_met, new_itinerary)\n\n# Initial call\nstart_time = 540  # 9:00 AM in minutes\nbacktrack('Union Square', start_time, set(), [])\n\n# Prepare the output\noutput = {\n    \"itinerary\": best_itinerary\n}\n\n# Print the JSON\nprint(json.dumps(output))\n```",
+            "count": "meeting_planning_example_789"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\nfrom datetime import timedelta\n\n# Define work day start and end (in minutes from midnight)\nWORK_START = 9 * 60      # 9:00 in minutes (540)\nWORK_END = 17 * 60       # 17:00 in minutes (1020)\nMEETING_DURATION = 30    # Duration in minutes\n\n# Participant busy schedules represented as (start_minute, end_minute) intervals.\n# Times are measured in minutes from midnight.\nbusy_times = {\n    \"Steven\": [],  # free the entire day\n    \"Roy\": [],     # free the entire day\n    \"Cynthia\": [\n        (9 * 60 + 30, 10 * 60 + 30),  # 09:30 to 10:30\n        (11 * 60 + 30, 12 * 60),       # 11:30 to 12:00\n        (13 * 60, 13 * 60 + 30),       # 13:00 to 13:30\n        (15 * 60, 16 * 60)             # 15:00 to 16:00\n    ],\n    \"Lauren\": [\n        (9 * 60, 9 * 60 + 30),         # 09:00 to 09:30\n        (10 * 60 + 30, 11 * 60),        # 10:30 to 11:00\n        (11 * 60 + 30, 12 * 60),        # 11:30 to 12:00\n        (13 * 60, 13 * 60 + 30),        # 13:00 to 13:30\n        (14 * 60, 14 * 60 + 30),        # 14:00 to 14:30\n        (15 * 60, 15 * 60 + 30),        # 15:00 to 15:30\n        (16 * 60, 17 * 60)             # 16:00 to 17:00\n    ],\n    \"Robert\": [\n        (10 * 60 + 30, 11 * 60),       # 10:30 to 11:00\n        (11 * 60 + 30, 12 * 60),       # 11:30 to 12:00\n        (12 * 60 + 30, 13 * 60 + 30),   # 12:30 to 13:30\n        (14 * 60, 16 * 60)             # 14:00 to 16:00\n    ]\n}\n\ndef is_interval_free(interval, busy_intervals):\n    \"\"\"Check if a given meeting interval (start, end) does not overlap any busy intervals.\"\"\"\n    start, end = interval\n    for busy_start, busy_end in busy_intervals:\n        # Check for any overlap\n        if not (end <= busy_start or start >= busy_end):\n            return False\n    return True\n\ndef format_time(minutes):\n    \"\"\"Return string formatted as HH:MM for a given minutes from midnight.\"\"\"\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Try every possible start time within work hours (minute by minute)\nproposed_interval = None\nfor start in range(WORK_START, WORK_END - MEETING_DURATION + 1):\n    end = start + MEETING_DURATION\n    interval = (start, end)\n    # Check if all participants are free during this interval\n    if all(is_interval_free(interval, busy_times.get(person, [])) for person in busy_times):\n        proposed_interval = interval\n        break\n\nif proposed_interval:\n    start_str = format_time(proposed_interval[0])\n    end_str = format_time(proposed_interval[1])\n    print(f\"Monday {start_str}:{end_str}\")\nelse:\n    print(\"No available time found.\")\n'''",
+            "count": "calendar_scheduling_example_215"
+        }
+    ]
+}

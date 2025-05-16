@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\ndef find_meeting_time():\n    # Define the schedule constraints\n    shirley_schedule = {\n        \"Monday\": [(datetime.strptime(\"10:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n                   (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                   (datetime.strptime(\"16:00\", \"%H:%M\"), datetime.strptime(\"16:30\", \"%H:%M\"))],\n        \"Tuesday\": [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"10:00\", \"%H:%M\"))]\n    }\n    \n    albert_schedule = {\n        \"Monday\": [(datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))], \n        \"Tuesday\": [(datetime.strptime(\"09:30\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n                    (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n                    (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n                    (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\"))]\n    }\n\n    meeting_duration = timedelta(minutes=30)\n\n    # Check for possible meeting times on Monday\n    for start_hour in range(9, 17):  # from 9 AM to 5 PM\n        start_time = datetime.strptime(f\"{start_hour}:00\", \"%H:%M\")\n        end_time = start_time + meeting_duration\n        \n        if end_time.time() <= datetime.strptime(\"17:00\", \"%H:%M\").time():\n            if not is_time_conflicted(start_time, end_time, shirley_schedule[\"Monday\"], albert_schedule[\"Monday\"]):\n                return f\"Monday {start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}\"\n    \n    # Check for possible meeting times on Tuesday (up to 10:30 preference for Shirley)\n    for start_hour in range(9, 11):  # from 9 AM to 10 AM (ending before 10:30)\n        start_time = datetime.strptime(f\"{start_hour}:00\", \"%H:%M\")\n        end_time = start_time + meeting_duration\n        \n        if end_time.time() <= datetime.strptime(\"10:30\", \"%H:%M\").time():\n            if not is_time_conflicted(start_time, end_time, shirley_schedule[\"Tuesday\"], albert_schedule[\"Tuesday\"]):\n                return f\"Tuesday {start_time.strftime('%H:%M')}:{end_time.strftime('%H:%M')}\"\n    \n    return \"No available time found\"\n\ndef is_time_conflicted(start_time, end_time, shirley_slots, albert_slots):\n    for slot in shirley_slots + albert_slots:\n        if (start_time < slot[1] and end_time > slot[0]):\n            return True\n    return False\n\nif __name__ == '__main__':\n    meeting_time = find_meeting_time()\n    print(meeting_time)\n```",
+            "count": "calendar_scheduling_example_658"
+        }
+    ]
+}

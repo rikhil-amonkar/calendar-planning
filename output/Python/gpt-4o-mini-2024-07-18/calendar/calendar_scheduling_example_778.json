@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define participants' schedules\nsusan_schedule = {\n    \"Monday\": [(9, 0, 12, 30), (13, 30, 14, 0)],\n    \"Tuesday\": [(11, 30, 12, 0)],\n    \"Wednesday\": [(9, 30, 10, 30), (14, 0, 14, 30), (15, 30, 16, 30)]\n}\n\nsandra_schedule = {\n    \"Monday\": [(9, 0, 13, 0), (14, 0, 15, 0), (16, 0, 16, 30)],\n    \"Tuesday\": [(9, 0, 9, 30), (10, 30, 12, 0), (12, 30, 13, 30), (14, 0, 14, 30), (16, 0, 17, 0)],\n    \"Wednesday\": [(9, 0, 11, 30), (12, 0, 12, 30), (13, 0, 17, 0)]\n}\n\n# Function to find possible meeting times\ndef find_meeting_time(susan_schedule, sandra_schedule, duration_minutes, preferred_days):\n    duration = timedelta(minutes=duration_minutes)\n    \n    for day in preferred_days:\n        susan_busy_times = susan_schedule.get(day, [])\n        sandra_busy_times = sandra_schedule.get(day, [])\n\n        # Create list of busy times with tuples of start and end times\n        busy_times = []\n\n        # Convert busy times to datetime objects for ease of comparison\n        for start_hour, start_minute, end_hour, end_minute in susan_busy_times + sandra_busy_times:\n            busy_times.append((datetime(2000, 1, 1, start_hour, start_minute),\n                                datetime(2000, 1, 1, end_hour, end_minute)))\n        \n        # Sort busy times by start time\n        busy_times.sort()\n\n        # Availability starts at 9:00\n        available_start = datetime(2000, 1, 1, 9, 0)\n        # Availability ends at 17:00\n        available_end = datetime(2000, 1, 1, 17, 0)\n\n        for start, end in busy_times:\n            if available_start + duration <= start:\n                # If there is a gap between available time and busy time\n                if available_start + duration <= available_end:\n                    return f\"{day} {available_start.strftime('%H:%M')}:{(available_start + duration).strftime('%H:%M')}\"\n\n            # Shift available start time to the end of the current busy time\n            available_start = max(available_start, end)\n\n        # Check if there's remaining time after the last busy slot\n        if available_start + duration <= available_end:\n            return f\"{day} {available_start.strftime('%H:%M')}:{(available_start + duration).strftime('%H:%M')}\"\n\n# Define meeting duration and preferred days\nmeeting_duration = 30  # in minutes\npreferred_days = [\"Wednesday\"]\n\n# Find and print the meeting time\nmeeting_time = find_meeting_time(susan_schedule, sandra_schedule, meeting_duration, preferred_days)\nprint(meeting_time)\n```",
+            "count": "calendar_scheduling_example_778"
+        }
+    ]
+}

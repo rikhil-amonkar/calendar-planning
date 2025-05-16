@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 28-32",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 33-34",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 35-38",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Define the trip constraints\ncity_constraints = {\n    'Paris': {'days': 5, 'meeting_days': (4, 8)},\n    'Warsaw': {'days': 2},\n    'Krakow': {'days': 2, 'workshop_days': (17, 18)},\n    'Tallinn': {'days': 2},\n    'Riga': {'days': 2, 'wedding_days': (23, 24)},\n    'Copenhagen': {'days': 5},\n    'Helsinki': {'days': 5, 'meeting_days': (18, 22)},\n    'Oslo': {'days': 5},\n    'Santorini': {'days': 2, 'family_visit_days': (12, 13)},\n    'Lyon': {'days': 4},\n}\n\n# Define direct flight connections\ndirect_flights = {\n    'Warsaw': ['Riga', 'Tallinn', 'Copenhagen', 'Krakow', 'Oslo'],\n    'Riga': ['Warsaw', 'Tallinn', 'Helsinki', 'Copenhagen'],\n    'Tallinn': ['Warsaw', 'Riga', 'Helsinki', 'Oslo', 'Copenhagen'],\n    'Copenhagen': ['Helsinki', 'Warsaw', 'Riga', 'Krakow', 'Oslo', 'Santorini'],\n    'Krakow': ['Warsaw', 'Helsinki'],\n    'Paris': ['Lyon', 'Oslo', 'Riga', 'Krakow', 'Tallinn', 'Copenhagen', 'Helsinki', 'Warsaw'],\n    'Helsinki': ['Copenhagen', 'Warsaw', 'Riga', 'Krakow', 'Tallinn'],\n    'Oslo': ['Copenhagen', 'Lyon', 'Riga', 'Warsaw', 'Krakow', 'Tallinn'],\n    'Santorini': ['Copenhagen', 'Oslo'],\n    'Lyon': ['Paris', 'Oslo']\n}\n\n# Function to plan the trip\ndef plan_trip(start_day=1, total_days=25):\n    itinerary = []\n    current_day = start_day\n    \n    # Visit Paris first\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Paris\"][\"days\"] - 1}', 'place': 'Paris'})\n    current_day += city_constraints[\"Paris\"][\"days\"]\n\n    # Meeting friends in Paris between day 4 and day 8\n    meeting_start = 4\n    meeting_end = 8\n\n    # Schedule Warsaw\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Paris', 'to': 'Warsaw'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Warsaw\"][\"days\"] - 1}', 'place': 'Warsaw'})\n    current_day += city_constraints[\"Warsaw\"][\"days\"]\n\n    # Schedule Krakow\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Warsaw', 'to': 'Krakow'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Krakow\"][\"days\"] - 1}', 'place': 'Krakow'})\n    current_day += city_constraints[\"Krakow\"][\"days\"]\n\n    # Workshop in Krakow\n    current_day += 1  # Move to day for workshop\n    current_day += 1  # Move to day after workshop\n\n    # Schedule Tallinn\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Krakow', 'to': 'Tallinn'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Tallinn\"][\"days\"] - 1}', 'place': 'Tallinn'})\n    current_day += city_constraints[\"Tallinn\"][\"days\"]\n\n    # Schedule Riga\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Tallinn', 'to': 'Riga'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Riga\"][\"days\"] - 1}', 'place': 'Riga'})\n    current_day += city_constraints[\"Riga\"][\"days\"]\n\n    # Schedule Copenhagen\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Riga', 'to': 'Copenhagen'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Copenhagen\"][\"days\"] - 1}', 'place': 'Copenhagen'})\n    current_day += city_constraints[\"Copenhagen\"][\"days\"]\n\n    # Schedule Helsinki\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Copenhagen', 'to': 'Helsinki'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Helsinki\"][\"days\"] - 1}', 'place': 'Helsinki'})\n    current_day += city_constraints[\"Helsinki\"][\"days\"]\n\n    # Meeting in Helsinki\n    current_day += 1  # Move for meeting\n    current_day += 1  # Move for meeting\n\n    # Schedule Oslo\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Helsinki', 'to': 'Oslo'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Oslo\"][\"days\"] - 1}', 'place': 'Oslo'})\n    current_day += city_constraints[\"Oslo\"][\"days\"]\n\n    # Schedule Santorini\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Oslo', 'to': 'Santorini'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Santorini\"][\"days\"] - 1}', 'place': 'Santorini'})\n    current_day += city_constraints[\"Santorini\"][\"days\"]\n\n    # Schedule Lyon\n    itinerary.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Santorini', 'to': 'Lyon'})\n    itinerary.append({'day_range': f'Day {current_day}-{current_day + city_constraints[\"Lyon\"][\"days\"] - 1}', 'place': 'Lyon'})\n    current_day += city_constraints[\"Lyon\"][\"days\"]\n\n    return itinerary\n\n# Generate the itinerary\ntrip_itinerary = plan_trip()\n\n# Output in JSON format\njson_output = json.dumps(trip_itinerary, indent=4)\nprint(json_output)\n```",
+            "count": "trip_planning_example_1509"
+        }
+    ]
+}

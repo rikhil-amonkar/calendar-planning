@@ -1,0 +1,31 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "14:15",
+                        "end_time": "15:45"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Kenneth",
+                        "start_time": "14:15",
+                        "end_time": "15:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, let's tackle this problem step by step. The user wants a Python program that calculates the optimal meeting schedule based on given constraints. The program must compute the plan dynamically, not just print a pre-determined answer.\n\nFirst, I need to understand the input parameters. The user is starting at Fisherman's Wharf at 9:00 AM and wants to meet Kenneth at Nob Hill. The travel time between these two locations is 11 minutes in both directions. Kenneth is available from 2:15 PM to 7:45 PM, and the meeting should last at least 90 minutes.\n\nI'll start by defining the travel times in a dictionary. Since there are only two locations, the dictionary will be straightforward. Next, I'll outline Kenneth's availability and meeting duration.\n\nThe goal is to find the best time to meet Kenneth, considering the travel time and the duration of the meeting. I'll need to convert time strings into minutes to perform calculations easily. \n\nI'll set the start time at 9:00 AM and calculate the earliest possible arrival at Nob Hill, which is 9:11 AM. Then, I'll determine the latest possible start time for the meeting to ensure it ends by 7:45 PM. The latest start time would be 7:45 PM minus 90 minutes, which is 6:15 PM.\n\nWithin this window, I'll check if Kenneth is available. Since Kenneth's available time starts at 2:15 PM, the meeting can start any time from 2:15 PM onwards, as long as it doesn't exceed his availability end time.\n\nI'll calculate the meeting's start and end times, ensuring it fits within Kenneth's available window. Once confirmed, I'll format the times back to HH:MM and construct the itinerary.\n\nFinally, I'll output the result in the specified JSON format, ensuring it's valid and self-contained.\n</think>\n\n```python\nimport json\n\n# Travel times in minutes between locations\ntravel_times = {\n    'Fisherman\\'s Wharf': {\n        'Nob Hill': 11,\n    },\n    'Nob Hill': {\n        'Fisherman\\'s Wharf': 11,\n    }\n}\n\n# Friend's data\nfriends = [\n    {\n        'name': 'Kenneth',\n        'location': 'Nob Hill',\n        'start': '14:15',\n        'end': '19:45',\n        'duration': 90,\n    }\n]\n\n# Convert time strings to minutes\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\n# Convert minutes to time string\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Calculate the optimal meeting time\ncurrent_time = 540  # 9:00 AM in minutes\ncurrent_location = 'Fisherman\\'s Wharf'\n\n# Calculate earliest arrival time at Nob Hill\ntravel_time = travel_times[current_location]['Nob Hill']\narrival_time = current_time + travel_time\n\n# Convert friend's availability to minutes\nstart_time = time_to_minutes(friends[0]['start'])\nend_time = time_to_minutes(friends[0]['end'])\nduration = friends[0]['duration']\n\n# Calculate latest possible start time to meet duration requirement\nlatest_start = end_time - duration\n\n# Determine the best start time within the available window\nmeeting_start = max(arrival_time, start_time)\nmeeting_end = meeting_start + duration\n\n# Check if meeting fits within available time\nif meeting_start > latest_start:\n    print(\"No valid meeting time found.\")\nelse:\n    # Prepare the itinerary\n    itinerary = [{\n        'action': 'meet',\n        'location': friends[0]['location'],\n        'person': friends[0]['name'],\n        'start_time': minutes_to_time(meeting_start),\n        'end_time': minutes_to_time(meeting_end)\n    }]\n    \n    # Output the result\n    result = {\n        \"itinerary\": itinerary\n    }\n    \n    print(json.dumps(result))\n```",
+            "count": "meeting_planning_example_6"
+        }
+    ]
+}

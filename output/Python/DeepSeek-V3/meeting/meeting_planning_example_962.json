@@ -1,0 +1,101 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joshua",
+                        "start_time": "9:20",
+                        "end_time": "11:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "David",
+                        "start_time": "11:25",
+                        "end_time": "11:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Helen",
+                        "start_time": "17:30",
+                        "end_time": "18:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "18:34",
+                        "end_time": "19:49"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Lisa",
+                        "start_time": "19:56",
+                        "end_time": "20:41"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joshua",
+                        "start_time": "9:20",
+                        "end_time": "11:05"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "David",
+                        "start_time": "11:25",
+                        "end_time": "11:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kimberly",
+                        "start_time": "16:45",
+                        "end_time": "18:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Lisa",
+                        "start_time": "18:07",
+                        "end_time": "18:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Timothy",
+                        "start_time": "19:45",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    h, m = map(int, time_str.split(':'))\n    return h * 60 + m\n\ndef minutes_to_time(minutes):\n    h = minutes // 60\n    m = minutes % 60\n    return f\"{h}:{m:02d}\"\n\n# Input data\ntravel_times = {\n    'The Castro': {\n        'Marina District': 21,\n        'Presidio': 20,\n        'North Beach': 20,\n        'Embarcadero': 22,\n        'Haight-Ashbury': 6,\n        'Golden Gate Park': 11,\n        'Richmond District': 16,\n        'Alamo Square': 8,\n        'Financial District': 21,\n        'Sunset District': 17\n    },\n    'Marina District': {\n        'The Castro': 22,\n        'Presidio': 10,\n        'North Beach': 11,\n        'Embarcadero': 14,\n        'Haight-Ashbury': 16,\n        'Golden Gate Park': 18,\n        'Richmond District': 11,\n        'Alamo Square': 15,\n        'Financial District': 17,\n        'Sunset District': 19\n    },\n    'Presidio': {\n        'The Castro': 21,\n        'Marina District': 11,\n        'North Beach': 18,\n        'Embarcadero': 20,\n        'Haight-Ashbury': 15,\n        'Golden Gate Park': 12,\n        'Richmond District': 7,\n        'Alamo Square': 19,\n        'Financial District': 23,\n        'Sunset District': 15\n    },\n    'North Beach': {\n        'The Castro': 23,\n        'Marina District': 9,\n        'Presidio': 17,\n        'Embarcadero': 6,\n        'Haight-Ashbury': 18,\n        'Golden Gate Park': 22,\n        'Richmond District': 18,\n        'Alamo Square': 16,\n        'Financial District': 8,\n        'Sunset District': 27\n    },\n    'Embarcadero': {\n        'The Castro': 25,\n        'Marina District': 12,\n        'Presidio': 20,\n        'North Beach': 5,\n        'Haight-Ashbury': 21,\n        'Golden Gate Park': 25,\n        'Richmond District': 21,\n        'Alamo Square': 19,\n        'Financial District': 5,\n        'Sunset District': 30\n    },\n    'Haight-Ashbury': {\n        'The Castro': 6,\n        'Marina District': 17,\n        'Presidio': 15,\n        'North Beach': 19,\n        'Embarcadero': 20,\n        'Golden Gate Park': 7,\n        'Richmond District': 10,\n        'Alamo Square': 5,\n        'Financial District': 21,\n        'Sunset District': 15\n    },\n    'Golden Gate Park': {\n        'The Castro': 13,\n        'Marina District': 16,\n        'Presidio': 11,\n        'North Beach': 23,\n        'Embarcadero': 25,\n        'Haight-Ashbury': 7,\n        'Richmond District': 7,\n        'Alamo Square': 9,\n        'Financial District': 26,\n        'Sunset District': 10\n    },\n    'Richmond District': {\n        'The Castro': 16,\n        'Marina District': 9,\n        'Presidio': 7,\n        'North Beach': 17,\n        'Embarcadero': 19,\n        'Haight-Ashbury': 10,\n        'Golden Gate Park': 9,\n        'Alamo Square': 13,\n        'Financial District': 22,\n        'Sunset District': 11\n    },\n    'Alamo Square': {\n        'The Castro': 8,\n        'Marina District': 15,\n        'Presidio': 17,\n        'North Beach': 15,\n        'Embarcadero': 16,\n        'Haight-Ashbury': 5,\n        'Golden Gate Park': 9,\n        'Richmond District': 11,\n        'Financial District': 17,\n        'Sunset District': 16\n    },\n    'Financial District': {\n        'The Castro': 20,\n        'Marina District': 15,\n        'Presidio': 22,\n        'North Beach': 7,\n        'Embarcadero': 4,\n        'Haight-Ashbury': 19,\n        'Golden Gate Park': 23,\n        'Richmond District': 21,\n        'Alamo Square': 17,\n        'Sunset District': 30\n    },\n    'Sunset District': {\n        'The Castro': 17,\n        'Marina District': 21,\n        'Presidio': 16,\n        'North Beach': 28,\n        'Embarcadero': 30,\n        'Haight-Ashbury': 15,\n        'Golden Gate Park': 11,\n        'Richmond District': 12,\n        'Alamo Square': 17,\n        'Financial District': 30\n    }\n}\n\nfriends = [\n    {'name': 'Elizabeth', 'location': 'Marina District', 'start': '19:00', 'end': '20:45', 'duration': 105},\n    {'name': 'Joshua', 'location': 'Presidio', 'start': '8:30', 'end': '13:15', 'duration': 105},\n    {'name': 'Timothy', 'location': 'North Beach', 'start': '19:45', 'end': '22:00', 'duration': 90},\n    {'name': 'David', 'location': 'Embarcadero', 'start': '10:45', 'end': '12:30', 'duration': 30},\n    {'name': 'Kimberly', 'location': 'Haight-Ashbury', 'start': '16:45', 'end': '21:30', 'duration': 75},\n    {'name': 'Lisa', 'location': 'Golden Gate Park', 'start': '17:30', 'end': '21:45', 'duration': 45},\n    {'name': 'Ronald', 'location': 'Richmond District', 'start': '8:00', 'end': '9:30', 'duration': 90},\n    {'name': 'Stephanie', 'location': 'Alamo Square', 'start': '15:30', 'end': '16:30', 'duration': 30},\n    {'name': 'Helen', 'location': 'Financial District', 'start': '17:30', 'end': '18:30', 'duration': 45},\n    {'name': 'Laura', 'location': 'Sunset District', 'start': '17:45', 'end': '21:15', 'duration': 90}\n]\n\n# Filter friends that can be met based on duration\nvalid_friends = [f for f in friends if time_to_minutes(f['end']) - time_to_minutes(f['start']) >= f['duration']]\n\n# Prioritize friends with tighter time windows\nvalid_friends.sort(key=lambda x: time_to_minutes(x['end']) - time_to_minutes(x['start']))\n\ncurrent_time = time_to_minutes('9:00')\ncurrent_location = 'The Castro'\nitinerary = []\n\n# Try to meet Ronald first (earliest)\nronald = next(f for f in valid_friends if f['name'] == 'Ronald')\ntravel_time = travel_times[current_location][ronald['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(ronald['end']) - ronald['duration']:\n    start_time = max(arrival_time, time_to_minutes(ronald['start']))\n    end_time = start_time + ronald['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': ronald['location'],\n        'person': ronald['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = ronald['location']\n    valid_friends.remove(ronald)\n\n# Next try Joshua\njoshua = next(f for f in valid_friends if f['name'] == 'Joshua')\ntravel_time = travel_times[current_location][joshua['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(joshua['end']) - joshua['duration']:\n    start_time = max(arrival_time, time_to_minutes(joshua['start']))\n    end_time = start_time + joshua['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': joshua['location'],\n        'person': joshua['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = joshua['location']\n    valid_friends.remove(joshua)\n\n# Next try David\ndavid = next(f for f in valid_friends if f['name'] == 'David')\ntravel_time = travel_times[current_location][david['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(david['end']) - david['duration']:\n    start_time = max(arrival_time, time_to_minutes(david['start']))\n    end_time = start_time + david['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': david['location'],\n        'person': david['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = david['location']\n    valid_friends.remove(david)\n\n# Next try Stephanie\nstephanie = next(f for f in valid_friends if f['name'] == 'Stephanie')\ntravel_time = travel_times[current_location][stephanie['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(stephanie['end']) - stephanie['duration']:\n    start_time = max(arrival_time, time_to_minutes(stephanie['start']))\n    end_time = start_time + stephanie['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': stephanie['location'],\n        'person': stephanie['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = stephanie['location']\n    valid_friends.remove(stephanie)\n\n# Next try Helen\nhelen = next(f for f in valid_friends if f['name'] == 'Helen')\ntravel_time = travel_times[current_location][helen['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(helen['end']) - helen['duration']:\n    start_time = max(arrival_time, time_to_minutes(helen['start']))\n    end_time = start_time + helen['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': helen['location'],\n        'person': helen['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = helen['location']\n    valid_friends.remove(helen)\n\n# Next try Kimberly\nkimberly = next(f for f in valid_friends if f['name'] == 'Kimberly')\ntravel_time = travel_times[current_location][kimberly['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(kimberly['end']) - kimberly['duration']:\n    start_time = max(arrival_time, time_to_minutes(kimberly['start']))\n    end_time = start_time + kimberly['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': kimberly['location'],\n        'person': kimberly['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = kimberly['location']\n    valid_friends.remove(kimberly)\n\n# Next try Lisa\nlisa = next(f for f in valid_friends if f['name'] == 'Lisa')\ntravel_time = travel_times[current_location][lisa['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(lisa['end']) - lisa['duration']:\n    start_time = max(arrival_time, time_to_minutes(lisa['start']))\n    end_time = start_time + lisa['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': lisa['location'],\n        'person': lisa['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = lisa['location']\n    valid_friends.remove(lisa)\n\n# Next try Laura\nlaura = next(f for f in valid_friends if f['name'] == 'Laura')\ntravel_time = travel_times[current_location][laura['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(laura['end']) - laura['duration']:\n    start_time = max(arrival_time, time_to_minutes(laura['start']))\n    end_time = start_time + laura['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': laura['location'],\n        'person': laura['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = laura['location']\n    valid_friends.remove(laura)\n\n# Finally try Elizabeth and Timothy (late evening)\nelizabeth = next(f for f in valid_friends if f['name'] == 'Elizabeth')\ntravel_time = travel_times[current_location][elizabeth['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(elizabeth['end']) - elizabeth['duration']:\n    start_time = max(arrival_time, time_to_minutes(elizabeth['start']))\n    end_time = start_time + elizabeth['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': elizabeth['location'],\n        'person': elizabeth['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n    current_time = end_time\n    current_location = elizabeth['location']\n    valid_friends.remove(elizabeth)\n\ntimothy = next(f for f in valid_friends if f['name'] == 'Timothy')\ntravel_time = travel_times[current_location][timothy['location']]\narrival_time = current_time + travel_time\nif arrival_time <= time_to_minutes(timothy['end']) - timothy['duration']:\n    start_time = max(arrival_time, time_to_minutes(timothy['start']))\n    end_time = start_time + timothy['duration']\n    itinerary.append({\n        'action': 'meet',\n        'location': timothy['location'],\n        'person': timothy['name'],\n        'start_time': minutes_to_time(start_time),\n        'end_time': minutes_to_time(end_time)\n    })\n\nprint(json.dumps({'itinerary': itinerary}, indent=2))\n```",
+            "count": "meeting_planning_example_962"
+        }
+    ]
+}

@@ -1,0 +1,37 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Karen",
+                        "start_time": "9:25",
+                        "end_time": "9:55"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Anthony",
+                        "start_time": "10:06",
+                        "end_time": "11:51"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Betty",
+                        "start_time": "19:45",
+                        "end_time": "20:00"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel distances in minutes\ntravel_times = {\n    (\"Bayview\", \"Embarcadero\"): 19,\n    (\"Bayview\", \"Fisherman's Wharf\"): 25,\n    (\"Bayview\", \"Financial District\"): 19,\n    (\"Embarcadero\", \"Fisherman's Wharf\"): 6,\n    (\"Embarcadero\", \"Financial District\"): 5,\n    (\"Fisherman's Wharf\", \"Financial District\"): 11,\n}\n\n# Meeting constraints\nconstraints = {\n    \"Betty\": {\n        \"location\": \"Embarcadero\",\n        \"available_from\": datetime.strptime(\"19:45\", \"%H:%M\"),\n        \"available_until\": datetime.strptime(\"21:45\", \"%H:%M\"),\n        \"min_meeting_duration\": timedelta(minutes=15)\n    },\n    \"Karen\": {\n        \"location\": \"Fisherman's Wharf\",\n        \"available_from\": datetime.strptime(\"08:45\", \"%H:%M\"),\n        \"available_until\": datetime.strptime(\"15:00\", \"%H:%M\"),\n        \"min_meeting_duration\": timedelta(minutes=30)\n    },\n    \"Anthony\": {\n        \"location\": \"Financial District\",\n        \"available_from\": datetime.strptime(\"09:15\", \"%H:%M\"),\n        \"available_until\": datetime.strptime(\"21:30\", \"%H:%M\"),\n        \"min_meeting_duration\": timedelta(minutes=105)\n    }\n}\n\n# Start time\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\n\n# Itinerary to store meetings\nitinerary = []\n\n# Function to schedule meetings\ndef schedule_meetings():\n    current_time = start_time\n\n    # Meet Karen first\n    travel_time_to_karen = travel_times[(\"Bayview\", \"Fisherman's Wharf\")]\n    current_time += timedelta(minutes=travel_time_to_karen)\n    \n    # Calculate meeting time for Karen\n    if current_time < constraints[\"Karen\"][\"available_from\"]:\n        current_time = constraints[\"Karen\"][\"available_from\"]\n    \n    # Schedule meeting with Karen\n    end_time_karen = current_time + constraints[\"Karen\"][\"min_meeting_duration\"]\n    if end_time_karen > constraints[\"Karen\"][\"available_until\"]:\n        end_time_karen = constraints[\"Karen\"][\"available_until\"]\n\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Karen\"][\"location\"],\n        \"person\": \"Karen\",\n        \"start_time\": current_time.strftime(\"%H:%M\"),\n        \"end_time\": end_time_karen.strftime(\"%H:%M\")\n    })\n\n    # Move to Embarcadero to meet Betty\n    travel_time_to_betty = travel_times[(\"Fisherman's Wharf\", \"Embarcadero\")]\n    current_time = end_time_karen + timedelta(minutes=travel_time_to_betty)\n\n    # Calculate meeting time for Betty\n    if current_time < constraints[\"Betty\"][\"available_from\"]:\n        current_time = constraints[\"Betty\"][\"available_from\"]\n\n    # Schedule meeting with Betty\n    end_time_betty = current_time + constraints[\"Betty\"][\"min_meeting_duration\"]\n    if end_time_betty > constraints[\"Betty\"][\"available_until\"]:\n        end_time_betty = constraints[\"Betty\"][\"available_until\"]\n\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Betty\"][\"location\"],\n        \"person\": \"Betty\",\n        \"start_time\": current_time.strftime(\"%H:%M\"),\n        \"end_time\": end_time_betty.strftime(\"%H:%M\"),\n    })\n\n    # Move to Financial District to meet Anthony\n    travel_time_to_anthony = travel_times[(\"Embarcadero\", \"Financial District\")]\n    current_time = end_time_betty + timedelta(minutes=travel_time_to_anthony)\n\n    # Calculate meeting time for Anthony\n    if current_time < constraints[\"Anthony\"][\"available_from\"]:\n        current_time = constraints[\"Anthony\"][\"available_from\"]\n\n    # Schedule meeting with Anthony\n    end_time_anthony = current_time + constraints[\"Anthony\"][\"min_meeting_duration\"]\n    if end_time_anthony > constraints[\"Anthony\"][\"available_until\"]:\n        end_time_anthony = constraints[\"Anthony\"][\"available_until\"]\n\n    itinerary.append({\n        \"action\": \"meet\",\n        \"location\": constraints[\"Anthony\"][\"location\"],\n        \"person\": \"Anthony\",\n        \"start_time\": current_time.strftime(\"%H:%M\"),\n        \"end_time\": end_time_anthony.strftime(\"%H:%M\"),\n    })\n\nschedule_meetings()\n\n# Convert itinerary to JSON format\nresult = {\"itinerary\": itinerary}\nprint(json.dumps(result, indent=2))\n```",
+            "count": "meeting_planning_example_263"
+        }
+    ]
+}

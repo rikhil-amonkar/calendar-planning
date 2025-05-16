@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "13:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define working hours\nstart_time = datetime.strptime(\"09:00\", \"%H:%M\")\nend_time = datetime.strptime(\"17:00\", \"%H:%M\")\nmeeting_duration = timedelta(minutes=30)\n\n# Define existing meetings for Jennifer\njennifer_schedule = {\n    \"Monday\": [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"11:00\", \"%H:%M\")),\n        (datetime.strptime(\"11:30\", \"%H:%M\"), datetime.strptime(\"13:00\", \"%H:%M\")),\n        (datetime.strptime(\"13:30\", \"%H:%M\"), datetime.strptime(\"14:30\", \"%H:%M\")),\n        (datetime.strptime(\"15:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ],\n    \"Tuesday\": [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n        (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ],\n    \"Wednesday\": [\n        (datetime.strptime(\"09:00\", \"%H:%M\"), datetime.strptime(\"11:30\", \"%H:%M\")),\n        (datetime.strptime(\"12:00\", \"%H:%M\"), datetime.strptime(\"12:30\", \"%H:%M\")),\n        (datetime.strptime(\"13:00\", \"%H:%M\"), datetime.strptime(\"14:00\", \"%H:%M\")),\n        (datetime.strptime(\"14:30\", \"%H:%M\"), datetime.strptime(\"16:00\", \"%H:%M\")),\n        (datetime.strptime(\"16:30\", \"%H:%M\"), datetime.strptime(\"17:00\", \"%H:%M\")),\n    ],\n}\n\n# Calculate available times\nfor day in [\"Monday\", \"Tuesday\", \"Wednesday\"]:\n    current_time = start_time\n    # Check for meetings on this day\n    if day in jennifer_schedule:\n        busy_times = jennifer_schedule[day]\n        busy_times.sort(key=lambda x: x[0])  # Sort by start time\n\n        # Add end of busy time to find gaps\n        for start, end in busy_times:\n            # Check for free time before the next meeting\n            while current_time + meeting_duration <= start:\n                print(f\"Proposed meeting on {day} from {current_time.strftime('%H:%M')} to {(current_time + meeting_duration).strftime('%H:%M')}\")\n                current_time += meeting_duration\n            \n            # Move Current time to the end of the busy time if it overlaps\n            current_time = max(current_time, end)\n\n        # Check remaining time after the last meeting\n        if current_time + meeting_duration <= end_time:\n            print(f\"Proposed meeting on {day} from {current_time.strftime('%H:%M')} to {(current_time + meeting_duration).strftime('%H:%M')}\")\n```\n",
+            "count": "calendar_scheduling_example_776"
+        }
+    ]
+}

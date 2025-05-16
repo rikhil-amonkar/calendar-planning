@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef minutes_to_hhmm(minutes):\n    hh = minutes // 60\n    mm = minutes % 60\n    return f\"{hh:02d}:{mm:02d}\"\n\n# Define meeting parameters\nmeeting_duration = 30  # in minutes\nday = \"Monday\"\n# Work hours in minutes since midnight: 9:00 - 17:00\nwork_start = 9 * 60\nwork_end = 17 * 60\n\n# Earliest meeting start constraint from David: not before 14:00\nconstraint_start = 14 * 60\n\n# Define each participant's busy times (in minutes since midnight)\n# Format: (start, end)\nbusy_times = {\n    \"Natalie\": [],\n    \"David\": [(11 * 60 + 30, 12 * 60 + 0), (14 * 60 + 30, 15 * 60 + 0)],\n    \"Douglas\": [(9 * 60 + 30, 10 * 60 + 0), (11 * 60 + 30, 12 * 60 + 0),\n                (13 * 60 + 0, 13 * 60 + 30), (14 * 60 + 30, 15 * 60 + 0)],\n    \"Ralph\": [(9 * 60 + 0, 9 * 60 + 30), (10 * 60 + 0, 11 * 60 + 0),\n              (11 * 60 + 30, 12 * 60 + 30), (13 * 60 + 30, 15 * 60 + 0),\n              (15 * 60 + 30, 16 * 60 + 0), (16 * 60 + 30, 17 * 60 + 0)],\n    \"Jordan\": [(9 * 60 + 0, 10 * 60 + 0), (12 * 60 + 0, 12 * 60 + 30),\n               (13 * 60 + 0, 13 * 60 + 30), (14 * 60 + 30, 15 * 60 + 0),\n               (15 * 60 + 30, 17 * 60 + 0)]\n}\n\n# We'll combine all busy intervals and consider only the parts within the meeting window.\nall_busy = []\nfor person, intervals in busy_times.items():\n    for start, end in intervals:\n        # Only consider intervals that overlap with our working window (and David's constraint)\n        if end > constraint_start and start < work_end:\n            # Clamp each busy interval to the window [constraint_start, work_end]\n            clamped_start = max(start, constraint_start)\n            clamped_end = min(end, work_end)\n            all_busy.append((clamped_start, clamped_end))\n\n# Sort intervals by start time\nall_busy.sort()\n\n# Merge overlapping busy intervals\nmerged_busy = []\nfor interval in all_busy:\n    if not merged_busy:\n        merged_busy.append(interval)\n    else:\n        last_start, last_end = merged_busy[-1]\n        curr_start, curr_end = interval\n        if curr_start <= last_end:  # overlapping\n            merged_busy[-1] = (last_start, max(last_end, curr_end))\n        else:\n            merged_busy.append(interval)\n\n# Now find free intervals in the window from constraint_start to work_end,\n# by checking gaps between merged busy times.\nfree_intervals = []\ncurrent_start = constraint_start\nfor busy_start, busy_end in merged_busy:\n    if current_start < busy_start:\n        free_intervals.append((current_start, busy_start))\n    current_start = max(current_start, busy_end)\nif current_start < work_end:\n    free_intervals.append((current_start, work_end))\n\n# Find the first free interval that can fit the meeting_duration\nproposed_time = None\nfor free_start, free_end in free_intervals:\n    if free_end - free_start >= meeting_duration:\n        proposed_time = (free_start, free_start + meeting_duration)\n        break\n\nif proposed_time:\n    start_time, end_time = proposed_time\n    print(f\"{day} {minutes_to_hhmm(start_time)}:{minutes_to_hhmm(end_time)}\")\nelse:\n    print(\"No suitable time slot available.\")\n'''",
+            "count": "calendar_scheduling_example_227"
+        }
+    ]
+}

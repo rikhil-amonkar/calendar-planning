@@ -1,0 +1,59 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "9:29",
+                        "end_time": "11:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Anthony",
+                        "start_time": "13:15",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Rebecca",
+                        "start_time": "19:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Melissa",
+                        "start_time": "9:29",
+                        "end_time": "11:14"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Chinatown",
+                        "person": "Anthony",
+                        "start_time": "13:15",
+                        "end_time": "14:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Rebecca",
+                        "start_time": "19:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\ndef parse_time(time_str):\n    return datetime.strptime(time_str, \"%H:%M\")\n\ndef format_time(dt):\n    return dt.strftime(\"%-H:%M\")\n\ndef add_minutes(time_str, minutes):\n    dt = parse_time(time_str)\n    dt += timedelta(minutes=minutes)\n    return format_time(dt)\n\ndef time_diff(start_str, end_str):\n    start = parse_time(start_str)\n    end = parse_time(end_str)\n    return (end - start).total_seconds() / 60\n\ndef compute_schedule():\n    # Input parameters\n    travel_times = {\n        (\"Sunset District\", \"Chinatown\"): 30,\n        (\"Sunset District\", \"Russian Hill\"): 24,\n        (\"Sunset District\", \"North Beach\"): 29,\n        (\"Chinatown\", \"Sunset District\"): 29,\n        (\"Chinatown\", \"Russian Hill\"): 7,\n        (\"Chinatown\", \"North Beach\"): 3,\n        (\"Russian Hill\", \"Sunset District\"): 23,\n        (\"Russian Hill\", \"Chinatown\"): 9,\n        (\"Russian Hill\", \"North Beach\"): 5,\n        (\"North Beach\", \"Sunset District\"): 27,\n        (\"North Beach\", \"Chinatown\"): 6,\n        (\"North Beach\", \"Russian Hill\"): 4,\n    }\n\n    current_location = \"Sunset District\"\n    current_time = \"9:00\"\n    itinerary = []\n\n    # Melissa at North Beach 8:15-13:30, min 105 minutes\n    melissa_start = \"8:15\"\n    melissa_end = \"13:30\"\n    travel_time = travel_times[(current_location, \"North Beach\")]\n    arrival_time = add_minutes(current_time, travel_time)\n    \n    if arrival_time < melissa_start:\n        start_meeting = melissa_start\n    else:\n        start_meeting = arrival_time\n    \n    end_meeting = add_minutes(start_meeting, 105)\n    \n    if end_meeting > melissa_end:\n        possible_duration = time_diff(start_meeting, melissa_end)\n        if possible_duration >= 60:  # Fallback to minimum 60 minutes if 105 not possible\n            end_meeting = melissa_end\n        else:\n            # Skip Melissa if can't meet minimum\n            pass\n    else:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"North Beach\",\n            \"person\": \"Melissa\",\n            \"start_time\": start_meeting,\n            \"end_time\": end_meeting\n        })\n        current_location = \"North Beach\"\n        current_time = end_meeting\n\n    # Anthony at Chinatown 13:15-14:30, min 60 minutes\n    anthony_start = \"13:15\"\n    anthony_end = \"14:30\"\n    travel_time = travel_times[(current_location, \"Chinatown\")]\n    arrival_time = add_minutes(current_time, travel_time)\n    \n    if arrival_time < anthony_start:\n        start_meeting = anthony_start\n    else:\n        start_meeting = arrival_time\n    \n    end_meeting = add_minutes(start_meeting, 60)\n    \n    if end_meeting > anthony_end:\n        possible_duration = time_diff(start_meeting, anthony_end)\n        if possible_duration >= 30:  # Fallback to minimum 30 minutes if 60 not possible\n            end_meeting = anthony_end\n        else:\n            # Skip Anthony if can't meet minimum\n            pass\n    else:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Chinatown\",\n            \"person\": \"Anthony\",\n            \"start_time\": start_meeting,\n            \"end_time\": end_meeting\n        })\n        current_location = \"Chinatown\"\n        current_time = end_meeting\n\n    # Rebecca at Russian Hill 19:30-21:15, min 105 minutes\n    rebecca_start = \"19:30\"\n    rebecca_end = \"21:15\"\n    travel_time = travel_times[(current_location, \"Russian Hill\")]\n    arrival_time = add_minutes(current_time, travel_time)\n    \n    if arrival_time < rebecca_start:\n        start_meeting = rebecca_start\n    else:\n        start_meeting = arrival_time\n    \n    end_meeting = add_minutes(start_meeting, 105)\n    \n    if end_meeting > rebecca_end:\n        possible_duration = time_diff(start_meeting, rebecca_end)\n        if possible_duration >= 60:  # Fallback to minimum 60 minutes if 105 not possible\n            end_meeting = rebecca_end\n        else:\n            # Skip Rebecca if can't meet minimum\n            pass\n    else:\n        itinerary.append({\n            \"action\": \"meet\",\n            \"location\": \"Russian Hill\",\n            \"person\": \"Rebecca\",\n            \"start_time\": start_meeting,\n            \"end_time\": end_meeting\n        })\n\n    return {\"itinerary\": itinerary}\n\nif __name__ == \"__main__\":\n    schedule = compute_schedule()\n    print(json.dumps(schedule, indent=2))\n```",
+            "count": "meeting_planning_example_209"
+        }
+    ]
+}

@@ -1,0 +1,143 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Lisa",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joshua",
+                        "start_time": "11:19",
+                        "end_time": "11:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "11:49",
+                        "end_time": "12:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "12:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "John",
+                        "start_time": "14:07",
+                        "end_time": "14:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:00",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "19:07",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Lisa",
+                        "start_time": "10:45",
+                        "end_time": "11:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Joshua",
+                        "start_time": "11:19",
+                        "end_time": "11:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Joseph",
+                        "start_time": "11:49",
+                        "end_time": "12:34"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Marina District",
+                        "person": "Betty",
+                        "start_time": "12:45",
+                        "end_time": "13:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "John",
+                        "start_time": "14:07",
+                        "end_time": "14:52"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Fisherman's Wharf",
+                        "person": "Stephanie",
+                        "start_time": "15:30",
+                        "end_time": "16:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Russian Hill",
+                        "person": "Melissa",
+                        "start_time": "17:00",
+                        "end_time": "19:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Pacific Heights",
+                        "person": "Daniel",
+                        "start_time": "19:07",
+                        "end_time": "20:07"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Andrew",
+                        "start_time": "20:15",
+                        "end_time": "22:00"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "SOLUTION:\n#!/usr/bin/env python3\nimport json\nimport copy\n\n# Helper functions to convert time strings (HH:MM) to minutes from midnight and vice versa.\ndef time_to_minutes(t):\n    # t is a string like \"9:00\" or \"15:30\"\n    h, m = map(int, t.split(\":\"))\n    return h * 60 + m\n\ndef minutes_to_time(m):\n    # returns string without leading zeros in hour.\n    h = m // 60\n    mm = m % 60\n    return f\"{h}:{mm:02d}\"\n\n# Define travel times as a nested dictionary.\n# For each origin and destination we record the travel time in minutes.\n# Only the provided entries are included.\ntravel_times = {\n    \"Embarcadero\": {\n        \"Fisherman's Wharf\": 6,\n        \"Financial District\": 5,\n        \"Russian Hill\": 8,\n        \"Marina District\": 12,\n        \"Richmond District\": 21,\n        \"Pacific Heights\": 11,\n        \"Haight-Ashbury\": 21,\n        \"Presidio\": 20,\n        \"Nob Hill\": 10,\n        \"The Castro\": 25\n    },\n    \"Fisherman's Wharf\": {\n        \"Embarcadero\": 8,\n        \"Financial District\": 11,\n        \"Russian Hill\": 7,\n        \"Marina District\": 9,\n        \"Richmond District\": 18,\n        \"Pacific Heights\": 12,\n        \"Haight-Ashbury\": 22,\n        \"Presidio\": 17,\n        \"Nob Hill\": 11,\n        \"The Castro\": 27\n    },\n    \"Financial District\": {\n        \"Embarcadero\": 4,\n        \"Fisherman's Wharf\": 10,\n        \"Russian Hill\": 11,\n        \"Marina District\": 15,\n        \"Richmond District\": 21,\n        \"Pacific Heights\": 13,\n        \"Haight-Ashbury\": 19,\n        \"Presidio\": 22,\n        \"Nob Hill\": 8,\n        \"The Castro\": 20\n    },\n    \"Russian Hill\": {\n        \"Embarcadero\": 8,\n        \"Fisherman's Wharf\": 7,\n        \"Financial District\": 11,\n        \"Marina District\": 7,\n        \"Richmond District\": 14,\n        \"Pacific Heights\": 7,\n        \"Haight-Ashbury\": 17,\n        \"Presidio\": 14,\n        \"Nob Hill\": 5,\n        \"The Castro\": 21\n    },\n    \"Marina District\": {\n        \"Embarcadero\": 14,\n        \"Fisherman's Wharf\": 10,\n        \"Financial District\": 17,\n        \"Russian Hill\": 8,\n        \"Richmond District\": 11,\n        \"Pacific Heights\": 7,\n        \"Haight-Ashbury\": 16,\n        \"Presidio\": 10,\n        \"Nob Hill\": 12,\n        \"The Castro\": 22\n    },\n    \"Richmond District\": {\n        \"Embarcadero\": 19,\n        \"Fisherman's Wharf\": 18,\n        \"Financial District\": 22,\n        \"Russian Hill\": 13,\n        \"Marina District\": 9,\n        \"Pacific Heights\": 10,\n        \"Haight-Ashbury\": 10,\n        \"Presidio\": 7,\n        \"Nob Hill\": 17,\n        \"The Castro\": 16\n    },\n    \"Pacific Heights\": {\n        \"Embarcadero\": 10,\n        \"Fisherman's Wharf\": 13,\n        \"Financial District\": 13,\n        \"Russian Hill\": 7,\n        \"Marina District\": 6,\n        \"Richmond District\": 12,\n        \"Haight-Ashbury\": 11,\n        \"Presidio\": 11,\n        \"Nob Hill\": 8,\n        \"The Castro\": 16\n    },\n    \"Haight-Ashbury\": {\n        \"Embarcadero\": 20,\n        \"Fisherman's Wharf\": 23,\n        \"Financial District\": 21,\n        \"Russian Hill\": 17,\n        \"Marina District\": 17,\n        \"Richmond District\": 10,\n        \"Pacific Heights\": 12,\n        \"Presidio\": 15,\n        \"Nob Hill\": 15,\n        \"The Castro\": 6\n    },\n    \"Presidio\": {\n        \"Embarcadero\": 20,\n        \"Fisherman's Wharf\": 19,\n        \"Financial District\": 23,\n        \"Russian Hill\": 14,\n        \"Marina District\": 11,\n        \"Richmond District\": 7,\n        \"Pacific Heights\": 11,\n        \"Haight-Ashbury\": 15,\n        \"Nob Hill\": 18,\n        \"The Castro\": 21\n    },\n    \"Nob Hill\": {\n        \"Embarcadero\": 9,\n        \"Fisherman's Wharf\": 10,\n        \"Financial District\": 9,\n        \"Russian Hill\": 5,\n        \"Marina District\": 11,\n        \"Richmond District\": 14,\n        \"Pacific Heights\": 8,\n        \"Haight-Ashbury\": 13,\n        \"Presidio\": 17,\n        \"The Castro\": 17\n    },\n    \"The Castro\": {\n        \"Embarcadero\": 22,\n        \"Fisherman's Wharf\": 24,\n        \"Financial District\": 21,\n        \"Russian Hill\": 18,\n        \"Marina District\": 21,\n        \"Richmond District\": 16,\n        \"Pacific Heights\": 16,\n        \"Haight-Ashbury\": 6,\n        \"Presidio\": 20,\n        \"Nob Hill\": 16\n    }\n}\n\n# Helper function to get travel time between two locations\ndef get_travel_time(origin, destination):\n    if origin == destination:\n        return 0\n    # If a route isn't found in the dictionary, assume a large travel time.\n    return travel_times.get(origin, {}).get(destination, 999)\n\n# Define each meeting constraint as a dictionary.\n# Each meeting includes:\n#  - person: name of friend\n#  - location: meeting location (as in travel_times keys)\n#  - avail_start: earliest available time (in minutes from midnight)\n#  - avail_end: latest finish time (in minutes)\n#  - duration: minimum meeting duration (in minutes)\nmeetings = [\n    {\n        \"person\": \"Stephanie\",\n        \"location\": \"Fisherman's Wharf\",\n        \"avail_start\": time_to_minutes(\"15:30\"),\n        \"avail_end\": time_to_minutes(\"22:00\"),\n        \"duration\": 30\n    },\n    {\n        \"person\": \"Lisa\",\n        \"location\": \"Financial District\",\n        \"avail_start\": time_to_minutes(\"10:45\"),\n        \"avail_end\": time_to_minutes(\"17:15\"),\n        \"duration\": 15\n    },\n    {\n        \"person\": \"Melissa\",\n        \"location\": \"Russian Hill\",\n        \"avail_start\": time_to_minutes(\"17:00\"),\n        \"avail_end\": time_to_minutes(\"21:45\"),\n        \"duration\": 120\n    },\n    {\n        \"person\": \"Betty\",\n        \"location\": \"Marina District\",\n        \"avail_start\": time_to_minutes(\"10:45\"),\n        \"avail_end\": time_to_minutes(\"14:15\"),\n        \"duration\": 60\n    },\n    {\n        \"person\": \"Sarah\",\n        \"location\": \"Richmond District\",\n        \"avail_start\": time_to_minutes(\"16:15\"),\n        \"avail_end\": time_to_minutes(\"19:30\"),\n        \"duration\": 105\n    },\n    {\n        \"person\": \"Daniel\",\n        \"location\": \"Pacific Heights\",\n        \"avail_start\": time_to_minutes(\"18:30\"),\n        \"avail_end\": time_to_minutes(\"21:45\"),\n        \"duration\": 60\n    },\n    {\n        \"person\": \"Joshua\",\n        \"location\": \"Haight-Ashbury\",\n        \"avail_start\": time_to_minutes(\"9:00\"),\n        \"avail_end\": time_to_minutes(\"15:30\"),\n        \"duration\": 15\n    },\n    {\n        \"person\": \"Joseph\",\n        \"location\": \"Presidio\",\n        \"avail_start\": time_to_minutes(\"7:00\"),\n        \"avail_end\": time_to_minutes(\"13:00\"),\n        \"duration\": 45\n    },\n    {\n        \"person\": \"Andrew\",\n        \"location\": \"Nob Hill\",\n        \"avail_start\": time_to_minutes(\"19:45\"),\n        \"avail_end\": time_to_minutes(\"22:00\"),\n        \"duration\": 105\n    },\n    {\n        \"person\": \"John\",\n        \"location\": \"The Castro\",\n        \"avail_start\": time_to_minutes(\"13:15\"),\n        \"avail_end\": time_to_minutes(\"19:45\"),\n        \"duration\": 45\n    }\n]\n\n# We want to maximize the count of meetings we can attend.\n# We'll use recursion/backtracking to try sequences of meetings that are feasible from a given state.\n# The state is defined by current location and current time.\n# We start at Embarcadero at 9:00.\nstart_location = \"Embarcadero\"\nstart_time = time_to_minutes(\"9:00\")\n\n# Global variable to store best schedule (maximum count, if tie can choose one).\nbest_schedule = []\nbest_count = 0\n\ndef search(current_location, current_time, remaining_meetings, schedule):\n    global best_schedule, best_count\n    # Update best_schedule if current schedule count is higher than best_count.\n    if len(schedule) > best_count:\n        best_count = len(schedule)\n        best_schedule = copy.deepcopy(schedule)\n    \n    # Try each meeting in the remaining list\n    for idx, meeting in enumerate(remaining_meetings):\n        travel = get_travel_time(current_location, meeting[\"location\"])\n        arrival_time = current_time + travel\n        # The meeting cannot start before its available start.\n        meeting_start = max(arrival_time, meeting[\"avail_start\"])\n        meeting_end = meeting_start + meeting[\"duration\"]\n        # Check if the meeting can be finished before the meeting's available end.\n        if meeting_end <= meeting[\"avail_end\"]:\n            # Create an appointment record.\n            appointment = {\n                \"action\": \"meet\",\n                \"location\": meeting[\"location\"],\n                \"person\": meeting[\"person\"],\n                \"start_time\": minutes_to_time(meeting_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            }\n            # Prepare new remaining list without the current meeting.\n            new_remaining = remaining_meetings[:idx] + remaining_meetings[idx+1:]\n            # Recurse, note that after finishing this meeting, we may wait for the next meeting.\n            search(meeting[\"location\"], meeting_end, new_remaining, schedule + [appointment])\n    # End recursion.\n\n# Run the search.\nsearch(start_location, start_time, meetings, [])\n\n# For a realistic day schedule, we want to ensure the itinerary is in chronological order.\n# Our search produces an itinerary that is already in order.\nresult = {\"itinerary\": best_schedule}\n\n# Output the result as a JSON-formatted dictionary.\nprint(json.dumps(result, indent=2))\n                    \nif __name__ == '__main__':\n    pass",
+            "count": "meeting_planning_example_978"
+        }
+    ]
+}

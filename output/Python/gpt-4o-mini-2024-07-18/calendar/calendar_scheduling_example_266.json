@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom datetime import datetime, timedelta\n\n# Define the participants' schedules\nschedules = {\n    'Joe': [(datetime(2023, 10, 2, 9, 30), datetime(2023, 10, 2, 10, 0)),\n            (datetime(2023, 10, 2, 10, 30), datetime(2023, 10, 2, 11, 0))],\n    'Keith': [(datetime(2023, 10, 2, 11, 30), datetime(2023, 10, 2, 12, 0)),\n              (datetime(2023, 10, 2, 15, 0), datetime(2023, 10, 2, 15, 30))],\n    'Patricia': [(datetime(2023, 10, 2, 9, 0), datetime(2023, 10, 2, 9, 30)),\n                 (datetime(2023, 10, 2, 13, 0), datetime(2023, 10, 2, 13, 30))],\n    'Nancy': [(datetime(2023, 10, 2, 9, 0), datetime(2023, 10, 2, 11, 0)),\n              (datetime(2023, 10, 2, 11, 30), datetime(2023, 10, 2, 16, 30))],\n    'Pamela': [(datetime(2023, 10, 2, 9, 0), datetime(2023, 10, 2, 10, 0)),\n               (datetime(2023, 10, 2, 10, 30), datetime(2023, 10, 2, 11, 0)),\n               (datetime(2023, 10, 2, 11, 30), datetime(2023, 10, 2, 12, 30)),\n               (datetime(2023, 10, 2, 13, 0), datetime(2023, 10, 2, 14, 0)),\n               (datetime(2023, 10, 2, 14, 30), datetime(2023, 10, 2, 15, 0)),\n               (datetime(2023, 10, 2, 15, 30), datetime(2023, 10, 2, 16, 0)),\n               (datetime(2023, 10, 2, 16, 30), datetime(2023, 10, 2, 17, 0))]\n}\n\n# Define work hours\nwork_start = datetime(2023, 10, 2, 9, 0)\nwork_end = datetime(2023, 10, 2, 17, 0)\nmeeting_duration = timedelta(minutes=30)\n\n# Function to find a suitable time for the meeting\ndef find_meeting_time(schedules):\n    # Create a list of blocks from all schedules\n    busy_times = []\n    for participant, blocks in schedules.items():\n        busy_times.extend(blocks)\n    \n    # Sort the busy times\n    busy_times.sort()\n\n    # Check for free time slots within work hours\n    current_time = work_start\n    for start, end in busy_times:\n        if current_time + meeting_duration <= start:\n            return f\"{current_time.strftime('%H:%M')}:{(current_time + meeting_duration).strftime('%H:%M')} on Monday\"\n        current_time = max(current_time, end)\n\n    # Final check for the remaining time slot after last busy time\n    if current_time + meeting_duration <= work_end:\n        return f\"{current_time.strftime('%H:%M')}:{(current_time + meeting_duration).strftime('%H:%M')} on Monday\"\n\n# Get the proposed meeting time\nproposed_time = find_meeting_time(schedules)\nprint(proposed_time)\n```",
+            "count": "calendar_scheduling_example_266"
+        }
+    ]
+}

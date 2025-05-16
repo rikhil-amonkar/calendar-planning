@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Sandra",
+                        "start_time": "9:20",
+                        "end_time": "9:50"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Brian",
+                        "start_time": "10:15",
+                        "end_time": "10:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Stephanie",
+                        "start_time": "11:03",
+                        "end_time": "12:18"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Helen",
+                        "start_time": "12:40",
+                        "end_time": "14:40"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Alamo Square",
+                        "person": "Laura",
+                        "start_time": "14:49",
+                        "end_time": "16:04"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Mary",
+                        "start_time": "16:45",
+                        "end_time": "18:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Deborah",
+                        "start_time": "19:00",
+                        "end_time": "20:45"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Okay, so I need to solve this problem where I have to create a Python program that helps plan an optimal meeting schedule based on given constraints. The user is visiting San Francisco and wants to meet as many friends as possible. Each friend has specific time windows and minimum meeting durations. The goal is to find the best schedule that fits all the constraints and maximizes the number of meetings.\n\nFirst, I'll start by understanding the input parameters. There are travel distances between various districts in San Francisco, which I'll need to use to calculate the time it takes to move between locations. The constraints section lists each friend's location, availability window, and the minimum time they can meet.\n\nI think the first step is to read and organize the travel times into a data structure that's easy to access. A nested dictionary seems appropriate here, where each location has a dictionary of travel times to other locations.\n\nNext, I need to define the initial location and time. The user arrives at the Mission District at 9:00 AM, so that's where the schedule starts.\n\nThen, I'll list all the people with their constraints. Each person has a name, location, availability window, and minimum meeting duration. These need to be parsed and processed in a way that allows the program to check feasibility and calculate meeting times.\n\nSorting the people by their meeting duration in descending order makes sense because it allows the program to schedule the longest meetings first, which helps in maximizing the number of meetings since it's more restrictive to find time slots that can accommodate longer durations.\n\nNow, for each person, the program will:\n1. Calculate the earliest possible start time based on the current location and travel time.\n2. Check if this time falls within the person's availability window.\n3. Ensure there's enough time to meet the person's minimum duration requirement.\n4. If feasible, schedule the meeting at the latest possible start time to allow for maximum flexibility in subsequent meetings.\n\nAfter scheduling a meeting, the current location and time are updated to reflect the end time of the last meeting.\n\nFinally, the itinerary is converted into a JSON-formatted dictionary as specified and printed.\n\nI need to be careful with the travel times, making sure the program correctly accesses and uses them from the provided dictionary. Also, handling time zones isn't an issue here since all times are in the same 24-hour format.\n\nOne potential challenge is ensuring that all travel times are correctly referenced and that the availability windows are accurately parsed and compared. Another challenge is verifying that each meeting has enough time allocated based on the person's minimum requirement.\n\nOverall, the solution involves iterating through each person, calculating feasible meeting times, and updating the schedule accordingly. The final output is a clear and concise JSON structure that details the optimal meeting schedule.\n</think>\n\nSOLUTION:\n\n```python\n# Read the input parameters and create a dictionary of travel times\ntravel_times = {\n    'Mission District': {\n        'Alamo Square': 11,\n        'Presidio': 25,\n        'Russian Hill': 15,\n        'North Beach': 17,\n        'Golden Gate Park': 17,\n        'Richmond District': 20,\n        'Embarcadero': 19,\n        'Financial District': 15,\n        'Marina District': 19,\n    },\n    'Alamo Square': {\n        'Mission District': 11,\n        'Presidio': 17,\n        'Russian Hill': 13,\n        'North Beach': 15,\n        'Golden Gate Park': 9,\n        'Richmond District': 13,\n        'Embarcadero': 16,\n        'Financial District': 17,\n        'Marina District': 15,\n    },\n    'Presidio': {\n        'Mission District': 26,\n        'Alamo Square': 19,\n        'Russian Hill': 14,\n        'North Beach': 18,\n        'Golden Gate Park': 12,\n        'Richmond District': 7,\n        'Embarcadero': 20,\n        'Financial District': 23,\n        'Marina District': 11,\n    },\n    'Russian Hill': {\n        'Mission District': 16,\n        'Alamo Square': 15,\n        'Presidio': 14,\n        'North Beach': 5,\n        'Golden Gate Park': 21,\n        'Richmond District': 14,\n        'Embarcadero': 8,\n        'Financial District': 11,\n        'Marina District': 7,\n    },\n    'North Beach': {\n        'Mission District': 18,\n        'Alamo Square': 16,\n        'Presidio': 17,\n        'Russian Hill': 4,\n        'Golden Gate Park': 22,\n        'Richmond District': 18,\n        'Embarcadero': 6,\n        'Financial District': 8,\n        'Marina District': 9,\n    },\n    'Golden Gate Park': {\n        'Mission District': 17,\n        'Alamo Square': 9,\n        'Presidio': 11,\n        'Russian Hill': 19,\n        'North Beach': 23,\n        'Richmond District': 7,\n        'Embarcadero': 25,\n        'Financial District': 26,\n        'Marina District': 16,\n    },\n    'Richmond District': {\n        'Mission District': 20,\n        'Alamo Square': 13,\n        'Presidio': 7,\n        'Russian Hill': 13,\n        'North Beach': 17,\n        'Golden Gate Park': 9,\n        'Embarcadero': 19,\n        'Financial District': 22,\n        'Marina District': 9,\n    },\n    'Embarcadero': {\n        'Mission District': 20,\n        'Alamo Square': 19,\n        'Presidio': 20,\n        'Russian Hill': 8,\n        'North Beach': 5,\n        'Golden Gate Park': 25,\n        'Richmond District': 21,\n        'Financial District': 5,\n        'Marina District': 12,\n    },\n    'Financial District': {\n        'Mission District': 17,\n        'Alamo Square': 17,\n        'Presidio': 22,\n        'Russian Hill': 11,\n        'North Beach': 7,\n        'Golden Gate Park': 23,\n        'Richmond District': 21,\n        'Embarcadero': 4,\n        'Marina District': 15,\n    },\n    'Marina District': {\n        'Mission District': 19,\n        'Alamo Square': 15,\n        'Presidio': 10,\n        'Russian Hill': 8,\n        'North Beach': 11,\n        'Golden Gate Park': 18,\n        'Richmond District': 11,\n        'Embarcadero': 14,\n        'Financial District': 17,\n    }\n}\n\n# Define the current location and time\ncurrent_location = 'Mission District'\ncurrent_time = '9:00'\n\nitinerary = []\n\n# List of people with their constraints\npeople = [\n    {'name': 'Laura', 'location': 'Alamo Square', 'start': '14:30', 'end': '16:15', 'duration': 75},\n    {'name': 'Brian', 'location': 'Presidio', 'start': '10:15', 'end': '17:00', 'duration': 30},\n    {'name': 'Karen', 'location': 'Russian Hill', 'start': '18:00', 'end': '20:15', 'duration': 90},\n    {'name': 'Stephanie', 'location': 'North Beach', 'start': '10:15', 'end': '16:00', 'duration': 75},\n    {'name': 'Helen', 'location': 'Golden Gate Park', 'start': '11:30', 'end': '21:45', 'duration': 120},\n    {'name': 'Sandra', 'location': 'Richmond District', 'start': '8:00', 'end': '13:15', 'duration': 30},\n    {'name': 'Mary', 'location': 'Embarcadero', 'start': '16:45', 'end': '18:45', 'duration': 120},\n    {'name': 'Deborah', 'location': 'Financial District', 'start': '19:00', 'end': '20:45', 'duration': 105},\n    {'name': 'Elizabeth', 'location': 'Marina District', 'start': '8:30', 'end': '13:15', 'duration': 105},\n]\n\n# Sort people by duration in descending order\npeople_sorted = sorted(people, key=lambda x: -x['duration'])\n\nimport datetime\n\nfor person in people_sorted:\n    # Calculate the latest possible start time considering current location and travel time\n    location = person['location']\n    if current_location not in travel_times:\n        continue  # Skip if current location is not in the travel times\n    if location not in travel_times[current_location]:\n        continue  # Skip if location is not reachable from current location\n    travel_time = travel_times[current_location][location]\n    \n    # Convert current_time to datetime object\n    current_dt = datetime.datetime.strptime(current_time, \"%H:%M\")\n    \n    # Calculate earliest possible start time\n    earliest_possible_start = current_dt + datetime.timedelta(minutes=travel_time)\n    earliest_possible_start = earliest_possible_start.replace(second=0, microsecond=0)\n    \n    # Check if earliest possible start is within the person's availability\n    start_dt = datetime.datetime.strptime(person['start'], \"%H:%M\")\n    end_dt = datetime.datetime.strptime(person['end'], \"%H:%M\")\n    \n    if earliest_possible_start > end_dt:\n        continue  # Not possible to meet this person\n    \n    # Ensure that the meeting duration fits within the person's availability\n    if (end_dt - earliest_possible_start).total_seconds() < (person['duration'] * 60):\n        continue  # Not enough time to meet\n    \n    # Calculate the latest possible start time to maximize remaining time\n    latest_possible_start = end_dt - datetime.timedelta(minutes=person['duration'])\n    if latest_possible_start < current_dt:\n        latest_possible_start = current_dt\n    \n    # Choose the latest possible start time\n    start_dt = latest_possible_start\n    \n    # Check if the calculated start time is valid\n    if start_dt < current_dt:\n        continue  # Not possible to meet this person\n    \n    # Create the meeting entry\n    meeting = {\n        'action': 'meet',\n        'location': location,\n        'person': person['name'],\n        'start_time': start_dt.strftime(\"%H:%M\"),\n        'end_time': (start_dt + datetime.timedelta(minutes=person['duration'])).strftime(\"%H:%M\")\n    }\n    itinerary.append(meeting)\n    \n    # Update current location and time\n    current_location = location\n    current_time = meeting['end_time']\n\n# Convert the itinerary to JSON format\nimport json\nprint(json.dumps(itinerary))\n```",
+            "count": "meeting_planning_example_862"
+        }
+    ]
+}

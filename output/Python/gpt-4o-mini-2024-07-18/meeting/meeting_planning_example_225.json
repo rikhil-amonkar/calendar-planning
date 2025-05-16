@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Sarah",
+                        "start_time": "16:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "17:07",
+                        "end_time": "18:22"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Sarah",
+                        "start_time": "16:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Union Square",
+                        "person": "Jeffrey",
+                        "start_time": "17:07",
+                        "end_time": "18:22"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom datetime import datetime, timedelta\n\n# Travel times in minutes\ntravel_times = {\n    (\"Sunset District\", \"North Beach\"): 29,\n    (\"Sunset District\", \"Union Square\"): 30,\n    (\"Sunset District\", \"Alamo Square\"): 17,\n    (\"North Beach\", \"Sunset District\"): 27,\n    (\"North Beach\", \"Union Square\"): 7,\n    (\"North Beach\", \"Alamo Square\"): 16,\n    (\"Union Square\", \"Sunset District\"): 26,\n    (\"Union Square\", \"North Beach\"): 10,\n    (\"Union Square\", \"Alamo Square\"): 15,\n    (\"Alamo Square\", \"Sunset District\"): 16,\n    (\"Alamo Square\", \"North Beach\"): 15,\n    (\"Alamo Square\", \"Union Square\"): 14,\n}\n\n# Meeting windows and minimum durations\nmeetings = {\n    \"Sarah\": {\"location\": \"North Beach\", \"available\": (16 * 60, 18 * 60 + 15), \"min_duration\": 60},\n    \"Jeffrey\": {\"location\": \"Union Square\", \"available\": (15 * 60, 22 * 60), \"min_duration\": 75},\n    \"Brian\": {\"location\": \"Alamo Square\", \"available\": (16 * 60, 17 * 60 + 30), \"min_duration\": 75}\n}\n\n# Starting time\nstart_time = 9 * 60  # 9:00 AM in minutes\nend_time = 22 * 60   # 10:00 PM in minutes\n\n# Function to add time in minutes to a time\ndef add_time(base_time, minutes):\n    return base_time + minutes\n\n# Function to convert minutes to HH:MM format\ndef minutes_to_time(minutes):\n    hour = minutes // 60\n    minute = minutes % 60\n    return f\"{hour}:{minute:02}\"\n\n# Function to calculate the optimal meeting schedule\ndef calculate_schedule(travel_times, meetings, start_time):\n    schedule = []\n    current_time = start_time\n    \n    # Meeting Sarah\n    if current_time <= meetings[\"Sarah\"][\"available\"][1]:\n        travel_time = travel_times[(\"Sunset District\", \"North Beach\")]\n        available_start = max(meetings[\"Sarah\"][\"available\"][0], current_time + travel_time)\n        meeting_end = available_start + meetings[\"Sarah\"][\"min_duration\"]\n        \n        if meeting_end <= meetings[\"Sarah\"][\"available\"][1]:\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": meetings[\"Sarah\"][\"location\"],\n                \"person\": \"Sarah\",\n                \"start_time\": minutes_to_time(available_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            })\n            current_time = meeting_end + travel_times[(\"North Beach\", \"Union Square\")]\n    \n    # Meeting Jeffrey\n    if current_time <= meetings[\"Jeffrey\"][\"available\"][1]:\n        travel_time = travel_times[(\"Sunset District\", \"Union Square\")]\n        available_start = max(meetings[\"Jeffrey\"][\"available\"][0], current_time)\n        meeting_end = available_start + meetings[\"Jeffrey\"][\"min_duration\"]\n        \n        if meeting_end <= meetings[\"Jeffrey\"][\"available\"][1]:\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": meetings[\"Jeffrey\"][\"location\"],\n                \"person\": \"Jeffrey\",\n                \"start_time\": minutes_to_time(available_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            })\n            current_time = meeting_end\n\n    # Meeting Brian\n    if current_time <= meetings[\"Brian\"][\"available\"][1]:\n        travel_time = travel_times[(\"Union Square\", \"Alamo Square\")]\n        available_start = max(meetings[\"Brian\"][\"available\"][0], current_time)\n        meeting_end = available_start + meetings[\"Brian\"][\"min_duration\"]\n        \n        if meeting_end <= meetings[\"Brian\"][\"available\"][1]:\n            schedule.append({\n                \"action\": \"meet\",\n                \"location\": meetings[\"Brian\"][\"location\"],\n                \"person\": \"Brian\",\n                \"start_time\": minutes_to_time(available_start),\n                \"end_time\": minutes_to_time(meeting_end)\n            })\n\n    return {\"itinerary\": schedule}\n\n# Calculate the schedule\noptimal_schedule = calculate_schedule(travel_times, meetings, start_time)\n\n# Output the result as JSON\nprint(json.dumps(optimal_schedule, indent=2))\n```",
+            "count": "meeting_planning_example_225"
+        }
+    ]
+}

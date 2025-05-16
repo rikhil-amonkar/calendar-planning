@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nfrom typing import List, Dict, Tuple\n\ndef find_earliest_meeting_time(\n    participants: Dict[str, Dict[str, List[Tuple[str, str]]]],\n    days: List[str],\n    work_hours: Tuple[str, str],\n    duration_minutes: int\n) -> Tuple[str, str]:\n    # Convert time string \"HH:MM\" to minutes since 9:00 (540 minutes)\n    def time_to_minutes(time_str: str) -> int:\n        hh, mm = map(int, time_str.split(':'))\n        return hh * 60 + mm\n    \n    # Convert minutes back to \"HH:MM\"\n    def minutes_to_time(minutes: int) -> str:\n        hh = minutes // 60\n        mm = minutes % 60\n        return f\"{hh:02d}:{mm:02d}\"\n    \n    work_start, work_end = map(time_to_minutes, work_hours)\n    duration = duration_minutes\n    \n    for day in days:\n        # Collect all busy intervals for the day for all participants\n        busy_intervals = []\n        for person, schedule in participants.items():\n            if day in schedule:\n                for start, end in schedule[day]:\n                    start_min = time_to_minutes(start)\n                    end_min = time_to_minutes(end)\n                    busy_intervals.append((start_min, end_min))\n        \n        # Sort all busy intervals by start time\n        busy_intervals.sort()\n        \n        # Find available slots between work hours considering all busy intervals\n        available_slots = []\n        prev_end = work_start\n        \n        for start, end in busy_intervals:\n            if start > prev_end:\n                available_slots.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        \n        if prev_end < work_end:\n            available_slots.append((prev_end, work_end))\n        \n        # Check each available slot for sufficient duration\n        for slot_start, slot_end in available_slots:\n            if slot_end - slot_start >= duration:\n                meeting_start = slot_start\n                meeting_end = meeting_start + duration\n                return day, f\"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}\"\n    \n    return None, None\n\n# Define the participants' schedules\nparticipants = {\n    \"Mary\": {\n        \"Tuesday\": [(\"10:00\", \"10:30\"), (\"15:30\", \"16:00\")],\n        \"Wednesday\": [(\"9:30\", \"10:00\"), (\"15:00\", \"15:30\")],\n        \"Thursday\": [(\"9:00\", \"10:00\"), (\"10:30\", \"11:30\")],\n    },\n    \"Alexis\": {\n        \"Monday\": [(\"9:00\", \"10:00\"), (\"10:30\", \"12:00\"), (\"12:30\", \"16:30\")],\n        \"Tuesday\": [(\"9:00\", \"10:00\"), (\"10:30\", \"11:30\"), (\"12:00\", \"15:30\"), (\"16:00\", \"17:00\")],\n        \"Wednesday\": [(\"9:00\", \"11:00\"), (\"11:30\", \"17:00\")],\n        \"Thursday\": [(\"10:00\", \"12:00\"), (\"14:00\", \"14:30\"), (\"15:30\", \"16:00\"), (\"16:30\", \"17:00\")],\n    }\n}\n\n# Define the days to consider\ndays = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\n\n# Define work hours and meeting duration\nwork_hours = (\"9:00\", \"17:00\")\nduration = 30  # minutes\n\n# Find the earliest meeting time\nday, time_range = find_earliest_meeting_time(participants, days, work_hours, duration)\n\n# Output the result\nprint(f\"{day}: {time_range}\")\n```",
+            "count": "calendar_scheduling_example_812"
+        }
+    ]
+}

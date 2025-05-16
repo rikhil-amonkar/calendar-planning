@@ -1,0 +1,87 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jeffrey",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Deborah",
+                        "start_time": "13:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Margaret",
+                        "start_time": "16:30",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Ronald",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "19:33",
+                        "end_time": "19:48"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Jeffrey",
+                        "start_time": "11:15",
+                        "end_time": "13:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "The Castro",
+                        "person": "Deborah",
+                        "start_time": "13:45",
+                        "end_time": "15:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Margaret",
+                        "start_time": "16:30",
+                        "end_time": "17:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "North Beach",
+                        "person": "Ronald",
+                        "start_time": "18:30",
+                        "end_time": "19:15"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Richmond District",
+                        "person": "Emily",
+                        "start_time": "19:33",
+                        "end_time": "19:48"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours}:{mins:02d}\"\n\n# Input parameters\nfriends = {\n    \"Emily\": {\n        \"location\": \"Richmond District\",\n        \"available_start\": \"19:00\",\n        \"available_end\": \"21:00\",\n        \"min_duration\": 15\n    },\n    \"Margaret\": {\n        \"location\": \"Financial District\",\n        \"available_start\": \"16:30\",\n        \"available_end\": \"20:15\",\n        \"min_duration\": 75\n    },\n    \"Ronald\": {\n        \"location\": \"North Beach\",\n        \"available_start\": \"18:30\",\n        \"available_end\": \"19:30\",\n        \"min_duration\": 45\n    },\n    \"Deborah\": {\n        \"location\": \"The Castro\",\n        \"available_start\": \"13:45\",\n        \"available_end\": \"21:15\",\n        \"min_duration\": 90\n    },\n    \"Jeffrey\": {\n        \"location\": \"Golden Gate Park\",\n        \"available_start\": \"11:15\",\n        \"available_end\": \"14:30\",\n        \"min_duration\": 120\n    }\n}\n\ntravel_times = {\n    \"Nob Hill\": {\n        \"Richmond District\": 14,\n        \"Financial District\": 9,\n        \"North Beach\": 8,\n        \"The Castro\": 17,\n        \"Golden Gate Park\": 17\n    },\n    \"Richmond District\": {\n        \"Nob Hill\": 17,\n        \"Financial District\": 22,\n        \"North Beach\": 17,\n        \"The Castro\": 16,\n        \"Golden Gate Park\": 9\n    },\n    \"Financial District\": {\n        \"Nob Hill\": 8,\n        \"Richmond District\": 21,\n        \"North Beach\": 7,\n        \"The Castro\": 23,\n        \"Golden Gate Park\": 23\n    },\n    \"North Beach\": {\n        \"Nob Hill\": 7,\n        \"Richmond District\": 18,\n        \"Financial District\": 8,\n        \"The Castro\": 22,\n        \"Golden Gate Park\": 22\n    },\n    \"The Castro\": {\n        \"Nob Hill\": 16,\n        \"Richmond District\": 16,\n        \"Financial District\": 20,\n        \"North Beach\": 20,\n        \"Golden Gate Park\": 11\n    },\n    \"Golden Gate Park\": {\n        \"Nob Hill\": 20,\n        \"Richmond District\": 7,\n        \"Financial District\": 26,\n        \"North Beach\": 24,\n        \"The Castro\": 13\n    }\n}\n\ncurrent_location = \"Nob Hill\"\ncurrent_time = time_to_minutes(\"9:00\")\nitinerary = []\n\ndef can_schedule_meeting(friend_order):\n    temp_itinerary = []\n    temp_location = current_location\n    temp_time = current_time\n    \n    for friend in friend_order:\n        data = friends[friend]\n        location = data[\"location\"]\n        travel_time = travel_times[temp_location].get(location, float('inf'))\n        \n        # Arrive at location\n        arrival_time = temp_time + travel_time\n        available_start = time_to_minutes(data[\"available_start\"])\n        available_end = time_to_minutes(data[\"available_end\"])\n        min_duration = data[\"min_duration\"]\n        \n        # Calculate meeting window\n        start_time = max(arrival_time, available_start)\n        end_time = min(start_time + min_duration, available_end)\n        \n        if end_time - start_time < min_duration:\n            return None\n        \n        temp_itinerary.append({\n            \"action\": \"meet\",\n            \"location\": location,\n            \"person\": friend,\n            \"start_time\": minutes_to_time(start_time),\n            \"end_time\": minutes_to_time(end_time)\n        })\n        \n        temp_location = location\n        temp_time = end_time\n    \n    return temp_itinerary\n\n# Try all possible orders to find the best schedule\nbest_itinerary = None\nmax_meetings = 0\n\nfor perm in permutations(friends.keys()):\n    itinerary = can_schedule_meeting(perm)\n    if itinerary and len(itinerary) > max_meetings:\n        best_itinerary = itinerary\n        max_meetings = len(itinerary)\n    elif itinerary and len(itinerary) == max_meetings and best_itinerary:\n        # Prefer longer total meeting time\n        current_duration = sum(time_to_minutes(m[\"end_time\"]) - time_to_minutes(m[\"start_time\"]) for m in itinerary)\n        best_duration = sum(time_to_minutes(m[\"end_time\"]) - time_to_minutes(m[\"start_time\"]) for m in best_itinerary)\n        if current_duration > best_duration:\n            best_itinerary = itinerary\n\nif not best_itinerary:\n    # Try to find partial schedules if full schedule isn't possible\n    for num_meetings in range(len(friends)-1, 0, -1):\n        for perm in permutations(friends.keys(), num_meetings):\n            itinerary = can_schedule_meeting(perm)\n            if itinerary:\n                best_itinerary = itinerary\n                break\n        if best_itinerary:\n            break\n\noutput = {\"itinerary\": best_itinerary} if best_itinerary else {\"itinerary\": []}\nprint(json.dumps(output, indent=2))\n```",
+            "count": "meeting_planning_example_433"
+        }
+    ]
+}

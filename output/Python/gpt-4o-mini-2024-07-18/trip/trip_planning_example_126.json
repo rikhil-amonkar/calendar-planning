@@ -1,0 +1,45 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 10-15",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Leisure/Explore D1 or D2"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters\n    total_days = 11\n    days_in_seville = 6\n    days_in_paris = 2\n    days_in_krakow = 5\n    workshop_days = (1, 5)  # Between Day 1 and Day 5\n\n    # Initialize itinerary and available days\n    itinerary = []\n    day_counter = 1\n    \n    # Schedule for Krakow with workshop\n    if day_counter < workshop_days[1] + 1:  # Attend workshop in Krakow\n        day_range = f\"Day {day_counter}-{day_counter + days_in_krakow - 1}\"\n        itinerary.append({'day_range': day_range, 'place': 'Krakow'})\n        day_counter += days_in_krakow\n\n    # Travel from Krakow to Paris\n    if day_counter <= total_days:\n        itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Krakow', 'to': 'Paris'})\n        day_counter += 1\n\n    # Schedule for Paris\n    if day_counter < total_days:\n        day_range = f\"Day {day_counter}-{day_counter + days_in_paris - 1}\"\n        itinerary.append({'day_range': day_range, 'place': 'Paris'})\n        day_counter += days_in_paris\n\n    # Travel from Paris to Seville\n    if day_counter <= total_days:\n        itinerary.append({'flying': f'Day {day_counter}-{day_counter}', 'from': 'Paris', 'to': 'Seville'})\n        day_counter += 1\n\n    # Schedule for Seville\n    if day_counter <= total_days:\n        day_range = f\"Day {day_counter}-{day_counter + days_in_seville - 1}\"\n        itinerary.append({'day_range': day_range, 'place': 'Seville'})\n    \n    # Ensure the total days used is 11\n    if day_counter <= total_days:\n        final_days = total_days - (day_counter - 1)\n        if final_days > 0:\n            itinerary.append({'day_range': f'Day {day_counter}-{total_days}', 'place': 'Leisure/Explore D1 or D2'})  # Placeholder for end\n\n    return json.dumps(itinerary, indent=4)\n\n# Call the function and print the JSON itinerary\nif __name__ == \"__main__\":\n    result = compute_itinerary()\n    print(result)\n```",
+            "count": "trip_planning_example_126"
+        }
+    ]
+}
