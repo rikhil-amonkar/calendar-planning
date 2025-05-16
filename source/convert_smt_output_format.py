@@ -14,6 +14,17 @@ parser.add_argument('--model', required=True, nargs='+', help="")
 parser.add_argument('--start', type=int, required=False, help="Starting index for processing examples")
 args = parser.parse_args()
 
+def extract_gold(gold_str, task):
+    if task == "calendar":
+        # "Here is the proposed time: Monday, 16:30 - 17:00 "
+        return {
+            "day": gold_str.split(": ")[1].split(",")[0].strip(),
+            "start_time": gold_str.split(",")[1].split("-")[0].strip(),
+            "end_time": gold_str.split(",")[1].split("-")[1].strip()
+        }
+    if task == "trip":
+        return {} # todo
+
 def extract_answer(answer_str, task):
     prompt = {
         "calendar": "Given the following time range:\n" + answer_str + "\nExtract the meeting start day and time in a JSON like {\"day\": \"Monday\", \"start_time\": \"14:30\", \"end_time\": \"15:30\"}. The time should be in 24-hour format. If no end time is given, assume the end time is one hour later than the start time. If no day given, assume the day is Monday. If no time range is given at all, output an empty JSON.",
@@ -99,7 +110,7 @@ for model in args.model:
                 continue
             gold = example["golden_plan"]
             has_error = False
-            if not pred or "Error" in pred:
+            if "Error" in pred:
                 has_error = True
                 pred_formatted = {}
             else:

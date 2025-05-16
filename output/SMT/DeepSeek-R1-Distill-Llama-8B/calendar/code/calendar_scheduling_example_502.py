@@ -1,58 +1,61 @@
-from z3 import *
+import z3
 
-# Define the start and end times in minutes (9:00 is 0, 17:00 is 1020)
-start = 0
-end = 1020
+def solve_scheduling():
+    day = "Monday"
+    # Convert busy intervals to minutes since 9:00
+    jack_intervals = [
+        (30, 90),          # 9:30-10:30
+        (60, 75),          # 11:00-11:30
+        (150, 180),        # 12:30-13:00
+        (210, 240),        # 14:00-14:30
+        (480, 510)         # 16:00-16:30
+    ]
+    charlotte_intervals = [
+        (30, 60),           # 9:30-10:00
+        (90, 180),          # 10:30-12:00
+        (150, 210),         # 12:30-13:30
+        (210, 480)          # 14:00-16:00
+    ]
+    max_time = 1080        # 17:00
+    latest_start = 150     # 12:30
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for each interval
+    for a, b in jack_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in charlotte_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Add constraint for Jack's preference: start no later than 12:30
+    ctx.add(s <= latest_start)
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= 0)
+    ctx.add(s + 30 <= max_time)
+    
+    # Solve the problem
+    result = ctx.solve()
+    
+    if result:
+        # Convert s to time string
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 30
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        return (day, start_time, end_time)
+    else:
+        return None
 
-# Convert blocked times to minutes
-# Jack's blocked times
-jack_block1_start = 690   # 9:30
-jack_block1_end = 720    # 10:30
-jack_block2_start = 750   # 12:30
-jack_block2_end = 780    # 13:00
-jack_block3_start = 840   # 14:00
-jack_block3_end = 870    # 14:30
-jack_block4_start = 960   # 16:00
-jack_block4_end = 990    # 16:30
-
-# Charlotte's blocked times
-charlotte_block1_start = 690   # 9:30
-charlotte_block1_end = 720    # 10:00
-charlotte_block2_start = 750   # 12:00
-charlotte_block2_end = 780    # 13:00
-charlotte_block3_start = 870   # 14:00
-charlotte_block3_end = 990    # 16:00
-
-# Meeting duration is 30 minutes
-meeting_duration = 30
-
-# Define the variable t
-t = Variable('t')
-
-# Constraints for Jack
-s.add(t < jack_block1_start)
-s.add(t >= jack_block1_end)
-s.add(t < jack_block2_start)
-s.add(t >= jack_block2_end)
-s.add(t < jack_block3_start)
-s.add(t >= jack_block3_end)
-s.add(t < jack_block4_start)
-s.add(t >= jack_block4_end)
-
-# Constraints for Charlotte
-s.add(t < charlotte_block1_start)
-s.add(t >= charlotte_block1_end)
-s.add(t < charlotte_block2_start)
-s.add(t >= charlotte_block2_end)
-s.add(t < charlotte_block3_start)
-s.add(t >= charlotte_block3_end)
-
-# Solve the problem
-s.solve()
-
-# If a solution exists, print it
-if s.model():
-    t_val = s.model()[t]
-    print(f"The meeting can be scheduled at {t_val // 60}:{t_val % 60}")
-else:
-    print("No solution found")
+solve_scheduling()

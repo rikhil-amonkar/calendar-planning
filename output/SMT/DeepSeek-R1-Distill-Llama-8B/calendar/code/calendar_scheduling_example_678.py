@@ -1,42 +1,70 @@
-from z3 import *
+import z3
 
-def main():
-    day = Variable('day')  # 0 for Monday, 1 for Tuesday
-    t = Variable('t')      # start time in minutes from 9:00
-
-    # Define available intervals for each person
-    available = [
-        # Russell's blocked intervals
-        (690, 750), (1950, 1980),
-        # Alexander's blocked intervals
+def solve_scheduling():
+    day_options = ["Monday", "Tuesday"]
+    day = z3.Int("day", "0 to 1")
+    
+    # Convert busy intervals to minutes since 9:00
+    russell_intervals = [
         # Monday
-        (0, 690), (750, 1050), (1500, 1800),
+        (150, 180),       # 10:30-11:00
         # Tuesday
-        (0, 30), (780, 810), (1500, 1530), (1800, 2010), (2100, 2400)
+        (210, 240),       # 13:00-13:30
     ]
-
-    # Create constraints for each available interval
-    for interval in available:
-        model.add_constraint(t >= interval[0])
-        model.add_constraint(t <= interval[1])
-
-    # Russell's constraint: if day is Tuesday, t >= 13:30 (2010 minutes)
-    model.add_constraint((day == 1) >> (t >= 2010))
-
+    alexander_intervals = [
+        # Monday
+        (0, 90),          # 9:00-11:30
+        (90, 180),        # 12:00-14:30
+        (210, 360),       # 15:00-17:00
+        # Tuesday
+        (0, 60),          # 9:00-10:00
+        (120, 150),       # 13:00-14:00
+        (180, 210),       # 15:00-15:30
+        (240, 270),       # 16:00-16:30
+    ]
+    
+    max_time = 1080        # 17:00
+    earliest_start = 0     # 9:00
+    latest_start = 480     # 16:00
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for each interval
+    for a, b in russell_intervals:
+        constraint = (s + 60) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in alexander_intervals:
+        constraint = (s + 60) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure the meeting does not occur before 13:30 on Tuesday
+    ctx.add((day == 1) & (s >= 210))
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= earliest_start)
+    ctx.add(s + 60 <= max_time)
+    
     # Solve the problem
-    result = model.solve()
+    result = ctx.solve()
+    
     if result:
-        print("Possible solution: day =", result[day].numerator())
-        print("t =", result[t].numerator())
-        print("Convert t to time:", time(t))
+        # Convert s to time string
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 60
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        day_str = day_options[result.model[day]]
+        return (day_str, start_time, end_time)
     else:
-        print("No solution.")
+        return None
 
-def time(t):
-    # Convert minutes back to hours:minutes
-    hours = t // 60
-    minutes = t % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-if __name__ == "__main__":
-    main()
+solve_scheduling()

@@ -1,44 +1,104 @@
-from z3 import *
+import z3
 
-def main():
-    t = Variable('t')  # start time in minutes from 9:00
-
-    # Define available intervals for each person
-    available = [
-        # Gregory's available intervals
-        (150, 180), (690, 750), (1050, 1170), (1500, 1530), (1950, 1980), (2340, 2400),
-        # Jonathan's available intervals
-        (210, 690), (750, 1050), (1170, 1500), (1800, 1950), (2100, 2400),
-        # Barbara's available intervals
-        (0, 60), (210, 450), (570, 690), (780, 1050), (1170, 1380), (1500, 1500),
-        # Jesse's available intervals
-        (0, 60), (120, 150), (240, 330), (390, 450), (570, 750), (780, 1050), (1500, 1800),
-        # Alan's available intervals
-        (0, 30), (120, 150), (240, 300), (360, 390), (570, 750), (780, 870), (1500, 1650), (1800, 2100),
-        # Nicole's available intervals
-        (150, 180), (330, 390), (750, 780), (1050, 1170), (1500, 1500), (1800, 1950),
-        # Catherine's available intervals
-        (150, 180), (330, 450), (570, 750), (780, 870), (1050, 1170), (1500, 1500), (1800, 2100)
+def solve_scheduling():
+    day = "Monday"
+    # Convert busy intervals to minutes since 9:00
+    gregory_intervals = [
+        (0, 30),          # 9:00-9:30
+        (120, 150),       # 11:30-12:00
     ]
-
-    # Create constraints for each available interval
-    for interval in available:
-        model.add_constraint(t >= interval[0])
-        model.add_constraint(t <= interval[1])
-
+    jonathan_intervals = [
+        (0, 30),          # 9:00-9:30
+        (60, 90),         # 12:00-12:30
+        (180, 210),       # 13:00-13:30
+        (300, 360),       # 15:00-16:00
+        (330, 360),       # 16:30-17:00
+    ]
+    barbara_intervals = [
+        (90, 120),        # 10:00-10:30
+        (210, 240),       # 13:30-14:00
+    ]
+    jesse_intervals = [
+        (90, 150),        # 10:00-11:00
+        (150, 240),       # 12:30-14:30
+    ]
+    alan_intervals = [
+        (30, 90),         # 9:30-11:00
+        (120, 150),       # 11:30-12:30
+        (180, 270),       # 13:00-15:30
+        (300, 360),       # 16:00-17:00
+    ]
+    nicole_intervals = [
+        (0, 90),          # 9:00-10:30
+        (120, 150),       # 11:30-12:00
+        (150, 180),       # 12:30-13:30
+        (210, 360),       # 14:00-17:00
+    ]
+    catherine_intervals = [
+        (0, 90),          # 9:00-10:30
+        (60, 150),        # 12:00-13:30
+        (300, 330),       # 15:00-15:30
+        (360, 360),       # 16:00-16:30
+    ]
+    
+    max_time = 1080        # 17:00
+    earliest_start = 0     # 9:00
+    latest_start = 480     # 16:00
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for each interval
+    for a, b in gregory_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in jonathan_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in barbara_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in jesse_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in alan_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in nicole_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in catherine_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= earliest_start)
+    ctx.add(s + 30 <= max_time)
+    
     # Solve the problem
-    result = model.solve()
+    result = ctx.solve()
+    
     if result:
-        print("Possible solution: t =", result[t].numerator())
-        print("Convert t to time:", time(t))
+        # Convert s to time string
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 30
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        return (day, start_time, end_time)
     else:
-        print("No solution.")
+        return None
 
-def time(t):
-    # Convert minutes back to hours:minutes
-    hours = t // 60
-    minutes = t % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-if __name__ == "__main__":
-    main()
+solve_scheduling()
