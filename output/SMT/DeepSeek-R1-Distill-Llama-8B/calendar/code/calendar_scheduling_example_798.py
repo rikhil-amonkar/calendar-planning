@@ -1,67 +1,89 @@
-from z3 import *
+import z3
 
-# Define the start and end times in minutes (9:00 is 0, 17:00 is 1020)
-start = 0
-end = 1020
+def solve_scheduling():
+    day_options = ["Monday", "Tuesday", "Wednesday"]
+    day = z3.Int("day", "0 to 2")
+    
+    # Convert busy intervals to minutes since 9:00
+    nancy_intervals = [
+        # Monday
+        (60, 90),          # 10:00-10:30
+        (120, 150),        # 11:30-12:30
+        (210, 240),        # 13:30-14:00
+        (240, 270),        # 14:30-15:30
+        (300, 360)         # 16:00-17:00
+    ]
+    nancy_tuesday = [
+        (30, 90),           # 9:30-10:30
+        (60, 90),           # 11:00-11:30
+        (120, 150),         # 12:00-12:30
+        (180, 210),         # 13:00-13:30
+        (270, 300)          # 15:30-16:00
+    ]
+    nancy_wednesday = [
+        (60, 150),          # 10:00-11:30
+        (210, 360)          # 13:30-16:00
+    ]
+    
+    jose_intervals = [
+        # Monday
+        (0, 1080),          # 9:00-17:00
+        # Tuesday
+        (0, 1080),          # 9:00-17:00
+        # Wednesday
+        (0, 30),            # 9:00-9:30
+        (60, 210),          # 10:00-12:30
+        (210, 240),         # 13:30-14:30
+        (300, 1080)         # 15:00-17:00
+    ]
+    
+    max_time = 1080        # 17:00
+    earliest_start = 0     # 9:00
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for Nancy's schedule
+    for a, b in nancy_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in nancy_tuesday:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in nancy_wednesday:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Add constraints for Jose's schedule
+    for a, b in jose_intervals:
+        constraint = (s + 30) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= earliest_start)
+    ctx.add(s + 30 <= max_time)
+    
+    # Solve the problem
+    result = ctx.solve()
+    
+    if result:
+        # Convert day and s to time strings
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 30
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        day_str = day_options[result.model[day]]
+        return (day_str, start_time, end_time)
+    else:
+        return None
 
-# Convert blocked times to minutes
-# Nancy's blocked times
-nancy_block1_start = 600   # 10:00
-nancy_block1_end = 630    # 10:30
-nancy_block2_start = 750   # 12:30
-nancy_block2_end = 780    # 13:00
-nancy_block3_start = 870   # 14:30
-nancy_block3_end = 990    # 16:00
-
-# Jose's blocked times
-jose_block1_start = 0     # 9:00
-jose_block1_end = 1020    # 17:00
-jose_block2_start = 0     # 9:00
-jose_block2_end = 30      # 9:30
-jose_block3_start = 60     # 10:00
-jose_block3_end = 210     # 12:30
-jose_block4_start = 330    # 13:30
-jose_block4_end = 390     # 14:30
-jose_block5_start = 450    # 15:00
-jose_block5_end = 1020    # 17:00
-
-# Meeting duration is 30 minutes
-meeting_duration = 30
-
-# Define the variable t
-t = Variable('t')
-
-# Constraints for Nancy
-s.add(t < nancy_block1_start)
-s.add(t >= nancy_block1_end)
-s.add(t < nancy_block2_start)
-s.add(t >= nancy_block2_end)
-s.add(t < nancy_block3_start)
-s.add(t >= nancy_block3_end)
-
-# Constraints for Jose
-s.add(t < jose_block1_start)
-s.add(t >= jose_block1_end)
-s.add(t < jose_block2_start)
-s.add(t >= jose_block2_end)
-s.add(t < jose_block3_start)
-s.add(t >= jose_block3_end)
-s.add(t < jose_block4_start)
-s.add(t >= jose_block4_end)
-s.add(t < jose_block5_start)
-s.add(t >= jose_block5_end)
-
-# Ensure the meeting starts by 16:00 (960 minutes) and ends by 16:30 (990 minutes)
-s.add(t <= 960 - meeting_duration)
-s.add(t >= 0)
-s.add(t <= 960)
-
-# Solve the problem
-s.solve()
-
-# If a solution exists, print it
-if s.model():
-    t_val = s.model()[t]
-    print(f"The meeting can be scheduled at {t_val // 60}:{t_val % 60}")
-else:
-    print("No solution found")
+solve_scheduling()

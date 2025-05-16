@@ -2,40 +2,42 @@ import z3
 
 def schedule_meeting():
     solver = z3.Solver()
-    t = z3.Int('t')
-    
-    # Work hours constraint: 9:00 to 17:00 (540 to 1020 minutes)
-    solver.add(t >= 540)  # 9:00 AM
-    solver.add(t + 60 <= 1020)  # Meeting ends by 5:00 PM
-    
-    # Denise's preference: Meeting must end by 12:30 PM (750 minutes)
-    solver.add(t + 60 <= 750)  # Meeting ends by 12:30 PM
-    
-    # Busy intervals in minutes (start, end)
-    busy_intervals = [
-        # Ryan's busy times
-        (540, 570),  # 9:00-9:30
-        (750, 780),  # 12:30-13:00
-        # Denise's busy times
-        (570, 630),  # 9:30-10:30
-        (720, 780),  # 12:00-13:00
-        (870, 990)   # 14:30-16:30
+    S = z3.Int('S')  # Start time in minutes since midnight
+
+    # Work hours constraint: 9:00 (540) to 17:00 (1020)
+    solver.add(S >= 540)  # 9:00 AM
+    solver.add(S <= 960)  # 16:00 to allow for 1-hour meeting
+
+    # Blocked intervals for Ryan and Denise in minutes since midnight
+    blocked = [
+        # Ryan's blocks
+        (540, 570), (750, 780),
+        # Denise's blocks
+        (570, 630), (720, 780), (870, 990)
     ]
-    
-    # Add constraints for each busy interval
-    for s, e in busy_intervals:
-        solver.add(z3.Or(t + 60 <= s, t >= e))
-    
+
+    # Add constraints for each blocked interval
+    for a, b in blocked:
+        solver.add(z3.Or(S >= b, S + 60 <= a))
+
+    # Denise's preference: Do not meet after 12:30 (750 minutes)
+    solver.add(S <= 750)
+
     # Solve the constraints
     if solver.check() == z3.sat:
         model = solver.model()
-        start_time = model[t].as_long()
-        # Convert start time back to hours:minutes format
-        hours = start_time // 60
-        minutes = start_time % 60
-        end_hours = (start_time + 60) // 60
-        end_minutes = (start_time + 60) % 60
-        print(f"Meeting can be scheduled from {hours:02d}:{minutes:02d} to {end_hours:02d}:{end_minutes:02d}")
+        start = model[S].as_long()
+        end = start + 60
+
+        # Convert minutes to HH:MM format
+        def to_time(minutes):
+            hours = minutes // 60
+            mins = minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        print(f"Day: Monday")
+        print(f"Start time: {to_time(start)}")
+        print(f"End time: {to_time(end)}")
     else:
         print("No solution found.")
 

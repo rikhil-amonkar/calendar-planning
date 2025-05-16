@@ -1,39 +1,59 @@
-from z3 import *
+import z3
 
-def main():
-    t = Variable('t')  # start time in minutes from 9:00
-
-    # Define available intervals for each person
-    available = [
-        # Ryan's blocked intervals
-        (0, 30), (1500, 1530),
-        # Ruth is available the entire day
-        (0, 480),
-        # Denise's blocked intervals
-        (150, 180), (300, 330), (600, 660), (840, 870), (1950, 1980), (2100, 2400)
+def solve_scheduling():
+    day = "Monday"
+    # Convert busy intervals to minutes since 9:00
+    ryan_intervals = [
+        (0, 30),          # 9:00-9:30
+        (150, 180),       # 12:30-13:00
     ]
-
-    # Create constraints for each available interval
-    for interval in available:
-        model.add_constraint(t >= interval[0])
-        model.add_constraint(t <= interval[1])
-
-    # Denise's constraint: t <= 12:30 (750 minutes)
-    model.add_constraint(t <= 750)
-
+    denise_intervals = [
+        (30, 90),          # 9:30-10:30
+        (60, 120),         # 12:00-13:00
+        (210, 270),        # 14:30-16:30
+    ]
+    
+    max_time = 1080        # 17:00
+    earliest_start = 0     # 9:00
+    latest_start = 180     # 12:30
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for each interval
+    for a, b in ryan_intervals:
+        constraint = (s + 60) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in denise_intervals:
+        constraint = (s + 60) <= a | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure the meeting starts no later than 12:30
+    ctx.add(s <= latest_start)
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= earliest_start)
+    ctx.add(s + 60 <= max_time)
+    
     # Solve the problem
-    result = model.solve()
+    result = ctx.solve()
+    
     if result:
-        print("Possible solution: t =", result[t].numerator())
-        print("Convert t to time:", time(t))
+        # Convert s to time string
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 60
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        return (day, start_time, end_time)
     else:
-        print("No solution.")
+        return None
 
-def time(t):
-    # Convert minutes back to hours:minutes
-    hours = t // 60
-    minutes = t % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-if __name__ == "__main__":
-    main()
+solve_scheduling()

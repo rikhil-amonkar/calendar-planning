@@ -2,55 +2,41 @@ import z3
 
 def schedule_meeting():
     solver = z3.Solver()
-    t = z3.Int('t')
-    
-    # Work hours constraint: 9:00 to 17:00 (540 to 990 minutes)
-    solver.add(t >= 540)  # 9:00 AM
-    solver.add(t + 30 <= 990)  # Meeting ends by 5:00 PM
-    
-    # Roger's preference: No meetings before 12:30 PM (750 minutes)
-    solver.add(t >= 750)  # Meeting starts at or after 12:30 PM
-    
-    # Busy intervals in minutes (start, end)
-    busy_intervals = [
-        # Cheryl's busy times
-        (540, 570),  # 9:00-9:30
-        (600, 690),  # 10:00-11:30
-        (750, 810),  # 12:30-1:30
-        (840, 1020), # 2:00-5:00
-        # Virginia's busy times
-        (570, 690),  # 9:30-11:30
-        (720, 750),  # 12:00-12:30
-        (780, 810),  # 1:00-1:30
-        (870, 930),  # 2:30-3:30
-        (960, 1020), # 4:00-5:00
-        # Angela's busy times
-        (570, 600),  # 9:30-10:00
-        (630, 690),  # 10:30-11:30
-        (720, 750),  # 12:00-12:30
-        (780, 810),  # 1:00-1:30
-        (840, 990),  # 2:00-4:30
-        # Kathleen's busy times
-        (870, 930),  # 2:30-3:30
-        # Carolyn's busy times
-        (720, 750),  # 12:00-12:30
-        (780, 810)   # 1:00-1:30
+    S = z3.Int('S')  # Start time in minutes since midnight
+
+    # Work hours constraint: 9:00 (540) to 17:00 (1020)
+    solver.add(S >= 540)
+    solver.add(S + 30 <= 1020)
+
+    # Blocked intervals for each participant in minutes since midnight
+    blocked = [
+        # Cheryl's blocks
+        (540, 570), (600, 690), (750, 810), (840, 1020),
+        # Virginia's blocks
+        (570, 690), (720, 750), (780, 810), (870, 930), (960, 1020),
+        # Angela's blocks
+        (570, 600), (630, 690), (720, 750), (780, 810), (840, 990)
     ]
-    
-    # Add constraints for each busy interval
-    for s, e in busy_intervals:
-        solver.add(z3.Or(t + 30 <= s, t >= e))
-    
+
+    # Add constraints for each blocked interval
+    for a, b in blocked:
+        solver.add(z3.Or(S >= b, S + 30 <= a))
+
     # Solve the constraints
     if solver.check() == z3.sat:
         model = solver.model()
-        start_time = model[t].as_long()
-        # Convert start time back to hours:minutes format
-        hours = start_time // 60
-        minutes = start_time % 60
-        end_hours = (start_time + 30) // 60
-        end_minutes = (start_time + 30) % 60
-        print(f"Meeting can be scheduled from {hours:02d}:{minutes:02d} to {end_hours:02d}:{end_minutes:02d}")
+        start = model[S].as_long()
+        end = start + 30
+
+        # Convert minutes to HH:MM format
+        def to_time(minutes):
+            hours = minutes // 60
+            mins = minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        print(f"Day: Monday")
+        print(f"Start time: {to_time(start)}")
+        print(f"End time: {to_time(end)}")
     else:
         print("No solution found.")
 

@@ -1,60 +1,69 @@
-from z3 import *
+import z3
 
-def main():
-    t = Variable('t')  # start time in minutes from 9:00
-
-    # Define Anthony's available intervals
-    anthony_available = [
-        (0, 60),
-        (70, 120),
-        (180, 300),
-        (330, 480)
+def solve_scheduling():
+    day = "Monday"
+    # Convert busy intervals to minutes since 9:00
+    anthony_intervals = [
+        (30, 60),          # 9:30-10:00
+        (120, 150),        # 12:00-13:00
+        (480, 510)         # 16:00-16:30
     ]
-
-    # Define Pamela's available intervals
-    pamela_available = [
-        (0, 60),
-        (70, 390)
+    pamela_intervals = [
+        (30, 60),           # 9:30-10:00
+        (630, 1080)         # 16:30-17:00
     ]
-
-    # Define Zachary's available intervals
-    zachary_available = [
-        (480, 720),
-        (750, 780),
-        (810, 870)
+    zachary_intervals = [
+        (0, 90),            # 9:00-11:30
+        (120, 150),        # 12:00-12:30
+        (180, 210),        # 13:00-13:30
+        (270, 330),        # 14:30-15:00
+        (480, 1080)        # 16:00-17:00
     ]
-
-    # Add constraints for Anthony
-    for (a_start, a_end) in anthony_available:
-        model.add_constraint(t >= a_start)
-        model.add_constraint(t <= a_end)
-
-    # Add constraints for Pamela
-    for (p_start, p_end) in pamela_available:
-        model.add_constraint(t >= p_start)
-        model.add_constraint(t <= p_end)
-
-    # Add constraints for Zachary
-    for (z_start, z_end) in zachary_available:
-        model.add_constraint(t >= z_start)
-        model.add_constraint(t <= z_end)
-
-    # Pamela's constraint: t <= 14:30 (330 minutes)
-    model.add_constraint(t <= 330)
-
+    
+    max_time = 1080        # 17:00
+    latest_start = 450     # 14:30
+    
+    # Define the context
+    ctx = z3.Context()
+    
+    # Variable for the start time in minutes (0 to 1080)
+    s = z3.Int(ctx, "s")
+    
+    # Add constraints for each interval
+    for a, b in anthony_intervals:
+        constraint = (s >= a) | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in pamela_intervals:
+        constraint = (s >= a) | (b <= s)
+        ctx.add(constraint)
+    
+    for a, b in zachary_intervals:
+        constraint = (s >= a) | (b <= s)
+        ctx.add(constraint)
+    
+    # Ensure the meeting starts no later than 14:30
+    ctx.add(s <= latest_start)
+    
+    # Ensure the meeting starts after 9:00 and ends by 17:00
+    ctx.add(s >= 0)
+    ctx.add(s + 60 <= max_time)
+    
     # Solve the problem
-    result = model.solve()
+    result = ctx.solve()
+    
     if result:
-        print("Possible solution: t =", result[t].numerator())
-        print("Convert t to time:", time(t))
+        # Convert s to time string
+        start_min = result.model[s]
+        start_h = start_min // 60
+        start_m = start_min % 60
+        start_time = f"{start_h:02d}:{start_m:02d}"
+        end_min = start_min + 60
+        end_h = end_min // 60
+        end_m = end_min % 60
+        end_time = f"{end_h:02d}:{end_m:02d}"
+        return (day, start_time, end_time)
     else:
-        print("No solution.")
+        return None
 
-def time(t):
-    # Convert minutes back to hours:minutes
-    hours = t // 60
-    minutes = t % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-if __name__ == "__main__":
-    main()
+solve_scheduling()
