@@ -1,0 +1,89 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "14:25",
+                        "end_time": "16:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "16:29",
+                        "end_time": "18:29"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Golden Gate Park",
+                        "person": "Mary",
+                        "start_time": "9:25",
+                        "end_time": "10:10"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Haight-Ashbury",
+                        "person": "Kevin",
+                        "start_time": "10:17",
+                        "end_time": "11:47"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Presidio",
+                        "person": "Stephanie",
+                        "start_time": "12:02",
+                        "end_time": "14:02"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Bayview",
+                        "person": "Deborah",
+                        "start_time": "15:00",
+                        "end_time": "17:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Financial District",
+                        "person": "Emily",
+                        "start_time": "17:19",
+                        "end_time": "19:04"
+                    }
+                ]
+            },
+            "reasoning_token_count": 1528,
+            "raw_model_response": "SOLUTION:\n{\n  \"itinerary\": [\n    {\"action\": \"meet\", \"location\": \"Golden Gate Park\", \"person\": \"Mary\", \"start_time\": \"9:25\", \"end_time\": \"10:10\"},\n    {\"action\": \"meet\", \"location\": \"Haight-Ashbury\", \"person\": \"Kevin\", \"start_time\": \"10:17\", \"end_time\": \"11:47\"},\n    {\"action\": \"meet\", \"location\": \"Presidio\", \"person\": \"Stephanie\", \"start_time\": \"12:02\", \"end_time\": \"14:02\"},\n    {\"action\": \"meet\", \"location\": \"Financial District\", \"person\": \"Emily\", \"start_time\": \"14:25\", \"end_time\": \"16:10\"},\n    {\"action\": \"meet\", \"location\": \"Bayview\", \"person\": \"Deborah\", \"start_time\": \"16:29\", \"end_time\": \"18:29\"}\n  ]\n}",
+            "raw_reasoning": "Okay, let's tackle this scheduling problem step by step. First, I need to figure out how to meet as many friends as possible considering the time constraints and travel times. Let me start by listing all the friends, their locations, availability, and required meeting durations.\n\nMary is at Golden Gate Park from 8:45 AM to 11:45 AM, needs 45 minutes. Since I arrive at Embarcadero at 9:00 AM, I can go there first. The travel time from Embarcadero to Golden Gate Park is 25 minutes. If I leave at 9:00 AM, I'll arrive at 9:25 AM. But Mary's available until 11:45 AM. Wait, wait, she's available from 8:45 AM. So arriving at 9:25, the earliest I can start is 9:25 AM. But she's there until 11:45. So I can meet her from 9:25 to 10:10 AM (45 minutes). That gives me time to leave after meeting her.\n\nNext, Kevin at Haight-Ashbury from 10:15 AM to 4:15 PM, needs 90 minutes. After meeting Mary, I need to travel from Golden Gate Park to Haight-Ashbury, which takes 7 minutes. If I leave at 10:10, arrive at 10:17. But Kevin is available from 10:15, so I can start at 10:17, but he's available. So the earliest start time is 10:17. But maybe I can start at 10:17 and meet until 11:47 (90 minutes). That would work. But let me check if there's a better way.\n\nAlternatively, maybe after Mary, go somewhere else. But Mary is the earliest available, so starting with her makes sense. Let's confirm that first meeting.\n\nThen, after Kevin, maybe meet Stephanie at Presidio. She's available from 10 AM to 5:15 PM, needs 120 minutes. From Haight-Ashbury to Presidio is 15 minutes. If I finish with Kevin at 11:47, travel time 15 minutes, arrive at 12:02 PM. Then meet Stephanie from 12:02 to 14:02 (2 hours). But her availability is until 5:15 PM, so that's possible. Then after that, Emily in Financial District. She's available from 11:30 AM to 9:45 PM, needs 105 minutes. Travel from Presidio to Financial District is 23 minutes. If I finish with Stephanie at 14:02, leave at 14:02, arrive at 14:25. Then meet Emily from 14:25 to 16:10 (105 minutes). That works.\n\nThen Deborah at Bayview from 3 PM to 7:15 PM, needs 120 minutes. So after Emily, from Financial District to Bayview is 19 minutes. If Emily ends at 16:10, leave at 16:10, arrive at 16:29. Then meet Deborah from 16:29 to 18:29. But Deborah is available until 7:15 PM (19:15), so that's feasible. But wait, 16:29 start gives 2 hours, ending at 18:29, which is within Deborah's window. So that works.\n\nBut wait, let me check if all the timings fit without overlapping. Let me outline the schedule:\n\n1. Mary: 9:25 AM - 10:10 AM (45 min)\n2. Travel to Haight-Ashbury (7 min), arrive 10:17 AM.\n3. Kevin: 10:17 AM - 11:47 AM (90 min)\n4. Travel to Presidio (15 min), arrive 12:02 PM.\n5. Stephanie: 12:02 PM - 14:02 PM (2 hours)\n6. Travel to Financial District (23 min), arrive 14:25 PM.\n7. Emily: 14:25 PM - 16:10 PM (105 min)\n8. Travel to Bayview (19 min), arrive 16:29 PM.\n9. Deborah: 16:29 PM - 18:29 PM (2 hours)\n\nThis schedule meets all five friends. Let's check if there's any overlap or constraints violated.\n\nMary's meeting ends at 10:10 AM, which is within her availability (until 11:45 AM). Kevin's time is from 10:15 AM, so starting at 10:17 is okay. He's available until 4:15 PM. His meeting ends at 11:47 AM, so that's fine. Stephanie's meeting from 12:02 PM to 14:02 PM is within her window (10 AM to 5:15 PM). Emily's meeting from 14:25 to 16:10 is within her 11:30 AM to 9:45 PM. Deborah's meeting from 16:29 to 18:29 is within 3 PM to 7:15 PM.\n\nAll required durations are met. Let's check the travel times again:\n\nEmbarcadero to Golden Gate Park: 25 min. That's correct. Then Golden Gate Park to Haight-Ashbury: 7 min. Then Haight-Ashbury to Presidio: 15 min. Presidio to Financial District: 23 min. Financial District to Bayview: 19 min. All correct.\n\nWait, but when moving from Haight-Ashbury to Presidio, the travel time is 15 minutes. So leaving at 11:47 AM, arriving at 12:02 PM (15 minutes later). Then Stephanie's meeting starts at 12:02 PM, ends at 14:02 PM. Then to Financial District: Presidio to Financial District is 23 minutes. So leaving at 14:02, arriving 14:25. Then Emily's meeting until 16:10. Then Financial District to Bayview is 19 minutes. Arrive at 16:29, meet Deborah until 18:29.\n\nYes, this seems to fit. All the required minimum times are met. This would allow meeting all five friends. But wait, the problem says \"as many friends as possible\". Are there any conflicts that prevent meeting all five?\n\nWait, let me check the start and end times again for each person:\n\nMary: 9:25-10:10 (45 min). Ends at 10:10, which is before her 11:45 end time. Correct.\n\nKevin: 10:17-11:47 (90 min). Starts after 10:15, ends before 4:15. Correct.\n\nStephanie: 12:02-14:02 (120 min). Within 10 AM to 5:15 PM. Correct.\n\nEmily: 14:25-16:10 (105 min). Within 11:30 AM to 9:45 PM. Correct.\n\nDeborah: 16:29-18:29 (120 min). Starts after 3 PM, ends before 7:15 PM. Correct.\n\nYes, all fit. So this schedule meets all five friends. Is there a way to fit more? But there are only five friends listed. The problem says \"as many as possible\", but with five being the total, this schedule meets all. So this should be the optimal solution.",
+            "is_correct": false,
+            "count": "meeting_planning_example_479"
+        }
+    ]
+}

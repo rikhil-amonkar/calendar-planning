@@ -1,0 +1,67 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "reasoning_token_count": 1491,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-4\", \"place\": \"Bucharest\"},\n    {\"day_range\": \"Day 4-8\", \"place\": \"Munich\"},\n    {\"day_range\": \"Day 8-12\", \"place\": \"Seville\"},\n    {\"day_range\": \"Day 12-13\", \"place\": \"Milan\"},\n    {\"day_range\": \"Day 13-17\", \"place\": \"Stockholm\"},\n    {\"day_range\": \"Day 17-18\", \"place\": \"Tallinn\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let's tackle this problem step by step. The user wants to visit 6 European cities over 18 days with specific constraints. Let me break down the requirements first.\n\nThe cities involved are Tallinn (2 days), Bucharest (4 days), Seville (5 days), Stockholm (5 days), Munich (5 days), and Milan (2 days). The total adds up to 2+4+5+5+5+2=23 days, but the trip is only 18 days. Wait, that doesn't add up. Oh, right, because when you fly from one city to another on the same day, that day counts for both cities. So overlapping days reduce the total. Hmm, this might be tricky. Let me recheck the numbers.\n\nThe user needs to spend 2 days in Tallinn, 4 in Bucharest, 5 in Seville, 5 in Stockholm, 5 in Munich, and 2 in Milan. But the total days must be 18. So overlapping days must account for the difference. Let's see how the days can overlap.\n\nFirst, the user has specific date ranges for some cities. Relatives in Bucharest between day 1-4. So days 1-4 in Bucharest. Then attend a wedding in Munich between day 4-8. So days 4-8 in Munich. Then meet friends in Seville between day 8-12. So days 8-12 in Seville. Then the rest for Stockholm, Tallinn, and Milan.\n\nWait, but the days need to be consecutive. Let me outline the fixed parts first:\n\n- Bucharest: Days 1-4 (4 days)\n- Munich: Days 4-8 (5 days, since day 4 is both Bucharest and Munich)\n- Seville: Days 8-12 (5 days, day 8 is Munich and Seville)\n- Then Stockholm (5 days), Tallinn (2 days), Milan (2 days). Let's see how they fit.\n\nWait, after Seville (days 8-12), we have days 12 to 18 left (6 days). But Stockholm needs 5 days, Tallinn 2, Milan 2. That's 9 days. But we have only 6 days left. So overlapping is necessary here.\n\nAlternatively, maybe the order can be adjusted. Let's see the flight connections. The direct flights are:\n\nMilan - Stockholm\nMunich - Stockholm\nBucharest - Munich\nMunich - Seville\nStockholm - Tallinn\nMunich - Milan\nMunich - Tallinn\nSeville - Milan\n\nSo after Seville (ends day 12), possible next cities are Milan or Munich. But Munich is already visited. So from Seville, they can fly to Milan. But Milan needs 2 days. Then from Milan, can go to Stockholm (direct flight). Then Stockholm to Tallinn (direct). But Stockholm needs 5 days. Let's try:\n\nDays 8-12: Seville (5 days, ends day 12)\nThen fly to Milan on day 12. But day 12 is also in Seville. So Milan would start day 12. But Milan needs 2 days: days 12-13. Then fly to Stockholm on day 13. Stockholm needs 5 days: days 13-17. Then fly to Tallinn on day 17. Tallinn needs 2 days: days 17-18. But total days would be 18. Wait, let's check:\n\nBucharest: 1-4 (4 days)\nMunich: 4-8 (5 days)\nSeville: 8-12 (5 days)\nMilan: 12-13 (2 days) [but day 12 is also Seville]\nStockholm: 13-17 (5 days)\nTallinn:17-18 (2 days) [but day 17 is Stockholm and Tallinn, and day 18 is Tallinn only? Wait, the trip is 18 days total. So days 1 to 18 inclusive. Let's count each city's days:\n\nBucharest: days 1-4 (4 days)\nMunich: 4-8 (5 days: days 4,5,6,7,8)\nSeville:8-12 (5 days: days 8,9,10,11,12)\nMilan:12-13 (2 days: days 12,13)\nStockholm:13-17 (5 days: days 13,14,15,16,17)\nTallinn:17-18 (2 days: days17,18)\n\nTotal days: 18. That works. Let's check the flight connections:\n\nFrom Bucharest to Munich: direct flight (yes, Bucharest-Munich is allowed)\nMunich to Seville: direct (yes)\nSeville to Milan: direct (yes)\nMilan to Stockholm: direct (yes)\nStockholm to Tallinn: direct (yes)\n\nThat covers all cities. Each city's required days are met. Let's check the days:\n\n- Bucharest: 4 days (1-4)\n- Munich: 5 days (4-8)\n- Seville:5 days (8-12)\n- Milan:2 days (12-13)\n- Stockholm:5 days (13-17)\n- Tallinn:2 days (17-18)\n\nYes, each meets the required days. Now, let's structure the JSON accordingly.\n\nThe day ranges would be:\n\nDay 1-4: Bucharest\n\nDay 4-8: Munich\n\nDay 8-12: Seville\n\nDay 12-13: Milan (since it's 2 days, day 12 and 13)\n\nWait, but day ranges are usually written as \"Day X-Y\" where Y is the last day. So 12-13 is two days (12 and 13). Similarly, 17-18 is two days.\n\nBut for Stockholm, days 13-17 would be 5 days (13,14,15,16,17). Yes.\n\nSo the itinerary would be:\n\n[\n  {\"day_range\": \"Day 1-4\", \"place\": \"Bucharest\"},\n  {\"day_range\": \"Day 4-8\", \"place\": \"Munich\"},\n  {\"day_range\": \"Day 8-12\", \"place\": \"Seville\"},\n  {\"day_range\": \"Day 12-13\", \"place\": \"Milan\"},\n  {\"day_range\": \"Day 13-17\", \"place\": \"Stockholm\"},\n  {\"day_range\": \"Day 17-18\", \"place\": \"Tallinn\"}\n]\n\nWait, but the user also needs to stay in Munich for 5 days, which is covered here (Day 4-8: 5 days). Similarly, Seville 5 days. Milan 2, Stockholm 5, Tallinn 2. Bucharest 4. All correct.\n\nNow check the flight connections between each city:\n\nBucharest to Munich: direct (allowed)\nMunich to Seville: direct (allowed)\nSeville to Milan: direct (allowed)\nMilan to Stockholm: direct (allowed)\nStockholm to Tallinn: direct (allowed)\n\nYes, all flights are direct as per the allowed list.\n\nThis should work.",
+            "is_correct": true,
+            "count": "trip_planning_example_664"
+        }
+    ]
+}

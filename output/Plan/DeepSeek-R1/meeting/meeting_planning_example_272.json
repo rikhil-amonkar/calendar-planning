@@ -1,0 +1,61 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "action": "meet",
+                        "location": "Embarcadero",
+                        "person": "Timothy",
+                        "start_time": "9:45",
+                        "end_time": "11:45"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Nob Hill",
+                        "person": "Patricia",
+                        "start_time": "18:30",
+                        "end_time": "20:00"
+                    },
+                    {
+                        "action": "meet",
+                        "location": "Mission District",
+                        "person": "Ashley",
+                        "start_time": "20:30",
+                        "end_time": "21:15"
+                    }
+                ]
+            },
+            "reasoning_token_count": 2005,
+            "raw_model_response": "SOLUTION:\n{\n  \"itinerary\": [\n    {\"action\": \"meet\", \"location\": \"Embarcadero\", \"person\": \"Timothy\", \"start_time\": \"9:45\", \"end_time\": \"11:45\"},\n    {\"action\": \"meet\", \"location\": \"Nob Hill\", \"person\": \"Patricia\", \"start_time\": \"18:30\", \"end_time\": \"20:00\"},\n    {\"action\": \"meet\", \"location\": \"Mission District\", \"person\": \"Ashley\", \"start_time\": \"20:30\", \"end_time\": \"21:15\"}\n  ]\n}",
+            "raw_reasoning": "Okay, let's tackle this scheduling problem step by step. So, the user arrives at Russian Hill at 9:00 AM. They need to meet three friends: Patricia, Ashley, and Timothy, each in different locations with specific time constraints. The goal is to fit as many meetings as possible, considering travel times and the required minimum durations.\n\nFirst, let's list out the constraints again to make sure I don't miss anything:\n\n- **Patricia** is at Nob Hill from 6:30 PM (18:30) to 9:45 PM (21:45). We need to meet her for at least 90 minutes (1.5 hours).\n- **Ashley** is at Mission District from 8:30 PM (20:30) to 9:15 PM (21:15). The minimum time here is 45 minutes.\n- **Timothy** is at Embarcadero from 9:45 AM (9:45) to 5:45 PM (17:45), requiring a 120-minute (2-hour) meeting.\n\nStarting with the earliest possible meeting: Timothy. Since the user is already at Russian Hill at 9:00 AM, and Timothy is available from 9:45 AM. The travel time from Russian Hill to Embarcadero is 8 minutes. So leaving at 9:00 AM, arriving by 9:08 AM. But Timothy isn't available until 9:45 AM. Wait, so maybe the user can leave Russian Hill a bit later. Let's see: if the user leaves Russian Hill at 9:37 AM, they would arrive at Embarcadero by 9:45 AM. That way, they can start the meeting right when Timothy becomes available.\n\nTimothy needs 2 hours. So meeting from 9:45 AM to 11:45 AM. Then, after that, the user has to go somewhere else. Let's check where else they can go next. The next possible meetings are Patricia in the evening and Ashley in the evening. But maybe there's time between Timothy's meeting and the evening to do something else. Wait, no other friends mentioned. So perhaps after Timothy, the user has free time until the evening meetings. But let's confirm.\n\nWait, the only other people are Patricia and Ashley. So after Timothy, the next meetings are in the evening. Let's check the time after Timothy's meeting ends at 11:45 AM. From Embarcadero, the user can go to other locations. But since there's no other meetings until evening, maybe they can stay at Embarcadero or go somewhere else, but that's not specified. Let's focus on the required meetings.\n\nNow, moving to the evening. Patricia is available from 18:30 to 21:45. We need a 90-minute slot. Let's see the latest possible start time for Patricia: 21:45 - 1.5 hours = 20:15 start time. But the user might need to travel to Nob Hill. Let's check where they are before that. Suppose after Timothy's meeting, the user is at Embarcadero. Let's see, if the user wants to meet Ashley at Mission District from 20:30 to 21:15 (45 minutes required). The travel time from Embarcadero to Mission District is 20 minutes. So to get there by 20:30, the user needs to leave Embarcadero by 20:10. But if they are coming from another location, say Nob Hill, the travel time would be different.\n\nWait, this is getting a bit complex. Let's map out possible sequences.\n\nOption 1: Meet Timothy first, then Patricia, then Ashley.\n\nAfter Timothy ends at 11:45 AM, the user is at Embarcadero. They have free time until evening. Let's say they stay there. Then, to meet Patricia at Nob Hill at 18:30, the travel time from Embarcadero to Nob Hill is 10 minutes. So leaving at 18:20 to arrive by 18:30. Then meet Patricia from 18:30 to 20:00 (90 minutes). Then, need to go to Mission District for Ashley. Travel time from Nob Hill to Mission District is 13 minutes. So leaving at 20:00, arriving at 20:13. But Ashley's availability starts at 20:30. So wait until 20:30. Then meet Ashley from 20:30 to 21:15 (45 minutes). That works. But wait, Ashley's end time is 21:15, so the meeting can't go beyond that. So 20:30 to 21:15 is exactly 45 minutes. Then after that, the user can go back or whatever. But this seems feasible.\n\nBut let's check if Patricia's meeting can fit. Patricia's available until 21:45. If we start at 18:30, meet until 20:00, that's 90 minutes. Then go to Mission District. That works. But Ashley's window is 20:30 to 21:15, so the user arrives at 20:13, but can't start until 20:30. So there's a 17-minute wait. But that's okay. Then meet Ashley from 20:30 to 21:15. Then, the user can leave. So this seems possible.\n\nOption 2: Meet Timothy, then Ashley, then Patricia. Let's see. After Timothy ends at 11:45 AM, the user is at Embarcadero. They have to go to Mission District for Ashley. But Ashley is available only from 20:30. Wait, that's way later. So perhaps they can't meet Ashley before Patricia. Because Ashley's time is in the evening, same as Patricia's. So perhaps after Timothy, the user can do other things, but the next meetings are both in the evening. So which one to do first?\n\nWait, Ashley's window is 20:30-21:15 (45 minutes), and Patricia's is 18:30-21:45 (90 minutes needed). If the user meets Patricia first, then Ashley, that works. But if they meet Ashley first, they need to check if there's enough time for Patricia afterward. Let's see.\n\nSuppose after Timothy, the user stays at Embarcadero until evening. Let's say they go to Mission District for Ashley first. But Ashley is available from 20:30. So leaving Embarcadero at 20:10 (travel time 20 minutes), arrive at 20:30. Meet Ashley from 20:30 to 21:15. Then, need to go to Nob Hill for Patricia. Travel time from Mission District to Nob Hill is 12 minutes. So leave at 21:15, arrive at 21:27. But Patricia is available until 21:45. So meeting from 21:27 to 21:45 gives only 18 minutes, which is way less than the required 90 minutes. So that's not possible. Therefore, Ashley must be met after Patricia, not before.\n\nSo the order must be: Timothy, Patricia, Ashley.\n\nBut wait, let's check the timing again. After meeting Patricia from 18:30 to 20:00, traveling to Mission District takes 13 minutes (from Nob Hill to Mission District). So leaving at 20:00, arrive at 20:13. But Ashley's available from 20:30. So the user would have to wait until 20:30. So start meeting Ashley at 20:30, end at 21:15 (45 minutes). That works. Then, the user is done.\n\nSo the itinerary would be:\n\n1. Meet Timothy at Embarcadero from 9:45 to 11:45.\n2. Then free time until 18:30.\n3. Travel from Embarcadero to Nob Hill (10 minutes). Wait, but after Timothy, the user is at Embarcadero. Let's see: if they need to go to Nob Hill for Patricia at 18:30, they need to leave Embarcadero at 18:20 to arrive by 18:30. So yes, that works. Then meet Patricia from 18:30 to 20:00.\n4. Then travel to Mission District (13 minutes) arriving at 20:13. Wait until 20:30, meet Ashley until 21:15.\n\nThis fits all constraints.\n\nAnother thing to check: Are there any overlaps or conflicts? The user can't be in two places at once. Let's verify the timeline:\n\n- 9:00 AM: Arrive at Russian Hill.\n- Travel to Embarcadero: 8 minutes. But need to arrive by 9:45 AM. So leave Russian Hill at 9:37 AM, arrive at 9:45 AM. Then meet Timothy from 9:45 to 11:45.\n- Then, free time. Next, need to get to Nob Hill by 18:30. From Embarcadero to Nob Hill is 10 minutes. So leave at 18:20, arrive at 18:30. Meet Patricia until 20:00.\n- Then, travel from Nob Hill to Mission District: 13 minutes. Arrive at 20:13. Wait until 20:30, meet Ashley until 21:15.\n\nAll times fit within the availability windows. The minimum durations are met: Timothy 2 hours, Patricia 1.5 hours, Ashley 45 minutes.\n\nIs there any other possible schedule that allows meeting all three? It seems this is the only way. Because trying to fit Ashley before Patricia doesn't work due to Patricia's longer required time and later end time. So this schedule should work.",
+            "is_correct": true,
+            "count": "meeting_planning_example_272"
+        }
+    ]
+}

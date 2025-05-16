@@ -1,0 +1,67 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "reasoning_token_count": 1313,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-4\", \"place\": \"Mykonos\"},\n    {\"day_range\": \"Day 4-5\", \"place\": \"London\"},\n    {\"day_range\": \"Day 5-7\", \"place\": \"Copenhagen\"},\n    {\"day_range\": \"Day 7-10\", \"place\": \"Tallinn\"},\n    {\"day_range\": \"Day 10-14\", \"place\": \"Oslo\"},\n    {\"day_range\": \"Day 14-16\", \"place\": \"Nice\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let's tackle this trip planning problem. The user wants to visit 6 European cities over 16 days, with specific days allocated to each city and certain constraints. The key points are:\n\n- Total days: 16\n- Cities and days required:\n  - Mykonos: 4 days\n  - Nice: 3 days (with a conference from day 14 to 16)\n  - London: 2 days\n  - Copenhagen: 3 days\n  - Oslo: 5 days (with a friend visit between day 10-14)\n  - Tallinn: 4 days\n\nDirect flight connections are given, so I need to ensure the order of cities uses these connections. Also, when flying between cities on day X, the day counts for both cities. Let me map out the days step by step.\n\nFirst, the conference in Nice is fixed on days 14-16. Since Nice is 3 days, that's days 14,15,16. But the user wants to be in Nice for 3 days, so maybe days 14-16 inclusive. Wait, the problem says during day 14 and day 16, attend conference in Nice. So that's days 14,15,16 (3 days). So Nice must be the last city, ending on day 16.\n\nNow, Oslo requires 5 days, and the friend visit is between day 10-14. So Oslo must overlap with days 10-14. Since the user needs to be in Oslo for 5 days, let's see. If they are in Oslo from day 10-14, that's 5 days (days 10,11,12,13,14). That works because day 14 is also the start of the conference in Nice. But since they fly from Oslo to Nice on day 14, they spend day 14 in both cities. So Oslo would have 5 days (including day 14) and Nice starts on day 14. That's okay because the conference is on days 14-16, which is 3 days (14,15,16).\n\nNow, Oslo's 5 days: let's say days 10-14. Then on day 14, they fly to Nice. So Oslo is days 10-14 (5 days) and Nice days 14-16 (3 days). That works.\n\nNext, Tallinn requires 4 days. The direct flights from Tallinn are to Oslo and Copenhagen. So after Tallinn, the user can go to Oslo or Copenhagen. Since Oslo is next, maybe Tallinn is before Oslo. But Tallinn needs 4 days. Let's see.\n\nCopenhagen has 3 days. Direct flights from Copenhagen to Tallinn, Oslo, London, Nice. So maybe the order is Copenhagen -> Tallinn -> Oslo.\n\nCopenhagen: 3 days. Then Tallinn: 4 days. Then Oslo: 5 days. Let's check the days. Let's say start in Mykonos for 4 days (days 1-4). Then fly to London (direct flight exists: Mykonos and London). London for 2 days (days 5-6). Then fly to Copenhagen (direct flight: London and Copenhagen). Copenhagen for 3 days (days 7-9). Then fly to Tallinn (direct). Tallinn 4 days (days 10-13). Then fly to Oslo (direct). Oslo needs 5 days, but days 10-14. Wait, if Tallinn is days 10-13, then Oslo would start on day 14? But that's not enough. Wait, maybe I messed up the days.\n\nWait, let's outline the days step by step.\n\nStart with Mykonos: 4 days. Days 1-4.\n\nThen fly to London. Flight on day 4, so day 4 counts for both Mykonos and London. So London starts on day 4, but needs 2 days. So days 4 and 5? Wait, but the user wants 2 days in London. If they arrive on day 4, then days 4 and 5 would be 2 days. Then leave on day 5 to Copenhagen. Wait, but the flight is on day 5, so day 5 counts for both London and Copenhagen. So London is days 4-5 (2 days), then Copenhagen starts on day 5. Wait, but Copenhagen needs 3 days. Days 5,6,7? Then leave on day 7 to Tallinn. Day 7 counts for both Copenhagen and Tallinn. Tallinn needs 4 days: days 7,8,9,10. Then fly to Oslo on day 10. Oslo days 10-14 (5 days: 10,11,12,13,14). Then fly to Nice on day 14. Nice days 14-16 (3 days). Let's check total days:\n\nMykonos: 1-4 (4 days)\n\nLondon: 4-5 (2 days)\n\nCopenhagen: 5-7 (3 days) [days 5,6,7]\n\nTallinn: 7-10 (4 days) [7,8,9,10]\n\nOslo: 10-14 (5 days)\n\nNice:14-16 (3 days)\n\nTotal days: 16 (from day 1 to day 16).\n\nBut wait, day 4 is Mykonos and London. Day 5 is London and Copenhagen. Day 7 is Copenhagen and Tallinn. Day 10 is Tallinn and Oslo. Day 14 is Oslo and Nice. That works.\n\nCheck the flight connections: Mykonos to London (direct exists). London to Copenhagen (direct). Copenhagen to Tallinn (direct). Tallinn to Oslo (direct). Oslo to Nice (direct). All connections are valid.\n\nNow, check the constraints:\n\n- Mykonos: 4 days (1-4) \u2705\n\n- London: 2 days (4-5) \u2705\n\n- Copenhagen:3 days (5-7) \u2705\n\n- Tallinn:4 days (7-10) \u2705\n\n- Oslo:5 days (10-14) \u2705 (friend between 10-14)\n\n- Nice:3 days (14-16) \u2705 conference days 14-16.\n\nYes, this fits all the requirements. The flight connections are all direct as per the list. The days add up correctly, and the overlapping days when traveling are accounted for.",
+            "is_correct": true,
+            "count": "trip_planning_example_768"
+        }
+    ]
+}

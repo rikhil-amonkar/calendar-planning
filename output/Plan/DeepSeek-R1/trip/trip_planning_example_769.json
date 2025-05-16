@@ -1,0 +1,67 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "reasoning_token_count": 2047,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-4\", \"place\": \"Prague\"},\n    {\"day_range\": \"Day 4-7\", \"place\": \"Reykjavik\"},\n    {\"day_range\": \"Day 7-10\", \"place\": \"Munich\"},\n    {\"day_range\": \"Day 10-14\", \"place\": \"Porto\"},\n    {\"day_range\": \"Day 14-15\", \"place\": \"Amsterdam\"},\n    {\"day_range\": \"Day 15-16\", \"place\": \"Santorini\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let's tackle this trip planning problem. The user wants to visit 6 European cities over 16 days with specific constraints. Let me start by listing all the requirements and then figure out the order.\n\nFirst, the cities involved are Porto, Prague, Reykjavik, Santorini, Amsterdam, and Munich. The user has specified the number of days in each: Porto (5), Prague (4), Reykjavik (4), Santorini (2), Amsterdam (2), and Munich (4). Wait, adding those up: 5+4+4+2+2+4 = 21 days. But the total trip is 16 days. That discrepancy must mean overlapping days due to flights. Because when you fly from one city to another on day X, you're counted as being in both cities on that day. So some days are shared between two cities.\n\nLet me note the key constraints:\n\n1. Attend a wedding in Reykjavik between day 4 and 7. So Reykjavik must include days 4-7. But the user plans to stay there for 4 days. Wait, if the wedding is between days 4-7, that's 4 days (days 4,5,6,7). But they want to stay 4 days in Reykjavik. So Reykjavik must be exactly days 4-7.\n\n2. Conference in Amsterdam on days 14-15. So Amsterdam must include days 14-15. They want 2 days in Amsterdam. So those two days must be days 14 and 15.\n\n3. Meet a friend in Munich between days 7-10. So Munich must include days 7-10. But they want to spend 4 days there. So Munich could be days 7-10, which is 4 days (days 7,8,9,10). But day 7 is also the last day in Reykjavik (since the wedding is up to day 7). So the flight from Reykjavik to Munich would be on day 7, hence day 7 is counted in both cities.\n\nNow, let's start building the itinerary step by step.\n\nThe total days are 16. Let's map out the days for each city, considering overlaps.\n\nStarting with Reykjavik wedding: days 4-7 (4 days). So Reykjavik is days 4-7.\n\nAmsterdam conference: days 14-15 (2 days).\n\nMunich friend meeting: days 7-10 (4 days). So days 7-10 in Munich. But day 7 is the same as the last day in Reykjavik. So flight from Reykjavik to Munich on day 7.\n\nPorto needs 5 days. Let's see where to place Porto. Since the user starts the trip, maybe Porto is first. Let's see. If they start in Porto, days 1-5. Then on day 5, fly to another city. But we need to connect to other cities via direct flights. Porto has direct flights to Amsterdam and Munich. So after Porto, maybe fly to Munich? But Munich is scheduled for days 7-10. Wait, if Porto is days 1-5, then day 5 is the last day there. Then day 5, fly to another city. But Reykjavik is days 4-7. That overlaps. Wait, that can't be. Because if Reykjavik starts on day 4, but if the user is in Porto until day 5, then how to get to Reykjavik by day 4? That's a problem. So maybe Porto can't be first if Reykjavik starts on day 4.\n\nWait, maybe the user starts in another city. Let's think again.\n\nThe user has to be in Reykjavik for days 4-7. So days 4-7 must be there. So days 1-3 could be in another city, then fly to Reykjavik on day 4. But how? Because flying on day 4 would mean they are in both the previous city and Reykjavik on day 4. So the previous city would have days 1-4, but overlapping with Reykjavik's day 4. But the user can only spend 5 days in Porto. So maybe Porto is days 1-5. Wait, but then day 4 would be in Porto and Reykjavik. But Reykjavik must start on day 4. So flight from Porto to Reykjavik on day 4. That way, Porto is days 1-4 (since day 4 is also in Reykjavik). But the user wants 5 days in Porto. Hmm, that's conflicting.\n\nWait, the user plans to stay in Porto for 5 days. So the days in Porto must sum to 5, considering any overlaps. For example, if they arrive in Porto on day 1 and leave on day 5, that's days 1-5 (5 days). If they leave on day 5, then day 5 is in Porto and the next city. So let's try that.\n\nBut then how to get to Reykjavik by day 4? That's impossible. So maybe Porto is after Reykjavik? Let's see.\n\nWait, the user has to be in Reykjavik days 4-7. Then after that, Munich from 7-10. Then after Munich, maybe Prague? But Prague is 4 days. Let's see.\n\nAlternatively, let's list all cities with their required days and constraints:\n\n- Porto: 5 days\n- Prague: 4 days\n- Reykjavik: 4 days (days 4-7)\n- Santorini: 2 days\n- Amsterdam: 2 days (days 14-15)\n- Munich: 4 days (days 7-10)\n\nWait, the Munich visit is 4 days and overlaps with days 7-10. But days 7-10 is 4 days (7,8,9,10). So that works.\n\nNow, the conference in Amsterdam is days 14-15, which is 2 days. So Amsterdam must be days 14-15. Then Santorini is 2 days. Let's see where Santorini fits. Since Amsterdam and Santorini have a direct flight, maybe after Amsterdam, go to Santorini. But Amsterdam is days 14-15. The total trip is 16 days. So days 14-15 in Amsterdam, then day 16 in Santorini? But Santorini requires 2 days. So maybe days 15-16? But day 15 is in Amsterdam (conference) and Santorini? So flight on day 15 to Santorini, which would make days 15 and 16 in Santorini. That works for 2 days.\n\nNow, let's try to build the sequence step by step.\n\nStart with Porto: needs 5 days. Let's assume the trip starts in Porto. Days 1-5. Then on day 5, fly to another city. But Reykjavik must start on day 4. That's a conflict. So Porto can't be days 1-5 because Reykjavik must start on day 4. Therefore, the user must be in Reykjavik by day 4. So the first part of the trip must end in Reykjavik by day 4.\n\nAlternative approach: Let's start with Prague. If Prague is days 1-4, then fly to Reykjavik on day 4. So Prague days 1-4 (4 days) and Reykjavik days 4-7 (4 days). Then from Reykjavik to Munich on day 7. Munich days 7-10 (4 days). Then from Munich to Porto? But Munich and Porto have a direct flight. Porto needs 5 days. If we go from Munich to Porto on day 10, then Porto would be days 10-14 (5 days: 10,11,12,13,14). Then from Porto to Amsterdam on day 14 (since Amsterdam is days 14-15). Then Amsterdam days 14-15, then Santorini days 15-16. Let's check:\n\n- Prague: 1-4 (4 days)\n- Reykjavik: 4-7 (4 days)\n- Munich:7-10 (4 days)\n- Porto:10-14 (5 days)\n- Amsterdam:14-15 (2 days)\n- Santorini:15-16 (2 days)\n\nThat adds up to 16 days. Let's check the direct flights:\n\n- Prague to Reykjavik: Yes, direct flight exists.\n- Reykjavik to Munich: Direct flight exists.\n- Munich to Porto: Direct flight exists.\n- Porto to Amsterdam: Direct flight exists.\n- Amsterdam to Santorini: Direct flight exists.\n\nThat works! Let's verify the days:\n\n- Prague: Days 1-4 (4 days)\n- Reykjavik: Days 4-7 (4 days, including day 4 from Prague)\n- Munich: Days7-10 (4 days, day 7 from Reykjavik)\n- Porto: Days10-14 (5 days, day 10 from Munich)\n- Amsterdam: Days14-15 (2 days, day 14 from Porto)\n- Santorini: Days15-16 (2 days, day 15 from Amsterdam)\n\nTotal days: 16. Each city's required days are met. All flights are direct as per the list.\n\nThis seems to fit all constraints. Let me check again:\n\n- Porto: 5 days (days 10-14: 10,11,12,13,14 \u2192 5 days)\n- Prague: 4 days (1-4)\n- Reykjavik:4 (4-7)\n- Munich:4 (7-10)\n- Amsterdam:2 (14-15)\n- Santorini:2 (15-16)\n\nYes. Also, the wedding in Reykjavik between days 4-7 is covered. Conference in Amsterdam days14-15. Meeting friend in Munich days7-10. All direct flights are available per the given list.\n\nSo the JSON should reflect this itinerary.",
+            "is_correct": true,
+            "count": "trip_planning_example_769"
+        }
+    ]
+}

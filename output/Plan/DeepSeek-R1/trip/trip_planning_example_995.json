@@ -1,0 +1,75 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "reasoning_token_count": 1917,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-3\", \"place\": \"Barcelona\"},\n    {\"day_range\": \"Day 3-4\", \"place\": \"Oslo\"},\n    {\"day_range\": \"Day 4-7\", \"place\": \"Split\"},\n    {\"day_range\": \"Day 7-9\", \"place\": \"Copenhagen\"},\n    {\"day_range\": \"Day 9-11\", \"place\": \"Brussels\"},\n    {\"day_range\": \"Day 11-14\", \"place\": \"Venice\"},\n    {\"day_range\": \"Day 14-16\", \"place\": \"Stuttgart\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let me try to figure this out. The user wants to visit 7 European cities in 16 days using only direct flights. The cities are Oslo (2 days), Stuttgart (3), Venice (4), Split (4), Barcelona (3), Brussels (3), and Copenhagen (3). Let's check the constraints first.\n\nBarcelona has an annual show from day 1 to day 3, so days 1-3 must be there. Then, Oslo needs to be visited for 2 days, and the user must meet friends there between day 3 and day 4. Wait, but day 3 is still in Barcelona. So maybe the user is in Barcelona days 1-3, then flies to Oslo on day 3. But the problem states that if you fly from A to B on day X, you're in both cities that day. So day 3 would count for both Barcelona and Oslo. But the user needs to meet friends in Oslo between day 3 and day 4. So Oslo should start on day 3? Let me see.\n\nWait, the user wants to meet friends in Oslo between day 3 and day 4. So maybe days 3 and 4 in Oslo. But they need 2 days in Oslo. So if they arrive on day 3, that's one day, and day 4 is the second. But then day 3 is a transition day from Barcelona. So days 3-4 would be Oslo. Then that's two days.\n\nNext, Barcelona is days 1-3. Then Oslo days 3-4. Then where next? Let's check the direct flights from Oslo. The cities with direct flights to Oslo are Brussels, Split, Venice, Copenhagen, Barcelona, and Copenhagen again. Wait, according to the list, the direct flights from Oslo are: Oslo and Brussels, Split and Copenhagen (but that's Split-Copenhagen), Barcelona and Copenhagen, Barcelona and Venice, Brussels and Venice, Barcelona and Stuttgart, Copenhagen and Brussels, Oslo and Split, Oslo and Venice, Barcelona and Split, Oslo and Copenhagen, Barcelona and Oslo, Copenhagen and Stuttgart, Split and Stuttgart, Copenhagen and Venice, Barcelona and Brussels.\n\nWait, the direct flights for Oslo are: Oslo and Brussels, Oslo and Split, Oslo and Venice, Oslo and Copenhagen, Barcelona and Oslo. So from Oslo, possible next cities are Brussels, Split, Venice, Copenhagen, Barcelona. But after Oslo, the user needs to go to another city. Let's see the other cities: Stuttgart (3 days), Venice (4 days), Split (4 days), Brussels (3 days), Copenhagen (3 days). Barcelona is already done days 1-3.\n\nSo after Oslo (days 3-4), the user needs to go to another city. Let's see. The user has to spend 4 days in Venice. Also, 3 days in Brussels with a meetup between day 9-11. Let's try to map this.\n\nPossible sequence after Barcelona (1-3) is Oslo (3-4). Then from Oslo, next possible city. Let's check the required days for each city:\n\n- Stuttgart: 3 days\n- Venice: 4 days\n- Split: 4 days\n- Brussels: 3 days (must be between day 9-11)\n- Copenhagen: 3 days\n\nTotal days: 3 (Barcelona) + 2 (Oslo) + 3 (Stuttgart) + 4 (Venice) +4 (Split) +3 (Brussels) +3 (Copenhagen) = 22 days. Wait, but the total is 16 days. So overlapping is required. Wait, but the problem states that when you fly on day X, you count as being in both cities that day, so that reduces the total days. For example, flying from A to B on day X uses day X for both cities, so the total days would be sum of days in each city minus the number of flights. Let me think.\n\nEach flight between cities adds an overlap day. So if you have N cities, you have (N-1) flights, each contributing an overlap day. So total days = sum of days in each city - (N-1). The user is visiting 7 cities, so 6 flights. So total days = 2+3+4+4+3+3+3 = 22 - 6 = 16 days. That matches the total. So each flight reduces the total by 1 day.\n\nSo now, the plan must arrange the cities in an order where each transition is via direct flight, and overlapping days are considered.\n\nStarting with Barcelona days 1-3. Then on day 3, fly to Oslo. So Oslo days 3-4 (since they need 2 days, day 3 and 4). Then from Oslo, next city. Let's see the direct flights from Oslo: Brussels, Split, Venice, Copenhagen, Barcelona. Barcelona is already done. So options are Brussels, Split, Venice, Copenhagen.\n\nBrussels needs to be between day 9-11. So maybe later. Let's see: after Oslo (days 3-4), the user could go to Split. Split requires 4 days. But when would that fit? Let's say after Oslo, fly to Split on day 4. Then Split would be days 4-7 (since 4 days, but day 4 is overlapping with Oslo and Split). Wait, but Split needs 4 days. So if arriving on day 4, days 4,5,6,7 in Split. That's four days. But then Split is days 4-7. Then from Split, direct flights are Copenhagen, Barcelona, Stuttgart, Oslo. But the user needs to visit Copenhagen (3 days), which is connected to Split. So from Split to Copenhagen. Then Copenhagen days 7-9 (3 days: 7,8,9). Then from Copenhagen, direct flights include Brussels, Barcelona, Venice, Stuttgart, Oslo, etc. Brussels is needed next. The user has to meet friends in Brussels between day 9-11. So arriving in Brussels on day 9 (from Copenhagen), then days 9,10,11. Then Brussels is days 9-11. Then from Brussels, direct flights to Venice, Barcelona, Oslo, Copenhagen. Venice is next. Venice needs 4 days. So fly from Brussels to Venice on day 11. Then Venice days 11-14 (4 days). Then from Venice, direct flights to Stuttgart, Barcelona, Brussels, Copenhagen, Oslo. Next, Stuttgart. Stuttgart needs 3 days. Fly from Venice to Stuttgart on day 14. Then Stuttgart days 14-16 (3 days, 14,15,16). But the total days would be:\n\nBarcelona 1-3 (3 days)\n\nOslo 3-4 (2 days, days 3-4)\n\nSplit 4-7 (4 days)\n\nCopenhagen 7-9 (3 days)\n\nBrussels 9-11 (3 days)\n\nVenice 11-14 (4 days)\n\nStuttgart 14-16 (3 days)\n\nTotal days: 16. Let's check the counts:\n\nBarcelona: days 1-3 (3 days)\n\nOslo: days 3-4 (2 days)\n\nSplit: 4-7 (4 days)\n\nCopenhagen: 7-9 (3 days)\n\nBrussels: 9-11 (3 days)\n\nVenice: 11-14 (4 days)\n\nStuttgart:14-16 (3 days)\n\nTotal cities: 7. Days: 16. Each transition is via direct flight?\n\nCheck the flights:\n\nBarcelona to Oslo: Is there a direct flight? From the list, yes: Barcelona and Oslo are connected.\n\nOslo to Split: Direct flight? Yes, Oslo and Split are connected.\n\nSplit to Copenhagen: Yes, Split and Copenhagen have a direct flight.\n\nCopenhagen to Brussels: Yes, Copenhagen and Brussels are connected.\n\nBrussels to Venice: Yes, Brussels and Venice have a direct flight.\n\nVenice to Stuttgart: Yes, Venice and Stuttgart are connected.\n\nStuttgart is the last city. So this works.\n\nBut let's check the constraints:\n\n- Meet friends in Oslo between day 3-4: Oslo is days 3-4, so days 3 and 4. The meeting can be on either day.\n\n- Barcelona show days 1-3: correct.\n\n- Brussels meet days 9-11: Brussels is days 9-11, so that's covered.\n\n- All cities have the required days:\n\nOslo: 2 (3-4)\n\nStuttgart: 3 (14-16)\n\nVenice: 4 (11-14)\n\nSplit:4 (4-7)\n\nBarcelona:3 (1-3)\n\nBrussels:3 (9-11)\n\nCopenhagen:3 (7-9)\n\nYes, all requirements met.\n\nAnother possible route: After Oslo, maybe go to Copenhagen, then Split, but need to check direct flights. But the above seems to work. Let me confirm the direct flights between each pair:\n\nBarcelona to Oslo: Yes.\n\nOslo to Split: Yes.\n\nSplit to Copenhagen: Yes.\n\nCopenhagen to Brussels: Yes.\n\nBrussels to Venice: Yes.\n\nVenice to Stuttgart: Yes.\n\nYes, all are direct. So this should work.",
+            "is_correct": true,
+            "count": "trip_planning_example_995"
+        }
+    ]
+}

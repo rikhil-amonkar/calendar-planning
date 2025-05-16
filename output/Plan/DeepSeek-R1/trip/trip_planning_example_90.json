@@ -1,0 +1,43 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "reasoning_token_count": 810,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-5\", \"place\": \"Naples\"},\n    {\"day_range\": \"Day 5-11\", \"place\": \"Vienna\"},\n    {\"day_range\": \"Day 11-17\", \"place\": \"Vilnius\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let's tackle this problem. The user wants a 17-day trip covering three European cities: Vilnius, Naples, and Vienna. They specified that they must stay in Vilnius for 7 days, Naples for 5 days, and Vienna for 7 days. Also, they have to visit relatives in Naples between days 1-5. The cities are connected by direct flights as follows: Naples-Vienna and Vienna-Vilnius. No direct flights between Naples and Vilnius, so any transfer between those must go through Vienna.\n\nFirst, the user starts in Naples from day 1 to 5. That's 5 days. Then they need to move to another city. Since there's a direct flight from Naples to Vienna, the next stop is Vienna. But they need to stay in Vienna for 7 days. If they leave Naples on day 5, they arrive in Vienna on day 5. So days 5-12 would be Vienna (days 5 to 12 inclusive is 8 days, which is too long). Wait, wait. If you arrive on day 5 in Vienna, then day 5 counts as being in both Naples and Vienna. So the stay in Vienna would start on day 5. The user needs to spend 7 days there. So days 5 to 11: that's 7 days (5,6,7,8,9,10,11). Then on day 12, they fly to Vilnius. Vilnius requires 7 days. Days 12-18 would be 7 days, but the total trip is only 17 days. Wait, let's count:\n\nStart in Naples days 1-5 (5 days). Then Vienna days 5-11 (7 days). Then Vilnius days 11-17? Wait, no. Let me re-calculate.\n\nWait, when you fly from Naples to Vienna on day 5, you are in both cities on day 5. So Naples is days 1-5 (5 days). Then Vienna starts on day 5. To spend 7 days in Vienna, the days would be 5,6,7,8,9,10,11 (7 days). So Vienna is days 5-11. Then, from Vienna to Vilnius. The flight is direct. So on day 11, they leave Vienna and arrive in Vilnius. That means Vilnius is days 11-17 (since day 11 is counted in both Vienna and Vilnius). Days 11 to 17 is 7 days (11,12,13,14,15,16,17). That adds up correctly. Let's check the total days:\n\nNaples: 5 days (1-5)\nVienna: 7 days (5-11)\nVilnius: 7 days (11-17)\nTotal days: 5 + 7 +7 = 19? Wait no. Wait, day 5 is counted in both Naples and Vienna, day 11 in both Vienna and Vilnius. But the total trip is 17 days. Let's count each day from 1 to 17:\n\nDay 1: Naples\n...\nDay 5: Naples (morning) and Vienna (evening)\nDays 5-11: Vienna (day 5-11, inclusive)\nDay 11: Vienna (morning) and Vilnius (evening)\nDays 11-17: Vilnius (day 11-17 inclusive)\nSo total days: 17 days.\n\nSo the itinerary would be:\n- Naples: Day 1-5 (5 days)\n- Vienna: Day 5-11 (7 days)\n- Vilnius: Day 11-17 (7 days)\n\nThat adds up correctly. Each city has the required number of days, and the flights are direct between Naples-Vienna and Vienna-Vilnius. Also, the user visits relatives in Naples between days 1-5 as specified. All constraints are satisfied.",
+            "is_correct": true,
+            "count": "trip_planning_example_90"
+        }
+    ]
+}

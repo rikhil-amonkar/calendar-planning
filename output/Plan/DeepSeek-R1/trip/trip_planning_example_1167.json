@@ -1,0 +1,83 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "reasoning_token_count": 2735,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-4\", \"place\": \"Mykonos\"},\n    {\"day_range\": \"Day 4-7\", \"place\": \"Naples\"},\n    {\"day_range\": \"Day 7-9\", \"place\": \"Venice\"},\n    {\"day_range\": \"Day 9-11\", \"place\": \"Istanbul\"},\n    {\"day_range\": \"Day 11-15\", \"place\": \"Dublin\"},\n    {\"day_range\": \"Day 15-17\", \"place\": \"Frankfurt\"},\n    {\"day_range\": \"Day 17-20\", \"place\": \"Krakow\"},\n    {\"day_range\": \"Day 20-21\", \"place\": \"Brussels\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let's tackle this trip planning problem. The user wants to visit 8 European cities in 21 days, using only direct flights. The cities and their required days are: Dublin (5 days with a show from day 11-15), Krakow (4), Istanbul (3, meet friend days 9-11), Venice (3), Naples (4), Brussels (2), Mykonos (4 with relatives days 1-4), Frankfurt (3, meet friends days 15-17). Also, there's a list of direct flight connections.\n\nFirst, I need to map out the order of cities ensuring that each transition is via direct flight. Let's start by placing Mykonos from day 1-4 as per the relative visit. Mykonos has a direct flight to Naples, so maybe next is Naples for 4 days (days 4-8). From Naples, possible direct flights to Dublin, Istanbul, Venice, Brussels, Frankfurt. But Dublin is needed later, especially days 11-15. So after Naples, maybe go to Istanbul. But Istanbul needs to be days 9-11. Wait, if Naples is days 4-8, then from day 8, moving to Istanbul would be days 8-11 (since 3 days). That fits the friend meeting in Istanbul between days 9-11. Then from Istanbul, there's a direct flight to Dublin. Dublin needs 5 days, including days 11-15. So Dublin days 11-15 (5 days: 11,12,13,14,15). But wait, the user needs to be in Dublin from day 11 to 15. So Istanbul must end on day 11, then Dublin starts day 11. But when you fly on day 11, you are in both cities that day. So Istanbul would be days 8-10 (3 days) and Dublin days 11-15 (5 days). Then from Dublin, where to next? Direct flights from Dublin include Brussels, Krakow, Naples, Istanbul, Venice, Frankfurt. After Dublin, maybe Frankfurt for meeting friends days 15-17. But Dublin ends on day 15. So fly to Frankfurt on day 15, stay days 15-17 (3 days). Then from Frankfurt, direct flights to Krakow, Brussels, Istanbul, Venice, Naples. Next, need to fit Krakow's 4 days. If after Frankfurt, days 17-20 (4 days), but need to check the flight connections. Frankfurt to Krakow is a direct flight. So Krakow days 17-20. Then from Krakow, direct flights to Brussels, Dublin, Istanbul. Brussels needs 2 days. So maybe Krakow to Brussels days 20-21. But total days would be 21. Let's check:\n\nMykonos days 1-4 (4 days)\nNaples 4-8 (4 days) [days 4-8? Wait, Mykonos ends on day 4, then Naples starts day 4. But when you fly on day 4, you're in both Mykonos and Naples on day 4. So Naples would be days 4-7 (4 days, days 4,5,6,7). Then next city would start on day 8. So Istanbul days 8-10 (3 days). Then Dublin days 11-15 (5 days). Then Frankfurt days 15-17 (3 days). Then Krakow days 17-20 (4 days). Then Brussels days 20-21 (2 days). That adds up: 4+4+3+5+3+4+2=25 days. Wait, that's over. So something's wrong.\n\nWait, total days must be 21. Let's recount:\n\nMykonos: day 1-4 (4 days)\nNaples: days 4-7 (4 days)\nIstanbul: days 7-9 (3 days: 7,8,9)\nDublin: days 9-13 (5 days: 9,10,11,12,13)\nFrankfurt: days 13-15 (3 days: 13,14,15)\nKrakow: days 15-18 (4 days)\nBrussels: days 18-19 (2 days)\nBut that's 19 days. Hmm, need to adjust.\n\nWait, the user must be in Dublin from day 11-15. So Dublin must include days 11-15. So perhaps:\n\nMykonos days 1-4 (relatives)\nThen fly to Naples (direct flight) on day 4. Stay in Naples days 4-7 (4 days). Then fly to Istanbul (direct) on day 7. Istanbul days 7-10 (3 days: 7,8,9,10? Wait, 3 days would be days 7,8,9. Then fly to Dublin on day 10. But the user needs to be in Istanbul between day 9-11. If Istanbul is days 7-9, that's days 7,8,9. But the friend meeting is between day 9-11. So maybe adjust Istanbul to days 9-11? But how?\n\nWait, the user wants to meet a friend in Istanbul between day 9 and 11. So they need to be in Istanbul on any of those days. Let's see. If Istanbul is days 8-10 (3 days), then days 8,9,10. That covers day 9 and 10, which is within the 9-11 window. Then fly to Dublin on day 10. But Dublin needs to have the annual show from day 11-15. So arriving in Dublin on day 10, stay days 10-14 (5 days: 10,11,12,13,14). Then the show is covered (days 11-15). Wait, days 11-15 would be days 11,12,13,14,15. So maybe Dublin should be days 10-14 (5 days), but then the show is on days 11-15. Hmm, conflicting.\n\nAlternatively, maybe Dublin needs to be days 11-15. So arrival on day 11. But the flight from Istanbul to Dublin would be on day 11. So Istanbul would be days 8-10 (3 days), then Dublin 11-15 (5 days). That works for the show. Then after Dublin, go to Frankfurt days 15-17. Then Krakow 17-20, Brussels 20-21.\n\nLet's check the days:\n\nMykonos: 1-4 (4 days)\nNaples: 4-7 (4 days)\nIstanbul: 8-10 (3 days) [days 8,9,10]\nDublin: 11-15 (5 days)\nFrankfurt: 15-17 (3 days)\nKrakow: 17-20 (4 days)\nBrussels: 20-21 (2 days)\nVenice: ? Oh, wait, we missed Venice! The user wants to visit Venice for 3 days. Oops. So where to fit Venice?\n\nOriginal cities: Mykonos, Naples, Istanbul, Dublin, Frankfurt, Krakow, Brussels, Venice. So 8 cities. The above plan includes all except Venice. Need to include Venice.\n\nSo let's adjust. Let's see:\n\nAfter Naples (days 4-7), maybe go to Venice. But Naples has a direct flight to Venice. So from Naples to Venice. Venice needs 3 days. So days 7-9. Then from Venice to Istanbul (direct flight). Istanbul days 9-11 (3 days). Then Dublin days 11-15. Then Frankfurt 15-17, Krakow 17-20, Brussels 20-21. But that adds:\n\nMykonos 1-4 (4)\nNaples 4-7 (4)\nVenice 7-9 (3)\nIstanbul 9-11 (3)\nDublin 11-15 (5)\nFrankfurt 15-17 (3)\nKrakow 17-20 (4)\nBrussels 20-21 (2)\n\nTotal days: 4+4+3+3+5+3+4+2=28 days. Way over 21. So need to reduce.\n\nWait, maybe overlapping days when flying. For example, when you fly from Mykonos to Naples on day 4, that's counted in both cities. So Mykonos days 1-4 (4 days: days 1,2,3,4). Then Naples days 4-7 (4 days: days 4,5,6,7). So days 4-7 is 4 days (day 4 counted in both). Then Venice days 7-9 (3 days: 7,8,9). Then Istanbul days 9-11 (3 days: 9,10,11). Dublin days 11-15 (5 days: 11,12,13,14,15). Frankfurt days 15-17 (3 days: 15,16,17). Krakow days 17-20 (4 days: 17,18,19,20). Brussels days 20-21 (2 days: 20,21).\n\nTotal days: 4 (Myk) + 4 (Naples) + 3 (Venice) +3 (Istanbul) +5 (Dublin) +3 (Frankfurt) +4 (Krakow) +2 (Brussels) = 28. But actual days would be day 1 to 21. Wait, but overlapping days count in two cities. So total days should sum to 21. Let me recount:\n\nEach transition day is counted in both cities. So for example:\n\nMykonos: days 1-4 (4 days)\nNaples: days 4-7 (4 days) \u2192 starts on day 4 (same as Mykonos departure)\nVenice: days 7-9 (3 days) \u2192 starts on day 7 (same as Naples departure)\nIstanbul: days 9-11 (3 days) \u2192 starts on day 9 (same as Venice departure)\nDublin: days 11-15 (5 days) \u2192 starts on day 11 (same as Istanbul departure)\nFrankfurt: days 15-17 (3 days) \u2192 starts on day 15 (same as Dublin departure)\nKrakow: days 17-20 (4 days) \u2192 starts on day 17 (same as Frankfurt departure)\nBrussels: days 20-21 (2 days) \u2192 starts on day 20 (same as Krakow departure)\n\nTotal days from day 1 to 21. Now each city's days are:\n\nMykonos: 4 days (1-4)\nNaples: 4 days (4-7)\nVenice: 3 days (7-9)\nIstanbul: 3 days (9-11)\nDublin: 5 days (11-15)\nFrankfurt: 3 days (15-17)\nKrakow: 4 days (17-20)\nBrussels: 2 days (20-21)\n\nNow, summing the days:\n\nMykonos: 4 (days 1,2,3,4)\nNaples: 4 (4,5,6,7)\nVenice: 3 (7,8,9)\nIstanbul: 3 (9,10,11)\nDublin: 5 (11,12,13,14,15)\nFrankfurt:3 (15,16,17)\nKrakow:4 (17,18,19,20)\nBrussels:2 (20,21)\n\nTotal days: 4+4+3+3+5+3+4+2= 28. But since overlapping days are counted twice, the actual total days are 21. Because each flight day is counted in two cities, but the total duration is day 1 to day 21 (21 days). So this works. But the user requires 21 days total, which matches. Also, all cities are included.\n\nNow check the constraints:\n\n- Mykonos days 1-4 (relatives as required)\n- Naples 4 days\n- Istanbul days 9-11 (meets friend between days 9-11)\n- Dublin days 11-15 (annual show)\n- Frankfurt days 15-17 (meet friends)\n- Krakow 4 days\n- Brussels 2 days\n- Venice 3 days\n\nYes, all requirements are met. Now check flight connections:\n\nMykonos to Naples: direct (Mykonos and Naples have a flight)\nNaples to Venice: direct (Naples and Venice)\nVenice to Istanbul: direct (Venice and Istanbul)\nIstanbul to Dublin: direct (Istanbul and Dublin)\nDublin to Frankfurt: direct (Dublin and Frankfurt)\nFrankfurt to Krakow: direct (Frankfurt and Krakow)\nKrakow to Brussels: direct (Krakow and Brussels)\n\nYes, all transitions have direct flights. This should work.",
+            "is_correct": true,
+            "count": "trip_planning_example_1167"
+        }
+    ]
+}
