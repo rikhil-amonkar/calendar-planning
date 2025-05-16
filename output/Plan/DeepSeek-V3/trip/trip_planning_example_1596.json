@@ -1,0 +1,96 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-13",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 13-18",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 18-18",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 24-29",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 29-34",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 34-39",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 39-41",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 29-32",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "raw_model_response": "Here is the trip plan in the requested JSON format, ensuring all constraints and flight connections are respected:\n\n```json\n{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-5\", \"place\": \"Edinburgh\"},\n    {\"flying\": \"Day 5-5\", \"from\": \"Edinburgh\", \"to\": \"Budapest\"},\n    {\"day_range\": \"Day 5-13\", \"place\": \"Budapest\"},\n    {\"flying\": \"Day 13-13\", \"from\": \"Budapest\", \"to\": \"Vienna\"},\n    {\"day_range\": \"Day 13-18\", \"place\": \"Vienna\"},\n    {\"flying\": \"Day 18-18\", \"from\": \"Vienna\", \"to\": \"Stockholm\"},\n    {\"day_range\": \"Day 18-18\", \"place\": \"Stockholm\"},\n    {\"flying\": \"Day 18-18\", \"from\": \"Stockholm\", \"to\": \"Munich\"},\n    {\"day_range\": \"Day 18-20\", \"place\": \"Munich\"},\n    {\"flying\": \"Day 20-20\", \"from\": \"Munich\", \"to\": \"Krakow\"},\n    {\"day_range\": \"Day 20-24\", \"place\": \"Krakow\"},\n    {\"flying\": \"Day 24-24\", \"from\": \"Krakow\", \"to\": \"Warsaw\"},\n    {\"day_range\": \"Day 24-29\", \"place\": \"Warsaw\"},\n    {\"flying\": \"Day 29-29\", \"from\": \"Warsaw\", \"to\": \"Barcelona\"},\n    {\"day_range\": \"Day 29-34\", \"place\": \"Barcelona\"},\n    {\"flying\": \"Day 34-34\", \"from\": \"Barcelona\", \"to\": \"Riga\"},\n    {\"day_range\": \"Day 34-39\", \"place\": \"Riga\"},\n    {\"flying\": \"Day 39-39\", \"from\": \"Riga\", \"to\": \"Bucharest\"},\n    {\"day_range\": \"Day 39-41\", \"place\": \"Bucharest\"}\n  ]\n}\n```\n\n### Notes:\n1. **Day Adjustments**: The total exceeds 32 days (reaches 41) due to overlapping constraints (e.g., 5 days in Edinburgh + 8 days in Budapest + 5 days in Vienna, etc.). To fit 32 days, reduce stays in non-constrained cities (e.g., Vienna, Krakow, Riga). Here\u2019s a corrected 32-day version:\n\n```json\n{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-5\", \"place\": \"Edinburgh\"},\n    {\"flying\": \"Day 5-5\", \"from\": \"Edinburgh\", \"to\": \"Budapest\"},\n    {\"day_range\": \"Day 5-13\", \"place\": \"Budapest\"},\n    {\"flying\": \"Day 13-13\", \"from\": \"Budapest\", \"to\": \"Vienna\"},\n    {\"day_range\": \"Day 13-17\", \"place\": \"Vienna\"},\n    {\"flying\": \"Day 17-17\", \"from\": \"Vienna\", \"to\": \"Stockholm\"},\n    {\"day_range\": \"Day 17-18\", \"place\": \"Stockholm\"},\n    {\"flying\": \"Day 18-18\", \"from\": \"Stockholm\", \"to\": \"Munich\"},\n    {\"day_range\": \"Day 18-20\", \"place\": \"Munich\"},\n    {\"flying\": \"Day 20-20\", \"from\": \"Munich\", \"to\": \"Krakow\"},\n    {\"day_range\": \"Day 20-23\", \"place\": \"Krakow\"},\n    {\"flying\": \"Day 23-23\", \"from\": \"Krakow\", \"to\": \"Warsaw\"},\n    {\"day_range\": \"Day 23-29\", \"place\": \"Warsaw\"},\n    {\"flying\": \"Day 29-29\", \"from\": \"Warsaw\", \"to\": \"Barcelona\"},\n    {\"day_range\": \"Day 29-32\", \"place\": \"Barcelona\"}\n  ]\n}\n```\n\n### Key Adjustments:\n- Reduced stays: Vienna (5\u21924), Krakow (4\u21923), omitted Riga/Bucharest to fit 32 days.\n- Prioritized constrained events (Budapest show, Munich workshop, Warsaw conference).\n- Used direct flights like Edinburgh\u2192Budapest, Vienna\u2192Stockholm\u2192Munich, etc. \n\nLet me know if you'd like further refinements!",
+            "count": "trip_planning_example_1596"
+        }
+    ]
+}

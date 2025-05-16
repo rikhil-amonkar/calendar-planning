@@ -1,0 +1,43 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "reasoning_token_count": 964,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-7\", \"place\": \"Dubrovnik\"},\n    {\"day_range\": \"Day 7-9\", \"place\": \"Frankfurt\"},\n    {\"day_range\": \"Day 9-10\", \"place\": \"Krakow\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let's tackle this problem step by step. The user wants a 10-day trip visiting three cities: Krakow, Dubrovnik, and Frankfurt. They specified spending 2 days in Krakow, 7 days in Dubrovnik, and 3 days in Frankfurt. Also, the wedding in Krakow is between days 9 and 10. The direct flight connections are Frankfurt-Krakow and Dubrovnik-Frankfurt.\n\nFirst, let's note the constraints. The user must end in Krakow because the wedding is on days 9-10. So the last days must be there. They need to spend 2 days in Krakow, 7 in Dubrovnik, and 3 in Frankfurt. But wait, 2+7+3=12 days. But the total trip is 10 days. That's a problem. Wait, maybe overlapping days due to flights. Because when you fly from city A to B on day X, you count both cities on day X. So the total days might add up correctly.\n\nLet me recalculate. For example, if you spend 3 days in Frankfurt, but one of those days overlaps with a flight day to another city. Similarly for others. Let's break it down.\n\nThe user needs to start somewhere. Let's see possible flight routes. The direct flights are Frankfurt-Krakow and Dubrovnik-Frankfurt. So the cities are connected via Frankfurt. So possible itineraries could be: start in Dubrovnik, go to Frankfurt, then to Krakow. Or start in Frankfurt, then Dubrovnik, then Krakow. Or another order.\n\nBut the wedding is in Krakow on days 9-10, so the last two days must be there. So Krakow is days 9-10. That's two days. Then, before that, the user needs to be in Frankfurt or Dubrovnik. Let's see.\n\nThey need 7 days in Dubrovnik. But 7 days is a lot. Let's see. Since flights are direct, if they fly from Dubrovnik to Frankfurt, that day counts for both. Similarly for Frankfurt to Krakow.\n\nLet's try to map the days.\n\nOption 1: Start in Dubrovnik. Let's say days 1-7 in Dubrovnik. Then fly to Frankfurt on day 7. So days 7 would be Dubrovnik and Frankfurt. Then stay in Frankfurt from day 7 to day 7+3-1= day 9 (since day 7 is counted as arrival day). Wait, but 3 days in Frankfurt would be days 7 (half day), 8, 9. Then fly to Krakow on day 9. So days 9-10 in Krakow. That would work. Let's check:\n\nDubrovnik: days 1-7 (7 days total, including day 7 departure)\nFrankfurt: days 7-9 (3 days: day 7 arrival, 8, 9)\nKrakow: days 9-10 (2 days: day 9 arrival, 10)\n\nTotal days: 10. Because day 9 is counted in both Frankfurt and Krakow. Let's count:\n\nDays 1-7: Dubrovnik (7 days)\nDays 7-9: Frankfurt (days 7,8,9) but day 7 is also Dubrovnik's last day. So Frankfurt's days are 7,8,9. Then day 9, fly to Krakow, so Krakow days 9 and 10. Total days: 7 (Dubrovnik) + 3 (Frankfurt) + 2 (Krakow) = 12, but overlapping days. Let's see:\n\nDay 1: D\n...\nDay 7: D (morning) and F (evening) \u2192 counts for both\nDays 8-9: F\nDay 9: F (morning) and K (evening) \u2192 counts for both\nDay 10: K\n\nTotal days in each city:\nDubrovnik: 7 days (days 1-7)\nFrankfurt: 3 days (7,8,9)\nKrakow: 2 days (9,10)\nTotal trip days: 10 (days 1-10). Yes, that works.\n\nSo the itinerary would be:\n\nDubrovnik: Days 1-7\nFrankfurt: Days 7-9\nKrakow: Days 9-10\n\nThat meets all the requirements. Let's check the numbers:\n\nDubrovnik: 7 days (correct)\nFrankfurt: 3 days (correct)\nKrakow: 2 days (correct)\nTotal days: 10.\n\nYes, this works. So the JSON should reflect that.",
+            "is_correct": true,
+            "count": "trip_planning_example_29"
+        }
+    ]
+}

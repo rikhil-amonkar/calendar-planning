@@ -1,0 +1,48 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 3-10",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Hamburg"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "raw_model_response": "Here\u2019s the optimized 12-day trip plan in the requested JSON format, ensuring all constraints are met (wedding in Zurich, conference in Split, and direct flights):\n\n```json\n{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-3\", \"place\": \"Zurich\"},\n    {\"flying\": \"Day 3-3\", \"from\": \"Zurich\", \"to\": \"Split\"},\n    {\"day_range\": \"Day 3-10\", \"place\": \"Split\"},\n    {\"flying\": \"Day 10-10\", \"from\": \"Split\", \"to\": \"Hamburg\"},\n    {\"day_range\": \"Day 10-12\", \"place\": \"Hamburg\"}\n  ]\n}\n```\n\n### **Rationale**:\n1. **Zurich (Days 1-3)**: Covers the wedding requirement. Direct flight to Split afterward.\n2. **Split (Days 3-10)**: Spends 7 days (including conference on Days 4 & 10). Direct flight to Hamburg.\n3. **Hamburg (Days 10-12)**: Spends the remaining 2 days.  \n\n### **Why This Works**:\n- **Flight Compliance**: Uses direct flights (Zurich \u2192 Split, Split \u2192 Hamburg) from the allowed list.\n- **Time Allocation**: Zurich (3d), Split (7d), Hamburg (2d) totals 12 days.\n- **Constraints Met**: Wedding (Days 1-3) and conference (Days 4 & 10) are included.\n\n*Note*: Helsinki and Bucharest were omitted to prioritize longer stays in Split and Zurich while meeting flight constraints. If visiting all 5 cities is mandatory, the itinerary would require adjustments (e.g., shorter stays or additional flights). Let me know if you'd prefer an alternative!",
+            "count": "trip_planning_example_409"
+        }
+    ]
+}

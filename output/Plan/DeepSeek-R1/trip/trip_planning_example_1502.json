@@ -1,0 +1,99 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "reasoning_token_count": 2338,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-3\", \"place\": \"Santorini\"},\n    {\"day_range\": \"Day 3-6\", \"place\": \"Vienna\"},\n    {\"day_range\": \"Day 6-7\", \"place\": \"Madrid\"},\n    {\"day_range\": \"Day 7-8\", \"place\": \"Seville\"},\n    {\"day_range\": \"Day 8-11\", \"place\": \"Valencia\"},\n    {\"day_range\": \"Day 11-15\", \"place\": \"Krakow\"},\n    {\"day_range\": \"Day 15-18\", \"place\": \"Frankfurt\"},\n    {\"day_range\": \"Day 18-20\", \"place\": \"Bucharest\"},\n    {\"day_range\": \"Day 20-23\", \"place\": \"Riga\"},\n    {\"day_range\": \"Day 23-27\", \"place\": \"Tallinn\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let me try to figure out this trip planning problem. The user wants to visit 10 European cities in 27 days, using only direct flights. They have specific days for certain events in some cities, and I need to make sure the itinerary fits all those constraints. Let's break down the requirements step by step.\n\nFirst, list all the cities with their required days:\n\n- Santorini: 3 days\n- Valencia: 4 days\n- Madrid: 2 days (with a show on days 6-7)\n- Seville: 2 days\n- Bucharest: 3 days\n- Vienna: 4 days (wedding days 3-6)\n- Riga: 4 days (conference days 20-23)\n- Tallinn: 5 days (workshop days 23-27)\n- Krakow: 5 days (meet friends days 11-15)\n- Frankfurt: 4 days\n\nTotal days should add up to 3+4+2+2+3+4+4+5+5+4 = 36? Wait, but the total is 27 days. Oh, right, because days when traveling count for both cities. So overlapping days when flying. So need to arrange the order so that flights connect cities with direct flights, and days where flights happen count towards both cities.\n\nLet me check the required events first, as those have fixed days:\n\n- Vienna wedding: days 3-6 (so must be in Vienna those days. Wait, day 3 to day 6 inclusive. That's 4 days (days 3,4,5,6). But the user plans to stay in Vienna for 4 days, so that fits exactly. So Vienna must be days 3-6.\n\n- Madrid show: days 6-7. Wait, day 6 to 7. But day 6 is the last day in Vienna. So the user would fly from Vienna to Madrid on day 6, which means they are in both cities on day 6. So Madrid would start on day 6, but the show is days 6-7. So Madrid's 2 days would be days 6 and 7. But the user needs to be in Madrid for 2 days, which is exactly days 6-7. So that works.\n\n- Riga conference: days 20-23. So must be in Riga those days. Riga requires 4 days, so days 20-23 is 4 days (20,21,22,23). Then fly to Tallinn on day 23 (since the workshop is days 23-27). So Tallinn would be days 23-27 (5 days, which matches the requirement).\n\n- Krakow friends: days 11-15. That's 5 days (11,12,13,14,15). So Krakow must be those days. The user plans to stay 5 days there, which matches.\n\nOther cities need to be placed around these fixed events, ensuring direct flights between consecutive cities.\n\nNow, let's look at the direct flight connections. The list is quite extensive, so I need to find a path that connects all these cities, moving from one to another via direct flights, and ensuring that the days add up correctly with overlaps on travel days.\n\nStarting with Vienna (days 3-6). The user needs to get to Vienna by day 3. So the first few days before day 3 must be in other cities.\n\nPossible cities before Vienna: Looking at direct flights to Vienna. The cities that have direct flights to Vienna are:\n\nBucharest, Seville, Valencia, Madrid, Krakow, Frankfurt, Riga, Santorini.\n\nSo the user could come from any of these cities. Let's see. The user also needs to visit Santorini for 3 days. Maybe start there. Let's consider starting in Santorini.\n\nSantorini is connected to Madrid and Bucharest, and Vienna. So if the user starts in Santorini, spends 3 days (days 1-3), then flies to Vienna on day 3. But Vienna's wedding starts on day 3. So arriving in Vienna on day 3 would mean Santorini days 1-3 (since day 3 is a travel day to Vienna). But the user is in Vienna from day 3 to 6. That works. So Santorini: days 1-3, then Vienna days 3-6.\n\nNext, after Vienna (day 6), the user needs to be in Madrid for days 6-7. Vienna has a direct flight to Madrid, so fly on day 6. So Madrid days 6-7. Then, after Madrid, where to go? Madrid is connected to Valencia, Seville, Bucharest, Frankfurt, Santorini. But Santorini is already done. So next could be Valencia or Seville. The user needs to spend 4 days in Valencia and 2 days in Seville. Also, Seville and Valencia have a direct flight. The user wants to visit both, so maybe go from Madrid to Valencia or Seville.\n\nBut Madrid to Seville is a direct flight. But the user has to spend 2 days in Seville. Wait, but the user has to attend the show in Madrid on days 6-7. So Madrid is days 6-7. Then on day 7, fly to Seville. But the user needs 2 days in Seville. So days 7-8? Then from Seville to Valencia (since they have a direct flight). Valencia needs 4 days. Let's see:\n\nMadrid: days 6-7.\n\nFly to Seville on day 7. Seville days 7-8 (2 days? Wait, day 7 is arrival, day 8. So days 7-8 would be 2 days. Then fly to Valencia on day 8. Valencia would be days 8-11 (4 days: 8,9,10,11). Then from Valencia, need to go to Krakow for days 11-15. Valencia has a direct flight to Krakow. So fly on day 11, which is the last day in Valencia. Then Krakow days 11-15. That works.\n\nAfter Krakow (days 11-15), next is day 15. Need to go to Frankfurt for 4 days. Krakow has a direct flight to Frankfurt. So fly on day 15. Frankfurt days 15-18 (4 days: 15,16,17,18). Then from Frankfurt, where to go? Frankfurt connects to Tallinn, Riga, Bucharest, Krakow, Valencia, etc. But Riga needs to be days 20-23. So after Frankfurt, maybe go to Bucharest. Let's see:\n\nFrankfurt days 15-18. Then fly to Bucharest (direct flight exists). Bucharest requires 3 days. So days 18-20 (3 days: 18,19,20). But then from Bucharest to Riga (direct flight exists). Riga days 20-23. Then Riga to Tallinn (direct flight on day 23). Tallinn days 23-27. That works.\n\nBut let's check the days:\n\nSantorini: 1-3 (3 days)\n\nVienna: 3-6 (4 days)\n\nMadrid:6-7 (2 days)\n\nSeville:7-8 (2 days) [Wait, 2 days would be 7-8 (day 7 and 8). But the user has to spend 2 days in Seville. So arrival on day 7, stay day 7 and 8, leave on day 8? But that's 2 days. Then Valencia: 8-11 (4 days: 8,9,10,11). Then Krakow 11-15 (5 days). Then Frankfurt 15-18 (4 days). Then Bucharest 18-20 (3 days: 18,19,20). Then Riga 20-23 (4 days). Then Tallinn 23-27 (5 days). Let's add up the days:\n\nSantorini: 3 (days 1-3)\n\nVienna: 4 (3-6)\n\nMadrid: 2 (6-7)\n\nSeville:2 (7-8)\n\nValencia:4 (8-11)\n\nKrakow:5 (11-15)\n\nFrankfurt:4 (15-18)\n\nBucharest:3 (18-20)\n\nRiga:4 (20-23)\n\nTallinn:5 (23-27)\n\nTotal days: 3+4+2+2+4+5+4+3+4+5 = 36. But the total is supposed to be 27. Wait, that's a problem. Because overlapping days count for two cities. So each transition day is counted in both cities. So let's recount:\n\nEach time you fly, the day is counted in both cities. So the total days would be the sum of the days in each city minus the number of transitions (since each transition day is counted twice). For example, if you go from A to B on day X, day X is counted in both A and B. So total days would be sum of all days in each city minus the number of transitions.\n\nBut the user has 10 cities, which means 9 transitions. So total days = sum of days in each city - 9. If the sum of days in each city is 36, then total days would be 36 -9=27. Which matches. So the plan above works.\n\nNow, check if all the flights are direct.\n\nLet's list the order:\n\nSantorini -> Vienna: Direct flight exists (Santorini and Vienna)\n\nVienna -> Madrid: Direct flight exists (Vienna and Madrid)\n\nMadrid -> Seville: Direct flight (Madrid and Seville)\n\nSeville -> Valencia: Direct flight (Seville and Valencia)\n\nValencia -> Krakow: Direct flight (Valencia and Krakow)\n\nKrakow -> Frankfurt: Direct flight (Krakow and Frankfurt)\n\nFrankfurt -> Bucharest: Direct flight (Frankfurt and Bucharest)\n\nBucharest -> Riga: Direct flight (Bucharest and Riga)\n\nRiga -> Tallinn: Direct flight (from Riga to Tallinn is listed)\n\nYes, all transitions have direct flights. So this plan works.\n\nLet me verify the days again:\n\nSantorini: Day 1-3 (3 days)\n\nVienna: Day 3-6 (4 days). The wedding is days 3-6, which matches.\n\nMadrid: Day 6-7 (2 days). The show is days 6-7, correct.\n\nSeville: Day 7-8 (2 days)\n\nValencia: Day 8-11 (4 days)\n\nKrakow: Day 11-15 (5 days; friends days 11-15)\n\nFrankfurt: Day15-18 (4 days)\n\nBucharest: Day18-20 (3 days)\n\nRiga: Day20-23 (4 days; conference days 20-23)\n\nTallinn: Day23-27 (5 days; workshop days23-27)\n\nYes, all events are in the correct date ranges.\n\nAlso, all cities are visited with the required number of days. The transitions are all via direct flights as per the list.\n\nTherefore, this itinerary should work.",
+            "is_correct": true,
+            "count": "trip_planning_example_1502"
+        }
+    ]
+}

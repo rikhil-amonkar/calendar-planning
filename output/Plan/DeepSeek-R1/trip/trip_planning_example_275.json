@@ -1,0 +1,51 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 8-13",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 8-13",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "reasoning_token_count": 681,
+            "raw_model_response": "{\n  \"itinerary\": [\n    {\"day_range\": \"Day 1-4\", \"place\": \"Vilnius\"},\n    {\"day_range\": \"Day 4-8\", \"place\": \"Split\"},\n    {\"day_range\": \"Day 8-13\", \"place\": \"Madrid\"},\n    {\"day_range\": \"Day 13-14\", \"place\": \"Santorini\"}\n  ]\n}",
+            "raw_model_reasoning": "Okay, let's try to figure out this trip planning problem. The user wants to visit four European cities over 14 days: Split for 5 days, Vilnius for 4 days, Santorini for 2 days, and Madrid for 6 days. But there's a catch: they have to be in Santorini on days 13 and 14 for a conference. Also, they can only take direct flights between certain cities. The direct flight connections are Vilnius-Split, Split-Madrid, and Madrid-Santorini.\n\nFirst, let me list out the required days in each city. Split needs 5 days, Vilnius 4, Santorini 2, and Madrid 6. That totals 5+4+2+6=17 days. But the trip is only 14 days. Hmm, that's a problem. Wait, the user must be overlapping days when traveling. Because when you fly from city A to city B on day X, you count that day in both cities. So each flight day is counted twice. Let me recalculate with that in mind.\n\nThe user wants to go to 4 cities, so there will be 3 flights. Each flight day will count for two cities. So the total days would be 14 + 3 (since each flight adds an extra day counted twice) = 17. That matches the total required days. So the plan has to include those overlapping days.\n\nNow, the cities are connected as follows: Vilnius connects to Split, Split to Madrid, Madrid to Santorini. So the possible route could be Vilnius -> Split -> Madrid -> Santorini. Let's check if that works.\n\nStarting in Vilnius. They need 4 days there. But the flight to Split is direct. So if they leave Vilnius on day 4, that day counts for both Vilnius and Split. So Vilnius days would be days 1-4 (including day 4 as departure). Then Split would start on day 4. Split needs 5 days. So days 4-8 (since day 4 is arrival, days 4,5,6,7,8). Then fly to Madrid on day 8. So Madrid starts on day 8, but day 8 counts for both Split and Madrid. Madrid needs 6 days, so days 8-13 (since 8 to 13 is 6 days: 8,9,10,11,12,13). Then fly to Santorini on day 13, which counts for both Madrid and Santorini. Santorini needs days 13-14 (2 days: 13 and 14). That fits the conference requirement.\n\nLet me check the days:\n\nVilnius: 1-4 (4 days)\nSplit: 4-8 (5 days: 4,5,6,7,8)\nMadrid: 8-13 (6 days:8,9,10,11,12,13)\nSantorini:13-14 (2 days)\n\nTotal days: 14. Each city gets the required days. Flights are Vilnius-Split on day 4, Split-Madrid on day 8, Madrid-Santorini on day 13. All direct flights as per the allowed connections. The conference days 13-14 are in Santorini. All requirements met.",
+            "is_correct": true,
+            "count": "trip_planning_example_275"
+        }
+    ]
+}
