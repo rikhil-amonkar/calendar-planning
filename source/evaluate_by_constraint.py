@@ -182,6 +182,16 @@ def evaluate_meeting(constraints, pred_dict):
 
     return True, {}
 
+def count_constraints(constraints_dict):
+    """Count constraints: individual values count as 1, lists count as their length"""
+    count = 0
+    for key, value in constraints_dict.items():
+        if isinstance(value, list):
+            count += len(value)
+        else:
+            count += 1
+    return count
+
 task_name_map = {
     "calendar": "calendar_scheduling",
     "trip": "trip_planning",
@@ -204,6 +214,41 @@ for task in tasks:
     # Load constraints
     with open(f"../data/{task_name_map[task]}_100_constraints.json") as f:
         constraints_data = json.load(f)
+        # Count constraints for each example
+    example_counts = {}
+    for example_id, example_data in constraints_data.items():
+        constraints = example_data.get("constraints", {})
+        constraint_count = count_constraints(constraints)
+        example_counts[example_id] = constraint_count
+
+    # Sort examples by constraint count
+    sorted_examples = sorted(example_counts.items(), key=lambda x: x[1])
+
+    # Calculate bucket sizes for 5 equal-sized buckets (20% percentiles)
+    total_examples = len(sorted_examples)
+    bucket_size = total_examples // 5
+    remainder = total_examples % 5
+
+    # Create 5 buckets
+    buckets = [[] for _ in range(5)]
+    current_idx = 0
+
+    for i in range(5):
+        # Calculate size of this bucket (distribute remainder across buckets)
+        this_bucket_size = bucket_size + (1 if i < remainder else 0)
+        
+        # Add examples to this bucket
+        for _ in range(this_bucket_size):
+            if current_idx < total_examples:
+                example_id, count = sorted_examples[current_idx]
+                buckets[i].append((example_id, count))
+                current_idx += 1
+
+    # Create a dictionary mapping example IDs to their bucket index
+    example_to_bucket = {}
+    for bucket_idx, bucket in enumerate(buckets):
+        for example_id, _ in bucket:
+            example_to_bucket[example_id] = bucket_idx
         
     # Initialize evaluation results
     results = {
@@ -219,12 +264,18 @@ for task in tasks:
         
     # Directory with formatted outputs
     if args.output == "plan":
-        pass # TODO: fill in the path
+        output_dir = f"../output/Plan/{model}/{task}/formatted_output"
+        report_path = f"../output/Plan/{model}/{task}/report.json"
     elif args.output == "python":
-        pass # TODO: fill in the path
+        output_dir = f"../output/Python/{model}/{task}/formatted_output"
+        report_path = f"../output/Python/{model}/{task}/report.json"
     elif args.output == "z3":
         output_dir = f"../output/SMT/{model}/{task}/formatted_output"
         report_path = f"../output/SMT/{model}/{task}/report.json"
+    
+    # Initialize bucket statistics
+    bucket_totals = [0] * 5
+    bucket_correct = [0] * 5
     
     total_count = 0
     no_error_count = 0
@@ -241,6 +292,11 @@ for task in tasks:
         print(f"Processing example {example_id}")
         status = ""
         violated_constraint = {}
+        
+        # Get the bucket this example belongs to
+        bucket_index = example_to_bucket.get(example_id, -1)  # -1 if not found
+        if bucket_index >= 0:
+            bucket_totals[bucket_index] += 1
                 
         # Extract prediction from the formatted output
         entry = output_data.get("0shot", [{}])[0]
@@ -278,6 +334,9 @@ for task in tasks:
             if is_pass:
                 status = "Correct"
                 correct_count += 1
+                # Update bucket statistics for correct examples
+                if bucket_index >= 0:
+                    bucket_correct[bucket_index] += 1
             else:
                 status = "Wrong plan"
         example_result[example_id] = {
@@ -286,8 +345,12 @@ for task in tasks:
             "status": status,
             "violated_constraint": violated_constraint,
             "is_exact_match": pred_dict == gold_dict,
+            "bucket_index": bucket_index,  # Add bucket information
             #"constraints": example_constraints,
         }
+    
+    # Calculate bucket accuracy rates
+    bucket_accuracy = [bucket_correct[i]/bucket_totals[i] if bucket_totals[i] > 0 else 0 for i in range(5)]
     
     report_data = {
         "total_examples": total_count,
@@ -295,7 +358,20 @@ for task in tasks:
         "has_plan_examples": has_plan_count,
         "correct_examples": correct_count,
         "result_by_example": example_result,
+        "correct_by_bucket": {
+            "totals": bucket_totals,
+            "correct": bucket_correct,
+            "accuracy": bucket_accuracy
+        }
     }
+    
+    # Print bucket statistics
+    print("\nPerformance by constraint complexity:")
+    for i in range(5):
+        if bucket_totals[i] > 0:
+            accuracy = bucket_correct[i] / bucket_totals[i] * 100
+            print(f"Bucket {i+1} (percentile {i*20}-{(i+1)*20}%): {bucket_correct[i]}/{bucket_totals[i]} correct ({accuracy:.1f}%)")
+    
     print("Total examples:", total_count)
     print("No error examples:", no_error_count)
     print("Has plan examples:", has_plan_count)
