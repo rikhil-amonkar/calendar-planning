@@ -30,9 +30,13 @@ for model in args.model:
                 script_path = os.path.join(input_folder, filename)
                 output_path = os.path.join(output_folder, filename.replace(".py", ".out"))
                 with open(output_path, "w") as outfile:
-                    result = subprocess.run(
-                        ["python3", script_path],
-                        stdout=outfile,
-                        stderr=subprocess.STDOUT
-                    )
+                    try:
+                        result = subprocess.run(
+                            ["python3", script_path],
+                            stdout=outfile,
+                            stderr=subprocess.STDOUT,
+                            timeout=10
+                        )
+                    except subprocess.TimeoutExpired:
+                        print("Process timed out after 10 seconds.")
                 print(f"Ran {filename}, output saved to {output_path}")
