@@ -1,83 +1,103 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 23
-cities = [
-    "Riga", "Manchester", "Bucharest", 
-    "Florence", "Vienna", "Istanbul", 
-    "Reykjavik", "Stuttgart"
-]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "Riga": 4,
-    "Manchester": 5,
-    "Bucharest": 4,
-    "Florence": 4,
-    "Vienna": 2,
-    "Istanbul": 2,
-    "Reykjavik": 4,
-    "Stuttgart": 5
-}
-
-# Constraints for specific events
-workshop_days_bucharest = range(16, 20)  # Workshop in Bucharest (Day 16 to Day 19)
-annual_show_days_istanbul = [12, 13]      # Annual show in Istanbul (Day 12 and Day 13)
-
-# Define direct flights between the cities
-flights = {
-    "Bucharest": ["Vienna", "Riga", "Istanbul", "Manchester"],
-    "Vienna": ["Florence", "Reykjavik", "Stuttgart", "Istanbul", "Bucharest", "Manchester", "Riga"],
-    "Reykjavik": ["Vienna", "Stuttgart"],
-    "Manchester": ["Vienna", "Riga", "Istanbul", "Bucharest", "Stuttgart"],
-    "Riga": ["Vienna", "Bucharest", "Manchester", "Istanbul"],
-    "Istanbul": ["Vienna", "Riga", "Bucharest", "Stuttgart", "Manchester"],
-    "Florence": ["Vienna"],
-    "Stuttgart": ["Vienna", "Reykjavik", "Istanbul", "Manchester"]
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Total days of the trip
+total_days = 23
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Define the days spent in each city
+cities = {
+    'Riga': Int('days_in_riga'),           # 4 days
+    'Manchester': Int('days_in_manchester'), # 5 days
+    'Bucharest': Int('days_in_bucharest'), # 4 days
+    'Florence': Int('days_in_florence'),   # 4 days
+    'Vienna': Int('days_in_vienna'),       # 2 days
+    'Istanbul': Int('days_in_istanbul'),   # 2 days
+    'Reykjavik': Int('days_in_reykjavik'), # 4 days
+    'Stuttgart': Int('days_in_stuttgart'),  # 5 days
+}
 
-# Count the days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Add constraints for days spent in each city
+solver.add(cities['Riga'] == 4)
+solver.add(cities['Manchester'] == 5)
+solver.add(cities['Bucharest'] == 4)
+solver.add(cities['Florence'] == 4)
+solver.add(cities['Vienna'] == 2)
+solver.add(cities['Istanbul'] == 2)
+solver.add(cities['Reykjavik'] == 4)
+solver.add(cities['Stuttgart'] == 5)
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days must sum to 23
+solver.add(Sum([cities[city] for city in cities]) == total_days)
 
-# Workshop in Bucharest between day 16 and day 19
-for day in workshop_days_bucharest:
-    solver.add(trip[day - 1] == cities.index("Bucharest"))  # Adjust for 0-based index
+# Daily city assignments for 23 days (0-7 representing each city)
+days = [Int(f'day_{i}') for i in range(total_days)]
 
-# Annual show in Istanbul on day 12 and 13
-for day in annual_show_days_istanbul:
-    solver.add(trip[day - 1] == cities.index("Istanbul"))  # Adjust for 0-based index
+# Constraints for specific events
+# Attend a workshop in Bucharest (between day 16 and day 19)
+for i in range(15, 19):  # Days 16 to 18
+    solver.add(days[i] == 2)  # Bucharest (index 2)
+
+# Attend an annual show in Istanbul (on days 12 and 13)
+solver.add(days[11] == 5)  # Istanbul (index 5) on day 12
+solver.add(days[12] == 5)  # Istanbul (index 5) on day 13
+
+# Define valid city indices
+city_indices = {
+    'Riga': 0,
+    'Manchester': 1,
+    'Bucharest': 2,
+    'Florence': 3,
+    'Vienna': 4,
+    'Istanbul': 5,
+    'Reykjavik': 6,
+    'Stuttgart': 7,
+}
+
+# Ensure daily assignments only use valid city indices
+for i in range(total_days):
+    solver.add(Or(
+        days[i] == city_indices['Riga'],
+        days[i] == city_indices['Manchester'],
+        days[i] == city_indices['Bucharest'],
+        days[i] == city_indices['Florence'],
+        days[i] == city_indices['Vienna'],
+        days[i] == city_indices['Istanbul'],
+        days[i] == city_indices['Reykjavik'],
+        days[i] == city_indices['Stuttgart'],
+    ))
 
 # Define direct flight connections
-for day in range(total_days - 1):
-    curr_city_index = trip[day]
-    next_city_index = trip[day + 1]
-    curr_city = cities[curr_city_index]
-    next_city = cities[next_city_index]
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
-                    for city in cities for next_city_city in flights[city]]))
+direct_flights = [
+    (2, 4),  # Bucharest to Vienna
+    (6, 4),  # Reykjavik to Vienna
+    (1, 4),  # Manchester to Vienna
+    (1, 0),  # Manchester to Riga
+    (0, 4),  # Riga to Vienna
+    (5, 4),  # Istanbul to Vienna
+    (4, 3),  # Vienna to Florence
+    (7, 4),  # Stuttgart to Vienna
+    (0, 2),  # Riga to Bucharest
+    (5, 0),  # Istanbul to Riga
+    (7, 5),  # Stuttgart to Istanbul
+    (6, 5),  # Reykjavik to Istanbul
+    (1, 5),  # Manchester to Istanbul
+    (1, 2),  # Manchester to Bucharest
+    (7, 1),  # Stuttgart to Manchester
+]
 
-# Solve the problem
+# Add constraints based on direct flights
+for i in range(total_days - 1):
+    for src, dst in direct_flights:
+        solver.add(If(days[i] == src, days[i + 1] == dst, True))
+
+# Solve the scheduling problem
 if solver.check() == sat:
     model = solver.model()
-    itinerary = []
-    for day in range(total_days):
-        city = cities[model[trip[day]].as_long()]
-        itinerary.append(f"Day {day + 1}: {city}")
-    print("\n".join(itinerary))
+    print("Schedule:")
+    for i in range(total_days):
+        city_code = model[days[i]].as_long()
+        print(f"Day {i + 1}: City code {city_code} (0=Riga, 1=Manchester, 2=Bucharest, 3=Florence, 4=Vienna, 5=Istanbul, 6=Reykjavik, 7=Stuttgart)")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

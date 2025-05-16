@@ -1,97 +1,123 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 27
-cities = [
-    "Istanbul", "Vienna", "Riga",
-    "Brussels", "Madrid", "Vilnius",
-    "Venice", "Geneva", "Munich", "Reykjavik"
-]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "Istanbul": 4,
-    "Vienna": 4,
-    "Riga": 2,
-    "Brussels": 2,
-    "Madrid": 4,
-    "Vilnius": 4,
-    "Venice": 5,
-    "Geneva": 4,
-    "Munich": 5,
-    "Reykjavik": 2
-}
-
-# Constraints for specific events
-wedding_days_brussels = [26, 27]                     # Wedding in Brussels (Day 26 to Day 27)
-meeting_days_vilnius = range(20, 24)                  # Meeting friends in Vilnius (Day 20 to Day 23)
-workshop_days_venice = range(7, 12)                   # Workshop in Venice (Day 7 to Day 11)
-relatives_visit_days_geneva = range(1, 5)             # Visiting relatives in Geneva (Day 1 to Day 4)
-
-# Define direct flights between the cities
-flights = {
-    "Munich": ["Vienna", "Madrid", "Reykjavik", "Brussels", "Venice"],
-    "Istanbul": ["Brussels", "Vienna", "Riga", "Vilnius"],
-    "Vienna": ["Vilnius", "Istanbul", "Madrid", "Riga", "Munich", "Brussels"],
-    "Riga": ["Brussels", "Istanbul", "Munich", "Vilnius"],
-    "Brussels": ["Istanbul", "Venice", "Riga", "Vienna", "Geneva", "Madrid"],
-    "Madrid": ["Vienna", "Munich", "Venice", "Brussels"],
-    "Vilnius": ["Vienna", "Istanbul", "Riga"],
-    "Venice": ["Brussels", "Munich", "Madrid", "Vienna", "Istanbul"],
-    "Geneva": ["Istanbul", "Vienna", "Brussels", "Munich"],
-    "Reykjavik": ["Munich", "Vienna", "Brussels"]
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Total days of the trip
+total_days = 27
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Define the days spent in each city
+cities = {
+    'Istanbul': Int('days_in_istanbul'),      # 4 days
+    'Vienna': Int('days_in_vienna'),          # 4 days
+    'Riga': Int('days_in_riga'),              # 2 days
+    'Brussels': Int('days_in_brussels'),      # 2 days
+    'Madrid': Int('days_in_madrid'),          # 4 days
+    'Vilnius': Int('days_in_vilnius'),        # 4 days
+    'Venice': Int('days_in_venice'),          # 5 days
+    'Geneva': Int('days_in_geneva'),          # 4 days
+    'Munich': Int('days_in_munich'),          # 5 days
+    'Reykjavik': Int('days_in_reykjavik'),    # 2 days
+}
 
-# Count the days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Add constraints on days spent in each city
+solver.add(cities['Istanbul'] == 4)
+solver.add(cities['Vienna'] == 4)
+solver.add(cities['Riga'] == 2)
+solver.add(cities['Brussels'] == 2)
+solver.add(cities['Madrid'] == 4)
+solver.add(cities['Vilnius'] == 4)
+solver.add(cities['Venice'] == 5)
+solver.add(cities['Geneva'] == 4)
+solver.add(cities['Munich'] == 5)
+solver.add(cities['Reykjavik'] == 2)
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days must sum to 27
+solver.add(Sum([cities[city] for city in cities]) == total_days)
 
-# Wedding in Brussels on day 26 and 27
-for day in wedding_days_brussels:
-    solver.add(trip[day - 1] == cities.index("Brussels"))  # Adjust for 0-based index
+# Daily city assignments for 27 days (0-9 representing each city)
+days = [Int(f'day_{i}') for i in range(total_days)]
 
-# Meeting friends in Vilnius between day 20 and day 23
-for day in meeting_days_vilnius:
-    solver.add(trip[day - 1] == cities.index("Vilnius"))  # Adjust for 0-based index
+# Constraints for specific events
+# Visiting relatives in Geneva (between day 1 and day 4)
+for i in range(0, 4):  # Days 1 to 4
+    solver.add(days[i] == 7)  # Geneva on days 1 to 4
 
-# Workshop in Venice between day 7 and day 11
-for day in workshop_days_venice:
-    solver.add(trip[day - 1] == cities.index("Venice"))  # Adjust for 0-based index
+# Attend a wedding in Brussels (between day 26 and day 27)
+solver.add(days[25] == 1)  # Brussels on day 26
+solver.add(days[26] == 1)  # Brussels on day 27
 
-# Visiting relatives in Geneva between day 1 and day 4
-for day in relatives_visit_days_geneva:
-    solver.add(trip[day - 1] == cities.index("Geneva"))  # Adjust for 0-based index
+# Attend a workshop in Venice (between day 7 and day 11)
+for i in range(6, 11):  # Days 7 to 11
+    solver.add(days[i] == 8)  # Venice
+
+# Meet friends in Vilnius (between day 20 and day 23)
+for i in range(19, 23):  # Days 20 to 23
+    solver.add(days[i] == 5)  # Vilnius
+
+# Define valid city indices
+city_indices = {
+    'Istanbul': 0,
+    'Vienna': 1,
+    'Riga': 2,
+    'Brussels': 3,
+    'Madrid': 4,
+    'Vilnius': 5,
+    'Venice': 6,
+    'Geneva': 7,
+    'Munich': 8,
+    'Reykjavik': 9,
+}
+
+# Ensure daily assignments only use valid city indices
+for i in range(total_days):
+    solver.add(Or(
+        days[i] == city_indices['Istanbul'],
+        days[i] == city_indices['Vienna'],
+        days[i] == city_indices['Riga'],
+        days[i] == city_indices['Brussels'],
+        days[i] == city_indices['Madrid'],
+        days[i] == city_indices['Vilnius'],
+        days[i] == city_indices['Venice'],
+        days[i] == city_indices['Geneva'],
+        days[i] == city_indices['Munich'],
+        days[i] == city_indices['Reykjavik'],
+    ))
 
 # Define direct flight connections
-for day in range(total_days - 1):
-    curr_city_index = trip[day]
-    next_city_index = trip[day + 1]
-    curr_city = cities[curr_city_index]
-    next_city = cities[next_city_index]
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
-                    for city in cities for next_city_city in flights[city]]))
+direct_flights = [
+    (8, 1),  # Munich to Vienna
+    (0, 3),  # Istanbul to Brussels
+    (1, 5),  # Vienna to Vilnius
+    (4, 8),  # Madrid to Munich
+    (6, 3),  # Venice to Brussels
+    (2, 3),  # Riga to Brussels
+    (7, 0),  # Geneva to Istanbul
+    (8, 9),  # Munich to Reykjavik
+    (1, 0),  # Vienna to Istanbul
+    (2, 0),  # Riga to Istanbul
+    (9, 1),  # Reykjavik to Vienna
+    (6, 3),  # Venice to Brussels
+    (4, 3),  # Madrid to Brussels
+    (3, 2),  # Brussels to Riga
+    (5, 0),  # Vilnius to Istanbul
+    (6, 3),  # Venice to Brussels
+    (4, 1),  # Madrid to Vienna
+    (5, 8),  # Vilnius to Munich
+    (4, 6),  # Madrid to Venice
+]
 
-# Solve the problem
+# Add constraints based on direct flights
+for i in range(total_days - 1):
+    for src, dst in direct_flights:
+        solver.add(If(days[i] == src, days[i + 1] == dst, True))
+
+# Solve the scheduling problem
 if solver.check() == sat:
     model = solver.model()
-    itinerary = []
-    for day in range(total_days):
-        city = cities[model[trip[day]].as_long()]
-        itinerary.append(f"Day {day + 1}: {city}")
-    print("\n".join(itinerary))
+    print("Schedule:")
+    for i in range(total_days):
+        city_code = model[days[i]].as_long()
+        print(f"Day {i + 1}: City code {city_code} (0=Istanbul, 1=Vienna, 2=Riga, 3=Brussels, 4=Madrid, 5=Vilnius, 6=Venice, 7=Geneva, 8=Munich, 9=Reykjavik)")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

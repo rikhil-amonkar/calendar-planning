@@ -1,40 +1,55 @@
 from z3 import *
 
-# Define work hours and meeting duration
-work_start = 9 * 60  # 9:00 AM in minutes
-work_end = 17 * 60   # 5:00 PM in minutes
-meeting_duration = 30  # Meeting duration in minutes
-
-# Define existing busy times for Albert (in minutes from midnight)
-albert_busy = [
-    (9 * 60, 10 * 60),    # 9:00 - 10:00
-    (10 * 60 + 30, 12 * 60),  # 10:30 - 12:00
-    (15 * 60, 16 * 60 + 30)  # 15:00 - 16:30
-]
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Variable for the start time of the meeting
+# Define work hours in minutes from midnight
+work_start = 9 * 60  # 9:00 AM
+work_end = 17 * 60   # 5:00 PM
+
+# Define existing busy schedules for Albert in minutes
+albert_busy = [
+    (9 * 60, 10 * 60),    # 9:00 to 10:00
+    (10 * 60 + 30, 12 * 60),  # 10:30 to 12:00
+    (15 * 60, 16 * 60 + 30),   # 15:00 to 16:30
+]
+
+# Albert's other constraint: Can't meet after 11:00
+albert_latest_meet = 11 * 60  # 11:00 AM
+
+# Define variables for meeting start and end times (in minutes)
 start_time = Int('start_time')
+end_time = Int('end_time')
 
-# Constraint: the meeting must occur during work hours
+# Meeting duration
+meeting_duration = 30  # in minutes
+
+# Constraints to ensure meeting duration is half an hour
+solver.add(end_time == start_time + meeting_duration)
+
+# Ensure the meeting is within work hours
 solver.add(start_time >= work_start)
-solver.add(start_time + meeting_duration <= work_end)
+solver.add(end_time <= work_end)
 
-# Constraint: Albert's existing busy times
+# Ensuring the meeting does not overlap with Albert's busy schedule
 for busy_start, busy_end in albert_busy:
-    solver.add(Or(start_time + meeting_duration <= busy_start, start_time >= busy_end))
+    solver.add(Or(start_time < busy_start, end_time > busy_end))
 
-# Additional constraint: Albert cannot meet after 11:00 (11:00 AM in minutes)
-max_meeting_start_after_11 = 11 * 60 - meeting_duration
-solver.add(start_time <= max_meeting_start_after_11)
+# Ensure Albert doesn't meet after 11 AM
+solver.add(start_time <= albert_latest_meet)
 
-# Check for a solution
+# Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    meeting_start = model[start_time].as_long()
-    meeting_end = meeting_start + meeting_duration
-    print(f"Meeting can be scheduled from {meeting_start // 60:02}:{meeting_start % 60:02} to {meeting_end // 60:02}:{meeting_end % 60:02}")
+    start = model[start_time].as_long()
+    end = model[end_time].as_long()
+    
+    # Convert back to standard time for output
+    start_hour = start // 60
+    start_minute = start % 60
+    end_hour = end // 60
+    end_minute = end % 60
+    
+    print(f"SOLUTION: Meeting on Monday from {start_hour:02}:{start_minute:02} to {end_hour:02}:{end_minute:02}")
 else:
-    print("No available time found for the meeting.")
+    print("No available time slot found.")

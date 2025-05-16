@@ -1,140 +1,78 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, andrea_schedule, ruth_schedule, steven_schedule, grace_schedule, kyle_schedule, elijah_schedule, lori_schedule):
-    # Create Z3 variables for the meeting time
-    andrea_meeting = Int('andrea_meeting')
-    ruth_meeting = Int('ruth_meeting')
-    steven_meeting = Int('steven_meeting')
-    grace_meeting = Int('grace_meeting')
-    kyle_meeting = Int('kyle_meeting')
-    elijah_meeting = Int('elijah_meeting')
-    lori_meeting = Int('lori_meeting')
+# Define the variables
+day = [Monday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+andrea_schedule = [(9, 30, 10, 30), (13, 30, 14, 30)]
+ruth_schedule = [(12, 30, 13), (15, 15, 30)]
+steven_schedule = [(10, 10, 30), (11, 11, 30), (12, 12, 30), (13, 30, 14), (15, 16)]
+grace_schedule = [(9, 17)]  # Grace has no meetings the whole day
+kyle_schedule = [(9, 9, 30), (10, 30, 12), (12, 30, 13), (13, 30, 15), (15, 30, 16), (16, 30, 17)]
+elijah_schedule = [(9, 11), (11, 30, 13), (13, 30, 14), (15, 30, 16), (16, 30, 17)]
+lori_schedule = [(9, 9, 30), (10, 11, 30), (12, 13, 30), (14, 16), (16, 30, 17)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(andrea_meeting >= start_time, andrea_meeting <= end_time),
-        And(ruth_meeting >= start_time, ruth_meeting <= end_time),
-        And(steven_meeting >= start_time, steven_meeting <= end_time),
-        And(grace_meeting >= start_time, grace_meeting <= end_time),
-        And(kyle_meeting >= start_time, kyle_meeting <= end_time),
-        And(elijah_meeting >= start_time, elijah_meeting <= end_time),
-        And(lori_meeting >= start_time, lori_meeting <= end_time),
-        meeting_start == andrea_meeting,
-        meeting_end == andrea_meeting + duration,
-        meeting_start == ruth_meeting,
-        meeting_end == ruth_meeting + duration,
-        meeting_start == steven_meeting,
-        meeting_end == steven_meeting + duration,
-        meeting_start == grace_meeting,
-        meeting_end == grace_meeting + duration,
-        meeting_start == kyle_meeting,
-        meeting_end == kyle_meeting + duration,
-        meeting_start == elijah_meeting,
-        meeting_end == elijah_meeting + duration,
-        meeting_start == lori_meeting,
-        meeting_end == lori_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 0.5
 
-    # Define the constraints for Andrea's schedule
-    andrea_constraints = []
-    for start, end in andrea_schedule:
-        andrea_constraints.extend([
-            Not(And(andrea_meeting >= start, andrea_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(andrea_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for Ruth's schedule
-    ruth_constraints = []
-    for start, end in ruth_schedule:
-        ruth_constraints.extend([
-            Not(And(ruth_meeting >= start, ruth_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(ruth_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the constraints for Steven's schedule
-    steven_constraints = []
-    for start, end in steven_schedule:
-        steven_constraints.extend([
-            Not(And(steven_meeting >= start, steven_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(steven_constraints)
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration * 2)  # Convert meeting duration to hours
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Define the constraints for Grace's schedule
-    grace_constraints = []
-    for start, end in grace_schedule:
-        grace_constraints.extend([
-            Not(And(grace_meeting >= start, grace_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(grace_constraints)
+# Add constraints for Andrea's schedule
+for start, end in andrea_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the constraints for Kyle's schedule
-    kyle_constraints = []
-    for start, end in kyle_schedule:
-        kyle_constraints.extend([
-            Not(And(kyle_meeting >= start, kyle_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(kyle_constraints)
+# Add constraints for Ruth's schedule
+for start, end in ruth_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the constraints for Elijah's schedule
-    elijah_constraints = []
-    for start, end in elijah_schedule:
-        elijah_constraints.extend([
-            Not(And(elijah_meeting >= start, elijah_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(elijah_constraints)
+# Add constraints for Steven's schedule
+for start, end in steven_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the constraints for Lori's schedule
-    lori_constraints = []
-    for start, end in lori_schedule:
-        lori_constraints.extend([
-            Not(And(lori_meeting >= start, lori_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(lori_constraints)
+# Add constraints for Kyle's schedule
+for start, end in kyle_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the solver
-    solver = Solver()
+# Add constraints for Elijah's schedule
+for start, end in elijah_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Add the constraints to the solver
-    solver.add(constraints)
+# Add constraints for Lori's schedule
+for start, end in lori_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Solve the solver
-    result = solver.check()
+# Define the objective function
+solver.minimize(end_var - start_var)
 
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[andrea_meeting].as_long()} - {model[meeting_end].as_long()}")
-    else:
-        print("No solution found")
-
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 30  # 30 minutes
-andrea_schedule = [(9 * 60 + 30, 10 * 60 + 30), (13 * 60 + 30, 14 * 60 + 30)]
-ruth_schedule = [(12 * 60 + 30, 13 * 60), (15 * 60, 15 * 60 + 30)]
-steven_schedule = [(10 * 60, 10 * 60 + 30), (11 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (13 * 60 + 30, 14 * 60), (15 * 60, 16 * 60)]
-grace_schedule = []
-kyle_schedule = [(9 * 60, 9 * 60 + 30), (10 * 60 + 30, 12 * 60), (12 * 60 + 30, 13 * 60), (13 * 60 + 30, 15 * 60), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]
-elijah_schedule = [(9 * 60, 11 * 60), (11 * 60 + 30, 13 * 60), (13 * 60 + 30, 14 * 60), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]
-lori_schedule = [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60 + 30), (12 * 60, 13 * 60 + 30), (14 * 60, 16 * 60), (16 * 60 + 30, 17 * 60)]
-
-schedule_meeting(start_time, end_time, duration, andrea_schedule, ruth_schedule, steven_schedule, grace_schedule, kyle_schedule, elijah_schedule, lori_schedule)
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

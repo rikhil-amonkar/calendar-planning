@@ -1,59 +1,60 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 12
-cities = [
-    "Riga", "Vilnius", "Dublin"
-]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "Riga": 5,
-    "Vilnius": 7,
-    "Dublin": 2
-}
-
-# Define direct flights between the cities
-flights = {
-    "Dublin": ["Riga"],
-    "Riga": ["Vilnius", "Dublin"],
-    "Vilnius": ["Riga"]
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Total days of the trip
+total_days = 12
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Define the days spent in each city
+cities = {
+    'Riga': Int('days_in_riga'),      # 5 days
+    'Vilnius': Int('days_in_vilnius'), # 7 days
+    'Dublin': Int('days_in_dublin'),   # 2 days
+}
 
-# Count the days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Add constraints on days spent in each city
+solver.add(cities['Riga'] == 5)
+solver.add(cities['Vilnius'] == 7)
+solver.add(cities['Dublin'] == 2)
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days must sum to 12
+solver.add(Sum([cities[city] for city in cities]) == total_days)
+
+# Daily city assignments for 12 days (0-2 representing each city)
+days = [Int(f'day_{i}') for i in range(total_days)]
+
+# Ensure daily assignments only use valid city indices
+city_indices = {
+    'Riga': 0,
+    'Vilnius': 1,
+    'Dublin': 2,
+}
+
+for i in range(total_days):
+    solver.add(Or(
+        days[i] == city_indices['Riga'],
+        days[i] == city_indices['Vilnius'],
+        days[i] == city_indices['Dublin'],
+    ))
 
 # Define direct flight connections
-for day in range(total_days - 1):
-    curr_city_index = trip[day]
-    next_city_index = trip[day + 1]
-    curr_city = cities[curr_city_index]
-    next_city = cities[next_city_index]
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
-                    for city in cities for next_city_city in flights[city]]))
+direct_flights = [
+    (2, 0),  # Dublin to Riga
+    (0, 1),  # Riga to Vilnius
+]
 
-# Solve the problem
+# Ensure that flights match the travel plan
+for i in range(total_days - 1):
+    for src, dst in direct_flights:
+        solver.add(If(days[i] == src, days[i + 1] == dst, True))
+
+# Solve the scheduling problem
 if solver.check() == sat:
     model = solver.model()
-    itinerary = []
-    for day in range(total_days):
-        city = cities[model[trip[day]].as_long()]
-        itinerary.append(f"Day {day + 1}: {city}")
-    print("\n".join(itinerary))
+    print("Schedule:")
+    for i in range(total_days):
+        city_code = model[days[i]].as_long()
+        print(f"Day {i + 1}: City code {city_code} (0=Riga, 1=Vilnius, 2=Dublin)")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

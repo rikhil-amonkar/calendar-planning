@@ -1,114 +1,63 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, mary_schedule, alexis_schedule):
-    # Create Z3 variables for the meeting time
-    mary_meeting = Int('mary_meeting')
-    alexis_meeting = Int('alexis_meeting')
+# Define the variables
+day = [Monday, Tuesday, Wednesday, Thursday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+mary_schedule = [(10, 10, 30), (15, 30, 16), (9, 30, 10), (15, 15, 30), (9, 10), (10, 30, 11, 30)]
+alexis_schedule = [(9, 10), (10, 30, 12), (12, 30, 16, 30), (9, 10), (10, 30, 11, 30), (12, 15, 30), (16, 17), (9, 11), (11, 30, 17), (10, 12), (14, 14, 30), (15, 30, 16), (16, 30, 17)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(mary_meeting >= start_time, mary_meeting <= end_time),
-        And(alexis_meeting >= start_time, alexis_meeting <= end_time),
-        meeting_start == mary_meeting,
-        meeting_end == mary_meeting + duration,
-        meeting_start == alexis_meeting,
-        meeting_end == alexis_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 0.5
 
-    # Define the constraints for Mary's schedule
-    mary_constraints = []
-    for day, schedule in mary_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                mary_constraints.extend([
-                    Not(And(mary_meeting >= start, mary_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                mary_constraints.extend([
-                    Not(And(mary_meeting >= start, mary_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                mary_constraints.extend([
-                    Not(And(mary_meeting >= start, mary_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Thursday':
-                mary_constraints.extend([
-                    Not(And(mary_meeting >= start, mary_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-    constraints.extend(mary_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for Alexis's schedule
-    alexis_constraints = []
-    for day, schedule in alexis_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                alexis_constraints.extend([
-                    Not(And(alexis_meeting >= start, alexis_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                alexis_constraints.extend([
-                    Not(And(alexis_meeting >= start, alexis_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                alexis_constraints.extend([
-                    Not(And(alexis_meeting >= start, alexis_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Thursday':
-                alexis_constraints.extend([
-                    Not(And(alexis_meeting >= start, alexis_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-    constraints.extend(alexis_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the solver
-    solver = Solver()
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration * 2)  # Convert meeting duration to hours
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Add the constraints to the solver
-    solver.add(constraints)
+# Add constraints for Mary's schedule
+for start, end in mary_schedule:
+    if day == Monday:
+        solver.add(day_var!= day)
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Solve the solver
-    result = solver.check()
+# Add constraints for Alexis's schedule
+for start, end in alexis_schedule:
+    if day == Monday:
+        solver.add(day_var!= day)
+    elif day == Tuesday:
+        solver.add(start_var > 15, 30)
+    elif day == Wednesday:
+        solver.add(start_var > 11)
+    elif day == Thursday:
+        solver.add(start_var > 10)
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[mary_meeting].as_long()} - {model[meeting_end].as_long()}")
-    else:
-        print("No solution found")
+# Define the objective function
+solver.minimize(start_var)
 
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 30  # 30 minutes
-mary_schedule = {
-    'Tuesday': [(10 * 60, 10 * 60 + 30), (15 * 60 + 30, 16 * 60)],
-    'Wednesday': [(9 * 60 + 30, 10 * 60), (15 * 60, 15 * 60 + 30)],
-    'Thursday': [(9 * 60, 10 * 60), (10 * 60 + 30, 11 * 60 + 30)],
-}
-alexis_schedule = {
-    'Monday': [(9 * 60, 10 * 60), (10 * 60 + 30, 12 * 60), (12 * 60 + 30, 16 * 60 + 30)],
-    'Tuesday': [(9 * 60, 10 * 60), (10 * 60 + 30, 11 * 60 + 30), (12 * 60, 15 * 60 + 30), (16 * 60, 17 * 60)],
-    'Wednesday': [(9 * 60, 11 * 60), (11 * 60 + 30, 17 * 60)],
-    'Thursday': [(10 * 60, 12 * 60), (14 * 60, 14 * 60 + 30), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],
-}
-
-schedule_meeting(start_time, end_time, duration, mary_schedule, alexis_schedule)
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

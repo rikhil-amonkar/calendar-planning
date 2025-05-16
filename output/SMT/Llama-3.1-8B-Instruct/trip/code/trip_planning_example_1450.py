@@ -1,64 +1,91 @@
 from z3 import *
 
-def schedule_trip():
-    # Define the cities
-    cities = ['Stockholm', 'Hamburg', 'Florence', 'Istanbul', 'Oslo', 'Vilnius', 'Santorini', 'Munich', 'Frankfurt', 'Krakow']
+# Define the cities
+cities = ['Stockholm', 'Hamburg', 'Florence', 'Istanbul', 'Oslo', 'Vilnius', 'Santorini', 'Munich', 'Frankfurt', 'Krakow']
 
-    # Define the days
-    days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+# Define the days
+days = range(1, 33)
 
-    # Define the direct flights
-    direct_flights = {
-        ('Oslo', 'Stockholm'): 1,
-        ('Krakow', 'Frankfurt'): 1,
-        ('Krakow', 'Istanbul'): 1,
-        ('Munich', 'Stockholm'): 1,
-        ('Hamburg', 'Stockholm'): 1,
-        ('Krakow', 'Vilnius'): 1,
-        ('Oslo', 'Istanbul'): 1,
-        ('Istanbul', 'Stockholm'): 1,
-        ('Oslo', 'Krakow'): 1,
-        ('Vilnius', 'Istanbul'): 1,
-        ('Oslo', 'Vilnius'): 1,
-        ('Frankfurt', 'Istanbul'): 1,
-        ('Oslo', 'Frankfurt'): 1,
-        ('Munich', 'Hamburg'): 1,
-        ('Munich', 'Istanbul'): 1,
-        ('Oslo', 'Munich'): 1,
-        ('Frankfurt', 'Florence'): 1,
-        ('Oslo', 'Hamburg'): 1,
-        ('Vilnius', 'Frankfurt'): 1,
-        ('Florence', 'Munich'): 1,
-        ('Santorini', 'Oslo'): 1,
-        ('Frankfurt', 'Munich'): 1,
-    }
+# Define the direct flights
+flights = {
+    ('Oslo', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Krakow', 'Frankfurt'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Krakow', 'Istanbul'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Munich', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Hamburg', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Krakow', 'Vilnius'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Oslo', 'Istanbul'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Istanbul', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Oslo', 'Krakow'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Vilnius', 'Istanbul'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Oslo', 'Vilnius'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Santorini', 'Oslo'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Munich', 'Hamburg'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Munich', 'Istanbul'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Oslo', 'Munich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Frankfurt', 'Istanbul'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Oslo', 'Frankfurt'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Florence', 'Munich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Istanbul', 'Munich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Krakow', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Santorini', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Munich', 'Santorini'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Hamburg', 'Santorini'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Oslo', 'Santorini'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Munich', 'Hamburg'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Munich', 'Santorini'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Hamburg', 'Santorini'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
+    ('Oslo', 'Santorini'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+}
 
-    # Define the constraints
-    constraints = []
+# Define the constraints
+solver = Solver()
+
+# Define the variables
+x = {city: [Bool(f'{city}_day_{day}') for day in days] for city in cities}
+
+# Constraints for conference
+for day in [25, 26, 27, 28, 29]:
+    solver.add(Not(x['Istanbul'][day]))
+
+# Constraints for staying in each city
+for city in cities:
     for day in days:
-        for city1 in cities:
-            for city2 in cities:
-                if city1!= city2:
-                    constraints.append(Not(And(day >= 1, day <= 32, city1 in cities, city2 in cities, (city1, city2) in direct_flights)))
+        if city == 'Stockholm' and (day >= 1 and day <= 3):
+            solver.add(x[city][day])
+        elif city == 'Hamburg' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Florence' and (day >= 1 and day <= 2):
+            solver.add(x[city][day])
+        elif city == 'Istanbul' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Oslo' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Vilnius' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Santorini' and (day >= 1 and day <= 2):
+            solver.add(x[city][day])
+        elif city == 'Munich' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
+        elif city == 'Frankfurt' and (day >= 1 and day <= 4):
+            solver.add(x[city][day])
+        elif city == 'Krakow' and (day >= 1 and day <= 5):
+            solver.add(x[city][day])
 
-    # Define the solver
-    solver = Solver()
+# Constraints for direct flights
+for (city1, city2), days in flights.items():
+    for day in days:
+        solver.add(Implies(x[city1][day], x[city2][day]))
 
-    # Add the constraints to the solver
-    solver.add(constraints)
-
-    # Solve the solver
-    result = solver.check()
-
-    # If the solver found a solution, print the trip plan
-    if result == sat:
-        model = solver.model()
-        trip_plan = []
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    trip_plan = {}
+    for city in cities:
+        trip_plan[city] = []
         for day in days:
-            trip_plan.append(model[('city', day).as_long()])
-        print(trip_plan)
-    else:
-        print("No solution found")
-
-# Example usage
-schedule_trip()
+            if model[x[city][day]]:
+                trip_plan[city].append(day)
+    print(trip_plan)
+else:
+    print("No solution exists")
