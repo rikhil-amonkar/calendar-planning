@@ -166,6 +166,7 @@ def main():
                     "You are a AI trip planner and your task is to plan a trip for a user. "
                     "Please provide a detailed trip itinerary with day ranges and places only. "
                     "Do not include any flying information or transportation details. "
+                    "Note that if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city."
                     f"{prompt}\n\n"
                     "Provide your response in the following exact JSON format:\n"
                     "{\n"
@@ -243,7 +244,7 @@ def main():
                 output_line = (
                     f"{example_id}. [{timestamp}] | {prompt_type} | Correct: {is_correct} | "
                     f"ANSWER: {model_display} | EXPECTED: {golden_display} | "
-                    f"TOKEN COUNT: {token_count}\n"
+                    f"TOKEN COUNT: {token_count}"
                 )
                 print(output_line)
                 txt_file.write(f"{output_line}\n")
