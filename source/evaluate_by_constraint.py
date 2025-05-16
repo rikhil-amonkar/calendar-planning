@@ -110,6 +110,7 @@ def evaluate_meeting(constraints, pred_dict):
     people = {p["name"]: p for p in constraints.get("people_to_meet", [])}
     start_location = constraints.get("start", {}).get("location")
     start_time = constraints.get("start", {}).get("time_of_day")
+    num_people_to_meet = constraints.get("num_people_to_meet", 0)
 
     # parse predicted meetings
     meetings = []
@@ -120,6 +121,8 @@ def evaluate_meeting(constraints, pred_dict):
         loc   = people.get(name, {}).get("location")
         meetings.append({"person": name, "start": start, "end": end, "location": loc})
 
+    if len(meetings) < num_people_to_meet:
+        return False, {"num_people_to_meet": num_people_to_meet}
     # sort chronologically
     meetings.sort(key=lambda x: x["start"])
 
@@ -250,6 +253,12 @@ for task in tasks:
             no_error_count += 1
             status = "No plan"
         else:
+            no_error_count += 1
+            has_plan_count += 1
+            # Get constraints for this example
+            example_constraints = constraints_data.get(example_id, {}).get("constraints", {})
+
+            # Special handling for meeting
             if task == "meeting":
                 itinerary = pred_dict.get("itinerary")
                 itinerary = [{
@@ -260,10 +269,9 @@ for task in tasks:
                             } for x in itinerary]
                 itinerary.sort(key=lambda x: x["start_time"])
                 pred_dict = {"itinerary": itinerary}
-            no_error_count += 1
-            has_plan_count += 1
-            # Get constraints for this example
-            example_constraints = constraints_data.get(example_id, {}).get("constraints", {})
+                # For meeting, use the number of people to meet in the gold solution as a constraint
+                num_people_to_meet = len(gold_dict.get("itinerary", []))
+                example_constraints["num_people_to_meet"] = num_people_to_meet
             
             # Evaluate if prediction satisfies constraints
             is_pass, violated_constraint = eval_func(example_constraints, pred_dict)
