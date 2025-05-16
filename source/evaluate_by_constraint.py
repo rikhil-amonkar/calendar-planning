@@ -21,7 +21,10 @@ def evaluate_calendar(constraints, pred_dict):
     # Convert time strings to numerical values
     if isinstance(pred_start, str):
         pred_start_parts = pred_start.split(":")
-        pred_start = float(pred_start_parts[0]) + float(pred_start_parts[1]) / 60
+        try:
+            pred_start = float(pred_start_parts[0]) + float(pred_start_parts[1]) / 60
+        except ValueError:
+            return False, {"unparsable": True}
     if isinstance(pred_end, str):
         pred_end_parts = pred_end.split(":")
         pred_end = float(pred_end_parts[0]) + float(pred_end_parts[1]) / 60
@@ -105,6 +108,9 @@ def evaluate_meeting(constraints, pred_dict):
 
     # build map person→availability & location
     people = {p["name"]: p for p in constraints.get("people_to_meet", [])}
+    start_location = constraints.get("start", {}).get("location")
+    start_time = constraints.get("start", {}).get("time_of_day")
+    num_people_to_meet = constraints.get("num_people_to_meet", 0)
 
     # parse predicted meetings
     meetings = []
@@ -115,6 +121,8 @@ def evaluate_meeting(constraints, pred_dict):
         loc   = people.get(name, {}).get("location")
         meetings.append({"person": name, "start": start, "end": end, "location": loc})
 
+    if len(meetings) < num_people_to_meet:
+        return False, {"num_people_to_meet": num_people_to_meet}
     # sort chronologically
     meetings.sort(key=lambda x: x["start"])
 
@@ -137,7 +145,27 @@ def evaluate_meeting(constraints, pred_dict):
         to  = pl["to"]
         travel[(frm, to)] = d["walking_time"]
 
-    # check each consecutive pair
+    # 3) check start‐to‐first meeting
+    # parse start time
+    if start_time:
+        st = parse_time(start_time)
+        first = meetings[0]
+        # 0a) meeting must not start before you arrive
+        if first["start"] < st:
+            return False, {"start_time": start_time}
+        # 0b) travel from start_location
+        walk0 = travel.get((start_location, first["location"]))
+        gap0 = (first["start"] - st).total_seconds() / 60
+        if walk0 is not None and walk0 > gap0:
+            return False, {
+                "travel_start": {
+                    "to_person":   first["person"],
+                    "to_location": first["location"],
+                    "travel_time": walk0
+                }
+            }
+
+    # 3) check following meetings
     for a, b in zip(meetings, meetings[1:]):
         gap_mins = (b["start"] - a["end"]).total_seconds() / 60
         walk     = travel.get((a["location"], b["location"]))
@@ -217,6 +245,7 @@ for task in tasks:
         # Extract prediction from the formatted output
         entry = output_data.get("0shot", [{}])[0]
         pred_dict = entry.get("final_program_time")
+        gold_dict = entry.get("expected_time")
         total_count += 1
         if entry.get("has_error"):
             status = "Error"
@@ -228,6 +257,21 @@ for task in tasks:
             has_plan_count += 1
             # Get constraints for this example
             example_constraints = constraints_data.get(example_id, {}).get("constraints", {})
+
+            # Special handling for meeting
+            if task == "meeting":
+                itinerary = pred_dict.get("itinerary")
+                itinerary = [{
+                                "action": x["action"],
+                                "person": x["person"],
+                                "start_time": x["start_time"],
+                                "end_time": x["end_time"]
+                            } for x in itinerary]
+                itinerary.sort(key=lambda x: x["start_time"])
+                pred_dict = {"itinerary": itinerary}
+                # For meeting, use the number of people to meet in the gold solution as a constraint
+                num_people_to_meet = len(gold_dict.get("itinerary", []))
+                example_constraints["num_people_to_meet"] = num_people_to_meet
             
             # Evaluate if prediction satisfies constraints
             is_pass, violated_constraint = eval_func(example_constraints, pred_dict)
@@ -238,9 +282,10 @@ for task in tasks:
                 status = "Wrong plan"
         example_result[example_id] = {
             "pred": pred_dict,
-            "gold": entry.get("expected_time"),
+            "gold": gold_dict,
             "status": status,
             "violated_constraint": violated_constraint,
+            "is_exact_match": pred_dict == gold_dict,
             #"constraints": example_constraints,
         }
     

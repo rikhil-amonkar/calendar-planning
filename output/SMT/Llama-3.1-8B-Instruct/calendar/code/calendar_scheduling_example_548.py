@@ -1,72 +1,56 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, judy_schedule, nicole_schedule, nicole_prefer_after):
-    # Create Z3 variables for the meeting time
-    judy_meeting = Int('judy_meeting')
-    nicole_meeting = Int('nicole_meeting')
+# Define the variables
+day = [Monday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+judy_schedule = [(9, 17)]  # Judy is free the entire day
+nicole_schedule = [(9, 10), (10, 30, 16, 30)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(judy_meeting >= start_time, judy_meeting <= end_time),
-        And(nicole_meeting >= start_time, nicole_meeting <= end_time),
-        meeting_start == judy_meeting,
-        meeting_end == judy_meeting + duration,
-        meeting_start == nicole_meeting,
-        meeting_end == nicole_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 0.5
 
-    # Define the constraints for Judy's schedule
-    judy_constraints = []
-    for start, end in judy_schedule:
-        judy_constraints.extend([
-            Not(And(judy_meeting >= start, judy_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(judy_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for Nicole's schedule
-    nicole_constraints = []
-    for start, end in nicole_schedule:
-        nicole_constraints.extend([
-            Not(And(nicole_meeting >= start, nicole_meeting < end)),
-            Not(And(meeting_start >= start, meeting_start < end)),
-            Not(And(meeting_end > start, meeting_end <= end)),
-        ])
-    constraints.extend(nicole_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the constraint for Nicole preferring to meet after 16:00
-    nicole_prefer_after_constraints = [
-        Not(And(nicole_meeting >= 16 * 60, nicole_meeting < 17 * 60)),
-    ]
-    constraints.extend(nicole_prefer_after_constraints)
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration * 2)  # Convert meeting duration to hours
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Define the solver
-    solver = Solver()
+# Add constraints for Judy's schedule
+for start, end in judy_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Add the constraints to the solver
-    solver.add(constraints)
+# Add constraints for Nicole's schedule
+for start, end in nicole_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Solve the solver
-    result = solver.check()
+# Add constraint for Nicole's preference
+solver.add(start_var >= 16, day_var == 0)  # Nicole would rather not meet on Monday before 16:00
 
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[judy_meeting].as_long()} - {model[meeting_end].as_long()}")
-    else:
-        print("No solution found")
+# Define the objective function
+solver.minimize(end_var - start_var)
 
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 30  # 30 minutes
-judy_schedule = []
-nicole_schedule = [(9 * 60, 10 * 60), (10 * 60 + 30, 16 * 60 + 30)]
-nicole_prefer_after = True
-
-schedule_meeting(start_time, end_time, duration, judy_schedule, nicole_schedule, nicole_prefer_after)
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

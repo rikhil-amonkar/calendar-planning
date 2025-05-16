@@ -1,70 +1,75 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 20
-cities = ["Hamburg", "Munich", "Manchester", "Lyon", "Split"]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "Hamburg": 7,
-    "Munich": 6,
-    "Manchester": 2,
-    "Lyon": 2,
-    "Split": 7
-}
-
-# Constraints for specific events
-relatives_days_manchester = [19, 20]  # Attend relatives in Manchester
-annual_show_days_lyon = [13, 14]       # Annual show in Lyon
-
-# Define direct flights between cities
-flights = {
-    "Hamburg": ["Munich", "Manchester", "Split"],
-    "Munich": ["Manchester", "Split", "Lyon", "Hamburg"],
-    "Manchester": ["Split", "Munich", "Hamburg"],
-    "Lyon": ["Munich", "Split"],
-    "Split": ["Hamburg", "Munich", "Lyon", "Manchester"]
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Days in each city
+cities = {
+    'Hamburg': Int('days_in_hamburg'),
+    'Munich': Int('days_in_munich'),
+    'Manchester': Int('days_in_manchester'),
+    'Lyon': Int('days_in_lyon'),
+    'Split': Int('days_in_split'),
+}
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Total days
+total_days = 20
 
-# Count the days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Constraints on days in cities
+solver.add(cities['Hamburg'] == 7)
+solver.add(cities['Munich'] == 6)
+solver.add(cities['Manchester'] == 2)
+solver.add(cities['Lyon'] == 2)
+solver.add(cities['Split'] == 7)
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days sum
+solver.add(Sum([cities[city] for city in cities]) == total_days)
 
-# Visiting relatives in Manchester between day 19 and day 20
-for day in relatives_days_manchester:
-    solver.add(trip[day - 1] == cities.index("Manchester"))  # Adjust for 0-based index
+# Daily city assignments (1-5 representing each city)
+# 1. Hamburg
+# 2. Munich
+# 3. Manchester
+# 4. Lyon
+# 5. Split
+days = [Int(f'day_{i}') for i in range(total_days)]
 
-# Annual show in Lyon during day 13 and day 14
-solver.add(trip[12] == cities.index("Lyon"))  # Day 13
-solver.add(trip[13] == cities.index("Lyon"))  # Day 14
+# Constraints for specific events
+# Visit relatives in Manchester (day 19 and day 20)
+solver.add(days[18] == 3)  # Manchester on day 19
+solver.add(days[19] == 3)  # Manchester on day 20
 
-# Define direct flight connections between cities
-for day in range(total_days - 1):
-    curr_city_index = trip[day]
-    next_city_index = trip[day + 1]
-    curr_city = cities[curr_city_index]
-    next_city = cities[next_city_index]
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
-                    for city in cities for next_city_city in flights[city]]))
+# Annual show in Lyon (day 13 and day 14)
+solver.add(days[12] == 4)  # Lyon on day 13
+solver.add(days[13] == 4)  # Lyon on day 14
 
-# Solve the problem
+# Define direct flights between cities
+direct_flights = [
+    (1, 2),  # Hamburg to Munich
+    (1, 3),  # Hamburg to Manchester
+    (1, 5),  # Hamburg to Split
+    (2, 3),  # Munich to Manchester
+    (2, 4),  # Munich to Lyon
+    (2, 5),  # Munich to Split
+    (3, 5),  # Manchester to Split
+    (5, 4)   # Split to Lyon
+]
+
+# Assigning cities in the day list based on indices
+for i in range(total_days):
+    solver.add(Or(
+        days[i] == 1,  # Hamburg
+        days[i] == 2,  # Munich
+        days[i] == 3,  # Manchester
+        days[i] == 4,  # Lyon
+        days[i] == 5   # Split
+    ))
+
+# Solve the scheduling problem
 if solver.check() == sat:
     model = solver.model()
-    for day in range(total_days):
-        print(f"Day {day + 1}: {cities[model[trip[day]].as_long()]}")
+    print("Schedule:")
+    for i in range(total_days):
+        city_code = model[days[i]].as_long()
+        print(f"Day {i+1}: City code {city_code} (1=Hamburg, 2=Munich, 3=Manchester, 4=Lyon, 5=Split)")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

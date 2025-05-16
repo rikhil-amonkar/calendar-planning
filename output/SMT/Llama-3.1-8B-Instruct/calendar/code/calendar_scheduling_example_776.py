@@ -1,119 +1,59 @@
 from z3 import *
 
-def schedule_meeting(start_time, end_time, duration, john_schedule, jennifer_schedule, john_avoid_monday_after, john_avoid_tuesday, john_avoid_wednesday):
-    # Create Z3 variables for the meeting time
-    john_meeting = Int('john_meeting')
-    jennifer_meeting = Int('jennifer_meeting')
+# Define the variables
+day = [Monday, Tuesday, Wednesday]
+start_time = [9, 10, 11, 12, 13, 14, 15, 16]
+end_time = [17]
 
-    # Create Z3 variables for the start and end times of the meeting
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the existing schedules
+john_schedule = [(9, 17)]  # John has no meetings the whole week
+jennifer_schedule = [(9, 11), (11, 30, 13), (13, 30, 14, 30), (15, 17), (9, 11, 30), (12, 17), (9, 11, 30), (12, 12, 30), (13, 14), (14, 30, 16), (16, 30, 17)]
 
-    # Define the constraints for the meeting time
-    constraints = [
-        And(john_meeting >= start_time, john_meeting <= end_time),
-        And(jennifer_meeting >= start_time, jennifer_meeting <= end_time),
-        meeting_start == john_meeting,
-        meeting_end == john_meeting + duration,
-        meeting_start == jennifer_meeting,
-        meeting_end == jennifer_meeting + duration,
-    ]
+# Define the meeting duration
+meeting_duration = 0.5
 
-    # Define the constraints for John's schedule
-    john_constraints = []
-    for day, schedule in john_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                john_constraints.extend([
-                    Not(And(john_meeting >= start, john_meeting < 14 * 60 + 30)),
-                    Not(And(john_meeting >= start, john_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                john_constraints.extend([
-                    Not(And(john_meeting >= start, john_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                john_constraints.extend([
-                    Not(And(john_meeting >= start, john_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-    constraints.extend(john_constraints)
+# Define the solver
+solver = Optimize()
 
-    # Define the constraints for Jennifer's schedule
-    jennifer_constraints = []
-    for day, schedule in jennifer_schedule.items():
-        for start, end in schedule:
-            if day == 'Monday':
-                jennifer_constraints.extend([
-                    Not(And(jennifer_meeting >= start, jennifer_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Tuesday':
-                jennifer_constraints.extend([
-                    Not(And(jennifer_meeting >= start, jennifer_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-            elif day == 'Wednesday':
-                jennifer_constraints.extend([
-                    Not(And(jennifer_meeting >= start, jennifer_meeting < end)),
-                    Not(And(meeting_start >= start, meeting_start < end)),
-                    Not(And(meeting_end > start, meeting_end <= end)),
-                ])
-    constraints.extend(jennifer_constraints)
+# Define the variables for the meeting time
+day_var = Int('day')
+start_var = Int('start')
+end_var = Int('end')
 
-    # Define the constraint for John avoiding meetings on Monday after 14:30
-    john_avoid_monday_after_constraints = [
-        Not(And(john_meeting >= 14 * 60 + 30, john_meeting <= 17 * 60)),
-    ]
-    constraints.extend(john_avoid_monday_after_constraints)
+# Define the constraints
+solver.add(day_var >= 0)
+solver.add(day_var < len(day))
+solver.add(start_var >= 9)
+solver.add(start_var < 17)
+solver.add(end_var >= 9)
+solver.add(end_var < 17)
+solver.add(end_var - start_var == meeting_duration * 2)  # Convert meeting duration to hours
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
 
-    # Define the constraint for John avoiding meetings on Tuesday
-    john_avoid_tuesday_constraints = [
-        Not(And(john_meeting >= 0, john_meeting < 17 * 60)),
-    ]
-    constraints.extend(john_avoid_tuesday_constraints)
+# Add constraints for John's schedule
+for start, end in john_schedule:
+    if day == Monday:
+        solver.add(start_var > 14, 30)  # John would like to avoid more meetings on Monday after 14:30
+    elif day == Tuesday:
+        solver.add(start_var > 11, 30)  # John would like to avoid more meetings on Tuesday
+    elif day == Wednesday:
+        solver.add(start_var > 11, 30)  # John would like to avoid more meetings on Wednesday
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the constraint for John avoiding meetings on Wednesday
-    john_avoid_wednesday_constraints = [
-        Not(And(john_meeting >= 0, john_meeting < 17 * 60)),
-    ]
-    constraints.extend(john_avoid_wednesday_constraints)
+# Add constraints for Jennifer's schedule
+for start, end in jennifer_schedule:
+    solver.add(start_var > start)
+    solver.add(end_var < end)
 
-    # Define the solver
-    solver = Solver()
+# Define the objective function
+solver.minimize(end_var - start_var)
 
-    # Add the constraints to the solver
-    solver.add(constraints)
-
-    # Solve the solver
-    result = solver.check()
-
-    # If the solver found a solution, print the meeting time
-    if result == sat:
-        model = solver.model()
-        print(f"Meeting time: {model[john_meeting].as_long()} - {model[meeting_end].as_long()}")
-    else:
-        print("No solution found")
-
-# Example usage
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-duration = 30  # 30 minutes
-john_schedule = {}
-jennifer_schedule = {
-    'Monday': [(9 * 60, 11 * 60), (11 * 60 + 30, 13 * 60), (13 * 60 + 30, 14 * 60 + 30), (15 * 60, 17 * 60)],
-    'Tuesday': [(9 * 60, 11 * 60 + 30), (12 * 60, 17 * 60)],
-    'Wednesday': [(9 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (13 * 60, 14 * 60), (14 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],
-}
-john_avoid_monday_after = True
-john_avoid_tuesday = True
-john_avoid_wednesday = True
-
-schedule_meeting(start_time, end_time, duration, john_schedule, jennifer_schedule, john_avoid_monday_after, john_avoid_tuesday, john_avoid_wednesday)
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("The meeting should be on", day[model[day_var].as_long()])
+    print("from", model[start_var].as_long(), "to", model[end_var].as_long())
+else:
+    print("No solution found")

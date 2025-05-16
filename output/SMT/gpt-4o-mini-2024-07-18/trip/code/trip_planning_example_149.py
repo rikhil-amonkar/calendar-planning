@@ -1,69 +1,66 @@
 from z3 import *
 
-# Define the number of days and cities
-total_days = 10
-cities = [
-    "London", "Santorini", "Istanbul"
-]
-
-# Days assigned to each city with constraints
-stay_duration = {
-    "London": 3,
-    "Santorini": 6,
-    "Istanbul": 3
-}
-
-# Constraints for specific events
-conference_days_santorini = [5, 10]  # Conferences in Santorini on day 5 and day 10
-
-# Define direct flights between the cities
-flights = {
-    "Istanbul": ["London"],
-    "London": ["Istanbul", "Santorini"],
-    "Santorini": ["London"]
-}
-
-# Initialize the Z3 solver
+# Create a Z3 solver instance
 solver = Solver()
 
-# Create variables for each day of the trip
-trip = [Int(f'day_{i + 1}') for i in range(total_days)]
+# Total days of the trip
+total_days = 10
 
-# Each day must refer to one of the cities
-for day in trip:
-    solver.add(Or([day == cities.index(city) for city in cities]))
+# Define the days spent in each city
+cities = {
+    'London': Int('days_in_london'),       # 3 days
+    'Santorini': Int('days_in_santorini'), # 6 days
+    'Istanbul': Int('days_in_istanbul'),   # 3 days
+}
 
-# Count the days spent in each city
-city_count = {city: Sum([If(trip[day] == cities.index(city), 1, 0) for day in range(total_days)]) for city in cities}
+# Add constraints on days spent in each city
+solver.add(cities['London'] == 3)
+solver.add(cities['Santorini'] == 6)
+solver.add(cities['Istanbul'] == 3)
 
-# Enforce stay durations
-for city, duration in stay_duration.items():
-    solver.add(city_count[city] == duration)
+# Total days must sum to 10
+solver.add(Sum([cities[city] for city in cities]) == total_days)
 
-# Attend conferences in Santorini on days 5 and 10
-for day in conference_days_santorini:
-    solver.add(trip[day - 1] == cities.index("Santorini"))  # Adjust for 0-based index
+# Daily city assignments for 10 days (0-2 representing each city)
+days = [Int(f'day_{i}') for i in range(total_days)]
+
+# Constraints for specific events
+# Attend a conference in Santorini (on day 5 and day 10)
+solver.add(days[4] == 1)  # Santorini (index 1) on day 5
+solver.add(days[9] == 1)  # Santorini (index 1) on day 10
+
+# Define valid city indices
+city_indices = {
+    'London': 0,
+    'Santorini': 1,
+    'Istanbul': 2,
+}
+
+# Ensure daily assignments only use valid city indices
+for i in range(total_days):
+    solver.add(Or(
+        days[i] == city_indices['London'],
+        days[i] == city_indices['Santorini'],
+        days[i] == city_indices['Istanbul'],
+    ))
 
 # Define direct flight connections
-for day in range(total_days - 1):
-    curr_city_index = trip[day]
-    next_city_index = trip[day + 1]
-    curr_city = cities[curr_city_index]
-    next_city = cities[next_city_index]
-    
-    # If transitioning from one city to another, it must be a valid flight
-    solver.add(Or([
-        And(curr_city_index == cities.index(city), next_city_index == cities.index(next_city_city))
-        for city in cities for next_city_city in flights[city]
-    ]))
+direct_flights = [
+    (0, 1),  # London to Santorini
+    (2, 0),  # Istanbul to London
+]
 
-# Solve the problem
+# Add constraints based on direct flights
+for i in range(total_days - 1):
+    for src, dst in direct_flights:
+        solver.add(If(days[i] == src, days[i + 1] == dst, True))
+
+# Solve the scheduling problem
 if solver.check() == sat:
     model = solver.model()
-    itinerary = []
-    for day in range(total_days):
-        city = cities[model[trip[day]].as_long()]
-        itinerary.append(f"Day {day + 1}: {city}")
-    print("\n".join(itinerary))
+    print("Schedule:")
+    for i in range(total_days):
+        city_code = model[days[i]].as_long()
+        print(f"Day {i + 1}: City code {city_code} (0=London, 1=Santorini, 2=Istanbul)")
 else:
-    print("No valid trip plan found.")
+    print("No solution found.")

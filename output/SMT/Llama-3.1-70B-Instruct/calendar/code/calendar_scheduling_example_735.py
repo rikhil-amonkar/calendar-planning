@@ -1,68 +1,63 @@
 from z3 import *
 
-# Define the time slots
-start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60  # 17:00 in minutes
-meeting_duration = 30  # 0.5 hours in minutes
+# Define the variables
+Day = Int('Day')
+StartTime = Int('StartTime')
+EndTime = Int('EndTime')
 
-# Define the existing schedules for Ronald and Amber
-ronald_schedule_monday = [(10 * 60 + 30, 11 * 60), (12 * 60, 12 * 60 + 30), (15 * 60 + 30, 16 * 60)]
-ronald_schedule_tuesday = [(9 * 60, 9 * 60 + 30), (12 * 60, 12 * 60 + 30), (15 * 60 + 30, 16 * 60 + 30)]
-ronald_schedule_wednesday = [(9 * 60 + 30, 10 * 60 + 30), (11 * 60, 12 * 60), (12 * 60 + 30, 13 * 60), (13 * 60 + 30, 14 * 60), (16 * 60 + 30, 17 * 60)]
+# Define the constraints
+s = Solver()
 
-amber_schedule_monday = [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (11 * 60 + 30, 12 * 60), (12 * 60 + 30, 14 * 60), (14 * 60 + 30, 15 * 60), (15 * 60 + 30, 17 * 60)]
-amber_schedule_tuesday = [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (13 * 60 + 30, 15 * 60 + 30), (16 * 60 + 30, 17 * 60)]
-amber_schedule_wednesday = [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (11 * 60, 13 * 60 + 30), (15 * 60, 15 * 60 + 30)]
+# Existing schedule of Ronald
+s.add(Or(Day!= 1, StartTime!= 10*60 + 30))
+s.add(Or(Day!= 1, StartTime!= 12*60))
+s.add(Or(Day!= 1, StartTime!= 15*60 + 30))
+s.add(Or(Day!= 2, StartTime!= 9*60))
+s.add(Or(Day!= 2, StartTime!= 12*60))
+s.add(Or(Day!= 2, StartTime!= 15*60 + 30))
+s.add(Or(Day!= 3, StartTime!= 9*60 + 30))
+s.add(Or(Day!= 3, StartTime!= 11*60))
+s.add(Or(Day!= 3, StartTime!= 12*60 + 30))
+s.add(Or(Day!= 3, StartTime!= 13*60 + 30))
+s.add(Or(Day!= 3, StartTime!= 16*60 + 30))
 
-# Create a Z3 solver
-solver = Solver()
+# Existing schedule of Amber
+s.add(Or(Day!= 1, StartTime!= 9*60))
+s.add(Or(Day!= 1, StartTime!= 10*60))
+s.add(Or(Day!= 1, StartTime!= 11*60 + 30))
+s.add(Or(Day!= 1, StartTime!= 12*60 + 30))
+s.add(Or(Day!= 1, StartTime!= 14*60 + 30))
+s.add(Or(Day!= 1, StartTime!= 15*60 + 30))
+s.add(Or(Day!= 2, StartTime!= 9*60))
+s.add(Or(Day!= 2, StartTime!= 10*60))
+s.add(Or(Day!= 2, StartTime!= 12*60))
+s.add(Or(Day!= 2, StartTime!= 13*60 + 30))
+s.add(Or(Day!= 2, StartTime!= 16*60 + 30))
+s.add(Or(Day!= 3, StartTime!= 9*60))
+s.add(Or(Day!= 3, StartTime!= 10*60))
+s.add(Or(Day!= 3, StartTime!= 11*60))
+s.add(Or(Day!= 3, StartTime!= 15*60))
 
-# Create Z3 variables to represent the day and start time of the meeting
-meeting_day = Int('meeting_day')  # 0 for Monday, 1 for Tuesday, 2 for Wednesday
-meeting_start = Int('meeting_start')
+# Meeting duration
+s.add(EndTime - StartTime == 30)
 
-# Add constraints to ensure the meeting day is either Monday, Tuesday or Wednesday
-solver.add(And(meeting_day >= 0, meeting_day <= 2))
+# Work hours
+s.add(StartTime >= 9*60)
+s.add(StartTime < 17*60)
 
-# Add constraints to ensure the meeting start time is within the work hours
-solver.add(And(meeting_start >= start_time, meeting_start <= end_time - meeting_duration))
+# Day constraints
+s.add(Day >= 1)  # Monday
+s.add(Day <= 3)  # Wednesday
 
-# Add constraints to avoid Ronald's schedule on Monday
-for start, end in ronald_schedule_monday:
-    solver.add(Or(Not(And(meeting_day == 0, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 0)))
+# Find the earliest time
+s.add(StartTime < 1000)  # Large number
 
-# Add constraints to avoid Ronald's schedule on Tuesday
-for start, end in ronald_schedule_tuesday:
-    solver.add(Or(Not(And(meeting_day == 1, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 1)))
-
-# Add constraints to avoid Ronald's schedule on Wednesday
-for start, end in ronald_schedule_wednesday:
-    solver.add(Or(Not(And(meeting_day == 2, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 2)))
-
-# Add constraints to avoid Amber's schedule on Monday
-for start, end in amber_schedule_monday:
-    solver.add(Or(Not(And(meeting_day == 0, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 0)))
-
-# Add constraints to avoid Amber's schedule on Tuesday
-for start, end in amber_schedule_tuesday:
-    solver.add(Or(Not(And(meeting_day == 1, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 1)))
-
-# Add constraints to avoid Amber's schedule on Wednesday
-for start, end in amber_schedule_wednesday:
-    solver.add(Or(Not(And(meeting_day == 2, meeting_start + meeting_duration <= start, meeting_start >= end)), Not(meeting_day == 2)))
-
-# Add constraint to schedule the meeting at the earliest availability
-min_start_time = Int('min_start_time')
-solver.add(min_start_time == meeting_start)
-solver.minimize(min_start_time)
-
-# Check if the solver can find a solution
-if solver.check() == sat:
-    # Get the solution
-    model = solver.model()
-    meeting_day_value = model[meeting_day].as_long()
-    meeting_start_time = model[meeting_start].as_long()
-    day = ["Monday", "Tuesday", "Wednesday"][meeting_day_value]
-    print(f"Meeting can be scheduled on {day} from {meeting_start_time // 60}:{meeting_start_time % 60:02} to {(meeting_start_time + meeting_duration) // 60}:{(meeting_start_time + meeting_duration) % 60:02}")
+# Solve the constraints
+if s.check() == sat:
+    m = s.model()
+    days = ['Monday', 'Tuesday', 'Wednesday']
+    print("Day to meet:", days[m[Day].as_long() - 1])
+    print("Start time:", m[StartTime].as_long()/60, ":", m[StartTime].as_long()%60)
+    print("End time:", m[EndTime].as_long()/60, ":", m[EndTime].as_long()%60)
 else:
     print("No solution found")
