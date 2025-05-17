@@ -1,0 +1,28 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_itinerary():\n    total_days = 17\n    vilnius_days = 7\n    naples_days = 5\n    vienna_days = 7\n    \n    # Verify total days match\n    assert vilnius_days + naples_days + vienna_days == total_days, \"Total days do not match the sum of individual city days\"\n    \n    # Define flight connections\n    connections = {\n        'Naples': ['Vienna'],\n        'Vienna': ['Naples', 'Vilnius'],\n        'Vilnius': ['Vienna']\n    }\n    \n    # Naples must be visited between day 1-5 (inclusive)\n    # So Naples must be first or second with first part being 1-5\n    \n    # Possible sequences:\n    # 1. Naples -> Vienna -> Vilnius\n    # 2. Vienna -> Naples -> Vilnius\n    \n    # Try sequence 1: Naples -> Vienna -> Vilnius\n    # Naples days 1-5\n    # Flight on day 5 to Vienna\n    # Vienna days 5-12\n    # Flight on day 12 to Vilnius\n    # Vilnius days 12-19 (but total is 17) -> exceeds\n    \n    # Try sequence 2: Vienna -> Naples -> Vilnius\n    # Vienna days 1-7\n    # Flight on day 7 to Naples\n    # Naples days 7-12 (but needs to be between 1-5) -> doesn't work\n    \n    # Try sequence 3: Naples (1-5) -> Vienna (5-12) -> Vilnius (12-17)\n    itinerary = []\n    \n    # Naples 1-5\n    itinerary.append({'day_range': 'Day 1-5', 'place': 'Naples'})\n    # Flight to Vienna on day 5\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Naples', 'to': 'Vienna'})\n    # Vienna 5-12 (7 days)\n    itinerary.append({'day_range': 'Day 5-12', 'place': 'Vienna'})\n    # Flight to Vilnius on day 12\n    itinerary.append({'flying': 'Day 12-12', 'from': 'Vienna', 'to': 'Vilnius'})\n    # Vilnius 12-17 (5 days) but need 7 days -> doesn't work\n    \n    # Doesn't work, so try another approach\n    \n    # Alternative: Naples must be first (1-5), then Vilnius, then Vienna\n    # But no direct flight Naples-Vilnius\n    \n    # Only possible sequence is Naples -> Vienna -> Vilnius with adjusted days\n    \n    # Adjust Naples to 1-5 (5 days)\n    # Vienna 5-12 (7 days)\n    # Vilnius 12-17 (5 days) but need 7 -> can't\n    \n    # Alternative: give Vilnius 7 days by reducing Vienna\n    # Naples 1-5 (5)\n    # Vienna 5-10 (5)\n    # Vilnius 10-17 (7)\n    # Check flights: Naples-Vienna, Vienna-Vilnius - both possible\n    \n    itinerary = []\n    # Naples 1-5\n    itinerary.append({'day_range': 'Day 1-5', 'place': 'Naples'})\n    # Flight to Vienna on day 5\n    itinerary.append({'flying': 'Day 5-5', 'from': 'Naples', 'to': 'Vienna'})\n    # Vienna 5-10 (5 days)\n    itinerary.append({'day_range': 'Day 5-10', 'place': 'Vienna'})\n    # Flight to Vilnius on day 10\n    itinerary.append({'flying': 'Day 10-10', 'from': 'Vienna', 'to': 'Vilnius'})\n    # Vilnius 10-17 (7 days)\n    itinerary.append({'day_range': 'Day 10-17', 'place': 'Vilnius'})\n    \n    # Verify constraints:\n    # Naples is between day 1-5: yes\n    # Naples total days: 5 - yes\n    # Vienna total days: 5 (but need 7) - doesn't match\n    \n    # Can't satisfy all constraints, so relax Vienna days to 5\n    # Final itinerary with relaxed Vienna days (5 instead of 7)\n    \n    return itinerary\n\ndef main():\n    itinerary = calculate_itinerary()\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_90"
+        }
+    ]
+}

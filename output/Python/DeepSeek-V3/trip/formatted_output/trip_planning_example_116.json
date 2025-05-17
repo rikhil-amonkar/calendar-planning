@@ -1,0 +1,28 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-12",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 12-18",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    total_days = 18\n    days_in_split = 6\n    days_in_santorini = 7\n    days_in_london = 7\n    conference_days = [12, 18]\n    \n    # Check if the total days add up correctly\n    total_stay_days = days_in_split + days_in_santorini + days_in_london\n    if total_stay_days != total_days:\n        raise ValueError(\"Total stay days do not match the total trip days.\")\n    \n    # Determine the sequence of cities based on direct flights\n    # Possible sequences:\n    # 1. Split -> London -> Santorini\n    # 2. London -> Split -> Santorini\n    # But Santorini must include day 12 and 18, so it must be the last city.\n    \n    # We'll choose Split -> London -> Santorini\n    \n    # Assign days to Split\n    split_start = 1\n    split_end = split_start + days_in_split - 1\n    split_segment = {'day_range': f'Day {split_start}-{split_end}', 'place': 'Split'}\n    \n    # Flight from Split to London\n    flight1_day = split_end + 1\n    flight1_segment = {'flying': f'Day {flight1_day}-{flight1_day}', 'from': 'Split', 'to': 'London'}\n    \n    # Assign days to London\n    london_start = flight1_day\n    london_end = london_start + days_in_london - 1\n    london_segment = {'day_range': f'Day {london_start}-{london_end}', 'place': 'London'}\n    \n    # Flight from London to Santorini\n    flight2_day = london_end + 1\n    flight2_segment = {'flying': f'Day {flight2_day}-{flight2_day}', 'from': 'London', 'to': 'Santorini'}\n    \n    # Assign days to Santorini\n    santorini_start = flight2_day\n    santorini_end = santorini_start + days_in_santorini - 1\n    santorini_segment = {'day_range': f'Day {santorini_start}-{santorini_end}', 'place': 'Santorini'}\n    \n    # Verify conference days are in Santorini\n    for day in conference_days:\n        if not (santorini_start <= day <= santorini_end):\n            raise ValueError(\"Conference days are not within the Santorini stay.\")\n    \n    itinerary = [\n        split_segment,\n        flight1_segment,\n        london_segment,\n        flight2_segment,\n        santorini_segment\n    ]\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = plan_trip()\n    print(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_116"
+        }
+    ]
+}

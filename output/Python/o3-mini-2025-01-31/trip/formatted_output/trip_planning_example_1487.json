@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 27-28",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 19-21",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 21-23",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 23-27",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 27-28",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef compute_itinerary():\n    # Total trip days and city constraints (durations as specified)\n    total_trip_days = 28\n    \n    # The itinerary order (cities and required durations):\n    # Note: The overall planned durations sum to 37 days, but with 9 flight-day overlaps, the trip is 28 days.\n    # The order is chosen to satisfy the following constraints:\n    # - Naples (4 days) must cover day 5-8 (for visiting relatives)\n    # - Athens (4 days) must cover day 8-11 (for the workshop)\n    # - Copenhagen (5 days) must cover day 11-15 (for meeting a friend)\n    # - Mykonos (2 days) must cover day 27-28 (for the conference)\n    # And the order must obey direct flight connectivity.\n    #\n    # Chosen order with direct flight links:\n    #   Prague -> Brussels -> Naples -> Athens -> Copenhagen -> Santorini -> Geneva -> Dubrovnik -> Munich -> Mykonos\n    #\n    # Check flight connections:\n    #   Prague -> Brussels (direct)\n    #   Brussels -> Naples (direct)\n    #   Naples -> Athens (direct)\n    #   Athens -> Copenhagen (direct)\n    #   Copenhagen -> Santorini (direct)\n    #   Santorini -> Geneva (direct)\n    #   Geneva -> Dubrovnik (direct)\n    #   Dubrovnik -> Munich (direct)\n    #   Munich -> Mykonos (direct)\n    \n    cities = [\n        {\"place\": \"Prague\", \"duration\": 2},\n        {\"place\": \"Brussels\", \"duration\": 4},\n        {\"place\": \"Naples\", \"duration\": 4},      # Must cover day 5-8 for relatives\n        {\"place\": \"Athens\", \"duration\": 4},       # Must cover day 8-11 for workshop\n        {\"place\": \"Copenhagen\", \"duration\": 5},   # Must cover day 11-15 for friend meeting\n        {\"place\": \"Santorini\", \"duration\": 5},\n        {\"place\": \"Geneva\", \"duration\": 3},\n        {\"place\": \"Dubrovnik\", \"duration\": 3},\n        {\"place\": \"Munich\", \"duration\": 5},\n        {\"place\": \"Mykonos\", \"duration\": 2}       # Conference on day 27-28\n    ]\n    \n    # The assumption is that when you fly from city A to city B on day X,\n    # that day X counts in the duration of both A and B.\n    # This means that the start day for the first city is day 1.\n    # For subsequent cities, the start day will be equal to the end day of the previous city.\n    # Let \"start_day\" be the first day present in a city and \"end_day\" the last day in that city.\n    \n    itinerary = []\n    current_start = 1\n    for city in cities:\n        duration = city[\"duration\"]\n        # The city is visited for 'duration' days counting the overlapping flight day.\n        # So the end_day = start_day + duration - 1.\n        end_day = current_start + duration - 1\n        itinerary.append({\n            \"day_range\": f\"{current_start}-{end_day}\",\n            \"place\": city[\"place\"]\n        })\n        # For next city, because of flight overlap, the next city starts on the same day as the previous city's end.\n        current_start = end_day\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    plan = compute_itinerary()\n    # Output as JSON formatted string containing only day_range and place for each segment.\n    print(json.dumps(plan, indent=4))\n```",
+            "count": "trip_planning_example_1487"
+        }
+    ]
+}

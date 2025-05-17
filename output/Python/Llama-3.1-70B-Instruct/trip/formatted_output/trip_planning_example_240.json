@@ -1,0 +1,32 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(prague_days, berlin_days, tallinn_days, stockholm_days, conference_window, visit_relatives_window):\n    total_days = prague_days + berlin_days + tallinn_days + stockholm_days\n\n    # Calculate the number of days for each city, considering the conference window in Berlin\n    berlin_start_day = 6\n    berlin_end_day = berlin_start_day + berlin_days - 1\n    conference_day = (conference_window[0] + conference_window[1]) // 2\n\n    # Ensure Berlin is visited to attend the conference\n    if conference_day < berlin_start_day or conference_day > berlin_end_day:\n        raise ValueError(\"Conference day does not fall within the Berlin visit window\")\n\n    # Calculate the day ranges for Prague\n    prague_start_day = 1\n    prague_end_day = prague_start_day + prague_days - 1\n\n    # Calculate the day ranges for Stockholm\n    stockholm_start_day = berlin_end_day + 1\n    stockholm_end_day = stockholm_start_day + stockholm_days - 1\n\n    # Calculate the day ranges for Tallinn\n    tallinn_start_day = stockholm_end_day + 1\n    tallinn_end_day = tallinn_start_day + tallinn_days - 1\n    visit_relatives_day = (visit_relatives_window[0] + visit_relatives_window[1]) // 2\n\n    # Ensure Tallinn is visited to visit relatives\n    if visit_relatives_day < tallinn_start_day or visit_relatives_day > tallinn_end_day:\n        raise ValueError(\"Visit relatives day does not fall within the Tallinn visit window\")\n\n    # Check if the total days add up correctly\n    if tallinn_end_day!= total_days:\n        raise ValueError(\"Total days do not add up correctly\")\n\n    # Create the trip plan\n    trip_plan = [\n        {'day_range': f'Day {prague_start_day}-{prague_end_day}', 'place': 'Prague'},\n        {'flying': f'Day {prague_end_day}-{prague_end_day}', 'from': 'Prague', 'to': 'Berlin'},\n        {'day_range': f'Day {berlin_start_day}-{berlin_end_day}', 'place': 'Berlin'},\n        {'flying': f'Day {berlin_end_day}-{berlin_end_day}', 'from': 'Berlin', 'to': 'Stockholm'},\n        {'day_range': f'Day {stockholm_start_day}-{stockholm_end_day}', 'place': 'Stockholm'},\n        {'flying': f'Day {stockholm_end_day}-{stockholm_end_day}', 'from': 'Stockholm', 'to': 'Tallinn'},\n        {'day_range': f'Day {tallinn_start_day}-{tallinn_end_day}', 'place': 'Tallinn'}\n    ]\n\n    return trip_plan\n\ndef main():\n    prague_days = 2\n    berlin_days = 3\n    tallinn_days = 5\n    stockholm_days = 5\n    conference_window = (6, 8)\n    visit_relatives_window = (8, 12)\n\n    trip_plan = calculate_trip_plan(prague_days, berlin_days, tallinn_days, stockholm_days, conference_window, visit_relatives_window)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_240"
+        }
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef compute_itinerary():\n    # Input constraints (hardcoded based on the problem statement)\n    total_days = 16\n    \n    # Cities and required durations.\n    # Note: if a flight occurs on a certain day, that day counts for both departure and arrival cities.\n    # The order of cities is chosen to satisfy all constraints and flight connectivity:\n    # 1. Barcelona: Must be there on days 1-3 for the annual show.\n    # 2. Oslo: Must be there for 2 days and meet friends between day 3 and day 4.\n    # 3. Venice: 4 days. (reachable directly from Oslo)\n    # 4. Brussels: 3 days with friend meeting between day 9 and 11.\n    # 5. Copenhagen: 3 days.\n    # 6. Stuttgart: 3 days.\n    # 7. Split: 4 days.\n    #\n    # The direct flight connections used are:\n    # Barcelona -> Oslo (allowed)\n    # Oslo -> Venice (allowed)\n    # Venice -> Brussels (allowed)\n    # Brussels -> Copenhagen (allowed)\n    # Copenhagen -> Stuttgart (allowed)\n    # Stuttgart -> Split (allowed)\n    \n    itinerary_info = [\n        {\"place\": \"Barcelona\", \"duration\": 3},\n        {\"place\": \"Oslo\", \"duration\": 2},\n        {\"place\": \"Venice\", \"duration\": 4},\n        {\"place\": \"Brussels\", \"duration\": 3},\n        {\"place\": \"Copenhagen\", \"duration\": 3},\n        {\"place\": \"Stuttgart\", \"duration\": 3},\n        {\"place\": \"Split\", \"duration\": 4}\n    ]\n    \n    # Compute day ranges.\n    # The rule: For the first city, start at day 1.\n    # For each subsequent flight, the flight day is shared, so the new city starts on the same day as the previous city's end.\n    schedule = []\n    current_day = 1\n    for city in itinerary_info:\n        place = city[\"place\"]\n        duration = city[\"duration\"]\n        # The city is visited from current_day to end_day.\n        end_day = current_day + duration - 1\n        # Store the computed day range as \"start-end\"\n        day_range = f\"{current_day}-{end_day}\"\n        schedule.append({\"day_range\": day_range, \"place\": place})\n        # For the next city, the flight happens on the end_day,\n        # so the next city starts on the same day (overlap on flight day).\n        current_day = end_day\n    \n    # Verify that the itinerary fits into the total_days (it must equal total_days since overlaps reduce total span)\n    # The last city end day is the total trip duration.\n    if current_day != total_days:\n        raise ValueError(f\"Computed itinerary lasts {current_day} days, but expected {total_days} days.\")\n    \n    return {\"itinerary\": schedule}\n\nif __name__ == '__main__':\n    itinerary_plan = compute_itinerary()\n    print(json.dumps(itinerary_plan))\n```",
+            "count": "trip_planning_example_995"
+        }
+    ]
+}

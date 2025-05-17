@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Madrid"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 10-13",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Madrid"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters as provided in the problem statement:\n\n# Total trip days\ntotal_days = 21\n\n# Cities and required durations when \u201cstaying\u201d there.\n# Note: if a flight is taken on a given day then that day counts for both\n# the city you are leaving and the city you are arriving.\ncities = {\n    \"Brussels\": 4,\n    \"Bucharest\": 3,\n    \"Stuttgart\": 4,  # Also friend meeting requirement between day 1 and 4\n    \"Mykonos\": 2,\n    \"Madrid\": 2,     # And on day 20-21 (the conference)\n    \"Helsinki\": 5,\n    \"Split\": 3,\n    \"London\": 5\n}\n\n# Direct flight network as bidirectional pairs.\nflights = {\n    \"Helsinki\": [\"London\", \"Madrid\", \"Brussels\", \"Split\"],\n    \"London\": [\"Helsinki\", \"Madrid\", \"Brussels\", \"Bucharest\", \"Stuttgart\", \"Split\", \"Mykonos\"],\n    \"Split\": [\"Madrid\", \"Helsinki\", \"London\", \"Stuttgart\"],\n    \"Madrid\": [\"Split\", \"Helsinki\", \"London\", \"Brussels\", \"Bucharest\", \"Mykonos\"],\n    \"Brussels\": [\"London\", \"Bucharest\", \"Madrid\", \"Helsinki\"],\n    \"Bucharest\": [\"London\", \"Brussels\", \"Madrid\"],\n    \"Stuttgart\": [\"London\", \"Split\"],\n    \"Mykonos\": [\"Madrid\", \"London\"]\n}\n\n# We know from the problem constraints that:\n# - Stuttgart must be encountered early, with the friend meeting between day 1 and 4.\n# - Madrid must include days 20 and 21 (conference).\n#\n# We need to plan an itinerary (a Hamiltonian path covering the 8 cities)\n# that obeys direct flight connectivity.\n#\n# After reviewing connections, one valid ordering is:\n#   1. Stuttgart\n#   2. Split\n#   3. Helsinki\n#   4. Brussels\n#   5. Bucharest\n#   6. London\n#   7. Mykonos\n#   8. Madrid\n#\n# Check connectivity:\n#   Stuttgart -> Split         (direct flight exists)\n#   Split -> Helsinki          (direct flight exists)\n#   Helsinki -> Brussels       (direct flight exists)\n#   Brussels -> Bucharest      (direct flight exists)\n#   Bucharest -> London        (direct flight exists)\n#   London -> Mykonos          (direct flight exists)\n#   Mykonos -> Madrid          (direct flight exists)\n\nitinerary_order = [\n    \"Stuttgart\",\n    \"Split\",\n    \"Helsinki\",\n    \"Brussels\",\n    \"Bucharest\",\n    \"London\",\n    \"Mykonos\",\n    \"Madrid\"\n]\n\n# Verify flight connectivity:\ndef valid_itinerary(order, flights):\n    for i in range(len(order) - 1):\n        if order[i+1] not in flights[order[i]]:\n            return False\n    return True\n\nif not valid_itinerary(itinerary_order, flights):\n    raise ValueError(\"Selected itinerary ordering does not obey the flight connectivity constraints.\")\n\n# Now, we compute the day ranges.\n#\n# Scheduling logic:\n#   For the first city, assign its full duration from day 1.\n#   For each flight (transition between cities), the flight day is an overlap day:\n#       meaning the arrival day in the new city is the same day as the flight,\n#       and that day is counted as a day in both cities.\n#\n# So, if d_i is the required duration in city i, then the unique days used across the whole itinerary is:\n#   d_0 + sum(d_i - 1, for i = 1 to n-1) = total_days.\n#\n# Our totals:\n#   Sum(durations) = 4+3+5+4+3+5+2+2 = 28.\n#   Subtract overlaps (7 flights) gives 21 days.\n#\n# We set:\n#   city0: start = 1, end = start + d0 - 1.\n#   for each subsequent city: start = previous city's end (overlap day),\n#   end = start + duration - 1.\n#\n# Verify that final end equals total_days.\nschedule = []\ncurrent_day = 1\n\nfor idx, city in enumerate(itinerary_order):\n    duration = cities[city]\n    # For first city, no overlap adjustment\n    if idx == 0:\n        start_day = current_day\n        end_day = start_day + duration - 1\n    else:\n        # Overlap: the flight day (which is the previous city's end day) counts for this city.\n        start_day = current_day  # current_day is the previous city's end day.\n        end_day = start_day + duration - 1\n    schedule.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city\n    })\n    current_day = end_day  # next city's start day will be this end_day (overlap day)\n\n# Finally, verify the final day is total_days.\nif current_day != total_days:\n    raise ValueError(f\"Computed itinerary lasts {current_day} days, expected {total_days} days.\")\n\n# Output the itinerary as a JSON-formatted dictionary (list of dictionaries)\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "trip_planning_example_1066"
+        }
+    ]
+}

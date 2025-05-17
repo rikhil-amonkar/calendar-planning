@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input parameters\n    total_trip_days = 23\n    # Cities and their required durations (not counting overlap, i.e. the \"scheduled\" duration per city)\n    # Remember: if you fly on day X, that day counts for both the city you left and the one you arrive.\n    # So if durations sum to S, then S - (#flights) must equal total_trip_days.\n    # Here S = 4 + 5 + 5 + 2 + 4 + 4 + 2 + 4 = 30, and 30 - 7 = 23.\n    #\n    # The cities (with required durations) and special event constraints:\n    # - Reykjavik: 4 days\n    # - Stuttgart: 5 days\n    # - Manchester: 5 days\n    # - Istanbul: 2 days, and the annual show is from day 12 to day 13 (so this visit must cover these days)\n    # - Bucharest: 4 days, with a workshop between day 16 and day 19 (so its visit must include one of these days)\n    # - Riga: 4 days\n    # - Vienna: 2 days\n    # - Florence: 4 days\n    #\n    # Our chosen sequence is determined by checking the direct flight network.\n    # Direct flight connections (bidirectional unless noted) include:\n    #   Bucharest <-> Vienna, Reykjavik <-> Vienna, Manchester <-> Vienna, Manchester <-> Riga,\n    #   Riga <-> Vienna, Istanbul <-> Vienna, Vienna <-> Florence, Stuttgart <-> Vienna,\n    #   Riga <-> Bucharest, Istanbul <-> Riga, Stuttgart <-> Istanbul,\n    #   from Reykjavik to Stuttgart, Istanbul <-> Bucharest, Manchester <-> Istanbul,\n    #   Manchester <-> Bucharest, Stuttgart <-> Manchester.\n    #\n    # We choose a route that satisfies the constraints and uses exactly 7 flights:\n    # The route: \n    #  1. Reykjavik (4 days)\n    #  2. Stuttgart (5 days)\n    #  3. Manchester (5 days)\n    #  4. Istanbul (2 days) [must include days 12-13 for the annual show]\n    #  5. Bucharest (4 days) [must include a day in [16,19] for the workshop]\n    #  6. Riga (4 days)\n    #  7. Vienna (2 days)\n    #  8. Florence (4 days)\n    #\n    # Check flight connectivity for consecutive cities:\n    #   Reykjavik -> Stuttgart: allowed because there is a direct flight from Reykjavik to Stuttgart.\n    #   Stuttgart -> Manchester: allowed.\n    #   Manchester -> Istanbul: allowed.\n    #   Istanbul -> Bucharest: allowed.\n    #   Bucharest -> Riga: allowed (connection exists between Riga and Bucharest).\n    #   Riga -> Vienna: allowed.\n    #   Vienna -> Florence: allowed.\n    #\n    # Now assign day intervals. The rule is:\n    # For the first city, start_day = 1 and end_day = start_day + duration - 1.\n    # For every subsequent city, the start_day is the previous city's end_day (since the flight day is shared)\n    # and the end_day is start_day + duration - 1.\n    #\n    # This gives a total trip day count = sum(durations) - (number of flights)\n    \n    cities = [\n        {\"place\": \"Reykjavik\", \"duration\": 4},\n        {\"place\": \"Stuttgart\", \"duration\": 5},\n        {\"place\": \"Manchester\", \"duration\": 5},\n        {\"place\": \"Istanbul\", \"duration\": 2},   # Must cover day 12-13 for annual show.\n        {\"place\": \"Bucharest\", \"duration\": 4},    # Must include a day between 16 and 19 for workshop.\n        {\"place\": \"Riga\", \"duration\": 4},\n        {\"place\": \"Vienna\", \"duration\": 2},\n        {\"place\": \"Florence\", \"duration\": 4},\n    ]\n    \n    # Verify total effective days = sum(durations) - (# flights)\n    total_duration = sum([city[\"duration\"] for city in cities])\n    num_flights = len(cities) - 1  # there are 7 flights (transitions) in our 8-city itinerary\n    effective_days = total_duration - num_flights\n    if effective_days != total_trip_days:\n        raise ValueError(\"The effective trip days do not sum to the required total.\")\n    \n    # Compute day intervals\n    itinerary = []\n    current_start = 1\n    for city in cities:\n        duration = city[\"duration\"]\n        # The current city is visited from current_start to current_start+duration-1\n        current_end = current_start + duration - 1\n        day_range = f\"{current_start}-{current_end}\"\n        itinerary.append({\n            \"day_range\": day_range,\n            \"place\": city[\"place\"]\n        })\n        # For next city, the flight on the same day counts for both cities.\n        # So next city starts on the same day as the current city's end day.\n        current_start = current_end\n    \n    # Perform checks for special constraints:\n    # Check that Istanbul (annual show) covers day 12-13.\n    for item in itinerary:\n        if item[\"place\"] == \"Istanbul\":\n            istanbul_range = item[\"day_range\"]\n            ist_start, ist_end = map(int, istanbul_range.split('-'))\n            if not (ist_start <= 12 <= ist_end and ist_start <= 13 <= ist_end):\n                raise ValueError(\"Istanbul visit does not cover days 12 and 13 for the annual show.\")\n    # Check that Bucharest (workshop) visit covers at least one day between 16 and 19.\n    for item in itinerary:\n        if item[\"place\"] == \"Bucharest\":\n            bucharest_range = item[\"day_range\"]\n            buch_start, buch_end = map(int, bucharest_range.split('-'))\n            # Check if any day between 16 and 19 is within [buch_start, buch_end]\n            if not any(day in range(buch_start, buch_end+1) for day in range(16, 20)):\n                raise ValueError(\"Bucharest visit does not cover a day between 16 and 19 for the workshop.\")\n    \n    # Output result as JSON-formatted dictionary containing day_range and place entries.\n    # Here the result is a list of dictionaries.\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1009"
+        }
+    ]
+}

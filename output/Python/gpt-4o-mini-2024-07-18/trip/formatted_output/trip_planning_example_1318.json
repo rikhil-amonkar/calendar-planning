@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\n# Defining the trip parameters\ncities = {\n    \"Oslo\": {\"stay\": 2, \"meet_friend\": (24, 25)},\n    \"Helsinki\": {\"stay\": 2},\n    \"Edinburgh\": {\"stay\": 3},\n    \"Riga\": {\"stay\": 2},\n    \"Tallinn\": {\"stay\": 5, \"wedding\": (4, 8)},\n    \"Budapest\": {\"stay\": 5},\n    \"Vilnius\": {\"stay\": 5},\n    \"Porto\": {\"stay\": 5},\n    \"Geneva\": {\"stay\": 4},\n}\n\ndirect_flights = {\n    \"Porto\": [\"Oslo\"],\n    \"Edinburgh\": [\"Budapest\", \"Geneva\", \"Oslo\", \"Helsinki\", \"Riga\", \"Porto\"],\n    \"Riga\": [\"Tallinn\", \"Oslo\", \"Helsinki\", \"Vilnius\"],\n    \"Tallinn\": [\"Vilnius\", \"Helsinki\", \"Oslo\"],\n    \"Budapest\": [\"Geneva\", \"Oslo\"],\n    \"Vilnius\": [\"Helsinki\", \"Oslo\"],\n    \"Geneva\": [\"Oslo\", \"Porto\"],\n    \"Helsinki\": [\"Budapest\", \"Oslo\"],\n}\n\nnum_days = 25\n\n# Function to compute the itinerary\ndef compute_itinerary():\n    itinerary = []\n    current_day = 1\n    \n    # Sequence of city visits respecting the constraints and flight availability\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Oslo']['stay'] - 1}\", \"place\": \"Oslo\"})\n    current_day += cities[\"Oslo\"][\"stay\"]\n    \n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Oslo\", \"to\": \"Helsinki\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Helsinki']['stay'] - 1}\", \"place\": \"Helsinki\"})\n    current_day += cities[\"Helsinki\"][\"stay\"]\n    \n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Helsinki\", \"to\": \"Edinburgh\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Edinburgh']['stay'] - 1}\", \"place\": \"Edinburgh\"})\n    current_day += cities[\"Edinburgh\"][\"stay\"]\n    \n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Edinburgh\", \"to\": \"Riga\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Riga']['stay'] - 1}\", \"place\": \"Riga\"})\n    current_day += cities[\"Riga\"][\"stay\"]\n    \n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Riga\", \"to\": \"Tallinn\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Tallinn']['stay'] - 1}\", \"place\": \"Tallinn\"})\n    current_day += cities[\"Tallinn\"][\"stay\"]\n    \n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Tallinn\", \"to\": \"Budapest\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Budapest']['stay'] - 1}\", \"place\": \"Budapest\"})\n    current_day += cities[\"Budapest\"][\"stay\"]\n    \n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Budapest\", \"to\": \"Geneva\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Geneva']['stay'] - 1}\", \"place\": \"Geneva\"})\n    current_day += cities[\"Geneva\"][\"stay\"]\n    \n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Geneva\", \"to\": \"Vilnius\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Vilnius']['stay'] - 1}\", \"place\": \"Vilnius\"})\n    current_day += cities[\"Vilnius\"][\"stay\"]\n\n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Vilnius\", \"to\": \"Porto\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Porto']['stay'] - 1}\", \"place\": \"Porto\"})\n    current_day += cities[\"Porto\"][\"stay\"]\n\n    # Handling meeting friend in Oslo\n    itinerary.append({\"flying\": f\"Day {current_day}-{current_day}\", \"from\": \"Porto\", \"to\": \"Oslo\"})\n    current_day += 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{current_day + cities['Oslo']['meet_friend'][1] - cities['Oslo']['meet_friend'][0]}\",\n                      \"place\": \"Oslo\"})\n    \n    # Ensure we didn't go over the number of days\n    assert current_day <= num_days, \"Exceeded number of days in the itinerary.\"\n\n    return itinerary\n\n# Calculate itinerary and print as JSON\nitinerary_result = compute_itinerary()\nprint(json.dumps(itinerary_result, indent=4))\n```",
+            "count": "trip_planning_example_1318"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef format_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02}:{mins:02}\"\n\ndef get_busy_intervals(schedule):\n    intervals = []\n    for entry in schedule:\n        start, end = entry.split(' to ')\n        intervals.append((parse_time(start), parse_time(end)))\n    intervals.sort()\n    merged = []\n    for start, end in intervals:\n        if merged and merged[-1][1] >= start:\n            merged[-1] = (merged[-1][0], max(merged[-1][1], end))\n        else:\n            merged.append((start, end))\n    return merged\n\ndef find_free_slots(busy, work_start, work_end):\n    free = []\n    prev_end = work_start\n    for start, end in busy:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        free.append((prev_end, work_end))\n    return free\n\ndef find_meeting_time(jack_busy, charlotte_busy, duration, work_hours, max_start_time=None):\n    work_start = parse_time(work_hours[0])\n    work_end = parse_time(work_hours[1])\n    \n    jack_free = find_free_slots(get_busy_intervals(jack_busy), work_start, work_end)\n    charlotte_free = find_free_slots(get_busy_intervals(charlotte_busy), work_start, work_end)\n    \n    common_slots = []\n    i = j = 0\n    while i < len(jack_free) and j < len(charlotte_free):\n        j_start, j_end = jack_free[i]\n        c_start, c_end = charlotte_free[j]\n        \n        start = max(j_start, c_start)\n        end = min(j_end, c_end)\n        if start < end:\n            if max_start_time is None or start <= parse_time(max_start_time):\n                common_slots.append((start, end))\n            if j_end < c_end:\n                i += 1\n            else:\n                j += 1\n        else:\n            if j_end <= c_start:\n                i += 1\n            else:\n                j += 1\n                \n    for start, end in common_slots:\n        if end - start >= duration:\n            return (start, start + duration)\n    return None\n\njack_schedule = [\n    \"9:30 to 10:30\",\n    \"11:00 to 11:30\",\n    \"12:30 to 13:00\",\n    \"14:00 to 14:30\",\n    \"16:00 to 16:30\"\n]\n\ncharlotte_schedule = [\n    \"9:30 to 10:00\",\n    \"10:30 to 12:00\",\n    \"12:30 to 13:30\",\n    \"14:00 to 16:00\"\n]\n\nmeeting_duration = 30  # minutes\nwork_hours = (\"9:00\", \"17:00\")\nmax_start_time = \"12:30\"  # Jack's preference\n\nslot = find_meeting_time(jack_schedule, charlotte_schedule, meeting_duration, work_hours, max_start_time)\n\nif slot:\n    start, end = slot\n    print(f\"{format_time(start)}:{format_time(end)}\")\n    print(\"Monday\")\nelse:\n    print(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_502"
+        }
+    ]
+}

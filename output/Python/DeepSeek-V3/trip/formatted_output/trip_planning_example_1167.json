@@ -1,0 +1,48 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef find_itinerary():\n    # Cities and their required days\n    cities = {\n        'Dublin': 5,\n        'Krakow': 4,\n        'Istanbul': 3,\n        'Venice': 3,\n        'Naples': 4,\n        'Brussels': 2,\n        'Mykonos': 4,\n        'Frankfurt': 3\n    }\n    \n    # Direct flights\n    flights = {\n        'Dublin': ['Brussels', 'Naples', 'Krakow', 'Istanbul', 'Venice', 'Frankfurt'],\n        'Brussels': ['Dublin', 'Krakow', 'Naples', 'Istanbul', 'Venice', 'Frankfurt'],\n        'Mykonos': ['Naples'],\n        'Naples': ['Mykonos', 'Dublin', 'Istanbul', 'Brussels', 'Venice', 'Frankfurt'],\n        'Venice': ['Istanbul', 'Frankfurt', 'Brussels', 'Naples', 'Dublin'],\n        'Istanbul': ['Venice', 'Frankfurt', 'Krakow', 'Brussels', 'Naples', 'Dublin'],\n        'Frankfurt': ['Krakow', 'Istanbul', 'Venice', 'Naples', 'Brussels', 'Dublin'],\n        'Krakow': ['Frankfurt', 'Istanbul', 'Brussels', 'Dublin']\n    }\n    \n    # Constraints\n    constraints = [\n        {'city': 'Dublin', 'day_range': (11, 15)},\n        {'city': 'Istanbul', 'day_range': (9, 11)},\n        {'city': 'Mykonos', 'day_range': (1, 4)},\n        {'city': 'Frankfurt', 'day_range': (15, 17)}\n    ]\n    \n    # Generate all possible city permutations\n    city_names = list(cities.keys())\n    all_permutations = permutations(city_names)\n    \n    # Check each permutation for validity\n    for perm in all_permutations:\n        itinerary = []\n        current_day = 1\n        valid = True\n        \n        # Assign Mykonos first (days 1-4)\n        if perm[0] != 'Mykonos':\n            continue\n        \n        # Build itinerary\n        for i, city in enumerate(perm):\n            stay_days = cities[city]\n            \n            # Check if city is Mykonos and fits in days 1-4\n            if city == 'Mykonos':\n                if current_day != 1:\n                    valid = False\n                    break\n                end_day = current_day + stay_days - 1\n                if end_day > 4:\n                    valid = False\n                    break\n                itinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': city})\n                current_day = end_day + 1\n                continue\n            \n            # Check if city is Dublin and fits in days 11-15\n            if city == 'Dublin':\n                start_day = current_day\n                end_day = current_day + stay_days - 1\n                if not (11 <= start_day <= 15 and 11 <= end_day <= 15):\n                    valid = False\n                    break\n                itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                current_day = end_day + 1\n                continue\n            \n            # Check if city is Istanbul and fits in days 9-11\n            if city == 'Istanbul':\n                start_day = current_day\n                end_day = current_day + stay_days - 1\n                if not (9 <= start_day <= 11 and 9 <= end_day <= 11):\n                    valid = False\n                    break\n                itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                current_day = end_day + 1\n                continue\n            \n            # Check if city is Frankfurt and fits in days 15-17\n            if city == 'Frankfurt':\n                start_day = current_day\n                end_day = current_day + stay_days - 1\n                if not (15 <= start_day <= 17 and 15 <= end_day <= 17):\n                    valid = False\n                    break\n                itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': city})\n                current_day = end_day + 1\n                continue\n            \n            # For other cities, just add them if they fit in 21 days\n            end_day = current_day + stay_days - 1\n            if end_day > 21:\n                valid = False\n                break\n            itinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': city})\n            current_day = end_day + 1\n        \n        # Check if all days are covered and all constraints are met\n        if valid and current_day > 21:\n            # Check flight connections\n            flight_valid = True\n            for i in range(len(perm) - 1):\n                from_city = perm[i]\n                to_city = perm[i+1]\n                if to_city not in flights.get(from_city, []):\n                    flight_valid = False\n                    break\n            if flight_valid:\n                # Add flight transitions\n                final_itinerary = []\n                for i in range(len(itinerary)):\n                    final_itinerary.append(itinerary[i])\n                    if i < len(itinerary) - 1:\n                        from_place = itinerary[i]['place']\n                        to_place = itinerary[i+1]['place']\n                        day = itinerary[i]['day_range'].split('-')[1].split(' ')[1]\n                        final_itinerary.append({'flying': f'Day {day}-{day}', 'from': from_place, 'to': to_place})\n                return final_itinerary\n    \n    return None\n\nitinerary = find_itinerary()\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_1167"
+        }
+    ]
+}

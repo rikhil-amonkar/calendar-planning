@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Stockholm"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Stockholm"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input variables (constraints)\ntotal_days = 15\ncities = [\"Amsterdam\", \"London\", \"Bucharest\", \"Riga\", \"Vilnius\", \"Frankfurt\", \"Stockholm\"]\n# Required durations in each city (the sum is 21, but flight days count double in transitions)\ndurations = {\n    \"Amsterdam\": 2,   # Friend meeting in Amsterdam between day 2 and 3.\n    \"London\": 2,\n    \"Bucharest\": 4,\n    \"Riga\": 2,\n    \"Vilnius\": 5,     # Workshop in Vilnius between day 7 and 11.\n    \"Frankfurt\": 3,\n    \"Stockholm\": 3    # Wedding in Stockholm between day 13 and 15.\n}\n\n# The flight legs (only for validation; note that the algorithm below relies on a chosen order \n# that satisfies the constraints and available direct flights)\ndirect_flights = [\n    (\"London\", \"Amsterdam\"),\n    (\"Vilnius\", \"Frankfurt\"),\n    (\"Riga\", \"Vilnius\"),\n    (\"Riga\", \"Stockholm\"),\n    (\"London\", \"Bucharest\"),\n    (\"Amsterdam\", \"Stockholm\"),\n    (\"Amsterdam\", \"Frankfurt\"),\n    (\"Frankfurt\", \"Stockholm\"),\n    (\"Bucharest\", \"Riga\"),\n    (\"Amsterdam\", \"Riga\"),\n    (\"Amsterdam\", \"Bucharest\"),\n    (\"Riga\", \"Frankfurt\"),\n    (\"Bucharest\", \"Frankfurt\"),\n    (\"London\", \"Frankfurt\"),\n    (\"London\", \"Stockholm\"),\n    (\"Amsterdam\", \"Vilnius\")\n]\n\n# Chosen itinerary order:\n#   1. Amsterdam (start; satisfies friend meeting on day 2 since day2 is spent in Amsterdam)\n#   2. London     (via direct flight from Amsterdam <-> London)\n#   3. Bucharest  (via direct flight from London -> Bucharest)\n#   4. Riga       (via direct flight from Bucharest -> Riga)\n#   5. Vilnius    (via direct flight from Riga -> Vilnius)\n#   6. Frankfurt  (via direct flight from Vilnius -> Frankfurt)\n#   7. Stockholm  (via direct flight from Frankfurt -> Stockholm,\n#                  satisfies wedding in Stockholm between day 13 and 15)\nitinerary_order = [\"Amsterdam\", \"London\", \"Bucharest\", \"Riga\", \"Vilnius\", \"Frankfurt\", \"Stockholm\"]\n\n# Validate flight connectivity for the chosen order.\ndef has_direct_flight(city_a, city_b):\n    # Since flights are undirected in our context, check both orders.\n    return (city_a, city_b) in direct_flights or (city_b, city_a) in direct_flights\n\nvalid_route = True\nfor i in range(len(itinerary_order) - 1):\n    if not has_direct_flight(itinerary_order[i], itinerary_order[i+1]):\n        valid_route = False\n        break\n\nif not valid_route:\n    raise ValueError(\"The chosen itinerary order does not satisfy the direct flight constraints.\")\n\n# Compute the day ranges.\n# Note: The rule is that if you fly on day X from city A to city B,\n# then day X counts for both A and B.\n# Thus, the first city gets a full duration starting from day 1.\n# Each subsequent city starts on the last day of the previous city.\nschedule = []\ncurrent_day = 1\nfor index, city in enumerate(itinerary_order):\n    d = durations[city]\n    # first city: range from current_day to current_day+d-1\n    # subsequent cities: start day = current_day (which is the overlap day from previous flight)\n    start_day = current_day\n    end_day = start_day + d - 1\n    day_range = f\"{start_day}-{end_day}\"\n    schedule.append({\"day_range\": day_range, \"place\": city})\n    # For next city, the current_day becomes the last day of current city (flight day overlap)\n    current_day = end_day\n\n# The computed schedule should cover a total of 15 days (taking into account overlaps)\n# Total calculated travel span is the last day of the last city.\nif current_day != total_days:\n    raise ValueError(\"The calculated schedule does not sum up to the required total days.\")\n\n# Output the schedule as JSON-formatted dictionary (list of dictionaries)\nprint(json.dumps(schedule))\n```",
+            "count": "trip_planning_example_993"
+        }
+    ]
+}

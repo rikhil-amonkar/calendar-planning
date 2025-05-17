@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# We fix a specific order of cities that respects both the flight connectivity \n# (based on the provided direct flights) and the constraints.\ncities = [\n    {\"name\": \"Vienna\", \"duration\": 5, \"constraint\": lambda s, e: (s <= 5 and e >= 1)},         # must meet friend in Vienna between day1-5\n    {\"name\": \"Prague\", \"duration\": 5, \"constraint\": lambda s, e: (s <= 9 and e >= 5)},         # annual show from day5 to day9\n    {\"name\": \"Munich\", \"duration\": 2, \"constraint\": lambda s, e: True},\n    {\"name\": \"Split\", \"duration\": 3, \"constraint\": lambda s, e: (s <= 13 and e >= 11)},        # relatives between day11 and day13\n    {\"name\": \"Amsterdam\", \"duration\": 3, \"constraint\": lambda s, e: True},\n    {\"name\": \"Riga\", \"duration\": 2, \"constraint\": lambda s, e: (s <= 16 and e >= 15)},         # meet friend in Riga between day15 and day16\n    {\"name\": \"Stockholm\", \"duration\": 2, \"constraint\": lambda s, e: (s <= 17 and e >= 16)},      # conference in Stockholm during day16 and day17\n    {\"name\": \"Istanbul\", \"duration\": 2, \"constraint\": lambda s, e: True},\n    {\"name\": \"Brussels\", \"duration\": 2, \"constraint\": lambda s, e: True},\n    {\"name\": \"Seville\", \"duration\": 3, \"constraint\": lambda s, e: True},\n]\n\n# We require that the overall trip spans exactly 20 unique days.\nTOTAL_DAYS = 20\n\n# For each consecutive pair in the itinerary, we require that there is an overlap day \n# (representing the flight day when the traveler is in both cities).\ndef intervals_overlap(s1, e1, s2, e2):\n    return not (e1 < s2 or e2 < s1)\n\n# Backtracking search to assign start days for each city. \n# The assigned interval for a city with start day s and duration d is [s, s+d-1].\n# We fix the first city to start at day 1 and force the last city's end day = TOTAL_DAYS.\ndef backtrack(index, assignments):\n    if index == len(cities):\n        # Check overall itinerary span: earliest day should be 1 and latest end day equal to TOTAL_DAYS.\n        ends = [assignments[i] + cities[i][\"duration\"] - 1 for i in range(len(cities))]\n        if min(assignments) == 1 and max(ends) == TOTAL_DAYS:\n            return assignments\n        return None\n\n    city = cities[index]\n    d = city[\"duration\"]\n    # The latest possible start for this city so that its end does not exceed TOTAL_DAYS is:\n    latest_start = TOTAL_DAYS - d + 1\n    # If this is the first city, fix start = 1.\n    if index == 0:\n        candidate = 1\n        end = candidate + d - 1\n        # Must satisfy its personal constraint.\n        if not city[\"constraint\"](candidate, end):\n            return None\n        assignments.append(candidate)\n        result = backtrack(index + 1, assignments)\n        if result is not None:\n            return result\n        assignments.pop()\n        return None\n\n    # For the last city, we want its end exactly = TOTAL_DAYS.\n    if index == len(cities) - 1:\n        # Last city start must be TOTAL_DAYS - d + 1.\n        candidate = TOTAL_DAYS - d + 1\n        end = candidate + d - 1\n        if not city[\"constraint\"](candidate, end):\n            return None\n        # Also check overlapping constraint with previous city.\n        prev_index = index - 1\n        prev_start = assignments[prev_index]\n        prev_end = prev_start + cities[prev_index][\"duration\"] - 1\n        # There must be overlap between previous city and this one.\n        if not intervals_overlap(prev_start, prev_end, candidate, end):\n            return None\n        assignments.append(candidate)\n        result = backtrack(index + 1, assignments)\n        if result is not None:\n            return result\n        assignments.pop()\n        return None\n\n    # For intermediate cities, try all possible start days from 1 to latest_start.\n    for candidate in range(1, latest_start + 1):\n        end = candidate + d - 1\n        # Must satisfy the city's own constraint.\n        if not city[\"constraint\"](candidate, end):\n            continue\n        # And must not extend past TOTAL_DAYS (we allow cities to overlap by flights)\n        if end > TOTAL_DAYS:\n            continue\n        # Also, ensure overlap with previously assigned city.\n        prev_start = assignments[index - 1]\n        prev_end = prev_start + cities[index - 1][\"duration\"] - 1\n        if not intervals_overlap(prev_start, prev_end, candidate, end):\n            continue\n        # Additionally, we want the timeline to be monotonic (non-decreasing start days)\n        # to roughly follow the order.\n        if assignments and candidate < assignments[-1]:\n            continue\n        assignments.append(candidate)\n        result = backtrack(index + 1, assignments)\n        if result is not None:\n            return result\n        assignments.pop()\n    return None\n\nsolution = backtrack(0, [])\nif solution is None:\n    itinerary = {\"error\": \"No valid itinerary found\"}\nelse:\n    itinerary = []\n    for i, city in enumerate(cities):\n        start = solution[i]\n        end = start + city[\"duration\"] - 1\n        # For output, we use a dictionary with day_range and place.\n        itinerary.append({\"day_range\": f\"{start}-{end}\", \"place\": city[\"name\"]})\n\n# Output the itinerary as a JSON-formatted dictionary (list of day ranges and places)\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_1568"
+        }
+    ]
+}

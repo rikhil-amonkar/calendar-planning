@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Define the itinerary as a list of cities in the order that satisfies all constraints.\n    # We have chosen the following order:\n    #   1) Lyon (4 days)\n    #   2) Paris (5 days)   --> friend visit possible (days 4-8)\n    #   3) Copenhagen (5 days)\n    #   4) Santorini (2 days)  --> relatives visit (days 12-13)\n    #   5) Oslo (5 days)\n    #   6) Krakow (2 days)   --> workshop (days 17-18)\n    #   7) Helsinki (5 days) --> friend meet (days 18-22)\n    #   8) Warsaw (2 days)\n    #   9) Riga (2 days)     --> wedding (days 23-24)\n    #  10) Tallinn (2 days)\n    #\n    # Direct flight validations:\n    #   Lyon -> Paris: \"Lyon and Paris\"\n    #   Paris -> Copenhagen: \"Paris and Copenhagen\"\n    #   Copenhagen -> Santorini: \"Copenhagen and Santorini\"\n    #   Santorini -> Oslo: \"from Santorini to Oslo\"\n    #   Oslo -> Krakow: \"Oslo and Krakow\"\n    #   Krakow -> Helsinki: \"Krakow and Helsinki\"\n    #   Helsinki -> Warsaw: \"Helsinki and Warsaw\"\n    #   Warsaw -> Riga: \"Warsaw and Riga\"\n    #   Riga -> Tallinn: \"from Riga to Tallinn\"\n    \n    # Define the cities with required durations.\n    itinerary_cities = [\n        {\"place\": \"Lyon\",      \"duration\": 4},\n        {\"place\": \"Paris\",     \"duration\": 5},\n        {\"place\": \"Copenhagen\",\"duration\": 5},\n        {\"place\": \"Santorini\", \"duration\": 2},\n        {\"place\": \"Oslo\",      \"duration\": 5},\n        {\"place\": \"Krakow\",    \"duration\": 2},\n        {\"place\": \"Helsinki\",  \"duration\": 5},\n        {\"place\": \"Warsaw\",    \"duration\": 2},\n        {\"place\": \"Riga\",      \"duration\": 2},\n        {\"place\": \"Tallinn\",   \"duration\": 2},\n    ]\n    \n    # Compute start and end days according to:\n    # For the first city, start day is 1.\n    # For subsequent cities, if the previous city ended on day X,\n    # then the next city starts on day X (flight day counted in both).\n    itinerary = []\n    current_start = 1\n    for city in itinerary_cities:\n        duration = city[\"duration\"]\n        # End day is start + duration - 1 (because the start day counts fully)\n        current_end = current_start + duration - 1\n        day_range = f\"{current_start}-{current_end}\"\n        itinerary.append({\"day_range\": day_range, \"place\": city[\"place\"]})\n        # Next city starts on the same day as this city's end day (flight day overlap)\n        current_start = current_end\n\n    return itinerary\n\ndef main():\n    itinerary = compute_itinerary()\n    # Output the itinerary as JSON.\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1509"
+        }
+    ]
+}

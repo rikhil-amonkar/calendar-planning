@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Trip constraints and parameters\n    # Cities with required durations (days of stay required)\n    # If a flight is taken on a given day, that day counts for both the departure and arrival cities.\n    # Order chosen based on available direct flights:\n    # Dubrovnik -> Helsinki -> Reykjavik -> Prague -> Valencia -> Porto\n    cities = [\n        {\"place\": \"Dubrovnik\", \"days\": 4},\n        {\"place\": \"Helsinki\", \"days\": 4},\n        {\"place\": \"Reykjavik\", \"days\": 4},\n        {\"place\": \"Prague\", \"days\": 3},\n        {\"place\": \"Valencia\", \"days\": 5},\n        {\"place\": \"Porto\", \"days\": 3}\n    ]\n    total_trip_days = 18\n\n    # The idea:\n    # When departing from one city to the next, the flight day is shared by both cities.\n    # Thus if a city has \"d\" booked days, the last day is used as the flight day leaving for the next city (if any).\n    # We can compute the itinerary by starting at day 1 for the first city,\n    # and for each subsequent city, the start day equals the previous city's end day.\n    itinerary = []\n    current_day = 1\n    for index, city in enumerate(cities):\n        # The city stays for city['days'] days.\n        # We count the day of arrival (which might be the same as the previous city's departure).\n        start_day = current_day\n        end_day = start_day + city[\"days\"] - 1\n        itinerary.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city[\"place\"]\n        })\n        # For the next city, we assume flight occurs on the arrival day (overlap)\n        current_day = end_day\n\n    # At this point, our computed end day should match the specified total_trip_days.\n    # We add a check and adjust if necessary.\n    if current_day != total_trip_days:\n        # If there is a mismatch, adjust the last city's end day accordingly.\n        # Compute the difference (this difference should equal the sum of overlapping flight days)\n        diff = total_trip_days - current_day\n        # Adjust the last city's day range's end_day\n        last_entry = itinerary[-1]\n        start, end = last_entry[\"day_range\"].split(\"-\")\n        new_end = int(end) + diff\n        last_entry[\"day_range\"] = f\"{start}-{new_end}\"\n        current_day = new_end\n\n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = compute_itinerary()\n    # Output the result as a JSON formatted string containing only day_range and place.\n    print(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_709"
+        }
+    ]
+}

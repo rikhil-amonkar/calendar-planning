@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Frankfurt"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Frankfurt"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# Input Parameters (constraints)\n# Total trip days (accounting for overlaps on flight days): 20 days.\ntotal_trip_days = 20\n\n# Cities and required durations (in days, not counting that flight days are double\u2010counted)\n# The sum of durations is 27. With 7 flight overlaps (between 8 cities), the effective trip length is 27 - 7 = 20.\ndurations = {\n    \"Bucharest\": 2,  # visit relatives later in trip? (also check connectivity)\n    \"Barcelona\": 3,\n    \"Stockholm\": 4,\n    \"Reykjavik\": 5,\n    \"Munich\": 4,     # relatives in Munich must be between day 13 and 16 (inclusive in our plan)\n    \"Split\": 3,\n    \"Oslo\": 2,       # and the annual show is on day 16 to 17 (so Oslo must be exactly on these days)\n    \"Frankfurt\": 4   # and the workshop is between day 17 and day 20\n}\n\n# Allowed direct flights given as undirected edges (both directions allowed)\nallowed_flights = {\n    frozenset([\"Reykjavik\", \"Munich\"]),\n    frozenset([\"Munich\", \"Frankfurt\"]),\n    frozenset([\"Split\", \"Oslo\"]),\n    frozenset([\"Reykjavik\", \"Oslo\"]),\n    frozenset([\"Bucharest\", \"Munich\"]),\n    frozenset([\"Oslo\", \"Frankfurt\"]),\n    frozenset([\"Bucharest\", \"Barcelona\"]),\n    frozenset([\"Barcelona\", \"Frankfurt\"]),\n    frozenset([\"Reykjavik\", \"Frankfurt\"]),\n    frozenset([\"Barcelona\", \"Stockholm\"]),\n    frozenset([\"Barcelona\", \"Reykjavik\"]),\n    frozenset([\"Stockholm\", \"Reykjavik\"]),\n    frozenset([\"Barcelona\", \"Split\"]),\n    frozenset([\"Bucharest\", \"Oslo\"]),\n    frozenset([\"Bucharest\", \"Frankfurt\"]),\n    frozenset([\"Split\", \"Stockholm\"]),\n    frozenset([\"Barcelona\", \"Oslo\"]),\n    frozenset([\"Stockholm\", \"Munich\"]),\n    frozenset([\"Stockholm\", \"Oslo\"]),\n    frozenset([\"Split\", \"Frankfurt\"]),\n    frozenset([\"Barcelona\", \"Munich\"]),\n    frozenset([\"Stockholm\", \"Frankfurt\"]),\n    frozenset([\"Munich\", \"Oslo\"]),\n    frozenset([\"Split\", \"Munich\"])\n}\n\n# Chosen ordering:\n# We have to arrange all 8 cities in an order such that:\n# 1. The cumulative schedule fits exactly 20 days.\n# 2. The specific constraints are satisfied:\n#    - Oslo (2 days) must cover day 16-17 (annual show).\n#    - Reykjavik (5 days) must cover day 9 to 13 to allow a friend meeting.\n#    - Munich (4 days) must cover a day between 13 and 16 (for meeting relatives).\n#    - Frankfurt (4 days) must cover days 17 to 20 (workshop).\n# 3. All flights between successive cities are direct.\n#\n# After some algorithmic reasoning, one ordering that works is:\n#   1. Bucharest (2 days)\n#   2. Barcelona (3 days)\n#   3. Stockholm (4 days)\n#   4. Reykjavik (5 days)\n#   5. Munich (4 days)\n#   6. Split (3 days)\n#   7. Oslo (2 days)\n#   8. Frankfurt (4 days)\n#\n# Let\u2019s check connectivity between successive cities:\n# Bucharest -> Barcelona: allowed (Bucharest and Barcelona).\n# Barcelona -> Stockholm: allowed (Barcelona and Stockholm).\n# Stockholm -> Reykjavik: allowed (Stockholm and Reykjavik).\n# Reykjavik -> Munich: allowed (Reykjavik and Munich).\n# Munich -> Split: allowed (Split and Munich).\n# Split -> Oslo: allowed (Split and Oslo).\n# Oslo -> Frankfurt: allowed (Oslo and Frankfurt).\n#\n# Now, we compute the day ranges using the rule:\n# If a city\u2019s stay is from day X to Y and you fly on day Y to the next city,\n# then that day Y is counted for both cities.\n#\n# Thus, for an ordered list with durations d1, d2, \u2026, d8 the chaining is:\n#   start_day[0] = 1\n#   end_day[0] = start_day[0] + d1 - 1\n#   For subsequent city i:\n#       start_day[i] = end_day[i-1]   (flight day: counts for both cities)\n#       end_day[i] = start_day[i] + d_i - 1\n#\n# With no waiting days, the final overall end day will be:\n#   total = (sum of durations) - (number of flights)\n# In our case: 27 - 7 = 20, as required.\nordered_cities = [\n    \"Bucharest\",  # 2 days\n    \"Barcelona\",  # 3 days\n    \"Stockholm\",  # 4 days\n    \"Reykjavik\",  # 5 days\n    \"Munich\",     # 4 days (includes a day between 13 and 16)\n    \"Split\",      # 3 days\n    \"Oslo\",       # 2 days (must be day 16-17: we will see in schedule)\n    \"Frankfurt\"   # 4 days (workshop, covering day 17-20)\n]\n\n# Verify that consecutive cities are connected by a direct flight.\ndef check_connections(order, flights):\n    for i in range(len(order) - 1):\n        if frozenset([order[i], order[i+1]]) not in flights:\n            return False, order[i], order[i+1]\n    return True, None, None\n\nvalid, cityA, cityB = check_connections(ordered_cities, allowed_flights)\nif not valid:\n    raise Exception(f\"No direct flight between {cityA} and {cityB} in chosen ordering.\")\n\n# Compute the day ranges based on the chain rule\nitinerary = []\ncurrent_day = 1\nfor city in ordered_cities:\n    d = durations[city]\n    start_day = current_day\n    end_day = start_day + d - 1\n    itinerary.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city\n    })\n    # Next city starts on the day of flight, which is the same as this city's end day.\n    current_day = end_day\n\n# Since in the chaining the final city's end day is current_day, verify total trip days:\nif current_day != total_trip_days:\n    raise Exception(f\"Computed itinerary ends on day {current_day} which does not equal the total trip days {total_trip_days}.\")\n\n# Check specific constraints in the computed itinerary:\n# Find the itinerary item for Oslo and ensure its day range is \"16-17\"\noslo_segment = next(filter(lambda seg: seg[\"place\"] == \"Oslo\", itinerary))\nif oslo_segment[\"day_range\"] != \"16-17\":\n    raise Exception(\"Oslo segment does not match the required day range for the annual show (16-17).\")\n\n# Find Reykjavik and ensure its range covers days 9 to 13 (i.e. overlaps with 9-13)\nreykjavik_segment = next(filter(lambda seg: seg[\"place\"] == \"Reykjavik\", itinerary))\nr_start, r_end = map(int, reykjavik_segment[\"day_range\"].split('-'))\nif not (r_start <= 9 <= r_end or r_start <= 13 <= r_end):\n    raise Exception(\"Reykjavik segment does not cover the required friend meeting days between 9 and 13.\")\n\n# Munich relatives must be visited between day 13 and 16.\nmunich_segment = next(filter(lambda seg: seg[\"place\"] == \"Munich\", itinerary))\nm_start, m_end = map(int, munich_segment[\"day_range\"].split('-'))\nif not (m_start <= 13 <= m_end or m_start <= 16 <= m_end):\n    raise Exception(\"Munich segment does not cover the required relatives meeting days between 13 and 16.\")\n\n# Frankfurt workshop must occur between day 17 and 20.\nfrankfurt_segment = next(filter(lambda seg: seg[\"place\"] == \"Frankfurt\", itinerary))\nf_start, f_end = map(int, frankfurt_segment[\"day_range\"].split('-'))\nif not (f_start <= 17 <= f_end or f_start <= 20 <= f_end):\n    raise Exception(\"Frankfurt segment does not cover the required workshop days between 17 and 20.\")\n\n# Output the computed itinerary as JSON.\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_1116"
+        }
+    ]
+}

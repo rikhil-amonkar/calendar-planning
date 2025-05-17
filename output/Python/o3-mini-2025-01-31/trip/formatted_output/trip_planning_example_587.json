@@ -1,0 +1,36 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 10-16",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 16-21",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters (constraints)\ntotal_days = 21\ncities = {\n    \"Manchester\": {\"required_days\": 3, \"event\": {\"name\": \"wedding\", \"window\": (1, 3)}},\n    \"Istanbul\": {\"required_days\": 7, \"event\": None},\n    \"Venice\": {\"required_days\": 7, \"event\": {\"name\": \"workshop\", \"window\": (3, 9)}},\n    \"Krakow\": {\"required_days\": 6, \"event\": None},\n    \"Lyon\": {\"required_days\": 2, \"event\": None}\n}\n\n# Direct flight connections (bidirectional)\n# Represented as a set of frozensets for easy checking of connectivity.\ndirect_flights = {\n    frozenset([\"Manchester\", \"Venice\"]),\n    frozenset([\"Manchester\", \"Istanbul\"]),\n    frozenset([\"Venice\", \"Istanbul\"]),\n    frozenset([\"Istanbul\", \"Krakow\"]),\n    frozenset([\"Venice\", \"Lyon\"]),\n    frozenset([\"Lyon\", \"Istanbul\"]),\n    frozenset([\"Manchester\", \"Krakow\"])\n}\n\n# Explanation/Logic of chosen itinerary:\n# We note the following constraints:\n# 1. Wedding in Manchester between day 1 and day 3. We choose to start in Manchester.\n# 2. Need 3 days (with possible flight on boundary day).\n# 3. Venice workshop must occur between day 3 and day 9, and Venice needs 7 days.\n# 4. Other cities (Lyon, Istanbul, Krakow) have fixed required days.\n# Also, when flying on a day, that day counts in both the departure and arrival cities.\n#\n# We choose the following ordering:\n#   Start: Manchester (days 1 - 3) with wedding in the window.\n#   Then fly from Manchester to Venice on day 3 (so day 3 belongs to both Manchester and Venice).\n#   Stay in Venice from day 3 to day 9 (7 days total, workshop window covered).\n#   Then fly from Venice to Lyon on day 9 (overlap day 9 for both Venice and Lyon).\n#   Stay in Lyon on days 9 and 10 to get 2 days total.\n#   Then fly from Lyon to Istanbul on day 10 (overlap day 10 for both Lyon and Istanbul).\n#   Stay in Istanbul from day 10 to day 16 (7 days total).\n#   Finally, fly from Istanbul to Krakow on day 16 (overlap day 16 for both Istanbul and Krakow).\n#   Stay in Krakow from day 16 to day 21 (6 days total).\n#\n# Verify that each flight is available via direct flights:\n#  - Manchester -> Venice is available.\n#  - Venice -> Lyon is available.\n#  - Lyon -> Istanbul is available.\n#  - Istanbul -> Krakow is available.\n#\n# Calculate the itinerary segments with effective day ranges.\n# Note: When a flight happens on a boundary day, that day counts for both cities.\n#\n# Days spent computation:\n#  Manchester: Days 1, 2, 3    -> 3 days valid (wedding between day 1 and day 3 confirmed)\n#  Venice: Days 3, 4, 5, 6, 7, 8, 9    -> 7 days valid (workshop can be attended between day 3 and 9)\n#  Lyon: Days 9, 10    -> 2 days valid\n#  Istanbul: Days 10, 11, 12, 13, 14, 15, 16    -> 7 days valid\n#  Krakow: Days 16, 17, 18, 19, 20, 21    -> 6 days valid\n#\n# Total days from 1 to 21 = 21 days.\n\n# Build the itinerary as a list of segments. Each segment is represented as a dictionary with \"day_range\" and \"place\".\nitinerary = [\n    {\"day_range\": \"1-3\", \"place\": \"Manchester\"},\n    {\"day_range\": \"3-9\", \"place\": \"Venice\"},\n    {\"day_range\": \"9-10\", \"place\": \"Lyon\"},\n    {\"day_range\": \"10-16\", \"place\": \"Istanbul\"},\n    {\"day_range\": \"16-21\", \"place\": \"Krakow\"}\n]\n\n# Function to verify direct flight connectivity between consecutive cities in the itinerary\ndef verify_itinerary(itinerary, direct_flights):\n    for i in range(len(itinerary) - 1):\n        city_a = itinerary[i][\"place\"]\n        city_b = itinerary[i+1][\"place\"]\n        if frozenset([city_a, city_b]) not in direct_flights:\n            return False, f\"No direct flight between {city_a} and {city_b}\"\n    return True, \"Itinerary is valid with direct flights\"\n\nvalid, message = verify_itinerary(itinerary, direct_flights)\nif not valid:\n    raise Exception(message)\n\n# Prepare the output as JSON-formatted dictionary containing only day_range and place\noutput = {\"itinerary\": itinerary}\n\n# Output the JSON result\nprint(json.dumps(output))\n```",
+            "count": "trip_planning_example_587"
+        }
+    ]
+}

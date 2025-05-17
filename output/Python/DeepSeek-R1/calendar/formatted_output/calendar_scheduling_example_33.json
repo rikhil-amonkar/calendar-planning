@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:30",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time):\n    hours, minutes = map(int, time.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define work hours and constraints\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 30\nbobby_limit = time_to_minutes(\"15:00\")\n\n# Define busy intervals in minutes\nbusy = {\n    'Lisa': [\n        (time_to_minutes(\"9:00\"), time_to_minutes(\"10:00\")),\n        (time_to_minutes(\"10:30\"), time_to_minutes(\"11:30\")),\n        (time_to_minutes(\"12:30\"), time_to_minutes(\"13:00\")),\n        (time_to_minutes(\"16:00\"), time_to_minutes(\"16:30\"))\n    ],\n    'Bobby': [\n        (time_to_minutes(\"9:00\"), time_to_minutes(\"9:30\")),\n        (time_to_minutes(\"10:00\"), time_to_minutes(\"10:30\")),\n        (time_to_minutes(\"11:30\"), time_to_minutes(\"12:00\")),\n        (time_to_minutes(\"15:00\"), time_to_minutes(\"15:30\"))\n    ],\n    'Randy': [\n        (time_to_minutes(\"9:30\"), time_to_minutes(\"10:00\")),\n        (time_to_minutes(\"10:30\"), time_to_minutes(\"11:00\")),\n        (time_to_minutes(\"11:30\"), time_to_minutes(\"12:30\")),\n        (time_to_minutes(\"13:00\"), time_to_minutes(\"13:30\")),\n        (time_to_minutes(\"14:30\"), time_to_minutes(\"15:30\")),\n        (time_to_minutes(\"16:00\"), time_to_minutes(\"16:30\"))\n    ]\n}\n\n# Find first valid slot\nfor start in range(work_start, bobby_limit - meeting_duration + 1):\n    end = start + meeting_duration\n    # Check Bobby's after-15:00 constraint\n    if end > bobby_limit:\n        continue\n    # Check all participants' availability\n    valid = True\n    for person, intervals in busy.items():\n        for (s, e) in intervals:\n            if not (end <= s or start >= e):\n                valid = False\n                break\n        if not valid:\n            break\n    if valid:\n        print(f\"Monday {minutes_to_time(start)}:{minutes_to_time(end)}\")\n        exit()\n\n# Fallback if no slot found (though problem states solution exists)\nprint(\"No valid slot found\")\n'''",
+            "count": "calendar_scheduling_example_33"
+        }
+    ]
+}

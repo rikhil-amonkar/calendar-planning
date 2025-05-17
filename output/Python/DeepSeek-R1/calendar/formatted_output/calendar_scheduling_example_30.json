@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:30",
+                "end_time": "13:00"
+            },
+            "has_error": true,
+            "raw_model_response": "'''python\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\ndef is_free(slot_start, slot_end, busy_intervals):\n    for busy_start, busy_end in busy_intervals:\n        if not (slot_end <= busy_start or slot_start >= busy_end):\n            return False\n    return True\n\n# Define work hours in minutes (9:00 to 17:00)\nwork_start = 9 * 60  # 540 minutes (9:00)\nwork_end = 17 * 60    # 1020 minutes (17:00)\n\n# Define busy intervals for each participant in minutes\njeffrey_busy = [(9*60 + 30, 10*60), (10*60 + 30, 11*60)]\nvirginia_busy = [(9*60, 9*60 + 30), (10*60, 10*60 + 30),\n                 (14*60 + 30, 15*60), (16*60, 16*60 + 30)]\nmelissa_busy = [(9*60, 11*60 + 30), (12*60, 12*60 + 30),\n                (13*60, 15*60), (16*60, 17*60)]\n\n# Generate all possible 30-minute slots within work hours\nvalid_slots = []\nfor start in range(work_start, work_end - 30 + 1, 30):\n    end = start + 30\n    if (is_free(start, end, jeffrey_busy) and\n       is_free(start, end, virginia_busy) and\n       is_free(start, end, melissa_busy):\n        valid_slots.append(start)\n\n# Split into preferred (before 14:00) and other slots\npreferred_cutoff = 14 * 60  # 840 minutes (14:00)\npreferred = [s for s in valid_slots if s + 30 <= preferred_cutoff]\nother = [s for s in valid_slots if s not in preferred]\n\n# Select best available slot\nif preferred:\n    best_slot = preferred[0]\nelif other:\n    best_slot = other[0]\nelse:\n    best_slot = None\n\nif best_slot is not None:\n    start_time = minutes_to_time(best_slot)\n    end_time = minutes_to_time(best_slot + 30)\n    print(f\"Monday:{start_time}:{end_time}\")\nelse:\n    print(\"No valid slot found\")\n'''",
+            "count": "calendar_scheduling_example_30"
+        }
+    ]
+}

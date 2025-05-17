@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "13:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "13:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60\n    work_end = 17 * 60\n    duration = 30\n\n    # Convert blocked times to minutes since midnight\n    blocked = {\n        'Doris': [(9*60, 11*60), (13*60+30, 14*60), (16*60, 16*60+30)],\n        'Theresa': [(10*60, 12*60)],\n        'Christian': [],\n        'Terry': [(9*60+30, 10*60), (11*60+30, 12*60), (12*60+30, 13*60),\n                  (13*60+30, 14*60), (14*60+30, 15*60), (15*60+30, 17*60)],\n        'Carolyn': [(9*60, 10*60+30), (11*60, 11*60+30), (12*60, 13*60),\n                    (13*60+30, 14*60+30), (15*60, 17*60)],\n        'Kyle': [(9*60, 9*60+30), (11*60+30, 12*60), (12*60+30, 13*60),\n                 (14*60+30, 17*60)]\n    }\n\n    # Check every minute in work hours\n    for start in range(work_start, work_end - duration + 1):\n        end = start + duration\n        conflict = False\n        # Check all participants' schedules\n        for person, blocks in blocked.items():\n            for block_start, block_end in blocks:\n                if not (end <= block_start or start >= block_end):\n                    conflict = True\n                    break\n            if conflict:\n                break\n        if not conflict:\n            # Format time as HH:MM:HH:MM\n            s_h, s_m = divmod(start, 60)\n            e_h, e_m = divmod(end, 60)\n            return f\"Monday {s_h:02}:{s_m:02}:{e_h:02}:{e_m:02}\"\n    \n    return \"No available time found\"\n\nprint(find_meeting_time())\n'''",
+            "count": "calendar_scheduling_example_398"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    hours = m // 60\n    minutes = m % 60\n    return f\"{hours:02d}:{minutes:02d}\"\n\ndef get_free_intervals(busy, work_start, work_end):\n    sorted_busy = sorted(busy, key=lambda x: x[0])\n    free = []\n    current_start = work_start\n    for start, end in sorted_busy:\n        if current_start < start:\n            free.append((current_start, start))\n        current_start = max(current_start, end)\n    if current_start < work_end:\n        free.append((current_start, work_end))\n    return free\n\n# Define work hours (9:00-17:00) in minutes\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\n\n# Tuesday schedules\npatricia_busy = [\n    (time_to_minutes(\"10:00\"), time_to_minutes(\"10:30\")),\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"12:00\")),\n    (time_to_minutes(\"14:00\"), time_to_minutes(\"16:00\")),\n    (time_to_minutes(\"16:30\"), time_to_minutes(\"17:00\"))\n]\n\njesse_busy = [\n    (time_to_minutes(\"11:00\"), time_to_minutes(\"11:30\")),\n    (time_to_minutes(\"12:00\"), time_to_minutes(\"12:30\")),\n    (time_to_minutes(\"13:00\"), time_to_minutes(\"14:00\")),\n    (time_to_minutes(\"14:30\"), time_to_minutes(\"15:00\")),\n    (time_to_minutes(\"15:30\"), time_to_minutes(\"17:00\"))\n]\n\n# Calculate free intervals\npatricia_free = get_free_intervals(patricia_busy, work_start, work_end)\njesse_free = get_free_intervals(jesse_busy, work_start, work_end)\n\n# Find overlapping intervals\noverlap = []\nfor p_start, p_end in patricia_free:\n    for j_start, j_end in jesse_free:\n        start = max(p_start, j_start)\n        end = min(p_end, j_end)\n        if start < end:\n            overlap.append((start, end))\n\n# Find the first interval with at least 60 minutes\nfor start, end in overlap:\n    if end - start >= 60:\n        day = \"Tuesday\"\n        start_time = minutes_to_time(start)\n        end_time = minutes_to_time(start + 60)\n        print(f\"{day} {start_time}:{end_time}\")\n        exit()\n\n# If no interval found (though problem states there is one)\nprint(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_626"
+        }
+    ]
+}

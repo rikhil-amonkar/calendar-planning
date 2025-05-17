@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:00",
+                "end_time": "10:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_min(h, m):\n    return h * 60 + m\n\ndef min_to_time(mins):\n    h = mins // 60\n    m = mins % 60\n    return f\"{h:02d}:{m:02d}\"\n\ndef get_free_intervals(busy_intervals, work_start, work_end):\n    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])\n    free = []\n    prev_end = work_start\n    for start, end in sorted_busy:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        free.append((prev_end, work_end))\n    return free\n\ndef find_overlap(a, b):\n    overlap = []\n    i = j = 0\n    while i < len(a) and j < len(b):\n        a_start, a_end = a[i]\n        b_start, b_end = b[j]\n        start = max(a_start, b_start)\n        end = min(a_end, b_end)\n        if start < end:\n            overlap.append((start, end))\n            if a_end < b_end:\n                i += 1\n            else:\n                j += 1\n        else:\n            if a_start < b_start:\n                i += 1\n            else:\n                j += 1\n    return overlap\n\nschedules = {\n    'Bobby': {\n        'Monday': [(14, 30, 15, 0)],\n        'Tuesday': [\n            (9, 0, 11, 30),\n            (12, 0, 12, 30),\n            (13, 0, 15, 0),\n            (15, 30, 17, 0)\n        ]\n    },\n    'Michael': {\n        'Monday': [\n            (9, 0, 10, 0),\n            (10, 30, 13, 30),\n            (14, 0, 15, 0),\n            (15, 30, 17, 0)\n        ],\n        'Tuesday': [\n            (9, 0, 10, 30),\n            (11, 0, 11, 30),\n            (12, 0, 14, 0),\n            (15, 0, 16, 0),\n            (16, 30, 17, 0)\n        ]\n    }\n}\n\nwork_start = time_to_min(9, 0)\nwork_end = time_to_min(17, 0)\ndays = ['Monday', 'Tuesday']\nearliest = None\n\nfor day in days:\n    bobby_busy = []\n    for interval in schedules['Bobby'][day]:\n        sh, sm, eh, em = interval\n        start = time_to_min(sh, sm)\n        end = time_to_min(eh, em)\n        bobby_busy.append((start, end))\n    bobby_free = get_free_intervals(bobby_busy, work_start, work_end)\n    \n    michael_busy = []\n    for interval in schedules['Michael'][day]:\n        sh, sm, eh, em = interval\n        start = time_to_min(sh, sm)\n        end = time_to_min(eh, em)\n        michael_busy.append((start, end))\n    michael_free = get_free_intervals(michael_busy, work_start, work_end)\n    \n    overlap = find_overlap(bobby_free, michael_free)\n    \n    for start, end in overlap:\n        if end - start >= 30:\n            if earliest is None or start < earliest[0]:\n                earliest = (start, end, day)\n\nstart, end, day = earliest\nstart_time = min_to_time(start)\nend_time = min_to_time(end)\nprint(f\"{day}:{start_time}:{end_time}\")\n'''",
+            "count": "calendar_scheduling_example_640"
+        }
+    ]
+}

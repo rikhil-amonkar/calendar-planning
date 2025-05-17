@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters and required durations for each city (in days)\n# Note: When flying from city A to city B on a given day X,\n# the day X counts for both cities.\ncities = [\n    {\"name\": \"Hamburg\", \"required\": 5},    # 5 days in Hamburg\n    {\"name\": \"Frankfurt\", \"required\": 2},   # 2 days in Frankfurt; must cover days 5-6 (annual show)\n    {\"name\": \"Naples\", \"required\": 5},      # 5 days in Naples\n    {\"name\": \"Mykonos\", \"required\": 3},     # 3 days in Mykonos; meeting friend between day 10 and day 12\n    {\"name\": \"Geneva\", \"required\": 3},      # 3 days in Geneva\n    {\"name\": \"Porto\", \"required\": 2},       # 2 days in Porto\n    {\"name\": \"Manchester\", \"required\": 4}   # 4 days in Manchester; wedding between day 15 and 18\n]\n\n# The available direct flights (bidirectional unless noted otherwise)\n# Represented as a set of frozensets for unordered pairs except for the one \"from Hamburg to Geneva\"\n# We treat \"from Hamburg to Geneva\" as also allowing the reverse flight for itinerary feasibility.\ndirect_flights = {\n    frozenset([\"Hamburg\", \"Frankfurt\"]),\n    frozenset([\"Naples\", \"Mykonos\"]),\n    frozenset([\"Hamburg\", \"Porto\"]),\n    frozenset([\"Hamburg\", \"Geneva\"]),  # \"from Hamburg to Geneva\" accepted as flight between Hamburg and Geneva.\n    frozenset([\"Mykonos\", \"Geneva\"]),\n    frozenset([\"Frankfurt\", \"Geneva\"]),\n    frozenset([\"Frankfurt\", \"Porto\"]),\n    frozenset([\"Geneva\", \"Porto\"]),\n    frozenset([\"Geneva\", \"Manchester\"]),\n    frozenset([\"Naples\", \"Manchester\"]),\n    frozenset([\"Frankfurt\", \"Naples\"]),\n    frozenset([\"Frankfurt\", \"Manchester\"]),\n    frozenset([\"Naples\", \"Geneva\"]),\n    frozenset([\"Porto\", \"Manchester\"]),\n    frozenset([\"Hamburg\", \"Manchester\"])\n}\n\n# Proposed order that satisfies all scheduling constraints:\n# 1. Start in Hamburg (5 days)\n# 2. Fly from Hamburg to Frankfurt on day 5 (overlap day5) so Frankfurt gets day5-6 to catch the show (days 5,6)\n# 3. Fly from Frankfurt to Naples on day6 (overlap day6) to spend 5 days (day6-10)\n# 4. Fly from Naples to Mykonos on day10 (overlap day10) to spend 3 days (day10-12); friend meets between day10-12\n# 5. Fly from Mykonos to Geneva on day12 (overlap day12) to spend 3 days (day12-14)\n# 6. Fly from Geneva to Porto on day14 (overlap day14) to spend 2 days (day14-15)\n# 7. Finally, fly from Porto to Manchester on day15 (overlap day15) to spend 4 days (day15-18) for the wedding.\nitinerary_order = [\"Hamburg\", \"Frankfurt\", \"Naples\", \"Mykonos\", \"Geneva\", \"Porto\", \"Manchester\"]\n\n# Check if the sequence is feasible with direct flights\ndef has_direct_flight(city_a, city_b):\n    return frozenset([city_a, city_b]) in direct_flights\n\nfeasible = True\nfor i in range(len(itinerary_order) - 1):\n    if not has_direct_flight(itinerary_order[i], itinerary_order[i+1]):\n        feasible = False\n        break\n\nif not feasible:\n    raise Exception(\"The chosen itinerary order is not feasible with the available direct flights.\")\n\n# Compute the itinerary day ranges.\n# The rule: The first city starts at day 1.\n# Each subsequent city starts on the last day of the previous city (flight day, double counting)\nitinerary = []\ncurrent_day = 1\ncity_day_ranges = {}\n\n# Create a dictionary for required durations for fast lookup\nduration_map = {city[\"name\"]: city[\"required\"] for city in cities}\n\nfor idx, city in enumerate(itinerary_order):\n    # The effective stay is from current_day to (current_day + duration - 1)\n    start_day = current_day\n    end_day = current_day + duration_map[city] - 1\n    city_day_ranges[city] = (start_day, end_day)\n    itinerary.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city\n    })\n    # The next city's start day is the current end_day because the flight happens on that same day\n    current_day = end_day\n\n# Validate special constraints:\n# - Frankfurt must include days 5 and 6.\nfrankfurt_range = city_day_ranges[\"Frankfurt\"]\nif not (frankfurt_range[0] <= 5 <= frankfurt_range[1] and frankfurt_range[0] <= 6 <= frankfurt_range[1]):\n    raise Exception(\"Frankfurt does not cover the annual show days (5-6).\")\n\n# - Mykonos must include a day between 10 and 12.\nmykonos_range = city_day_ranges[\"Mykonos\"]\nif not (mykonos_range[0] <= 10 <= mykonos_range[1] or mykonos_range[0] <= 11 <= mykonos_range[1] or mykonos_range[0] <= 12 <= mykonos_range[1]):\n    raise Exception(\"Mykonos does not cover the friend meeting window (10-12).\")\n\n# - Manchester must cover days 15 to 18 for the wedding.\nmanchester_range = city_day_ranges[\"Manchester\"]\nif not (manchester_range[0] <= 15 and manchester_range[1] >= 18):\n    raise Exception(\"Manchester does not cover the wedding days (15-18).\")\n\n# - The total itinerary must span exactly 18 days.\nif city_day_ranges[\"Manchester\"][1] != 18:\n    raise Exception(\"The total itinerary does not span 18 days.\")\n\n# Output the itinerary as a JSON-formatted dictionary (list of day ranges and places)\noutput = {\"itinerary\": itinerary}\nprint(json.dumps(output))\n```",
+            "count": "trip_planning_example_857"
+        }
+    ]
+}

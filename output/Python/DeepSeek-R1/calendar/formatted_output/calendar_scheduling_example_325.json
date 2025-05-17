@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    work_start = 9 * 60\n    work_end = 17 * 60\n    duration = 30\n    participants = {\n        'Jose': [(11*60, 11*60+30), (12*60+30, 13*60)],\n        'Keith': [(14*60, 14*60+30), (15*60, 15*60+30)],\n        'Logan': [(9*60, 10*60), (12*60, 12*60+30), (15*60, 15*60+30)],\n        'Megan': [(9*60, 10*60+30), (11*60, 12*60), (13*60, 13*60+30), (14*60+30, 16*60+30)],\n        'Gary': [(9*60, 9*60+30), (10*60, 10*60+30), (11*60+30, 13*60), (13*60+30, 14*60), (14*60+30, 16*60+30)],\n        'Bobby': [(11*60, 11*60+30), (12*60, 12*60+30), (13*60, 16*60)]\n    }\n    jose_max_end = 15 * 60 + 30  # 15:30 latest end time\n\n    for start in range(work_start, work_end - duration + 1, 5):\n        end = start + duration\n        if end > jose_max_end:\n            continue\n        all_available = True\n        for busy in participants.values():\n            for s, e in busy:\n                if not (end <= s or start >= e):\n                    all_available = False\n                    break\n            if not all_available:\n                break\n        if all_available:\n            return f\"{start//60:02d}:{start%60:02d}-{end//60:02d}:{end%60:02d}\", \"Monday\"\n    return None\n\nmeeting_time, day = find_meeting_time()\nif meeting_time:\n    start, end = meeting_time.split('-')\n    start_h, start_m = map(int, start.split(':'))\n    end_h, end_m = map(int, end.split(':'))\n    print(f\"{day} {start_h:02d}:{start_m:02d}-{end_h:02d}:{end_m:02d}\")\nelse:\n    print(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_325"
+        }
+    ]
+}

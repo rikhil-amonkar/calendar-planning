@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "16:30",
+                "end_time": "17:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\n# Work hours and constraints\nwork_hours = {\"Tuesday\": (time_to_minutes(\"09:00\"), time_to_minutes(\"17:00\"))}\n\n# Margaret's availability (Tuesday after 14:30, excluding existing blocks)\nmargaret_blocks = {\"Tuesday\": [(time_to_minutes(\"12:00\"), time_to_minutes(\"12:30\"))]}\nmargaret_available = []\nfor day in [\"Tuesday\"]:\n    day_start = time_to_minutes(\"14:30\")  # Constraint: Tuesday before 14:30 excluded\n    day_end = work_hours[day][1]\n    margaret_available.append((day, day_start, day_end))\n\n# Alexis's schedule processing\nalexis_blocks = {\n    \"Tuesday\": [\n        (\"09:00\", \"09:30\"),\n        (\"10:00\", \"10:30\"),\n        (\"14:00\", \"16:30\")\n    ]\n}\n\n# Find available slots for Alexis on Tuesday\nalexis_available = []\nfor day in [\"Tuesday\"]:\n    work_start, work_end = work_hours[day]\n    current_start = work_start\n    # Convert blocks to minutes and sort\n    blocks = sorted([(time_to_minutes(s), time_to_minutes(e)) for s, e in alexis_blocks[day]])\n    for block_start, block_end in blocks:\n        if current_start < block_start:\n            alexis_available.append((day, current_start, block_start))\n        current_start = max(current_start, block_end)\n    if current_start < work_end:\n        alexis_available.append((day, current_start, work_end))\n\n# Find overlapping slots\nsolution_found = False\nfor m_day, m_start, m_end in margaret_available:\n    for a_day, a_start, a_end in alexis_available:\n        if m_day == a_day:\n            overlap_start = max(m_start, a_start)\n            overlap_end = min(m_end, a_end)\n            if overlap_end - overlap_start >= 30:\n                print(f\"{m_day} {minutes_to_time(overlap_start)}:{minutes_to_time(overlap_end)}\")\n                solution_found = True\n                exit()\n\nif not solution_found:\n    print(\"No solution found\")\n'''",
+            "count": "calendar_scheduling_example_629"
+        }
+    ]
+}

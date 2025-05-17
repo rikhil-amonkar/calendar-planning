@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters (constraints)\ntotal_days = 14\ncities = [\"Vienna\", \"Lyon\", \"Amsterdam\", \"Santorini\"]\n\n# Required durations in each city\ndurations = {\n    \"Vienna\": 7,\n    \"Lyon\": 3,\n    \"Amsterdam\": 3,\n    \"Santorini\": 4\n}\n\n# Event constraints:\n# - Workshop in Amsterdam must occur between day 9 and day 11.\n# - Wedding in Lyon must occur between day 7 and day 9.\n# We design an itinerary such that:\n#   Segment 1: Vienna for 7 days (days 1-7)\n#   Segment 2: Lyon for 3 days (flight on day 7; days 7-9)\n#   Segment 3: Amsterdam for 3 days (flight on day 9; days 9-11)\n#   Segment 4: Santorini for 4 days (flight on day 11; days 11-14)\n#\n# Explanation: When flying from one city to the next on a flight day, that day is counted in both cities.\n# Thus, the total days will be: (7 + 3 + 3 + 4) - 3 (overlap days) = 14.\n#\n# The flight legs are:\n#   Vienna -> Lyon (direct available)\n#   Lyon -> Amsterdam (direct available)\n#   Amsterdam -> Santorini (direct available)\n\nitinerary = []\ncurrent_day = 1\n\n# Segment 1: Vienna - days 1 to 7\ncity = \"Vienna\"\nstart_day = current_day\nend_day = start_day + durations[city] - 1  # no overlap at the very start\nitinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\ncurrent_day = end_day  # current_day becomes the overlap day for flight\n\n# Segment 2: Lyon - 3 days; flight on current_day so overlapping day included.\ncity = \"Lyon\"\nstart_day = current_day  # overlapping flight day with previous segment (day 7)\nend_day = start_day + durations[city] - 1\nitinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\ncurrent_day = end_day  # current_day becomes the overlap day for next flight\n\n# Segment 3: Amsterdam - 3 days; flight on current_day so overlapping day included.\ncity = \"Amsterdam\"\nstart_day = current_day  # overlapping flight day (day 9)\nend_day = start_day + durations[city] - 1\nitinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\ncurrent_day = end_day  # current_day becomes the overlap day for next flight\n\n# Segment 4: Santorini - 4 days; flight on current_day so overlapping day included.\ncity = \"Santorini\"\nstart_day = current_day  # overlapping flight day (day 11)\nend_day = start_day + durations[city] - 1\nitinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n\n# Check total days calculated: It should equal total_days\n# Total days = sum(durations) - number of flights (3)\ncalculated_total = sum(durations.values()) - 3\nif calculated_total != total_days:\n    raise ValueError(\"The computed itinerary does not fit into the total days available.\")\n\n# Output the itinerary as a JSON-formatted dictionary (list of segments)\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_253"
+        }
+    ]
+}

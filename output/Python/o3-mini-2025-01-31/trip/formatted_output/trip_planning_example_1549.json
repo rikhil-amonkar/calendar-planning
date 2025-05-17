@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 24-26",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 26-28",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 24-26",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 26-28",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# We are given a trip with 10 cities and 28 total days.\n# Each city visit is defined by its required number of days.\n# Note: When flying on a day, that day counts as spending time in both the departure city and the arrival city.\n# Thus, an itinerary with cities c1, c2, \u2026, cN with required durations d1, d2, \u2026, dN fits exactly in T = (sum(di) - (N - 1)) days.\n#\n# The problem also gives time\u2010window constraints:\n# \u2022 Prague: exactly 5 days.\n# \u2022 Riga: exactly 4 days; and an annual show in Riga must be attended from day 5 to day 8. (Thus Riga\u2019s interval must cover days 5..8)\n# \u2022 Lisbon: exactly 5 days.\n# \u2022 Naples: exactly 5 days.\n# \u2022 Warsaw: exactly 2 days.\n# \u2022 Tallinn: exactly 3 days and must include a day between day 18 and day 20 (so that a relative visit is met).\n# \u2022 Stockholm: exactly 2 days.\n# \u2022 Santorini: exactly 5 days.\n# \u2022 Milan: exactly 3 days and must include a day between day 24 and day 26 (to meet a friend).\n# \u2022 Porto: exactly 3 days.\n#\n# In addition, the flight connectivity is only allowed along certain direct routes.\n# After some trial and error, one ordering that satisfies all constraints and connectivity is chosen as follows:\n#\n# Order (with city durations in parentheses and computed day intervals):\n#   1. Prague (5 days)      : [1, 5]\n#   2. Riga (4 days)        : [5, 8]\n#      -- Riga has a direct link with Prague.\n#   3. Lisbon (5 days)      : [8, 12]\n#      -- Lisbon<->Riga exists.\n#   4. Naples (5 days)      : [12, 16]\n#      -- Lisbon and Naples are connected.\n#   5. Warsaw (2 days)      : [16, 17]\n#      -- Naples and Warsaw are connected.\n#   6. Tallinn (3 days)     : [17, 19]\n#      -- Warsaw and Tallinn are connected.\n#      This interval [17,19] includes day 18, fulfilling the relative-meeting constraint.\n#   7. Stockholm (2 days)   : [19, 20]\n#      -- Tallinn and Stockholm are connected.\n#   8. Santorini (5 days)   : [20, 24]\n#      -- There is a direct flight from Stockholm to Santorini.\n#   9. Milan (3 days)       : [24, 26]\n#      -- Santorini and Milan are connected.\n#      Milan's interval [24,26] includes day 24 (or 25) fulfilling the friend-meeting window.\n#  10. Porto (3 days)       : [26, 28]\n#      -- Milan and Porto are connected.\n#\n# Total required days = 5+4+5+5+2+3+2+5+3+3 = 37.\n# There are 9 flight overlaps so the itinerary length is 37 - 9 = 28 days.\n#\n# We output only the day_range and the place for each city visit in JSON.\n#\n# Construct the itinerary segments:\n# Each segment will be a dictionary with two keys: \"day_range\" and \"place\".\n# The day_range is a string like \"start-end\".\n# Compute the start day for the 1st city as 1.\n# For each subsequent city, the start day is equal to the previous city's end day.\n# The end day for a city with duration d starting at s is: s + d - 1.\n#\n# Use the chosen ordering from above:\ncities = [\n    {\"place\": \"Prague\", \"days\": 5},\n    {\"place\": \"Riga\", \"days\": 4},\n    {\"place\": \"Lisbon\", \"days\": 5},\n    {\"place\": \"Naples\", \"days\": 5},\n    {\"place\": \"Warsaw\", \"days\": 2},\n    {\"place\": \"Tallinn\", \"days\": 3},\n    {\"place\": \"Stockholm\", \"days\": 2},\n    {\"place\": \"Santorini\", \"days\": 5},\n    {\"place\": \"Milan\", \"days\": 3},\n    {\"place\": \"Porto\", \"days\": 3}\n]\n\nitinerary = []\ncurrent_start = 1\nfor city in cities:\n    d = city[\"days\"]\n    current_end = current_start + d - 1\n    # Format the day range as \"start-end\"\n    segment = {\n        \"day_range\": f\"{current_start}-{current_end}\",\n        \"place\": city[\"place\"]\n    }\n    itinerary.append(segment)\n    # Next city starts on the same day as the current city ends (flight day overlap).\n    current_start = current_end\n\n# Output the itinerary as JSON.\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_1549"
+        }
+    ]
+}

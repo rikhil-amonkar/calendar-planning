@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Trip parameters (all durations are in days)\ntotal_days = 16\ncities = [\"Dubrovnik\", \"Munich\", \"Krakow\", \"Split\", \"Milan\", \"Porto\"]\n# Required durations if visited separately\nrequired_durations = {\n    \"Dubrovnik\": 4,\n    \"Munich\": 5,\n    \"Krakow\": 2,\n    \"Split\": 3,\n    \"Milan\": 3,\n    \"Porto\": 4\n}\n\n# Special event constraints:\n# Munich annual show must be attended from day 4 to day 8 -> Munich must cover days 4,5,6,7,8.\n# In Krakow, meet friends (tour together) between day 8 and day 9 -> Krakow must cover at least one of these days.\n# In Milan, attend a wedding between day 11 and day 13 -> Milan must cover one day in that interval.\n#\n# Direct flights available between cities (bidirectional):\nflights = {\n    (\"Munich\", \"Porto\"),\n    (\"Split\", \"Milan\"),\n    (\"Milan\", \"Porto\"),\n    (\"Munich\", \"Krakow\"),\n    (\"Munich\", \"Milan\"),\n    (\"Dubrovnik\", \"Munich\"),\n    (\"Krakow\", \"Split\"),\n    (\"Krakow\", \"Milan\"),\n    (\"Munich\", \"Split\")\n}\n\n# We need to order the cities in such a way that all events and flight connections are respected.\n# One possible ordering that works is:\n# 1. Dubrovnik    (4 days)\n# 2. Munich       (5 days, and must include days 4 to 8 for the show)\n# 3. Krakow       (2 days, must include meeting on day 8 or 9)\n# 4. Split        (3 days)\n# 5. Milan        (3 days, wedding between day 11 and 13)\n# 6. Porto        (4 days, last city)\n#\n# Check flight chain:\n# Dubrovnik -> Munich (direct exists: (\"Dubrovnik\", \"Munich\"))\n# Munich -> Krakow ((\"Munich\", \"Krakow\"))\n# Krakow -> Split ((\"Krakow\", \"Split\"))\n# Split -> Milan ((\"Split\", \"Milan\"))\n# Milan -> Porto ((\"Milan\", \"Porto\"))\n#\n# With the overlapping rule: if you fly on a day, that day counts as a day spent in both cities.\n# There are 5 flights, so the effective total days become: sum(required_durations.values()) - 5 = 21 - 5 = 16, which is our total_days.\n\nitinerary_order = [\"Dubrovnik\", \"Munich\", \"Krakow\", \"Split\", \"Milan\", \"Porto\"]\n\n# Now, assign day ranges based on the overlapping travels.\n# The idea is: For the first city, we start on day 1.\n# For each subsequent city, we assume the flight is taken on the last day of the previous city,\n# meaning that day counts for both the previous and current city.\n\nday_assignments = {}\nstart_day = 1\n\nfor i, city in enumerate(itinerary_order):\n    duration = required_durations[city]\n    # For the first city, we simply add the full duration.\n    # For subsequent cities, one day is \"overlapped\" (the flight day) so that the new segment\n    # contributes only (duration - 1) extra days.\n    if i == 0:\n        end_day = start_day + duration - 1\n    else:\n        end_day = start_day + duration - 1\n    day_assignments[city] = (start_day, end_day)\n    # For the next city, the start day is the end day (overlap flight day) if not the last city.\n    if i < len(itinerary_order) - 1:\n        start_day = end_day  # flight day counts for both departure and arrival\n\n# Verify special constraints based on assigned day ranges:\n# Munich must include days 4 to 8.\nmunich_start, munich_end = day_assignments[\"Munich\"]\nassert munich_start <= 4 and munich_end >= 8, \"Munich does not cover the show period (day 4-8)\"\n\n# Krakow friend meeting between day 8 and 9.\nkrakow_start, krakow_end = day_assignments[\"Krakow\"]\nassert (krakow_start <= 8 <= krakow_end) or (krakow_start <= 9 <= krakow_end), \"Krakow does not cover friend meeting days (day 8-9)\"\n\n# Milan wedding between day 11 and 13.\nmilan_start, milan_end = day_assignments[\"Milan\"]\nwedding_possible = any(day in range(11, 14) for day in range(milan_start, milan_end + 1))\nassert wedding_possible, \"Milan does not cover the wedding period (day 11-13)\"\n\n# Build output itinerary as a list of dictionaries with day_range and place.\noutput_itinerary = []\nfor city in itinerary_order:\n    start, end = day_assignments[city]\n    output_itinerary.append({\n        \"day_range\": f\"{start}-{end}\",\n        \"place\": city\n    })\n\n# Output the result as JSON\nprint(json.dumps(output_itinerary))\n```",
+            "count": "trip_planning_example_675"
+        }
+    ]
+}

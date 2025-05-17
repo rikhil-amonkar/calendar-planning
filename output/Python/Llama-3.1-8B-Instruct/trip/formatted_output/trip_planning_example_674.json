@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Helsinki': 2,\n            'Warsaw': 3,\n            'Madrid': 4,\n            'Split': 4,\n            'Reykjavik': 2,\n            'Budapest': 4\n        }\n        self.flights = {\n            ('Helsinki', 'Reykjavik'): 1,\n            ('Budapest', 'Warsaw'): 1,\n            ('Madrid', 'Split'): 1,\n            ('Helsinki', 'Split'): 1,\n            ('Helsinki', 'Madrid'): 1,\n            ('Helsinki', 'Budapest'): 1,\n            ('Reykjavik', 'Warsaw'): 1,\n            ('Helsinki', 'Warsaw'): 1,\n            ('Madrid', 'Budapest'): 1,\n            ('Budapest', 'Reykjavik'): 1,\n            ('Madrid', 'Warsaw'): 1,\n            ('Warsaw', 'Split'): 1,\n            ('Reykjavik', 'Madrid'): 1\n        }\n\n    def generate_itinerary(self, days, constraints):\n        # Sort cities by duration in descending order\n        sorted_cities = sorted(constraints, key=lambda x: self.cities[x], reverse=True)\n\n        # Initialize the optimal itinerary\n        optimal_itinerary = []\n\n        # Iterate over cities to find the optimal itinerary\n        for i, city in enumerate(sorted_cities):\n            days_in_city = self.cities[city]\n            if i == 0:\n                days_left = days - days_in_city\n                optimal_itinerary.append({'day_range': f'Day 1-{days_in_city}', 'place': city})\n            else:\n                if (sorted_cities[i-1], city) in self.flights:\n                    days_left -= 1\n                    optimal_itinerary.append({'flying': f'Day {days_left+1}-{days_left+1}', 'from': sorted_cities[i-1], 'to': city})\n                days_left -= days_in_city\n                optimal_itinerary.append({'day_range': f'Day {days_left+1}-{days_left+days_in_city}', 'place': city})\n\n        # Add workshop and meeting constraints\n        for i, item in enumerate(optimal_itinerary):\n            if 'Helsinki' in item['place'] and days_in_city == 2 and 1 <= days_left + days_in_city <= 2:\n                optimal_itinerary[i]['day_range'] = f'Day 1-{days}'\n            if 'Reykjavik' in item['place'] and days_in_city == 2 and 8 <= days_left + days_in_city <= 9:\n                optimal_itinerary[i]['day_range'] = f'Day {days_left+1}-{days}'\n\n        return optimal_itinerary\n\n    def plan_trip(self):\n        constraints = ['Helsinki', 'Warsaw', 'Madrid', 'Split', 'Reykjavik', 'Budapest']\n        days = 14\n        itinerary = self.generate_itinerary(days, constraints)\n        return json.dumps(itinerary, indent=4)\n\nif __name__ == '__main__':\n    trip_planner = TripPlanner()\n    print(trip_planner.plan_trip())\n```",
+            "count": "trip_planning_example_674"
+        }
+    ]
+}

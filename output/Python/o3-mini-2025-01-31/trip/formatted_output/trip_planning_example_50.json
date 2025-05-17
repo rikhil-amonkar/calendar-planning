@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 6-12",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 6-12",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters\ntotal_days = 12\ncities = [\"Vilnius\", \"Munich\", \"Mykonos\"]\n\n# Required days in each city (including flight overlap)\nrequired_days = {\n    \"Vilnius\": 4,\n    \"Munich\": 3,\n    \"Mykonos\": 7\n}\n\n# Direct flight connections available (used for feasibility checking, not for output):\n# Direct flights exist: Vilnius -> Munich and Munich <-> Mykonos\n\n# We note that when flying from one city to another on a given day, that day counts for both cities.\n# Therefore, if we schedule flights in the order: Vilnius -> Munich -> Mykonos,\n# the total days is: days_in_Vilnius + days_in_Munich + days_in_Mykonos - (# of flight days)\n# where # of flight days = 2 in our itinerary.\n# In our case:\n# Total days = 4 + 3 + 7 - 2 = 12 which matches total_days.\n\n# Compute itinerary:\nitinerary = []\n# Start with Vilnius from day 1\ncurrent_day = 1\n\n# Vilnius itinerary: Day 1 to 4\nvilnius_start = current_day\nvilnius_end = vilnius_start + required_days[\"Vilnius\"] - 1  # no flight before first city\nitinerary.append({\n    \"day_range\": f\"{vilnius_start}-{vilnius_end}\",\n    \"place\": \"Vilnius\"\n})\n\n# Next, fly from Vilnius to Munich. Flight day is the last day of Vilnius.\n# That day counts as Munich's first day.\ncurrent_day = vilnius_end  # flight day overlaps so Munich starts at the same day\nmunich_start = current_day\n# Munich requires 3 days, but day munich_start is already counted,\n# so additional days = 3 - 1.\nmunich_end = munich_start + required_days[\"Munich\"] - 1\nitinerary.append({\n    \"day_range\": f\"{munich_start}-{munich_end}\",\n    \"place\": \"Munich\"\n})\n\n# Next, fly from Munich to Mykonos. The flight day is the last day of Munich.\n# That day counts as Mykonos' first day.\ncurrent_day = munich_end  # flight day overlaps so Mykonos starts at this day\nmykonos_start = current_day\n# Mykonos requires 7 days, but the flight day is already counted.\nmykonos_end = mykonos_start + required_days[\"Mykonos\"] - 1\nitinerary.append({\n    \"day_range\": f\"{mykonos_start}-{mykonos_end}\",\n    \"place\": \"Mykonos\"\n})\n\n# Output the final itinerary as JSON-formatted dictionary\nprint(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_50"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\n# Define work hours and meeting duration\nwork_start = time_to_minutes(\"09:00\")\nwork_end = time_to_minutes(\"17:00\")\nmeeting_duration = 30\n\n# Define busy intervals in minutes\neric_busy = [\n    (time_to_minutes(\"12:00\"), time_to_minutes(\"13:00\")),\n    (time_to_minutes(\"14:00\"), time_to_minutes(\"15:00\"))\n]\n\nhenry_busy = [\n    (time_to_minutes(\"09:30\"), time_to_minutes(\"10:00\")),\n    (time_to_minutes(\"10:30\"), time_to_minutes(\"11:00\")),\n    (time_to_minutes(\"11:30\"), time_to_minutes(\"12:30\")),\n    (time_to_minutes(\"13:00\"), time_to_minutes(\"13:30\")),\n    (time_to_minutes(\"14:30\"), time_to_minutes(\"15:00\")),\n    (time_to_minutes(\"16:00\"), time_to_minutes(\"17:00\"))\n]\n\n# Combine and sort all busy intervals\ncombined_busy = sorted(eric_busy + henry_busy, key=lambda x: x[0])\n\n# Merge overlapping intervals\nmerged_busy = []\nfor start, end in combined_busy:\n    if not merged_busy:\n        merged_busy.append([start, end])\n    else:\n        last_start, last_end = merged_busy[-1]\n        if start <= last_end:\n            merged_busy[-1][1] = max(last_end, end)\n        else:\n            merged_busy.append([start, end])\n\n# Find free slots considering work hours\nfree_slots = []\nprevious_end = work_start\nfor start, end in merged_busy:\n    if start > previous_end:\n        free_slots.append((previous_end, start))\n    previous_end = max(previous_end, end)\nif previous_end < work_end:\n    free_slots.append((previous_end, work_end))\n\n# Find first suitable slot considering Henry's preference (prefer before 10:00)\nsuitable_slot = None\nfor slot in free_slots:\n    slot_start, slot_end = slot\n    if slot_end - slot_start >= meeting_duration:\n        # Check if slot is before 10:00 first\n        if slot_end <= time_to_minutes(\"10:00\"):\n            suitable_slot = (slot_start, slot_start + meeting_duration)\n            break\nif not suitable_slot:  # If no early slot found, take first available\n    for slot in free_slots:\n        slot_start, slot_end = slot\n        if slot_end - slot_start >= meeting_duration:\n            suitable_slot = (slot_start, slot_start + meeting_duration)\n            break\n\n# Format output\nstart_time = minutes_to_time(suitable_slot[0])\nend_time = minutes_to_time(suitable_slot[1])\nprint(f\"Monday {start_time}:{end_time}\")\n'''",
+            "count": "calendar_scheduling_example_553"
+        }
+    ]
+}

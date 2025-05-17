@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "13:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Define work hours\n    work_start = 9 * 60\n    work_end = 17 * 60\n    duration = 60\n\n    # Convert schedules to minutes since midnight\n    schedules = {\n        \"Stephanie\": [(10*60, 10*60+30), (16*60, 16*60+30)],\n        \"Cheryl\": [(10*60, 10*60+30), (11*60+30, 12*60), (13*60+30, 14*60), (16*60+30, 17*60)],\n        \"Bradley\": [(9*60+30, 10*60), (10*60+30, 11*60+30), (13*60+30, 14*60), (14*60+30, 15*60), (15*60+30, 17*60)],\n        \"Steven\": [(9*60, 12*60), (13*60, 13*60+30), (14*60+30, 17*60)]\n    }\n\n    # Create a timeline of available slots\n    for minute in range(work_start, work_end - duration + 1):\n        start = minute\n        end = minute + duration\n        available = True\n        \n        # Check all participants' schedules\n        for person, busy in schedules.items():\n            for s, e in busy:\n                if not (end <= s or start >= e):\n                    available = False\n                    break\n            if not available:\n                break\n        \n        if available:\n            # Convert back to HH:MM format\n            def format_time(m):\n                return f\"{m//60:02d}:{m%60:02d}\"\n            \n            return \"Monday\", (format_time(start), format_time(end))\n    \n    return None\n\nmeeting_day, (start, end) = find_meeting_time()\nprint(f\"{meeting_day} {start}:{end}\")\n'''",
+            "count": "calendar_scheduling_example_114"
+        }
+    ]
+}

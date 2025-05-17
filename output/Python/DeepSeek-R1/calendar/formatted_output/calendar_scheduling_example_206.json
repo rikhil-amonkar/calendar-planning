@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "15:30",
+                "end_time": "16:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Define work hours and meeting duration\n    work_start = 9 * 60\n    work_end = 17 * 60\n    meeting_duration = 30\n    day = \"Monday\"\n\n    # Convert schedules to minutes since midnight\n    schedules = {\n        \"Shirley\": [(630, 660), (720, 750)],\n        \"Jacob\": [(540, 570), (600, 630), (660, 690), (750, 810), (870, 900)],\n        \"Stephen\": [(690, 720), (750, 780)],\n        \"Margaret\": [(540, 570), (630, 750), (780, 810), (900, 930), (990, 1020)],\n        \"Mason\": [(540, 600), (630, 660), (690, 750), (780, 810), (840, 870), (990, 1020)]\n    }\n\n    # Margaret's time constraint\n    margaret_min = 14 * 60 + 30  # 14:30\n\n    # Check every possible 30-minute slot between work hours\n    for start in range(work_start, work_end - meeting_duration + 1):\n        end = start + meeting_duration\n        # Check Margaret's preference\n        if start < margaret_min:\n            continue\n        # Check all participants' availability\n        conflict = False\n        for person, busy in schedules.items():\n            for s, e in busy:\n                if not (end <= s or start >= e):\n                    conflict = True\n                    break\n            if conflict:\n                break\n        if not conflict:\n            # Convert back to HH:MM format\n            def to_time(minutes):\n                return f\"{minutes//60:02}:{minutes%60:02}\"\n            return f\"{day} {to_time(start)}:{to_time(end)}\"\n    return None\n\nresult = find_meeting_time()\nprint(result)\n'''",
+            "count": "calendar_scheduling_example_206"
+        }
+    ]
+}

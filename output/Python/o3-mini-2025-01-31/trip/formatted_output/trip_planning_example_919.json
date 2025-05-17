@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef main():\n    total_days = 15\n\n    # Define required stays (days required in each city, not counting overlap flights)\n    # Note: When flying on a day, that day is counted for both origin and destination.\n    requirements = {\n        \"Vienna\": 4,   # Including conference day on day1 and day4.\n        \"Rome\": 3,\n        \"Riga\": 2,\n        \"Vilnius\": 4,\n        \"Milan\": 2,\n        \"Lisbon\": 3,\n        \"Oslo\": 3\n    }\n    \n    # Define special day constraints:\n    # Vienna: Conference on day1 and day4.\n    # Lisbon: Visit relatives between day11 and day13 (at least one Lisbon day in that interval needed).\n    # Oslo: Meet friend between day13 and day15 (at least one Oslo day in that interval needed).\n    special = {\n        \"Vienna\": [1, 4],\n        \"Lisbon\": list(range(11, 14)),  # one of Lisbon days must be within [11,13]\n        \"Oslo\": list(range(13, 16))     # one of Oslo days must be within [13,15]\n    }\n    \n    # Direct flights available (treating most as bidirectional except those specified as \"from\")\n    # We represent flights as a dictionary with tuple keys. For directional ones, we mark accordingly.\n    flights = {\n        (\"Riga\", \"Oslo\"): True,\n        (\"Oslo\", \"Riga\"): True,\n        (\"Rome\", \"Oslo\"): True,\n        (\"Oslo\", \"Rome\"): True,\n        (\"Vienna\", \"Milan\"): True,\n        (\"Milan\", \"Vienna\"): True,\n        (\"Vienna\", \"Vilnius\"): True,\n        (\"Vilnius\", \"Vienna\"): True,\n        (\"Vienna\", \"Lisbon\"): True,\n        (\"Lisbon\", \"Vienna\"): True,\n        (\"Riga\", \"Milan\"): True,\n        (\"Milan\", \"Riga\"): True,\n        (\"Lisbon\", \"Oslo\"): True,\n        (\"Oslo\", \"Lisbon\"): True,\n        (\"Rome\", \"Riga\"): True,     # directional: from Rome to Riga\n        (\"Riga\", \"Rome\"): False,\n        (\"Rome\", \"Lisbon\"): True,\n        (\"Lisbon\", \"Rome\"): True,\n        (\"Vienna\", \"Riga\"): True,\n        (\"Riga\", \"Vienna\"): True,\n        (\"Vienna\", \"Rome\"): True,\n        (\"Rome\", \"Vienna\"): True,\n        (\"Milan\", \"Oslo\"): True,\n        (\"Oslo\", \"Milan\"): True,\n        (\"Vienna\", \"Oslo\"): True,\n        (\"Oslo\", \"Vienna\"): True,\n        (\"Vilnius\", \"Oslo\"): True,\n        (\"Oslo\", \"Vilnius\"): True,\n        (\"Riga\", \"Vilnius\"): True,   # directional: from Riga to Vilnius\n        (\"Vilnius\", \"Riga\"): False,\n        (\"Vilnius\", \"Milan\"): True,\n        (\"Milan\", \"Vilnius\"): True,\n        (\"Riga\", \"Lisbon\"): True,\n        (\"Lisbon\", \"Riga\"): True,\n        (\"Milan\", \"Lisbon\"): True,\n        (\"Lisbon\", \"Milan\"): True\n    }\n    \n    # Our chosen itinerary order (one possible optimal itinerary meeting all constraints and direct flight rules):\n    # Sequence of cities: Vienna -> Rome -> Riga -> Vilnius -> Milan -> Lisbon -> Oslo\n    # Flights will occur on the transition day, meaning the destination and origin share that day.\n    itinerary_order = [\n        (\"Vienna\", requirements[\"Vienna\"]),\n        (\"Rome\", requirements[\"Rome\"]),\n        (\"Riga\", requirements[\"Riga\"]),\n        (\"Vilnius\", requirements[\"Vilnius\"]),\n        (\"Milan\", requirements[\"Milan\"]),\n        (\"Lisbon\", requirements[\"Lisbon\"]),\n        (\"Oslo\", requirements[\"Oslo\"])\n    ]\n    \n    # To satisfy the overlapping day count, if there are N segments,\n    # we have N - 1 flight days where the same day counts for two cities.\n    # Total days needed = sum(required_days) - (N - 1)\n    # Our chosen ordering: sum = 4+3+2+4+2+3+3 = 21, and flight overlaps = 6, giving 15 days total.\n    # We now assign day ranges for each city such that:\n    # - The first city gets its full range, ending on its last day.\n    # - Each subsequent city starts on the same day as the flight from the previous city (overlap).\n    \n    segments = []\n    current_day = 1\n    # For the first city, assign its days:\n    city, req = itinerary_order[0]\n    start_day = current_day\n    end_day = start_day + req - 1  # no overlap needed for the first city's start\n    segments.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n    current_day = end_day  # current_day is the day we depart (flight day in which we are already present in next city)\n    \n    # For each subsequent city, the flight day is the current_day (overlap day)\n    for idx in range(1, len(itinerary_order)):\n        city, req = itinerary_order[idx]\n        # The flight day (current_day) counts for this new city.\n        start_day = current_day\n        # So additional days needed = req - 1; new end_day becomes:\n        end_day = start_day + (req - 1)\n        segments.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n        current_day = end_day  # update current_day to departure day for next flight\n    \n    # At this point, segments should cover exactly 15 days.\n    \n    # Now we can check the special constraints:\n    # Vienna must have day1 and day4. Our Vienna segment is from day1 to day4.\n    # Lisbon must include a day between 11 and 13. Lisbon segment computed:\n    # Lisbon segment: day_range from ? (it will be computed from the itinerary_order order.)\n    # Oslo must include a day between 13 and 15.\n    # Let's assert these conditions.\n    def parse_range(day_range):\n        s, e = day_range.split(\"-\")\n        return int(s), int(e)\n    \n    # For the cities with special date conditions, check if the city segment includes any day from the specified range.\n    checks = []\n    for seg in segments:\n        city = seg[\"place\"]\n        if city in special:\n            s, e = parse_range(seg[\"day_range\"])\n            days = set(range(s, e + 1))\n            if not days.intersection(set(special[city])):\n                checks.append(f\"City {city} does not meet its special day constraint.\")\n    if checks:\n        raise Exception(\"Itinerary does not meet special constraints: \" + \"; \".join(checks))\n    \n    # Check direct flight connectivity between successive cities.\n    for i in range(len(itinerary_order) - 1):\n        city_from = itinerary_order[i][0]\n        city_to = itinerary_order[i+1][0]\n        if not flights.get((city_from, city_to), False):\n            raise Exception(f\"No direct flight from {city_from} to {city_to}\")\n    \n    # Output the itinerary in JSON format: only day_range and place.\n    output = segments\n    print(json.dumps(output, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_919"
+        }
+    ]
+}

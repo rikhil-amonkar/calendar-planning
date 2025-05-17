@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters:\n    total_days = 22\n    \n    # City durations (in days), as required\n    # Note: when flying on the same day, that day is counted for both cities.\n    # We plan the itinerary in the order that satisfies both the flight network and the special event time windows.\n    cities = [\n        {\"place\": \"Berlin\", \"duration\": 5},    # Must attend annual show in Berlin from day 1 to day 5.\n        {\"place\": \"Split\", \"duration\": 3},       # 3 days in Split. Direct flight available from Berlin to Split.\n        {\"place\": \"Lyon\", \"duration\": 5},        # 5 days in Lyon; wedding in Lyon happens between day 7 and day 11.\n        {\"place\": \"Bucharest\", \"duration\": 3},   # 3 days in Bucharest; visiting relatives between day 13 and day 15.\n        {\"place\": \"Lisbon\", \"duration\": 3},      # 3 days in Lisbon.\n        {\"place\": \"Riga\", \"duration\": 5},        # 5 days in Riga.\n        {\"place\": \"Tallinn\", \"duration\": 4}      # 4 days in Tallinn.\n    ]\n    \n    # The flight network (only direct flight pairs available):\n    # Lisbon <-> Bucharest, Berlin <-> Lisbon, Bucharest <-> Riga, Berlin <-> Riga,\n    # Split <-> Lyon, Lisbon <-> Riga, Riga -> Tallinn, Berlin <-> Split,\n    # Lyon <-> Lisbon, Berlin <-> Tallinn, Lyon <-> Bucharest.\n    # The chosen itinerary sequence uses the following valid direct flights:\n    # Berlin (day 1-5) -> Split (flight on day 5, overlap day),\n    # Split (day 5-7) -> Lyon (flight on day 7, overlap day),\n    # Lyon (day 7-11) -> Bucharest (flight on day 11, overlap day),\n    # Bucharest (day 11-13) -> Lisbon (flight on day 13, overlap day),\n    # Lisbon (day 13-15) -> Riga (flight on day 15, overlap day),\n    # Riga (day 15-19) -> Tallinn (flight on day 19, overlap day).\n    \n    itinerary = []\n    # Use the overlapping flight rule: if flying on day X, that day is counted for both cities.\n    # For the first city, we start at day 1.\n    current_day = 1\n    \n    for i, city_info in enumerate(cities):\n        place = city_info[\"place\"]\n        duration = city_info[\"duration\"]\n        # For the first city, the stay is from current_day to current_day + duration - 1.\n        # For subsequent cities, we assume the flight is on the same day as arrival,\n        # so we reuse current_day as both departure day's end for the previous city and start for the next.\n        start_day = current_day\n        end_day = current_day + duration - 1  # since the transit day counts for both\n        \n        itinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": place})\n        # Next city's start is the same as the current city's end day because of overlap.\n        current_day = end_day\n        \n    return itinerary\n\ndef main():\n    itinerary = compute_itinerary()\n    # Output the itinerary as JSON formatted string\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_824"
+        }
+    ]
+}

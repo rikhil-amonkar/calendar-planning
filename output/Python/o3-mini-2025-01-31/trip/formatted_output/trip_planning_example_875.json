@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Define the trip constraints as input variables\n    # Cities and their required durations (including flight overlap days)\n    # Note: If you fly from city A to B on day X, that day counts for both cities.\n    cities = [\n        {\"name\": \"Venice\", \"duration\": 5},\n        {\"name\": \"Edinburgh\", \"duration\": 4},\n        {\"name\": \"Krakow\", \"duration\": 4},\n        {\"name\": \"Stuttgart\", \"duration\": 3},\n        {\"name\": \"Split\", \"duration\": 2},\n        {\"name\": \"Athens\", \"duration\": 4},\n        {\"name\": \"Mykonos\", \"duration\": 4}\n    ]\n    \n    # Additional constraints (for clarity in planning):\n    # - Workshop in Stuttgart must occur between day 11 and day 13.\n    # - Meet friend in Krakow between day 8 and day 11.\n    # - Meet friend in Split between day 13 and day 14.\n    # Flight connections for validation:\n    direct_flights = {\n        (\"Krakow\", \"Split\"), (\"Split\", \"Athens\"), (\"Edinburgh\", \"Krakow\"),\n        (\"Venice\", \"Stuttgart\"), (\"Krakow\", \"Stuttgart\"), (\"Edinburgh\", \"Stuttgart\"),\n        (\"Stuttgart\", \"Athens\"), (\"Venice\", \"Edinburgh\"), (\"Athens\", \"Mykonos\"),\n        (\"Venice\", \"Athens\"), (\"Stuttgart\", \"Split\"), (\"Edinburgh\", \"Athens\")\n    }\n    \n    # Chosen itinerary order based on available direct flights:\n    # Venice -> Edinburgh -> Krakow -> Stuttgart -> Split -> Athens -> Mykonos\n    # Validate that each consecutive pair is connected by a direct flight (in either direction)\n    itinerary_order = [city[\"name\"] for city in cities]\n    for i in range(len(itinerary_order) - 1):\n        pair = (itinerary_order[i], itinerary_order[i+1])\n        pair_rev = (itinerary_order[i+1], itinerary_order[i])\n        if pair not in direct_flights and pair_rev not in direct_flights:\n            raise ValueError(f\"No direct flight available between {itinerary_order[i]} and {itinerary_order[i+1]}.\")\n    \n    # The total required days sum if visited separate: 5+4+4+3+2+4+4 = 26 days.\n    # Because each flight day is counted twice, we have 6 overlapping days.\n    # This gives a total trip duration = 26 - 6 = 20 days.\n    \n    # Compute day ranges for each city.\n    itinerary = []\n    current_day = 1\n    for city in cities:\n        start_day = current_day\n        end_day = start_day + city[\"duration\"] - 1  # because the first day counts fully\n        itinerary.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city[\"name\"]\n        })\n        # For the next city, the flight day overlaps as the end day of current city.\n        current_day = end_day\n    \n    # Check constraints are met:\n    # Stuttgart workshop between day 11 and 13:\n    for entry in itinerary:\n        if entry[\"place\"] == \"Stuttgart\":\n            start, end = map(int, entry[\"day_range\"].split('-'))\n            if not (start <= 11 <= end or start <= 12 <= end or start <= 13 <= end):\n                raise ValueError(\"Stuttgart workshop constraint not met.\")\n        if entry[\"place\"] == \"Krakow\":\n            start, end = map(int, entry[\"day_range\"].split('-'))\n            if not (start <= 8 <= end or start <= 9 <= end or start <= 10 <= end or start <= 11 <= end):\n                raise ValueError(\"Krakow meeting constraint not met.\")\n        if entry[\"place\"] == \"Split\":\n            start, end = map(int, entry[\"day_range\"].split('-'))\n            if not (start <= 13 <= end or start <= 14 <= end):\n                raise ValueError(\"Split meeting constraint not met.\")\n                \n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = compute_itinerary()\n    # Output the itinerary as a JSON-formatted dictionary list with only day_range and place.\n    print(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_875"
+        }
+    ]
+}

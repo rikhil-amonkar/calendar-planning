@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-17",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters\ntotal_days = 17\n\n# Cities and the required stay durations (noting that flight days count for both cities)\nstay_naples = 5\nstay_vienna = 7\nstay_vilnius = 7\n\n# Flight connections:\n# Naples <-> Vienna, Vienna <-> Vilnius.\n# We must have an itinerary that uses only these flights.\n\n# Additional constraints:\n# - Visit relatives in Naples between day 1 and day 5 (inclusive), so Naples must be visited from the start.\n# - Since there is no direct flight between Naples and Vilnius, the only valid order is:\n#   Naples --> Vienna --> Vilnius.\n#\n# Also note:\n# If one flies on a transition day then that day counts in both the origin and destination.\n#\n# Let d1 be the flight day from Naples to Vienna.\n# Then days in Naples = d1 (since day d1 counts as Naples as well).\n# We need d1 = stay_naples = 5.\n#\n# Let d2 be the flight day from Vienna to Vilnius.\n# Then days in Vienna = (d2 - d1 + 1) [because day d1 counts in Vienna (arrival day)]\n# We require d2 - 5 + 1 = 7, so d2 = 11.\n#\n# Days in Vilnius = total_days - d2 + 1 = 17 - 11 + 1 = 7.\n#\n# This perfectly satisfies the required durations and total days.\n\nflight_day_naples_vienna = stay_naples  # day 5\nflight_day_vienna_vilnius = flight_day_naples_vienna + stay_vienna - 1  # day 11\n\n# Construct the itinerary segments.\n# Each segment is represented as a dictionary with \"day_range\" and \"place\"\nitinerary = []\n\n# Segment 1: Naples from day 1 to day 5\nnaples_day_start = 1\nnaples_day_end = flight_day_naples_vienna  # 5\nitinerary.append({\n    \"day_range\": f\"{naples_day_start}-{naples_day_end}\",\n    \"place\": \"Naples\"\n})\n\n# Segment 2: Vienna from day 5 to day 11\nvienna_day_start = flight_day_naples_vienna  # 5 (flight day counts for both Naples and Vienna)\nvienna_day_end = flight_day_vienna_vilnius  # 11\nitinerary.append({\n    \"day_range\": f\"{vienna_day_start}-{vienna_day_end}\",\n    \"place\": \"Vienna\"\n})\n\n# Segment 3: Vilnius from day 11 to day 17\nvilnius_day_start = flight_day_vienna_vilnius  # 11 (flight day counts for both Vienna and Vilnius)\nvilnius_day_end = total_days  # 17\nitinerary.append({\n    \"day_range\": f\"{vilnius_day_start}-{vilnius_day_end}\",\n    \"place\": \"Vilnius\"\n})\n\n# Output the itinerary as a JSON-formatted dictionary\nprint(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_90"
+        }
+    ]
+}

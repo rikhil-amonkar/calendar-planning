@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    visited_cities = set()\n    city_stay = {}\n\n    # Initialize city_stay dictionary\n    for city, stay in constraints.items():\n        city_stay[city] = stay\n\n    # Attend workshop in Barcelona\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Barcelona\"] - 1}', 'place': 'Barcelona'})\n    visited_cities.add('Barcelona')\n    current_day += city_stay[\"Barcelona\"]\n\n    # Visit Valencia\n    if 'Valencia' in direct_flights['Barcelona']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Barcelona', 'to': 'Valencia'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Valencia\"] - 1}', 'place': 'Valencia'})\n        visited_cities.add('Valencia')\n        current_day += city_stay[\"Valencia\"]\n    else:\n        raise Exception(\"No direct flight from Barcelona to Valencia\")\n\n    # Visit Stuttgart\n    if 'Stuttgart' in direct_flights['Valencia']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Valencia', 'to': 'Stuttgart'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Stuttgart\"] - 1}', 'place': 'Stuttgart'})\n        visited_cities.add('Stuttgart')\n        current_day += city_stay[\"Stuttgart\"]\n    else:\n        raise Exception(\"No direct flight from Valencia to Stuttgart\")\n\n    # Visit Split\n    if 'Split' in direct_flights['Stuttgart']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Stuttgart', 'to': 'Split'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Split\"] - 1}', 'place': 'Split'})\n        visited_cities.add('Split')\n        current_day += city_stay[\"Split\"]\n    else:\n        raise Exception(\"No direct flight from Stuttgart to Split\")\n\n    # Visit Venice\n    if 'Venice' in direct_flights['Split']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Split', 'to': 'Venice'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Venice\"] - 1}', 'place': 'Venice'})\n        visited_cities.add('Venice')\n        current_day += city_stay[\"Venice\"]\n    else:\n        raise Exception(\"No direct flight from Split to Venice\")\n\n    # Visit Amsterdam\n    if 'Amsterdam' in direct_flights['Venice']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Venice', 'to': 'Amsterdam'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Amsterdam\"] - 1}', 'place': 'Amsterdam'})\n        visited_cities.add('Amsterdam')\n        current_day += city_stay[\"Amsterdam\"]\n    else:\n        raise Exception(\"No direct flight from Venice to Amsterdam\")\n\n    # Visit Porto\n    if 'Porto' in direct_flights['Amsterdam']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Amsterdam', 'to': 'Porto'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Porto\"] - 1}', 'place': 'Porto'})\n        visited_cities.add('Porto')\n        current_day += city_stay[\"Porto\"]\n    else:\n        raise Exception(\"No direct flight from Amsterdam to Porto\")\n\n    # Visit Naples\n    if 'Naples' in direct_flights['Porto']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Porto', 'to': 'Naples'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Naples\"] - 1}', 'place': 'Naples'})\n        visited_cities.add('Naples')\n        current_day += city_stay[\"Naples\"]\n    else:\n        raise Exception(\"No direct flight from Porto to Naples\")\n\n    # Visit Nice\n    if 'Nice' in direct_flights['Naples']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Naples', 'to': 'Nice'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Nice\"] - 1}', 'place': 'Nice'})\n        visited_cities.add('Nice')\n        current_day += city_stay[\"Nice\"]\n    else:\n        raise Exception(\"No direct flight from Naples to Nice\")\n\n    # Check if all cities are visited\n    for city in constraints:\n        if city not in visited_cities:\n            raise Exception(f\"City {city} is not visited\")\n\n    return trip_plan\n\ndef main():\n    constraints = {\n        \"Naples\": 3,\n        \"Valencia\": 5,\n        \"Stuttgart\": 2,\n        \"Split\": 5,\n        \"Venice\": 5,\n        \"Amsterdam\": 4,\n        \"Nice\": 2,\n        \"Barcelona\": 2,\n        \"Porto\": 4\n    }\n\n    direct_flights = {\n        \"Venice\": [\"Nice\", \"Amsterdam\", \"Stuttgart\", \"Naples\"],\n        \"Naples\": [\"Amsterdam\", \"Nice\"],\n        \"Barcelona\": [\"Nice\", \"Porto\", \"Naples\", \"Valencia\", \"Venice\", \"Amsterdam\", \"Stuttgart\"],\n        \"Amsterdam\": [\"Nice\"],\n        \"Stuttgart\": [\"Valencia\", \"Porto\", \"Amsterdam\", \"Naples\"],\n        \"Split\": [\"Stuttgart\", \"Naples\", \"Barcelona\", \"Amsterdam\"],\n        \"Valencia\": [\"Amsterdam\", \"Naples\", \"Barcelona\"],\n        \"Barcelona\": [\"Nice\", \"Porto\", \"Naples\", \"Valencia\", \"Venice\", \"Amsterdam\", \"Stuttgart\"],\n        \"Porto\": [\"Nice\", \"Amsterdam\", \"Valencia\"],\n        \"Nice\": [\"Venice\", \"Amsterdam\", \"Barcelona\", \"Porto\", \"Naples\"]\n    }\n\n    trip_plan = calculate_trip_plan(constraints, direct_flights)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1392"
+        }
+    ]
+}

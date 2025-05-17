@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-14",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 9-14",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters (all durations in days, and fixed overall duration)\ntotal_days = 15\n\n# Required stays in each city\nrequired_madrid = 7    # Also needed for the annual Madrid show (days 1-7)\nrequired_paris = 6\nrequired_bucharest = 2  # Also visit relatives between day 14 and day 15\nrequired_seville = 3\n\n# Flight connectivity (for reference, not used in calculation directly):\n# Available direct flights:\n#   Madrid <-> Paris, Madrid <-> Seville, Madrid <-> Bucharest,\n#   Paris <-> Bucharest, Seville <-> Paris\n\n# Based on the constraints and overlapping flight-days,\n# we determine the following itinerary:\n\n# 1. Madrid must cover days 1 to 7 (annual show)\n#    Even if a flight occurs on day 7, that day counts for both boarding and arrival.\nmadrid_start = 1\nmadrid_end = 7  # 7 days in Madrid\n\n# 2. We want to leave Madrid and go to Seville.\n#    We plan the flight from Madrid -> Seville on day 7.\n#    That makes day 7 count for both Madrid and Seville.\nseville_start = 7\n# We need a total of 3 days in Seville. With day 7 counting,\n# we then stay in Seville on day 8.\n# To complete the 3 days, we fly from Seville -> Paris on day 9.\nseville_end = 9  # (Days 7, 8, and 9 count as Seville)\n\n# 3. Now we need Paris for 6 days.\n#    We arrive in Paris on day 9 (flight from Seville -> Paris on day 9; day 9 counts for both cities)\nparis_start = 9\n# To accumulate 6 days in Paris, we count days: 9, 10, 11, 12, 13, 14.\n# So we take the flight from Paris -> Bucharest on day 14.\nparis_end = 14\n\n# 4. Finally, Bucharest must be visited for 2 days and specifically for visiting relatives \n#    between day 14 and day 15.\n#    We fly from Paris -> Bucharest on day 14 (day 14 counts for both),\n#    then remain in Bucharest on day 15.\nbucharest_start = 14\nbucharest_end = 15\n\n# Verify durations with overlapping rule:\n# Madrid: days 1 through 7 -> 7 days.\n# Seville: days 7, 8, 9 -> 3 days.\n# Paris: days 9, 10, 11, 12, 13, 14 -> 6 days.\n# Bucharest: days 14, 15 -> 2 days.\n# Total trip spans from day 1 to day 15.\n\nitinerary = [\n    {\"day_range\": f\"{madrid_start}-{madrid_end}\", \"place\": \"Madrid\"},\n    {\"day_range\": f\"{seville_start}-{seville_end}\", \"place\": \"Seville\"},\n    {\"day_range\": f\"{paris_start}-{paris_end}\", \"place\": \"Paris\"},\n    {\"day_range\": f\"{bucharest_start}-{bucharest_end}\", \"place\": \"Bucharest\"}\n]\n\n# Output the itinerary as a JSON-formatted dictionary.\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_361"
+        }
+    ]
+}

@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Florence"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters (constraints)\ntotal_days = 8\n# Cities with required effective days (effective days count: full days plus flight days)\n# Note: Effective days across the trip = total_days + (number of flights) = 8 + 4 = 12.\n# Our computed itinerary ordering (which satisfies connectivity and special day constraints):\n# Order: Krakow, Stuttgart, Split, Prague, Florence\n# and required effective days per city:\n#   Krakow: 2 days\n#   Stuttgart: 2 days (wedding between day2 and day3 must be in Stuttgart)\n#   Split: 2 days (meeting with friends between day3 and day4 in Split)\n#   Prague: 4 days\n#   Florence: 2 days\nsegments = [\n    {\"city\": \"Krakow\", \"req_days\": 2},\n    {\"city\": \"Stuttgart\", \"req_days\": 2},\n    {\"city\": \"Split\", \"req_days\": 2},\n    {\"city\": \"Prague\", \"req_days\": 4},\n    {\"city\": \"Florence\", \"req_days\": 2}\n]\n\n# Direct flight network (pairs are bidirectional)\ndirect_flights = {\n    frozenset([\"Stuttgart\", \"Split\"]),\n    frozenset([\"Prague\", \"Florence\"]),\n    frozenset([\"Krakow\", \"Stuttgart\"]),\n    frozenset([\"Krakow\", \"Split\"]),\n    frozenset([\"Split\", \"Prague\"]),\n    frozenset([\"Krakow\", \"Prague\"])\n}\n\n# Check connectivity of consecutive segments in our proposed itinerary.\ndef check_connectivity(order):\n    for i in range(len(order) - 1):\n        pair = frozenset([order[i][\"city\"], order[i+1][\"city\"]])\n        if pair not in direct_flights:\n            return False, f\"No direct flight between {order[i]['city']} and {order[i+1]['city']}\"\n    return True, \"All connections are valid.\"\n\nok, msg = check_connectivity(segments)\nif not ok:\n    raise Exception(msg)\n\n# We now assign day boundaries.\n# Rule: When flying from city A to city B on a flight day, that day is counted in both A and B.\n# Thus, for every transition except the beginning and end, we are double-counting one calendar day.\n# Our chosen design:\n#   For the first city, assign start_day = 1.\n#   If a city is not the last in the order:\n#       its effective days = [current_day] as full day(s) plus it shares a flight day for departure.\n#       Thus, if req_days > 1 then: end_day = start_day + (req_days - 1)\n#   For the last city, it only gets the arrival flight day (shared) plus one extra full day.\n#   We'll use the following assignment based on our design:\n#     Segment 1 (Krakow, req=2): from day 1 to day 2. (Day1 full, Day2 as flight day)\n#     Segment 2 (Stuttgart, req=2): starts on day 2 (arrival) and continues through day 3,\n#         so effective days: day2 and day3. (Wedding in Stuttgart on day2-3)\n#     Segment 3 (Split, req=2): starts on day 3 and continues through day 4.\n#         (Meeting friends in Split on day3-4)\n#     Segment 4 (Prague, req=4): starts on day 4; if not last, it gets arrival day plus full days,\n#         so Prague: day4 (arrival), then full days day5 and day6, and flight day day7 = 4 effective days.\n#     Segment 5 (Florence, req=2): starts on day 7, then day8 full.\n# This assignment uses calendar days 1...8.\n\nitinerary = []\ncurrent_day = 1\n\nfor index, seg in enumerate(segments):\n    city = seg[\"city\"]\n    req = seg[\"req_days\"]\n    if index == 0:\n        # First segment: no arrival flight day (start day is full day) but flight day at end.\n        start_day = current_day\n        # For a non-last segment, effective days = 1 full + 1 flight day = 2 if req == 2.\n        # So next departure flight takes place on: start_day + (req - 1)\n        end_day = start_day + (req - 1)\n        itinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n        current_day = end_day  # Next segment starts on the flight day (overlap)\n    elif index < len(segments) - 1:\n        # Middle segments: They are entered on a flight day (counts) and depart on a flight day.\n        start_day = current_day\n        end_day = start_day + (req - 1)\n        itinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n        current_day = end_day  # Next segment starts on the flight day (overlap)\n    else:\n        # Last segment: Arrived on a flight day and then have one extra full day.\n        start_day = current_day\n        # For last segment, effective days = arrival flight day + full days = req days.\n        # Therefore, end_day = start_day + (req - 1)\n        end_day = start_day + (req - 1)\n        itinerary.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n        current_day = end_day\n\n# The itinerary computed is:\n# Krakow: day 1-2\n# Stuttgart: day 2-3  (Wedding in Stuttgart between day2 and day3)\n# Split: day 3-4      (Meet friends in Split between day3 and day4)\n# Prague: day 4-7\n# Florence: day 7-8\n#\n# Print the result as JSON.\nprint(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_505"
+        }
+    ]
+}

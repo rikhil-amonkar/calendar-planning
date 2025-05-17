@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 23-25",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 23-25",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input constraints\n\n# Cities with required durations\ndurations = {\n    \"Stuttgart\": 5,\n    \"Edinburgh\": 4,\n    \"Prague\": 4,\n    \"Reykjavik\": 5,\n    \"Vienna\": 4,\n    \"Manchester\": 2,\n    \"Split\": 5,\n    \"Lyon\": 3\n}\n\n# Flight connections (assuming bidirectional connectivity)\n# Represented as a set of frozensets of two cities (each flight is undirected)\nflights = {\n    frozenset([\"Reykjavik\", \"Stuttgart\"]),\n    frozenset([\"Stuttgart\", \"Split\"]),\n    frozenset([\"Stuttgart\", \"Vienna\"]),\n    frozenset([\"Prague\", \"Manchester\"]),\n    frozenset([\"Edinburgh\", \"Prague\"]),\n    frozenset([\"Manchester\", \"Split\"]),\n    frozenset([\"Prague\", \"Vienna\"]),\n    frozenset([\"Vienna\", \"Manchester\"]),\n    frozenset([\"Prague\", \"Split\"]),\n    frozenset([\"Vienna\", \"Lyon\"]),\n    frozenset([\"Stuttgart\", \"Edinburgh\"]),\n    frozenset([\"Split\", \"Lyon\"]),\n    frozenset([\"Stuttgart\", \"Manchester\"]),\n    frozenset([\"Prague\", \"Lyon\"]),\n    frozenset([\"Reykjavik\", \"Vienna\"]),\n    frozenset([\"Prague\", \"Reykjavik\"]),\n    frozenset([\"Vienna\", \"Split\"])\n}\n\n# Special scheduling constraints:\n# 1. Edinburgh must be occupied on days 5-8 (it has exactly 4 days)\n# 2. Wedding in Split: must occur between day 19 and day 23 (Split has 5 days)\n\n# We need an itinerary that visits all 8 cities. Note that the sum of durations is:\n# 5 + 4 + 4 + 5 + 4 + 2 + 5 + 3 = 32 days.\n# However, when flying, the flight day is counted in both cities.\n# For a chain of 8 cities, there are 7 flight days (overlap days), so the effective total is 32 - 7 = 25 days.\n\n# We choose an order that satisfies both the connectivity and the scheduling constraints.\n# After testing various orders, one valid itinerary order is:\n# 1. Stuttgart (5 days)\n# 2. Edinburgh (4 days)          [Flight: Stuttgart -> Edinburgh]\n# 3. Prague (4 days)             [Flight: Edinburgh -> Prague]\n# 4. Reykjavik (5 days)          [Flight: Prague -> Reykjavik]\n# 5. Vienna (4 days)             [Flight: Reykjavik -> Vienna]\n# 6. Manchester (2 days)         [Flight: Vienna -> Manchester]\n# 7. Split (5 days)              [Flight: Manchester -> Split]  (Wedding between day 19 and 23)\n# 8. Lyon (3 days)               [Flight: Split -> Lyon]\n#\n# Verify flight connectivity for adjacent cities:\n# Stuttgart -> Edinburgh : exists (\"Stuttgart\" and \"Edinburgh\")\n# Edinburgh -> Prague   : exists (\"Edinburgh\" and \"Prague\")\n# Prague -> Reykjavik   : exists (\"Prague\" and \"Reykjavik\")\n# Reykjavik -> Vienna   : exists (\"Reykjavik\" and \"Vienna\")\n# Vienna -> Manchester  : exists (\"Vienna\" and \"Manchester\")\n# Manchester -> Split   : exists (\"Manchester\" and \"Split\")\n# Split -> Lyon         : exists (\"Split\" and \"Lyon\")\n#\n# Now, we assign day ranges. The idea is that for the first city, the stay covers days [start, start + duration - 1].\n# When flying from city A to B, the flight occurs on the last day of A and simultaneously the first day of B.\n# So for each subsequent city, the start day is the same as the previous city\u2019s end day.\n#\n# Let\u2019s compute the itinerary day ranges:\n\nitinerary_order = [\n    \"Stuttgart\",  # 5 days\n    \"Edinburgh\",  # 4 days; must cover days 5-8 (fulfilled if Stuttgart ends on day 5)\n    \"Prague\",     # 4 days\n    \"Reykjavik\",  # 5 days\n    \"Vienna\",     # 4 days\n    \"Manchester\", # 2 days\n    \"Split\",      # 5 days; wedding between day 19 and 23 ensured by proper scheduling\n    \"Lyon\"        # 3 days\n]\n\n# Calculate day ranges.\nschedule = []\ncurrent_start = 1\n\n# For each city, compute the day range.\n# The flight day logic: for the first city, the range is [current_start, current_start+duration-1].\n# For subsequent cities, they start on the previous city's end day because that day is shared.\nfor city in itinerary_order:\n    d = durations[city]\n    current_end = current_start + d - 1\n    # Append the block information as a dict.\n    schedule.append({\n        \"day_range\": f\"{current_start}-{current_end}\",\n        \"place\": city\n    })\n    # For next city, the start is the current end day (the flight day is shared)\n    current_start = current_end\n\n# At the end, current_end should be 25, based on the effective calculation:\n# Total effective days = sum(durations) - (number of flights) = 32 - 7 = 25.\n# We can assert that:\nassert schedule[-1][\"day_range\"].split(\"-\")[1] == \"25\", \"The itinerary does not sum to 25 days.\"\n\n# Output the result in JSON format.\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "trip_planning_example_1075"
+        }
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters\n    total_days = 17\n    # Cities and required days in each destination (as specified)\n    required_days = {\n        \"Seville\": 5,\n        \"Vilnius\": 3,\n        \"Santorini\": 2,\n        \"London\": 2,\n        \"Stuttgart\": 3,\n        \"Dublin\": 3,\n        \"Frankfurt\": 5\n    }\n    \n    # Direct flights between cities (bidirectional). Not used for calculation but for validating the order.\n    flights = {\n        (\"Frankfurt\", \"Dublin\"),\n        (\"Frankfurt\", \"London\"),\n        (\"London\", \"Dublin\"),\n        (\"Vilnius\", \"Frankfurt\"),\n        (\"Frankfurt\", \"Stuttgart\"),\n        (\"Dublin\", \"Seville\"),\n        (\"London\", \"Santorini\"),\n        (\"Stuttgart\", \"London\"),\n        (\"Santorini\", \"Dublin\")\n    }\n    \n    # Selected Hamiltonian path (order of cities) that uses only direct flights:\n    # Chosen order: Vilnius -> Frankfurt -> Stuttgart -> London -> Santorini -> Dublin -> Seville\n    itinerary_order = [\"Vilnius\", \"Frankfurt\", \"Stuttgart\", \"London\", \"Santorini\", \"Dublin\", \"Seville\"]\n    \n    # Verify that adjacent cities are connected by a direct flight (flight can be used in either direction)\n    for i in range(len(itinerary_order) - 1):\n        city_a = itinerary_order[i]\n        city_b = itinerary_order[i+1]\n        if (city_a, city_b) not in flights and (city_b, city_a) not in flights:\n            raise ValueError(f\"No direct flight between {city_a} and {city_b}\")\n    \n    # Note on overlapping flight day: if flying from city A to city B on day X,\n    # then that day counts for both A and B.\n    # Thus, if city_i has d_i required days, and the flight day is the last day \n    # (overlap with next start), then the effective timeline is:\n    #   day_end[i] = day_start[i] + d_i - 1\n    # and day_start[i+1] = day_end[i]\n    # The total trip length becomes:\n    #   sum(d_i) - (number_of_transitions)\n    # For our itinerary, sum(d_i)=23, transitions=6, total = 23-6=17.\n    \n    itinerary = []\n    current_day = 1\n    for city in itinerary_order:\n        days_needed = required_days[city]\n        start_day = current_day\n        end_day = start_day + days_needed - 1\n        itinerary.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city\n        })\n        # Next city starts on the overlapping flight day (i.e., same as end_day)\n        current_day = end_day\n    \n    # Final validation: the end day of the last city must equal total_days\n    if current_day != total_days:\n        raise ValueError(\"Computed itinerary does not match the total number of trip days.\")\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = compute_itinerary()\n    # Output the result as JSON-formatted dictionary containing only day ranges and places.\n    # We'll wrap the list with an outer dictionary with key \"itinerary\".\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output))\n```",
+            "count": "trip_planning_example_813"
+        }
+    ]
+}

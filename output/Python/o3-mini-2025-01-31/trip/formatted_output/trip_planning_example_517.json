@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Dubrovnik"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Dubrovnik"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters\ntotal_days = 19\n\n# Cities and required durations (in days, note that flight days count twice)\n# The required durations for visiting each city:\ndurations = {\n    \"Dubrovnik\": 5,\n    \"Warsaw\": 2,\n    \"Stuttgart\": 7,  # Must include days 7 and 13 (conference days)\n    \"Bucharest\": 6,  # Must include a wedding between day 1 and day 6\n    \"Copenhagen\": 3\n}\n\n# Direct flight connectivity (undirected edges, as flights can be taken in either direction)\ndirect_flights = {\n    \"Warsaw\": {\"Copenhagen\", \"Stuttgart\", \"Bucharest\"},\n    \"Copenhagen\": {\"Warsaw\", \"Stuttgart\", \"Bucharest\", \"Dubrovnik\"},\n    \"Stuttgart\": {\"Copenhagen\", \"Warsaw\"},\n    \"Bucharest\": {\"Copenhagen\", \"Warsaw\"},\n    \"Dubrovnik\": {\"Copenhagen\"}\n}\n\n# We must choose a sequence of the 5 cities such that:\n#   - Each adjacent pair in the itinerary has a direct flight connection.\n#   - The wedding in Bucharest happens between day 1 and day 6, so Bucharest must be visited at the beginning.\n#   - The conference in Stuttgart occurs on days 7 and 13, which forces Stuttgart to be scheduled\n#     as a contiguous block that covers both day 7 and day 13.\n#\n# One feasible order is:\n#   1. Bucharest (6 days) [Wedding between day 1-6]\n#   2. Warsaw (2 days)\n#   3. Stuttgart (7 days) [Must include days 7 and 13 - so set it from day 7 to 13]\n#   4. Copenhagen (3 days)\n#   5. Dubrovnik (5 days)\n#\n# Check connectivity for adjacent pairs:\n#   Bucharest -> Warsaw: direct flight exists.\n#   Warsaw -> Stuttgart: direct flight exists.\n#   Stuttgart -> Copenhagen: direct flight exists.\n#   Copenhagen -> Dubrovnik: direct flight exists.\n#\n# In this plan, flights are taken on 'transition' days:\n#   If we fly on a day, that day counts as being in both cities.\n#   With 5 segments, there are 4 transition days.\n#   Thus, total days if segments are summed is 6+2+7+3+5 = 23 days.\n#   But overlapping on 4 flight days gives an overall trip length of 23 - 4 = 19 days.\n#\n# We now compute the day ranges for each segment.\n# When transitioning, the flight day is the last day of the previous segment and simultaneously the first day of the next segment.\n\nitinerary_order = [\"Bucharest\", \"Warsaw\", \"Stuttgart\", \"Copenhagen\", \"Dubrovnik\"]\n\n# Verify that each adjacent city in the itinerary has a direct flight connection.\ndef check_connectivity(order, flights):\n    for i in range(len(order) - 1):\n        current_city = order[i]\n        next_city = order[i + 1]\n        if next_city not in flights[current_city]:\n            return False\n    return True\n\nif not check_connectivity(itinerary_order, direct_flights):\n    raise ValueError(\"No valid direct flight connections for the chosen itinerary order.\")\n\n# Compute the start and end days for each city segment.\n# In each transition, the travel day is shared (overlap).\nschedule = []\ncurrent_day = 1\n\nfor i, city in enumerate(itinerary_order):\n    city_duration = durations[city]\n    # If it's not the first segment, the start day is the same as the previous segment's ending day.\n    # This reflects that the flight day counts for both segments.\n    if i > 0:\n        start_day = current_day  # This day is shared between the previous city (as end) and this city (as start)\n    else:\n        start_day = current_day\n    # End day computed as start day plus the city's duration minus one.\n    end_day = start_day + city_duration - 1\n    schedule.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n    # For the next segment, set the current_day to the end_day (overlapping flight day)\n    current_day = end_day\n\n# Validate that our overall trip length matches total_days\noverall_trip_days = current_day\nif overall_trip_days != total_days:\n    raise ValueError(f\"Computed overall trip days {overall_trip_days} do not match expected {total_days}.\")\n\n# Also, ensure that the conference requirement is met:\n# Stuttgart must be visited on day 7 and day 13.\n# Find Stuttgart in the schedule:\nstuttgart_entry = next(item for item in schedule if item[\"place\"] == \"Stuttgart\")\nstuttgart_start, stuttgart_end = map(int, stuttgart_entry[\"day_range\"].split('-'))\nif not (stuttgart_start <= 7 <= stuttgart_end and stuttgart_start <= 13 <= stuttgart_end):\n    raise ValueError(\"The Stuttgart segment does not include the required conference days 7 and 13.\")\n\n# Ensure that the wedding in Bucharest (between day 1 and day 6) is met:\nbucharest_entry = next(item for item in schedule if item[\"place\"] == \"Bucharest\")\nbucharest_start, bucharest_end = map(int, bucharest_entry[\"day_range\"].split('-'))\nif not (bucharest_start <= 6 and bucharest_start <= 1 <= bucharest_end):\n    # We assume the wedding occurs any day between day1 and day6 if Bucharest is visited early.\n    raise ValueError(\"The Bucharest segment does not meet the wedding constraint between day 1 and day 6.\")\n\n# Output the result as a JSON formatted dictionary with only day_range and place.\nprint(json.dumps(schedule))\n```",
+            "count": "trip_planning_example_517"
+        }
+    ]
+}

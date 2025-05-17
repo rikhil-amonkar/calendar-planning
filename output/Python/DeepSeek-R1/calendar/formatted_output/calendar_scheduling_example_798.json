@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Wednesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "expected_time": {
+                "day": "Wednesday",
+                "start_time": "9:30",
+                "end_time": "10:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_min(t):\n    h, m = map(int, t.split(':'))\n    return h * 60 + m\n\ndef min_to_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\ndef get_free_intervals(busy_intervals, work_start, work_end):\n    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])\n    free = []\n    current_start = work_start\n    for start, end in sorted_busy:\n        if start > current_start:\n            free.append((current_start, start))\n        current_start = max(current_start, end)\n    if current_start < work_end:\n        free.append((current_start, work_end))\n    return free\n\nwork_start = time_to_min('09:00')\nwork_end = time_to_min('17:00')\n\nnancy_busy = {\n    'Monday': [('10:00', '10:30'), ('11:30', '12:30'), ('13:30', '14:00'), ('14:30', '15:30'), ('16:00', '17:00')],\n    'Tuesday': [('9:30', '10:30'), ('11:00', '11:30'), ('12:00', '12:30'), ('13:00', '13:30'), ('15:30', '16:00')],\n    'Wednesday': [('10:00', '11:30'), ('13:30', '16:00')]\n}\n\njose_busy = {\n    'Monday': [('9:00', '17:00')],\n    'Tuesday': [('9:00', '17:00')],\n    'Wednesday': [('9:00', '9:30'), ('10:00', '12:30'), ('13:30', '14:30'), ('15:00', '17:00')]\n}\n\nfor day in ['Monday', 'Tuesday', 'Wednesday']:\n    nancy_intervals = [(time_to_min(s), time_to_min(e)) for s, e in nancy_busy[day]]\n    jose_intervals = [(time_to_min(s), time_to_min(e)) for s, e in jose_busy[day]]\n    \n    nancy_free = get_free_intervals(nancy_intervals, work_start, work_end)\n    jose_free = get_free_intervals(jose_intervals, work_start, work_end)\n    \n    overlapping = []\n    for n_start, n_end in nancy_free:\n        for j_start, j_end in jose_free:\n            start = max(n_start, j_start)\n            end = min(n_end, j_end)\n            if start < end:\n                overlapping.append((start, end))\n    \n    for interval in overlapping:\n        if interval[1] - interval[0] >= 30:\n            start = interval[0]\n            print(f\"{day}:{min_to_time(start)}:{min_to_time(start + 30)}\")\n            exit()\n'''",
+            "count": "calendar_scheduling_example_798"
+        }
+    ]
+}

@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 13-18",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 13-18",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input parameters (constraints)\n    total_days = 23\n\n    # Cities and their required total days (note: flight days count for both adjacent cities)\n    required_days = {\n        \"Geneva\": 7,   # and must be in Geneva on day 1 and day 7 (conference)\n        \"Porto\": 7,\n        \"Paris\": 6,\n        \"Reykjavik\": 2,\n        \"Oslo\": 5     # plus must visit relatives in Oslo between day 19 and day 23\n    }\n    \n    # Direct flight connections (both directions):\n    # Using set of frozensets for undirected connection checking.\n    flights = {\n        frozenset([\"Paris\", \"Oslo\"]),\n        frozenset([\"Geneva\", \"Oslo\"]),\n        frozenset([\"Porto\", \"Paris\"]),\n        frozenset([\"Geneva\", \"Paris\"]),\n        frozenset([\"Geneva\", \"Porto\"]),\n        frozenset([\"Paris\", \"Reykjavik\"]),\n        frozenset([\"Reykjavik\", \"Oslo\"]),\n        frozenset([\"Porto\", \"Oslo\"])\n    }\n    \n    # We must visit all 5 cities, and there are extra scheduling constraints:\n    # - Day 1 and day 7 conference in Geneva so Geneva must be the first city.\n    # - Oslo must be visited late enough such that a portion falls between day 19 and day 23.\n    #   In our scheduling Oslo will be the final segment.\n    # - Also, from Geneva the next city must be directly connected.\n    #\n    # After some analysis one valid ordering is:\n    # S1: Geneva (7 days)      -- covers conference on day 1 and day 7.\n    # S2: Porto (7 days)       -- flight: Geneva -> Porto is direct.\n    # S3: Paris (6 days)       -- flight: Porto -> Paris is direct.\n    # S4: Reykjavik (2 days)   -- flight: Paris -> Reykjavik is direct.\n    # S5: Oslo (5 days)        -- flight: Reykjavik -> Oslo is direct, and Oslo covers day 19-23.\n    #\n    # Check flights between consecutive cities:\n    # Geneva -> Porto: frozenset([\"Geneva\", \"Porto\"]) in flights -> True\n    # Porto -> Paris: frozenset([\"Porto\", \"Paris\"]) in flights -> True\n    # Paris -> Reykjavik: frozenset([\"Paris\", \"Reykjavik\"]) in flights -> True\n    # Reykjavik -> Oslo: frozenset([\"Reykjavik\", \"Oslo\"]) in flights -> True\n    \n    itinerary_order = [\"Geneva\", \"Porto\", \"Paris\", \"Reykjavik\", \"Oslo\"]\n    \n    # To fit in exactly 23 unique days, we plan the itinerary segments so that\n    # when flying from one city to the next, the flight day counts for both cities.\n    # For the first segment we use all days as unique.\n    # For each subsequent segment, the flight day is shared with the previous segment.\n    #\n    # Thus if a segment requires d days, it contributes (d - 1) unique extra days,\n    # except the first which contributes d days.\n    #\n    # Let's compute the unique day counts along the itinerary:\n    unique_days_used = 0\n    segments = []\n    for i, city in enumerate(itinerary_order):\n        d = required_days[city]\n        if i == 0:\n            # first segment, uses full d unique days\n            start_day = 1\n            end_day = start_day + d - 1\n            unique_days_used = d\n        else:\n            # subsequent segment: flight day overlaps the last day of previous segment.\n            # So it adds d - 1 unique days.\n            start_day = segments[-1][\"end_day\"]  # same as the previous end day\n            end_day = start_day + (d - 1)\n            unique_days_used += (d - 1)\n        segments.append({\n            \"place\": city,\n            \"start_day\": start_day,\n            \"end_day\": end_day,\n            \"required\": d\n        })\n    \n    # Check that we used exactly the total number of unique days (should equal 23)\n    if unique_days_used != total_days:\n        raise ValueError(f\"Unique days used ({unique_days_used}) does not match total days ({total_days})\")\n    \n    # Prepare the final JSON output with only the day ranges and corresponding place.\n    result = []\n    for seg in segments:\n        day_range = f\"{seg['start_day']}-{seg['end_day']}\"\n        result.append({\"day_range\": day_range, \"place\": seg[\"place\"]})\n    \n    # Output the JSON-formatted itinerary\n    print(json.dumps(result, indent=2))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_580"
+        }
+    ]
+}

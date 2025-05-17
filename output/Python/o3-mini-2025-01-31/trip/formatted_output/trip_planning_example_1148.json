@@ -1,0 +1,48 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# Define input parameters (all durations in days, plus event time windows and flight connectivity)\ntotal_days = 19\n\n# Cities and required durations\ndurations = {\n    \"Tallinn\": 2,     # friend meeting must happen between day 1 and 2, so this must be first.\n    \"Prague\": 3,      \n    \"Lisbon\": 2,      # workshop event between day 4 and 5 must occur in Lisbon\n    \"Copenhagen\": 5,  \n    \"Dubrovnik\": 5,   \n    \"Stockholm\": 4,   # wedding between day 13 and 16 must occur in Stockholm\n    \"Split\": 3,       \n    \"Lyon\": 2        # annual show between day 18 and 19 must occur in Lyon\n}\n\n# Direct flight connections among cities (bidirectional)\nflights = {\n    (\"Dubrovnik\", \"Stockholm\"),\n    (\"Lisbon\", \"Copenhagen\"),\n    (\"Lisbon\", \"Lyon\"),\n    (\"Copenhagen\", \"Stockholm\"),\n    (\"Copenhagen\", \"Split\"),\n    (\"Prague\", \"Stockholm\"),\n    (\"Tallinn\", \"Stockholm\"),\n    (\"Prague\", \"Lyon\"),\n    (\"Lisbon\", \"Stockholm\"),\n    (\"Prague\", \"Lisbon\"),\n    (\"Stockholm\", \"Split\"),\n    (\"Prague\", \"Copenhagen\"),\n    (\"Split\", \"Lyon\"),\n    (\"Copenhagen\", \"Dubrovnik\"),\n    (\"Prague\", \"Split\"),\n    (\"Tallinn\", \"Copenhagen\"),\n    (\"Tallinn\", \"Prague\")\n}\n# Function to check if a direct flight exists between two cities\ndef can_fly(city_a, city_b):\n    return (city_a, city_b) in flights or (city_b, city_a) in flights\n\n# We now compute a valid itinerary order that meets all constraints.\n# From the constraints we note:\n# - Tallinn must be visited on day 1-2 (friend meeting window) -> so it must be first.\n# - Lisbon must host the workshop on day 4-5 -> Lisbon must be visited such that its day range \n#   covers day 4 or day 5.\n# - Stockholm must cover day 13-16 (wedding) and Lyon must cover day 18-19 (annual show).\n#\n# One valid itinerary order found by logical deduction is:\n# 1. Tallinn (2 days)  [days 1-2]\n# 2. Prague (3 days)   [flight on day 2, itinerary day range 2-4]\n# 3. Lisbon (2 days)   [flight on day 4, itinerary day range 4-5]\n# 4. Copenhagen (5 days) [flight on day 5, itinerary day range 5-9]\n# 5. Dubrovnik (5 days)  [flight on day 9, itinerary day range 9-13]\n# 6. Stockholm (4 days)  [flight on day 13, itinerary day range 13-16]\n# 7. Split (3 days)      [flight on day 16, itinerary day range 16-18]\n# 8. Lyon (2 days)       [flight on day 18, itinerary day range 18-19]\n#\n# Check flight connectivity between consecutive cities.\nitinerary_order = [\"Tallinn\", \"Prague\", \"Lisbon\", \"Copenhagen\", \"Dubrovnik\", \"Stockholm\", \"Split\", \"Lyon\"]\nfor i in range(len(itinerary_order) - 1):\n    if not can_fly(itinerary_order[i], itinerary_order[i+1]):\n        raise ValueError(f\"No direct flight between {itinerary_order[i]} and {itinerary_order[i+1]}\")\n\n# Now, assign day ranges taking into account that if a flight happens on day X, then on day X\n# both the departure and arrival cities are counted.\n# The rule: For the first city, the itinerary starts on day 1. For subsequent cities, the start day is the ending day of the previous city.\n# And the \"length\" of the stay for city_i is the specified duration.\n# So if the previous city's range was [start_prev, end_prev],\n# then current city's range is [end_prev, end_prev + duration - 1]\n# This ensures that one day (end_prev) is shared by both cities.\nitinerary = []\ncurrent_day = 1\n# Process the first city separately.\nfirst_city = itinerary_order[0]\nfirst_duration = durations[first_city]\n# For the first city, the days range is 1 to first_duration (since no previous overlap is necessary)\nitinerary.append({\n    \"day_range\": f\"{current_day}-{current_day + first_duration - 1}\",\n    \"place\": first_city\n})\ncurrent_day = current_day + first_duration  # The next city will start on the last day of previous city\n\n# Process subsequent cities\nfor city in itinerary_order[1:]:\n    dur = durations[city]\n    # The city's range starts at current_day (which is the same as the last city\u2019s end day)\n    start = current_day\n    end = start + dur - 1\n    itinerary.append({\n        \"day_range\": f\"{start}-{end}\",\n        \"place\": city\n    })\n    current_day = end  # Next city starts on this end day\n\n# Verify that the itinerary covers the overall required days:\nif current_day != total_days:\n    raise ValueError(f\"Itinerary total days {current_day} does not match required {total_days}\")\n\n# Check event constraints manually:\n# Tallinn friend meeting: should occur between day 1 and day 2.\ntallinn_range = itinerary[0][\"day_range\"]\ntallinn_start, tallinn_end = map(int, tallinn_range.split('-'))\nif not (tallinn_start <= 1 <= tallinn_end and tallinn_start <= 2 <= tallinn_end):\n    raise ValueError(\"Tallinn does not satisfy the friend meeting window.\")\n\n# Lisbon workshop between day 4 and day 5.\nlisbon_range = [item[\"day_range\"] for item in itinerary if item[\"place\"] == \"Lisbon\"][0]\nlisbon_start, lisbon_end = map(int, lisbon_range.split('-'))\nif not (lisbon_start <= 4 <= lisbon_end or lisbon_start <= 5 <= lisbon_end):\n    raise ValueError(\"Lisbon does not satisfy the workshop window.\")\n\n# Stockholm wedding between day 13 and day 16.\nstockholm_range = [item[\"day_range\"] for item in itinerary if item[\"place\"] == \"Stockholm\"][0]\nstockholm_start, stockholm_end = map(int, stockholm_range.split('-'))\nif not (stockholm_start <= 13 <= stockholm_end or stockholm_start <= 16 <= stockholm_end):\n    raise ValueError(\"Stockholm does not satisfy the wedding window.\")\n\n# Lyon annual show from day 18 to day 19.\nlyon_range = [item[\"day_range\"] for item in itinerary if item[\"place\"] == \"Lyon\"][0]\nlyon_start, lyon_end = map(int, lyon_range.split('-'))\nif not (lyon_start <= 18 <= lyon_end and lyon_start <= 19 <= lyon_end):\n    raise ValueError(\"Lyon does not satisfy the annual show window.\")\n\n# Output the itinerary as a JSON-formatted dictionary containing only day_range and place.\nprint(json.dumps(itinerary, indent=4))\n```",
+            "count": "trip_planning_example_1148"
+        }
+    ]
+}

@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 2-3",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Total itinerary days and required days in each city (pure counts)\n    total_days = 9\n    required_days = {\n        \"Vienna\": 2,\n        \"Nice\": 2,\n        \"Stockholm\": 5,\n        \"Split\": 3\n    }\n    \n    # The constraints also require:\n    # - A workshop in Vienna between day 1 and day 2, so Vienna must be visited at the start.\n    # - A conference in Split on day 7 and day 9, so Split must include those days.\n    # - You only take direct flights.\n    # One viable direct flight route given available connections is:\n    #   Vienna -> Nice -> Stockholm -> Split\n    #\n    # On a flight day, if you fly from city A to city B on day X,\n    # that day counts as a day in both city A and city B.\n    # We need 4 city visits (Vienna, Nice, Stockholm, Split) with a total of 9 days.\n    # If we sum the required days the total is 2 + 2 + 5 + 3 = 12 days.\n    # Since the itinerary is 9 days, we must have 3 overlapping flight days.\n    #\n    # We choose the following allocation:\n    # - Vienna: Day 1-2 (2 days). (Workshop in Vienna is satisfied here.)\n    #    Flight from Vienna to Nice happens on Day 2 (overlap).\n    # - Nice: Day 2-3 (2 days). (Flight from Nice to Stockholm happens on Day 3.)\n    # - Stockholm: Day 3-7 (5 days). (Flight from Stockholm to Split happens on Day 7.)\n    # - Split: Day 7-9 (3 days). (Conference in Split on day 7 and day 9.)\n    \n    itinerary = []\n    \n    # Vienna segment: Days 1-2\n    vienna_start = 1\n    vienna_end = vienna_start + required_days[\"Vienna\"] - 1  # 1 + 2 - 1 = 2\n    itinerary.append({\"day_range\": f\"{vienna_start}-{vienna_end}\", \"place\": \"Vienna\"})\n    \n    # Nice segment: Flight on day 2 from Vienna to Nice (overlap day 2)\n    nice_start = vienna_end  # Day 2 is counted in both Vienna and Nice\n    nice_end = nice_start + required_days[\"Nice\"] - 1  # 2 + 2 - 1 = 3\n    itinerary.append({\"day_range\": f\"{nice_start}-{nice_end}\", \"place\": \"Nice\"})\n    \n    # Stockholm segment: Flight on day 3 from Nice to Stockholm (day 3 is overlapping)\n    stockholm_start = nice_end  # Day 3 overlap\n    stockholm_end = stockholm_start + required_days[\"Stockholm\"] - 1  # 3 + 5 - 1 = 7\n    itinerary.append({\"day_range\": f\"{stockholm_start}-{stockholm_end}\", \"place\": \"Stockholm\"})\n    \n    # Split segment: Flight on day 7 from Stockholm to Split (day 7 is overlapping)\n    split_start = stockholm_end  # Day 7 overlap\n    split_end = split_start + required_days[\"Split\"] - 1  # 7 + 3 - 1 = 9\n    itinerary.append({\"day_range\": f\"{split_start}-{split_end}\", \"place\": \"Split\"})\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    plan = plan_trip()\n    print(json.dumps(plan))\n```",
+            "count": "trip_planning_example_371"
+        }
+    ]
+}

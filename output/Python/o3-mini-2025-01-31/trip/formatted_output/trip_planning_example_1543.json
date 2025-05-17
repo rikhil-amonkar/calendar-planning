@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_itinerary():\n    # Define the fixed itinerary order with required durations.\n    # Each tuple: (city, required duration in days)\n    # The chosen order satisfies both direct flight connectivity and special event constraints.\n    # Order:\n    # 1. Prague: 3 days, workshop must occur between day1 and 3.\n    # 2. London: 3 days, wedding must occur between day3 and 5.\n    # 3. Lisbon: 5 days, visit relatives between day5 and 9.\n    # 4. Athens: 3 days.\n    # 5. Dubrovnik: 3 days.\n    # 6. Dublin: 3 days.\n    # 7. Seville: 2 days.\n    # 8. Porto: 5 days, conference between day16 and 20.\n    # 9. Warsaw: 4 days, meet friends between day20 and 23.\n    # 10. Vilnius: 4 days.\n    itinerary_plan = [\n        (\"Prague\", 3),\n        (\"London\", 3),\n        (\"Lisbon\", 5),\n        (\"Athens\", 3),\n        (\"Dubrovnik\", 3),\n        (\"Dublin\", 3),\n        (\"Seville\", 2),\n        (\"Porto\", 5),\n        (\"Warsaw\", 4),\n        (\"Vilnius\", 4)\n    ]\n    \n    # For some cities there are fixed event date windows.\n    # We will impose these by forcing the start of those segments.\n    # Event constraints:\n    #   - Prague: workshop must occur between day 1 and 3. (So Prague must include day 1-3)\n    #   - London: wedding between day 3 and 5.\n    #   - Lisbon: relatives visit between day 5 and 9.\n    #   - Porto: conference between day 16 and 20.\n    #   - Warsaw: friends meeting between day 20 and 23.\n    \n    # We will build the day ranges sequentially.\n    # The rule: If flying from city A to B on day X, then day X is counted in both A and B.\n    # Thus the start of the first city is day 1.\n    # For each subsequent city, its start day is the end day of the previous city.\n    # (This automatically makes the flight day overlap.)\n    \n    day = 1\n    itinerary = []\n    \n    # Using our planned order, assign day ranges.\n    # However, for Porto and Warsaw we have fixed requirements.\n    fixed_starts = {\n        \"Prague\": 1,         # Must start on day 1 (so workshop on days1-3)\n        \"London\": None,      # Will be forced by previous end (ensuring wedding between 3-5)\n        \"Lisbon\": None,      # Will follow from London so relatives are in Lisbon (days5-9)\n        \"Porto\": 16,         # Must start on day 16 to allow conference on days16-20\n        \"Warsaw\": 20         # Must start on day 20 to allow friends meeting on days20-23\n    }\n    \n    for city, duration in itinerary_plan:\n        # Check if city has a forced start day:\n        if city in fixed_starts and fixed_starts[city] is not None:\n            start_day = fixed_starts[city]\n            day = start_day  # override current day with forced start day\n        else:\n            start_day = day\n        \n        # The end day is start_day + duration - 1.\n        end_day = start_day + duration - 1\n        \n        # Add the itinerary segment as a dictionary with day_range and place.\n        itinerary.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city\n        })\n        \n        # Set the next city's start day equal to the current segment's end day (flight overlap)\n        day = end_day\n\n    return itinerary\n\ndef main():\n    itinerary = plan_itinerary()\n    # Output the itinerary as JSON formatted dictionary (list of segments)\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1543"
+        }
+    ]
+}

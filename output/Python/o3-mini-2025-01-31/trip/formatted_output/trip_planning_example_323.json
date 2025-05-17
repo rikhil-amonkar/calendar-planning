@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input trip parameters\ntotal_days = 16\n\n# Durations required in each city (if counted separately)\nrequired_durations = {\n    \"London\": 7,  # 7 days total. Also visit relatives between day 1 and day 7.\n    \"Split\": 5,   # 5 days total, and the annual show is available from day 7 to day 11.\n    \"Oslo\": 2,    # 2 days total.\n    \"Porto\": 5    # 5 days total.\n}\n\n# Available direct-flight routes (bidirectional)\ndirect_flights = {\n    \"London\": [\"Oslo\", \"Split\"],\n    \"Oslo\": [\"London\", \"Split\", \"Porto\"],\n    \"Split\": [\"London\", \"Oslo\"],\n    \"Porto\": [\"Oslo\"]\n}\n\n# We need 3 flight transitions (because if flight on day X counts for both origin and destination,\n# then total unique days = (sum of required durations) - (number of flight transitions)).\n# That is, (7 + 5 + 2 + 5) - flight_transitions = 16, so flight_transitions must be 3.\nflight_transitions_needed = 3\n\n# We choose a route that satisfies both the flight connections and the scheduling constraints:\n# 1. London must be visited early to see relatives between day 1 and day 7.\n# 2. Split must host the annual show between day 7 and day 11.\n# 3. We have available direct flights between London and Split, Split and Oslo, and Oslo and Porto.\n#\n# Thus we pick the route: London -> Split -> Oslo -> Porto.\n#\n# To use the flight-day overlap rule, we schedule the days as follows:\n#\n# - London: Days 1 to 7 (7 days). The departure from London to Split will occur on day 7,\n#   so day 7 counts as being in London as well as Split.\n# - Split: Days 7 to 11 (5 days). The annual show is from day 7 to 11.\n# - Oslo: Days 11 to 12 (2 days). The flight from Split to Oslo occurs on day 11.\n# - Porto: Days 12 to 16 (5 days). The flight from Oslo to Porto occurs on day 12.\n#\n# Unique days calculation: 7 + 5 + 2 + 5 = 19 days if counted separately, but with 3\n# overlapping flight days (day 7, day 11, day 12) the unique days become: 19 - 3 = 16 days,\n# which matches the trip constraint.\n#\n# Construct the itinerary with day_range and place entries.\nitinerary = [\n    {\"day_range\": \"1-7\", \"place\": \"London\"},\n    {\"day_range\": \"7-11\", \"place\": \"Split\"},\n    {\"day_range\": \"11-12\", \"place\": \"Oslo\"},\n    {\"day_range\": \"12-16\", \"place\": \"Porto\"}\n]\n\n# Output the resulting itinerary as JSON\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_323"
+        }
+    ]
+}

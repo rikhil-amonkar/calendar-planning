@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Bucharest"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 17-21",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Trip constraints and parameters\ntotal_days = 22\ncities = [\n    {\"name\": \"Mykonos\", \"days\": 3},    # Wedding between day 1 and day 3; must cover that window.\n    {\"name\": \"Nice\", \"days\": 2},       \n    {\"name\": \"Riga\", \"days\": 5},\n    {\"name\": \"Prague\", \"days\": 3},      # Relatives must be visited between day 7 and day 9.\n    {\"name\": \"Zurich\", \"days\": 5},\n    {\"name\": \"Valencia\", \"days\": 5},\n    {\"name\": \"Bucharest\", \"days\": 5}\n]\n\n# Allowed direct flights (provided as undirected pairs)\nallowed_flights = {\n    frozenset([\"Mykonos\", \"Nice\"]),\n    frozenset([\"Mykonos\", \"Zurich\"]),\n    frozenset([\"Prague\", \"Bucharest\"]),\n    frozenset([\"Valencia\", \"Bucharest\"]),\n    frozenset([\"Zurich\", \"Prague\"]),\n    frozenset([\"Riga\", \"Nice\"]),\n    frozenset([\"Zurich\", \"Riga\"]),\n    frozenset([\"Zurich\", \"Bucharest\"]),\n    frozenset([\"Zurich\", \"Valencia\"]),\n    frozenset([\"Bucharest\", \"Riga\"]),\n    frozenset([\"Prague\", \"Riga\"]),\n    frozenset([\"Prague\", \"Valencia\"]),\n    frozenset([\"Zurich\", \"Nice\"])\n}\n\n# Proposed itinerary order:\n# 1. Mykonos (3 days, wedding: day1-3)\n# 2. Nice (2 days)\n# 3. Riga (5 days)\n# 4. Prague (3 days, must include a day between 7 and 9; here it gets days 8 and 9)\n# 5. Zurich (5 days)\n# 6. Valencia (5 days)\n# 7. Bucharest (5 days)\n#\n# Check flights:\n# Mykonos -> Nice : allowed.\n# Nice -> Riga : allowed.\n# Riga -> Prague : allowed.\n# Prague -> Zurich : allowed.\n# Zurich -> Valencia : allowed.\n# Valencia -> Bucharest : allowed.\n\n# We follow the rule: if one flies from A to B on day X,\n# then day X is counted in both A and B.\n# With this overlap, the overall total day count is:\n# Total days = (sum of individual city days) - (number of flights)\n#  = (3+2+5+3+5+5+5) - 6 = 28 - 6 = 22 days, as required.\n\n# Compute the itinerary day ranges:\nitinerary = []\n# x will be the start day for the current city.\ncurrent_day = 1\nfor city in cities:\n    start_day = current_day\n    # The city must be visited for exactly \"city['days']\" days.\n    # Because the flight day overlaps with the next city's start, the end day is:\n    end_day = start_day + city[\"days\"] - 1\n    itinerary.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city[\"name\"]\n    })\n    # Set the start day for the next city to be the same as the current end day.\n    current_day = end_day\n\n# Validate that the last day matches the total_days required\nif current_day != total_days:\n    raise ValueError(f\"Computed itinerary ends on day {current_day} but should end on day {total_days}.\")\n\n# Additional check: ensure the flight connections are allowed\n# (We check consecutive cities in the itinerary order.)\ndef is_flight_allowed(city_a, city_b):\n    return frozenset([city_a, city_b]) in allowed_flights\n\nfor i in range(len(cities) - 1):\n    if not is_flight_allowed(cities[i][\"name\"], cities[i+1][\"name\"]):\n        raise ValueError(f\"Flight not allowed between {cities[i]['name']} and {cities[i+1]['name']}.\")\n\n# Check special constraints:\n# Mykonos wedding constraint: must be in Mykonos between day 1 and 3.\nmykonos_range = itinerary[0][\"day_range\"]\nstart, end = map(int, mykonos_range.split(\"-\"))\nif start > 1 or end < 3:\n    raise ValueError(\"Mykonos visit does not cover the wedding window of day 1 to 3.\")\n\n# Prague relatives constraint: should have at least one day in Prague between day 7 and 9.\nprague_range = itinerary[3][\"day_range\"]  # Prague is the 4th city in our order.\np_start, p_end = map(int, prague_range.split(\"-\"))\n# We require that the Prague range overlaps with the window 7 to 9.\nif p_end < 7 or p_start > 9:\n    raise ValueError(\"Prague visit does not cover the relatives' visit window between day 7 and 9.\")\n\n# Output the itinerary as a JSON-formatted dictionary (list of dicts)\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_996"
+        }
+    ]
+}

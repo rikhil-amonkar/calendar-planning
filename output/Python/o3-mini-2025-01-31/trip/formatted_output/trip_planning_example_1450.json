@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 17-21",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 29-31",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 31-32",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 17-21",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 29-31",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 31-32",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# Input parameters and constraints\n# Total itinerary is 32 days. There are 10 cities with required durations.\n# Note: When flying on a day, the day is counted in both the departure and arrival cities.\n# Durations (in days) as required:\n# - Krakow: 5 days; NOTE: must include a workshop day between day 5 and day 9.\n# - Frankfurt: 4 days\n# - Florence: 2 days\n# - Munich: 5 days\n# - Hamburg: 5 days\n# - Oslo: 5 days\n# - Vilnius: 5 days\n# - Istanbul: 5 days; NOTE: must include the annual show from day 25 to day 29.\n# - Stockholm: 3 days\n# - Santorini: 2 days\n#\n# We must also obey the direct flight connectivity:\n#   Krakow -> Frankfurt (allowed: \"Krakow and Frankfurt\")\n#   Frankfurt -> Florence (allowed: \"Frankfurt and Florence\")\n#   Florence -> Munich (allowed: \"from Florence to Munich\")\n#   Munich -> Hamburg (allowed: \"Munich and Hamburg\")\n#   Hamburg -> Oslo (allowed: \"Oslo and Hamburg\")\n#   Oslo -> Vilnius (allowed: \"Oslo and Vilnius\")\n#   Vilnius -> Istanbul (allowed: \"Vilnius and Istanbul\")\n#   Istanbul -> Stockholm (allowed: \"Istanbul and Stockholm\")\n#   Stockholm -> Santorini (allowed: \"from Stockholm to Santorini\")\n#\n# Additionally, the workshop in Krakow should occur between day 5 and day 9.\n# Since Krakow is scheduled first with a 5-day block (days 1-5), day 5 is available.\n# The Istanbul block must cover days 25-29.\n# We place Istanbul in the itinerary so that its 5-day span is exactly days 25 to 29.\n#\n# To create an itinerary with overlapping flight days:\n#  We assume the itinerary is partitioned into 10 segments. When flying from city A to city B,\n#  the flight day is the last day of city A\u2019s segment and the first day of city B\u2019s segment.\n#  Therefore if the required duration (d) is met by each segment via:\n#      segment_duration = end_day - start_day + 1 = d,\n#  the overall timeline length is: sum(durations) - (number of flights).\n#  With durations = [5,4,2,5,5,5,5,5,3,2] and 9 flight overlaps, the timeline length is:\n#      5+4+2+5+5+5+5+5+3+2 - 9 = 41 - 9 = 32 days.\n#\n# We choose an ordering that meets both the flight network and timing constraints.\n# We use the following order:\n#   1. Krakow (5 days)         : days 1 - 5.\n#   2. Frankfurt (4 days)       : overlapping day 5 -> days 5 - 8.\n#   3. Florence (2 days)        : overlapping day 8 -> days 8 - 9.\n#   4. Munich (5 days)          : overlapping day 9 -> days 9 - 13.\n#   5. Hamburg (5 days)         : overlapping day 13 -> days 13 - 17.\n#   6. Oslo (5 days)            : overlapping day 17 -> days 17 - 21.\n#   7. Vilnius (5 days)         : overlapping day 21 -> days 21 - 25.\n#   8. Istanbul (5 days)        : overlapping day 25 -> days 25 - 29.\n#   9. Stockholm (3 days)       : overlapping day 29 -> days 29 - 31.\n#  10. Santorini (2 days)       : overlapping day 31 -> days 31 - 32.\n#\n# Verification:\n# - Krakow: days 1-5. (Workshop at day 5)\n# - Istanbul: days 25-29. (Annual show days 25-29)\n#\n# Flight connections:\n#   Krakow -> Frankfurt (\"Krakow and Frankfurt\")\n#   Frankfurt -> Florence (\"Frankfurt and Florence\")\n#   Florence -> Munich (\"from Florence to Munich\")\n#   Munich -> Hamburg (\"Munich and Hamburg\")\n#   Hamburg -> Oslo (\"Oslo and Hamburg\")\n#   Oslo -> Vilnius (\"Oslo and Vilnius\")\n#   Vilnius -> Istanbul (\"Vilnius and Istanbul\")\n#   Istanbul -> Stockholm (\"Istanbul and Stockholm\")\n#   Stockholm -> Santorini (\"from Stockholm to Santorini\")\n#\n# Calculation:\n# For city i, if d[i] is its required days, and we have an overlap of 1 day with the previous city (if i > 0),\n# then the start day for the first city is 1 and for any city i (i >= 1):\n#   start_day[i] = 1 + (sum(d[0] ... d[i-1]) - i)\n#   end_day[i] = start_day[i] + d[i] - 1\n#\n# The itinerary computed below automatically satisfies total days = 32.\n\n# Define the cities in the chosen order with their required durations.\ncities = [\n    {\"name\": \"Krakow\",   \"duration\": 5},  # Workshop must be attended between day 5 and 9; day5 is in this block.\n    {\"name\": \"Frankfurt\", \"duration\": 4},\n    {\"name\": \"Florence\",  \"duration\": 2},\n    {\"name\": \"Munich\",    \"duration\": 5},\n    {\"name\": \"Hamburg\",   \"duration\": 5},\n    {\"name\": \"Oslo\",      \"duration\": 5},\n    {\"name\": \"Vilnius\",   \"duration\": 5},\n    {\"name\": \"Istanbul\",  \"duration\": 5},  # Must contain days 25 to 29 (annual show); see below.\n    {\"name\": \"Stockholm\", \"duration\": 3},\n    {\"name\": \"Santorini\", \"duration\": 2}\n]\n\n# Calculate day ranges for each city.\n# Using the formula:\n# For i=0, start_day = 1.\n# For i > 0, start_day = 1 + (sum of durations for cities 0 to i-1) - i.\n# End_day = start_day + duration - 1.\nitinerary = []\ncumulative = 0\nfor i, city in enumerate(cities):\n    if i == 0:\n        start_day = 1\n    else:\n        start_day = 1 + cumulative - i  # subtract one for each flight overlap\n    end_day = start_day + city[\"duration\"] - 1\n    itinerary.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city[\"name\"]\n    })\n    cumulative += city[\"duration\"]\n\n# At this point, the itinerary is computed.\n# For clarity, the itinerary is:\n# 1. Krakow:       days 1-5        (includes day 5, workshop satisfied)\n# 2. Frankfurt:    days 5-8\n# 3. Florence:     days 8-9\n# 4. Munich:       days 9-13\n# 5. Hamburg:      days 13-17\n# 6. Oslo:         days 17-21\n# 7. Vilnius:      days 21-25\n# 8. Istanbul:     days 25-29     (includes days 25-29, annual show satisfied)\n# 9. Stockholm:    days 29-31\n# 10. Santorini:   days 31-32\n#\n# Total itinerary: 32 days.\n\n# Output the itinerary as a JSON-formatted dictionary.\nprint(json.dumps(itinerary, indent=2))\n```",
+            "count": "trip_planning_example_1450"
+        }
+    ]
+}

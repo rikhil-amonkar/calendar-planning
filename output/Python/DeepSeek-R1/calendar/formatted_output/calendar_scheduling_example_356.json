@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef format_time(minutes):\n    return f\"{minutes // 60:02d}:{minutes % 60:02d}\"\n\ndef find_meeting_time(schedules, duration, work_hours, preferences):\n    work_start = parse_time(work_hours[0])\n    work_end = parse_time(work_hours[1])\n    \n    # Create timeline for the day\n    timeline = []\n    current = work_start\n    while current + duration <= work_end:\n        timeline.append((current, current + duration))\n        current += 1  # Check every minute\n    \n    # Filter by preferences\n    pref_start = parse_time(preferences.get('preferred_after', '00:00'))\n    timeline = [slot for slot in timeline if slot[0] >= pref_start]\n    \n    # Check availability for each slot\n    for slot_start, slot_end in timeline:\n        all_available = True\n        for person, busy_slots in schedules.items():\n            for busy_start, busy_end in busy_slots:\n                busy_start_min = parse_time(busy_start)\n                busy_end_min = parse_time(busy_end)\n                # Check if slot overlaps with any busy period\n                if not (slot_end <= busy_start_min or slot_start >= busy_end_min):\n                    all_available = False\n                    break\n            if not all_available:\n                break\n        if all_available:\n            return (slot_start, slot_end)\n    return None\n\n# Define schedules\nschedules = {\n    'Katherine': [('12:00', '12:30'), ('13:00', '14:30')],\n    'Rebecca': [],\n    'Julie': [('09:00', '09:30'), ('10:30', '11:00'), ('13:30', '14:00'), ('15:00', '15:30')],\n    'Angela': [('09:00', '10:00'), ('10:30', '11:00'), ('11:30', '14:00'), ('14:30', '15:00'), ('16:30', '17:00')],\n    'Nicholas': [('09:30', '11:00'), ('11:30', '13:30'), ('14:00', '16:00'), ('16:30', '17:00')],\n    'Carl': [('09:00', '11:00'), ('11:30', '12:30'), ('13:00', '14:30'), ('15:00', '16:00'), ('16:30', '17:00')]\n}\n\n# Angela's preference to avoid before 15:00\npreferences = {'preferred_after': '15:00'}\n\n# Find meeting time\nmeeting_time = find_meeting_time(\n    schedules,\n    duration=30,\n    work_hours=('09:00', '17:00'),\n    preferences=preferences\n)\n\n# Format output\nif meeting_time:\n    start = format_time(meeting_time[0])\n    end = format_time(meeting_time[1])\n    print(f\"Monday:{start}:{end}\")\nelse:\n    print(\"No suitable time found\")\n'''",
+            "count": "calendar_scheduling_example_356"
+        }
+    ]
+}

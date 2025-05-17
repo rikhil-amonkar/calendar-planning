@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "15:00",
+                "end_time": "15:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_min(t):\n    hours, mins = map(int, t.split(':'))\n    return hours * 60 + mins\n\ndef min_to_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\n# Define work hours and meeting duration\nwork_start = time_to_min('09:00')\nwork_end = time_to_min('17:00')\nmeeting_duration = 30\n\n# Define each person's busy intervals in minutes\nbusy_times = {\n    'Kimberly': [(time_to_min('10:00'), time_to_min('10:30')),\n                 (time_to_min('11:00'), time_to_min('12:00')),\n                 (time_to_min('16:00'), time_to_min('16:30'))],\n    'Megan': [],  # No meetings, but avoid before 10:00\n    'Marie': [(time_to_min('10:00'), time_to_min('11:00')),\n              (time_to_min('11:30'), time_to_min('15:00')),\n              (time_to_min('16:00'), time_to_min('16:30'))],\n    'Diana': [(time_to_min('09:30'), time_to_min('10:00')),\n              (time_to_min('10:30'), time_to_min('14:30')),\n              (time_to_min('15:30'), time_to_min('17:00'))]\n}\n\n# Check slots from 10:00 (Megan's preference) onwards\nfor start in range(time_to_min('10:00'), work_end - meeting_duration + 1):\n    end = start + meeting_duration\n    valid = True\n    \n    # Check Kimberly's availability\n    for s, e in busy_times['Kimberly']:\n        if not (end <= s or start >= e):\n            valid = False\n            break\n    if not valid:\n        continue\n    \n    # Check Megan's constraint (start >= 10:00 is already enforced by loop range)\n    \n    # Check Marie's availability\n    for s, e in busy_times['Marie']:\n        if not (end <= s or start >= e):\n            valid = False\n            break\n    if not valid:\n        continue\n    \n    # Check Diana's availability\n    for s, e in busy_times['Diana']:\n        if not (end <= s or start >= e):\n            valid = False\n            break\n    if not valid:\n        continue\n    \n    # If all checks passed\n    print(f\"Monday:{min_to_time(start)}:{min_to_time(end)}\")\n    break\n'''",
+            "count": "calendar_scheduling_example_185"
+        }
+    ]
+}

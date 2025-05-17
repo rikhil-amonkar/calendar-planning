@@ -1,0 +1,52 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 11-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 23-24",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\nimport itertools\n\n# Define cities with required durations\ncities = {\n    \"Naples\": 3,\n    \"Valencia\": 5,\n    \"Stuttgart\": 2,\n    \"Split\": 5,\n    \"Venice\": 5,\n    \"Amsterdam\": 4,\n    \"Nice\": 2,\n    \"Barcelona\": 2,\n    \"Porto\": 4\n}\n\n# Direct flight connections (bidirectional)\nraw_flights = [\n    (\"Venice\", \"Nice\"),\n    (\"Naples\", \"Amsterdam\"),\n    (\"Barcelona\", \"Nice\"),\n    (\"Amsterdam\", \"Nice\"),\n    (\"Stuttgart\", \"Valencia\"),\n    (\"Stuttgart\", \"Porto\"),\n    (\"Split\", \"Stuttgart\"),\n    (\"Split\", \"Naples\"),\n    (\"Valencia\", \"Amsterdam\"),\n    (\"Barcelona\", \"Porto\"),\n    (\"Valencia\", \"Naples\"),\n    (\"Venice\", \"Amsterdam\"),\n    (\"Barcelona\", \"Naples\"),\n    (\"Barcelona\", \"Valencia\"),\n    (\"Split\", \"Amsterdam\"),\n    (\"Barcelona\", \"Venice\"),\n    (\"Stuttgart\", \"Amsterdam\"),\n    (\"Naples\", \"Nice\"),\n    (\"Venice\", \"Naples\"),\n    (\"Porto\", \"Amsterdam\"),\n    (\"Porto\", \"Valencia\"),\n    (\"Stuttgart\", \"Naples\"),\n    (\"Barcelona\", \"Amsterdam\")\n]\n# Create a set of frozensets to check flights irrespective of direction\nflights = set(frozenset(pair) for pair in raw_flights)\n\n# Fixed positions based on constraints:\n# We have 9 segments in total:\n# S1, S2, S3, S4, S5, S6, S7, S8, S9\n# S2 is Barcelona (with workshop between day 5 and 6)\n# S3 is Venice (with conference on day 6 and day 10)\n# S9 is Nice (to meet friends on day 23 to 24)\nfixed_segments = {1: None, 2: \"Barcelona\", 3: \"Venice\", 9: \"Nice\"}\n\n# The overall itinerary must span 24 calendar days.\n# The rule: if a flight occurs on day X between cities A and B, day X is counted in both.\n# So if each segment i has duration d_i, and there are 9 segments and 8 flights (one between each consecutive pair),\n# then total calendar days = (sum of durations) - 8.\n# We know sum(durations) for all 9 cities is 32.\n# So 32 - 8 = 24 calendar days.\n# The timeline is computed as follows:\n# Let the first segment start on day 1 and end on day = d1.\n# For each next segment, we assume the flight occurs on the first day of the segment,\n# meaning the segment starts on the previous segment's end day (overlap) and runs for its duration.\n# Thus, if a segment has duration d and starts at day X, it covers days X through X+d-1.\n#\n# Special constraints based on day numbers:\n# - S2 (Barcelona, 2 days) must cover days 5 and 6 so that the workshop (between day 5 and 6) occurs.\n#   This forces S1's day range to end exactly on day 5, so S1 must have duration 5.\n# - S3 (Venice, 5 days) then will cover days 6 through 10, so the Venice conference on day 6 and day 10 is included.\n# - S9 (Nice, 2 days) must cover days 23 and 24 (friend meeting in Nice).\n# - Naples (3 days) must appear in one segment and its day range must intersect the range [18,20].\n#\n# We now decide the ordering:\n# Our order (index: city, duration):\n# S1: must be chosen from remaining cities with duration 5. Among remaining (excluding Barcelona, Venice, Nice) durations of 5:\n# Possibilities: Valencia (5) or Split (5).\n#\n# The remaining positions S4-S8 will be filled with the rest of the cities from:\n# {Naples (3), the other of Valencia/Split (if not used in S1), Stuttgart (2), Amsterdam (4), Porto (4)}\n#\n# We will perform a brute-force search over candidate orders that satisfy:\n# 1. Flight connectivity between consecutive segments.\n# 2. The timeline computed gives S2 covering day 5-6, S3 covering day 6-10, and overall itinerary ending on day 24.\n# 3. The Naples segment (whichever position it appears) must have an interval intersecting [18,20].\n#\n# The timeline computation for a given itinerary order:\n# Let current_day = 1.\n# For each segment i in order:\n#   segment i gets day_range = [current_day, current_day + duration - 1]\n#   Then update current_day = current_day + duration - 1  (since the last day overlaps when flying to the next city)\n# At the end, current_day must equal 24.\n\ndef compute_timeline(order):\n    # order is a list of 9 cities, in positions 1..9.\n    timeline = []\n    current_day = 1\n    for city in order:\n        d = cities[city]\n        start = current_day\n        end = current_day + d - 1\n        timeline.append((start, end))\n        current_day = end  # next segment starts on the same last day (overlap)\n    return timeline\n\ndef valid_flights(order):\n    # Check consecutive segments have a direct flight (undirected)\n    for i in range(len(order)-1):\n        if frozenset({order[i], order[i+1]}) not in flights:\n            return False\n    return True\n\ndef meets_naples_constraint(timeline, order):\n    # Find the segment for Naples, if exists (it must appear exactly once since cities are unique)\n    # Its day range must intersect [18,20]\n    for (start, end), city in zip(timeline, order):\n        if city == \"Naples\":\n            # Check if the interval [start, end] intersects with [18,20]\n            if end < 18 or start > 20:\n                return False\n    return True\n\ndef main():\n    # Fixed segments: positions 2,3,9 are fixed.\n    # Positions: 1,4,5,6,7,8 are free.\n    # Among free positions, S1 must have duration 5.\n    free_positions = [1, 4, 5, 6, 7, 8]\n    # The cities not fixed: exclude Barcelona, Venice, Nice from the full list.\n    available_cities = set(cities.keys()) - {\"Barcelona\", \"Venice\", \"Nice\"}\n    available_cities = list(available_cities)\n    \n    valid_itinerary = None\n    \n    # Generate all ways to choose an ordering for the 6 free positions from available_cities\n    for perm in itertools.permutations(available_cities, 6):\n        # Build a candidate order of 9 segments based on positions 1..9\n        # Candidate order: index 1 = perm[0], index2 = \"Barcelona\", index3 = \"Venice\",\n        # then indices 4-8 = perm[1..5], and index9 = \"Nice\"\n        candidate = [None] * 9\n        candidate[0] = perm[0]  # S1\n        candidate[1] = \"Barcelona\"\n        candidate[2] = \"Venice\"\n        candidate[3] = perm[1]  # S4\n        candidate[4] = perm[2]  # S5\n        candidate[5] = perm[3]  # S6\n        candidate[6] = perm[4]  # S7\n        candidate[7] = perm[5]  # S8\n        candidate[8] = \"Nice\"\n        \n        # Check S1 must have duration 5 so that it ends on day 5 for the workshop constraint in Barcelona.\n        if cities[candidate[0]] != 5:\n            continue  # skip if S1 duration is not 5\n        \n        # Compute timeline based on overlapping flight days.\n        timeline = compute_timeline(candidate)\n        # S2 (Barcelona) must cover days 5-6, which implies S1 must end exactly on day 5.\n        # We already ensured S1 has duration 5, so its day range is [1,5].\n        # Then S2 timeline becomes [5, 6] and S3 becomes [6, 10].\n        if timeline[1] != (5, 6) or timeline[2] != (6, 10):\n            continue\n        \n        # S9 (Nice) must end on day 24 (covering days 23 and 24) \n        # So after computing all segments, the last segment's day range must be (23,24)\n        if timeline[-1] != (23, 24):\n            continue\n        \n        # Check flight connectivity\n        if not valid_flights(candidate):\n            continue\n        \n        # Check Naples friend meeting constraint:\n        if \"Naples\" in candidate:\n            if not meets_naples_constraint(timeline, candidate):\n                continue\n        else:\n            # Naples must be visited.\n            continue\n\n        # If we reached here, candidate is valid.\n        valid_itinerary = (candidate, timeline)\n        break\n\n    if not valid_itinerary:\n        print(json.dumps({\"error\": \"No valid itinerary found\"}))\n        return\n\n    order, timeline = valid_itinerary\n    # Prepare the output as a list of dictionaries with \"day_range\" and \"place\"\n    output = []\n    for (start, end), city in zip(timeline, order):\n        output.append({\n            \"day_range\": f\"{start}-{end}\",\n            \"place\": city\n        })\n    \n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1392"
+        }
+    ]
+}

@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 11-12",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 12-14",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 17-19",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 19-22",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input parameters and fixed durations for each city\n    # Cities: Paris, Barcelona, Florence, Amsterdam, Tallinn, Vilnius, Warsaw, Venice, Hamburg, Salzburg\n    # Durations are defined as the number of days \"spent\" in the city counting flight overlaps.\n    city_info = {\n        \"Paris\": {\"duration\": 2, \"constraint\": \"workshop between day 1 and 2\"},\n        \"Barcelona\": {\"duration\": 5, \"constraint\": \"friends meeting between day 2 and 6\"},\n        \"Florence\": {\"duration\": 5, \"constraint\": None},\n        \"Amsterdam\": {\"duration\": 2, \"constraint\": None},\n        \"Tallinn\": {\"duration\": 2, \"constraint\": \"friend meeting between day 11 and 12\"},\n        \"Vilnius\": {\"duration\": 3, \"constraint\": None},\n        \"Warsaw\": {\"duration\": 4, \"constraint\": None},\n        \"Venice\": {\"duration\": 3, \"constraint\": None},\n        \"Hamburg\": {\"duration\": 4, \"constraint\": \"conference between day 19 and 22\"},\n        \"Salzburg\": {\"duration\": 4, \"constraint\": \"wedding between day 22 and 25\"},\n    }\n    \n    # Allowed direct flights (undirected for planning purposes)\n    # We choose an order that respects both the flight connectivity and the time constraints.\n    #\n    # After analysis, one valid ordering is:\n    # 1. Paris \n    # 2. Barcelona \n    # 3. Florence \n    # 4. Amsterdam \n    # 5. Tallinn \n    # 6. Vilnius \n    # 7. Warsaw \n    # 8. Venice \n    # 9. Hamburg \n    # 10. Salzburg\n    #\n    # Check connectivity for each flight leg:\n    # Paris -> Barcelona (allowed: \"Paris and Barcelona\")\n    # Barcelona -> Florence (allowed: \"Barcelona and Florence\")\n    # Florence -> Amsterdam (allowed: \"Florence and Amsterdam\")\n    # Amsterdam -> Tallinn (allowed: \"Amsterdam and Tallinn\")\n    # Tallinn -> Vilnius (allowed: \"from Tallinn to Vilnius\")\n    # Vilnius -> Warsaw (allowed: \"Vilnius and Warsaw\")\n    # Warsaw -> Venice (allowed: \"Warsaw and Venice\")\n    # Venice -> Hamburg (allowed: \"Venice and Hamburg\")\n    # Hamburg -> Salzburg (allowed: \"Hamburg and Salzburg\")\n    \n    itinerary_order = [\n        \"Paris\",\n        \"Barcelona\",\n        \"Florence\",\n        \"Amsterdam\",\n        \"Tallinn\",\n        \"Vilnius\",\n        \"Warsaw\",\n        \"Venice\",\n        \"Hamburg\",\n        \"Salzburg\"\n    ]\n    \n    # We need to assign day ranges. Note that when flying on day X from city A to city B,\n    # that day counts for both cities.\n    # Total required days: 25. Sum of durations = 2 + 5 + 5 + 2 + 2 + 3 + 4 + 3 + 4 + 4 = 34.\n    # With 9 transitions (flights), we double count 9 overlapping days.\n    # Effective days = 34 - 9 = 25.\n    \n    # We assign days cumulatively, remembering that every flight day is the same day for two consecutive cities.\n    segments = []\n    current_day = 1\n    \n    # The first city: no flight overlap at the beginning.\n    city = itinerary_order[0]\n    duration = city_info[city][\"duration\"]\n    start_day = current_day\n    end_day = start_day + duration - 1  # no overlap before first city\n    segments.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n    \n    # For each subsequent city, flight day is the first day and is shared with previous city's last day.\n    for i in range(1, len(itinerary_order)):\n        # flight day is the current end_day (overlap day)\n        # Move to next city: start with the same day as the previous city's end_day.\n        prev_end = end_day\n        city = itinerary_order[i]\n        duration = city_info[city][\"duration\"]\n        start_day = prev_end  # overlapping flight day; counts in both cities\n        end_day = start_day + duration - 1\n        segments.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city})\n    \n    # The calculated itinerary is designed with following assignment:\n    # Paris: days 1-2 (workshop constraint satisfied: workshop between day 1 and 2)\n    # Barcelona: days 2-6 (meets friend between day 2 and 6)\n    # Florence: days 6-10\n    # Amsterdam: days 10-11\n    # Tallinn: days 11-12 (friend meeting between day 11 and 12)\n    # Vilnius: days 12-14\n    # Warsaw: days 14-17\n    # Venice: days 17-19\n    # Hamburg: days 19-22 (conference between day 19 and 22)\n    # Salzburg: days 22-25 (wedding between day 22 and 25)\n    \n    # These assignments obey the overlapping rule (flight day counted twice)\n    # and sum to exactly 25 effective days.\n    \n    # Output the itinerary as a JSON-formatted dictionary.\n    output = {\"itinerary\": segments}\n    print(json.dumps(output, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1534"
+        }
+    ]
+}
