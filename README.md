@@ -39,17 +39,26 @@ This creates corresponding files and a readable report in [output/Plan/](output/
 
 ### Python
 For Python code generation, go to [source/](source/) and run
-> python generate_smt_input.py --model MODEL --data DATA
+> python [TASK]_plan_code_gen.py --model MODEL
 
-where `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `DATA` is one of *calendar*, *trip*, *meeting*, or all. 
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported HuggingFace
 
-Next, execute the generated code with
-> python execute_smt.py --model MODEL --data DATA
+For Python code generation on OpenAI models, go to [source/](source/) and run
+> python openai_[TASK]_plan_code_gen.py --model MODEL
 
-and evaluate the output plan with
-> python evaluate_smt_output.py --model MODEL --data DATA
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported OpenAI API
 
-This creates corresponding files and a readable report in [output/SMT/](output/SMT/)`MODEL/TASK/report.json`. 
+For Python code generation with reasoning on DeepSeek models, go to [source/](source/) and run
+> python deepseek_opai_[TASK]_code_reason.py --model MODEL
+
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported DeepSeek API
+
+Now evaluate the output plan from the Python generated outputs with
+> python evaluate_by_constraint_adjusted.py --task TASK --model MODEL --output OUTPUT
+
+where `TASK` is one of *calendar*, *trip*, *meeting*, or all.; `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `OUTPUT` is either *plan* or *python*
+
+This creates corresponding files and a readable report in [output/Python/](output/Python/)`MODEL/TASK/report.json`. 
 
 ### Z3 
 For Z3 code generation, go to [source/](source/) and run
