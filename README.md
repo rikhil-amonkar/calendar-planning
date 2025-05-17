@@ -6,7 +6,7 @@ Real-life textual planning tasks such as meeting scheduling have posed much chal
 
 ![Constraint Satisfaction Planning](images/thumbnail.png)
 
-We evaluate on the [Natrual Plan](https://github.com/google-deepmind/natural-plan) benchmark on three tasks: calendar scheduling, trip planning, and meeting planning. We use LLMs with three types of output: plans, Python code, and [Z3](https://github.com/Z3Prover/z3) code. 
+We evaluate on the [Natural Plan](https://github.com/google-deepmind/natural-plan) benchmark on three tasks: calendar scheduling, trip planning, and meeting planning. We use LLMs with three types of output: plans, Python code, and [Z3](https://github.com/Z3Prover/z3) code. 
 
 ## Data
 
@@ -15,15 +15,56 @@ The downsampled 100-example-per-task datasets are in [data/](data/)`*_100.json` 
 ## Evaluation
 
 ### Plan
+For plan generation on HuggingFace models, go to [source/](source/) and run
+> python force_json_[TASK]_text.py --model MODEL
+
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported HuggingFace
+
+For plan generation on OpenAI models, go to [source/](source/) and run
+> python openai_force_json_[TASK]_text.py --model MODEL
+
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported OpenAI API
+
+For plan generation with reasoning on DeepSeek models, go to [source/](source/) and run
+> python deepseek_opai_[TASK]_text_reason.py --model MODEL
+
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported DeepSeek API
+
+Now evaluate the output plan with
+> python evaluate_by_constraint_adjusted.py --task TASK --model MODEL --output OUTPUT
+
+where `TASK` is one of *calendar*, *trip*, *meeting*, or all.; `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `OUTPUT` is either *plan* or *python*
+
+This creates corresponding files and a readable report in [output/Plan/](output/Plan/)`MODEL/TASK/report.json`. 
 
 ### Python
+For Python code generation, go to [source/](source/) and run
+> python [TASK]_plan_code_gen.py --model MODEL
 
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported HuggingFace
+
+For Python code generation on OpenAI models, go to [source/](source/) and run
+> python openai_[TASK]_plan_code_gen.py --model MODEL
+
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported OpenAI API
+
+For Python code generation with reasoning on DeepSeek models, go to [source/](source/) and run
+> python deepseek_opai_[TASK]_code_reason.py --model MODEL
+
+where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported DeepSeek API
+
+Now evaluate the output plan from the Python generated outputs with
+> python evaluate_by_constraint_adjusted.py --task TASK --model MODEL --output OUTPUT
+
+where `TASK` is one of *calendar*, *trip*, *meeting*, or all.; `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `OUTPUT` is either *plan* or *python*
+
+This creates corresponding files and a readable report in [output/Python/](output/Python/)`MODEL/TASK/report.json`. 
 
 ### Z3 
 For Z3 code generation, go to [source/](source/) and run
 > python generate_smt_input.py --model MODEL --data DATA
 
-where `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek APi; `DATA` is one of *calendar*, *trip*, *meeting*, or all. 
+where `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `DATA` is one of *calendar*, *trip*, *meeting*, or all. 
 
 Next, execute the generated code with
 > python execute_smt.py --model MODEL --data DATA
