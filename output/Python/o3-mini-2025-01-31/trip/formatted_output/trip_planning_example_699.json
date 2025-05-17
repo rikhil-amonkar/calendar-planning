@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Input parameters\n    total_days = 16\n    cities = {\n        \"Hamburg\": {\"min_days\": 2, \"event\": \"meet friends between day 1 and 2\"},\n        \"Dublin\": {\"min_days\": 5, \"event\": \"annual show from day 2 to 6\"},\n        \"Helsinki\": {\"min_days\": 4, \"event\": None},\n        \"Reykjavik\": {\"min_days\": 2, \"event\": \"wedding between day 9 and 10\"},\n        \"London\": {\"min_days\": 5, \"event\": None},\n        \"Mykonos\": {\"min_days\": 3, \"event\": None}\n    }\n    \n    # Available direct flights (undirected)\n    flights = [\n        {\"from\": \"Dublin\", \"to\": \"London\"},\n        {\"from\": \"Hamburg\", \"to\": \"Dublin\"},\n        {\"from\": \"Helsinki\", \"to\": \"Reykjavik\"},\n        {\"from\": \"Hamburg\", \"to\": \"London\"},\n        {\"from\": \"Dublin\", \"to\": \"Helsinki\"},\n        {\"from\": \"Reykjavik\", \"to\": \"London\"},\n        {\"from\": \"London\", \"to\": \"Mykonos\"},\n        {\"from\": \"Dublin\", \"to\": \"Reykjavik\"},\n        {\"from\": \"Hamburg\", \"to\": \"Helsinki\"},\n        {\"from\": \"Helsinki\", \"to\": \"London\"}\n    ]\n    \n    # We aim to find an itinerary that satisfies the following constraints:\n    # 1. The wedding in Reykjavik must fall between day 9 and day 10.\n    # 2. The annual show in Dublin is from day 2 to day 6.\n    # 3. Meeting friends in Hamburg is between day 1 and day 2.\n    # 4. Each flight day counts as a day in both the departure and arrival cities.\n    # 5. The itinerary includes the cities in an order that is supported by direct flights.\n    \n    # Based on the constraints and direct flights, one workable itinerary is:\n    # Segment 1: Hamburg for 2 days (day 1-2); flight from Hamburg -> Dublin on day 2 (overlap).\n    # Segment 2: Dublin for 5 days (day 2-6); the annual show is attended during these days.\n    # Segment 3: Helsinki for 4 days (day 6-9); flight from Dublin -> Helsinki on day 6.\n    # Segment 4: Reykjavik for 2 days (day 9-10); flight from Helsinki -> Reykjavik on day 9.\n    #           (Wedding will be attended on day 9 or 10 while in Reykjavik.)\n    # Segment 5: London for 5 days (day 10-14); flight from Reykjavik -> London on day 10.\n    # Segment 6: Mykonos for 3 days (day 14-16); flight from London -> Mykonos on day 14.\n    #\n    # Verification of flight connections:\n    # Hamburg -> Dublin is valid.\n    # Dublin -> Helsinki is valid.\n    # Helsinki -> Reykjavik is valid.\n    # Reykjavik -> London is valid.\n    # London -> Mykonos is valid.\n    \n    itinerary = []\n    \n    # Hamburg: days 1-2\n    hamburg_start = 1\n    hamburg_end = hamburg_start + cities[\"Hamburg\"][\"min_days\"] - 1\n    itinerary.append({\"day_range\": f\"{hamburg_start}-{hamburg_end}\", \"place\": \"Hamburg\"})\n    \n    # Dublin: days 2-6; day 2 overlaps with Hamburg flight day.\n    dublin_start = hamburg_end  # overlapping on day 2\n    dublin_end = dublin_start + cities[\"Dublin\"][\"min_days\"] - 1\n    itinerary.append({\"day_range\": f\"{dublin_start}-{dublin_end}\", \"place\": \"Dublin\"})\n    \n    # Helsinki: days 6-9; flight from Dublin to Helsinki on day 6.\n    helsinki_start = dublin_end  # overlap on day 6\n    helsinki_end = helsinki_start + cities[\"Helsinki\"][\"min_days\"] - 1\n    itinerary.append({\"day_range\": f\"{helsinki_start}-{helsinki_end}\", \"place\": \"Helsinki\"})\n    \n    # Reykjavik: days 9-10; flight from Helsinki to Reykjavik on day 9.\n    reykjavik_start = helsinki_end  # overlap on day 9\n    reykjavik_end = reykjavik_start + cities[\"Reykjavik\"][\"min_days\"] - 1\n    itinerary.append({\"day_range\": f\"{reykjavik_start}-{reykjavik_end}\", \"place\": \"Reykjavik\"})\n    \n    # London: days 10-14; flight from Reykjavik to London on day 10.\n    london_start = reykjavik_end  # overlap on day 10\n    london_end = london_start + cities[\"London\"][\"min_days\"] - 1\n    itinerary.append({\"day_range\": f\"{london_start}-{london_end}\", \"place\": \"London\"})\n    \n    # Mykonos: days 14-16; flight from London to Mykonos on day 14.\n    mykonos_start = london_end  # overlap on day 14\n    mykonos_end = mykonos_start + cities[\"Mykonos\"][\"min_days\"] - 1\n    itinerary.append({\"day_range\": f\"{mykonos_start}-{mykonos_end}\", \"place\": \"Mykonos\"})\n    \n    # Final check: Ensure that the trip ends on the total trip day limit.\n    if mykonos_end != total_days:\n        raise ValueError(f\"Calculated trip length {mykonos_end} does not match total days {total_days}.\")\n    \n    return {\"itinerary\": itinerary}\n\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(json.dumps(trip_plan, indent=4))\n```",
+            "count": "trip_planning_example_699"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "12:00",
+                "end_time": "12:30"
+            },
+            "has_error": true,
+            "raw_model_response": "'''python\ndef time_to_min(t):\n    return t.hour * 60 + t.minute\n\ndef min_to_time(m):\n    return f\"{m // 60:02}:{m % 60:02}\"\n\nfrom datetime import time\n\n# Participants' schedules\nschedules = {\n    'Arthur': {\n        'Monday': [\n            (time(11, 0), time(11, 30)),\n            (time(13, 30), time(14, 0)),\n            (time(15, 0), time(15, 30))\n        ],\n        'Wednesday': [\n            (time(10, 0), time(10, 30)),\n            (time(11, 0), time(11, 30)),\n            (time(12, 0), time(12, 30)),\n            (time(14, 0), time(14, 30)),\n            (time(16, 0), time(16, 30))\n        ]\n    },\n    'Michael': {\n        'Monday': [\n            (time(9, 0), time(12, 0)),\n            (time(12, 30), time(13, 0)),\n            (time(14, 0), time(14, 30)),\n            (time(15, 0), time(17, 0))\n        ],\n        'Wednesday': [\n            (time(10, 0), time(12, 30)),\n            (time(13, 0), time(13, 30))\n        ]\n    }\n}\n\ndef find_slot():\n    days = ['Monday', 'Wednesday']\n    for day in days:\n        arthur_busy = schedules['Arthur'][day]\n        michael_busy = schedules['Michael'][day]\n        \n        start_min = 9 * 60  # 9:00\n        end_day = 17 * 60   # 17:00\n        duration = 30\n        \n        for start in range(start_min, end_day - duration + 1, 15):  # Check every 15 minutes for precision\n            end = start + duration\n            slot_start = time(start // 60, start % 60)\n            slot_end = time(end // 60, end % 60)\n            \n            # Check Arthur's availability\n            arthur_available = True\n            for (s, e) in arthur_busy:\n                if not (end <= time_to_min(s) or time_to_min(e) <= start:\n                    continue\n                else:\n                    arthur_available = False\n                    break\n            \n            if not arthur_available:\n                continue\n            \n            # Check Michael's availability\n            michael_available = True\n            for (s, e) in michael_busy:\n                if not (end <= time_to_min(s) or time_to_min(e) <= start):\n                    michael_available = False\n                    break\n            \n            if michael_available:\n                return (day, f\"{min_to_time(start)}:{min_to_time(end)}\")\n    \n    return None\n\nresult = find_slot()\nif result:\n    day, time_range = result\n    print(f\"{day} {time_range}\")\nelse:\n    print(\"No slot found\")\n'''",
+            "count": "calendar_scheduling_example_723"
+        }
+    ]
+}

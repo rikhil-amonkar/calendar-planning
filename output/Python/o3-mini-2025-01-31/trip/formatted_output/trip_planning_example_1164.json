@@ -1,0 +1,48 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 8-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef compute_itinerary():\n    # Input Parameters\n    total_days = 17\n    # Cities and required durations (including overlaps)\n    # When flying from one city to the next, the flight day counts as a day in both cities.\n    # So the effective sum is: (sum of durations) - (number of transitions) = total_days.\n    # Given durations:\n    # Nice: 3 days\n    # Reykjavik: 2 days (must include meeting friend in days 3-4)\n    # Stockholm: 2 days (must include meeting friend in days 4-5)\n    # Split: 3 days\n    # Copenhagen: 2 days\n    # Venice: 4 days\n    # Vienna: 3 days (must include workshop in days 11-13)\n    # Porto: 5 days (wedding between days 13-17)\n    #\n    # Total days if simply summed = 3+2+2+3+2+4+3+5 = 24.\n    # There will be 7 flight transitions, so effective days = 24 - 7 = 17.\n    #\n    # We must also obey direct flight connections.\n    # Selected ordering that satisfies flight connectivity and meeting constraints:\n    # Order chosen:\n    # 1. Nice\n    # 2. Reykjavik      (direct: Nice-Reykjavik)\n    # 3. Stockholm      (direct: Reykjavik-Stockholm)\n    # 4. Split          (direct: Stockholm-Split)\n    # 5. Copenhagen     (direct: Split-Copenhagen)\n    # 6. Venice         (direct: Copenhagen-Venice)\n    # 7. Vienna         (direct: Venice-Vienna)\n    # 8. Porto          (direct: Vienna-Porto)\n    #\n    # This ordering respects:\n    # - Meeting in Reykjavik occurs on day 3 or 4 (Reykjavik days: see below).\n    # - Meeting in Stockholm on day 4 or 5.\n    # - Workshop in Vienna between day 11 and 13.\n    # - Wedding in Porto between day 13 and 17.\n    #\n    # Direct flights in this ordering are:\n    # Nice -> Reykjavik: available\n    # Reykjavik -> Stockholm: available\n    # Stockholm -> Split: available\n    # Split -> Copenhagen: available\n    # Copenhagen -> Venice: available\n    # Venice -> Vienna: available\n    # Vienna -> Porto: available\n\n    # Define cities in order along with their required durations.\n    itinerary_plan = [\n        {\"place\": \"Nice\", \"duration\": 3},\n        {\"place\": \"Reykjavik\", \"duration\": 2},\n        {\"place\": \"Stockholm\", \"duration\": 2},\n        {\"place\": \"Split\", \"duration\": 3},\n        {\"place\": \"Copenhagen\", \"duration\": 2},\n        {\"place\": \"Venice\", \"duration\": 4},\n        {\"place\": \"Vienna\", \"duration\": 3},\n        {\"place\": \"Porto\", \"duration\": 5},\n    ]\n    # The total sum of durations is 24.\n    # Number of transitions (flights) = len(itinerary_plan) - 1 = 7.\n    # Effective total days = 24 - 7 = 17. This matches the trip requirement.\n\n    # Now, compute the day ranges:\n    # First city: starts at day 1, ends at day (start + duration - 1)\n    # Next city: its start day = previous city's end day (flight day, counted in both)\n    itinerary_output = []\n    current_day = 1\n    for idx, segment in enumerate(itinerary_plan):\n        start_day = current_day\n        end_day = start_day + segment[\"duration\"] - 1\n        # Append the result for the current city in the itinerary\n        itinerary_output.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": segment[\"place\"]\n        })\n        # For next segment, the flight day is overlapping so new start equals current end_day.\n        current_day = end_day\n\n    # Convert to JSON dictionary with key \"itinerary\"\n    result = {\"itinerary\": itinerary_output}\n    return result\n\nif __name__ == '__main__':\n    itinerary = compute_itinerary()\n    # Output JSON formatted result\n    print(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_1164"
+        }
+    ]
+}

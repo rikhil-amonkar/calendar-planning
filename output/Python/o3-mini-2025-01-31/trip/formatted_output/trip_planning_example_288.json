@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters (days and required durations)\n    total_days = 15\n\n    # Required durations in each city (including flight-day overlaps)\n    manchester_days = 7  # Wedding between day 1 and 7 must occur here\n    madrid_days = 4\n    vienna_days = 2\n    stuttgart_days = 5  # Workshop must occur between day 11 and 15\n\n    # Direct flight connections available (bidirectional)\n    direct_flights = {\n        'Vienna': ['Stuttgart', 'Manchester', 'Madrid'],\n        'Stuttgart': ['Vienna', 'Manchester'],\n        'Manchester': ['Vienna', 'Stuttgart', 'Madrid'],\n        'Madrid': ['Vienna', 'Manchester']\n    }\n    # Check: The given flights in the problem are:\n    # Vienna <-> Stuttgart, Manchester <-> Vienna, Madrid <-> Vienna, Manchester <-> Stuttgart,\n    # Manchester <-> Madrid.\n    # Our direct_flights dictionary is consistent with these constraints.\n    \n    # The itinerary must obey two date-specific constraints:\n    # 1. Wedding in Manchester between day 1 and day 7.\n    # 2. Workshop in Stuttgart between day 11 and day 15.\n    # Also note, if you fly on day X, that day counts for both cities.\n    #\n    # We choose the following sequence of cities:\n    # Start: Manchester (to attend the wedding and complete 7 days)\n    # Then: Madrid (4 days) - using the direct flight Manchester <-> Madrid.\n    # Then: Vienna (2 days) - direct flight Madrid <-> Vienna.\n    # Finally: Stuttgart (5 days) - direct flight Vienna <-> Stuttgart.\n    #\n    # We plan the trip as:\n    # Manchester: Days 1 to 7\n    # Madrid: Flight from Manchester to Madrid on day 7; hence Madrid from day 7 to 10 (4 days)\n    # Vienna: Flight from Madrid to Vienna on day 10; hence Vienna from day 10 to 11 (2 days)\n    # Stuttgart: Flight from Vienna to Stuttgart on day 11; hence Stuttgart from day 11 to 15 (5 days)\n    #\n    # Verify flight connections:\n    #   Manchester -> Madrid: available direct.\n    #   Madrid -> Vienna: available direct.\n    #   Vienna -> Stuttgart: available direct.\n    #\n    # Verify day overlaps:\n    #   - Day 7 counts for both Manchester and Madrid.\n    #   - Day 10 counts for both Madrid and Vienna.\n    #   - Day 11 counts for both Vienna and Stuttgart.\n    #\n    # The actual days in which the participant is in a city (by flight rule):\n    # Manchester: 1,2,3,4,5,6,7   (7 days)\n    # Madrid: 7,8,9,10            (4 days)\n    # Vienna: 10,11              (2 days)\n    # Stuttgart: 11,12,13,14,15   (5 days)\n    #\n    # Total distinct days: 1...15\n    #\n    # Additionally, note the workshop in Stuttgart (days 11-15) and the wedding in Manchester \n    # (days 1-7) are within the respective intervals.\n    \n    itinerary = [\n        {\"day_range\": \"1-7\", \"place\": \"Manchester\"},\n        {\"day_range\": \"7-10\", \"place\": \"Madrid\"},\n        {\"day_range\": \"10-11\", \"place\": \"Vienna\"},\n        {\"day_range\": \"11-15\", \"place\": \"Stuttgart\"}\n    ]\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = compute_itinerary()\n    # Output as JSON-formatted dictionary (list of dictionaries with day_range and place)\n    # To meet the requirements, we output only day_range and place.\n    print(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_288"
+        }
+    ]
+}

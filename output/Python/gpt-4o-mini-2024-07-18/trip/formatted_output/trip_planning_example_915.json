@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 22-26",
+                        "place": "Venice"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Define the trip parameters\n    total_days = 26\n    cities = {\n        \"Bucharest\": {\"days\": 3, \"constraints\": []},\n        \"Venice\": {\"days\": 5, \"constraints\": [\"wedding\"]}, \n        \"Prague\": {\"days\": 4, \"constraints\": []},\n        \"Frankfurt\": {\"days\": 5, \"constraints\": [\"show\"]},\n        \"Zurich\": {\"days\": 5, \"constraints\": []},\n        \"Florence\": {\"days\": 5, \"constraints\": []},\n        \"Tallinn\": {\"days\": 5, \"constraints\": [\"friends\"]}\n    }\n\n    # Define the timeline based on constraints\n    timeline = []\n    current_day = 1\n\n    # Bucharest\n    timeline.append({'day_range': f'Day {current_day}-{current_day + cities[\"Bucharest\"][\"days\"] - 1}', 'place': 'Bucharest'})\n    current_day += cities[\"Bucharest\"][\"days\"]\n\n    # Tallinn\n    timeline.append({'day_range': f'Day {current_day}-{current_day + cities[\"Tallinn\"][\"days\"] - 1}', 'place': 'Tallinn'})\n    current_day += cities[\"Tallinn\"][\"days\"]\n\n    # Meet friends in Tallinn between day 8-12 (covered)\n    \n    # Frankfurt (Show)\n    timeline.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Tallinn', 'to': 'Frankfurt'})\n    timeline.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Frankfurt'})\n    current_day += 5 # travel included in one day\n\n    # Venice (Wedding)\n    timeline.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Frankfurt', 'to': 'Venice'})\n    timeline.append({'day_range': f'Day {current_day}-{current_day + cities[\"Venice\"][\"days\"] - 1}', 'place': 'Venice'})\n    current_day += cities[\"Venice\"][\"days\"]\n\n    # Set aside Days 22-26 in Venice for the wedding\n    current_day -= 5  # Go back 5 days for the wedding period\n    timeline[-1] = {'day_range': f'Day {current_day + 1}-{current_day + 5}', 'place': 'Venice (Wedding)'}  # Fix wedding\n\n    # Zurich\n    timeline.append({'flying': f'Day {current_day + 5}-{current_day + 5}', 'from': 'Venice', 'to': 'Zurich'})\n    timeline.append({'day_range': f'Day {current_day + 5}-{current_day + 9}', 'place': 'Zurich'})\n    current_day += 5\n\n    # Prague\n    timeline.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Zurich', 'to': 'Prague'})\n    timeline.append({'day_range': f'Day {current_day}-{current_day + 3}', 'place': 'Prague'})\n    current_day += 4\n\n    # Florence\n    timeline.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Prague', 'to': 'Florence'})\n    timeline.append({'day_range': f'Day {current_day}-{current_day + 4}', 'place': 'Florence'})\n    current_day += 5\n\n    # Verify the final day count\n    assert current_day - 1 == total_days, \"Total days do not match.\"\n\n    # Convert plan to JSON\n    itinerary_json = json.dumps(timeline, indent=4)\n    return itinerary_json\n\n# Run the trip planner\nif __name__ == \"__main__\":\n    trip_plan = plan_trip()\n    print(trip_plan)\n```",
+            "count": "trip_planning_example_915"
+        }
+    ]
+}

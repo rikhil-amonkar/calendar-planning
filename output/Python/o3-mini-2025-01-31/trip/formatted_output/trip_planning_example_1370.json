@@ -1,0 +1,89 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 25-26",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 26-30",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 18-22",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 29-30",
+                        "place": "Geneva"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# Input parameters: cities, durations (required days), and specific day-constraints boundaries.\n# Note: When flying from one city to the next on a transition day, that day counts for both cities.\n#\n# City durations (required days without counting flight overlaps):\n#   Santorini: 5 days, must include a meet-with-friend day between 25 and 29.\n#   Krakow:    5 days, wedding between 18 and 22.\n#   Paris:     5 days, friend meeting between 11 and 15.\n#   Vilnius:   3 days.\n#   Munich:    5 days.\n#   Geneva:    2 days.\n#   Amsterdam: 4 days.\n#   Budapest:  5 days.\n#   Split:     4 days.\n#\n# There are 9 cities and the effective trip length is:\n#   sum(required_days) - (number of transitions) = 38 - 8 = 30 days.\n#\n# We must choose an itinerary order that obeys:\n#   (a) The day-range constraints (Paris block's span includes a day between 11 and 15,\n#       Krakow block\u2019s span includes a day between 18 and 22,\n#       Santorini block\u2019s span includes a day between 25 and 29).\n#   (b) Flight connectivity given by the following direct flight links:\n#       \u2022 Vilnius -> Munich       (from Vilnius to Munich)\n#       \u2022 Munich <-> Paris        (Munich and Paris)\n#       \u2022 Paris <-> Budapest      (Budapest and Paris)\n#       \u2022 Budapest <-> Amsterdam  (Budapest and Amsterdam)\n#       \u2022 Amsterdam <-> Krakow    (Krakow and Amsterdam)\n#       \u2022 Krakow <-> Split        (Split and Krakow)\n#       \u2022 Split <-> Geneva        (Split and Geneva)\n#       \u2022 Geneva <-> Santorini    (Santorini and Geneva)\n#\n# One order satisfying both the connection and the time constraints is:\n#   1. Vilnius (3 days)\n#   2. Munich (5 days)\n#   3. Paris (5 days)        --> Its span will be arranged to include day 11 (friend meeting).\n#   4. Budapest (5 days)     --> Paris -> Budapest is allowed.\n#   5. Amsterdam (4 days)    --> Budapest -> Amsterdam is allowed.\n#   6. Krakow (5 days)       --> Amsterdam -> Krakow is allowed; Krakow block will cover day 18.\n#   7. Split (4 days)        --> Krakow -> Split is allowed.\n#   8. Geneva (2 days)       --> Split -> Geneva is allowed.\n#   9. Santorini (5 days)    --> Geneva -> Santorini is allowed; block covers days 26-30 including days 26\u201329.\n#\n# The itinerary day assignment is computed by the following rule:\n#   For city i (1-indexed), let required duration = D.\n#   If it is the first city, assign day_range: [1, D].\n#   For every subsequent city, the start day equals the previous city\u2019s end day \n#   (inclusively, since the day of the flight counts in both cities), and the end day\n#   equals start_day + (D - 1).\n#\n# With this rule, the overall trip (9 cities, 8 flight overlaps) has total days = sum(durations) - 8 = 38 - 8 = 30.\n#\n# Let\u2019s compute the schedule:\ncities = [\n    {\"name\": \"Vilnius\",   \"days\": 3},\n    {\"name\": \"Munich\",    \"days\": 5},\n    {\"name\": \"Paris\",     \"days\": 5},  # Must cover friend meeting between day11 and day15.\n    {\"name\": \"Budapest\",  \"days\": 5},  # Paris -> Budapest flight (allowed via Budapest and Paris).\n    {\"name\": \"Amsterdam\", \"days\": 4},  # Budapest -> Amsterdam (allowed via Budapest and Amsterdam).\n    {\"name\": \"Krakow\",    \"days\": 5},  # Wedding between day18 and day22 must fall in this block.\n    {\"name\": \"Split\",     \"days\": 4},  # Krakow -> Split (allowed via Split and Krakow).\n    {\"name\": \"Geneva\",    \"days\": 2},  # Split -> Geneva (allowed via Split and Geneva).\n    {\"name\": \"Santorini\", \"days\": 5}   # Geneva -> Santorini (allowed via Santorini and Geneva).\n]\n\nschedule = []\ncurrent_start = 1\n\n# For each city in the itinerary, compute the day range.\nfor city in cities:\n    # The city block lasts exactly city[\"days\"] days.\n    start_day = current_start\n    end_day = start_day + city[\"days\"] - 1\n    schedule.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": city[\"name\"]})\n    # For next city, the start is the same as the current end day (flight day overlap).\n    current_start = end_day\n\n# Validate key constraints (for debugging purposes, not included in output):\n# Paris must include a day between 11 and 15.\nfor entry in schedule:\n    if entry[\"place\"] == \"Paris\":\n        start, end = map(int, entry[\"day_range\"].split(\"-\"))\n        if not (start <= 11 <= end or start <= 15 <= end or (11 >= start and 15 <= end)):\n            raise ValueError(\"Paris block does not cover friend meeting days between 11 and 15.\")\n# Krakow must include a day between 18 and 22.\nfor entry in schedule:\n    if entry[\"place\"] == \"Krakow\":\n        start, end = map(int, entry[\"day_range\"].split(\"-\"))\n        # Check if there is an overlap with the wedding window.\n        # We require that at least one day in [18,22] is within [start, end].\n        if end < 18 or start > 22:\n            raise ValueError(\"Krakow block does not cover wedding days between 18 and 22.\")\n# Santorini must include a day between 25 and 29.\nfor entry in schedule:\n    if entry[\"place\"] == \"Santorini\":\n        start, end = map(int, entry[\"day_range\"].split(\"-\"))\n        if end < 25 or start > 29:\n            raise ValueError(\"Santorini block does not cover friend meeting days between 25 and 29.\")\n\n# Output the schedule as a JSON-formatted dictionary (list of dictionaries).\nprint(json.dumps(schedule))\n```",
+            "count": "trip_planning_example_1370"
+        }
+    ]
+}

@@ -1,0 +1,28 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef plan_trip():\n    # Trip and constraints\n    total_days = 10\n    krakow_required = 2               # exactly 2 days in Krakow (wedding on day 9-10)\n    dubrovnik_required = 7            # exactly 7 days in Dubrovnik\n    frankfurt_required = 3            # exactly 3 days in Frankfurt\n\n    # Flight connectivity:\n    # Dubrovnik <--> Frankfurt and Frankfurt <--> Krakow are allowed.\n    # To use the double counting rule for flights, if flight happens on day X,\n    # the traveler is counted as being in both origin and destination on that day.\n    \n    # Our aim is to satisfy the following:\n    #   - spend 7 days in Dubrovnik\n    #   - spend 3 days in Frankfurt\n    #   - spend 2 days in Krakow, with wedding in Krakow on day 9 and day 10\n    # A feasible plan is:\n    #   - Stay in Dubrovnik from day 1 to day 7.\n    #     We take a flight from Dubrovnik to Frankfurt on day 7.\n    #     (So day 7 is counted for both Dubrovnik and Frankfurt.)\n    #   - Then remain in Frankfurt on day 8 and take a flight to Krakow on day 9.\n    #     (So Frankfurt is counted on day 7, day 8, and day 9.)\n    #   - Finally, finish in Krakow on day 9 (flight day counts for Krakow as well) and day 10.\n    #\n    # This yields:\n    # Dubrovnik: days 1-7 (7 days)\n    # Frankfurt: days 7-9 (3 days)\n    # Krakow: days 9-10 (2 days, satisfying the wedding constraint)\n    \n    # Calculate flight days based on the assignment above\n    dubrovnik_start = 1\n    dubrovnik_end = dubrovnik_start + dubrovnik_required - 1  # day 7\n    flight1_day = dubrovnik_end  # flight from Dubrovnik to Frankfurt on day 7\n    \n    # Frankfurt segment: beginning with day flight1_day (overlap) to a day determined by its duration.\n    frankfurt_start = flight1_day  # day 7 counts for Frankfurt too\n    # To get exactly 3 days: day 7, day 8, day 9 will count in Frankfurt.\n    frankfurt_end = frankfurt_start + frankfurt_required - 1  # day 9\n    flight2_day = frankfurt_end  # flight from Frankfurt to Krakow on day 9\n    \n    # Krakow segment: We need exactly 2 days.\n    # Flight day (day 9) counts, then day 10.\n    krakow_start = flight2_day  # day 9\n    krakow_end = total_days      # day 10\n    \n    # Build itinerary as a list of segments with day ranges and places.\n    itinerary = [\n        {\"day_range\": f\"{dubrovnik_start}-{dubrovnik_end}\", \"place\": \"Dubrovnik\"},\n        {\"day_range\": f\"{frankfurt_start}-{frankfurt_end}\", \"place\": \"Frankfurt\"},\n        {\"day_range\": f\"{krakow_start}-{krakow_end}\", \"place\": \"Krakow\"}\n    ]\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = plan_trip()\n    # Output the result as a JSON-formatted dictionary\n    output = {\"itinerary\": itinerary}\n    print(json.dumps(output))\n```",
+            "count": "trip_planning_example_29"
+        }
+    ]
+}

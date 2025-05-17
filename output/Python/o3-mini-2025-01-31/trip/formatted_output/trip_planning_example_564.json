@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Rome"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef compute_itinerary():\n    # Input constraints\n    total_days = 16\n\n    # Cities and planned durations (including the flight overlap rule)\n    # Each city has an \"allocated\" duration.\n    # Overlap rule: For cities after the first, the first day counts as the flight day from previous city.\n    # Order is chosen based on available direct flights and constraints:\n    #   Seville -> Rome -> Istanbul -> Naples -> Santorini\n    # Flight connections:\n    #   Seville-Rome, Rome-Istanbul, Istanbul-Naples, Naples-Santorini are all valid.\n    #\n    # Duration constraints for each city (as required visit durations):\n    # Istanbul: 2 days; must cover day 6 and day 7 (relatives visit).\n    # Rome: 3 days.\n    # Seville: 4 days.\n    # Naples: 7 days.\n    # Santorini: 4 days; must cover day 13 to day 16 (wedding).\n    cities = [\n        (\"Seville\", 4),\n        (\"Rome\", 3),\n        (\"Istanbul\", 2),\n        (\"Naples\", 7),\n        (\"Santorini\", 4)\n    ]\n    \n    # We'll assign day ranges obeying the rule that when flying on a day,\n    # that day is included in the durations of BOTH cities.\n    # The actual timeline will be computed as:\n    #   first city: days = start to start + duration - 1\n    #   subsequent cities: start day = previous city end day, end day = start + duration - 1\n    itinerary = []\n    \n    current_day = 1\n    for index, (city, duration) in enumerate(cities):\n        if index == 0:\n            start_day = current_day\n            end_day = start_day + duration - 1\n        else:\n            # For subsequent cities, we overlap the flight day with the previous city's last day.\n            start_day = itinerary[-1]['end_day']\n            end_day = start_day + duration - 1\n        itinerary.append({\n            \"place\": city,\n            \"start_day\": start_day,\n            \"end_day\": end_day\n        })\n        current_day = end_day + 1  # for reference, though not used\n\n    # Verification of specific constraints:\n    # Istanbul must include days 6 and 7.\n    # Find Istanbul itinerary segment:\n    istanbul_segment = next(seg for seg in itinerary if seg[\"place\"] == \"Istanbul\")\n    if not (istanbul_segment[\"start_day\"] <= 6 <= istanbul_segment[\"end_day\"] and\n            istanbul_segment[\"start_day\"] <= 7 <= istanbul_segment[\"end_day\"]):\n        raise ValueError(\"Istanbul segment does not cover days 6 and 7 for the relatives visit.\")\n    \n    # Santorini must include wedding days between day 13 and day 16.\n    santorini_segment = next(seg for seg in itinerary if seg[\"place\"] == \"Santorini\")\n    if not (santorini_segment[\"start_day\"] <= 13 and santorini_segment[\"end_day\"] >= 16):\n        raise ValueError(\"Santorini segment does not cover days 13 to 16 for the wedding.\")\n\n    # Sum up actual total days:\n    # Using the rule, total actual days = first city duration + sum(each subsequent city duration - 1)\n    computed_total_days = cities[0][1] + sum(d - 1 for _, d in cities[1:])\n    if computed_total_days != total_days:\n        raise ValueError(f\"Computed total days ({computed_total_days}) does not match required total_days ({total_days}).\")\n    \n    # Prepare JSON-formatted output with only \"day_range\" and \"place\".\n    result = []\n    for seg in itinerary:\n        day_range = f\"{seg['start_day']}-{seg['end_day']}\"\n        result.append({\n            \"day_range\": day_range,\n            \"place\": seg[\"place\"]\n        })\n    \n    return result\n\ndef main():\n    itinerary = compute_itinerary()\n    # Output the result as JSON-formatted dictionary (list of segments).\n    print(json.dumps(itinerary))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_564"
+        }
+    ]
+}

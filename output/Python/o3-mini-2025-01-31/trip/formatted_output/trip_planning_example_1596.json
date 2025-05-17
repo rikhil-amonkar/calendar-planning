@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 29-32",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 21-25",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 29-32",
+                        "place": "Krakow"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# This program computes an itinerary among 10 European cities given duration constraints,\n# fixed event windows and the direct flight connectivity between cities.\n#\n# The itinerary must span 32 days in total. Each city visit i has a planned duration L.\n# When flying from city A to city B on a given day, that day counts for both A and B.\n# Thus, if the first city starts on day 1 and has duration L1 then its local days are [1, L1].\n# For subsequent cities i, the start day is computed as:\n#    start_day[i] = 1 + sum_{j=1}^{i-1} (L_j - 1)\n#\n# The given city durations and event constraints are:\n#    Edinburgh: 5 days, must meet friend between day 1 and 5.\n#    Barcelona: 5 days.\n#    Budapest: 5 days, and the annual show runs from day 9 to day 13 (so Budapest block must be exactly [9,13]).\n#    Vienna: 5 days.\n#    Stockholm: 2 days, and must meet friend between day 17 and 18.\n#    Munich: 3 days, with a workshop between day 18 and 20.\n#    Bucharest: 2 days.\n#    Riga: 5 days.\n#    Warsaw: 5 days, with a conference covering day 25 and day 29 (so must be exactly [25,29]).\n#    Krakow: 4 days.\n#\n# In addition, the itinerary must allow only direct-flight legs between cities.\n# The direct connections (bidirectional) are provided.\n#\n# A careful analysis (with overlaps from flight days) gives one valid ordering:\n#\n#   1. Edinburgh      (5 days)  -> block: [1,5]    (meets friend between day 1-5)\n#   2. Barcelona      (5 days)  -> block: [5,9]\n#   3. Budapest       (5 days)  -> block: [9,13]   (annual show fully on days 9-13)\n#   4. Vienna         (5 days)  -> block: [13,17]\n#   5. Stockholm      (2 days)  -> block: [17,18]  (meeting in Stockholm on day 17 or 18)\n#   6. Munich         (3 days)  -> block: [18,20]  (workshop in Munich on day 18-20)\n#   7. Bucharest      (2 days)  -> block: [20,21]\n#   8. Riga           (5 days)  -> block: [21,25]\n#   9. Warsaw         (5 days)  -> block: [25,29]  (conference covering day 25 and 29)\n#  10. Krakow         (4 days)  -> block: [29,32]\n#\n# We also check that all consecutive legs have a direct flight:\n#   Edinburgh -> Barcelona                 (direct: \"Edinburgh and Barcelona\")\n#   Barcelona -> Budapest                  (direct: \"Barcelona and Budapest\")\n#   Budapest -> Vienna                     (direct: \"Budapest and Vienna\")\n#   Vienna -> Stockholm                    (direct: \"Vienna and Stockholm\")\n#   Stockholm -> Munich                    (direct: \"Stockholm and Munich\")\n#   Munich -> Bucharest                    (direct: \"Munich and Bucharest\")\n#   Bucharest -> Riga                      (direct: \"Bucharest and Riga\")\n#   Riga -> Warsaw                         (direct: \"Riga and Warsaw\")\n#   Warsaw -> Krakow                       (direct: \"Warsaw and Krakow\")\n#\n# The computed start days satisfy the critical event dates:\n#   Budapest block is fixed to [9,13] so the annual show is attended fully.\n#   Stockholm block is [17,18], and Munich block [18,20] so the meeting and workshop can be attended.\n#   Warsaw block is [25,29] so the conference days 25 and 29 occur during the visit.\n#\n# The overall itinerary spans day 1 through day 32.\n#\n# Now we compute and output the result as a JSON array (list) of segments,\n# each segment is a dictionary with keys: \"day_range\" and \"place\".\n\n\n# Define the ordered itinerary as determined:\nitinerary = [\n    {\"place\": \"Edinburgh\", \"duration\": 5, \"event\": {\"window\": (1,5), \"desc\": \"Friend meeting in Edinburgh\"}},\n    {\"place\": \"Barcelona\", \"duration\": 5, \"event\": None},\n    {\"place\": \"Budapest\", \"duration\": 5, \"event\": {\"window\": (9,13), \"desc\": \"Annual show in Budapest\"}},\n    {\"place\": \"Vienna\", \"duration\": 5, \"event\": None},\n    {\"place\": \"Stockholm\", \"duration\": 2, \"event\": {\"window\": (17,18), \"desc\": \"Meet friend in Stockholm\"}},\n    {\"place\": \"Munich\", \"duration\": 3, \"event\": {\"window\": (18,20), \"desc\": \"Workshop in Munich\"}},\n    {\"place\": \"Bucharest\", \"duration\": 2, \"event\": None},\n    {\"place\": \"Riga\", \"duration\": 5, \"event\": None},\n    {\"place\": \"Warsaw\", \"duration\": 5, \"event\": {\"window\": (25,29), \"desc\": \"Conference in Warsaw\"}},\n    {\"place\": \"Krakow\", \"duration\": 4, \"event\": None}\n]\n\n# Direct flight connectivity (bidirectional)\n# Each tuple represents a pair of cities with a direct flight connection.\nflights = {\n    (\"Budapest\", \"Munich\"),\n    (\"Bucharest\", \"Riga\"),\n    (\"Munich\", \"Krakow\"),\n    (\"Munich\", \"Warsaw\"),\n    (\"Munich\", \"Bucharest\"),\n    (\"Edinburgh\", \"Stockholm\"),\n    (\"Barcelona\", \"Warsaw\"),\n    (\"Edinburgh\", \"Krakow\"),\n    (\"Barcelona\", \"Munich\"),\n    (\"Stockholm\", \"Krakow\"),\n    (\"Budapest\", \"Vienna\"),\n    (\"Barcelona\", \"Stockholm\"),\n    (\"Stockholm\", \"Munich\"),\n    (\"Edinburgh\", \"Budapest\"),\n    (\"Barcelona\", \"Riga\"),\n    (\"Edinburgh\", \"Barcelona\"),\n    (\"Vienna\", \"Riga\"),\n    (\"Barcelona\", \"Budapest\"),\n    (\"Bucharest\", \"Warsaw\"),\n    (\"Vienna\", \"Krakow\"),\n    (\"Edinburgh\", \"Munich\"),\n    (\"Barcelona\", \"Bucharest\"),\n    (\"Edinburgh\", \"Riga\"),\n    (\"Vienna\", \"Stockholm\"),\n    (\"Warsaw\", \"Krakow\"),\n    (\"Barcelona\", \"Krakow\"),\n    (\"Riga\", \"Munich\"),\n    (\"Vienna\", \"Bucharest\"),\n    (\"Budapest\", \"Warsaw\"),\n    (\"Vienna\", \"Warsaw\"),\n    (\"Barcelona\", \"Vienna\"),\n    (\"Budapest\", \"Bucharest\"),\n    (\"Vienna\", \"Munich\"),\n    (\"Riga\", \"Warsaw\"),\n    (\"Stockholm\", \"Riga\"),\n    (\"Stockholm\", \"Warsaw\")\n}\n\n# Function to check if two cities have a direct flight (bidirectional)\ndef has_direct_flight(city_a, city_b):\n    pair = (city_a, city_b)\n    rev_pair = (city_b, city_a)\n    return pair in flights or rev_pair in flights\n\n# Compute start and end days for each city in the itinerary.\n# According to the rule: start_day[0] = 1.\n# For i >= 1, start_day[i] = 1 + sum_{j=0}^{i-1}(duration_j - 1)\nschedule = []\ncurrent_day = 1\nfor segment in itinerary:\n    start = current_day\n    end = start + segment[\"duration\"] - 1\n    schedule.append({\"day_range\": f\"{start}-{end}\", \"place\": segment[\"place\"]})\n    # Next city: flight occurs on the current segment's last day, so add (duration - 1)\n    current_day = start + segment[\"duration\"] - 1\n\n# Ensure overall trip ends at day 32\ntotal_trip_days = current_day\nif total_trip_days != 32:\n    # Adjust by shifting the schedule if needed.\n    shift = 32 - total_trip_days\n    new_schedule = []\n    for entry in schedule:\n        start_str, end_str = entry[\"day_range\"].split(\"-\")\n        start_day = int(start_str) + shift\n        end_day = int(end_str) + shift\n        new_schedule.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": entry[\"place\"]})\n    schedule = new_schedule\n\n# Check connectivity between consecutive cities and basic event placement.\nerrors = []\nfor i in range(len(itinerary) - 1):\n    city_from = itinerary[i][\"place\"]\n    city_to = itinerary[i+1][\"place\"]\n    if not has_direct_flight(city_from, city_to):\n        errors.append(f\"No direct flight from {city_from} to {city_to}\")\n\n# Check that event windows are satisfied (i.e. the event-required day falls in the city block)\n# For Budapest and Warsaw the blocks are fixed by their windows.\nfor seg, sched in zip(itinerary, schedule):\n    if seg[\"event\"]:\n        window_start, window_end = seg[\"event\"][\"window\"]\n        range_start, range_end = map(int, sched[\"day_range\"].split(\"-\"))\n        # Check that the event window is contained in the block (for Budapest and Warsaw, we need exact match)\n        if seg[\"place\"] in [\"Budapest\", \"Warsaw\"]:\n            if range_start != window_start or range_end != window_end:\n                errors.append(f\"{seg['place']} block {sched['day_range']} does not match required event window {window_start}-{window_end}\")\n        else:\n            # For others, require at least one day in the window\n            if window_end < range_start or window_start > range_end:\n                errors.append(f\"{seg['place']} block {sched['day_range']} does not cover event window {window_start}-{window_end}\")\n\nif errors:\n    # If any error is found, output the errors in a JSON object.\n    result = {\"errors\": errors}\nelse:\n    # Otherwise, output the schedule (only day_range and place)\n    result = schedule\n\n# Output the result as JSON\nprint(json.dumps(result, indent=2))\n```",
+            "count": "trip_planning_example_1596"
+        }
+    ]
+}

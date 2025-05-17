@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(t):\n    hours, minutes = map(int, t.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\nparticipants = [\n    {  # Christine\n        \"busy\": [\"9:30-10:30\", \"12:00-12:30\", \"13:00-13:30\", \"14:30-15:00\", \"16:00-16:30\"]\n    },\n    {  # Janice\n        \"busy\": []\n    },\n    {  # Bobby\n        \"busy\": [\"12:00-12:30\", \"14:30-15:00\"]\n    },\n    {  # Elizabeth\n        \"busy\": [\"9:00-9:30\", \"11:30-13:00\", \"13:30-14:00\", \"15:00-15:30\", \"16:00-17:00\"]\n    },\n    {  # Tyler\n        \"busy\": [\"9:00-11:00\", \"12:00-12:30\", \"13:00-13:30\", \"15:30-16:00\", \"16:30-17:00\"]\n    },\n    {  # Edward\n        \"busy\": [\"9:00-9:30\", \"10:00-11:00\", \"11:30-14:00\", \"14:30-15:30\", \"16:00-17:00\"]\n    }\n]\n\nbusy_intervals = []\nfor person in participants:\n    for interval in person[\"busy\"]:\n        start_str, end_str = interval.split('-')\n        start = time_to_minutes(start_str)\n        end = time_to_minutes(end_str)\n        busy_intervals.append((start, end))\n\n# Merge intervals\nbusy_intervals.sort()\nmerged = []\nfor start, end in busy_intervals:\n    if not merged:\n        merged.append([start, end])\n    else:\n        last_start, last_end = merged[-1]\n        if start <= last_end:\n            merged[-1][1] = max(last_end, end)\n        else:\n            merged.append([start, end])\n\n# Find free intervals within work hours (9:00 to 17:00)\nwork_start = 9 * 60\nwork_end = 17 * 60\nfree_intervals = []\n\n# Check before first busy interval\nif merged and merged[0][0] > work_start:\n    free_intervals.append([work_start, merged[0][0]])\n\n# Check between merged intervals\nfor i in range(1, len(merged)):\n    prev_end = merged[i-1][1]\n    current_start = merged[i][0]\n    if current_start > prev_end:\n        free_intervals.append([prev_end, current_start])\n\n# Check after last busy interval\nif merged and merged[-1][1] < work_end:\n    free_intervals.append([merged[-1][1], work_end])\n\n# Handle case with no busy intervals\nif not merged:\n    free_intervals.append([work_start, work_end])\n\n# Find suitable slots (>=30 minutes)\ntarget_duration = 30\npreferred_end = 13 * 60  # 13:00\nsuitable_slots = []\n\nfor start, end in free_intervals:\n    if end - start >= target_duration:\n        slot_start = start\n        slot_end = start + target_duration\n        suitable_slots.append((slot_start, slot_end))\n\n# Prioritize slots before preferred_end\nvalid_slots = [slot for slot in suitable_slots if slot[1] <= preferred_end]\nif not valid_slots:\n    valid_slots = suitable_slots\n\n# Choose earliest valid slot\nchosen_start, chosen_end = min(valid_slots, key=lambda x: x[0])\n\nprint(f\"Monday:{minutes_to_time(chosen_start)}-{minutes_to_time(chosen_end)}\")\n'''",
+            "count": "calendar_scheduling_example_304"
+        }
+    ]
+}

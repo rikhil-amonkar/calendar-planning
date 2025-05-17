@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 5-11",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Split"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 6-12",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 12-18",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\nclass TripPlanner:\n    def __init__(self):\n        self.cities = {\n            'Split': 6,\n            'Santorini': 7,\n            'London': 7\n        }\n        self.flights = {\n            ('London', 'Santorini'): 1,\n            ('Split', 'London'): 1\n        }\n\n    def generate_itinerary(self, days, constraints):\n        # Sort cities by duration in descending order\n        sorted_cities = sorted(constraints, key=lambda x: self.cities[x], reverse=True)\n\n        # Initialize the optimal itinerary\n        optimal_itinerary = []\n\n        # Iterate over cities to find the optimal itinerary\n        for i, city in enumerate(sorted_cities):\n            days_in_city = self.cities[city]\n            if i == 0:\n                days_left = days - days_in_city\n                optimal_itinerary.append({'day_range': f'Day 1-{days_in_city}', 'place': city})\n            else:\n                if (sorted_cities[i-1], city) in self.flights:\n                    days_left -= 1\n                    optimal_itinerary.append({'flying': f'Day {days_left+1}-{days_left+1}', 'from': sorted_cities[i-1], 'to': city})\n                days_left -= days_in_city\n                optimal_itinerary.append({'day_range': f'Day {days_left+1}-{days_left+days_in_city}', 'place': city})\n\n        # Add conference constraint\n        for i, item in enumerate(optimal_itinerary):\n            if 'Santorini' in item['place'] and days_in_city == 7 and 12 <= days_left + days_in_city <= 18:\n                optimal_itinerary[i]['day_range'] = f'Day {days_left+1}-{days}'\n\n        return optimal_itinerary\n\n    def plan_trip(self):\n        constraints = ['Split', 'Santorini', 'London']\n        days = 18\n        itinerary = self.generate_itinerary(days, constraints)\n        return json.dumps(itinerary, indent=4)\n\nif __name__ == '__main__':\n    trip_planner = TripPlanner()\n    print(trip_planner.plan_trip())\n```",
+            "count": "trip_planning_example_116"
+        }
+    ]
+}

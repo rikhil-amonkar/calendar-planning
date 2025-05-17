@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Lyon"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input variables: city durations (required individual days) and constraints.\n    # Note: The total individual days sum: 2 (Prague) + 4 (Helsinki) + 4 (Naples) + 3 (Frankfurt) + 3 (Lyon) = 16.\n    # With 4 flights overlapping (each overlap counts in both cities), the actual trip duration is 16 - 4 = 12 days.\n    duration_prague = 2    # Must also include a workshop between day1 and day2.\n    duration_helsinki = 4  # Must cover the annual show from day2 to day5.\n    duration_naples = 4\n    duration_frankfurt = 3\n    duration_lyon = 3\n\n    # The allowed direct flights (edges in the flight graph):\n    # Prague <-> Lyon, Prague <-> Frankfurt, Frankfurt <-> Lyon,\n    # Helsinki <-> Naples, Helsinki <-> Frankfurt, Naples <-> Frankfurt, Prague <-> Helsinki.\n    # Feasible itinerary order that meets both connectivity and constraints:\n    # Start at Prague (to attend the workshop between day1 and day2),\n    # then fly from Prague to Helsinki (direct flight available) for the annual show.\n    # Next, fly from Helsinki to Naples (direct flight available),\n    # then Naples to Frankfurt,\n    # and finally from Frankfurt to Lyon.\n    itinerary = [\n        {\"city\": \"Prague\", \"duration\": duration_prague},\n        {\"city\": \"Helsinki\", \"duration\": duration_helsinki},\n        {\"city\": \"Naples\", \"duration\": duration_naples},\n        {\"city\": \"Frankfurt\", \"duration\": duration_frankfurt},\n        {\"city\": \"Lyon\", \"duration\": duration_lyon}\n    ]\n\n    # Calculate the actual itinerary day ranges.\n    # If one flies from city A to city B on day X, that day counts for both A and B.\n    # So, for the first city we start at day 1.\n    # For each subsequent city, the start day is the same as the flight day from the previous city,\n    # i.e. the end day (which is the overlapping flight day).\n    day = 1\n    result = []\n    for idx, segment in enumerate(itinerary):\n        city = segment[\"city\"]\n        duration = segment[\"duration\"]\n        # Calculate the end day for this city segment.\n        end_day = day + duration - 1\n        day_range = f\"{day}-{end_day}\"\n        result.append({\"day_range\": day_range, \"place\": city})\n        # Set the next start day equal to the current segment's end day (overlap flight day) unless this is the final city.\n        day = end_day\n\n    # Output the itinerary as a JSON-formatted dictionary (list of segments)\n    print(json.dumps(result, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_586"
+        }
+    ]
+}

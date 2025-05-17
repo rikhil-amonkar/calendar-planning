@@ -1,0 +1,73 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef main():\n    # Input constraints\n    total_days = 18\n    # Cities with required stays (including flight overlap)\n    # Each value is the total required stay count when counted with flight overlap.\n    required_stays = {\n        \"Venice\": 5,     # Also must be present from day 1 to day 5 for the show.\n        \"Stuttgart\": 3,\n        \"Stockholm\": 2,\n        \"Barcelona\": 2,\n        \"Florence\": 4,\n        \"Frankfurt\": 4,\n        \"Salzburg\": 4\n    }\n    \n    # Direct flight connections available (bidirectional assumed)\n    # Represented as a set of frozensets.\n    direct_flights = {\n        frozenset([\"Barcelona\", \"Frankfurt\"]),\n        frozenset([\"Florence\", \"Frankfurt\"]),\n        frozenset([\"Stockholm\", \"Barcelona\"]),\n        frozenset([\"Barcelona\", \"Florence\"]),\n        frozenset([\"Venice\", \"Barcelona\"]),\n        frozenset([\"Stuttgart\", \"Barcelona\"]),\n        frozenset([\"Frankfurt\", \"Salzburg\"]),\n        frozenset([\"Stockholm\", \"Frankfurt\"]),\n        frozenset([\"Stuttgart\", \"Stockholm\"]),\n        frozenset([\"Stuttgart\", \"Frankfurt\"]),\n        frozenset([\"Venice\", \"Stuttgart\"]),\n        frozenset([\"Venice\", \"Frankfurt\"]),\n    }\n    \n    # We choose an ordering that satisfies:\n    # - The show in Venice from day 1 to day 5 (so Venice is first)\n    # - Only use direct flights between consecutive cities.\n    # - The overlapping flight days reduce total sum days to total_days.\n    #\n    # The chosen ordering is:\n    # 1. Venice (5 days) - days 1 to 5. (The annual show is here days 1-5.)\n    # 2. Stuttgart (3 days) - flight day overlap on day 5, then days 6 and 7.\n    # 3. Stockholm (2 days) - flight day overlap on day 7, then day 8.\n    # 4. Barcelona (2 days) - flight day overlap on day 8, then day 9.\n    # 5. Florence (4 days) - flight day overlap on day 9, then days 10, 11, 12.\n    # 6. Frankfurt (4 days) - flight day overlap on day 12, then days 13, 14, 15.\n    # 7. Salzburg (4 days) - flight day overlap on day 15, then days 16, 17, 18.\n    #\n    # Verify connectivity between consecutive cities using direct flights.\n    itinerary_order = [\"Venice\", \"Stuttgart\", \"Stockholm\", \"Barcelona\", \"Florence\", \"Frankfurt\", \"Salzburg\"]\n    \n    # Check flight connectivity in the chosen itinerary order:\n    for i in range(len(itinerary_order) - 1):\n        cityA = itinerary_order[i]\n        cityB = itinerary_order[i + 1]\n        if frozenset([cityA, cityB]) not in direct_flights:\n            raise ValueError(f\"No direct flight between {cityA} and {cityB}\")\n    \n    # Calculate the day ranges:\n    itinerary = []\n    current_day = 1\n    for idx, city in enumerate(itinerary_order):\n        stay = required_stays[city]\n        # For every flight connection, the flight day is the last day of the previous city and the first day of the next city.\n        # Thus, each new city (except the first) starts on the same day the flight happens.\n        # Therefore, schedule as:\n        # - First city: day current_day to (current_day + stay - 1)\n        # - Next city: flight day is the first day for the new city, equals previous city's end day.\n        start_day = current_day\n        end_day = start_day + stay - 1\n        # For next segment, the flight will occur on end_day.\n        # So the next city will start on end_day (overlap).\n        itinerary.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city\n        })\n        # Set next start day: if this is not the last city, the flight day (end_day) is counted for the next city.\n        current_day = end_day\n        if idx < len(itinerary_order) - 1:\n            # Move to the day after the flight day \u2013 however, because flight day counts for both cities,\n            # the next city effectively starts on the same day as the flight day.\n            # So we do not add 1 here; current_day remains as the overlapping flight day.\n            pass\n\n    # current_day now is the last day of arrival in the final city. It should equal total_days.\n    # Validate overall schedule:\n    if current_day != total_days:\n        raise ValueError(\"The computed itinerary does not add up to the total days required.\")\n\n    # Output the result in JSON format (list of dictionaries with day_range and place)\n    print(json.dumps(itinerary, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_953"
+        }
+    ]
+}

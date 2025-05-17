@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 25-26",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 26-27",
+                        "place": "Reykjavik"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 26-27",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input trip constraints (durations are as specified).\n    # Each city is described as (city_name, planned_duration, constraint_info)\n    # Note: Flight rules and time-window constraints are used to decide the order.\n    # Our computed itinerary order (satisfies all time windows and direct flight constraints):\n    # 1. Geneva (relatives, day 1-4)\n    # 2. Istanbul (4 days, day 4-7)\n    # 3. Venice (workshop between 7-11, 5 days, day 7-11)\n    # 4. Munich (5 days, day 11-15)\n    # 5. Madrid (4 days, day 15-18)\n    # 6. Vienna (4 days, day 18-21)\n    # 7. Riga (2 days, day 21-22)\n    # 8. Vilnius (friend meeting between 20-23, 4 days, day 22-25)\n    # 9. Brussels (wedding between day 26-27, 2 days, day 25-26)\n    # 10. Reykjavik (2 days, day 26-27, flight from Brussels allowed)\n    \n    cities = [\n        {\"place\": \"Geneva\",   \"duration\": 4},  # relatives visit between day 1-4\n        {\"place\": \"Istanbul\", \"duration\": 4},\n        {\"place\": \"Venice\",   \"duration\": 5},  # workshop between day 7 and day 11\n        {\"place\": \"Munich\",   \"duration\": 5},\n        {\"place\": \"Madrid\",   \"duration\": 4},\n        {\"place\": \"Vienna\",   \"duration\": 4},\n        {\"place\": \"Riga\",     \"duration\": 2},\n        {\"place\": \"Vilnius\",  \"duration\": 4},  # meet friends between day 20 and 23; this itinerary gives overlap on day 22-23\n        {\"place\": \"Brussels\", \"duration\": 2},  # wedding between day 26 and 27; itinerary: day 25-26\n        {\"place\": \"Reykjavik\",\"duration\": 2}\n    ]\n    \n    # Flight network (for validation, not used in the sequential calculation)\n    # Allowed direct flights (bidirectional unless noted with a \"from\"):\n    allowed_flights = [\n       (\"Munich\", \"Vienna\"), (\"Istanbul\", \"Brussels\"), (\"Vienna\", \"Vilnius\"),\n       (\"Madrid\", \"Munich\"), (\"Venice\", \"Brussels\"), (\"Riga\", \"Brussels\"),\n       (\"Geneva\", \"Istanbul\"), (\"Munich\", \"Reykjavik\"), (\"Vienna\", \"Istanbul\"),\n       (\"Riga\", \"Istanbul\"), (\"Reykjavik\", \"Vienna\"), (\"Venice\", \"Munich\"),\n       (\"Madrid\", \"Venice\"), (\"Vilnius\", \"Istanbul\"), (\"Venice\", \"Vienna\"),\n       (\"Venice\", \"Istanbul\"), (\"Reykjavik\", \"Madrid\"), (\"Riga\", \"Munich\"),\n       (\"Munich\", \"Istanbul\"), (\"Reykjavik\", \"Brussels\"), (\"Vilnius\", \"Brussels\"),\n       (\"Vilnius\", \"Munich\"), (\"Madrid\", \"Vienna\"), (\"Vienna\", \"Riga\"),\n       (\"Geneva\", \"Vienna\"), (\"Madrid\", \"Brussels\"), (\"Vienna\", \"Brussels\"),\n       (\"Geneva\", \"Brussels\"), (\"Geneva\", \"Madrid\"), (\"Munich\", \"Brussels\"),\n       (\"Madrid\", \"Istanbul\"), (\"Geneva\", \"Munich\"), (\"Riga\", \"Vilnius\")\n    ]\n    # Note: We arranged the order such that each consecutive pair is directly connected.\n    \n    itinerary = []\n    \n    # In our plan, if you fly from city A to city B on day X,\n    # then day X is counted as part of both cities.\n    # So we can compute the schedule by letting the first city's start day be 1,\n    # and for subsequent cities, the start day equals the previous city's ending day.\n    current_day = 1\n    for city in cities:\n        # City gets city[\"duration\"] days, with the first day overlapping with previous city's end.\n        start_day = current_day  # overlap on the flight day from previous city (except for the very first city)\n        end_day = start_day + city[\"duration\"] - 1\n        itinerary.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city[\"place\"]\n        })\n        # Next city starts on the overlapping day (the end day of this city)\n        current_day = end_day\n\n    # Adjust the final itinerary length to meet the overall 27 days requirement.\n    # Our sequential calculation: Geneva: 1-4, Istanbul: 4-7, Venice: 7-11, Munich: 11-15,\n    # Madrid: 15-18, Vienna: 18-21, Riga: 21-22, Vilnius: 22-25, Brussels: 25-26, Reykjavik: 26-27.\n    # That produces a pure itinerary span of days 1 to 27 (27 days total) with correct overlapping.\n    \n    # Verify overall itinerary ends on day 27\n    if current_day != 27:\n        raise ValueError(\"Itinerary does not span exactly 27 days, check calculations.\")\n    \n    # Output the itinerary as JSON-formatted dictionary (list of day_range and place)\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1480"
+        }
+    ]
+}

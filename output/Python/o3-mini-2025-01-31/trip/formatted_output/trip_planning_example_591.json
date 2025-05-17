@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef compute_itinerary():\n    # Total trip days\n    total_days = 17\n\n    # Cities and their required stay durations (including flight overlap counts)\n    # Note: if a flight happens on a day, that day counts for both the departure and arrival city.\n    # Durations from constraints:\n    # Geneva: 4 days (with relatives between day 1 and day 4)\n    # Munich: 7 days (with friends meeting between day 4 and day 10)\n    # Bucharest: 2 days\n    # Valencia: 6 days\n    # Stuttgart: 2 days\n    # The sum of days if counted separately would be 4+7+2+6+2 = 21.\n    # Since we have 5 cities (i.e. 4 flight transitions), each flight day is counted twice.\n    # To fit into 17 total days, we must overlap exactly 4 days (one per flight).\n    #\n    # The available direct flights are:\n    #   Geneva <-> Munich, Munich <-> Valencia, Bucharest <-> Valencia, Munich <-> Bucharest,\n    #   Valencia <-> Stuttgart, Geneva <-> Valencia.\n    #\n    # In order to satisfy the relative meeting constraint in Geneva between day 1 and day 4,\n    # and the friend meeting in Munich between day 4 and day 10, a valid order is:\n    #   Geneva -> Munich -> Bucharest -> Valencia -> Stuttgart\n    # Check connectivity:\n    #   Geneva -> Munich: exists.\n    #   Munich -> Bucharest: exists.\n    #   Bucharest -> Valencia: exists.\n    #   Valencia -> Stuttgart: exists.\n    #\n    # With flight overlap, the itinerary is:\n    #   Geneva: Day 1 to Day 4 (4 days)\n    #   Munich: Day 4 to Day 10 (7 days, day 4 is overlap)\n    #   Bucharest: Day 10 to Day 11 (2 days, day 10 is overlap)\n    #   Valencia: Day 11 to Day 16 (6 days, day 11 is overlap)\n    #   Stuttgart: Day 16 to Day 17 (2 days, day 16 is overlap)\n    \n    # Define cities and their durations.\n    itinerary_data = [\n        {\"place\": \"Geneva\", \"duration\": 4},\n        {\"place\": \"Munich\", \"duration\": 7},\n        {\"place\": \"Bucharest\", \"duration\": 2},\n        {\"place\": \"Valencia\", \"duration\": 6},\n        {\"place\": \"Stuttgart\", \"duration\": 2}\n    ]\n    \n    # Calculate itinerary schedule using flight overlap logic:\n    schedule = []\n    current_day = 1\n    for city in itinerary_data:\n        # The city time range starts at current_day and ends at current_day + duration - 1.\n        start_day = current_day\n        end_day = current_day + city[\"duration\"] - 1\n        schedule.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city[\"place\"]\n        })\n        # For next flight, assume flight on the last day: arrival is counted on that same day.\n        # Therefore, the next city's start_day is the same as the current end_day.\n        current_day = end_day\n    \n    # Verify that the final day equals the total trip days\n    if current_day != total_days:\n        raise ValueError(f\"Computed itinerary does not fill the required {total_days} days (ends on day {current_day}).\")\n    \n    return schedule\n\ndef main():\n    itinerary = compute_itinerary()\n    # Output the itinerary as JSON-format (only day_range and place information)\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_591"
+        }
+    ]
+}

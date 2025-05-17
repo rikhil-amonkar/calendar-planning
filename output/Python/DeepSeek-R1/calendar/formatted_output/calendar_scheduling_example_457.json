@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Work hours: 9:00 (540 minutes) to 17:00 (1020 minutes)\n    work_start = 540\n    work_end = 1020\n    duration = 30\n\n    # Convert all schedules to minutes since midnight for easier comparison\n    schedules = {\n        'Andrea': [(570, 630), (810, 870)],\n        'Ruth': [(750, 780), (900, 930)],\n        'Steven': [(600, 630), (660, 690), (720, 750), (810, 840), (900, 960)],\n        'Grace': [],\n        'Kyle': [(540, 570), (630, 720), (750, 780), (810, 900), (930, 960), (990, 1020)],\n        'Elijah': [(540, 660), (690, 780), (810, 840), (930, 960), (990, 1020)],\n        'Lori': [(540, 570), (600, 690), (720, 810), (840, 960), (990, 1020)]\n    }\n\n    # Check every minute in work hours for availability\n    for start in range(work_start, work_end - duration + 1):\n        end = start + duration\n        conflict = False\n        for person, busy in schedules.items():\n            for busy_start, busy_end in busy:\n                if not (end <= busy_start or start >= busy_end):\n                    conflict = True\n                    break\n            if conflict:\n                break\n        if not conflict:\n            # Convert back to HH:MM format\n            def format_time(minutes):\n                return f\"{minutes // 60:02d}:{minutes % 60:02d}\"\n            \n            return f\"Monday {format_time(start)}-{format_time(end)}\"\n    \n    return \"No suitable time found\"\n\nmeeting_time = find_meeting_time()\nprint(meeting_time)\n'''",
+            "count": "calendar_scheduling_example_457"
+        }
+    ]
+}

@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 14-19",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 14-19",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Manchester"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters based on constraints:\n    total_days = 20\n\n    # Cities and required durations (total days if isolated)\n    # Note: Flight days count for both origin and destination.\n    # To account for total trip days, we'll have 4 flight overlaps.\n    cities = [\n        {\"name\": \"Hamburg\", \"required\": 7},\n        {\"name\": \"Split\", \"required\": 7},\n        {\"name\": \"Lyon\", \"required\": 2},\n        {\"name\": \"Munich\", \"required\": 6},\n        {\"name\": \"Manchester\", \"required\": 2}\n    ]\n\n    # Flight connectivity (bidirectional if stated as \"and\" except one directional case).\n    # Provided edges:\n    #   Split-Munich, Munich-Manchester, Hamburg-Manchester, Hamburg-Munich,\n    #   Split-Lyon, Lyon-Munich, Hamburg-Split, and a one-directional flight from Manchester to Split.\n    # We choose an ordering that satisfies all constraints:\n    #   The itinerary ordering selected is:\n    #     1. Hamburg\n    #     2. Split\n    #     3. Lyon   (Annual show on days 13-14)\n    #     4. Munich (6 days stay)\n    #     5. Manchester (Relatives between day 19 and day 20)\n    #\n    # Flight validation for this ordering:\n    #   Hamburg -> Split (direct: Hamburg and Split exist)\n    #   Split -> Lyon (direct: Split and Lyon exist)\n    #   Lyon -> Munich (direct: Lyon and Munich exist)\n    #   Munich -> Manchester (direct: Munich and Manchester exist)\n    \n    # The flight effect: if flying from city A to city B on day X,\n    # then day X counts for both A and B.\n    # With 5 cities and 4 flights, the naive sum of required days is 7 + 7 + 2 + 6 + 2 = 24.\n    # Subtracting 4 overlapping flight days gives: 24 - 4 = 20 days total.\n    \n    itinerary = []\n    current_day = 1\n\n    # For the first city, there is no overlap from a previous flight.\n    first_city = cities[0]\n    first_start = current_day\n    first_end = first_start + first_city[\"required\"] - 1  # no overlap adjustment for the first segment\n    itinerary.append({\"day_range\": f\"{first_start}-{first_end}\", \"place\": first_city[\"name\"]})\n    current_day = first_end  # this day is shared with the next city as flight day\n\n    # For subsequent cities, each city gets its required days with first day already being the flight overlap day.\n    for city in cities[1:]:\n        start = current_day  # flight day; already in previous city at end, now also count as first day for current city\n        end = start + city[\"required\"] - 1  # additional days\n        itinerary.append({\"day_range\": f\"{start}-{end}\", \"place\": city[\"name\"]})\n        current_day = end  # next flight will share this day\n\n    # Validate special constraints:\n    # 1. Annual show in Lyon on day 13 to day 14\n    # 2. Visit relatives in Manchester between day 19 and day 20\n    def extract_range(itinerary, city_name):\n        for item in itinerary:\n            if item[\"place\"] == city_name:\n                start_str, end_str = item[\"day_range\"].split(\"-\")\n                return int(start_str), int(end_str)\n        return None, None\n\n    lyon_start, lyon_end = extract_range(itinerary, \"Lyon\")\n    manchester_start, manchester_end = extract_range(itinerary, \"Manchester\")\n    \n    if lyon_start != 13 or lyon_end != 14:\n        raise ValueError(\"Lyon must be visited on days 13 to 14 to attend the annual show.\")\n    if manchester_start != 19 or manchester_end != 20:\n        raise ValueError(\"Manchester must be visited on days 19 to 20 to visit relatives.\")\n\n    # Final check: the overall trip should span total_days = 20 days (accounting overlaps)\n    # The computed itinerary's last day should be equal to total_days\n    if current_day != total_days:\n        raise ValueError(\"The computed itinerary does not span the required total of 20 days.\")\n\n    return itinerary\n\nif __name__ == \"__main__\":\n    itinerary = compute_itinerary()\n    # Output the itinerary as a JSON formatted dictionary with only day_ranges and places\n    print(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_500"
+        }
+    ]
+}

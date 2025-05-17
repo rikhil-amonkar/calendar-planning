@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Friday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "expected_time": {
+                "day": "Friday",
+                "start_time": "11:00",
+                "end_time": "11:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef parse_time(s):\n    hours, minutes = map(int, s.split(':'))\n    return hours * 60 + minutes\n\ndef format_time(mins):\n    return f\"{mins // 60:02d}:{mins % 60:02d}\"\n\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n    merged = [sorted_intervals[0]]\n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        if current[0] <= last[1]:\n            merged[-1] = (last[0], max(last[1], current[1]))\n        else:\n            merged.append(current)\n    return merged\n\ndef find_meeting_slot():\n    work_start = parse_time(\"09:00\")\n    work_end = parse_time(\"17:00\")\n    days_order = ['Monday', 'Tuesday', 'Thursday', 'Friday', 'Wednesday']\n    \n    eugene_busy = {\n        'Monday': [('11:00', '12:00'), ('13:30', '14:00'), ('14:30', '15:00'), ('16:00', '16:30')],\n        'Wednesday': [('09:00', '09:30'), ('11:00', '11:30'), ('12:00', '12:30'), ('13:30', '15:00')],\n        'Thursday': [('09:30', '10:00'), ('11:00', '12:30')],\n        'Friday': [('10:30', '11:00'), ('12:00', '12:30'), ('13:00', '13:30')],\n        'Tuesday': []\n    }\n    \n    eric_busy = {\n        'Monday': [('09:00', '17:00')],\n        'Tuesday': [('09:00', '17:00')],\n        'Wednesday': [('09:00', '11:30'), ('12:00', '14:00'), ('14:30', '16:30')],\n        'Thursday': [('09:00', '17:00')],\n        'Friday': [('09:00', '11:00'), ('11:30', '17:00')]\n    }\n    \n    for day in days_order:\n        eugene = [ (parse_time(s), parse_time(e)) for s, e in eugene_busy.get(day, []) ]\n        eric = [ (parse_time(s), parse_time(e)) for s, e in eric_busy.get(day, []) ]\n        combined = eugene + eric\n        merged = merge_intervals(combined)\n        \n        available = []\n        prev_end = work_start\n        for start, end in merged:\n            if start > prev_end:\n                available.append( (prev_end, start) )\n            prev_end = max(prev_end, end)\n        if prev_end < work_end:\n            available.append( (prev_end, work_end) )\n        \n        for slot in available:\n            if slot[1] - slot[0] >= 30:\n                start = slot[0]\n                end_time = start + 30\n                return (day, format_time(start), format_time(end_time))\n    \n    return None\n\nresult = find_meeting_slot()\nif result:\n    day, start, end = result\n    print(f\"{day} {start}:{end}\")\nelse:\n    print(\"No slot found\")\n\n'''",
+            "count": "calendar_scheduling_example_938"
+        }
+    ]
+}

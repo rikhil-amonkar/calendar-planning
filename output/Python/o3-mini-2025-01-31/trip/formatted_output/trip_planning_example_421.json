@@ -1,0 +1,36 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 8-14",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 14-19",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Frankfurt"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters (in days)\ntotal_trip_days = 20  # total trip days\n# Desired durations in each city (raw durations that will sum to total_trip_days + (number of flights))\ndurations = {\n    \"Nice\": 5,      # must include a relative visit between day 1 and 5\n    \"Krakow\": 6,    # 6 days\n    \"Dublin\": 7,    # 7 days\n    \"Lyon\": 4,      # 4 days\n    \"Frankfurt\": 2  # 2 days, meet friends between day 19 and day 20\n}\n\n# Direct flight connections (edges, both directions allowed)\ndirect_flights = {\n    (\"Nice\", \"Dublin\"), (\"Dublin\", \"Nice\"),\n    (\"Dublin\", \"Frankfurt\"), (\"Frankfurt\", \"Dublin\"),\n    (\"Dublin\", \"Krakow\"), (\"Krakow\", \"Dublin\"),\n    (\"Krakow\", \"Frankfurt\"), (\"Frankfurt\", \"Krakow\"),\n    (\"Lyon\", \"Frankfurt\"), (\"Frankfurt\", \"Lyon\"),\n    (\"Nice\", \"Frankfurt\"), (\"Frankfurt\", \"Nice\"),\n    (\"Lyon\", \"Dublin\"), (\"Dublin\", \"Lyon\"),\n    (\"Nice\", \"Lyon\"), (\"Lyon\", \"Nice\")\n}\n\n# We need an itinerary that visits all cities and satisfies constraints:\n# Constraints:\n# 1. Must visit Nice during days 1 to 5 (for a relative visit).\n# 2. Must be in Frankfurt between day 19 and day 20 (to meet friends).\n# 3. Total days count must be 20.\n# The flight rule: if flying from A to B on day X, that day counts for both A and B.\n#\n# The raw durations per city sum to: 5 + 6 + 7 + 4 + 2 = 24 days.\n# Since we have 5 cities, there will be 4 flights. Each flight day is double counted once.\n# Therefore the total actual days = total raw days - number_of_flights = 24 - 4 = 20.\n#\n# One valid ordering which respects direct flights and the schedule constraints is:\n#   Nice -> Lyon -> Dublin -> Krakow -> Frankfurt\n# Check flights:\n#   Nice to Lyon: (Nice, Lyon) exists.\n#   Lyon to Dublin: (Lyon, Dublin) exists.\n#   Dublin to Krakow: (Dublin, Krakow) exists.\n#   Krakow to Frankfurt: (Krakow, Frankfurt) exists.\n#\n# Now we schedule the segments with overlapping at flight days.\n# We assume that when departing from city1 and arriving city2,\n# the last day of city1 is the same as the first day of city2.\n#\n# Compute day ranges\nitinerary_order = [\"Nice\", \"Lyon\", \"Dublin\", \"Krakow\", \"Frankfurt\"]\n\n# Check that the chosen flights are all direct flights\nfor i in range(len(itinerary_order) - 1):\n    a = itinerary_order[i]\n    b = itinerary_order[i+1]\n    if (a, b) not in direct_flights:\n        raise ValueError(f\"No direct flight between {a} and {b}\")\n\nsegments = []\ncurrent_day = 1\n\n# For each city except the first, we will have an overlap on the transition day.\n# So the effective days in city i will be:\n#   For the first city: from current_day to current_day + duration - 1.\n#   For subsequent cities: they start on the last day of previous city (overlap) and go until\n#       start_day + duration - 1.\nfor idx, city in enumerate(itinerary_order):\n    d = durations[city]\n    if idx == 0:\n        # First city: full stay from day current_day to (current_day + d - 1)\n        start_day = current_day\n        end_day = current_day + d - 1\n    else:\n        # For subsequent cities, the flight happens on the last day of the previous city.\n        # So they start on that same day.\n        start_day = current_day  # overlapping day with previous city\n        end_day = current_day + d - 1\n    # Append segment info with day_range and place\n    segments.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city\n    })\n    # Set current_day for next segment.\n    # For subsequent cities, the flight day was counted already.\n    current_day = end_day\n\n# Validate constraints:\n# 1. Nice must cover days 1 to 5 and relatives in Nice between day 1 and 5.\nnice_segment = segments[0]\nnice_start, nice_end = map(int, nice_segment[\"day_range\"].split(\"-\"))\nif not (nice_start <= 1 and nice_end >= 5):\n    raise ValueError(\"Nice does not cover days 1 to 5 for relative visit.\")\n\n# 2. Frankfurt must include day 19 or 20.\nfrankfurt_segment = segments[-1]\nfrankfurt_start, frankfurt_end = map(int, frankfurt_segment[\"day_range\"].split(\"-\"))\nif not (frankfurt_start <= 19 <= frankfurt_end or frankfurt_start <= 20 <= frankfurt_end):\n    raise ValueError(\"Frankfurt does not cover days 19 or 20 for meeting friends.\")\n\n# 3. Check overall trip day count\noverall_start = int(segments[0][\"day_range\"].split(\"-\")[0])\noverall_end = int(segments[-1][\"day_range\"].split(\"-\")[1])\nif overall_end - overall_start + 1 != total_trip_days:\n    raise ValueError(\"Overall trip day count does not equal 20 days.\")\n\n# Output the itinerary as JSON-formatted dictionary containing only day_range and place.\n# The final output is a list of segments.\noutput = {\"itinerary\": segments}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "trip_planning_example_421"
+        }
+    ]
+}

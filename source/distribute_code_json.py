@@ -47,7 +47,7 @@ def split_json(input_file, output_folder):
 # Example usage
 task = 'calendar'
 input_file = f'{task}_scheduling/100_random_0shot_code_outputs_new/O3-M-25-01-31_code_{task}_results.json'
-output_folder = f'../output/Python/o3-mini-2025-01-31/{task}'
+output_folder = f'../output/Python/o3-mini-2025-01-31/{task}/formatted_output/'
 
 split_json(input_file, output_folder)
 

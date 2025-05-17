@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "13:00",
+                "end_time": "14:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef get_free_intervals(blocked, work_start=0, work_end=480):\n    if not blocked:\n        return [(work_start, work_end)]\n    blocked_sorted = sorted(blocked, key=lambda x: x[0])\n    merged = []\n    for interval in blocked_sorted:\n        if not merged:\n            merged.append(interval)\n        else:\n            last = merged[-1]\n            if interval[0] <= last[1]:\n                merged[-1] = (last[0], max(last[1], interval[1]))\n            else:\n                merged.append(interval)\n    free = []\n    prev_end = work_start\n    for start, end in merged:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        free.append((prev_end, work_end))\n    return free\n\ndef find_overlapping_intervals(a, b):\n    overlaps = []\n    i = j = 0\n    while i < len(a) and j < len(b):\n        a_start, a_end = a[i]\n        b_start, b_end = b[j]\n        start = max(a_start, b_start)\n        end = min(a_end, b_end)\n        if start < end:\n            overlaps.append((start, end))\n            if a_end < b_end:\n                i += 1\n            else:\n                j += 1\n        else:\n            if a_start < b_start:\n                i += 1\n            else:\n                j += 1\n    return overlaps\n\ndef minutes_to_time(minutes):\n    hours = 9 + minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02}:{mins:02}\"\n\ngary_blocked = {\n    'Monday': [(30, 60), (120, 240), (300, 330), (450, 480)],\n    'Tuesday': [(0, 30), (90, 120), (330, 420)]\n}\n\ndavid_blocked = {\n    'Monday': [(0, 30), (60, 240), (330, 450)],\n    'Tuesday': [(0, 30), (60, 90), (120, 210), (240, 330), (360, 420), (450, 480)]\n}\n\ndays = ['Monday', 'Tuesday']\nwork_hours = (0, 480)\n\nfor day in days:\n    gary_free = get_free_intervals(gary_blocked.get(day, []), *work_hours)\n    david_free = get_free_intervals(david_blocked.get(day, []), *work_hours)\n    overlaps = find_overlapping_intervals(gary_free, david_free)\n    for start, end in overlaps:\n        if end - start >= 60:\n            start_time = minutes_to_time(start)\n            end_time = minutes_to_time(start + 60)\n            print(f\"{day}:{start_time}:{end_time}\")\n            exit()\n\nprint(\"No suitable time found.\")\n'''",
+            "count": "calendar_scheduling_example_662"
+        }
+    ]
+}

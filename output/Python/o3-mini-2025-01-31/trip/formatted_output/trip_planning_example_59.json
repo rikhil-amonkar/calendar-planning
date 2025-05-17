@@ -1,0 +1,28 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters\n    total_days = 16\n    days_in_lyon = 7\n    days_in_bucharest = 7\n    days_in_porto = 4\n    \n    # Available direct flights:\n    # Bucharest <-> Lyon, Lyon <-> Porto\n    \n    # Additional constraint:\n    # - There is a wedding in Bucharest between day 1 and day 7, so one must be in Bucharest\n    #   during that period.\n    # - Note: if one flies from a city A to city B on a day, that day counts as a day in both A and B.\n    #\n    # We have three cities to visit:\n    #   Bucharest, Lyon, and Porto.\n    # With 2 flights (transitions), the overlapping days count for both cities.\n    # Let the flight from Bucharest to Lyon be on day f1 and the flight from Lyon to Porto be on day f2.\n    #\n    # The days spent in each city are:\n    #   Bucharest: days 1 to f1 (inclusive)   -> count = f1\n    #   Lyon: day f1 (arrival day) + full days from (f1+1) to (f2-1) + day f2 (departure day)\n    #         -> count = 1 + (f2 - f1 - 1) + 1 = f2 - f1 + 1\n    #   Porto: day f2 (arrival day) + days (f2+1) to total_days\n    #         -> count = 1 + (total_days - f2)\n    #\n    # We want:\n    #   f1 = days_in_bucharest = 7  (so that days 1-7 cover Bucharest,\n    #       ensuring the wedding is attended in the first 7 days)\n    #\n    #   For Lyon: f2 - f1 + 1 = days_in_lyon = 7\n    #           => f2 - 7 + 1 = 7  -> f2 = 7 + 6 = 13\n    #\n    #   Then Porto: 1 + (total_days - f2) = 1 + (16 - 13) = 4 = days_in_porto\n    #\n    # This gives:\n    flight_day_bucharest_to_lyon = 7  # f1\n    flight_day_lyon_to_porto = 13      # f2\n\n    # Building the itinerary:\n    # The trip plan segments:\n    # 1. Bucharest from day 1 to day 7 (day 7 is used for the flight and counts as Bucharest)\n    # 2. Lyon from day 7 to day 13 (day 7 from arrival flight, day 13 for departure flight)\n    # 3. Porto from day 13 to day 16 (day 13 counts as the arrival day)\n    \n    itinerary = [\n        {\"day_range\": \"1-7\", \"place\": \"Bucharest\"},\n        {\"day_range\": \"7-13\", \"place\": \"Lyon\"},\n        {\"day_range\": \"13-16\", \"place\": \"Porto\"}\n    ]\n    \n    # Output result as a JSON-formatted dictionary\n    result = {\"itinerary\": itinerary}\n    return result\n\ndef main():\n    itinerary_plan = compute_itinerary()\n    print(json.dumps(itinerary_plan))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_59"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "11:30",
+                "end_time": "12:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef time_to_minutes(time_str):\n    hours, minutes = map(int, time_str.split(':'))\n    return hours * 60 + minutes\n\ndef minutes_to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02d}:{mins:02d}\"\n\nparticipants = {\n    \"Walter\": [],\n    \"Cynthia\": [\n        (\"9:00\", \"9:30\"),\n        (\"10:00\", \"10:30\"),\n        (\"13:30\", \"14:30\"),\n        (\"15:00\", \"16:00\")\n    ],\n    \"Ann\": [\n        (\"10:00\", \"11:00\"),\n        (\"13:00\", \"13:30\"),\n        (\"14:00\", \"15:00\"),\n        (\"16:00\", \"16:30\")\n    ],\n    \"Catherine\": [\n        (\"9:00\", \"11:30\"),\n        (\"12:30\", \"13:30\"),\n        (\"14:30\", \"17:00\")\n    ],\n    \"Kyle\": [\n        (\"9:00\", \"9:30\"),\n        (\"10:00\", \"11:30\"),\n        (\"12:00\", \"12:30\"),\n        (\"13:00\", \"14:30\"),\n        (\"15:00\", \"16:00\")\n    ]\n}\n\n# Convert all busy times to minutes\nbusy_slots = {}\nfor person, slots in participants.items():\n    busy_slots[person] = []\n    for start, end in slots:\n        start_min = time_to_minutes(start)\n        end_min = time_to_minutes(end)\n        busy_slots[person].append((start_min, end_min))\n\n# Check every possible 30-minute slot between 9:00 and 17:00\nstart_time = 9 * 60  # 9:00 in minutes\nend_time = 17 * 60   # 17:00 in minutes\n\nfor slot_start in range(start_time, end_time - 30 + 1):\n    slot_end = slot_start + 30\n    valid = True\n    for person, slots in busy_slots.items():\n        for busy_start, busy_end in slots:\n            if not (slot_end <= busy_start or slot_start >= busy_end):\n                valid = False\n                break\n        if not valid:\n            break\n    if valid:\n        proposed_start = minutes_to_time(slot_start)\n        proposed_end = minutes_to_time(slot_end)\n        print(f\"Monday:{proposed_start}:{proposed_end}\")\n        exit()\n\n# Fallback in case no slot found (though problem states there's a solution)\nprint(\"No valid slot found\")\n'''",
+            "count": "calendar_scheduling_example_244"
+        }
+    ]
+}

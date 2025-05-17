@@ -1,0 +1,40 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 14-15",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input parameters:\n    total_days = 16\n\n    # Planned durations (including the overlapping flight days)\n    # When going from one city to the next, the flight day is shared.\n    durations = {\n        \"Prague\": 4,\n        \"Reykjavik\": 4,\n        \"Munich\": 4,\n        \"Porto\": 5,\n        \"Amsterdam\": 2,\n        \"Santorini\": 2,\n    }\n    \n    # Special events constraints (for reference/checks)\n    wedding_window = (4, 7)        # In Reykjavik between day 4 and day 7 (inclusive)\n    friend_meet_window = (7, 10)   # In Munich between day 7 and day 10 (inclusive)\n    conference_days = (14, 15)     # In Amsterdam during day 14 and day 15\n    \n    # Direct flights available (bidirectional)\n    # Represented as a set of frozensets for quick membership check.\n    direct_flights = {\n        frozenset([\"Porto\", \"Amsterdam\"]),\n        frozenset([\"Munich\", \"Amsterdam\"]),\n        frozenset([\"Reykjavik\", \"Amsterdam\"]),\n        frozenset([\"Munich\", \"Porto\"]),\n        frozenset([\"Prague\", \"Reykjavik\"]),\n        frozenset([\"Reykjavik\", \"Munich\"]),\n        frozenset([\"Amsterdam\", \"Santorini\"]),\n        frozenset([\"Prague\", \"Amsterdam\"]),\n        frozenset([\"Prague\", \"Munich\"]),\n    }\n    \n    # We must visit 6 cities with durations adding to 21.\n    # Overlap via 5 flights yields total days = 21 - 5 = 16.\n    # We choose an ordering that respects both the direct flights and the time-event constraints:\n    # Chosen order: Prague -> Reykjavik -> Munich -> Porto -> Amsterdam -> Santorini\n    ordering = [\"Prague\", \"Reykjavik\", \"Munich\", \"Porto\", \"Amsterdam\", \"Santorini\"]\n    \n    # Verify that each leg is available as a direct flight.\n    for i in range(len(ordering) - 1):\n        leg = frozenset([ordering[i], ordering[i+1]])\n        if leg not in direct_flights:\n            raise ValueError(f\"Direct flight between {ordering[i]} and {ordering[i+1]} is not available.\")\n    \n    # Now compute the day ranges. \n    # When flying from A to B on day X, day X counts toward both A and B.\n    itinerary = []\n    current_day = 1\n    for idx, city in enumerate(ordering):\n        # The city duration includes the first day as flight-overlap from previous leg (if not the very first city)\n        duration = durations[city]\n        # Compute end day (both inclusive)\n        # For the first city, current_day is 1; for subsequent cities, the first day is an overlap.\n        end_day = current_day + duration - 1\n        # Save the itinerary segment\n        itinerary.append({\n            \"day_range\": f\"{current_day}-{end_day}\",\n            \"place\": city\n        })\n        # For all but the last city, the flight day is the end_day,\n        # which counts as the start day for the next city.\n        if idx < len(ordering) - 1:\n            current_day = end_day  # overlap day\n        \n    # Check if total trip days equals total_days as expected\n    last_range = itinerary[-1][\"day_range\"]\n    trip_end_day = int(last_range.split('-')[1])\n    if trip_end_day != total_days:\n        raise ValueError(f\"Computed trip length ({trip_end_day} days) does not equal expected total days ({total_days} days).\")\n    \n    # Optionally, verify that special event constraints are met:\n    # Wedding in Reykjavik (itinerary index 1): its day range must intersect wedding_window.\n    reykjavik_range = itinerary[1][\"day_range\"]\n    reykjavik_start, reykjavik_end = map(int, reykjavik_range.split('-'))\n    if not (wedding_window[0] >= reykjavik_start and wedding_window[1] <= reykjavik_end):\n        # Alternatively check if the wedding_window is contained in the stay period.\n        if not (reykjavik_start <= wedding_window[0] <= reykjavik_end) or not (reykjavik_start <= wedding_window[1] <= reykjavik_end):\n            raise ValueError(\"Wedding constraint in Reykjavik is not satisfied.\")\n    \n    # Friend meeting in Munich (itinerary index 2): must occur between day 7 and 10.\n    munich_range = itinerary[2][\"day_range\"]\n    munich_start, munich_end = map(int, munich_range.split('-'))\n    if not (munich_start <= friend_meet_window[0] <= munich_end) or not (munich_start <= friend_meet_window[1] <= munich_end):\n        raise ValueError(\"Friend meeting constraint in Munich is not satisfied.\")\n    \n    # Conference in Amsterdam (itinerary index 4): day14-15 must be within the Amsterdam stay.\n    amsterdam_range = itinerary[4][\"day_range\"]\n    amsterdam_start, amsterdam_end = map(int, amsterdam_range.split('-'))\n    if not (amsterdam_start <= conference_days[0] <= amsterdam_end) or not (amsterdam_start <= conference_days[1] <= amsterdam_end):\n        raise ValueError(\"Conference constraint in Amsterdam is not satisfied.\")\n    \n    return {\"itinerary\": itinerary}\n\nif __name__ == \"__main__\":\n    plan = compute_itinerary()\n    print(json.dumps(plan))\n```",
+            "count": "trip_planning_example_769"
+        }
+    ]
+}

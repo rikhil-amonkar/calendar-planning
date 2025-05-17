@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "16:00",
+                "end_time": "16:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef schedule_meeting():\n    # Define work hours and meeting duration\n    work_start = 9 * 60\n    work_end = 17 * 60\n    meeting_duration = 30\n\n    # Convert schedules to minutes since midnight\n    schedules = {\n        'Adam': [(14*60, 15*60)],\n        'John': [(13*60, 13*60+30), (14*60, 14*60+30), (15*60+30, 16*60), (16*60+30, 17*60)],\n        'Stephanie': [(9*60+30, 10*60), (10*60+30, 11*60), (11*60+30, 16*60), (16*60+30, 17*60)],\n        'Anna': [(9*60+30, 10*60), (12*60, 12*60+30), (13*60, 15*60+30), (16*60+30, 17*60)],\n    }\n\n    # Generate free slots for each person\n    free_slots = {}\n    for person, busy in schedules.items():\n        slots = []\n        prev_end = work_start\n        for start, end in sorted(busy):\n            if start > prev_end:\n                slots.append((prev_end, start))\n            prev_end = max(prev_end, end)\n        if prev_end < work_end:\n            slots.append((prev_end, work_end))\n        free_slots[person] = slots\n\n    # Apply Anna's preference (not before 14:30)\n    anna_pref_start = 14*60 + 30\n    free_slots['Anna'] = [slot for slot in free_slots['Anna'] if slot[0] >= anna_pref_start]\n\n    # Find overlapping slots\n    common_slots = []\n    current_time = work_start\n    while current_time + meeting_duration <= work_end:\n        end_time = current_time + meeting_duration\n        all_available = True\n        for person in free_slots:\n            available = False\n            for slot in free_slots[person]:\n                if slot[0] <= current_time and end_time <= slot[1]:\n                    available = True\n                    break\n            if not available:\n                all_available = False\n                break\n        if all_available:\n            common_slots.append((current_time, end_time))\n        current_time += 15  # Check every 15 minutes\n\n    # Select the earliest possible time\n    if common_slots:\n        best_start, best_end = common_slots[0]\n        return \"Monday\", f\"{best_start//60:02}:{best_start%60:02}:{best_end//60:02}:{best_end%60:02}\"\n    return \"No time found\", \"\"\n\n# Execute and print result\nday, time = schedule_meeting()\nprint(f\"{day} {time}\")\n'''",
+            "count": "calendar_scheduling_example_116"
+        }
+    ]
+}

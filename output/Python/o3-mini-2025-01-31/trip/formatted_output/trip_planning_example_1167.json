@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-17",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 20-21",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# In this problem the trip is 21 days long.\n# There are 8 cities with required durations, but due to overlapping flight days (the day of flight counts in both cities)\n# the total \"sum\" of required days is more than 21.\n#\n# Our chosen ordering (which satisfies the direct-flight connections and all time\u2010window constraints) is:\n#\n#  1. Mykonos \u2013 Spend 4 days. \n#       Additional constraint: Must visit relatives in Mykonos between day 1 and day 4.\n#  2. Naples \u2013 Spend 4 days.\n#       (Direct flight from Mykonos to Naples is allowed.)\n#  3. Istanbul \u2013 Spend 3 days.\n#       Constraint: Meet a friend in Istanbul sometime between day 9 and 11.\n#       (Direct flight from Naples to Istanbul is allowed.)\n#  4. Venice \u2013 Spend 3 days.\n#       (There is a direct flight between Istanbul and Venice.)\n#  5. Dublin \u2013 Spend 5 days.\n#       Constraint: An annual show in Dublin from day 11 to 15.\n#       (A direct flight from Venice to Dublin is allowed.)\n#  6. Frankfurt \u2013 Spend 3 days.\n#       Constraint: Meet friends at Frankfurt between day 15 and 17.\n#       (A direct flight from Dublin to Frankfurt is allowed.)\n#  7. Krakow \u2013 Spend 4 days.\n#       (A direct flight from Frankfurt to Krakow is allowed.)\n#  8. Brussels \u2013 Spend 2 days.\n#       (A direct flight from Krakow to Brussels is allowed.)\n#\n# Notice: The day-of-flight rule is that if you fly on a given day from city A to city B,\n# that day counts for both cities. So when planning the itinerary, if a city is scheduled to\n# have D days, its last day doubles as the arrival day of the next city.\n#\n# We can compute the start day of each city in the itinerary by:\n#   s[0] = 1 (start day of first city)\n#   for each subsequent city i:\n#       s[i] = s[i-1] + duration[i-1] - 1\n# and the trip will finish on:\n#       finish = s[last] + duration[last] - 1\n#\n# With our chosen ordering, we have:\n#   Mykonos (4 days), Naples (4), Istanbul (3), Venice (3), Dublin (5), Frankfurt (3), Krakow (4), Brussels (2)\n#\n# The computed schedule is:\n#   s1 = 1\n#   s2 = 1 + 4 - 1 = 4       -> Naples: days 4 to 7\n#   s3 = 4 + 4 - 1 = 7       -> Istanbul: days 7 to 9\n#   s4 = 7 + 3 - 1 = 9       -> Venice: days 9 to 11\n#   s5 = 9 + 3 - 1 = 11      -> Dublin: days 11 to 15  (meets the show window exactly)\n#   s6 = 11 + 5 - 1 = 15     -> Frankfurt: days 15 to 17 (meets the friend meeting window exactly)\n#   s7 = 15 + 3 - 1 = 17     -> Krakow: days 17 to 20\n#   s8 = 17 + 4 - 1 = 20     -> Brussels: days 20 to 21\n#\n# Note that all flight legs in this ordering have a corresponding direct-flight edge:\n#   Mykonos <-> Naples, Naples <-> Istanbul, Istanbul <-> Venice, Venice <-> Dublin,\n#   Dublin <-> Frankfurt, Frankfurt <-> Krakow, Krakow <-> Brussels.\n#\n# The itinerary meets these special requirements:\n#   - Mykonos visit: days 1-4 (includes days 1 to 4 for relatives).\n#   - Istanbul visit: days 7-9 (so day 9 is in Istanbul meeting window [9,11]).\n#   - Dublin visit: days 11-15 (covering the annual show window exactly).\n#   - Frankfurt visit: days 15-17 (covering the friend meeting window exactly).\n#\n# Finally, the last day of the trip is day 21.\n#\n# We output the itinerary as a list of dictionaries with keys \"day_range\" and \"place\".\n# Only these keys are included in the JSON output.\n\n# Define the itinerary as a list of tuples: (place, duration)\n# The order is chosen to satisfy all constraints and direct flight rules.\nitinerary = [\n    (\"Mykonos\", 4),   # Relatives: Must have at least one day between day 1 and 4\n    (\"Naples\", 4),\n    (\"Istanbul\", 3),  # Friend meeting between day 9 and 11: day 9 qualifies\n    (\"Venice\", 3),\n    (\"Dublin\", 5),    # Annual show in Dublin from day 11 to 15: exactly matches when starting on day 11\n    (\"Frankfurt\", 3), # Friends meeting in Frankfurt between day 15 and 17: exactly matches when starting on day 15\n    (\"Krakow\", 4),\n    (\"Brussels\", 2)\n]\n\n# Compute the start day for each city.\nschedule = []\ncurrent_day = 1  # start day for the first city\nfor place, duration in itinerary:\n    start_day = current_day\n    end_day = start_day + duration - 1\n    # Append a dictionary with day_range and place\n    schedule.append({\"day_range\": f\"{start_day}-{end_day}\", \"place\": place})\n    # Next city start day: overlap on the last day of current city.\n    current_day = end_day\n\n# The computed schedule:\n# Mykonos: 1-4\n# Naples: 4-7\n# Istanbul: 7-9\n# Venice: 9-11\n# Dublin: 11-15\n# Frankfurt: 15-17\n# Krakow: 17-20\n# Brussels: 20-21\n#\n# Final check of special constraints:\n# - Mykonos visit (1-4) includes days 1-4, so relatives are visited in the proper window.\n# - Istanbul visit (7-9) means day 9 is in Istanbul and meets the friend meeting window (9-11).\n# - Dublin visit (11-15) exactly covers the annual show window.\n# - Frankfurt visit (15-17) exactly covers the touring friends meeting window.\n# Also, the total trip ends on day 21.\n\n# Print final itinerary as JSON\nprint(json.dumps(schedule))\n```",
+            "count": "trip_planning_example_1167"
+        }
+    ]
+}

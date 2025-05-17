@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 8-13",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Split"
+                    },
+                    {
+                        "day_range": "Day 8-13",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 13-14",
+                        "place": "Santorini"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Trip constraints as input variables\n    total_days = 14\n    # Each tuple is (city, required_total_days)\n    # Note: The required days are the number of days counted in that city,\n    # including the day when you fly into that city (which counts for both departure and arrival).\n    # The cities are chosen in an order that respects the direct flight connections:\n    # Direct flights: Vilnius <-> Split, Split <-> Madrid, Madrid <-> Santorini.\n    # Thus a correct ordering is: Vilnius, Split, Madrid, Santorini.\n    cities = [(\"Vilnius\", 4), (\"Split\", 5), (\"Madrid\", 6), (\"Santorini\", 2)]\n    \n    # The rule is: if you fly from city A to city B on day X,\n    # then day X is counted towards both city A and city B.\n    # This overlapping day helps to meet the total 14-day trip requirement.\n    #\n    # Let the flight from city A to city B be on the last day of A.\n    # Then for a city with a required duration D, if you start on day S,\n    # you must finish on day (S + D - 1). And then the next city starts on that same day.\n    \n    itinerary = []\n    current_day = 1\n    for i, (city, duration) in enumerate(cities):\n        end_day = current_day + duration - 1\n        itinerary.append({\"day_range\": f\"{current_day}-{end_day}\", \"place\": city})\n        if i < len(cities) - 1:\n            # Next city starts on the same day as the flight day (overlap)\n            current_day = end_day\n    \n    # Ensure the total trip ends on day 14 (it will, if we use overlapping flight days).\n    # The computed itinerary:\n    # Vilnius: Day 1 to 4 (4 days)\n    # Split: Day 4 to 8 (5 days, with Day 4 overlapped)\n    # Madrid: Day 8 to 13 (6 days, with Day 8 overlapped)\n    # Santorini: Day 13 to 14 (2 days, with Day 13 overlapped)\n    #\n    # Conference attendance in Santorini on day 13 and 14 is naturally satisfied.\n    \n    return itinerary\n\ndef main():\n    itinerary = compute_itinerary()\n    # Output the result as JSON-formatted string\n    print(json.dumps(itinerary, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_275"
+        }
+    ]
+}

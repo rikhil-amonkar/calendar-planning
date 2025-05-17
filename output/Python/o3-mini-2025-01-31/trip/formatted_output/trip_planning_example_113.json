@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 3-9",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef main():\n    # Input parameters\n    total_days = 12\n    required_naples_days = 3\n    required_seville_days = 4\n    required_milan_days = 7\n    seville_show_start = 9\n    seville_show_end = 12\n\n    # Direct flights available:\n    # - Naples <-> Milan\n    # - Milan <-> Seville\n    # (No direct flight between Naples and Seville)\n    \n    # We choose the following sequence: Naples -> Milan -> Seville.\n    # With the given rule that when flying on a day, the day counts for both departure and arrival,\n    # we design the itinerary as follows:\n    #\n    # 1. Start in Naples. We need a total of 3 days in Naples.\n    #    We choose days 1 and 2 in Naples.\n    # 2. Fly from Naples to Milan on day 3. This day is counted for both Naples and Milan.\n    #    Naples: days 1, 2, and 3 => 3 days total.\n    # 3. Stay in Milan from day 3 through day 9.\n    #    Milan: day 3 (arrival day overlap) plus days 4,5,6,7,8, and flight day 9.\n    #    This gives 7 days in Milan.\n    # 4. Fly from Milan to Seville on day 9.\n    #    This day is counted in both Milan and Seville.\n    # 5. Stay in Seville from day 9 through day 12.\n    #    Seville: day 9 (arrival day overlap) plus days 10, 11, and 12.\n    #    This gives 4 days in Seville and ensures attendance at the annual show from day 9 to 12.\n    \n    # Derived day ranges for each city\n    naples_day_range = \"1-3\"   # Days 1,2: solely in Naples; Day 3: overlap flight to Milan\n    milan_day_range = \"3-9\"    # Day 3: arrival from Naples; days 4-8: in Milan; Day 9: overlap flight to Seville\n    seville_day_range = \"9-12\" # Day 9: arrival from Milan; days 10-12: in Seville\n\n    # Prepare the itinerary result as a JSON-formatted list of dictionaries with day_range and place.\n    itinerary = [\n        {\"day_range\": naples_day_range, \"place\": \"Naples\"},\n        {\"day_range\": milan_day_range, \"place\": \"Milan\"},\n        {\"day_range\": seville_day_range, \"place\": \"Seville\"}\n    ]\n\n    # Output the itinerary in JSON format\n    print(json.dumps(itinerary))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_113"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": null,
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Monday",
+                "start_time": "9:00",
+                "end_time": "10:00"
+            },
+            "has_error": true,
+            "raw_model_response": "'''python\ndef parse_time(s):\n    hours, minutes = map(int, s.split(':'))\n    return hours * 60 + minutes\n\ndef format_time(m):\n    return f\"{m // 60:02d}:{m % 60:02d}\"\n\ndef get_free_slots(busy_intervals, start, end):\n    free = []\n    prev_end = start\n    for start_busy, end_busy in sorted(busy_intervals):\n        if start_busy > prev_end:\n            free.append((prev_end, start_busy))\n        prev_end = max(prev_end, end_busy)\n    if prev_end < end:\n        free.append((prev_end, end))\n    return free\n\ndef find_meeting_slot():\n    work_start = parse_time(\"09:00\")\n    work_end = parse_time(\"17:00\")\n    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']\n    \n    megan_busy = {\n        'Monday': [(parse_time(\"13:00\"), parse_time(\"13:30\")), (parse_time(\"14:00\"), parse_time(\"15:30\"))],\n        'Tuesday': [(parse_time(\"09:00\"), parse_time(\"09:30\")), (parse_time(\"12:00\"), parse_time(\"12:30\")), (parse_time(\"16:00\"), parse_time(\"17:00\"))],\n        'Wednesday': [(parse_time(\"09:30\"), parse_time(\"10:00\")), (parse_time(\"10:30\"), parse_time(\"11:30\")), (parse_time(\"12:30\"), parse_time(\"14:00\")), (parse_time(\"16:00\"), parse_time(\"16:30\"))],\n        'Thursday': [(parse_time(\"13:30\"), parse_time(\"14:30\")), (parse_time(\"15:00\"), parse_time(\"15:30\"))]\n    }\n    \n    daniel_busy = {\n        'Monday': [(parse_time(\"10:00\"), parse_time(\"11:30\")), (parse_time(\"12:30\"), parse_time(\"15:00\"))],\n        'Tuesday': [(parse_time(\"09:00\"), parse_time(\"10:00\")), (parse_time(\"10:30\"), parse_time(\"17:00\"))],\n        'Wednesday': [(parse_time(\"09:00\"), parse_time(\"10:00\")), (parse_time(\"10:30\"), parse_time(\"11:30\")), (parse_time(\"12:00\"), parse_time(\"17:00\"))],\n        'Thursday': [(parse_time(\"09:00\"), parse_time(\"12:00\")), (parse_time(\"12:30\"), parse_time(\"14:30\")), (parse_time(\"15:00\"), parse_time(\"15:30\")), (parse_time(\"16:00\"), parse_time(\"17:00\"))]\n    }\n    \n    for day in days:\n        megan_slots = get_free_slots(megan_busy.get(day, []), work_start, work_end)\n        daniel_slots = get_free_slots(daniel_busy.get(day, []), work_start, work_end)\n        \n        i = j = 0\n        while i < len(megan_slots) and j < len(daniel_slots):\n            m_start, m_end = megan_slots[i]\n            d_start, d_end = daniel_slots[j]\n            \n            overlap_start = max(m_start, d_start)\n            overlap_end = min(m_end, d_end)\n            \n            if overlap_start < overlap_end:\n                if overlap_end - overlap_start >= 60:\n                    start = overlap_start\n                    return f\"{day} {format_time(start)}:{format_time(start + 60)}\"\n                if overlap_end == m_end:\n                    i += 1\n                else:\n                    j += 1\n            else:\n                if m_end <= d_end:\n                    i += 1\n                else:\n                    j += 1\n    \n    return \"No slot found\"\n\nresult = find_meeting_slot()\nday, time = result.split()\nstart, end = time.split(':')\nprint(f\"{day} {start}:{end}\")\n'''",
+            "count": "calendar_scheduling_example_865"
+        }
+    ]
+}

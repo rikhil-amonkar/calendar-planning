@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 17-21",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 25-28",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the trip segments with their mandatory durations.\n# The order is chosen so that all time\u2010 and event\u2010constraints can be met.\n# Each tuple is (city, required_duration)\nsegments = [\n    # The London segment is fixed: attend the annual show from day 1 to day 3.\n    (\"London\", 3),\n    # Milan: 5 days, with the friend\u2010meeting happening between day 3 and day 7.\n    (\"Milan\", 5),\n    # Zurich: 2 days; the conference runs on day 7 and day 8.\n    (\"Zurich\", 2),\n    # Reykjavik: 5 days; though the ideal computed start is day 8,\n    # the relative visit constraint requires presence between day 9 and day 13.\n    # With a start on day 8, days 9-12 fall in the window.\n    (\"Reykjavik\", 5),\n    # Stuttgart: 5 days.\n    (\"Stuttgart\", 5),\n    # Hamburg: 5 days.\n    (\"Hamburg\", 5),\n    # Bucharest: 2 days.\n    (\"Bucharest\", 2),\n    # Barcelona: 4 days.\n    (\"Barcelona\", 4),\n    # Stockholm: 2 days.\n    (\"Stockholm\", 2),\n    # Tallinn: 4 days.\n    (\"Tallinn\", 4)\n]\n\n# The rule for overlaps is: if you fly on day X from city A to city B,\n# then day X is counted for both A and B.\n# We want the total trip (calendar days) to be 28.\n# Using a recurrence relation: for the first city, start on day 1.\n# For each subsequent city, we assume the flight happens on the start day,\n# equal to the previous segment's end day.\n#\n# Thus, if a segment\u2019s required duration is D, then if it starts on S,\n# it occupies days S through S + D - 1.\n# For the next segment, the start day is set equal to the previous segment's end day.\n#\n# Without adjustments, the overall calendar length will be:\n#   Total = (sum of durations) - (number_of_transitions)\n# For our segments: sum_durations = 3+5+2+5+5+5+2+4+2+4 = 37\n# and number_of_transitions = 9, giving 37 - 9 = 28 days.\n\nitinerary = []\n# Initialize the start day for the first segment.\nstart_day = 1\n\nfor city, duration in segments:\n    # The segment occupies days start_day through end_day.\n    end_day = start_day + duration - 1\n    itinerary.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city\n    })\n    # For the next segment, the flight is taken on the end_day.\n    start_day = end_day  # Overlap: end_day appears in both segments.\n\n# The computed itinerary should exactly match 28 calendar days.\n# Output the itinerary as a JSON-formatted dictionary.\n# We will output the itinerary segments in order as a list under key \"itinerary\".\noutput = {\"itinerary\": itinerary}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "trip_planning_example_1500"
+        }
+    ]
+}

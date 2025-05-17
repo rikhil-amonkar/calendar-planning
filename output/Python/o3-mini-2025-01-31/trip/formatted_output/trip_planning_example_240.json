@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 2-6",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters\ntotal_days = 12\n\n# Required stays per city\nprague_days_required = 2\nberlin_days_required = 3\ntallinn_days_required = 5\nstockholm_days_required = 5\n\n# Important fixed events:\n# - Conference in Berlin on day 6 and day 8 (thus Berlin must be present on days 6 and 8)\n# - Visiting relatives in Tallinn must occur between day 8 and day 12\n\n# Allowed direct flights (not used explicitly in computation, but they constrain the route):\ndirect_flights = {\n    \"Berlin\": [\"Tallinn\", \"Stockholm\"],\n    \"Tallinn\": [\"Berlin\", \"Prague\", \"Stockholm\"],\n    \"Prague\": [\"Tallinn\", \"Stockholm\"],\n    \"Stockholm\": [\"Tallinn\", \"Prague\", \"Berlin\"]\n}\n\n# We design an itinerary based on the constraints and flight connections.\n# We use the following leg ordering:\n# Leg 1: Start in Prague fulfilling exactly 2 days.\n#   To avoid adding extra days for Prague, we take the flight on a day that is already counted.\n#   We'll fly on day 2 from Prague to Stockholm.\n#\n# Leg 2: Then continue in Stockholm. \n#   Flight from Prague to Stockholm on day 2 means day 2 counts for both Prague and Stockholm.\n#   Then remain in Stockholm until it is time to leave for Berlin.\n#   We take the flight from Stockholm to Berlin on day 6.\n#   Thus Stockholm is present from day 2 through day 6.\n#\n# Leg 3: In Berlin for its required 3 days. \n#   With the flight from Stockholm to Berlin on day 6, Berlin is entered on day 6.\n#   We then remain in Berlin on day 7,\n#   and on day 8 we fly from Berlin to Tallinn. (Day 8 counts for both Berlin and Tallinn).\n#   This gives Berlin days 6, 7, and 8 (with conferences on day 6 and day 8).\n#\n# Leg 4: Finally, finish in Tallinn for the last part.\n#   After arriving to Tallinn on day 8, we remain in Tallinn from day 8 to day 12.\n#   This satisfies the 5-day stay and the constraint to visit relatives between day 8 and 12.\n\n# Calculate itinerary segments using calendar days:\n# Segment definitions: Each segment is defined by a day range [start, end] and a city.\n# Note: if a flight is taken on a certain day, that day is counted in both the origin and destination segments.\n# Our computed segments (with overlaps) will be:\n#   Prague: day 1 to day 2 (2 days)\n#   Stockholm: day 2 to day 6 (5 days: days 2,3,4,5,6)\n#   Berlin: day 6 to day 8 (3 days: days 6,7,8)\n#   Tallinn: day 8 to day 12 (5 days: days 8,9,10,11,12)\n\nprague_start, prague_end = 1, 2\nstockholm_start, stockholm_end = 2, 6\nberlin_start, berlin_end = 6, 8\ntallinn_start, tallinn_end = 8, 12\n\n# Verify durations based on calendar days (inclusive):\ndef duration(start, end):\n    return end - start + 1\n\nprague_duration = duration(prague_start, prague_end)\nstockholm_duration = duration(stockholm_start, stockholm_end)\nberlin_duration = duration(berlin_start, berlin_end)\ntallinn_duration = duration(tallinn_start, tallinn_end)\n\n# Assert that our chosen flight days satisfy the required durations\nassert prague_duration == prague_days_required, \"Prague duration does not match requirement.\"\nassert stockholm_duration == stockholm_days_required, \"Stockholm duration does not match requirement.\"\nassert berlin_duration == berlin_days_required, \"Berlin duration does not match requirement.\"\nassert tallinn_duration == tallinn_days_required, \"Tallinn duration does not match requirement.\"\n\n# Also, check fixed event constraints:\n# Berlin conference on day 6 and day 8:\nassert (berlin_start <= 6 <= berlin_end), \"Day 6 not in Berlin segment.\"\nassert (berlin_start <= 8 <= berlin_end), \"Day 8 not in Berlin segment.\"\n# Relatives visit: Tallinn should contain day 8 to day 12:\nassert (tallinn_start <= 8) and (tallinn_end >= 12), \"Tallinn segment does not cover days 8 through 12.\"\n\n# Build the itinerary as a list of segments (each with a day_range and a place)\nitinerary = [\n    {\"day_range\": f\"{prague_start}-{prague_end}\", \"place\": \"Prague\"},\n    {\"day_range\": f\"{stockholm_start}-{stockholm_end}\", \"place\": \"Stockholm\"},\n    {\"day_range\": f\"{berlin_start}-{berlin_end}\", \"place\": \"Berlin\"},\n    {\"day_range\": f\"{tallinn_start}-{tallinn_end}\", \"place\": \"Tallinn\"}\n]\n\n# Output the result as JSON\nprint(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_240"
+        }
+    ]
+}

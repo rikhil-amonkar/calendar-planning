@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 14-16",
+                        "place": "Nice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef compute_itinerary():\n    # Input constraints\n    total_days = 16\n\n    # Cities and their required days (including overlapping flight days except for the first city)\n    # Order: Mykonos, London, Copenhagen, Tallinn, Oslo, Nice\n    # Flight connectivity order: Mykonos->London, London->Copenhagen, Copenhagen->Tallinn, Tallinn->Oslo, Oslo->Nice.\n    # Special requirements:\n    # - Mykonos: 4 days\n    # - London: 2 days\n    # - Copenhagen: 3 days\n    # - Tallinn: 4 days\n    # - Oslo: 5 days (with friend meeting between day 10 and 14, ensured by schedule below)\n    # - Nice: 3 days (and must be in Nice on day 14 and day 16 for conference)\n    city_requirements = [\n        (\"Mykonos\", 4),\n        (\"London\", 2),\n        (\"Copenhagen\", 3),\n        (\"Tallinn\", 4),\n        (\"Oslo\", 5),\n        (\"Nice\", 3)\n    ]\n\n    itinerary = []\n    current_day = 1\n    \n    # For the first city, use the full required days.\n    for index, (city, req_days) in enumerate(city_requirements):\n        if index == 0:\n            start_day = current_day\n            end_day = start_day + req_days - 1\n            current_day = end_day  # flight will happen on the last day (overlap)\n        else:\n            # The flight day is the same as the previous segment's last day,\n            # so for subsequent cities, count that day as already in the new city.\n            start_day = current_day  # overlapping flight day from previous city\n            # Add the remaining days (req_days - 1) to satisfy the total required days.\n            end_day = start_day + (req_days - 1)\n            current_day = end_day\n        \n        itinerary.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city\n        })\n    \n    # Check overall day count: last day's should match total_days\n    if current_day != total_days:\n        # If not, adjust the final itinerary's end day (should not happen with the given numbers)\n        itinerary[-1][\"day_range\"] = f\"{itinerary[-1]['day_range'].split('-')[0]}-{total_days}\"\n    \n    return itinerary\n\nif __name__ == \"__main__\":\n    plan = compute_itinerary()\n    # Output as JSON-formatted data\n    print(json.dumps(plan, indent=2))\n```",
+            "count": "trip_planning_example_768"
+        }
+    ]
+}

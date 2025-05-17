@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Thursday",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            "expected_time": {
+                "day": "Thursday",
+                "start_time": "14:30",
+                "end_time": "15:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    # Define work hours and days to check\n    work_start = 9 * 60\n    work_end = 17 * 60\n    days = [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\"]\n    meeting_duration = 30\n\n    # Ruth's schedule converted to minutes since midnight\n    ruth_busy = {\n        \"Monday\": [(9*60, 17*60)],\n        \"Tuesday\": [(9*60, 17*60)],\n        \"Wednesday\": [(9*60, 17*60)],\n        \"Thursday\": [(9*60, 11*60), (11*60 + 30, 14*60 + 30), (15*60, 17*60)]\n    }\n\n    # Check available slots on Thursday first due to Julie's preference\n    for day in [\"Thursday\", \"Monday\", \"Tuesday\", \"Wednesday\"]:\n        if day not in days:\n            continue\n        \n        # Get Ruth's busy periods for the day\n        busy = ruth_busy.get(day, [])\n        free_slots = []\n        previous_end = work_start\n        \n        # Calculate free intervals between busy periods\n        for start, end in sorted(busy):\n            if start > previous_end:\n                free_slots.append((previous_end, start))\n            previous_end = max(previous_end, end)\n        if previous_end < work_end:\n            free_slots.append((previous_end, work_end))\n        \n        # Check Julie's Thursday preference\n        if day == \"Thursday\":\n            free_slots = [(s, e) for s, e in free_slots if s >= 11*60 + 30]\n        \n        # Find first available slot\n        for slot_start, slot_end in free_slots:\n            if slot_end - slot_start >= meeting_duration:\n                meeting_start = slot_start\n                meeting_day = day\n                # Convert back to HH:MM format\n                return (\n                    f\"{meeting_day} \"\n                    f\"{meeting_start//60:02d}:{meeting_start%60:02d}:\"\n                    f\"{(meeting_start + meeting_duration)//60:02d}:\"\n                    f\"{(meeting_start + meeting_duration)%60:02d}\"\n                )\n\n    return \"No suitable time found\"\n\nprint(find_meeting_time())\n'''",
+            "count": "calendar_scheduling_example_819"
+        }
+    ]
+}

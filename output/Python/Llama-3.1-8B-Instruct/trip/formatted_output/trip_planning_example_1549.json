@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 24-26",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 26-28",
+                        "place": "Porto"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom itertools import combinations\n\nclass TripPlanner:\n    def __init__(self, cities, days, constraints):\n        self.cities = cities\n        self.days = days\n        self.constraints = constraints\n        self.direct_flights = {\n            'Prague': ['Riga', 'Tallinn'],\n            'Tallinn': ['Prague'],\n            'Warsaw': ['Naples', 'Stockholm', 'Riga', 'Tallinn', 'Porto'],\n            'Porto': ['Lisbon', 'Warsaw', 'Milan'],\n            'Naples': ['Warsaw', 'Milan'],\n            'Milan': ['Naples', 'Porto', 'Stockholm', 'Santorini'],\n            'Lisbon': ['Stockholm', 'Warsaw', 'Naples', 'Prague', 'Riga', 'Porto'],\n            'Santorini': ['Milan', 'Naples'],\n            'Riga': ['Prague', 'Tallinn', 'Warsaw', 'Stockholm', 'Lisbon'],\n            'Stockholm': ['Milan', 'Lisbon', 'Warsaw', 'Tallinn', 'Prague']\n        }\n        self.itinerary = []\n\n    def compute_itinerary(self):\n        # Sort constraints by day range\n        sorted_constraints = sorted(self.constraints, key=lambda x: x['day_range'])\n\n        # Initialize current place and day\n        current_place = sorted_constraints[0]['place']\n        current_day = 1\n\n        # Iterate over constraints\n        for constraint in sorted_constraints:\n            # If constraint is a stay, move to the next day\n            if constraint['type'] =='stay':\n                stay_days = int(constraint['day_range'].split('-')[1]) - current_day + 1\n                # Add stay to the itinerary\n                self.add_stay(current_place, current_day, current_day + stay_days - 1)\n                current_day += stay_days\n            # If constraint is a flight, move to the next day\n            elif constraint['type'] == 'flight':\n                flight_days = 1\n                # Add flight to the itinerary\n                self.add_flight(current_place, constraint['to'], current_day, current_day)\n                current_place = constraint['to']\n                current_day += flight_days\n\n        # Add last flight to the itinerary\n        self.add_flight(current_place, 'Milan', current_day, current_day)\n\n    def add_flight(self, from_place, to_place, day, last_day):\n        self.itinerary.append({\n            'day_range': f'Day {day}-{last_day}',\n            'flying': f'Day {day}-{day}',\n            'from': from_place,\n            'to': to_place\n        })\n\n    def add_stay(self, place, start_day, end_day):\n        self.itinerary.append({\n            'day_range': f'Day {start_day}-{end_day}',\n            'place': place\n        })\n\n    def print_itinerary(self):\n        print(json.dumps(self.itinerary, indent=4))\n\n\ndef main():\n    cities = ['Prague', 'Tallinn', 'Warsaw', 'Porto', 'Naples', 'Milan', 'Lisbon', 'Santorini', 'Riga', 'Stockholm']\n    days = 28\n    constraints = [\n        {'type':'stay', 'place': 'Prague', 'day_range': 'Day 1-5'},\n        {'type':'stay', 'place': 'Tallinn', 'day_range': 'Day 6-8'},\n        {'type':'meeting', 'place': 'Tallinn', 'day_range': 'Day 18-20'},\n        {'type':'stay', 'place': 'Warsaw', 'day_range': 'Day 9-10'},\n        {'type':'stay', 'place': 'Porto', 'day_range': 'Day 11-13'},\n        {'type':'stay', 'place': 'Naples', 'day_range': 'Day 14-18'},\n        {'type':'meeting', 'place': 'Milan', 'day_range': 'Day 24-26'},\n        {'type':'stay', 'place': 'Lisbon', 'day_range': 'Day 15-20'},\n        {'type':'stay', 'place': 'Santorini', 'day_range': 'Day 21-25'},\n        {'type':'stay', 'place': 'Riga', 'day_range': 'Day 10-14'},\n        {'type':'meeting', 'place': 'Riga', 'day_range': 'Day 5-8'},\n        {'type':'stay', 'place': 'Stockholm', 'day_range': 'Day 20-21'},\n        {'type': 'flight', 'to': 'Milan', 'day_range': 'Day 1-1'},\n        {'type': 'flight', 'to': 'Prague', 'day_range': 'Day 1-1'}\n    ]\n\n    planner = TripPlanner(cities, days, constraints)\n    planner.compute_itinerary()\n    planner.print_itinerary()\n\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_1549"
+        }
+    ]
+}

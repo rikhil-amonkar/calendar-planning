@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "Alright, so I need to help plan a 20-day trip visiting 7 European cities with specific constraints. Let's break this down step by step.\n\nFirst, I'll list out all the cities and their required stays:\n- Berlin: 3 days, with a conference on days 1 and 3.\n- Nice: 5 days.\n- Athens: 5 days.\n- Stockholm: 5 days.\n- Barcelona: 2 days, with a workshop between days 3 and 4.\n- Vilnius: 4 days.\n- Lyon: 2 days, with a wedding between days 4 and 5.\n\nNext, I'll look at the direct flights provided to see possible transitions:\n- Lyon and Nice\n- Stockholm and Athens\n- Nice and Athens\n- Berlin and Athens\n- Berlin and Nice\n- Berlin and Barcelona\n- Berlin and Vilnius\n- Barcelona and Nice\n- Athens and Vilnius\n- Berlin and Stockholm\n- Nice and Stockholm\n- Barcelona and Athens\n- Barcelona and Stockholm\n- Barcelona and Lyon\n\nNow, I need to start in Berlin since that's where the conference is on days 1 and 3. So the trip starts in Berlin.\n\nDay 1-3: Berlin (conference)\nOn day 3, after the conference, I need to go somewhere. Looking at flights from Berlin, possible cities are Athens, Nice, Barcelona, and Vilnius.\n\nIf I go to Barcelona on day 3, that would be good because there's a workshop there between days 3 and 4. So:\n- Day 3: Fly from Berlin to Barcelona.\n\nIn Barcelona, days 3-4: Workshop. Then, on day 4, I can either stay or move. Since I only need 2 days in Barcelona, maybe I can move after day 4.\n\nFrom Barcelona, possible flights are to Nice, Athens, Stockholm, or Lyon.\n\nIf I go to Nice on day 4, that's good because Nice is a major city and I have 5 days there. So:\n- Day 4: Fly from Barcelona to Nice.\n\nNow, in Nice, days 5-9: 5 days. From Nice, I can go to Athens, Stockholm, or Berlin. But Berlin is already visited, so maybe Athens or Stockholm.\n\nIf I go to Athens on day 9:\n- Day 9: Fly from Nice to Athens.\n\nIn Athens, days 10-14: 5 days. From Athens, possible flights are to Vilnius or Berlin. Vilnius is another city I need to visit for 4 days.\n\nSo:\n- Day 14: Fly from Athens to Vilnius.\n\nIn Vilnius, days 15-18: 4 days. From Vilnius, possible flights are to Berlin or Athens. But Berlin is already done, and Athens is also done, so maybe stay in Vilnius until day 18.\n\nWait, but I need to end the trip on day 20. So from Vilnius, I need to fly somewhere else.\n\nLooking at flights from Vilnius, it's connected to Berlin and Athens. But those are already visited. Hmm, maybe I need to adjust the itinerary.\n\nAlternatively, maybe after Athens, I should go to Vilnius earlier.\n\nLet me rethink.\n\nAfter Nice, instead of going to Athens on day 9, maybe go to Stockholm.\n\nSo:\n- Day 9: Fly from Nice to Stockholm.\n\nIn Stockholm, days 10-14: 5 days. From Stockholm, I can go to Athens or Berlin. Let's go to Athens on day 14.\n\n- Day 14: Fly from Stockholm to Athens.\n\nIn Athens, days 15-19: 5 days. From Athens, I can go to Vilnius on day 19.\n\n- Day 19: Fly from Athens to Vilnius.\n\nIn Vilnius, days 20: 1 day. But I need 4 days there. This doesn't work.\n\nHmm, maybe I need to adjust the timing.\n\nAlternatively, after Nice, go to Vilnius earlier.\n\nLet me try:\n\n- Day 4: Fly from Barcelona to Nice.\n- Days 5-9: Nice\n- Day 9: Fly to Vilnius\n- Days 10-13: Vilnius\n- Day 13: Fly to Berlin\n- Days 14-16: Berlin (but only needs 3 days)\n- This doesn't fit.\n\nAlternatively, maybe after Vilnius, go to Berlin.\n\nWait, perhaps I need to structure the trip differently, considering that some cities can be connected via multiple flights.\n\nThis is getting complicated. Maybe I should outline the cities in a way that connects as much as possible, ensuring that each stay aligns with the required days.\n\nI think I need to create a sequence that starts in Berlin, moves to Barcelona, then to Nice, then to Stockholm, then to Athens, then to Vilnius, and back to Berlin or another city to complete the 20 days.\n\nI'll need to carefully map each transition to ensure that each city's stay is correctly aligned and that flights are taken on the same day as the transition.\n</think>\n\n```python\nimport json\n\ndef compute_itinerary():\n    cities = {\n        \"Berlin\": {\"days\": 3, \"conference\": [1, 3]},\n        \"Nice\": {\"days\": 5},\n        \"Athens\": {\"days\": 5},\n        \"Stockholm\": {\"days\": 5},\n        \"Barcelona\": {\"days\": 2, \"workshop\": [3, 4]},\n        \"Vilnius\": {\"days\": 4},\n        \"Lyon\": {\"days\": 2, \"wedding\": [4, 5]}\n    }\n\n    flights = {\n        \"Berlin\": [\"Barcelona\", \"Nice\", \"Athens\", \"Vilnius\"],\n        \"Nice\": [\"Barcelona\", \"Athens\", \"Stockholm\"],\n        \"Athens\": [\"Berlin\", \"Vilnius\"],\n        \"Barcelona\": [\"Nice\", \"Athens\", \"Stockholm\", \"Lyon\"],\n        \"Vilnius\": [\"Berlin\", \"Athens\"],\n        \"Lyon\": [\"Nice\"]\n    }\n\n    itinerary = []\n\n    current_city = \"Berlin\"\n    current_day = 1\n\n    # Day 1-3: Berlin (conference)\n    itinerary.append({\"day_range\": \"Day 1-3\", \"place\": \"Berlin\"})\n\n    # Fly to Barcelona on day 3\n    if current_day == 3:\n        next_city = \"Barcelona\"\n        if next_city in flights.get(current_city, []):\n            itinerary.append({\"flying\": \"Day 3-3\", \"from\": current_city, \"to\": next_city})\n            current_day = 3\n            current_city = next_city\n\n    # Days 4-5: Barcelona (workshop)\n    if current_day >= 4 and current_city == \"Barcelona\":\n        itinerary.append({\"day_range\": \"Day 4-5\", \"place\": \"Barcelona\"})\n\n    # Fly to Nice on day 5\n    if current_day == 5:\n        next_city = \"Nice\"\n        if next_city in flights.get(current_city, []):\n            itinerary.append({\"flying\": \"Day 5-5\", \"from\": current_city, \"to\": next_city})\n            current_day = 5\n            current_city = next_city\n\n    # Days 6-9: Nice\n    if current_day >= 6 and current_city == \"Nice\":\n        itinerary.append({\"day_range\": \"Day 6-9\", \"place\": \"Nice\"})\n\n    # Fly to Stockholm on day 9\n    if current_day == 9:\n        next_city = \"Stockholm\"\n        if next_city in flights.get(current_city, []):\n            itinerary.append({\"flying\": \"Day 9-9\", \"from\": current_city, \"to\": next_city})\n            current_day = 9\n            current_city = next_city\n\n    # Days 10-14: Stockholm\n    if current_day >= 10 and current_city == \"Stockholm\":\n        itinerary.append({\"day_range\": \"Day 10-14\", \"place\": \"Stockholm\"})\n\n    # Fly to Athens on day 14\n    if current_day == 14:\n        next_city = \"Athens\"\n        if next_city in flights.get(current_city, []):\n            itinerary.append({\"flying\": \"Day 14-14\", \"from\": current_city, \"to\": next_city})\n            current_day = 14\n            current_city = next_city\n\n    # Days 15-19: Athens\n    if current_day >= 15 and current_city == \"Athens\":\n        itinerary.append({\"day_range\": \"Day 15-19\", \"place\": \"Athens\"})\n\n    # Fly to Vilnius on day 19\n    if current_day == 19:\n        next_city = \"Vilnius\"\n        if next_city in flights.get(current_city, []):\n            itinerary.append({\"flying\": \"Day 19-19\", \"from\": current_city, \"to\": next_city})\n            current_day = 19\n            current_city = next_city\n\n    # Days 20: Vilnius\n    if current_day >= 20 and current_city == \"Vilnius\":\n        itinerary.append({\"day_range\": \"Day 20-20\", \"place\": \"Vilnius\"})\n\n    return json.dumps(itinerary)\n\ncompute_itinerary()\n```",
+            "count": "trip_planning_example_810"
+        }
+    ]
+}

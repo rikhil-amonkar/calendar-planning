@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "9:00",
+                "end_time": "9:30"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef find_meeting_time():\n    days = ['Monday', 'Tuesday', 'Wednesday']\n    # Cheryl cannot meet on Wednesday\n    possible_days = ['Monday', 'Tuesday']\n    \n    # Check Tuesday first since Monday has full conflict for Kyle\n    # Tuesday analysis\n    cheryl_busy_tuesday = [(15, 0, 15, 30)]\n    kyle_busy_tuesday = [(9, 30, 17, 0)]\n    \n    # Find gaps in Cheryl's Tuesday schedule before 15:00\n    start_cheryl = (9, 0)\n    end_cheryl = (15, 0)\n    # Check available time 9:00-9:30 (before Kyle's busy time starts at 9:30)\n    candidate_start = (9, 0)\n    candidate_end = (9, 30)\n    # Verify if this slot works for both\n    # Cheryl is available 9:00-15:00 except 15:00-15:30\n    # Kyle is available 9:00-9:30 on Tuesday\n    # 30-minute meeting fits perfectly in 9:00-9:30\n    return \"Tuesday\", (9, 0, 9, 30)\n\nday, time = find_meeting_time()\nprint(f\"{day} {time[0]:02d}:{time[1]:02d}:{time[2]:02d}:{time[3]:02d}\")\n'''",
+            "count": "calendar_scheduling_example_710"
+        }
+    ]
+}

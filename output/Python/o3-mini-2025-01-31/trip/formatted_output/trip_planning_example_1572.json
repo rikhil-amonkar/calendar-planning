@@ -1,0 +1,97 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Milan"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 22-23",
+                        "place": "Riga"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input parameters\ntotal_unique_days = 23\n# There are 9 flights (which cause one overlapping day per flight) so the sum of city-day durations must equal:\n# total_unique_days + num_flights = 23 + 9 = 32\n# The required durations per city (in city-days) are:\ncity_durations = {\n    \"Berlin\": 2,   # also wedding between day 1 and 2 (so Berlin must come first)\n    \"Milan\": 3,\n    \"Seville\": 3,\n    \"Paris\": 5,\n    \"Lyon\": 3,\n    \"Nice\": 2,     # workshop between day 12 and 13 must be in Nice (Nice must include day 12 or 13)\n    \"Naples\": 4,\n    \"Zurich\": 5,\n    \"Stockholm\": 3,  # annual show between day 20 and 22 (so Stockholm must cover days 20,21,22)\n    \"Riga\": 2\n}\n\n# Direct flights between cities (bidirectional; provided as pairs):\ndirect_flights = [\n    (\"Paris\", \"Stockholm\"),\n    (\"Seville\", \"Paris\"),\n    (\"Naples\", \"Zurich\"),\n    (\"Nice\", \"Riga\"),\n    (\"Berlin\", \"Milan\"),\n    (\"Paris\", \"Zurich\"),\n    (\"Paris\", \"Nice\"),\n    (\"Milan\", \"Paris\"),\n    (\"Milan\", \"Riga\"),\n    (\"Paris\", \"Lyon\"),\n    (\"Milan\", \"Naples\"),\n    (\"Paris\", \"Riga\"),\n    (\"Berlin\", \"Stockholm\"),\n    (\"Stockholm\", \"Riga\"),\n    (\"Nice\", \"Zurich\"),\n    (\"Milan\", \"Zurich\"),\n    (\"Lyon\", \"Nice\"),\n    (\"Zurich\", \"Stockholm\"),\n    (\"Zurich\", \"Riga\"),\n    (\"Berlin\", \"Naples\"),\n    (\"Milan\", \"Stockholm\"),\n    (\"Berlin\", \"Zurich\"),\n    (\"Milan\", \"Seville\"),\n    (\"Paris\", \"Naples\"),\n    (\"Berlin\", \"Riga\"),\n    (\"Nice\", \"Stockholm\"),\n    (\"Berlin\", \"Paris\"),\n    (\"Nice\", \"Naples\")\n]\n\n# We must plan a route that visits all 10 cities with the given durations.\n# One feasible ordering (found by trial ensuring flight connectivity and time constraints) is:\n#   Berlin -> Milan -> Seville -> Paris -> Lyon -> Nice -> Naples -> Zurich -> Stockholm -> Riga\n#\n# Check direct flights along consecutive legs:\n#   Berlin -> Milan         (present)\n#   Milan -> Seville        (present, \"Milan\" and \"Seville\")\n#   Seville -> Paris        (present)\n#   Paris -> Lyon           (present)\n#   Lyon -> Nice            (present)\n#   Nice -> Naples          (present, \"Nice and Naples\")\n#   Naples -> Zurich        (present, \"Naples and Zurich\")\n#   Zurich -> Stockholm     (present, \"Zurich and Stockholm\")\n#   Stockholm -> Riga       (present, \"Stockholm and Riga\")\n#\n# Also note:\n# - Berlin is first so wedding on day 1-2 is satisfied.\n# - Nice is visited with a 2-day block that (as we will schedule) covers day 12,13 matching the workshop.\n# - Stockholm is given a 3-day block that will be scheduled to cover day 20-22.\n#\n# The total sum of city-day durations is 2+3+3+5+3+2+4+5+3+2 = 32.\n# With 9 flights, the actual unique days on the timeline will be 32 - 9 = 23.\n#\n# We now fix a flight ordering.\nitinerary_order = [\"Berlin\", \"Milan\", \"Seville\", \"Paris\", \"Lyon\", \"Nice\", \"Naples\", \"Zurich\", \"Stockholm\", \"Riga\"]\n\n# We now compute the itinerary day ranges.\n# In our model the traveler is present for each city's entire block.\n# When flying on a day, that day is counted for both departing and arriving city.\n# We assign \u201carrival\u201d and \u201cdeparture\u201d days for each city block in a continuous timeline.\n# In a standard contiguous schedule (flight always on the city block boundary),\n# the relation is:\n#    For the first city: start_day = 1 and end_day = start_day + duration - 1.\n#    For every subsequent city, arrival_day = previous_city_end_day\n#        and departure_day = arrival_day + duration - 1.\n#\n# However, with these fixed durations and 9 flights, the final departure day equals:\n#    final_departure_day = 32 - 9 = 23.\n#\n# We compute the intervals accordingly.\nitinerary = []\ncurrent_day = 1\nfor city in itinerary_order:\n    duration = city_durations[city]\n    # The city block covers days: current_day through current_day + duration - 1.\n    start_day = current_day\n    end_day = current_day + duration - 1\n    itinerary.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city\n    })\n    # For next city, the flight happens on the end_day (same day is counted for both cities),\n    # so the next city's start day is the same as current end_day.\n    current_day = end_day\n\n# Because there are 9 flights, the unique timeline days are:\n# last_day = itinerary[-1]['day_range'].split('-')[1] as integer.\n# In our contiguous model, this computed final day equals 23.\n# Let's verify:\nfinal_day = current_day  # should be 23\nif final_day != total_unique_days:\n    raise ValueError(\"Itinerary timeline does not match total days constraint.\")\n\n# Verification of special constraints:\n# - Berlin (first city) should cover day 1-2, which it does.\n# - Nice (should cover day 12-13, including workshop interval [12,13])\n# - Stockholm: we require the annual show between day 20 and 22.\n#   In our computed itinerary, Stockholm gets day_range from Zurich's end_day to its own end_day.\n#   Let's print the schedule for reference and note that with our contiguous assignment:\n#       Berlin: 1-2\n#       Milan: 2-4\n#       Seville: 4-6\n#       Paris: 6-10\n#       Lyon: 10-12\n#       Nice: 12-13\n#       Naples: 13-16\n#       Zurich: 16-20\n#       Stockholm: 20-22      --> covers days 20,21,22 (annual show satisfied)\n#       Riga: 22-23\n#\n# We now output the result as a JSON-formatted dictionary containing only day_range and place.\n\n# Prepare the output as a list of day segments.\noutput = itinerary\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "trip_planning_example_1572"
+        }
+    ]
+}

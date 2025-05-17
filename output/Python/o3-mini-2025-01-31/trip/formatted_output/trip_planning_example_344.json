@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef compute_itinerary():\n    # Input parameters (can be adjusted as needed)\n    total_days = 20\n\n    # Required effective days for each city.\n    required_days = {\n        \"Valencia\": 6,\n        \"Athens\": 6,\n        \"Naples\": 5,\n        \"Zurich\": 6\n    }\n    \n    # Special constraints:\n    # - Visit relatives in Athens between day 1 and day 6, so Athens must be early.\n    # - Attend a wedding in Naples between day 16 and day 20, so Naples must be late.\n    #\n    # Direct flight connectivity (bidirectional unless indicated otherwise):\n    #   - Valencia <-> Naples\n    #   - Valencia -> Athens    (thus, for our planning, we do not use Athens -> Valencia)\n    #   - Athens <-> Naples\n    #   - Zurich <-> Naples\n    #   - Athens <-> Zurich\n    #   - Zurich <-> Valencia\n    #\n    # To satisfy these constraints and ensure connections, we choose the ordering:\n    #   Athens -> Zurich -> Valencia -> Naples\n    # This ordering places Athens first (satisfies relatives constraint) and Naples last (satisfies wedding constraint),\n    # and every consecutive pair has a direct flight.\n    \n    itinerary_order = [\"Athens\", \"Zurich\", \"Valencia\", \"Naples\"]\n    \n    # The method for counting effective days:\n    # Whenever you fly from city A to city B on day X, that day counts for both A and B.\n    # Thus, if there are k flights between segments (k = number_of_cities - 1), then the sum of effective days is:\n    #   total_effective = sum(required_days[city] for city in itinerary_order)\n    # and the actual total days planned is: total_effective - k.\n    # Here: 6 + 6 + 6 + 5 - 3 = 20, which matches total_days.\n    \n    flight_count = len(itinerary_order) - 1\n    \n    # Now we assign day ranges.\n    # For the first city: you start on day 1 and must accumulate its full effective days.\n    # For subsequent cities: the first day is the overlap flight day (arriving on the day you depart the previous city).\n    # So the effective days in each subsequent city = 1 (overlap day) + pure days.\n    # Pure days for a city (except the last one) = required_days[city] - 1.\n    # For the last city, you simply add the remaining days.\n    \n    segments = []\n    current_day = 1\n    \n    # For the first city (Athens)\n    current_city = itinerary_order[0]\n    effective = required_days[current_city]\n    # We plan to leave this city on its last effective day for the flight (if not the only city)\n    start_day = current_day\n    end_day = current_day + effective - 1  # this day is also departure day (overlap)\n    segments.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": current_city\n    })\n    current_day = end_day  # flight day overlaps with both cities\n    \n    # For intermediate cities (except the last one)\n    for city in itinerary_order[1:-1]:\n        current_city = city\n        effective = required_days[current_city]\n        # current_day is already the overlap day from previous city\n        # so add the remaining effective days - 1\n        pure = effective - 1\n        start_day = current_day  # overlap day already counted\n        end_day = current_day + pure\n        segments.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": current_city\n        })\n        current_day = end_day  # next flight day (overlap)\n    \n    # For the last city:\n    current_city = itinerary_order[-1]\n    effective = required_days[current_city]\n    # Overlap day is current_day, then add the rest days.\n    pure = effective - 1\n    start_day = current_day\n    end_day = current_day + pure\n    segments.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": current_city\n    })\n    # current_day = end_day  (should equal total_days)\n    \n    # Validate that our plan spans the correct number of days\n    if end_day != total_days:\n        raise ValueError(\"Computed itinerary does not match total planned days.\")\n    \n    return segments\n\nif __name__ == \"__main__\":\n    itinerary = compute_itinerary()\n    # Output JSON formatted itinerary (list of dictionaries with day_range and place)\n    print(json.dumps(itinerary))\n```",
+            "count": "trip_planning_example_344"
+        }
+    ]
+}

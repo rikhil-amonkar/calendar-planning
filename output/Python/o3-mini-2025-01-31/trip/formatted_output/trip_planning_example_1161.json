@@ -1,0 +1,81 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 2-4",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Mykonos"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Define the trip constraints as input variables\n# Each tuple: (city, required_days)\n# Note: When transitioning between cities via direct flight,\n# the day of flight counts as a day in both cities.\n# Thus, the sum(required_days) - (# flights) should equal the total trip days.\ntotal_trip_days = 18\n\n# Cities with required durations:\n# Mykonos must be visited for 4 days (and between day 15 and 18).\n# Dubrovnik must be visited for 3 days (and must include days 2 to 4 for the annual show).\n# Oslo 2 days (with friends meeting between day 1 and 2),\n# Krakow 5 days, Vilnius 2 days, Helsinki 2 days, Madrid 5 days, Paris 2 days.\n#\n# We must arrange an order using only the given direct flight connections.\n# The available direct flight connections (bidirectional) are:\n# Oslo-Krakow, Oslo-Paris, Paris-Madrid, Helsinki-Vilnius, Oslo-Madrid, Oslo-Helsinki,\n# Helsinki-Krakow, Dubrovnik-Helsinki, Dubrovnik-Madrid, Oslo-Dubrovnik, Krakow-Paris,\n# Madrid-Mykonos, Oslo-Vilnius, Krakow-Vilnius, Helsinki-Paris, Vilnius-Paris, Helsinki-Madrid.\n#\n# After careful examination and ensuring that seasonal constraints are met,\n# one viable ordering is as follows:\n# 1. Oslo (2 days)      -> friends meet between day 1-2.\n# 2. Dubrovnik (3 days)  -> flight from Oslo to Dubrovnik means day2 is common; also shows on days 2-4.\n# 3. Helsinki (2 days)   -> flight from Dubrovnik to Helsinki (day4 common).\n# 4. Krakow (5 days)     -> flight from Helsinki to Krakow (day5 common).\n# 5. Vilnius (2 days)    -> flight from Krakow to Vilnius (day9 common).\n# 6. Paris (2 days)      -> flight from Vilnius to Paris (day10 common).\n# 7. Madrid (5 days)     -> flight from Paris to Madrid (day11 common).\n# 8. Mykonos (4 days)    -> flight from Madrid to Mykonos (day15 common, and relatives visited within days 15-18).\n#\n# The direct flights used in this itinerary are:\n# Oslo -> Dubrovnik, Dubrovnik -> Helsinki, Helsinki -> Krakow,\n# Krakow -> Vilnius, Vilnius -> Paris, Paris -> Madrid, Madrid -> Mykonos.\n# Each flight day is overlapped between the two cities.\n\nitinerary_cities = [\n    {\"place\": \"Oslo\", \"required_days\": 2},\n    {\"place\": \"Dubrovnik\", \"required_days\": 3},\n    {\"place\": \"Helsinki\", \"required_days\": 2},\n    {\"place\": \"Krakow\", \"required_days\": 5},\n    {\"place\": \"Vilnius\", \"required_days\": 2},\n    {\"place\": \"Paris\", \"required_days\": 2},\n    {\"place\": \"Madrid\", \"required_days\": 5},\n    {\"place\": \"Mykonos\", \"required_days\": 4}\n]\n\n# Calculate the itinerary schedule using the overlapping rules.\n# Let day_i and day_j be computed as:\n# For the first city:\n#    start_day = 1\n#    end_day = start_day + required_days - 1\n# For each subsequent city:\n#    start_day = previous city's end_day (flight day overlap)\n#    end_day = start_day + required_days - 1\n#\n# This ensures that each flight day contributes to both cities and the total days add up.\n\nschedule = []\ncurrent_day = 1\nfor city in itinerary_cities:\n    start_day = current_day\n    end_day = start_day + city[\"required_days\"] - 1\n    schedule.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city[\"place\"]\n    })\n    # For next city, the flight day (current end_day) is overlapped.\n    current_day = end_day\n\n# Check that the final end_day equals the total_trip_days\nif schedule[-1][\"day_range\"].split(\"-\")[1] != str(total_trip_days):\n    # Recover the integer value of final day from schedule if needed\n    final_end_day = int(schedule[-1][\"day_range\"].split(\"-\")[1])\n    if final_end_day != total_trip_days:\n        raise ValueError(\"The computed schedule does not match the total trip days.\")\n\n# Output the itinerary as a JSON formatted dictionary containing only day_range and place.\n# The final output will be a list of segments (ordered itinerary).\nprint(json.dumps(schedule, indent=2))\n```",
+            "count": "trip_planning_example_1161"
+        }
+    ]
+}

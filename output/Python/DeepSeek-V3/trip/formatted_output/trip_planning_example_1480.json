@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-15",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 19-20",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 26-27",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom itertools import permutations\n\ndef main():\n    # Input parameters\n    cities = {\n        'Istanbul': 4,\n        'Vienna': 4,\n        'Riga': 2,\n        'Brussels': 2,  # Typo in original, but kept as 'Brussels' is used elsewhere\n        'Madrid': 4,\n        'Vilnius': 4,\n        'Venice': 5,\n        'Geneva': 4,\n        'Munich': 5,\n        'Reykjavik': 2\n    }\n    \n    constraints = [\n        {'city': 'Brussels', 'day_range': (26, 27)},\n        {'city': 'Vilnius', 'day_range': (20, 23)},\n        {'city': 'Venice', 'day_range': (7, 11)},\n        {'city': 'Geneva', 'day_range': (1, 4)}\n    ]\n    \n    direct_flights = {\n        'Munich': ['Vienna', 'Madrid', 'Venice', 'Reykjavik', 'Istanbul', 'Brussels', 'Riga'],\n        'Vienna': ['Munich', 'Vilnius', 'Istanbul', 'Venice', 'Reykjavik', 'Riga', 'Brussels', 'Geneva', 'Madrid'],\n        'Istanbul': ['Brussels', 'Geneva', 'Vienna', 'Riga', 'Venice', 'Munich', 'Vilnius', 'Madrid'],\n        'Brussels': ['Istanbul', 'Venice', 'Riga', 'Reykjavik', 'Vilnius', 'Vienna', 'Madrid', 'Geneva', 'Munich'],\n        'Madrid': ['Munich', 'Venice', 'Vienna', 'Geneva', 'Brussels', 'Istanbul'],\n        'Vilnius': ['Vienna', 'Istanbul', 'Brussels', 'Munich', 'Riga'],\n        'Venice': ['Brussels', 'Munich', 'Madrid', 'Vienna', 'Istanbul'],\n        'Geneva': ['Istanbul', 'Vienna', 'Brussels', 'Madrid', 'Munich'],\n        'Riga': ['Brussels', 'Istanbul', 'Munich', 'Vilnius', 'Vienna'],\n        'Reykjavik': ['Munich', 'Vienna', 'Brussels', 'Madrid']\n    }\n    \n    # Generate all possible city orders (permutations)\n    city_names = list(cities.keys())\n    possible_orders = permutations(city_names)\n    \n    # Function to check if a flight is possible\n    def can_fly(from_city, to_city):\n        return to_city in direct_flights.get(from_city, [])\n    \n    # Function to check if constraints are satisfied\n    def satisfies_constraints(itinerary):\n        for constraint in constraints:\n            city = constraint['city']\n            day_start, day_end = constraint['day_range']\n            found = False\n            current_day = 1\n            for entry in itinerary:\n                if 'place' in entry:\n                    place = entry['place']\n                    day_range = entry['day_range']\n                    start_day = int(day_range.split('-')[0][4:])\n                    end_day = int(day_range.split('-')[1])\n                    if place == city:\n                        if start_day <= day_end and end_day >= day_start:\n                            found = True\n                            break\n                    current_day = end_day + 1\n                else:\n                    current_day += 1\n            if not found:\n                return False\n        return True\n    \n    # Function to generate itinerary for a given order\n    def generate_itinerary(order):\n        itinerary = []\n        current_day = 1\n        prev_city = None\n        \n        for city in order:\n            if prev_city is not None and prev_city != city:\n                if not can_fly(prev_city, city):\n                    return None\n                itinerary.append({\n                    'flying': f'Day {current_day}-{current_day}',\n                    'from': prev_city,\n                    'to': city\n                })\n                current_day += 1  # Travel day\n            \n            stay_days = cities[city]\n            end_day = current_day + stay_days - 1\n            itinerary.append({\n                'day_range': f'Day {current_day}-{end_day}',\n                'place': city\n            })\n            current_day = end_day + 1\n            prev_city = city\n        \n        # Check total days\n        total_days = 0\n        for entry in itinerary:\n            if 'day_range' in entry:\n                start, end = map(int, entry['day_range'].split('-')[0][4:], entry['day_range'].split('-')[1])\n                total_days += end - start + 1\n            else:\n                total_days += 1\n        \n        if total_days != 27:\n            return None\n        \n        if not satisfies_constraints(itinerary):\n            return None\n        \n        return itinerary\n    \n    # Try possible orders until a valid itinerary is found\n    valid_itinerary = None\n    for order in possible_orders:\n        itinerary = generate_itinerary(order)\n        if itinerary is not None:\n            valid_itinerary = itinerary\n            break\n    \n    # Output the result\n    print(json.dumps(valid_itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1480"
+        }
+    ]
+}

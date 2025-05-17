@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-6",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 6-7",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef plan_itinerary(total_days, days_madrid, days_dublin, days_tallinn,\n                   workshop_day_range, direct_flights):\n    # We know available direct flights: Madrid <-> Dublin and Dublin <-> Tallinn\n    # We have the additional rule that if a flight occurs from A to B on day X,\n    # then day X counts for both A and B.\n    # Our goal is to schedule the trip over 'total_days' days (days 1 through total_days)\n    #\n    # Based on the constraints:\n    # - Madrid must be 4 days.\n    # - Dublin must be 3 days.\n    # - Tallinn must be 2 days.\n    # - A flight from Madrid to Dublin must be taken.\n    # - A flight from Dublin to Tallinn must be taken.\n    # - Workshop in Tallinn must be attended between workshop_day_range (e.g., day 6 and day 7).\n    #\n    # One viable itinerary strategy (with overlapping flight days):\n    # 1. Start in Madrid and remain there until day F1, where flight from Madrid to Dublin occurs.\n    #    Let F1 be the flight day. Madrid will count days 1 ... F1.\n    # 2. After that, remain in Dublin until day F2, when flight from Dublin to Tallinn occurs.\n    #    Dublin will count days F1 ... F2.\n    # 3. Conclude in Tallinn from day F2 to day total_days.\n    #    Tallinn will count days F2 ... total_days.\n    #\n    # The counts including flight days:\n    # Madrid count = F1 - 1 + 1 = F1  (days 1 through F1)\n    # Dublin count = (F2 - F1 + 1)\n    # Tallinn count = (total_days - F2 + 1)\n    #\n    # We have the following equations:\n    #   F1 = days_madrid\n    #   F2 - F1 + 1 = days_dublin  --> F2 = days_dublin + F1 - 1 = days_dublin + days_madrid - 1\n    #   total_days - F2 + 1 = days_tallinn  --> F2 = total_days - days_tallinn + 1\n    #\n    # Therefore, for the constraints to be consistent, we need:\n    #   days_dublin + days_madrid - 1 = total_days - days_tallinn + 1\n    # Let's check that:\n    #   LHS = days_dublin + days_madrid - 1\n    #   RHS = total_days - days_tallinn + 1\n    #\n    # For our given numbers:\n    #   days_madrid = 4, days_dublin = 3, days_tallinn = 2, total_days = 7\n    #   LHS = 3 + 4 - 1 = 6\n    #   RHS = 7 - 2 + 1 = 6\n    #\n    # So the constraints match.\n    #\n    # Let's choose:\n    F1 = days_madrid  # flight from Madrid on day F1 counts for both Madrid and Dublin\n    F2 = F1 + days_dublin - 1  # flight from Dublin to Tallinn on day F2 counts for both Dublin and Tallinn\n\n    # Ensure that the Tallinn workshop requirement is satisfied:\n    # The workshop in Tallinn must be attended between workshop_day_range[0] and workshop_day_range[1]\n    # This requires that at least one of F2 or total_days (the Tallinn days) falls in that range.\n    # We'll check if workshop_day_range intersect the Tallinn days [F2, total_days] is not empty.\n    tallinn_days = set(range(F2, total_days + 1))\n    workshop_days = set(range(workshop_day_range[0], workshop_day_range[1] + 1))\n    if tallinn_days.isdisjoint(workshop_days):\n        raise ValueError(\"Itinerary cannot satisfy the Tallinn workshop constraint.\")\n\n    # Build itinerary segments\n    # Each segment is defined by a day range (which can be a flight day overlap) and place.\n    itinerary = []\n    # Madrid segment: day 1 to F1\n    itinerary.append({\n        \"day_range\": f\"1-{F1}\",\n        \"place\": \"Madrid\"\n    })\n    # Dublin segment: day F1 to F2\n    itinerary.append({\n        \"day_range\": f\"{F1}-{F2}\",\n        \"place\": \"Dublin\"\n    })\n    # Tallinn segment: day F2 to total_days\n    itinerary.append({\n        \"day_range\": f\"{F2}-{total_days}\",\n        \"place\": \"Tallinn\"\n    })\n\n    return itinerary\n\ndef main():\n    # Input constraints\n    total_days = 7\n    days_madrid = 4\n    days_dublin = 3\n    days_tallinn = 2\n    workshop_day_range = (6, 7)  # workshop in Tallinn must be between day 6 and day 7 inclusive\n\n    # Available direct flights: Madrid <-> Dublin, Dublin <-> Tallinn\n    direct_flights = [\n        (\"Madrid\", \"Dublin\"),\n        (\"Dublin\", \"Tallinn\")\n    ]\n\n    itinerary = plan_itinerary(total_days, days_madrid, days_dublin, days_tallinn,\n                               workshop_day_range, direct_flights)\n    print(json.dumps(itinerary, indent=2))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_142"
+        }
+    ]
+}

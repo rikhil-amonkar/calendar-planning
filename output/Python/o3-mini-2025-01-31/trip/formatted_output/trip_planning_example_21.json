@@ -1,0 +1,41 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-10",
+                        "place": "Venice"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 2-5",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 5-10",
+                        "place": "Venice"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input parameters\n    total_days = 10\n    venice_required_days = 6\n    workshop_window = (5, 10)  # workshop in Venice must be between day 5 and 10\n    mykonos_required_days = 2\n    vienna_required_days = 4\n\n    # Direct flight connections (graph)\n    direct_flights = {\n        \"Mykonos\": [\"Vienna\"],\n        \"Vienna\": [\"Mykonos\", \"Venice\"],\n        \"Venice\": [\"Vienna\"]\n    }\n    \n    # We choose the only valid sequence given the available direct flights:\n    # Mykonos -> Vienna -> Venice\n    # We need to determine the flight days such that:\n    # 1. Mykonos days (with flight overlap counted) = mykonos_required_days\n    # 2. Vienna days (including flight overlapping both before and after) = vienna_required_days\n    # 3. Venice days = venice_required_days = total_days - flight_day_2 + 1\n    \n    # Let x be the flight day from Mykonos to Vienna. Then days in Mykonos = x.\n    # We want: x = mykonos_required_days.\n    x = mykonos_required_days  # Flight day from Mykonos -> Vienna is day 2.\n    \n    # Let y be the flight day from Vienna to Venice.\n    # Days in Vienna = y - x + 1, so:\n    # y - x + 1 = vienna_required_days --> y = vienna_required_days + x - 1.\n    y = vienna_required_days + x - 1  # For x=2, y = 4 + 2 - 1 = 5.\n    \n    # Days in Venice = total_days - y + 1\n    venice_days = total_days - y + 1\n    \n    # Check if Venice meets the required days:\n    if venice_days != venice_required_days:\n        raise ValueError(\"Cannot allocate days to Venice as required.\")\n    \n    # Additionally, ensure that the Venice visit period overlaps with the workshop window.\n    # Venice is visited from day y to day total_days.\n    if not (workshop_window[0] >= y and workshop_window[0] <= total_days) and not (workshop_window[1] >= y and workshop_window[1] <= total_days):\n        raise ValueError(\"Venice itinerary does not cover the required workshop window.\")\n\n    # The computed itinerary is as follows:\n    # - Mykonos: from day 1 to day x\n    # - Vienna: from day x to day y (day x and day y count in both cities due to flights)\n    # - Venice: from day y to day total_days\n\n    itinerary = [\n        {\"day_range\": f\"1-{x}\", \"place\": \"Mykonos\"},\n        {\"day_range\": f\"{x}-{y}\", \"place\": \"Vienna\"},\n        {\"day_range\": f\"{y}-{total_days}\", \"place\": \"Venice\"}\n    ]\n    \n    # Output the result as JSON-formatted dictionary (list of dicts)\n    print(json.dumps(itinerary, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_21"
+        }
+    ]
+}

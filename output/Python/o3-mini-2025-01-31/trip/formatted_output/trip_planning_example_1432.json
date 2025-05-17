@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 6-10",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 14-18",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 18-20",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 25-29",
+                        "place": "Salzburg"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\n# Input parameters\n# Total trip days = 29, total cities = 10.\n# The required stay durations in each city (the \u201crequired\u201d days while in that city)\n# Note: When flying from one city to the next, the flight day is counted in both the departing and arriving city.\n# Thus, the sum of individual stays minus the (number of flights) equals the total days.\n# We have 10 cities and hence 9 flights. (sum(durations) - 9 = 29)\n# The required durations (as if they were standalone) are:\ndurations = {\n    \"Stockholm\": 3,   # and must meet friend between day1 and day3\n    \"Amsterdam\": 3,\n    \"Valencia\": 2,    # and attend annual show between day5 and day6\n    \"Vienna\": 5,      # and attend wedding between day6 and day10\n    \"Reykjavik\": 5,\n    \"Athens\": 5,      # and attend workshop between day14 and day18\n    \"Riga\": 3,        # and attend conference between day18 and day20\n    \"Bucharest\": 3,\n    \"Frankfurt\": 4,\n    \"Salzburg\": 5\n}\n\n# There are several direct flight connections available.\n# For our itinerary, we choose the following order of cities that:\n#  - Uses only direct flight connections as provided.\n#  - Satisfies the time-bound events.\n# The chosen order is:\n# 1. Stockholm      (3 days)      [Meeting friend between day1-3]\n# 2. Amsterdam      (3 days)\n# 3. Valencia       (2 days)      [Annual show on day5-6]\n# 4. Vienna         (5 days)      [Wedding on day6-10]\n# 5. Reykjavik      (5 days)\n# 6. Athens         (5 days)      [Workshop on day14-18]\n# 7. Riga           (3 days)      [Conference on day18-20]\n# 8. Bucharest      (3 days)\n# 9. Frankfurt      (4 days)\n# 10. Salzburg      (5 days) \n#\n# Check flight connections for each adjacent pair:\n# Stockholm -> Amsterdam         : Direct flight exists (Stockholm and Amsterdam)\n# Amsterdam -> Valencia          : Direct flight exists (Amsterdam and Valencia)\n# Valencia -> Vienna             : Direct flight exists (Valencia and Vienna)\n# Vienna -> Reykjavik            : Direct flight exists (Vienna and Reykjavik)\n# Reykjavik -> Athens            : Direct flight exists (from Reykjavik to Athens)\n# Athens -> Riga                 : Direct flight exists (from Athens to Riga)\n# Riga -> Bucharest              : Direct flight exists (Riga and Bucharest)\n# Bucharest -> Frankfurt         : Direct flight exists (Bucharest and Frankfurt)\n# Frankfurt -> Salzburg          : Direct flight exists (Frankfurt and Salzburg)\n#\n# With these durations and 9 flight \u201coverlap\u201d days, the total trip days:\n#   sum(durations) - 9 = (3+3+2+5+5+5+3+3+4+5) - 9 = 38 - 9 = 29 days.\n#\n# Now we assign day ranges for each city.\n# The rule is: let start_day[0] = 1, and for each city i, the next city starts on:\n#      start_day[i+1] = start_day[i] + duration[i] - 1\n# Each city's day range is [start_day, start_day + duration - 1].\n\ncity_order = [\n    \"Stockholm\",\n    \"Amsterdam\",\n    \"Valencia\",\n    \"Vienna\",\n    \"Reykjavik\",\n    \"Athens\",\n    \"Riga\",\n    \"Bucharest\",\n    \"Frankfurt\",\n    \"Salzburg\"\n]\n\n# Compute the itinerary day ranges according to the overlapping rule.\nitinerary = []\ncurrent_day = 1\nfor city in city_order:\n    dur = durations[city]\n    start_day = current_day\n    end_day = current_day + dur - 1\n    itinerary.append({\n        \"day_range\": f\"{start_day}-{end_day}\",\n        \"place\": city\n    })\n    # Next city starts on the last day of current city (overlap flight day)\n    current_day = start_day + dur - 1\n\n# At this point, the final day should equal 29.\n# Let's assert that:\nfinal_day = current_day\nassert final_day == 29, f\"Final day is {final_day}, expected 29.\"\n\n# Additional check for time-bound events:\n# Stockholm: [1,3] includes day 1-3 friend meeting.\n# Valencia: [5,6] includes annual show on day5-6.\n# Vienna: [6,10] includes wedding between day6-10.\n# Athens: [14,18] includes workshop between day14-18.\n# Riga: [18,20] includes conference between day18-20.\n# All constraints are met in this computed schedule.\n\n# Output the itinerary as a JSON formatted dictionary.\noutput = {\"itinerary\": itinerary}\n\nprint(json.dumps(output, indent=2))\n```",
+            "count": "trip_planning_example_1432"
+        }
+    ]
+}

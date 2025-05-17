@@ -1,0 +1,49 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Madrid"
+                    },
+                    {
+                        "day_range": "Day 4-5",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Stuttgart"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef compute_itinerary():\n    # Input parameters (constraints)\n    total_days = 13\n\n    # Required stays (when counting flight overlap days double)\n    required_stays = {\n        \"Madrid\": 4,    # Must visit relatives in Madrid between day 1 and day 4.\n        \"Seville\": 2,\n        \"Porto\": 3,\n        \"Stuttgart\": 7  # Also must attend conferences in Stuttgart on day 7 and day 13.\n    }\n    \n    # Allowed direct flights (bidirectional)\n    # Madrid <-> Seville, Madrid <-> Porto, Seville <-> Porto, Porto <-> Stuttgart\n    allowed_flights = [\n        (\"Madrid\", \"Seville\"),\n        (\"Madrid\", \"Porto\"),\n        (\"Seville\", \"Porto\"),\n        (\"Porto\", \"Stuttgart\")\n    ]\n    \n    # We choose an order that satisfies the following:\n    # 1. Start in Madrid to meet relatives constraint (between day 1 and day 4).\n    # 2. Fly Madrid -> Seville (allowed via direct flight).\n    # 3. Fly Seville -> Porto (allowed).\n    # 4. Fly Porto -> Stuttgart (allowed).\n    #\n    # With the rule that if you fly from A to B on day X,\n    # then day X counts toward both city A and city B.\n    # Thus, Unique Total Days = sum(required_days) - (# of flights)\n    #\n    # In our case: Unique Days = (4 + 2 + 3 + 7) - 3 = 16 - 3 = 13 which matches total_days.\n    \n    # We assign day ranges accordingly:\n    #\n    # Madrid: Days 1 to 4 (4 days)\n    #   Flight day: Day 4 counts for both Madrid and Seville.\n    #\n    # Seville: Days 4 to 5 (2 days: day 4 overlap + day 5)\n    #   Flight day: Day 5 counts for both Seville and Porto.\n    #\n    # Porto: Days 5 to 7 (3 days: day 5 overlap + day 6 + day 7 overlap)\n    #   Flight day: Day 7 counts for both Porto and Stuttgart.\n    #\n    # Stuttgart: Days 7 to 13 (7 days: day 7 overlap and days 8,9,10,11,12,13; note day13 conference).\n    \n    itinerary = [\n        {\"day_range\": \"1-4\", \"place\": \"Madrid\"},\n        {\"day_range\": \"4-5\", \"place\": \"Seville\"},\n        {\"day_range\": \"5-7\", \"place\": \"Porto\"},\n        {\"day_range\": \"7-13\", \"place\": \"Stuttgart\"}\n    ]\n    \n    # We perform a simple check that the union of days equals total_days:\n    # Calculation: (4 + 2 + 3 + 7) - (number_of_flights)\n    num_flights = 3\n    if (sum(required_stays.values()) - num_flights) != total_days:\n        raise ValueError(\"The computed schedule does not match the total days constraint.\")\n    \n    # Check that conference days (7 and 13) are in Stuttgart\u2019s range:\n    stuttgart_start, stuttgart_end = 7, 13\n    if not (stuttgart_start <= 7 <= stuttgart_end and stuttgart_start <= 13 <= stuttgart_end):\n        raise ValueError(\"Stuttgart segment does not include conference days.\")\n    \n    # Check relative visit in Madrid (between day 1 and 4 included)\n    madrid_segment = itinerary[0]\n    madrid_start, madrid_end = 1, 4\n    if not (madrid_start <= 1 <= madrid_end or madrid_start <= 4 <= madrid_end):\n        raise ValueError(\"Madrid segment does not satisfy the relatives visit constraint.\")\n    \n    return itinerary\n\nif __name__ == '__main__':\n    result = compute_itinerary()\n    # Output the itinerary as JSON formatted dictionary (list of dictionaries)\n    print(json.dumps(result))\n```",
+            "count": "trip_planning_example_372"
+        }
+    ]
+}

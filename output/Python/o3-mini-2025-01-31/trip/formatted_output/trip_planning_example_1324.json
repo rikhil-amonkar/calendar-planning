@@ -1,0 +1,89 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 22-26",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 4-7",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 7-10",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 10-12",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 20-22",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 22-26",
+                        "place": "Tallinn"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input parameters (durations are planned stay days, not counting overlaps)\n    total_days = 26\n    # Planned stays (each city\u2019s planned days if visited in isolation)\n    planned = {\n        \"Lyon\": 4,\n        \"Venice\": 4,\n        \"Copenhagen\": 4,\n        \"Barcelona\": 3,\n        \"Dubrovnik\": 5,\n        \"Athens\": 2,\n        \"Reykjavik\": 4,\n        \"Munich\": 3,\n        \"Tallinn\": 5,\n    }\n    # Critical time-window constraints:\n    # - In Copenhagen, relatives must be met between day 7 and day 10.\n    # - In Barcelona, friend meeting must happen between day 10 and day 12.\n    # - In Dubrovnik, wedding takes place between day 16 and day 20.\n    #\n    # We choose an itinerary order that respects available direct flights and the scheduling windows.\n    # After some analysis, one valid order (assuming direct flight connections work bidirectionally) is:\n    #\n    #  Order:\n    #    1. Lyon          (no constraint, chosen as start)\n    #    2. Venice        (fly from Lyon on day 4; direct flight: Lyon-Venice)\n    #    3. Copenhagen    (fly from Venice on day 7; direct flight: Venice-Copenhagen)\n    #         -> This stay exactly covers days 7-10, within the relatives window.\n    #    4. Barcelona     (fly from Copenhagen on day 10; direct flight: Copenhagen-Barcelona)\n    #         -> Occupies days 10-12, covering the friend meeting.\n    #    5. Dubrovnik     (fly from Barcelona on day 12; direct flight: Barcelona-Dubrovnik)\n    #         -> With a 5-day stay from day 12 to day 16, day 16 falls in the wedding window.\n    #    6. Athens        (fly from Dubrovnik on day 16; direct flight: Athens-Dubrovnik)\n    #         -> A 2-day stay from day 16 to day 17.\n    #    7. Reykjavik     (fly from Athens on day 17; using the bidirectional leg corresponding to \"from Reykjavik to Athens\")\n    #         -> A 4-day stay occupying days 17-20.\n    #    8. Munich        (fly from Reykjavik on day 20; direct flight: Reykjavik-Munich)\n    #         -> A 3-day stay occupying days 20-22.\n    #    9. Tallinn       (fly from Munich on day 22; direct flight: Munich-Tallinn)\n    #         -> A 5-day stay occupying days 22-26.\n    #\n    # Note on overlaps:\n    # When flying on a given day X, that day counts toward both the city you are leaving and the one you are arriving in.\n    # Therefore, if we add all planned days (which sum to 34) and subtract the 8 overlapping flight days (between 9 cities),\n    # we get an effective total of 26 days.\n    #\n    # We now compute the day ranges sequentially:\n    itinerary_order = [\n        \"Lyon\",\n        \"Venice\",\n        \"Copenhagen\",\n        \"Barcelona\",\n        \"Dubrovnik\",\n        \"Athens\",\n        \"Reykjavik\",\n        \"Munich\",\n        \"Tallinn\",\n    ]\n    \n    day = 1\n    results = []\n    # For each city, we assign a range.\n    # The rule: the planned duration is the number of days counting arrival day and subsequent days.\n    # But note that when leaving a city, the departure day is the overlap day (and thus also the arrival day of the next city).\n    for i, city in enumerate(itinerary_order):\n        duration = planned[city]\n        # The city is occupied for \"duration\" days counting the arrival day.\n        # The day range is from current day to (day + duration - 1).\n        start_day = day\n        end_day = day + duration - 1\n        results.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": city\n        })\n        # For all but the last city, subtract one day because the departure day is shared.\n        if i < len(itinerary_order) - 1:\n            day = end_day  # The shared flight day; next city starts on the same day (overlap)\n        else:\n            day = end_day\n\n    # Check total effective days:\n    # Total planned days if simply summed = sum(planned.values()) = 34.\n    # Overlap days = (# of transitions) = 8.\n    # Effective total = 34 - 8 = 26.\n    effective_total = sum(planned.values()) - (len(itinerary_order) - 1)\n    assert effective_total == total_days, f\"Effective days {effective_total} do not match total_days {total_days}\"\n\n    # Output the itinerary as JSON.\n    print(json.dumps(results, indent=2))\n    \nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1324"
+        }
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "day": "Tuesday",
+                "start_time": null,
+                "end_time": null
+            },
+            "expected_time": {
+                "day": "Tuesday",
+                "start_time": "10:30",
+                "end_time": "11:00"
+            },
+            "has_error": false,
+            "raw_model_response": "'''python\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n    merged = [sorted_intervals[0]]\n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        if current[0] <= last[1]:\n            merged[-1] = (last[0], max(last[1], current[1]))\n        else:\n            merged.append(current)\n    return merged\n\ndef get_free_intervals(busy, work_start, work_end):\n    merged = merge_intervals(busy)\n    free = []\n    prev_end = work_start\n    for start, end in merged:\n        if start > prev_end:\n            free.append((prev_end, start))\n        prev_end = max(prev_end, end)\n    if prev_end < work_end:\n        free.append((prev_end, work_end))\n    return free\n\ndef to_time(minutes):\n    hours = minutes // 60\n    mins = minutes % 60\n    return f\"{hours:02}:{mins:02}\"\n\nday = \"Tuesday\"\nwork_start = 9 * 60\nwork_end = 11 * 60\n\namanda_busy = [\n    (9 * 60, 9 * 60 + 30),\n    (10 * 60, 10 * 60 + 30),\n]\nnathan_busy = [\n    (9 * 60, 10 * 60 + 30),\n]\n\namanda_free = get_free_intervals(amanda_busy, work_start, work_end)\nnathan_free = get_free_intervals(nathan_busy, work_start, work_end)\n\noverlap = []\ni = j = 0\nwhile i < len(amanda_free) and j < len(nathan_free):\n    a_start, a_end = amanda_free[i]\n    n_start, n_end = nathan_free[j]\n    start = max(a_start, n_start)\n    end = min(a_end, n_end)\n    if start < end:\n        overlap.append((start, end))\n    if a_end < n_end:\n        i += 1\n    else:\n        j += 1\n\nfor start, end in overlap:\n    if end - start >= 30:\n        print(f\"{day}:{to_time(start)}-{to_time(start + 30)}\")\n        exit()\n\nprint(\"No suitable time found.\")\n'''",
+            "count": "calendar_scheduling_example_682"
+        }
+    ]
+}

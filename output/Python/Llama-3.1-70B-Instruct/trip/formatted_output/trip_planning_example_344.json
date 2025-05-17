@@ -1,0 +1,32 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Naples"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(constraints, direct_flights):\n    trip_plan = []\n    current_day = 1\n    visited_cities = set()\n    city_stay = {}\n\n    # Initialize city_stay dictionary\n    for city, stay in constraints.items():\n        city_stay[city] = stay\n\n    # Visit relatives in Athens\n    trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Athens\"] - 1}', 'place': 'Athens'})\n    visited_cities.add('Athens')\n    current_day += city_stay[\"Athens\"]\n\n    # Visit Valencia\n    if 'Valencia' in direct_flights['Athens']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Athens', 'to': 'Valencia'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Valencia\"] - 1}', 'place': 'Valencia'})\n        visited_cities.add('Valencia')\n        current_day += city_stay[\"Valencia\"]\n    else:\n        raise Exception(\"No direct flight from Athens to Valencia\")\n\n    # Visit Zurich\n    if 'Zurich' in direct_flights['Valencia']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Valencia', 'to': 'Zurich'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Zurich\"] - 1}', 'place': 'Zurich'})\n        visited_cities.add('Zurich')\n        current_day += city_stay[\"Zurich\"]\n    else:\n        raise Exception(\"No direct flight from Valencia to Zurich\")\n\n    # Visit Naples\n    if 'Naples' in direct_flights['Zurich']:\n        trip_plan.append({'flying': f'Day {current_day}-{current_day}', 'from': 'Zurich', 'to': 'Naples'})\n        trip_plan.append({'day_range': f'Day {current_day}-{current_day + city_stay[\"Naples\"] - 1}', 'place': 'Naples'})\n        visited_cities.add('Naples')\n        current_day += city_stay[\"Naples\"]\n    else:\n        raise Exception(\"No direct flight from Zurich to Naples\")\n\n    # Check if all cities are visited\n    for city in constraints:\n        if city not in visited_cities:\n            raise Exception(f\"City {city} is not visited\")\n\n    return trip_plan\n\ndef main():\n    constraints = {\n        \"Valencia\": 6,\n        \"Athens\": 6,\n        \"Naples\": 5,\n        \"Zurich\": 6\n    }\n\n    direct_flights = {\n        \"Valencia\": [\"Naples\", \"Athens\"],\n        \"Athens\": [\"Naples\", \"Zurich\", \"Valencia\"],\n        \"Naples\": [\"Zurich\", \"Athens\"],\n        \"Zurich\": [\"Naples\", \"Athens\", \"Valencia\"]\n    }\n\n    trip_plan = calculate_trip_plan(constraints, direct_flights)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_344"
+        }
+    ]
+}

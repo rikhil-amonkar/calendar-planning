@@ -1,0 +1,56 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Prague"
+                    },
+                    {
+                        "day_range": "Day 3-5",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Lisbon"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 15-16",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 20-23",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 23-26",
+                        "place": "Vilnius"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\nfrom datetime import timedelta\n\nclass TripPlanner:\n    def __init__(self, cities, constraints, direct_flights):\n        self.cities = cities\n        self.constraints = constraints\n        self.direct_flights = direct_flights\n        self.itinerary = []\n        self.current_day = 1\n\n    def plan_trip(self):\n        # Visit Prague for 3 days and attend a workshop between day 1 and day 3\n        self.visit_city('Prague', 3)\n        self.attend_event('Prague', 'workshop', 1, 3)\n\n        # Attend a wedding in London between day 3 and day 5\n        self.fly_to('London', 'Prague')\n        self.visit_city('London', 3)\n        self.attend_event('London', 'wedding', 3, 5)\n\n        # Visit relatives in Lisbon between day 5 and day 9\n        self.fly_to('Lisbon', 'London')\n        self.visit_city('Lisbon', 5)\n        self.attend_event('Lisbon', 'visit relatives', 5, 9)\n\n        # Attend a conference in Porto between day 16 and day 20\n        self.fly_to('Porto', 'Lisbon')\n        self.visit_city('Porto', 5)\n        self.attend_event('Porto', 'conference', 16, 20)\n\n        # Meet friends at Warsaw between day 20 and day 23\n        self.fly_to('Warsaw', 'Porto')\n        self.visit_city('Warsaw', 4)\n        self.attend_event('Warsaw','meet friends', 20, 23)\n\n        # Visit other cities\n        self.visit_other_cities()\n\n        return self.itinerary\n\n    def visit_city(self, city, days):\n        self.itinerary.append({'day_range': f'Day {self.current_day}-{self.current_day + days - 1}', 'place': city})\n        self.current_day += days\n\n    def attend_event(self, city, event, start_day, end_day):\n        self.itinerary.append({'day_range': f'Day {start_day}-{end_day}', f'{event}': city})\n\n    def fly_to(self, to_city, from_city):\n        self.itinerary.append({'flying': f'Day {self.current_day}-{self.current_day}', 'from': from_city, 'to': to_city})\n        self.current_day += 1\n\n    def visit_other_cities(self):\n        cities_to_visit = ['Dublin', 'Athens', 'Vilnius', 'Seville', 'Dubrovnik']\n        while cities_to_visit:\n            for city in cities_to_visit:\n                if city == 'Dublin':\n                    self.fly_to('Dublin', self.itinerary[-1]['place'])\n                    self.visit_city('Dublin', 3)\n                    cities_to_visit.remove(city)\n                elif city == 'Athens' and 'Prague' in [x['place'] for x in self.itinerary]:\n                    self.fly_to('Athens', self.itinerary[-1]['place'])\n                    self.visit_city('Athens', 3)\n                    cities_to_visit.remove(city)\n                elif city == 'Vilnius' and 'Warsaw' in [x['place'] for x in self.itinerary]:\n                    self.fly_to('Vilnius', self.itinerary[-1]['place'])\n                    self.visit_city('Vilnius', 4)\n                    cities_to_visit.remove(city)\n                elif city == 'Seville' and 'Dublin' in [x['place'] for x in self.itinerary]:\n                    self.fly_to('Seville', self.itinerary[-1]['place'])\n                    self.visit_city('Seville', 2)\n                    cities_to_visit.remove(city)\n                elif city == 'Dubrovnik' and 'Athens' in [x['place'] for x in self.itinerary]:\n                    self.fly_to('Dubrovnik', self.itinerary[-1]['place'])\n                    self.visit_city('Dubrovnik', 3)\n                    cities_to_visit.remove(city)\n\ndef main():\n    cities = ['Prague', 'Warsaw', 'Dublin', 'Athens', 'Vilnius', 'Porto', 'London', 'Seville', 'Lisbon', 'Dubrovnik']\n    constraints = {\n        'Prague': 3,\n        'Warsaw': 4,\n        'Dublin': 3,\n        'Athens': 3,\n        'Vilnius': 4,\n        'Porto': 5,\n        'London': 3,\n        'Seville': 2,\n        'Lisbon': 5,\n        'Dubrovnik': 3\n    }\n    direct_flights = [\n        ('Warsaw', 'Vilnius'), ('Prague', 'Athens'), ('London', 'Lisbon'), ('Lisbon', 'Porto'), ('Prague', 'Lisbon'), \n        ('London', 'Dublin'), ('Athens', 'Vilnius'), ('Athens', 'Dublin'), ('Prague', 'London'), ('London', 'Warsaw'), \n        ('Dublin', 'Seville'), ('Seville', 'Porto'), ('Lisbon', 'Athens'), ('Dublin', 'Porto'), ('Athens', 'Warsaw'), \n        ('Lisbon', 'Warsaw'), ('Porto', 'Warsaw'), ('Prague', 'Warsaw'), ('Prague', 'Dublin'), ('Athens', 'Dubrovnik'), \n        ('Lisbon', 'Dublin'), ('Dubrovnik', 'Dublin'), ('Lisbon', 'Seville'), ('London', 'Athens')\n    ]\n\n    planner = TripPlanner(cities, constraints, direct_flights)\n    itinerary = planner.plan_trip()\n    print(json.dumps(itinerary, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_1543"
+        }
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": []
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 3-7",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 7-9",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 9-10",
+                        "place": "London"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Santorini"
+                    },
+                    {
+                        "day_range": "Day 11-13",
+                        "place": "Dublin"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Seville"
+                    }
+                ]
+            },
+            "has_error": true,
+            "raw_model_response": "```python\nimport json\n\ndef calculate_trip_plan(seville_days, vilnius_days, santorini_days, london_days, stuttgart_days, dublin_days, frankfurt_days, friend_meeting_window, visit_relatives_window):\n    total_days = seville_days + vilnius_days + santorini_days + london_days + stuttgart_days + dublin_days + frankfurt_days\n\n    # Calculate the number of days for each city, considering the visit relatives window in Stuttgart\n    stuttgart_start_day = 7\n    stuttgart_end_day = stuttgart_start_day + stuttgart_days - 1\n    visit_relatives_day = (visit_relatives_window[0] + visit_relatives_window[1]) // 2\n\n    # Ensure Stuttgart is visited to visit relatives\n    if visit_relatives_day < stuttgart_start_day or visit_relatives_day > stuttgart_end_day:\n        raise ValueError(\"Visit relatives day does not fall within the Stuttgart visit window\")\n\n    # Calculate the day ranges for Seville\n    seville_start_day = 1\n    seville_end_day = seville_start_day + seville_days - 1\n\n    # Calculate the day ranges for Vilnius\n    vilnius_start_day = seville_end_day + 1\n    vilnius_end_day = vilnius_start_day + vilnius_days - 1\n\n    # Calculate the day ranges for Frankfurt\n    frankfurt_start_day = vilnius_end_day + 1\n    frankfurt_end_day = frankfurt_start_day + frankfurt_days - 1\n\n    # Calculate the day ranges for London\n    london_start_day = frankfurt_end_day + 1\n    london_end_day = london_start_day + london_days - 1\n    friend_meeting_day = (friend_meeting_window[0] + friend_meeting_window[1]) // 2\n\n    # Ensure London is visited to meet friends\n    if friend_meeting_day < london_start_day or friend_meeting_day > london_end_day:\n        raise ValueError(\"Friend meeting day does not fall within the London visit window\")\n\n    # Calculate the day ranges for Santorini\n    santorini_start_day = london_end_day + 1\n    santorini_end_day = santorini_start_day + santorini_days - 1\n\n    # Calculate the day ranges for Dublin\n    dublin_start_day = santorini_end_day + 1\n    dublin_end_day = dublin_start_day + dublin_days - 1\n\n    # Check if the total days add up correctly\n    if dublin_end_day!= total_days:\n        raise ValueError(\"Total days do not add up correctly\")\n\n    # Create the trip plan\n    trip_plan = [\n        {'day_range': f'Day {seville_start_day}-{seville_end_day}', 'place': 'Seville'},\n        {'flying': f'Day {seville_end_day}-{seville_end_day}', 'from': 'Seville', 'to': 'Vilnius'},\n        {'day_range': f'Day {vilnius_start_day}-{vilnius_end_day}', 'place': 'Vilnius'},\n        {'flying': f'Day {vilnius_end_day}-{vilnius_end_day}', 'from': 'Vilnius', 'to': 'Frankfurt'},\n        {'day_range': f'Day {frankfurt_start_day}-{frankfurt_end_day}', 'place': 'Frankfurt'},\n        {'flying': f'Day {frankfurt_end_day}-{frankfurt_end_day}', 'from': 'Frankfurt', 'to': 'Stuttgart'},\n        {'day_range': f'Day {stuttgart_start_day}-{stuttgart_end_day}', 'place': 'Stuttgart'},\n        {'flying': f'Day {stuttgart_end_day}-{stuttgart_end_day}', 'from': 'Stuttgart', 'to': 'London'},\n        {'day_range': f'Day {london_start_day}-{london_end_day}', 'place': 'London'},\n        {'flying': f'Day {london_end_day}-{london_end_day}', 'from': 'London', 'to': 'Santorini'},\n        {'day_range': f'Day {santorini_start_day}-{santorini_end_day}', 'place': 'Santorini'},\n        {'flying': f'Day {santorini_end_day}-{santorini_end_day}', 'from': 'Santorini', 'to': 'Dublin'},\n        {'day_range': f'Day {dublin_start_day}-{dublin_end_day}', 'place': 'Dublin'}\n    ]\n\n    return trip_plan\n\ndef main():\n    seville_days = 5\n    vilnius_days = 3\n    santorini_days = 2\n    london_days = 2\n    stuttgart_days = 3\n    dublin_days = 3\n    frankfurt_days = 5\n    friend_meeting_window = (9, 10)\n    visit_relatives_window = (7, 9)\n\n    trip_plan = calculate_trip_plan(seville_days, vilnius_days, santorini_days, london_days, stuttgart_days, dublin_days, frankfurt_days, friend_meeting_window, visit_relatives_window)\n    print(json.dumps(trip_plan, indent=4))\n\nif __name__ == \"__main__\":\n    main()\n```",
+            "count": "trip_planning_example_813"
+        }
+    ]
+}

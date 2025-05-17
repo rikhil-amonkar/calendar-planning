@@ -1,0 +1,57 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 5-9",
+                        "place": "Dubrovnik"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 16-18",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\ndef main():\n    # Trip parameters\n    total_days = 18\n    # Required stay days in each city (the day when flying counts for both)\n    required = {\n        \"Krakow\": 5,\n        \"Frankfurt\": 4,\n        \"Dubrovnik\": 5,\n        \"Naples\": 5,\n        \"Oslo\": 3\n    }\n    \n    # Special constraints:\n    # - In Dubrovnik, you want to meet your friends between day 5 and day 9.\n    friends_window = (5, 9)\n    # - In Oslo, you plan to visit relatives between day 16 and day 18.\n    relatives_window = (16, 18)\n    \n    # Flight connectivity (bidirectional assumed)\n    direct_flights = {\n        (\"Dubrovnik\", \"Oslo\"),\n        (\"Frankfurt\", \"Krakow\"),\n        (\"Frankfurt\", \"Oslo\"),\n        (\"Dubrovnik\", \"Frankfurt\"),\n        (\"Krakow\", \"Oslo\"),\n        (\"Naples\", \"Oslo\"),\n        (\"Naples\", \"Dubrovnik\"),\n        (\"Naples\", \"Frankfurt\")\n    }\n    # For our chosen itinerary, the flight sequence (with flight days that count in both cities) is:\n    itinerary_order = [\"Krakow\", \"Frankfurt\", \"Dubrovnik\", \"Naples\", \"Oslo\"]\n    \n    # Verify that each consecutive flight is allowed (bidirectional check)\n    for i in range(len(itinerary_order) - 1):\n        city_from = itinerary_order[i]\n        city_to = itinerary_order[i+1]\n        if (city_from, city_to) not in direct_flights and (city_to, city_from) not in direct_flights:\n            raise ValueError(f\"No direct flight exists between {city_from} and {city_to}.\")\n    \n    # The idea is to assign each segment an interval [start_day, end_day] such that:\n    #   For the first city: duration = required[city]\n    #   For each subsequent city, we assume the flight takes place on the starting day.\n    #   That day is counted in both the previous and next city.\n    # Hence, for city i (after the first):\n    #   start_day = previous city's end_day (overlap flight day)\n    #   end_day = start_day + required[city] - 1\n    \n    itinerary = []\n    current_start = 1\n    for city in itinerary_order:\n        days_needed = required[city]\n        end_day = current_start + days_needed - 1\n        itinerary.append({\n            \"day_range\": f\"{current_start}-{end_day}\",\n            \"place\": city\n        })\n        # Next city will start on the same day as this city's end_day\n        current_start = end_day\n\n    # Check that total trip ends exactly at total_days\n    if itinerary[-1][\"day_range\"].split(\"-\")[-1] != str(total_days):\n        # Convert the last day_range and adjust if necessary\n        last_segment = itinerary[-1]\n        _, last_end = map(int, last_segment[\"day_range\"].split(\"-\"))\n        if last_end != total_days:\n            raise ValueError(\"The computed itinerary does not match the total trip duration.\")\n\n    # Check that special constraints are satisfied:\n    # Dubrovnik friends meeting: at least one day in Dubrovnik between day 5 and 9.\n    dubrovnik_segment = next(seg for seg in itinerary if seg[\"place\"] == \"Dubrovnik\")\n    dub_start, dub_end = map(int, dubrovnik_segment[\"day_range\"].split(\"-\"))\n    friends_ok = (friends_window[0] <= dub_start <= friends_window[1]) or (friends_window[0] <= dub_end <= friends_window[1]) or (dub_start < friends_window[0] and dub_end > friends_window[1])\n    if not friends_ok:\n        raise ValueError(\"Dubrovnik visit does not include the friends meeting window between day 5 and 9.\")\n    \n    # Oslo relatives visit: Oslo segment must include at least one day within day 16 and 18.\n    oslo_segment = next(seg for seg in itinerary if seg[\"place\"] == \"Oslo\")\n    oslo_start, oslo_end = map(int, oslo_segment[\"day_range\"].split(\"-\"))\n    relatives_ok = (relatives_window[0] <= oslo_start <= relatives_window[1]) or (relatives_window[0] <= oslo_end <= relatives_window[1]) or (oslo_start < relatives_window[0] and oslo_end > relatives_window[1])\n    if not relatives_ok:\n        raise ValueError(\"Oslo visit does not include the relatives window between day 16 and 18.\")\n    \n    # Output the final itinerary in JSON format\n    print(json.dumps(itinerary, indent=4))\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_464"
+        }
+    ]
+}

@@ -1,0 +1,89 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-3",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 3-4",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 4-8",
+                        "place": "Tallinn"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vilnius"
+                    },
+                    {
+                        "day_range": "Day 12-13",
+                        "place": "Helsinki"
+                    },
+                    {
+                        "day_range": "Day 13-17",
+                        "place": "Budapest"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 20-24",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 24-25",
+                        "place": "Oslo"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\n#!/usr/bin/env python3\nimport json\n\ndef main():\n    # Input parameters:\n    \n    # Total days:\n    total_days = 25\n\n    # Cities with required days:\n    # Note: When traveling from one city to the next on a flight day, that day counts for both cities.\n    # Thus total tour days = sum(required_days) - (number_of_flights)\n    # There are 9 cities so number_of_flights = 8.\n    # Our constraints sum to 33 days so 33 - 8 = 25 days total.\n    #\n    # Cities and required durations:\n    #  - Oslo: 2 days (with a friend meeting on day 24-25)\n    #  - Helsinki: 2 days\n    #  - Edinburgh: 3 days\n    #  - Riga: 2 days\n    #  - Tallinn: 5 days (includes a wedding between day 4 and day 8)\n    #  - Budapest: 5 days\n    #  - Vilnius: 5 days\n    #  - Porto: 5 days\n    #  - Geneva: 4 days\n    #\n    # Direct flights available:\n    #   Porto <--> Oslo, Edinburgh <--> Budapest, Edinburgh <--> Geneva, Riga -> Tallinn,\n    #   Edinburgh <--> Porto, Vilnius <--> Helsinki, Tallinn -> Vilnius, Riga <--> Oslo,\n    #   Geneva <--> Oslo, Edinburgh <--> Oslo, Edinburgh <--> Helsinki,\n    #   Vilnius <--> Oslo, Riga <--> Helsinki, Budapest <--> Geneva, Helsinki <--> Budapest,\n    #   Helsinki <--> Oslo, Edinburgh <--> Riga, Tallinn <--> Helsinki, Geneva <--> Porto,\n    #   Budapest <--> Oslo, Helsinki <--> Geneva, Riga -> Vilnius, Tallinn <--> Oslo.\n    #\n    # Based on these connections and the time constraints (including the wedding and friend meeting),\n    # we choose the following itinerary order:\n    # \n    # 1. Edinburgh (3 days)  [Days 1 - 3]\n    #    Flight from Edinburgh to Riga (\"Edinburgh and Riga\")\n    # 2. Riga (2 days)       [Overlapping day: day 3, then day 4]\n    #    Flight from Riga to Tallinn (\"from Riga to Tallinn\")\n    # 3. Tallinn (5 days)    [Starts day 4 until day 8, covering the wedding event]\n    #    Flight from Tallinn to Vilnius (\"from Tallinn to Vilnius\")\n    # 4. Vilnius (5 days)    [Days 8 - 12]\n    #    Flight from Vilnius to Helsinki (\"Vilnius and Helsinki\")\n    # 5. Helsinki (2 days)   [Days 12 - 13]\n    #    Flight from Helsinki to Budapest (\"Helsinki and Budapest\")\n    # 6. Budapest (5 days)   [Days 13 - 17]\n    #    Flight from Budapest to Geneva (\"Budapest and Geneva\")\n    # 7. Geneva (4 days)     [Days 17 - 20]\n    #    Flight from Geneva to Porto (\"Geneva and Porto\")\n    # 8. Porto (5 days)      [Days 20 - 24]\n    #    Flight from Porto to Oslo (\"Porto and Oslo\")\n    # 9. Oslo (2 days)       [Days 24 - 25, friend meeting occurs on day 24 or 25]\n    #\n    # This ordering meets all direct flight constraints and the specific event constraints.\n    \n    itinerary = [\n        {\"place\": \"Edinburgh\", \"days\": 3},\n        {\"place\": \"Riga\", \"days\": 2},\n        {\"place\": \"Tallinn\", \"days\": 5},   # Wedding between day 4 and 8 falls here.\n        {\"place\": \"Vilnius\", \"days\": 5},\n        {\"place\": \"Helsinki\", \"days\": 2},\n        {\"place\": \"Budapest\", \"days\": 5},\n        {\"place\": \"Geneva\", \"days\": 4},\n        {\"place\": \"Porto\", \"days\": 5},\n        {\"place\": \"Oslo\", \"days\": 2}       # Friend meeting in Oslo must occur on day 24 or 25.\n    ]\n    \n    # Calculation of day ranges using the overlapping day rule:\n    #\n    # If we denote city[i]'s required duration as d_i and assume:\n    #   start_day[0] = 1\n    #   end_day[0] = start_day[0] + d_0 - 1\n    # For each subsequent city i > 0:\n    #   start_day[i] = end_day[i-1]   (because the flight day counts in both)\n    #   end_day[i] = start_day[i] + d_i - 1\n    #\n    schedule = []\n    current_day = 1\n    for city in itinerary:\n        place = city[\"place\"]\n        d = city[\"days\"]\n        start_day = current_day\n        end_day = start_day + d - 1\n        # Append the schedule entry with the required keys\n        schedule.append({\n            \"day_range\": f\"{start_day}-{end_day}\",\n            \"place\": place\n        })\n        # Prepare next city's start day: flight day is same as current end_day.\n        current_day = end_day\n\n    # Validate total days equal 25:\n    if current_day != total_days:\n        raise ValueError(f\"Calculated itinerary spans {current_day} days; expected {total_days} days.\")\n        \n    # Output the schedule as JSON formatted string (list of dictionaries with only day_range and place)\n    json_output = json.dumps(schedule, indent=2)\n    print(json_output)\n\nif __name__ == '__main__':\n    main()\n```",
+            "count": "trip_planning_example_1318"
+        }
+    ]
+}

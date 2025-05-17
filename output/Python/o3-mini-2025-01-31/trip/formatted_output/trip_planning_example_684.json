@@ -1,0 +1,65 @@
+{
+    "0shot": [
+        {
+            "final_program_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "expected_time": {
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Edinburgh"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Amsterdam"
+                    },
+                    {
+                        "day_range": "Day 8-12",
+                        "place": "Vienna"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 16-19",
+                        "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Brussels"
+                    }
+                ]
+            },
+            "has_error": false,
+            "raw_model_response": "```python\nimport json\n\n# Input Parameters (all durations in days)\ntotal_trip_days = 23\n# Required stays for each city\ndurations = {\n    \"Edinburgh\": 5,\n    \"Amsterdam\": 4,\n    \"Vienna\": 5,\n    \"Reykjavik\": 5,\n    \"Berlin\": 4,\n    \"Brussels\": 5\n}\n# Special constraint windows (inclusive)\nconstraints = {\n    \"Amsterdam\": {\"relatives\": (5, 8)},   # Must be present at some point between day 5 and 8 in Amsterdam.\n    \"Reykjavik\": {\"workshop\": (12, 16)},    # Must be present at some point between day 12 and 16 in Reykjavik.\n    \"Berlin\": {\"friend\": (16, 19)}          # Must be present at some point between day 16 and 19 in Berlin.\n}\n\n# Direct flight network (bidirectional edges)\ndirect_flights = {\n    \"Edinburgh\": {\"Berlin\", \"Amsterdam\", \"Brussels\"},\n    \"Amsterdam\": {\"Berlin\", \"Edinburgh\", \"Reykjavik\", \"Vienna\"},\n    \"Berlin\": {\"Edinburgh\", \"Amsterdam\", \"Vienna\", \"Brussels\", \"Reykjavik\"},\n    \"Brussels\": {\"Berlin\", \"Edinburgh\", \"Vienna\", \"Reykjavik\"},\n    \"Vienna\": {\"Berlin\", \"Reykjavik\", \"Brussels\", \"Amsterdam\"},\n    \"Reykjavik\": {\"Vienna\", \"Brussels\", \"Amsterdam\", \"Berlin\"}\n}\n\n# We must choose an order of cities that satisfies both the flight connections and the scheduling constraints.\n# One order that works is:\n#   1. Edinburgh (5 days)\n#   2. Amsterdam (4 days)  --> Amsterdam must be visited between day 5 and 8 so that relatives can be seen.\n#   3. Vienna (5 days)      --> Direct flight from Amsterdam to Vienna exists.\n#   4. Reykjavik (5 days)   --> Direct flight from Vienna to Reykjavik exists. Reykjavik will satisfy the workshop window of day12 to day16.\n#   5. Berlin (4 days)      --> Direct flight from Reykjavik to Berlin exists. Berlin meets the friend window of day16 to19.\n#   6. Brussels (5 days)    --> Direct flight from Berlin to Brussels exists.\nitinerary_order = [\"Edinburgh\", \"Amsterdam\", \"Vienna\", \"Reykjavik\", \"Berlin\", \"Brussels\"]\n\n# Check that each consecutive pair has a direct flight (if not, our chosen order would be invalid)\ndef validate_flight_path(order, flights):\n    for i in range(len(order) - 1):\n        city_a, city_b = order[i], order[i+1]\n        if city_b not in flights[city_a]:\n            return False, f\"No direct flight between {city_a} and {city_b}.\"\n    return True, \"Valid flight path.\"\n\nvalid, msg = validate_flight_path(itinerary_order, direct_flights)\nif not valid:\n    raise ValueError(msg)\n\n# Given the overlap rule (if flying on a day, that day is counted for both the departure and arrival cities),\n# the sum of all required days (28) minus the overlap (one per flight, 5 flights) should equal the overall trip days (23).\ntotal_required = sum(durations[city] for city in itinerary_order)\nnum_flights = len(itinerary_order) - 1\nif total_required - num_flights != total_trip_days:\n    raise ValueError(\"The given durations and overlaps do not match the total trip days.\")\n\n# Schedule the trip: We assign day ranges such that the flight day is the last day of the current city and the first day of the next city.\ntrip_plan = []\ncurrent_day = 1\n\nfor index, city in enumerate(itinerary_order):\n    required = durations[city]\n    # The segment's end day is computed so that the total days counted in city equals required.\n    # Because the first day is current_day, and if a flight is taken out on the last day (except for the final city),\n    # that day counts for both cities.\n    # So, if we are not at the last city, then: segment_length = (end - current_day + 1) should equal required.\n    end_day = current_day + required - 1\n    # Append the scheduled range\n    trip_plan.append({\n        \"day_range\": f\"{current_day}-{end_day}\",\n        \"place\": city\n    })\n    # For all but final city, the flight happens on the end_day.\n    # The next city's start day is the same as the flight day.\n    if index < len(itinerary_order) - 1:\n        current_day = end_day  # Overlap the flight day\n\n# Verify special constraints:\n# Amsterdam relatives: must have at least one day in [5,8]\ndef check_constraint(day_range, window):\n    start, end = map(int, day_range.split(\"-\"))\n    w_start, w_end = window\n    # There is an overlap if start <= w_end and end >= w_start.\n    return start <= w_end and end >= w_start\n\nfor city, reqs in constraints.items():\n    for event, window in reqs.items():\n        # Find the segment for that city.\n        segment = next(item for item in trip_plan if item[\"place\"] == city)\n        if not check_constraint(segment[\"day_range\"], window):\n            raise ValueError(f\"Constraint for {city} ({event}) is not satisfied with day range {segment['day_range']} and window {window}.\")\n\n# Final trip plan as JSON output.\nprint(json.dumps(trip_plan))\n```",
+            "count": "trip_planning_example_684"
+        }
+    ]
+}
