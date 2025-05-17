@@ -6,7 +6,7 @@ Real-life textual planning tasks such as meeting scheduling have posed much chal
 
 ![Constraint Satisfaction Planning](images/thumbnail.png)
 
-We evaluate on the [Natrual Plan](https://github.com/google-deepmind/natural-plan) benchmark on three tasks: calendar scheduling, trip planning, and meeting planning. We use LLMs with three types of output: plans, Python code, and [Z3](https://github.com/Z3Prover/z3) code. 
+We evaluate on the [Natural Plan](https://github.com/google-deepmind/natural-plan) benchmark on three tasks: calendar scheduling, trip planning, and meeting planning. We use LLMs with three types of output: plans, Python code, and [Z3](https://github.com/Z3Prover/z3) code. 
 
 ## Data
 
