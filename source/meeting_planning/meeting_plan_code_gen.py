@@ -1,20 +1,16 @@
-# #**********WORKING CODE, CODE GENERATION, MEETING PLANNING, KANI, CHECKPOINT************
-
 import argparse
 import asyncio
 import json
 import datetime
-import logging
 import re
-import subprocess
-import os
-import torch
-import gc
+import tiktoken
 from kani import Kani
 from kani.engines.huggingface import HuggingEngine
+import os
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Load the meeting planning examples from the JSON file
+with open('../../data/1-prompt.json', 'r') as file:
+    meeting_examples = json.load(file)
 
 # Argument parser to select the model
 parser = argparse.ArgumentParser(description="Select a HuggingFace model.")
@@ -22,29 +18,25 @@ parser.add_argument('--model', type=str, required=True, help="The HuggingFace mo
 args = parser.parse_args()
 
 # State management
-STATE_FILE = "meeting_planning_state_code.json"
+STATE_FILE = "meeting_planning_state_meeting_text.json"
 
 class EvaluationState:
     def __init__(self):
-        self.expected_outputs_0shot = []
-        self.predicted_outputs_0shot = []
-        self.start_time = datetime.datetime.now()
-        self.no_error_count_0shot = 0
-        self.correct_output_count_0shot = 0
+        self.results_0shot = []
         self.processed_examples = set()
-        self.previous_time = 0
+        self.start_time = datetime.datetime.now()
+        self.previous_time = datetime.timedelta(0)
         self.first_run = True
+        self.total_reasoning_tokens = 0
 
     def save(self):
         state_to_save = {
-            "expected_outputs_0shot": self.expected_outputs_0shot,
-            "predicted_outputs_0shot": self.predicted_outputs_0shot,
-            "start_time": self.start_time.isoformat(),
-            "no_error_count_0shot": self.no_error_count_0shot,
-            "correct_output_count_0shot": self.correct_output_count_0shot,
+            "results_0shot": self.results_0shot,
             "processed_examples": list(self.processed_examples),
-            "previous_time": self.previous_time,
-            "first_run": self.first_run
+            "start_time": self.start_time.isoformat(),
+            "previous_time": self.previous_time.total_seconds(),
+            "first_run": self.first_run,
+            "total_reasoning_tokens": self.total_reasoning_tokens
         }
         with open(STATE_FILE, 'w') as f:
             json.dump(state_to_save, f)
@@ -53,169 +45,50 @@ class EvaluationState:
         try:
             with open(STATE_FILE, 'r') as f:
                 loaded = json.load(f)
-                self.expected_outputs_0shot = loaded["expected_outputs_0shot"]
-                self.predicted_outputs_0shot = loaded["predicted_outputs_0shot"]
-                self.no_error_count_0shot = loaded["no_error_count_0shot"]
-                self.correct_output_count_0shot = loaded["correct_output_count_0shot"]
+                self.results_0shot = loaded["results_0shot"]
                 self.processed_examples = set(loaded["processed_examples"])
-                self.previous_time = loaded["previous_time"]
+                self.previous_time = datetime.timedelta(seconds=loaded["previous_time"])
                 self.start_time = datetime.datetime.fromisoformat(loaded["start_time"])
                 self.first_run = loaded.get("first_run", False)
+                self.total_reasoning_tokens = loaded.get("total_reasoning_tokens", 0)
             return True
         except (FileNotFoundError, json.JSONDecodeError, KeyError):
             return False
 
-# Load the meeting planning examples from the JSON file
-with open('../../data/meeting_planning_100.json', 'r') as file:
-    meeting_examples = json.load(file)
-
-# Define prefix and suffix messages for code generation
-prefix_message = (
-    "You are an expert computational meeting planner. Your task is to write a Python program that "
-    "algorithmically calculates the optimal meeting schedule based on the participants' constraints.\n"
-    "The program must actually compute the plan using the given parameters, not just print a pre-determined answer.\n"
-    "Input parameters:\n"
-)
-
-suffix_message = (
-    "\n\nGenerate a complete, self-contained Python program that:\n"
-    "1. Takes the above meeting constraints as input variables\n"
-    "2. Computes the optimal meeting schedule using logical rules and calculations\n"
-    "3. Outputs the result as a JSON-formatted dictionary with the following structure:\n"
-    "{\n"
-    '  "itinerary": [\n'
-    '    {"action": "meet", "location": "Location Name", "person": "Person Name", "start_time": "H:MM", "end_time": "H:MM"},\n'
-    '    {"action": "meet", "location": "Location Name", "person": "Person Name", "start_time": "H:MM", "end_time": "H:MM"}\n'
-    "  ]\n"
-    "}\n"
-    "Rules for the program:\n"
-    "- Times should be in 24-hour format like '9:00' or '13:30' (no leading zero)\n"
-    "- The schedule must account for all travel times and constraints\n"
-    "- The program must actually compute the schedule, not just print a static answer\n"
-    "\n"
-    "Output only the complete Python code with no additional text or explanation.\n"
-    "The code must run independently and output valid JSON when executed."
-)
-
-def initialize_engine(model_id):
-    try:
-        engine = HuggingEngine(
-            model_id=model_id
-            # top_p=0.1,  # Use top-p (nucleus) sampling
-            # temperature=0.2,  # Adjust temperature
-            # do_sample=True,  # Enable sampling
-            # repetition_penalty=1.4,  # Reduce repetition
-            # max_new_tokens=3000,  # Limit the number of tokens generated
-            # top_k=50,  # Limit sampling to top 50 tokens
-            # num_beams=2, # Limit beam search
-        )
-        return engine
-    except Exception as e:
-        logging.error(f"Error initializing model: {e}")
-        raise
-
-def extract_code(response):
-    """Extract Python code from a response, completely removing any markdown delimiters."""
-    if not response:
-        return None
-        
-    response = response.strip()
-    
-    # First handle SOLUTION: prefix
-    if response.startswith("SOLUTION:"):
-        response = response[len("SOLUTION:"):].strip()
-    
-    # Then handle markdown code blocks (```python or ```)
-    if response.startswith("```python"):
-        end = response.find("```", 9)
-        if end != -1:
-            return response[9:end].strip()
-    elif response.startswith("```"):
-        end = response.find("```", 3)
-        if end != -1:
-            return response[3:end].strip()
-    
-    # Handle other cases
-    python_indicators = [
-        "#!/usr/bin/env python",
-        "if __name__ == \"__main__\":",
-        "def main():",
-        "import ",
-        "from ",
-        "print(",
-        "def ",
-        "class ",
-        "return ",
-        " = "
-    ]
-    
-    # Count Python indicators
-    indicator_count = sum(1 for indicator in python_indicators if indicator in response)
-    
-    if indicator_count >= 3 and '\n' in response:
-        return response.strip()
-    
-    return None
-
-def categorize_error(error_message):
-    error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", "ValueError", "ImportError", "RuntimeError", "AttributeError", "KeyError", "IndexError"]
-    for error_type in error_types:
-        if error_type in error_message:
-            return error_type
-    return "Other"
-
-def run_generated_code(code):
-    try:
-        with open("generated_code_meeting_code.py", "w") as file:
-            file.write(code)
-        result = subprocess.run(["python", "generated_code_meeting_code.py"], capture_output=True, text=True, check=True)
-        output = result.stdout.strip()
-        return output, None  # No error occurred
-    except subprocess.CalledProcessError as e:
-        error_type = categorize_error(e.stderr)
-        return None, error_type  # Error occurred
-
-def convert_to_24hr_no_leading_zero(time_str):
+def convert_to_24hour(time_str):
     """Convert time string to 24-hour format without leading zeros."""
-    if not time_str:
-        return ""
+    time_str = time_str.replace(" ", "").upper()
+    
+    if 'AM' not in time_str and 'PM' not in time_str:
+        try:
+            hours, minutes = map(int, time_str.split(':'))
+            if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
+                return None
+            return f"{hours}:{minutes:02d}"
+        except:
+            return None
+    
+    time_part = time_str[:-2]
+    period = time_str[-2:]
     
     try:
-        # Remove any spaces and make uppercase
-        time_str = time_str.strip().replace(" ", "").upper()
-        time_part = time_str
-        
-        # Check for AM/PM
-        period = None
-        if "AM" in time_str:
-            period = "AM"
-            time_part = time_str.replace("AM", "")
-        elif "PM" in time_str:
-            period = "PM"
-            time_part = time_str.replace("PM", "")
-        
-        # Split hours and minutes
-        if ":" in time_part:
-            hours, minutes = time_part.split(":")
+        if ':' in time_part:
+            hours, minutes = map(int, time_part.split(':'))
         else:
-            hours = time_part
-            minutes = "00"
-        
-        # Convert to integer hours
-        hours = int(hours)
-        
-        # Apply 24-hour conversion if period exists
-        if period == "PM" and hours != 12:
-            hours += 12
-        elif period == "AM" and hours == 12:
-            hours = 0
-        
-        # Format without leading zeros
-        return f"{hours}:{minutes}"
+            hours = int(time_part)
+            minutes = 0
+    except:
+        return None
     
-    except Exception as e:
-        logging.error(f"Error converting time string '{time_str}': {e}")
-        return ""
+    if hours < 0 or hours > 12 or minutes < 0 or minutes > 59:
+        return None
+    
+    if period == "PM" and hours != 12:
+        hours += 12
+    elif period == "AM" and hours == 12:
+        hours = 0
+    
+    return f"{hours}:{minutes:02d}"
 
 def parse_golden_plan(golden_plan):
     """Parse the golden plan into structured itinerary format."""
@@ -227,27 +100,24 @@ def parse_golden_plan(golden_plan):
         if not step:
             continue
             
-        # Parse start action
         if step.startswith("You start at"):
             match = re.search(r"You start at (.+?) at (.+?)\.", step)
             if match:
                 current_location = match.group(1)
-                start_time = convert_to_24hr_no_leading_zero(match.group(2))
+                start_time = convert_to_24hour(match.group(2))
                 
-        # Parse travel action
         elif "travel to" in step:
             match = re.search(r"You travel to (.+?) in (\d+) minutes and arrive at (.+?)\.", step)
             if match:
                 current_location = match.group(1)
-                arrival_time = convert_to_24hr_no_leading_zero(match.group(3))
+                arrival_time = convert_to_24hour(match.group(3))
                 
-        # Parse meet action
         elif "meet" in step and "for" in step:
             match = re.search(r"You meet (.+?) for (\d+) minutes from (.+?) to (.+?)\.", step)
             if match and current_location:
                 person = match.group(1)
-                start_time = convert_to_24hr_no_leading_zero(match.group(3))
-                end_time = convert_to_24hr_no_leading_zero(match.group(4))
+                start_time = convert_to_24hour(match.group(3))
+                end_time = convert_to_24hour(match.group(4))
                 
                 itinerary.append({
                     "action": "meet",
@@ -259,117 +129,88 @@ def parse_golden_plan(golden_plan):
                 
     return itinerary
 
-def parse_model_output(model_output):
-    """Parse the model's JSON output into structured itinerary format."""
-    if not model_output:
-        return None
+def compare_itineraries(model_itinerary, golden_itinerary):
+    """Compare two itineraries and return True if they match exactly."""
+    if len(model_itinerary) != len(golden_itinerary):
+        return False
     
-    # If we already have a dictionary (from direct code execution), just normalize it
-    if isinstance(model_output, dict):
-        return normalize_itinerary(model_output)
-    
-    # Handle SOLUTION: prefix case - extract the actual content
-    if isinstance(model_output, str):
-        model_output = model_output.strip()
-        if model_output.startswith("SOLUTION:"):
-            model_output = model_output[len("SOLUTION:"):].strip()
-    
-    # First try to parse the output directly as JSON (in case it's just the JSON)
-    try:
-        if isinstance(model_output, str):
-            itinerary_data = json.loads(model_output)
-            return normalize_itinerary(itinerary_data)
-    except json.JSONDecodeError:
-        pass
-    
-    # If direct JSON parsing fails, look for JSON in print output
-    json_pattern = r'\{.*?"itinerary"\s*:\s*\[.*?\]\}'
-    matches = re.search(json_pattern, model_output, re.DOTALL)
-    if matches:
-        try:
-            itinerary_data = json.loads(matches.group(0))
-            return normalize_itinerary(itinerary_data)
-        except json.JSONDecodeError:
-            pass
-    
-    # If we still haven't found JSON, try to find the last dictionary-looking structure
-    dict_pattern = r'\{[\s\S]*?\}'
-    matches = re.findall(dict_pattern, model_output)
-    if matches:
-        # Try each match from last to first (most likely the output is at the end)
-        for match in reversed(matches):
-            try:
-                itinerary_data = json.loads(match)
-                if "itinerary" in itinerary_data:
-                    return normalize_itinerary(itinerary_data)
-            except json.JSONDecodeError:
-                continue
-    
-    return None
-
-def normalize_itinerary(itinerary_data):
-    """Normalize the itinerary data into our standard format."""
-    if not isinstance(itinerary_data, dict) or "itinerary" not in itinerary_data:
-        return None
-    
-    itinerary = itinerary_data.get("itinerary", [])
-    normalized_itinerary = []
-    
-    for step in itinerary:
-        if not isinstance(step, dict):
-            continue
+    for model_meet, golden_meet in zip(model_itinerary, golden_itinerary):
+        if not isinstance(model_meet, dict) or not isinstance(golden_meet, dict):
+            return False
             
-        # Normalize action and location
-        action = step.get("action", "").lower()
-        if action != "meet":
-            continue  # We only care about meet actions in this format
-            
-        location = step.get("location", "Unknown")
-        person = step.get("person", "Unknown")
-        
-        # Handle time formatting
-        start_time = convert_to_24hr_no_leading_zero(step.get("start_time", ""))
-        end_time = convert_to_24hr_no_leading_zero(step.get("end_time", ""))
-        
-        # Create cleaned step
-        normalized_step = {
-            "action": action,
-            "location": location,
-            "person": person,
-            "start_time": start_time,
-            "end_time": end_time
-        }
-        
-        normalized_itinerary.append(normalized_step)
+        for field in ["action", "location", "person", "start_time", "end_time"]:
+            if model_meet.get(field) != golden_meet.get(field):
+                return False
     
-    return normalized_itinerary
+    return True
 
 def format_itinerary_compact(itinerary):
     """Convert itinerary to compact string representation for display."""
-    if not itinerary:
-        return "None"
-    
     parts = []
     
-    for step in itinerary:
-        if not isinstance(step, dict):
+    for meeting in itinerary:
+        if not isinstance(meeting, dict):
             continue
             
-        action = step.get("action")
-        location = step.get("location", "Unknown")
-        person = step.get("person", "Unknown")
-        start_time = step.get("start_time", "?:??")
-        end_time = step.get("end_time", "?:??")
+        action = meeting.get("action", "meet")
+        location = meeting.get("location", "Unknown")
+        person = meeting.get("person", "Unknown")
+        start_time = meeting.get("start_time", "?")
+        end_time = meeting.get("end_time", "?")
         
-        if action == "meet":
-            parts.append(f"Meet {person} at {location} ({start_time}-{end_time})")
+        parts.append(f"{action} {person} at {location} ({start_time}-{end_time})")
     
     return " → ".join(parts)
 
+def extract_reasoning(response):
+    """Attempt to extract the reasoning portion from the model's response."""
+    # Try to find text before the JSON output
+    json_match = re.search(r'\{.*\}', response, re.DOTALL)
+    if json_match:
+        reasoning = response[:json_match.start()].strip()
+    else:
+        reasoning = response.strip()
+    return reasoning if reasoning else "No reasoning provided"
+
+def count_tokens(text):
+    """Count tokens using tiktoken."""
+    try:
+        encoding = tiktoken.encoding_for_model("gpt-4")
+    except ValueError:
+        encoding = tiktoken.get_encoding("cl100k_base")
+    tokens = encoding.encode(text)
+    return len(tokens)
+
+def extract_json_response(response):
+    """Extract JSON from response, handling both direct JSON and SOLUTION wrapper cases."""
+    try:
+        # First try to parse the entire response as JSON
+        data = json.loads(response)
+        
+        # Check if it's wrapped in a SOLUTION object
+        if isinstance(data, dict) and "SOLUTION" in data and "itinerary" in data["SOLUTION"]:
+            return data["SOLUTION"]["itinerary"]
+        elif isinstance(data, dict) and "itinerary" in data:
+            return data["itinerary"]
+        return []
+    except json.JSONDecodeError:
+        # If full response isn't JSON, try to find JSON portion
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            try:
+                data = json.loads(json_match.group(0))
+                if isinstance(data, dict) and "SOLUTION" in data and "itinerary" in data["SOLUTION"]:
+                    return data["SOLUTION"]["itinerary"]
+                elif isinstance(data, dict) and "itinerary" in data:
+                    return data["itinerary"]
+                return []
+            except json.JSONDecodeError:
+                return []
+    return []
+
 async def main():
-    # Initialize the model engine
-    engine = initialize_engine(args.model)
-    ai = Kani(engine)
+    # Initialize the Kani AI with the selected model
+    ai = Kani(HuggingEngine(model_id=args.model))
 
     # Initialize state
     state = EvaluationState()
@@ -377,109 +218,166 @@ async def main():
 
     # Determine file open mode
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
+    json_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    # Ensure the JSON file exists with the correct structure
-    if not os.path.exists("ML-L-3.1-70B_code_meeting_results.json") or not state_loaded:
-        with open("ML-L-3.1-70B_code_meeting_results.json", "w") as json_file:
-            json.dump({"0shot": []}, json_file, indent=4)
-
-    with open("ML-L-3.1-70B_code_meeting_results.txt", txt_mode) as txt_file:
-        # Write header if this is a fresh run
+    with open('DS-R1-70B-REASON_text_meeting_results.txt', txt_mode) as txt_file, \
+         open('DS-R1-70B-REASON_text_meeting_results.json', json_mode) as json_file:
+        
         if not state_loaded or state.first_run:
-            with open("ML-L-3.1-70B_code_meeting_results.json", "w") as json_file:
-                json.dump({"0shot": []}, json_file, indent=4)
+            json_file.write("")
             state.first_run = False
 
         for example_id, example in meeting_examples.items():
-            # Skip already processed examples
             if example_id in state.processed_examples:
                 continue
                 
-            prompt = example["prompt_0shot"]
-            golden_plan = example["golden_plan"]
-            full_prompt = prefix_message + prompt + suffix_message
-            correct_status = False
+            prompt = example['prompt_0shot']
+            golden_plan = example['golden_plan']
 
+            # Parse golden plan into structured format
+            golden_itinerary = parse_golden_plan(golden_plan)
+
+            # Keep the prompt exactly the same as before
+            structured_prompt = (
+                "You are an AI meeting planner and your task is to schedule meetings efficiently. "
+                "Consider travel times and constraints carefully to optimize the schedule. "
+                f"{prompt}\n\nPlease provide your meeting plan in the following exact JSON format:\n"
+                "{\n"
+                '  "itinerary": [\n'
+                '    {"action": "meet", "location": "Location Name", "person": "Person Name", "start_time": "H:MM", "end_time": "H:MM"},\n'
+                '    {"action": "meet", "location": "Location Name", "person": "Person Name", "start_time": "H:MM", "end_time": "H:MM"}\n'
+                "  ]\n"
+                "}\n"
+                "Note: Times should be in 24-hour format without leading zeros (e.g., '9:30' not '09:30', '13:30' not '1:30PM')."
+            )
+
+            # Run the model
+            async def get_model_response():
+                full_response = ""
+                async for token in ai.chat_round_stream(structured_prompt):
+                    full_response += token
+                    print(token, end="", flush=True)
+                print()
+                return full_response.strip()
+            
             try:
-                response = await ai.chat_round_str(full_prompt)
-                code = extract_code(response)
+                model_response = await get_model_response()
+                print(f"Model response: {model_response}")
+                
+                # Extract reasoning and count tokens
+                model_reason = extract_reasoning(model_response)
+                try:
+                    token_count = count_tokens(model_reason)
+                    state.total_reasoning_tokens += token_count
+                    print(f"Number of Tokens for {example_id}: {token_count}")
+                except Exception as e:
+                    print(f"Error counting tokens: {e}")
+                    token_count = 0
+                
+                # Extract JSON itinerary from response
+                model_itinerary = extract_json_response(model_response)
+                
+                # Clean and validate the itinerary
+                cleaned_itinerary = []
+                for meeting in model_itinerary:
+                    if not isinstance(meeting, dict):
+                        continue
+                        
+                    action = meeting.get("action", "").lower()
+                    if action != "meet":
+                        continue
+                        
+                    location = meeting.get("location", "Unknown")
+                    person = meeting.get("person", "Unknown")
+                    
+                    start_time = meeting.get("start_time")
+                    end_time = meeting.get("end_time")
+                    
+                    if start_time:
+                        start_time = convert_to_24hour(start_time)
+                    if end_time:
+                        end_time = convert_to_24hour(end_time)
+                    
+                    if not start_time or not end_time:
+                        continue
+                        
+                    cleaned_itinerary.append({
+                        "action": action,
+                        "location": location,
+                        "person": person,
+                        "start_time": start_time,
+                        "end_time": end_time
+                    })
+                
+                model_itinerary = cleaned_itinerary
+                is_correct = compare_itineraries(model_itinerary, golden_itinerary)
 
-                if code:
-                    code_output, error_type = run_generated_code(code)
-                    predicted_plan = parse_model_output(code_output) if code_output else None
-                else:
-                    predicted_plan = None
-                    error_type = "NoCodeGenerated"
-
-                expected_plan = parse_golden_plan(golden_plan)
-
-                state.expected_outputs_0shot.append(expected_plan)
-                state.predicted_outputs_0shot.append(predicted_plan)
-                if error_type is None:
-                    state.no_error_count_0shot += 1
-                    if predicted_plan == expected_plan:
-                        state.correct_output_count_0shot += 1
-                        correct_status = True
-
-                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                line = (
-                    f"{example_id}. [{timestamp}] | PROMPT TYPE: prompt_0shot | Correct: {correct_status} | "
-                    f"ANSWER: {format_itinerary_compact(predicted_plan)} | "
-                    f"EXPECTED: {format_itinerary_compact(expected_plan)} | ERROR: {'Yes' if error_type else 'No'}"
-                )
-                logging.info(line)
-                txt_file.write(line + "\n")
-
-                json_output = {
-                    "final_program_time": {
-                        "itinerary": predicted_plan if predicted_plan else []
-                    },
-                    "expected_time": {
-                        "itinerary": expected_plan if expected_plan else []
-                    },
-                    "has_error": bool(error_type),
-                    "raw_model_response": response,
-                    "count": example_id
+                result_entry = {
+                    "final_program_time": {"itinerary": model_itinerary},
+                    "expected_time": {"itinerary": golden_itinerary},
+                    "count": example_id,
+                    "is_correct": is_correct,
+                    "reasoning_token_count": token_count,
+                    "raw_model_response": model_response,
+                    "raw_model_reasoning": model_reason
                 }
 
-                # Update JSON file
-                with open("ML-L-3.1-70B_code_meeting_results.json", "r+") as json_file:
-                    file_data = json.load(json_file)
-                    file_data["0shot"].append(json_output)
-                    json_file.seek(0)
-                    json.dump(file_data, json_file, indent=4)
-                    json_file.truncate()
+                state.results_0shot.append(result_entry)
 
-                # Update processed examples and save state
+                model_display = format_itinerary_compact(model_itinerary)
+                golden_display = format_itinerary_compact(golden_itinerary)
+                
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                output_line = (
+                    f"{example_id}. [{timestamp}] | Correct: {is_correct} | "
+                    f"ANSWER: {model_display} | EXPECTED: {golden_display} | "
+                    f"REASONING TOKENS: {token_count}"
+                )
+                print(output_line)
+                txt_file.write(f"{output_line}\n")
+
                 state.processed_examples.add(example_id)
                 state.save()
 
-                # Clear memory
-                del response, code, code_output, predicted_plan, expected_plan
-                gc.collect()
-                torch.cuda.empty_cache()
-
             except Exception as e:
-                logging.error(f"Error processing prompt {example_id}: {e}")
+                print(f"Error processing example {example_id}: {e}")
 
-        # Final results
-        end_time = datetime.datetime.now()
-        total_runtime = state.previous_time + (end_time - state.start_time).total_seconds()
+        current_time = datetime.datetime.now()
+        total_runtime = state.previous_time + (current_time - state.start_time)
         
-        accuracy_0shot = (state.correct_output_count_0shot / len(state.expected_outputs_0shot)) * 100 if state.expected_outputs_0shot else 0
-        no_error_accuracy_0shot = (state.correct_output_count_0shot / state.no_error_count_0shot) * 100 if state.no_error_count_0shot > 0 else 0
+        correct_count = sum(1 for result in state.results_0shot if result["is_correct"])
+        total_count = len(state.results_0shot)
+        accuracy = correct_count / total_count if total_count > 0 else 0
 
-        accuracy_line = (
-            f"\n0-shot prompts: Model guessed {state.correct_output_count_0shot} out of {len(state.expected_outputs_0shot)} correctly.\n"
-            f"Accuracy: {accuracy_0shot:.2f}%\n"
-            f"\n0-shot prompts with no errors: {state.correct_output_count_0shot} out of {state.no_error_count_0shot} produced correct outputs.\n"
-            f"No-error accuracy: {no_error_accuracy_0shot:.2f}%\n"
-            f"\nTotal time taken: {total_runtime} seconds"
-        )
+        # Calculate average tokens (fixed the division error)
+        average_tokens = state.total_reasoning_tokens / total_count if total_count > 0 else 0
+        
+        final_results = {
+            "0shot": state.results_0shot,
+            "metadata": {
+                "model": args.model,
+                "start_time": state.start_time.isoformat(),
+                "end_time": current_time.isoformat(),
+                "total_runtime_seconds": total_runtime.total_seconds(),
+                "accuracy": accuracy,
+                "correct_count": correct_count,
+                "total_count": total_count,
+                "total_reasoning_tokens": state.total_reasoning_tokens,
+                "average_reasoning_tokens": average_tokens
+            }
+        }
+        json.dump(final_results, json_file, indent=4)
 
-        txt_file.write(accuracy_line)
+        txt_file.write("\n=== Final Results ===\n")
+        txt_file.write(f"Model: {args.model}\n")
+        txt_file.write(f"Start time: {state.start_time}\n")
+        txt_file.write(f"End time: {current_time}\n")
+        txt_file.write(f"Total runtime: {total_runtime}\n")
+        txt_file.write(f"Accuracy: {correct_count}/{total_count} ({accuracy:.2%})\n")
+        txt_file.write(f"Total reasoning tokens: {state.total_reasoning_tokens}\n")
+        txt_file.write(f"Average reasoning tokens: {average_tokens:.2f}\n")
+
+    print("Processing complete. Results saved.")
 
 if __name__ == "__main__":
-    # Set environment variable to reduce memory fragmentation
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     asyncio.run(main())

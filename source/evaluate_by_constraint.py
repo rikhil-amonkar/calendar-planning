@@ -3,7 +3,7 @@ from openai import OpenAI
 import json
 import os
 
-with open("../../scheduling_key.json") as f:
+with open("../../openai_research/ai2_openai_key.json") as f:
     key = json.load(f)["openai"]
 client = OpenAI(api_key=key)
 
