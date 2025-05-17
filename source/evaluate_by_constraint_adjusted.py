@@ -346,6 +346,7 @@ for task in tasks:
                 itinerary = pred_dict.get("itinerary")
                 itinerary = [{
                                 "action": x["action"],
+                                "location": x["location"],
                                 "person": x["person"],
                                 "start_time": x["start_time"],
                                 "end_time": x["end_time"]
