@@ -37,8 +37,8 @@ def split_json(input_file, output_folder):
                 print(f"Warning: Expected a dictionary, but got {type(item)} with value '{item}'. Skipping item {idx + 1}.")
 
 # Example usage
-input_file = 'calendar_scheduling/100_random_0shot_text_outputs_new/O3-M-25-01-31_forceJSON_text_calendar_results.json'  # Specify the input file path here
-output_folder = '../output/Plan/o3-mini-2025-01-31/calendar'  # Specify the output folder path here
+input_file = 'trip_planning/100_random_0shot_text_outputs/DS-R1-70B-REASON_text_trip_results.json'  # Specify the input file path here
+output_folder = '../output/Plan/DeepSeek-R1-Distill-Llama-70B/trip/formatted_output'  # Specify the output folder path here
 
 split_json(input_file, output_folder)
 

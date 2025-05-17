@@ -220,8 +220,8 @@ async def main():
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
     json_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    with open('DS-R1-8B-REASON_text_meeting_results.txt', txt_mode) as txt_file, \
-         open('DS-R1-8B-REASON_text_meeting_results.json', json_mode) as json_file:
+    with open('DS-R1-70B-REASON_text_meeting_results.txt', txt_mode) as txt_file, \
+         open('DS-R1-70B-REASON_text_meeting_results.json', json_mode) as json_file:
         
         if not state_loaded or state.first_run:
             json_file.write("")
