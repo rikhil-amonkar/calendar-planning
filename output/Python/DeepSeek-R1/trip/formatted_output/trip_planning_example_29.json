@@ -8,7 +8,7 @@
                         "place": "Dubrovnik"
                     },
                     {
-                        "day_range": "Day 8-8",
+                        "day_range": "Day 7-9",
                         "place": "Frankfurt"
                     },
                     {
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-7\", \"place\": \"Dubrovnik\"}, {\"day_range\": \"Day 8-8\", \"place\": \"Frankfurt\"}, {\"day_range\": \"Day 9-10\", \"place\": \"Krakow\"}]}",
+            "raw_model_response": "import json\n\ndef calculate_itinerary():\n    required_days = {\n        'Krakow': 2,\n        'Dubrovnik': 7,\n        'Frankfurt': 3\n    }\n    flights = {\n        'Frankfurt': ['Krakow', 'Dubrovnik'],\n        'Krakow': ['Frankfurt'],\n        'Dubrovnik': ['Frankfurt']\n    }\n    itinerary = []\n    \n    # Assign Dubrovnik first\n    dub_start = 1\n    dub_end = dub_start + required_days['Dubrovnik'] - 1\n    itinerary.append({'day_range': f'Day {dub_start}-{dub_end}', 'place': 'Dubrovnik'})\n    \n    # Transition to Frankfurt on day 7\n    frank_start = dub_end\n    frank_end = frank_start + required_days['Frankfurt'] - 1\n    itinerary.append({'day_range': f'Day {frank_start}-{frank_end}', 'place': 'Frankfurt'})\n    \n    # Transition to Krakow on day 9\n    krakow_start = frank_end\n    krakow_end = krakow_start + required_days['Krakow'] - 1\n    itinerary.append({'day_range': f'Day {krakow_start}-{krakow_end}', 'place': 'Krakow'})\n    \n    return {'itinerary': itinerary}\n\nprint(json.dumps(calculate_itinerary()))",
             "count": "trip_planning_example_29"
         }
     ]

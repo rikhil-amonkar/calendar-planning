@@ -4,7 +4,11 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1-4",
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-8",
                         "place": "Edinburgh"
                     },
                     {
@@ -16,15 +20,15 @@
                         "place": "Stuttgart"
                     },
                     {
-                        "day_range": "Day 14-15",
+                        "day_range": "Day 13-14",
                         "place": "Split"
                     },
                     {
-                        "day_range": "Day 16-19",
+                        "day_range": "Day 14-17",
                         "place": "Athens"
                     },
                     {
-                        "day_range": "Day 20-20",
+                        "day_range": "Day 17-20",
                         "place": "Mykonos"
                     }
                 ]
@@ -62,7 +66,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Edinburgh\"}, {\"day_range\": \"Day 8-11\", \"place\": \"Krakow\"}, {\"day_range\": \"Day 11-13\", \"place\": \"Stuttgart\"}, {\"day_range\": \"Day 14-15\", \"place\": \"Split\"}, {\"day_range\": \"Day 16-19\", \"place\": \"Athens\"}, {\"day_range\": \"Day 20-20\", \"place\": \"Mykonos\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    cities_order = [\n        {'name': 'Venice', 'days': 5},\n        {'name': 'Edinburgh', 'days': 4},\n        {'name': 'Krakow', 'days': 4},\n        {'name': 'Stuttgart', 'days': 3},\n        {'name': 'Split', 'days': 2},\n        {'name': 'Athens', 'days': 4},\n        {'name': 'Mykonos', 'days': 4}\n    ]\n    \n    flight_graph = {\n        'Venice': {'Edinburgh', 'Stuttgart', 'Athens'},\n        'Edinburgh': {'Krakow', 'Stuttgart', 'Athens', 'Venice'},\n        'Krakow': {'Split', 'Edinburgh', 'Stuttgart', 'Venice'},\n        'Stuttgart': {'Venice', 'Krakow', 'Edinburgh', 'Athens', 'Split'},\n        'Split': {'Krakow', 'Athens', 'Stuttgart'},\n        'Athens': {'Split', 'Stuttgart', 'Edinburgh', 'Mykonos', 'Venice'},\n        'Mykonos': {'Athens'}\n    }\n    \n    for i in range(len(cities_order) - 1):\n        current = cities_order[i]['name']\n        next_city = cities_order[i+1]['name']\n        if next_city not in flight_graph.get(current, set()):\n            raise ValueError(f\"No direct flight from {current} to {next_city}\")\n    \n    start_day = 1\n    itinerary = []\n    for city in cities_order:\n        name = city['name']\n        days = city['days']\n        end_day = start_day + days - 1\n        day_range = f\"Day {start_day}-{end_day}\"\n        itinerary.append({\"day_range\": day_range, \"place\": name})\n        start_day = end_day\n    \n    stuttgart_entry = next(e for e in itinerary if e['place'] == 'Stuttgart')\n    start, end = map(int, stuttgart_entry['day_range'].split(' ')[1].split('-'))\n    if not (start <= 11 and end >= 13):\n        raise ValueError(\"Stuttgart days do not cover workshop period\")\n    \n    split_entry = next(e for e in itinerary if e['place'] == 'Split')\n    start, end = map(int, split_entry['day_range'].split(' ')[1].split('-'))\n    if not (start <= 14 and end >= 13):\n        raise ValueError(\"Split days do not cover meeting period\")\n    \n    krakow_entry = next(e for e in itinerary if e['place'] == 'Krakow')\n    start, end = map(int, krakow_entry['day_range'].split(' ')[1].split('-'))\n    if not (start <= 11 and end >= 8):\n        raise ValueError(\"Krakow days do not cover meeting period\")\n    \n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_875"
         }
     ]

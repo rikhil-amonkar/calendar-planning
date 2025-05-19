@@ -12,7 +12,7 @@
                         "place": "Amsterdam"
                     },
                     {
-                        "day_range": "Day 9-13",
+                        "day_range": "Day 8-12",
                         "place": "Brussels"
                     },
                     {
@@ -20,12 +20,12 @@
                         "place": "Reykjavik"
                     },
                     {
-                        "day_range": "Day 14-18",
-                        "place": "Vienna"
-                    },
-                    {
                         "day_range": "Day 16-19",
                         "place": "Berlin"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Vienna"
                     }
                 ]
             },
@@ -58,7 +58,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Edinburgh\"}, {\"day_range\": \"Day 5-8\", \"place\": \"Amsterdam\"}, {\"day_range\": \"Day 9-13\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 12-16\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 14-18\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 16-19\", \"place\": \"Berlin\"}]}",
+            "raw_model_response": "import json\n\n# Define input parameters\ncities_order = ['Edinburgh', 'Amsterdam', 'Brussels', 'Reykjavik', 'Berlin', 'Vienna']\nrequired_days = {\n    'Edinburgh': 5,\n    'Amsterdam': 4,\n    'Brussels': 5,\n    'Reykjavik': 5,\n    'Berlin': 4,\n    'Vienna': 5\n}\n\ndate_constraints = {\n    'Amsterdam': (5, 8),\n    'Berlin': (16, 19),\n    'Reykjavik': (12, 16)\n}\n\ndirect_flights = {\n    ('Edinburgh', 'Berlin'), ('Edinburgh', 'Amsterdam'), ('Edinburgh', 'Brussels'),\n    ('Amsterdam', 'Berlin'), ('Amsterdam', 'Edinburgh'), ('Amsterdam', 'Brussels'),\n    ('Amsterdam', 'Vienna'), ('Amsterdam', 'Reykjavik'), ('Vienna', 'Berlin'),\n    ('Vienna', 'Brussels'), ('Vienna', 'Reykjavik'), ('Vienna', 'Amsterdam'),\n    ('Berlin', 'Edinburgh'), ('Berlin', 'Amsterdam'), ('Berlin', 'Vienna'),\n    ('Berlin', 'Brussels'), ('Berlin', 'Reykjavik'), ('Brussels', 'Edinburgh'),\n    ('Brussels', 'Berlin'), ('Brussels', 'Vienna'), ('Brussels', 'Reykjavik'),\n    ('Brussels', 'Amsterdam'), ('Reykjavik', 'Vienna'), ('Reykjavik', 'Amsterdam'),\n    ('Reykjavik', 'Brussels'), ('Reykjavik', 'Berlin')\n}\n\n# Validate flight connections\nvalid_order = True\nfor i in range(len(cities_order) - 1):\n    current = cities_order[i]\n    next_city = cities_order[i + 1]\n    if (current, next_city) not in direct_flights and (next_city, current) not in direct_flights:\n        valid_order = False\n        break\n\nif not valid_order:\n    print(json.dumps({\"itinerary\": []}))\nelse:\n    # Calculate day ranges\n    current_day = 1\n    itinerary = []\n    for city in cities_order:\n        days = required_days[city]\n        start = current_day\n        end = start + days - 1\n        itinerary.append((city, start, end))\n        current_day = end  # Transition day is same as end day\n\n    # Check date constraints\n    meets_constraints = True\n    for city, start, end in itinerary:\n        if city in date_constraints:\n            req_start, req_end = date_constraints[city]\n            if not (start <= req_start and end >= req_end):\n                meets_constraints = False\n                break\n\n    # Validate total duration\n    total_days = itinerary[-1][2] if itinerary else 0\n    if total_days != 23 or not meets_constraints:\n        print(json.dumps({\"itinerary\": []}))\n    else:\n        # Format output\n        formatted = []\n        for entry in itinerary:\n            city = entry[0]\n            start = entry[1]\n            end = entry[2]\n            day_range = f\"Day {start}-{end}\" if start != end else f\"Day {start}\"\n            formatted.append({\"day_range\": day_range, \"place\": city})\n        print(json.dumps({\"itinerary\": formatted}))",
             "count": "trip_planning_example_684"
         }
     ]

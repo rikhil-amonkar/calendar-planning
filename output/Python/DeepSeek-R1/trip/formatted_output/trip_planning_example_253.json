@@ -4,11 +4,11 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1-6",
+                        "day_range": "Day 1-7",
                         "place": "Vienna"
                     },
                     {
-                        "day_range": "Day 6-9",
+                        "day_range": "Day 7-9",
                         "place": "Lyon"
                     },
                     {
@@ -42,7 +42,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-6\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 6-9\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 9-11\", \"place\": \"Amsterdam\"}, {\"day_range\": \"Day 11-14\", \"place\": \"Santorini\"}]}",
+            "raw_model_response": "import json\n\ndef calculate_itinerary():\n    cities = {\n        'Vienna': 7,\n        'Lyon': 3,\n        'Amsterdam': 3,\n        'Santorini': 4\n    }\n    \n    fixed_events = {\n        'Lyon': {'start': 7, 'end': 9},\n        'Amsterdam': {'start': 9, 'end': 11}\n    }\n    \n    itinerary = []\n    \n    # Vienna: before Lyon, 7 days\n    vienna_end = fixed_events['Lyon']['start']  # Fly to Lyon on day7\n    itinerary.append({'day_range': f'Day 1-{vienna_end}', 'place': 'Vienna'})\n    \n    # Lyon: fixed days 7-9\n    lyon_start = fixed_events['Lyon']['start']\n    lyon_end = fixed_events['Lyon']['end']\n    itinerary.append({'day_range': f'Day {lyon_start}-{lyon_end}', 'place': 'Lyon'})\n    \n    # Amsterdam: fixed days 9-11\n    ams_start = fixed_events['Amsterdam']['start']\n    ams_end = fixed_events['Amsterdam']['end']\n    itinerary.append({'day_range': f'Day {ams_start}-{ams_end}', 'place': 'Amsterdam'})\n    \n    # Santorini: remaining days after Amsterdam\n    santorini_start = ams_end  # Fly on day11\n    santorini_end = 14\n    itinerary.append({'day_range': f'Day {santorini_start}-{santorini_end}', 'place': 'Santorini'})\n    \n    return {'itinerary': itinerary}\n\nprint(json.dumps(calculate_itinerary(), indent=None))",
             "count": "trip_planning_example_253"
         }
     ]

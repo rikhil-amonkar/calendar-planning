@@ -83,10 +83,9 @@ def load_prompts(file_path):
         raise
 
 prefix_message = (
-    "You are an expert computational trip planner. Your task is to write a Python program that "
-    "algorithmically calculates the optimal itinerary based on the participants' constraints.\n"
-    "The program must actually compute the plan using the given parameters, not just print a pre-determined answer.\n"
-    "Input parameters:\n"
+    "You are an expert computational trip planner.\n"
+    "Your task is to write a Python program that algorithmically calculates the optimal itinerary based on the participants' constraints.\n"
+    "The program must actually compute the plan using the given parameters, not just print a predetermined answer.\n"
 )
 
 suffix_message = (
@@ -94,13 +93,12 @@ suffix_message = (
     "1. Takes the above trip constraints as input variables\n"
     "2. Computes the optimal itinerary using logical rules and calculations\n"
     "3. Outputs the result as a JSON-formatted dictionary with an 'itinerary' key containing a list of day-place mappings.\n"
-    "Example structure of output from running code: {\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Helsinki\"}, {\"day_range\": \"Day 5-9\", \"place\": \"Barcelona\"}, {\"day_range\": \"Day 9-14\", \"place\": \"Florence\"}]}"
-    "\n"
+    "Example structure of output from running code: {\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Helsinki\"}, {\"day_range\": \"Day 5-9\", \"place\": \"Barcelona\"}, {\"day_range\": \"Day 9-14\", \"place\": \"Florence\"}]}\n"
+    "Note that the JSON structure should be what the Python program outputs, not just a string representation.\n"
+    "4. Note that if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.\n"
     "The program must include:\n"
-    "- Actual calculations to determine durations in each location\n"
-    "- Proper sequencing of destinations based on the constraints\n"
-    "\n"
-    "First, provide your reasoning for the itinerary plan. Then output only the complete Python code with no additional text or explanation.\n"
+    "- Actual calculations to determine durations and transitions\n"
+    "Output only the complete Python code with no additional text or explanation.\n"
     "The code must run independently and output valid JSON when executed."
 )
 
@@ -290,7 +288,7 @@ async def run_model():
 
     txt_mode = 'a' if state_loaded and not state.first_run else 'w'
 
-    prompts_data = load_prompts("../../data/trip_planning_100.json")
+    prompts_data = load_prompts("../data/trip_planning_100.json")
     prompts_list = list(prompts_data.items())
 
     if not os.path.exists("DS-R1-REASON_code_trip_results.json") or not state_loaded:
@@ -358,11 +356,12 @@ async def run_model():
                     logging.info(line)
                     txt_file.write(line + "\n")
 
+                    # In the run_model() function, modify the json_output creation part:
                     json_output = {
                         "final_program_time": predicted_plan if predicted_plan else {"itinerary": []},
                         "expected_time": expected_plan,
                         "reasoning_token_count": token_count,
-                        "raw_model_response": json.dumps(predicted_plan) if predicted_plan else "",
+                        "raw_model_response": code if code else "",  # Changed this line to use the extracted code directly
                         "raw_model_reasoning": model_reason if model_reason else "",
                         "count": key,
                         "is_correct": correct_status

@@ -8,11 +8,11 @@
                         "place": "Riga"
                     },
                     {
-                        "day_range": "Day 3-4",
+                        "day_range": "Day 2-3",
                         "place": "Amsterdam"
                     },
                     {
-                        "day_range": "Day 5-7",
+                        "day_range": "Day 3-7",
                         "place": "Mykonos"
                     }
                 ]
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Riga\"}, {\"day_range\": \"Day 3-4\", \"place\": \"Amsterdam\"}, {\"day_range\": \"Day 5-7\", \"place\": \"Mykonos\"}]}",
+            "raw_model_response": "import json\n\ndef plan_trip():\n    required_days = {\n        'Riga': 2,\n        'Amsterdam': 2,\n        'Mykonos': 5\n    }\n    flight_graph = {\n        'Amsterdam': ['Mykonos', 'Riga'],\n        'Riga': ['Amsterdam'],\n        'Mykonos': ['Amsterdam']\n    }\n    total_days = 7\n    cities = ['Riga', 'Amsterdam', 'Mykonos']\n    itinerary = []\n    \n    # Validate flight connections\n    valid = True\n    for i in range(len(cities) - 1):\n        if cities[i+1] not in flight_graph[cities[i]]:\n            valid = False\n            break\n    if not valid:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    \n    current_day = 1\n    for idx, city in enumerate(cities):\n        req = required_days[city]\n        start = current_day\n        end = start + req - 1\n        \n        if idx == len(cities) - 1:\n            end = total_days\n            if end - start + 1 < req:\n                print(json.dumps({\"itinerary\": []}))\n                return\n        \n        itinerary.append({\n            \"day_range\": f\"Day {start}-{end}\",\n            \"place\": city\n        })\n        current_day = end\n    \n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    plan_trip()",
             "count": "trip_planning_example_87"
         }
     ]

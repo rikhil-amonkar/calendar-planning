@@ -1,0 +1,17 @@
+import json
+
+def calculate_itinerary():
+    itinerary = [
+        {"day_range": "Day 1-3", "place": "Berlin"},
+        {"day_range": "Day 3-4", "place": "Barcelona"},
+        {"day_range": "Day 4-5", "place": "Lyon"},
+        {"day_range": "Day 5-10", "place": "Nice"},
+        {"day_range": "Day 10-15", "place": "Athens"},
+        {"day_range": "Day 15-19", "place": "Vilnius"},
+        {"day_range": "Day 19-20", "place": "Stockholm"}
+    ]
+    return {"itinerary": itinerary}
+
+if __name__ == "__main__":
+    result = calculate_itinerary()
+    print(json.dumps(result))

@@ -2,36 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-3",
-                        "place": "Mykonos"
-                    },
-                    {
-                        "day_range": "Day 4-8",
-                        "place": "Zurich"
-                    },
-                    {
-                        "day_range": "Day 7-9",
-                        "place": "Prague"
-                    },
-                    {
-                        "day_range": "Day 10-14",
-                        "place": "Bucharest"
-                    },
-                    {
-                        "day_range": "Day 15-19",
-                        "place": "Riga"
-                    },
-                    {
-                        "day_range": "Day 20-21",
-                        "place": "Nice"
-                    },
-                    {
-                        "day_range": "Day 22-26",
-                        "place": "Valencia"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -66,7 +37,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-3\", \"place\": \"Mykonos\"}, {\"day_range\": \"Day 4-8\", \"place\": \"Zurich\"}, {\"day_range\": \"Day 7-9\", \"place\": \"Prague\"}, {\"day_range\": \"Day 10-14\", \"place\": \"Bucharest\"}, {\"day_range\": \"Day 15-19\", \"place\": \"Riga\"}, {\"day_range\": \"Day 20-21\", \"place\": \"Nice\"}, {\"day_range\": \"Day 22-26\", \"place\": \"Valencia\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    durations = {\n        'Mykonos': 3,\n        'Riga': 5,\n        'Prague': 3,\n        'Valencia': 5,\n        'Zurich': 5,\n        'Bucharest': 5,\n        'Nice': 2\n    }\n\n    flight_connections = {\n        'Mykonos': {'Nice', 'Zurich'},\n        'Zurich': {'Mykonos', 'Prague', 'Riga', 'Bucharest', 'Valencia', 'Nice'},\n        'Prague': {'Bucharest', 'Riga', 'Valencia', 'Zurich'},\n        'Valencia': {'Bucharest', 'Zurich', 'Prague'},\n        'Bucharest': {'Prague', 'Valencia', 'Riga', 'Zurich'},\n        'Riga': {'Nice', 'Bucharest', 'Prague', 'Zurich'},\n        'Nice': {'Mykonos', 'Zurich', 'Riga'}\n    }\n\n    itinerary_order = ['Mykonos', 'Zurich', 'Prague', 'Valencia', 'Bucharest', 'Riga', 'Nice']\n    \n    # Validate flight connections\n    valid = True\n    for i in range(len(itinerary_order) - 1):\n        current = itinerary_order[i]\n        next_city = itinerary_order[i+1]\n        if next_city not in flight_connections.get(current, set()):\n            valid = False\n            break\n\n    if not valid:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    # Calculate day ranges\n    current_day = 1\n    itinerary = []\n    for city in itinerary_order:\n        duration = durations[city]\n        end_day = current_day + duration - 1\n        itinerary.append({\n            \"day_range\": f\"Day {current_day}-{end_day}\",\n            \"place\": city\n        })\n        current_day = end_day\n\n    # Verify constraints\n    if (sum(durations.values()) - (len(itinerary_order) - 1) != 22:\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    prague_days = next((e for e in itinerary if e['place'] == 'Prague'), None)\n    mykonos_days = next((e for e in itinerary if e['place'] == 'Mykonos'), None)\n    if not prague_days or prague_days['day_range'] != 'Day 7-9' or not mykonos_days or mykonos_days['day_range'] != 'Day 1-3':\n        print(json.dumps({\"itinerary\": []}))\n        return\n\n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_996"
         }
     ]

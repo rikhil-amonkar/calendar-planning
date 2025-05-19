@@ -2,20 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-6",
-                        "place": "Stuttgart"
-                    },
-                    {
-                        "day_range": "Day 7-10",
-                        "place": "Manchester"
-                    },
-                    {
-                        "day_range": "Day 11-15",
-                        "place": "Seville"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -34,7 +21,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-6\", \"place\": \"Stuttgart\"}, {\"day_range\": \"Day 7-10\", \"place\": \"Manchester\"}, {\"day_range\": \"Day 11-15\", \"place\": \"Seville\"}]}",
+            "raw_model_response": "import json\n\n# Define input parameters\ndays_per_city = {'Stuttgart': 6, 'Seville': 7, 'Manchester': 4}\nflight_map = {'Manchester': ['Seville', 'Stuttgart'], 'Seville': ['Manchester'], 'Stuttgart': ['Manchester']}\n\n# Determine valid route considering constraints and flights\nroute = ['Stuttgart', 'Manchester', 'Seville']\n\n# Calculate day ranges with flight day overlaps\nitinerary = []\ncurrent_day = 1\n\nfor i, city in enumerate(route):\n    duration = days_per_city[city]\n    end_day = current_day + duration - 1\n    itinerary.append({'day_range': f'Day {current_day}-{end_day}', 'place': city})\n    current_day = end_day  # Next city starts on same day via direct flight\n\n# Verify total days match\nassert current_day - 1 == 15, \"Invalid itinerary calculation\"\n\n# Output result\nprint(json.dumps({'itinerary': itinerary}))",
             "count": "trip_planning_example_125"
         }
     ]

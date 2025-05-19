@@ -2,28 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-4",
-                        "place": "Mykonos"
-                    },
-                    {
-                        "day_range": "Day 5-6",
-                        "place": "London"
-                    },
-                    {
-                        "day_range": "Day 7-9",
-                        "place": "Copenhagen"
-                    },
-                    {
-                        "day_range": "Day 10-13",
-                        "place": "Oslo"
-                    },
-                    {
-                        "day_range": "Day 14-16",
-                        "place": "Nice"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -54,7 +33,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Mykonos\"}, {\"day_range\": \"Day 5-6\", \"place\": \"London\"}, {\"day_range\": \"Day 7-9\", \"place\": \"Copenhagen\"}, {\"day_range\": \"Day 10-13\", \"place\": \"Oslo\"}, {\"day_range\": \"Day 14-16\", \"place\": \"Nice\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    flight_graph = {\n        'Mykonos': {'London', 'Nice'},\n        'London': {'Mykonos', 'Copenhagen', 'Oslo', 'Nice'},\n        'Copenhagen': {'London', 'Tallinn', 'Oslo', 'Nice'},\n        'Tallinn': {'Copenhagen', 'Oslo'},\n        'Oslo': {'Tallinn', 'London', 'Copenhagen', 'Nice'},\n        'Nice': {'Mykonos', 'London', 'Oslo', 'Copenhagen'}\n    }\n\n    itinerary_order = [\n        ('Mykonos', 4),\n        ('London', 2),\n        ('Copenhagen', 3),\n        ('Tallinn', 4),\n        ('Oslo', 5),\n        ('Nice', 3)\n    ]\n\n    current_day = 1\n    itinerary = []\n    prev_city = None\n\n    for city, days in itinerary_order:\n        if prev_city is not None:\n            if city not in flight_graph[prev_city]:\n                raise ValueError(f\"No direct flight from {prev_city} to {city}\")\n        start = current_day\n        end = current_day + days - 1\n        itinerary.append({\n            'day_range': f\"Day {start}-{end}\",\n            'place': city\n        })\n        current_day = end\n\n    required_days = {\n        'Mykonos': 4, 'London': 2, 'Copenhagen': 3,\n        'Tallinn': 4, 'Oslo': 5, 'Nice': 3\n    }\n\n    for entry in itinerary:\n        city = entry['place']\n        start, end = map(int, entry['day_range'].split()[1].split('-'))\n        if end - start + 1 != required_days[city]:\n            raise ValueError(f\"Duration mismatch for {city}\")\n\n    oslo_entry = next(e for e in itinerary if e['place'] == 'Oslo')\n    oslo_start = int(oslo_entry['day_range'].split()[1].split('-')[0])\n    oslo_end = int(oslo_entry['day_range'].split('-')[1])\n    if not (10 <= oslo_start <= 14 and 10 <= oslo_end <= 14):\n        raise ValueError(\"Oslo visit doesn't meet friend constraint\")\n\n    nice_entry = next(e for e in itinerary if e['place'] == 'Nice')\n    nice_start = int(nice_entry['day_range'].split()[1].split('-')[0])\n    nice_end = int(nice_entry['day_range'].split('-')[1])\n    if nice_start != 14 or nice_end != 16:\n        raise ValueError(\"Nice visit doesn't meet conference days\")\n\n    print(json.dumps({'itinerary': itinerary})\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_768"
         }
     ]

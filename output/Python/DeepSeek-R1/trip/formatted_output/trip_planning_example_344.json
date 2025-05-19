@@ -2,7 +2,24 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-6",
+                        "place": "Athens"
+                    },
+                    {
+                        "day_range": "Day 6-11",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-20",
+                        "place": "Naples"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -25,7 +42,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\n\ndef calculate_itinerary():\n    constraints = {\n        'total_days': 20,\n        'cities': {\n            'Athens': {'days': 6, 'fixed_start': 1, 'fixed_end': 6},\n            'Naples': {'days': 5, 'fixed_start': 16, 'fixed_end': 20},\n            'Zurich': {'days': 6},\n            'Valencia': {'days': 6}\n        },\n        'direct_flights': {\n            'Valencia': ['Naples', 'Athens', 'Zurich'],\n            'Athens': ['Naples', 'Zurich'],\n            'Zurich': ['Naples', 'Athens', 'Valencia'],\n            'Naples': ['Valencia', 'Athens', 'Zurich']\n        }\n    }\n\n    itinerary = [{'day_range': 'Day 1-6', 'place': 'Athens'}]\n    current_day = 6\n\n    # Zurich segment\n    zurich_duration = constraints['cities']['Zurich']['days']\n    zurich_end = current_day + zurich_duration - 1\n    itinerary.append({'day_range': f'Day {current_day}-{zurich_end}', 'place': 'Zurich'})\n    current_day = zurich_end\n\n    # Valencia segment\n    valencia_duration = constraints['cities']['Valencia']['days']\n    valencia_end = current_day + valencia_duration - 1\n    itinerary.append({'day_range': f'Day {current_day}-{valencia_end}', 'place': 'Valencia'})\n    current_day = valencia_end\n\n    # Naples segment\n    naples_start = constraints['cities']['Naples']['fixed_start']\n    naples_end = constraints['cities']['Naples']['fixed_end']\n    itinerary.append({'day_range': f'Day {naples_start}-{naples_end}', 'place': 'Naples'})\n\n    return {'itinerary': itinerary}\n\nprint(json.dumps(calculate_itinerary()))",
             "count": "trip_planning_example_344"
         }
     ]

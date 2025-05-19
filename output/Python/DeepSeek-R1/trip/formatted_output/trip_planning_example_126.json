@@ -8,11 +8,11 @@
                         "place": "Krakow"
                     },
                     {
-                        "day_range": "Day 6-7",
+                        "day_range": "Day 5-6",
                         "place": "Paris"
                     },
                     {
-                        "day_range": "Day 8-13",
+                        "day_range": "Day 6-11",
                         "place": "Seville"
                     }
                 ]
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Krakow\"}, {\"day_range\": \"Day 6-7\", \"place\": \"Paris\"}, {\"day_range\": \"Day 8-13\", \"place\": \"Seville\"}]}",
+            "raw_model_response": "import json\n\ndef plan_itinerary():\n    cities = {\"Seville\": 6, \"Paris\": 2, \"Krakow\": 5}\n    workshop_constraint = (1, 5)\n    direct_flights = {\"Krakow\": [\"Paris\"], \"Paris\": [\"Krakow\", \"Seville\"], \"Seville\": [\"Paris\"]}\n    \n    itinerary = []\n    current_day = 1\n    \n    # Assign Krakow first due to workshop constraint\n    krakow_end = workshop_constraint[1]\n    itinerary.append({\"day_range\": f\"Day {current_day}-{krakow_end}\", \"place\": \"Krakow\"})\n    current_day = krakow_end\n    \n    # Transition to Paris\n    paris_duration = cities[\"Paris\"]\n    paris_end = current_day + paris_duration - 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{paris_end}\", \"place\": \"Paris\"})\n    current_day = paris_end\n    \n    # Transition to Seville\n    seville_duration = cities[\"Seville\"]\n    seville_end = current_day + seville_duration - 1\n    itinerary.append({\"day_range\": f\"Day {current_day}-{seville_end}\", \"place\": \"Seville\"})\n    \n    return {\"itinerary\": itinerary}\n\nprint(json.dumps(plan_itinerary()))",
             "count": "trip_planning_example_126"
         }
     ]

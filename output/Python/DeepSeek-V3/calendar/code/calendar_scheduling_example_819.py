@@ -1,0 +1,1 @@
+This script schedules a meeting between Julie and Ruth based on their availability and constraints.

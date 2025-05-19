@@ -12,7 +12,7 @@
                         "place": "Vienna"
                     },
                     {
-                        "day_range": "Day 12-18",
+                        "day_range": "Day 11-17",
                         "place": "Vilnius"
                     }
                 ]
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Naples\"}, {\"day_range\": \"Day 5-11\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 12-18\", \"place\": \"Vilnius\"}]}",
+            "raw_model_response": "import json\n\n# Define input parameters\ntotal_days = 17\ncities = {\n    \"Naples\": {\"days\": 5, \"start\": 1, \"end\": 5},\n    \"Vienna\": {\"days\": 7},\n    \"Vilnius\": {\"days\": 7}\n}\nflight_routes = {\n    \"Naples\": [\"Vienna\"],\n    \"Vienna\": [\"Naples\", \"Vilnius\"],\n    \"Vilnius\": [\"Vienna\"]\n}\n\n# Calculate itinerary segments\nitinerary = []\ncurrent_city = \"Naples\"\nstart_day = 1\nend_day = cities[current_city][\"end\"]\nitinerary.append({\n    \"day_range\": f\"Day {start_day}-{end_day}\",\n    \"place\": current_city\n})\n\n# Move to Vienna\ncurrent_city = \"Vienna\"\nstart_day = end_day  # Day 5\nend_day = start_day + cities[current_city][\"days\"] - 1  # 5+7-1=11\nitinerary.append({\n    \"day_range\": f\"Day {start_day}-{end_day}\",\n    \"place\": current_city\n})\n\n# Move to Vilnius\ncurrent_city = \"Vilnius\"\nstart_day = end_day  # Day 11\nend_day = start_day + cities[current_city][\"days\"] - 1  # 11+7-1=17\nitinerary.append({\n    \"day_range\": f\"Day {start_day}-{end_day}\",\n    \"place\": current_city\n})\n\n# Verify total days match\nassert end_day == total_days, \"Itinerary does not match total days\"\n\n# Output result\nprint(json.dumps({\"itinerary\": itinerary}))",
             "count": "trip_planning_example_90"
         }
     ]

@@ -2,36 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-5",
-                        "place": "Frankfurt"
-                    },
-                    {
-                        "day_range": "Day 6-8",
-                        "place": "Vilnius"
-                    },
-                    {
-                        "day_range": "Day 7-9",
-                        "place": "Stuttgart"
-                    },
-                    {
-                        "day_range": "Day 9-10",
-                        "place": "London"
-                    },
-                    {
-                        "day_range": "Day 11-12",
-                        "place": "Santorini"
-                    },
-                    {
-                        "day_range": "Day 13-15",
-                        "place": "Dublin"
-                    },
-                    {
-                        "day_range": "Day 16-20",
-                        "place": "Seville"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -66,7 +37,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Frankfurt\"}, {\"day_range\": \"Day 6-8\", \"place\": \"Vilnius\"}, {\"day_range\": \"Day 7-9\", \"place\": \"Stuttgart\"}, {\"day_range\": \"Day 9-10\", \"place\": \"London\"}, {\"day_range\": \"Day 11-12\", \"place\": \"Santorini\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 16-20\", \"place\": \"Seville\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    cities = {\n        'Seville': 5,\n        'Vilnius': 3,\n        'Santorini': 2,\n        'London': 2,\n        'Stuttgart': 3,\n        'Dublin': 3,\n        'Frankfurt': 5\n    }\n    \n    flights = {\n        'Frankfurt': ['Dublin', 'London', 'Vilnius', 'Stuttgart'],\n        'Dublin': ['Frankfurt', 'London', 'Seville', 'Santorini'],\n        'London': ['Frankfurt', 'Dublin', 'Santorini', 'Stuttgart'],\n        'Vilnius': ['Frankfurt'],\n        'Stuttgart': ['Frankfurt', 'London'],\n        'Santorini': ['London', 'Dublin'],\n        'Seville': ['Dublin']\n    }\n    \n    itinerary = []\n    \n    # Assign fixed Stuttgart and London constraints\n    itinerary.append({'day_range': 'Day 7-9', 'place': 'Stuttgart'})\n    itinerary.append({'day_range': 'Day 9-10', 'place': 'London'})\n    \n    # Build pre-Stuttgart path\n    pre_blocks = [\n        ('Vilnius', 3, 1),\n        ('Frankfurt', 5, 3)\n    ]\n    for city, duration, start in pre_blocks:\n        end = start + duration - 1\n        if end >= 7: end = 7  # Ensure flight to Stuttgart on day 7\n        itinerary.append({'day_range': f'Day {start}-{end}', 'place': city})\n    \n    # Build post-London path\n    post_blocks = [\n        ('Santorini', 2, 10),\n        ('Dublin', 3, 11),\n        ('Seville', 5, 13)\n    ]\n    for city, duration, start in post_blocks:\n        end = start + duration - 1\n        itinerary.append({'day_range': f'Day {start}-{end}', 'place': city})\n    \n    # Validate flight connections\n    ordered = sorted(itinerary, key=lambda x: int(x['day_range'].split('-')[0].split()[1]))\n    path = [block['place'] for block in ordered]\n    for i in range(1, len(path)):\n        prev = path[i-1]\n        curr = path[i]\n        if curr not in flights[prev]:\n            raise ValueError(f\"No flight from {prev} to {curr}\")\n    \n    # Ensure all cities are included\n    visited = set(block['place'] for block in ordered)\n    if visited != set(cities.keys()):\n        raise ValueError(\"Missing cities in itinerary\")\n    \n    # Ensure total days\n    last_day = max(int(block['day_range'].split('-')[1].split()[1]) for block in ordered)\n    if last_day != 17:\n        raise ValueError(\"Itinerary exceeds 17 days\")\n    \n    print(json.dumps({'itinerary': ordered}, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_813"
         }
     ]

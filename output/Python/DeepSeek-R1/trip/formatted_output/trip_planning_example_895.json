@@ -2,32 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-2",
-                        "place": "Brussels"
-                    },
-                    {
-                        "day_range": "Day 3-5",
-                        "place": "London"
-                    },
-                    {
-                        "day_range": "Day 5-7",
-                        "place": "Venice"
-                    },
-                    {
-                        "day_range": "Day 7-11",
-                        "place": "Madrid"
-                    },
-                    {
-                        "day_range": "Day 12-14",
-                        "place": "Santorini"
-                    },
-                    {
-                        "day_range": "Day 15-17",
-                        "place": "Reykjavik"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -62,7 +37,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 3-5\", \"place\": \"London\"}, {\"day_range\": \"Day 5-7\", \"place\": \"Venice\"}, {\"day_range\": \"Day 7-11\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 12-14\", \"place\": \"Santorini\"}, {\"day_range\": \"Day 15-17\", \"place\": \"Reykjavik\"}]}",
+            "raw_model_response": "import json\n\ndef calculate_itinerary():\n    itinerary = [\n        {\"day_range\": \"Day 1-2\", \"place\": \"Brussels\"},\n        {\"day_range\": \"Day 2-4\", \"place\": \"London\"},\n        {\"day_range\": \"Day 5-7\", \"place\": \"Venice\"},\n        {\"day_range\": \"Day 7-11\", \"place\": \"Madrid\"},\n        {\"day_range\": \"Day 11-14\", \"place\": \"Santorini\"},\n        {\"day_range\": \"Day 14-17\", \"place\": \"Lisbon\"},\n        {\"day_range\": \"Day 17\", \"place\": \"Reykjavik\"}\n    ]\n    \n    # Validate constraints\n    days = {city: 0 for city in [\"Brussels\", \"London\", \"Venice\", \"Madrid\", \"Santorini\", \"Lisbon\", \"Reykjavik\"]}\n    for entry in itinerary:\n        parts = entry['day_range'].split('-')\n        start = int(parts[0].split()[1])\n        end = int(parts[1].split()[1]) if len(parts) > 1 else start\n        days[entry['place']] += end - start + 1\n    \n    assert days[\"Brussels\"] == 2, \"Brussels days mismatch\"\n    assert days[\"London\"] == 3, \"London days mismatch\"\n    assert days[\"Venice\"] == 3, \"Venice days mismatch\"\n    assert days[\"Madrid\"] == 5, \"Madrid days mismatch\"\n    assert days[\"Santorini\"] == 3, \"Santorini days mismatch\"\n    assert days[\"Lisbon\"] == 4, \"Lisbon days mismatch\"\n    assert days[\"Reykjavik\"] == 1, \"Reykjavik days mismatch\"\n    \n    return {\"itinerary\": itinerary}\n\nprint(json.dumps(calculate_itinerary(), indent=2))",
             "count": "trip_planning_example_895"
         }
     ]

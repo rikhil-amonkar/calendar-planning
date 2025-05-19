@@ -8,7 +8,15 @@
                         "place": "Madrid"
                     },
                     {
-                        "day_range": "Day 7-13",
+                        "day_range": "Day 4-6",
+                        "place": "Seville"
+                    },
+                    {
+                        "day_range": "Day 6-9",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 9-13",
                         "place": "Stuttgart"
                     }
                 ]
@@ -34,7 +42,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 7-13\", \"place\": \"Stuttgart\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    cities = {\n        \"Madrid\": {\"days\": 4, \"flights\": [\"Porto\", \"Seville\"]},\n        \"Seville\": {\"days\": 2, \"flights\": [\"Madrid\", \"Porto\"]},\n        \"Porto\": {\"days\": 3, \"flights\": [\"Madrid\", \"Seville\", \"Stuttgart\"]},\n        \"Stuttgart\": {\"days\": 7, \"flights\": [\"Porto\"]}\n    }\n    \n    itinerary = []\n    current_day = 1\n    \n    # Madrid (Day 1-4)\n    itinerary.append({\"day_range\": f\"Day {current_day}-4\", \"place\": \"Madrid\"})\n    current_day = 4\n    \n    # Transition to Seville\n    seville_end = current_day + cities[\"Seville\"][\"days\"]\n    itinerary.append({\"day_range\": f\"Day {current_day}-{seville_end}\", \"place\": \"Seville\"})\n    current_day = seville_end\n    \n    # Transition to Porto\n    porto_end = current_day + cities[\"Porto\"][\"days\"]\n    itinerary.append({\"day_range\": f\"Day {current_day}-{porto_end}\", \"place\": \"Porto\"})\n    current_day = porto_end\n    \n    # Transition to Stuttgart (must cover day 7-13)\n    stuttgart_start = 7\n    stuttgart_end = 13\n    if current_day > stuttgart_start:\n        stuttgart_start = current_day\n    itinerary.append({\"day_range\": f\"Day {stuttgart_start}-{stuttgart_end}\", \"place\": \"Stuttgart\"})\n    \n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_372"
         }
     ]

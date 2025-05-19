@@ -8,11 +8,15 @@
                         "place": "Valencia"
                     },
                     {
-                        "day_range": "Day 5-8",
+                        "day_range": "Day 4-7",
                         "place": "Naples"
                     },
                     {
-                        "day_range": "Day 9-11",
+                        "day_range": "Day 7-10",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 10-12",
                         "place": "Oslo"
                     },
                     {
@@ -54,7 +58,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Valencia\"}, {\"day_range\": \"Day 5-8\", \"place\": \"Naples\"}, {\"day_range\": \"Day 9-11\", \"place\": \"Oslo\"}, {\"day_range\": \"Day 12-13\", \"place\": \"Vilnius\"}, {\"day_range\": \"Day 13-16\", \"place\": \"Frankfurt\"}]}",
+            "raw_model_response": "import json\nfrom itertools import permutations\n\ndef main():\n    cities = [\n        {'name': 'Valencia', 'days': 4},\n        {'name': 'Naples', 'days': 4},\n        {'name': 'Manchester', 'days': 4},\n        {'name': 'Oslo', 'days': 3}\n    ]\n    \n    flight_connections = {\n        'Valencia': ['Frankfurt', 'Naples'],\n        'Naples': ['Manchester', 'Frankfurt', 'Oslo', 'Valencia'],\n        'Manchester': ['Frankfurt', 'Naples', 'Oslo'],\n        'Oslo': ['Frankfurt', 'Vilnius', 'Manchester', 'Naples'],\n        'Vilnius': ['Frankfurt', 'Oslo'],\n        'Frankfurt': ['Valencia', 'Manchester', 'Naples', 'Oslo', 'Vilnius']\n    }\n\n    valid_perm = None\n    for perm in permutations(cities):\n        if perm[-1]['name'] != 'Oslo':\n            continue\n        valid = True\n        for i in range(len(perm)-1):\n            if perm[i+1]['name'] not in flight_connections[perm[i]['name']]:\n                valid = False\n                break\n        if valid:\n            valid_perm = perm\n            break\n\n    if not valid_perm:\n        raise ValueError(\"No valid itinerary found\")\n\n    itinerary = []\n    current_day = 1\n    for city in valid_perm:\n        end_day = current_day + city['days'] - 1\n        itinerary.append({\n            'day_range': f\"Day {current_day}-{end_day}\",\n            'place': city['name']\n        })\n        current_day = end_day\n\n    itinerary.append({\n        'day_range': f\"Day {current_day}-{current_day + 1}\",\n        'place': 'Vilnius'\n    })\n    current_day += 1\n\n    itinerary.append({\n        'day_range': f\"Day {current_day}-{current_day + 3}\",\n        'place': 'Frankfurt'\n    })\n\n    print(json.dumps({'itinerary': itinerary}, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_657"
         }
     ]

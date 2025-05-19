@@ -8,7 +8,7 @@
                         "place": "Madrid"
                     },
                     {
-                        "day_range": "Day 5-5",
+                        "day_range": "Day 4-6",
                         "place": "Dublin"
                     },
                     {
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 5-5\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 6-7\", \"place\": \"Tallinn\"}]}",
+            "raw_model_response": "import json\n\ndef plan_trip():\n    cities = {\"Madrid\": 4, \"Dublin\": 3, \"Tallinn\": 2}\n    flights = {\"Madrid\": [\"Dublin\"], \"Dublin\": [\"Madrid\", \"Tallinn\"], \"Tallinn\": [\"Dublin\"]}\n    itinerary = []\n    day = 1\n    \n    # Madrid phase\n    madrid_end = day + cities[\"Madrid\"] - 1\n    itinerary.append({\"day_range\": f\"Day {day}-{madrid_end}\", \"place\": \"Madrid\"})\n    day = madrid_end\n    \n    # Dublin phase with flight day overlap\n    dublin_end = day + cities[\"Dublin\"] - 1\n    itinerary.append({\"day_range\": f\"Day {day}-{dublin_end}\", \"place\": \"Dublin\"})\n    day = dublin_end\n    \n    # Tallinn phase with workshop constraint check\n    tallinn_end = day + cities[\"Tallinn\"] - 1\n    if tallinn_end != 7:\n        return {\"itinerary\": []}\n    itinerary.append({\"day_range\": f\"Day {day}-{tallinn_end}\", \"place\": \"Tallinn\"})\n    \n    # Verify flight connections\n    valid = (itinerary[1][\"place\"] in flights[itinerary[0][\"place\"]] and \n             itinerary[2][\"place\"] in flights[itinerary[1][\"place\"]])\n    return {\"itinerary\": itinerary} if valid else {\"itinerary\": []}\n\nprint(json.dumps(plan_trip()))",
             "count": "trip_planning_example_142"
         }
     ]

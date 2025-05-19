@@ -2,7 +2,32 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 5-8",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Oslo"
+                    },
+                    {
+                        "day_range": "Day 9-13",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 15-19",
+                        "place": "Edinburgh"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -33,7 +58,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\nfrom itertools import permutations\n\ncities = {\n    'Reykjavik': 5,\n    'Istanbul': 4,\n    'Edinburgh': 5,\n    'Oslo': 2,\n    'Stuttgart': 3,\n    'Bucharest': 5\n}\n\nflights = {\n    'Reykjavik': ['Oslo', 'Stuttgart'],\n    'Oslo': ['Reykjavik', 'Istanbul', 'Bucharest', 'Edinburgh'],\n    'Istanbul': ['Oslo', 'Bucharest', 'Stuttgart', 'Edinburgh'],\n    'Bucharest': ['Oslo', 'Istanbul'],\n    'Edinburgh': ['Stuttgart', 'Istanbul', 'Oslo'],\n    'Stuttgart': ['Edinburgh', 'Istanbul']\n}\n\ndef check_constraints(day_ranges, order):\n    ist_start, ist_end = None, None\n    osl_start, osl_end = None, None\n    for i, city in enumerate(order):\n        s, e = day_ranges[i]\n        if city == 'Istanbul':\n            ist_start, ist_end = s, e\n        if city == 'Oslo':\n            osl_start, osl_end = s, e\n    if not (ist_start <= 5 and ist_end >= 8):\n        return False\n    if not (osl_start <= 8 and osl_end >= 9):\n        return False\n    return True\n\ndef generate_itinerary():\n    for perm in permutations(cities.keys()):\n        valid = True\n        for i in range(len(perm)-1):\n            if perm[i+1] not in flights[perm[i]]:\n                valid = False\n                break\n        if not valid:\n            continue\n        \n        day_ranges = []\n        current_day = 1\n        for city in perm:\n            duration = cities[city]\n            end = current_day + duration - 1\n            day_ranges.append((current_day, end))\n            current_day = end\n        \n        if check_constraints(day_ranges, perm):\n            itinerary = []\n            for i, city in enumerate(perm):\n                start, end = day_ranges[i]\n                day_str = f\"Day {start}-{end}\" if start != end else f\"Day {start}\"\n                itinerary.append({\"day_range\": day_str, \"place\": city})\n            return {\"itinerary\": itinerary}\n    return {\"itinerary\": []}\n\nprint(json.dumps(generate_itinerary()))",
             "count": "trip_planning_example_656"
         }
     ]

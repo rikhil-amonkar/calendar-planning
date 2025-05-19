@@ -4,7 +4,11 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1-3",
+                        "day_range": "Day 1-2",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 2-4",
                         "place": "Budapest"
                     },
                     {
@@ -30,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-3\", \"place\": \"Budapest\"}, {\"day_range\": \"Day 4-9\", \"place\": \"Mykonos\"}]}",
+            "raw_model_response": "import json\n\nrequired_days = {\n    'Mykonos': 6,\n    'Budapest': 3,\n    'Hamburg': 2\n}\nfixed_mykonos = [4, 9]\nflight_connections = {\n    'Hamburg': ['Budapest'],\n    'Budapest': ['Hamburg', 'Mykonos'],\n    'Mykonos': ['Budapest']\n}\n\nitinerary = []\n\n# Assign Mykonos\nmyk_start = min(fixed_mykonos)\nmyk_end = max(fixed_mykonos)\nitinerary.append({'day_range': f'Day {myk_start}-{myk_end}', 'place': 'Mykonos'})\n\n# Assign Budapest\nbudapest_end = myk_start\nbudapest_start = budapest_end - required_days['Budapest'] + 1\nitinerary.insert(0, {'day_range': f'Day {budapest_start}-{budapest_end}', 'place': 'Budapest'})\n\n# Assign Hamburg\nhamburg_end = budapest_start\nhamburg_start = max(1, hamburg_end - required_days['Hamburg'] + 1)\nitinerary.insert(0, {'day_range': f'Day {hamburg_start}-{hamburg_end}', 'place': 'Hamburg'})\n\n# Validate transitions\nprev_city = None\nvalid = True\nfor entry in itinerary:\n    current_city = entry['place']\n    if prev_city and current_city not in flight_connections.get(prev_city, []):\n        valid = False\n        break\n    prev_city = current_city\n\nif valid:\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(json.dumps({\"error\": \"No valid itinerary found\"}))",
             "count": "trip_planning_example_81"
         }
     ]

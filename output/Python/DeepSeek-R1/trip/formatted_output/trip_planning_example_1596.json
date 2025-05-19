@@ -2,32 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-5",
-                        "place": "Edinburgh"
-                    },
-                    {
-                        "day_range": "Day 9-13",
-                        "place": "Budapest"
-                    },
-                    {
-                        "day_range": "Day 17-18",
-                        "place": "Stockholm"
-                    },
-                    {
-                        "day_range": "Day 18-20",
-                        "place": "Munich"
-                    },
-                    {
-                        "day_range": "Day 21-24",
-                        "place": "Krakow"
-                    },
-                    {
-                        "day_range": "Day 25-29",
-                        "place": "Warsaw"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -74,7 +49,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Edinburgh\"}, {\"day_range\": \"Day 9-13\", \"place\": \"Budapest\"}, {\"day_range\": \"Day 17-18\", \"place\": \"Stockholm\"}, {\"day_range\": \"Day 18-20\", \"place\": \"Munich\"}, {\"day_range\": \"Day 21-24\", \"place\": \"Krakow\"}, {\"day_range\": \"Day 25-29\", \"place\": \"Warsaw\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    cities = [\n        {'name': 'Edinburgh', 'days': 5, 'fixed': (1, 5)},\n        {'name': 'Barcelona', 'days': 5},\n        {'name': 'Budapest', 'days': 5, 'fixed': (9, 13)},\n        {'name': 'Vienna', 'days': 5},\n        {'name': 'Stockholm', 'days': 2, 'fixed': (17, 18)},\n        {'name': 'Munich', 'days': 3, 'fixed': (18, 20)},\n        {'name': 'Bucharest', 'days': 2},\n        {'name': 'Riga', 'days': 5},\n        {'name': 'Warsaw', 'days': 5, 'fixed': (25, 29)},\n        {'name': 'Krakow', 'days': 4}\n    ]\n    \n    direct_flights = {\n        ('Edinburgh', 'Barcelona'), ('Barcelona', 'Budapest'),\n        ('Budapest', 'Vienna'), ('Vienna', 'Stockholm'),\n        ('Stockholm', 'Munich'), ('Munich', 'Bucharest'),\n        ('Bucharest', 'Riga'), ('Riga', 'Warsaw'), ('Warsaw', 'Krakow')\n    }\n    \n    itinerary = []\n    current_day = 1\n    \n    for i in range(len(cities)):\n        city = cities[i]\n        name = city['name']\n        days = city['days']\n        \n        if 'fixed' in city:\n            start, end = city['fixed']\n            itinerary.append({'day_range': f'Day {start}-{end}', 'place': name})\n            current_day = end + 1\n        else:\n            if i > 0:\n                prev_city = cities[i-1]['name']\n                if (prev_city, name) not in direct_flights and (name, prev_city) not in direct_flights:\n                    raise ValueError(f'No direct flight from {prev_city} to {name}')\n            \n            end = current_day + days - 1\n            if end > 32:\n                raise ValueError('Exceeded 32 days')\n            itinerary.append({'day_range': f'Day {current_day}-{end}', 'place': name})\n            current_day = end + 1\n    \n    print(json.dumps({'itinerary': itinerary}))\n\nif __name__ == '__main__':\n    main()",
             "count": "trip_planning_example_1596"
         }
     ]

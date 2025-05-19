@@ -2,7 +2,44 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Salzburg"
+                    },
+                    {
+                        "day_range": "Day 3-6",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 7-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 9-11",
+                        "place": "Nice"
+                    },
+                    {
+                        "day_range": "Day 12-16",
+                        "place": "Zurich"
+                    },
+                    {
+                        "day_range": "Day 17-20",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 18-21",
+                        "place": "Copenhagen"
+                    },
+                    {
+                        "day_range": "Day 21-22",
+                        "place": "Brussels"
+                    },
+                    {
+                        "day_range": "Day 22-25",
+                        "place": "Naples"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -45,7 +82,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\n\ndef main():\n    cities = {\n        'Salzburg': {'duration': 2, 'fixed': None},\n        'Venice': {'duration': 5, 'fixed': None},\n        'Bucharest': {'duration': 4, 'fixed': None},\n        'Brussels': {'duration': 2, 'fixed': (21, 22)},\n        'Hamburg': {'duration': 4, 'fixed': None},\n        'Copenhagen': {'duration': 4, 'fixed': (18, 21)},\n        'Nice': {'duration': 3, 'fixed': (9, 11)},\n        'Zurich': {'duration': 5, 'fixed': None},\n        'Naples': {'duration': 4, 'fixed': (22, 25)}\n    }\n    \n    flight_graph = {\n        'Salzburg': ['Hamburg'],\n        'Hamburg': ['Salzburg', 'Venice', 'Bucharest', 'Brussels', 'Copenhagen', 'Nice', 'Zurich'],\n        'Venice': ['Hamburg', 'Brussels', 'Naples', 'Copenhagen', 'Zurich', 'Nice'],\n        'Nice': ['Zurich', 'Hamburg', 'Brussels', 'Venice', 'Copenhagen', 'Naples'],\n        'Zurich': ['Brussels', 'Naples', 'Hamburg', 'Copenhagen', 'Bucharest', 'Nice', 'Venice'],\n        'Bucharest': ['Copenhagen', 'Hamburg', 'Brussels', 'Naples', 'Zurich'],\n        'Copenhagen': ['Bucharest', 'Venice', 'Hamburg', 'Zurich', 'Brussels', 'Naples'],\n        'Brussels': ['Zurich', 'Venice', 'Bucharest', 'Hamburg', 'Copenhagen', 'Nice', 'Naples'],\n        'Naples': ['Zurich', 'Venice', 'Bucharest', 'Copenhagen', 'Brussels', 'Nice']\n    }\n    \n    itinerary_order = [\n        ('Salzburg', 2),\n        ('Hamburg', 4),\n        ('Venice', 5),\n        ('Nice', 3),\n        ('Zurich', 5),\n        ('Bucharest', 4),\n        ('Copenhagen', 4),\n        ('Brussels', 2),\n        ('Naples', 4)\n    ]\n    \n    current_day = 1\n    itinerary = []\n    \n    for city, duration in itinerary_order:\n        end_day = current_day + duration - 1\n        fixed = cities[city]['fixed']\n        if fixed:\n            start_fixed, end_fixed = fixed\n            if (current_day <= start_fixed and end_day >= end_fixed):\n                current_day = end_fixed + 1\n                itinerary.append({'day_range': f\"Day {start_fixed}-{end_fixed}\", 'place': city})\n            else:\n                start_day = fixed[0]\n                end_day = fixed[1]\n                itinerary.append({'day_range': f\"Day {start_day}-{end_day}\", 'place': city})\n                current_day = end_day + 1\n        else:\n            if itinerary:\n                prev_city = itinerary[-1]['place']\n                if city not in flight_graph.get(prev_city, []):\n                    raise ValueError(f\"No flight from {prev_city} to {city}\")\n            itinerary.append({'day_range': f\"Day {current_day}-{end_day}\", 'place': city})\n            current_day = end_day + 1\n    \n    output = {'itinerary': itinerary}\n    print(json.dumps(output))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_1330"
         }
     ]

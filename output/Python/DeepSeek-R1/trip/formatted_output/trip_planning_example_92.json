@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 2-6\", \"place\": \"Riga\"}, {\"day_range\": \"Day 6-12\", \"place\": \"Vilnius\"}]}",
+            "raw_model_response": "import json\nfrom itertools import permutations\n\n# Input parameters\ntotal_days = 12\nrequired_days = {\n    \"Riga\": 5,\n    \"Vilnius\": 7,\n    \"Dublin\": 2\n}\nflight_graph = {\n    \"Dublin\": [\"Riga\"],\n    \"Riga\": [\"Dublin\", \"Vilnius\"],\n    \"Vilnius\": []\n}\n\n# Find valid sequence through all cities\ndef find_valid_route():\n    cities = [\"Dublin\", \"Riga\", \"Vilnius\"]\n    for perm in permutations(cities):\n        valid = True\n        for i in range(len(perm)-1):\n            if perm[i+1] not in flight_graph[perm[i]]:\n                valid = False\n                break\n        if valid:\n            return list(perm)\n    return None\n\n# Calculate itinerary\ndef calculate_itinerary(sequence):\n    itinerary = []\n    current_day = 1\n    for city in sequence:\n        needed = required_days[city]\n        end_day = current_day + needed - 1\n        itinerary.append({\n            \"day_range\": f\"Day {current_day}-{end_day}\",\n            \"place\": city\n        })\n        current_day = end_day\n    return itinerary\n\n# Main logic\nvalid_sequence = find_valid_route()\nif not valid_sequence or calculate_itinerary(valid_sequence)[-1][\"day_range\"].split(\"-\")[-1] != f\"{total_days}\":\n    result = {\"itinerary\": []}\nelse:\n    result = {\"itinerary\": calculate_itinerary(valid_sequence)}\n\nprint(json.dumps(result))",
             "count": "trip_planning_example_92"
         }
     ]

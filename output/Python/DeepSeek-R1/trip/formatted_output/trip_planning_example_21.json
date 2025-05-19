@@ -4,11 +4,11 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1-1",
+                        "day_range": "Day 1-2",
                         "place": "Mykonos"
                     },
                     {
-                        "day_range": "Day 2-4",
+                        "day_range": "Day 2-5",
                         "place": "Vienna"
                     },
                     {
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-1\", \"place\": \"Mykonos\"}, {\"day_range\": \"Day 2-4\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 5-10\", \"place\": \"Venice\"}]}",
+            "raw_model_response": "import json\n\ndef calculate_itinerary():\n    total_days = 10\n    venice_days = 6\n    mykonos_days = 2\n    vienna_days = 4\n    workshop_start = 5\n    workshop_end = 10\n\n    itinerary = []\n    \n    # Mykonos: Days 1-2 (2 days)\n    mykonos_end = 1 + mykonos_days - 1\n    itinerary.append({\"day_range\": f\"Day 1-{mykonos_end}\", \"place\": \"Mykonos\"})\n    \n    # Vienna starts on transition day (Day 2)\n    vienna_start = mykonos_end\n    vienna_end = vienna_start + vienna_days - 1\n    itinerary.append({\"day_range\": f\"Day {vienna_start}-{vienna_end}\", \"place\": \"Vienna\"})\n    \n    # Venice starts on transition day (Day 5)\n    venice_start = vienna_end\n    venice_end = venice_start + venice_days - 1\n    itinerary.append({\"day_range\": f\"Day {venice_start}-{venice_end}\", \"place\": \"Venice\"})\n    \n    # Validate workshop days are within Venice stay\n    if not (venice_start <= workshop_start and venice_end >= workshop_end):\n        raise ValueError(\"Workshop days not covered in Venice itinerary\")\n    \n    # Ensure total days match\n    if venice_end != total_days:\n        raise ValueError(\"Total itinerary days do not sum to 10\")\n    \n    return {\"itinerary\": itinerary}\n\nprint(json.dumps(calculate_itinerary()))",
             "count": "trip_planning_example_21"
         }
     ]
