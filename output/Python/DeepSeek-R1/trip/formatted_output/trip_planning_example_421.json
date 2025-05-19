@@ -8,15 +8,15 @@
                         "place": "Nice"
                     },
                     {
-                        "day_range": "Day 6-9",
+                        "day_range": "Day 5-8",
                         "place": "Lyon"
                     },
                     {
-                        "day_range": "Day 10-14",
+                        "day_range": "Day 8-14",
                         "place": "Dublin"
                     },
                     {
-                        "day_range": "Day 15-18",
+                        "day_range": "Day 14-19",
                         "place": "Krakow"
                     },
                     {
@@ -50,7 +50,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Nice\"}, {\"day_range\": \"Day 6-9\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 10-14\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 15-18\", \"place\": \"Krakow\"}, {\"day_range\": \"Day 19-20\", \"place\": \"Frankfurt\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    required_days = {\n        'Nice': 5,\n        'Krakow': 6,\n        'Dublin': 7,\n        'Lyon': 4,\n        'Frankfurt': 2\n    }\n    \n    flight_graph = {\n        'Nice': {'Dublin', 'Frankfurt', 'Lyon'},\n        'Dublin': {'Nice', 'Frankfurt', 'Krakow', 'Lyon'},\n        'Frankfurt': {'Dublin', 'Krakow', 'Lyon', 'Nice'},\n        'Krakow': {'Dublin', 'Frankfurt'},\n        'Lyon': {'Frankfurt', 'Dublin', 'Nice'}\n    }\n    \n    itinerary_order = ['Nice', 'Lyon', 'Dublin', 'Krakow', 'Frankfurt']\n    \n    valid = True\n    for i in range(len(itinerary_order) - 1):\n        if itinerary_order[i+1] not in flight_graph[itinerary_order[i]]:\n            valid = False\n            break\n    \n    if not valid:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    \n    day_ranges = []\n    current_day = 1\n    for city in itinerary_order:\n        duration = required_days[city]\n        if city == 'Nice':\n            end_day = 5\n        elif city == 'Frankfurt':\n            end_day = 20\n        else:\n            end_day = current_day + duration - 1\n        day_ranges.append((current_day, end_day, city))\n        current_day = end_day\n    \n    if day_ranges[-1][1] != 20:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    \n    itinerary = []\n    for start, end, city in day_ranges:\n        itinerary.append({\n            \"day_range\": f\"Day {start}-{end}\",\n            \"place\": city\n        })\n    \n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_421"
         }
     ]

@@ -2,36 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-5",
-                        "place": "Berlin"
-                    },
-                    {
-                        "day_range": "Day 7-11",
-                        "place": "Lyon"
-                    },
-                    {
-                        "day_range": "Day 13-15",
-                        "place": "Bucharest"
-                    },
-                    {
-                        "day_range": "Day 16-20",
-                        "place": "Riga"
-                    },
-                    {
-                        "day_range": "Day 16-20",
-                        "place": "Riga"
-                    },
-                    {
-                        "day_range": "Day 21-24",
-                        "place": "Tallinn"
-                    },
-                    {
-                        "day_range": "Day 25-27",
-                        "place": "Lisbon"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -66,7 +37,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Berlin\"}, {\"day_range\": \"Day 7-11\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Bucharest\"}, {\"day_range\": \"Day 16-20\", \"place\": \"Riga\"}, {\"day_range\": \"Day 16-20\", \"place\": \"Riga\"}, {\"day_range\": \"Day 21-24\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 25-27\", \"place\": \"Lisbon\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    cities = [\n        {'name': 'Berlin', 'duration': 5, 'fixed': (1, 5)},\n        {'name': 'Split', 'duration': 3},\n        {'name': 'Lyon', 'duration': 5, 'fixed': (7, 11)},\n        {'name': 'Bucharest', 'duration': 3, 'fixed': (13, 15)},\n        {'name': 'Riga', 'duration': 5},\n        {'name': 'Lisbon', 'duration': 3},\n        {'name': 'Tallinn', 'duration': 4}\n    ]\n    \n    flights = {\n        'Berlin': {'Split', 'Lisbon', 'Riga', 'Tallinn'},\n        'Split': {'Berlin', 'Lyon'},\n        'Lyon': {'Split', 'Lisbon', 'Bucharest'},\n        'Bucharest': {'Lisbon', 'Riga', 'Lyon'},\n        'Riga': {'Berlin', 'Bucharest', 'Split', 'Lisbon', 'Tallinn'},\n        'Lisbon': {'Berlin', 'Riga', 'Lyon', 'Bucharest'},\n        'Tallinn': {'Riga', 'Berlin'}\n    }\n    \n    itinerary = [\n        {'day_range': 'Day 1-5', 'place': 'Berlin'},\n        {'day_range': 'Day 5-7', 'place': 'Split'},\n        {'day_range': 'Day 7-11', 'place': 'Lyon'},\n        {'day_range': 'Day 11-13', 'place': 'Lisbon'},\n        {'day_range': 'Day 13-15', 'place': 'Bucharest'},\n        {'day_range': 'Day 15-19', 'place': 'Riga'},\n        {'day_range': 'Day 19-22', 'place': 'Tallinn'}\n    ]\n    \n    # Verify transitions\n    prev_city = None\n    for segment in itinerary:\n        current_city = segment['place']\n        if prev_city is not None:\n            assert current_city in flights[prev_city], f\"No flight from {prev_city} to {current_city}\"\n        prev_city = current_city\n    \n    # Verify durations\n    total_days = 0\n    for seg in itinerary:\n        days = seg['day_range']\n        start, end = map(int, days.split('-')[0].split()[1:])\n        duration = end - start + 1\n        city = next(c for c in cities if c['name'] == seg['place'])\n        if 'fixed' in city:\n            assert duration == city['duration'], f\"Duration mismatch for {city['name']}\"\n        else:\n            assert duration == city['duration'], f\"Duration mismatch for {city['name']}\"\n    \n    print(json.dumps({'itinerary': itinerary}, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_824"
         }
     ]

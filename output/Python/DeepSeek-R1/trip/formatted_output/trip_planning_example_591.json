@@ -2,7 +2,28 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-4",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 4-10",
+                        "place": "Munich"
+                    },
+                    {
+                        "day_range": "Day 10-11",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 11-16",
+                        "place": "Valencia"
+                    },
+                    {
+                        "day_range": "Day 16-17",
+                        "place": "Stuttgart"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -29,7 +50,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\n\ndef main():\n    cities = {\n        \"Geneva\": 4,\n        \"Munich\": 7,\n        \"Bucharest\": 2,\n        \"Valencia\": 6,\n        \"Stuttgart\": 2\n    }\n    \n    flights = {\n        \"Geneva\": [\"Munich\", \"Valencia\"],\n        \"Munich\": [\"Geneva\", \"Valencia\", \"Bucharest\"],\n        \"Bucharest\": [\"Munich\", \"Valencia\"],\n        \"Valencia\": [\"Geneva\", \"Munich\", \"Bucharest\", \"Stuttgart\"],\n        \"Stuttgart\": [\"Valencia\"]\n    }\n    \n    itinerary_order = [\"Geneva\", \"Munich\", \"Bucharest\", \"Valencia\", \"Stuttgart\"]\n    \n    for i in range(len(itinerary_order)-1):\n        if itinerary_order[i+1] not in flights[itinerary_order[i]]:\n            raise ValueError(\"Invalid flight connection\")\n    \n    current_day = 1\n    itinerary = []\n    for city in itinerary_order:\n        days = cities[city]\n        end_day = current_day + days - 1\n        itinerary.append({\n            \"day_range\": f\"Day {current_day}-{end_day}\",\n            \"place\": city\n        })\n        current_day = end_day\n    \n    if itinerary[0][\"day_range\"] != \"Day 1-4\":\n        raise ValueError(\"Geneva constraint violated\")\n    if itinerary[1][\"day_range\"] != \"Day 4-10\":\n        raise ValueError(\"Munich constraint violated\")\n    \n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_591"
         }
     ]

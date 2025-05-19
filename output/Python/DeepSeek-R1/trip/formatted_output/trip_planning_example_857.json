@@ -2,7 +2,36 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Hamburg"
+                    },
+                    {
+                        "day_range": "Day 5-6",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 6-8",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 8-10",
+                        "place": "Mykonos"
+                    },
+                    {
+                        "day_range": "Day 10-14",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 14-17",
+                        "place": "Manchester"
+                    },
+                    {
+                        "day_range": "Day 17-18",
+                        "place": "Porto"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -37,7 +66,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\nimport itertools\n\ncities = {\n    'Hamburg': {'days': 5},\n    'Frankfurt': {'days': 2, 'event': (5, 6)},\n    'Geneva': {'days': 3},\n    'Mykonos': {'days': 3, 'event': (10, 12)},\n    'Naples': {'days': 5},\n    'Manchester': {'days': 4, 'event': (15, 18)},\n    'Porto': {'days': 2}\n}\n\nflight_graph = {\n    'Hamburg': ['Frankfurt', 'Porto', 'Geneva', 'Manchester'],\n    'Frankfurt': ['Hamburg', 'Geneva', 'Porto', 'Naples', 'Manchester'],\n    'Porto': ['Hamburg', 'Frankfurt', 'Geneva', 'Manchester'],\n    'Geneva': ['Mykonos', 'Frankfurt', 'Porto', 'Manchester', 'Naples'],\n    'Mykonos': ['Naples', 'Geneva'],\n    'Naples': ['Mykonos', 'Manchester', 'Frankfurt', 'Geneva'],\n    'Manchester': ['Geneva', 'Naples', 'Frankfurt', 'Porto', 'Hamburg']\n}\n\nfound = False\nfor perm in itertools.permutations(cities.keys()):\n    if len(set(perm)) != 7:\n        continue\n    \n    valid = True\n    for i in range(len(perm)-1):\n        if perm[i+1] not in flight_graph[perm[i]]:\n            valid = False\n            break\n    if not valid:\n        continue\n    \n    day_ranges = []\n    previous_end = 0\n    for i, city in enumerate(perm):\n        days_needed = cities[city]['days']\n        if i == 0:\n            start = 1\n            end = start + days_needed - 1\n        else:\n            start = previous_end\n            end = start + days_needed - 1\n        day_ranges.append((start, end, city))\n        previous_end = end\n    \n    if previous_end > 18:\n        continue\n    \n    valid_days = True\n    for start, end, city in day_ranges:\n        if end - start + 1 != cities[city]['days']:\n            valid_days = False\n            break\n        if 'event' in cities[city]:\n            event_start, event_end = cities[city]['event']\n            if not (start <= event_end and end >= event_start):\n                valid_days = False\n                break\n    if not valid_days:\n        continue\n    \n    formatted = []\n    for start, end, city in day_ranges:\n        day_range = f\"Day {start}-{end}\" if start != end else f\"Day {start}\"\n        formatted.append({\"day_range\": day_range, \"place\": city})\n    \n    print(json.dumps({\"itinerary\": formatted}))\n    found = True\n    break\n\nif not found:\n    print(json.dumps({\"itinerary\": []}))",
             "count": "trip_planning_example_857"
         }
     ]

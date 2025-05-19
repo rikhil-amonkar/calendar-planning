@@ -8,16 +8,16 @@
                         "place": "Reykjavik"
                     },
                     {
+                        "day_range": "Day 4-7",
+                        "place": "Stuttgart"
+                    },
+                    {
                         "day_range": "Day 13-15",
                         "place": "Munich"
                     },
                     {
                         "day_range": "Day 19-22",
                         "place": "Istanbul"
-                    },
-                    {
-                        "day_range": "Day 8-12",
-                        "place": "Valencia"
                     }
                 ]
             },
@@ -58,7 +58,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Munich\"}, {\"day_range\": \"Day 19-22\", \"place\": \"Istanbul\"}, {\"day_range\": \"Day 8-12\", \"place\": \"Valencia\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    # Initialize itinerary with fixed segments\n    itinerary = [\n        {\"day_range\": \"Day 1-4\", \"place\": \"Reykjavik\"},\n        {\"day_range\": \"Day 4-7\", \"place\": \"Stuttgart\"},\n        {\"day_range\": \"Day 13-15\", \"place\": \"Munich\"},\n        {\"day_range\": \"Day 19-22\", \"place\": \"Istanbul\"}\n    ]\n    \n    # Define other segments with their day ranges and validate flight connections\n    other_segments = [\n        {\"day_range\": (7, 11), \"place\": \"Valencia\"},\n        {\"day_range\": (11, 13), \"place\": \"Seville\"},\n        {\"day_range\": (15, 19), \"place\": \"Geneva\"},\n        {\"day_range\": (22, 25), \"place\": \"Vilnius\"}\n    ]\n    \n    # Check flight connections between consecutive segments\n    prev_place = \"Stuttgart\"\n    prev_end = 7\n    valid = True\n    flights = {\n        \"Stuttgart\": [\"Valencia\", \"Istanbul\"],\n        \"Valencia\": [\"Seville\", \"Istanbul\", \"Geneva\", \"Munich\"],\n        \"Seville\": [\"Munich\"],\n        \"Munich\": [\"Geneva\", \"Istanbul\"],\n        \"Geneva\": [\"Istanbul\"],\n        \"Istanbul\": [\"Vilnius\"]\n    }\n    \n    for seg in other_segments:\n        start = seg[\"day_range\"][0]\n        place = seg[\"place\"]\n        if start != prev_end:\n            valid = False\n            break\n        if place not in flights.get(prev_place, []):\n            valid = False\n            break\n        prev_place = place\n        prev_end = seg[\"day_range\"][1]\n    \n    if valid:\n        # Add other segments to itinerary\n        itinerary.insert(2, {\"day_range\": f\"Day 7-11\", \"place\": \"Valencia\"})\n        itinerary.insert(3, {\"day_range\": f\"Day 11-13\", \"place\": \"Seville\"})\n        itinerary.insert(5, {\"day_range\": f\"Day 15-19\", \"place\": \"Geneva\"})\n        itinerary.append({\"day_range\": f\"Day 22-25\", \"place\": \"Vilnius\"})\n    \n    # Format day ranges correctly\n    formatted = []\n    for entry in itinerary:\n        days = entry[\"day_range\"].split('-')\n        start_day = int(days[0].split()[1])\n        end_day = int(days[1])\n        if start_day == end_day:\n            dr = f\"Day {start_day}\"\n        else:\n            dr = f\"Day {start_day}-{end_day}\"\n        formatted.append({\"day_range\": dr, \"place\": entry[\"place\"]})\n    \n    # Output as JSON\n    print(json.dumps({\"itinerary\": formatted}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_1060"
         }
     ]

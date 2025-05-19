@@ -4,36 +4,36 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1-2",
-                        "place": "Copenhagen"
+                        "day_range": "Day 1-3",
+                        "place": "Nice"
                     },
                     {
                         "day_range": "Day 3-4",
                         "place": "Reykjavik"
                     },
                     {
-                        "day_range": "Day 5-6",
+                        "day_range": "Day 4-5",
                         "place": "Stockholm"
                     },
                     {
-                        "day_range": "Day 7-9",
+                        "day_range": "Day 5-7",
                         "place": "Split"
                     },
                     {
-                        "day_range": "Day 10-12",
-                        "place": "Nice"
+                        "day_range": "Day 7-8",
+                        "place": "Copenhagen"
                     },
                     {
-                        "day_range": "Day 13-15",
+                        "day_range": "Day 8-11",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 11-13",
                         "place": "Vienna"
                     },
                     {
-                        "day_range": "Day 16-17",
+                        "day_range": "Day 13-17",
                         "place": "Porto"
-                    },
-                    {
-                        "day_range": "Day 13-15",
-                        "place": "Venice"
                     }
                 ]
             },
@@ -74,7 +74,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Copenhagen\"}, {\"day_range\": \"Day 3-4\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 5-6\", \"place\": \"Stockholm\"}, {\"day_range\": \"Day 7-9\", \"place\": \"Split\"}, {\"day_range\": \"Day 10-12\", \"place\": \"Nice\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 16-17\", \"place\": \"Porto\"}, {\"day_range\": \"Day 13-15\", \"place\": \"Venice\"}]}",
+            "raw_model_response": "import json\nfrom itertools import permutations\n\ndef main():\n    cities = {\n        'Reykjavik': {'days': 2, 'event': (3, 4)},\n        'Stockholm': {'days': 2, 'event': (4, 5)},\n        'Porto': {'days': 5, 'event': (13, 17)},\n        'Nice': {'days': 3, 'event': None},\n        'Venice': {'days': 4, 'event': None},\n        'Vienna': {'days': 3, 'event': (11, 13)},\n        'Split': {'days': 3, 'event': None},\n        'Copenhagen': {'days': 2, 'event': None}\n    }\n\n    flights = {\n        'Copenhagen': ['Vienna', 'Split', 'Stockholm', 'Porto', 'Venice', 'Nice'],\n        'Nice': ['Stockholm', 'Reykjavik', 'Porto', 'Venice', 'Vienna', 'Copenhagen'],\n        'Split': ['Copenhagen', 'Vienna', 'Stockholm'],\n        'Reykjavik': ['Nice', 'Vienna', 'Copenhagen', 'Stockholm'],\n        'Stockholm': ['Nice', 'Copenhagen', 'Split', 'Vienna', 'Reykjavik'],\n        'Venice': ['Nice', 'Vienna', 'Copenhagen'],\n        'Vienna': ['Copenhagen', 'Nice', 'Reykjavik', 'Stockholm', 'Venice', 'Porto', 'Split'],\n        'Porto': ['Nice', 'Copenhagen', 'Vienna']\n    }\n\n    city_names = list(cities.keys())\n    for perm in permutations(city_names):\n        valid = True\n        for i in range(len(perm)-1):\n            if perm[i+1] not in flights[perm[i]]:\n                valid = False\n                break\n        if not valid:\n            continue\n\n        day = 1\n        itinerary = []\n        prev_end = 0\n        event_checks = {city: False for city, data in cities.items() if data['event']}\n\n        try:\n            for city in perm:\n                data = cities[city]\n                start = day\n                if city == 'Reykjavik':\n                    if not (start <= 3 and start + data['days'] -1 >=4):\n                        start = 3 - data['days'] +1\n                elif city == 'Stockholm':\n                    if start > 5:\n                        raise ValueError\n                elif city == 'Vienna':\n                    if start > 11 or start + data['days'] -1 < 13:\n                        raise ValueError\n                elif city == 'Porto':\n                    if start >13 or start + data['days'] -1 <17:\n                        raise ValueError\n\n                end = start + data['days'] -1\n                itinerary.append((start, end, city))\n                day = end\n\n                if data['event']:\n                    estart, eend = data['event']\n                    if not (start <= eend and end >= estart):\n                        raise ValueError\n                    event_checks[city] = True\n\n            total_days = sum(cities[city]['days'] for city in perm) - (len(perm) -1)\n            if total_days !=17:\n                continue\n\n            if all(event_checks.values()):\n                final_itinerary = []\n                for start, end, city in sorted(itinerary, key=lambda x: x[0]):\n                    if start == end:\n                        dr = f\"Day {start}\"\n                    else:\n                        dr = f\"Day {start}-{end}\"\n                    final_itinerary.append({\"day_range\": dr, \"place\": city})\n                print(json.dumps({\"itinerary\": final_itinerary}, indent=2))\n                return\n        except:\n            continue\n\n    print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_1164"
         }
     ]

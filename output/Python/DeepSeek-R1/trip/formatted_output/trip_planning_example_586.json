@@ -4,7 +4,7 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1",
+                        "day_range": "Day 1-2",
                         "place": "Prague"
                     },
                     {
@@ -12,12 +12,16 @@
                         "place": "Helsinki"
                     },
                     {
-                        "day_range": "Day 6-8",
+                        "day_range": "Day 5-8",
+                        "place": "Naples"
+                    },
+                    {
+                        "day_range": "Day 8-10",
                         "place": "Frankfurt"
                     },
                     {
-                        "day_range": "Day 9-12",
-                        "place": "Naples"
+                        "day_range": "Day 10-12",
+                        "place": "Lyon"
                     }
                 ]
             },
@@ -46,7 +50,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1\", \"place\": \"Prague\"}, {\"day_range\": \"Day 2-5\", \"place\": \"Helsinki\"}, {\"day_range\": \"Day 6-8\", \"place\": \"Frankfurt\"}, {\"day_range\": \"Day 9-12\", \"place\": \"Naples\"}]}",
+            "raw_model_response": "import json\n\nrequired_days = {\n    'Prague': 2,\n    'Helsinki': 4,\n    'Frankfurt': 3,\n    'Naples': 4,\n    'Lyon': 3\n}\n\nflights = {\n    'Prague': ['Lyon', 'Frankfurt', 'Helsinki'],\n    'Helsinki': ['Prague', 'Frankfurt', 'Naples'],\n    'Frankfurt': ['Prague', 'Lyon', 'Helsinki', 'Naples'],\n    'Lyon': ['Prague', 'Frankfurt'],\n    'Naples': ['Helsinki', 'Frankfurt'],\n}\n\ncities_order = ['Prague', 'Helsinki', 'Naples', 'Frankfurt', 'Lyon']\n\nvalid = True\nfor i in range(len(cities_order) - 1):\n    current = cities_order[i].lower()\n    next_city = cities_order[i + 1].lower()\n    if next_city not in [city.lower() for city in flights.get(cities_order[i], [])]:\n        valid = False\n        break\n\nif valid:\n    start_day = 1\n    itinerary = []\n    for city in cities_order:\n        duration = required_days[city]\n        end_day = start_day + duration - 1\n        itinerary.append({\n            \"day_range\": f\"Day {start_day}-{end_day}\",\n            \"place\": city\n        })\n        start_day = end_day\n    print(json.dumps({\"itinerary\": itinerary}))\nelse:\n    print(json.dumps({\"itinerary\": []}))",
             "count": "trip_planning_example_586"
         }
     ]

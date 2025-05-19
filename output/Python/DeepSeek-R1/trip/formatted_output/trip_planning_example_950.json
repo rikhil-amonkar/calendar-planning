@@ -12,16 +12,20 @@
                         "place": "Mykonos"
                     },
                     {
-                        "day_range": "Day 7-10",
-                        "place": "Munich"
+                        "day_range": "Day 6-8",
+                        "place": "Nice"
                     },
                     {
-                        "day_range": "Day 11-14",
+                        "day_range": "Day 8-10",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 10-13",
                         "place": "Bucharest"
                     },
                     {
-                        "day_range": "Day 15-17",
-                        "place": "Riga"
+                        "day_range": "Day 13-16",
+                        "place": "Munich"
                     },
                     {
                         "day_range": "Day 16-17",
@@ -62,7 +66,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Rome\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Mykonos\"}, {\"day_range\": \"Day 7-10\", \"place\": \"Munich\"}, {\"day_range\": \"Day 11-14\", \"place\": \"Bucharest\"}, {\"day_range\": \"Day 15-17\", \"place\": \"Riga\"}, {\"day_range\": \"Day 16-17\", \"place\": \"Krakow\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    cities = {\n        'Rome': {'required_days': 4, 'fixed_start': 1, 'fixed_end': 4},\n        'Mykonos': {'required_days': 3, 'fixed_start': 4, 'fixed_end': 6},\n        'Krakow': {'required_days': 2, 'fixed_start': 16, 'fixed_end': 17},\n        'Riga': {'required_days': 3},\n        'Munich': {'required_days': 4},\n        'Bucharest': {'required_days': 4},\n        'Nice': {'required_days': 3}\n    }\n\n    flight_routes = {\n        'Rome': ['Nice', 'Munich', 'Mykonos', 'Bucharest', 'Riga'],\n        'Nice': ['Rome', 'Riga', 'Mykonos', 'Munich'],\n        'Riga': ['Nice', 'Bucharest', 'Munich'],\n        'Bucharest': ['Munich', 'Riga', 'Rome'],\n        'Munich': ['Bucharest', 'Mykonos', 'Rome', 'Nice', 'Krakow'],\n        'Mykonos': ['Munich', 'Nice', 'Rome'],\n        'Krakow': ['Munich'],\n        'Mykonos': ['Munich', 'Nice', 'Rome']\n    }\n\n    itinerary = [\n        {'place': 'Rome', 'start': 1, 'end': 4},\n        {'place': 'Mykonos', 'start': 4, 'end': 6}\n    ]\n\n    middle_cities = ['Nice', 'Riga', 'Bucharest', 'Munich']\n    current_city = 'Mykonos'\n    current_day = 6\n\n    for next_city in middle_cities:\n        if next_city == current_city:\n            continue\n        if next_city not in flight_routes.get(current_city, []):\n            continue\n        required_days = cities[next_city]['required_days']\n        start_day = current_day\n        end_day = start_day + required_days - 1\n        if next_city == 'Munich':\n            end_day = 16\n        if end_day > 16:\n            continue\n        itinerary.append({'place': next_city, 'start': start_day, 'end': end_day})\n        current_day = end_day\n        current_city = next_city\n\n    itinerary.append({'place': 'Krakow', 'start': 16, 'end': 17})\n\n    itinerary = sorted(itinerary, key=lambda x: x['start'])\n    result = {'itinerary': []}\n    for segment in itinerary:\n        start = segment['start']\n        end = segment['end']\n        if start == end:\n            day_range = f\"Day {start}\"\n        else:\n            day_range = f\"Day {start}-{end}\"\n        result['itinerary'].append({'day_range': day_range, 'place': segment['place']})\n\n    print(json.dumps(result))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_950"
         }
     ]

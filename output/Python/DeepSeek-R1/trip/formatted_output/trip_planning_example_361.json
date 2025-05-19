@@ -8,11 +8,11 @@
                         "place": "Madrid"
                     },
                     {
-                        "day_range": "Day 8-10",
+                        "day_range": "Day 7-9",
                         "place": "Seville"
                     },
                     {
-                        "day_range": "Day 11-13",
+                        "day_range": "Day 9-14",
                         "place": "Paris"
                     },
                     {
@@ -42,7 +42,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-7\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 8-10\", \"place\": \"Seville\"}, {\"day_range\": \"Day 11-13\", \"place\": \"Paris\"}, {\"day_range\": \"Day 14-15\", \"place\": \"Bucharest\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    days_in_city = {\n        'Paris': 6,\n        'Madrid': 7,\n        'Bucharest': 2,\n        'Seville': 3\n    }\n    \n    flight_connections = {\n        'Paris': ['Bucharest', 'Seville', 'Madrid'],\n        'Bucharest': ['Paris', 'Madrid'],\n        'Madrid': ['Paris', 'Seville', 'Bucharest'],\n        'Seville': ['Paris', 'Madrid']\n    }\n    \n    itinerary = []\n    itinerary.append({'place': 'Madrid', 'start_day': 1, 'end_day': 7})\n    \n    current_city = 'Madrid'\n    next_city = 'Seville'\n    if next_city not in flight_connections[current_city]:\n        raise ValueError(\"Invalid flight connection\")\n    start = 7\n    end = start + days_in_city[next_city] - 1\n    itinerary.append({'place': next_city, 'start_day': start, 'end_day': end})\n    \n    current_city = next_city\n    next_city = 'Paris'\n    if next_city not in flight_connections[current_city]:\n        raise ValueError(\"Invalid flight connection\")\n    start = end\n    end = start + days_in_city[next_city] - 1\n    itinerary.append({'place': next_city, 'start_day': start, 'end_day': end})\n    \n    current_city = next_city\n    next_city = 'Bucharest'\n    if next_city not in flight_connections[current_city]:\n        raise ValueError(\"Invalid flight connection\")\n    start = end\n    end = start + days_in_city[next_city] - 1\n    itinerary.append({'place': next_city, 'start_day': start, 'end_day': end})\n    \n    formatted = []\n    for seg in itinerary:\n        s = seg['start_day']\n        e = seg['end_day']\n        dr = f\"Day {s}\" if s == e else f\"Day {s}-{e}\"\n        formatted.append({'day_range': dr, 'place': seg['place']})\n    \n    print(json.dumps({'itinerary': formatted}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_361"
         }
     ]

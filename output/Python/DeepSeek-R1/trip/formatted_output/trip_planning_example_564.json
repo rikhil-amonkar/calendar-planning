@@ -8,15 +8,15 @@
                         "place": "Seville"
                     },
                     {
-                        "day_range": "Day 5-7",
+                        "day_range": "Day 4-6",
                         "place": "Rome"
                     },
                     {
-                        "day_range": "Day 8-9",
+                        "day_range": "Day 6-7",
                         "place": "Istanbul"
                     },
                     {
-                        "day_range": "Day 10-12",
+                        "day_range": "Day 7-13",
                         "place": "Naples"
                     },
                     {
@@ -50,7 +50,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Seville\"}, {\"day_range\": \"Day 5-7\", \"place\": \"Rome\"}, {\"day_range\": \"Day 8-9\", \"place\": \"Istanbul\"}, {\"day_range\": \"Day 10-12\", \"place\": \"Naples\"}, {\"day_range\": \"Day 13-16\", \"place\": \"Santorini\"}]}",
+            "raw_model_response": "import json\n\ndef calculate_itinerary():\n    cities = {\n        'Istanbul': {'days': 2, 'fixed': (6, 7)},\n        'Santorini': {'days': 4, 'fixed': (13, 16)},\n        'Seville': {'days': 4},\n        'Rome': {'days': 3},\n        'Naples': {'days': 7}\n    }\n    flights = {\n        'Rome': ['Santorini', 'Seville', 'Naples', 'Istanbul'],\n        'Seville': ['Rome'],\n        'Istanbul': ['Naples', 'Rome'],\n        'Naples': ['Istanbul', 'Santorini', 'Rome'],\n        'Santorini': ['Rome', 'Naples']\n    }\n    \n    order = ['Seville', 'Rome', 'Istanbul', 'Naples', 'Santorini']\n    itinerary = []\n    current_day = 1\n    \n    for city in order:\n        if city in ['Istanbul', 'Santorini']:\n            start, end = cities[city]['fixed']\n            days = end - start + 1\n            assert days == cities[city]['days']\n        else:\n            days_needed = cities[city]['days']\n            start = current_day\n            end = start + days_needed - 1\n        itinerary.append({'day_range': f'Day {start}-{end}', 'place': city})\n        current_day = end\n    \n    return {'itinerary': itinerary}\n\nprint(json.dumps(calculate_itinerary()))",
             "count": "trip_planning_example_564"
         }
     ]

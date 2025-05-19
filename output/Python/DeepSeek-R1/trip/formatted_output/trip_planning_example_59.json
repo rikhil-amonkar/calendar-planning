@@ -2,7 +2,20 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Bucharest"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Lyon"
+                    },
+                    {
+                        "day_range": "Day 13-16",
+                        "place": "Porto"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -21,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\n\n# Input parameters\ntotal_days = 16\ncities_days = {'Bucharest': 7, 'Lyon': 7, 'Porto': 4}\nwedding_range = (1, 7)\nflight_routes = [('Bucharest', 'Lyon'), ('Lyon', 'Porto')]\n\n# Build flight graph\nflight_graph = {}\nfor a, b in flight_routes:\n    flight_graph.setdefault(a, []).append(b)\n    flight_graph.setdefault(b, []).append(a)\n\n# Determine city order starting with Bucharest due to wedding\norder = ['Bucharest']\nremaining = set(cities_days.keys()) - {'Bucharest'}\ncurrent = 'Bucharest'\n\nwhile remaining:\n    neighbors = flight_graph.get(current, [])\n    next_city = next((c for c in neighbors if c in remaining), None)\n    if next_city is None:\n        raise ValueError(\"No valid itinerary\")\n    order.append(next_city)\n    remaining.remove(next_city)\n    current = next_city\n\n# Calculate day ranges\nitinerary = []\ncurrent_day = 1\nfor city in order:\n    days = cities_days[city]\n    end_day = current_day + days - 1\n    itinerary.append({\n        'day_range': f'Day {current_day}-{end_day}',\n        'place': city\n    })\n    current_day = end_day\n\n# Validate total days\nif current_day > total_days:\n    raise ValueError(\"Invalid duration\")\n\nprint(json.dumps({'itinerary': itinerary}))",
             "count": "trip_planning_example_59"
         }
     ]

@@ -2,7 +2,36 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-5",
+                        "place": "Venice"
+                    },
+                    {
+                        "day_range": "Day 5-7",
+                        "place": "Stuttgart"
+                    },
+                    {
+                        "day_range": "Day 7-8",
+                        "place": "Stockholm"
+                    },
+                    {
+                        "day_range": "Day 8-9",
+                        "place": "Barcelona"
+                    },
+                    {
+                        "day_range": "Day 9-12",
+                        "place": "Florence"
+                    },
+                    {
+                        "day_range": "Day 12-15",
+                        "place": "Frankfurt"
+                    },
+                    {
+                        "day_range": "Day 15-18",
+                        "place": "Salzburg"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -37,7 +66,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\n\ndef main():\n    required_days = {\n        'Venice': 5,\n        'Salzburg': 4,\n        'Stockholm': 2,\n        'Frankfurt': 4,\n        'Florence': 4,\n        'Barcelona': 2,\n        'Stuttgart': 3\n    }\n    adjacency = {\n        'Venice': ['Barcelona', 'Stuttgart', 'Frankfurt'],\n        'Barcelona': ['Frankfurt', 'Florence', 'Stockholm', 'Stuttgart', 'Venice'],\n        'Stuttgart': ['Barcelona', 'Frankfurt', 'Stockholm', 'Venice'],\n        'Frankfurt': ['Barcelona', 'Florence', 'Stuttgart', 'Stockholm', 'Salzburg', 'Venice'],\n        'Florence': ['Frankfurt', 'Barcelona'],\n        'Stockholm': ['Barcelona', 'Frankfurt', 'Stuttgart'],\n        'Salzburg': ['Frankfurt']\n    }\n\n    initial = [{'city': 'Venice', 'start': 1, 'end': 5}]\n    used = {'Venice'}\n    path = []\n\n    def backtrack(current, used_cities, last_city, last_end):\n        if len(used_cities) == len(required_days) and last_end == 18:\n            path.extend(current)\n            return True\n        if last_end >= 18:\n            return False\n        for next_city in adjacency.get(last_city, []):\n            if next_city not in used_cities:\n                req = required_days[next_city]\n                start = last_end\n                end = start + req - 1\n                if end > 18:\n                    continue\n                new_current = current + [{'city': next_city, 'start': start, 'end': end}]\n                new_used = set(used_cities)\n                new_used.add(next_city)\n                if backtrack(new_current, new_used, next_city, end):\n                    return True\n        return False\n\n    if backtrack(initial, used, 'Venice', 5):\n        itinerary = []\n        for seg in path:\n            start = seg['start']\n            end = seg['end']\n            dr = f\"Day {start}-{end}\" if start != end else f\"Day {start}\"\n            itinerary.append({'day_range': dr, 'place': seg['city']})\n        print(json.dumps({'itinerary': itinerary}))\n    else:\n        print(json.dumps({'itinerary': []}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_953"
         }
     ]

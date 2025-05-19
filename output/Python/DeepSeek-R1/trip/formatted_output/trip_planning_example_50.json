@@ -8,11 +8,11 @@
                         "place": "Vilnius"
                     },
                     {
-                        "day_range": "Day 5-7",
+                        "day_range": "Day 4-6",
                         "place": "Munich"
                     },
                     {
-                        "day_range": "Day 8-12",
+                        "day_range": "Day 6-12",
                         "place": "Mykonos"
                     }
                 ]
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Vilnius\"}, {\"day_range\": \"Day 5-7\", \"place\": \"Munich\"}, {\"day_range\": \"Day 8-12\", \"place\": \"Mykonos\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    required_days = {\n        'Vilnius': 4,\n        'Munich': 3,\n        'Mykonos': 7\n    }\n    total_days = 12\n    possible_sequences = [\n        ['Vilnius', 'Munich', 'Mykonos'],\n        ['Mykonos', 'Munich', 'Vilnius']\n    ]\n    \n    for seq in possible_sequences:\n        first = seq[0]\n        second = seq[1]\n        third = seq[2]\n        \n        t1 = required_days[first]\n        t2 = t1 + required_days[second] - 1\n        days_third = (total_days - t2) + 1\n        \n        if days_third == required_days[third]:\n            itinerary = [\n                {\"day_range\": f\"Day 1-{t1}\", \"place\": first},\n                {\"day_range\": f\"Day {t1}-{t2}\", \"place\": second},\n                {\"day_range\": f\"Day {t2}-{total_days}\", \"place\": third}\n            ]\n            print(json.dumps({\"itinerary\": itinerary}))\n            return\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_50"
         }
     ]

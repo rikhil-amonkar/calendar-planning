@@ -8,11 +8,11 @@
                         "place": "Brussels"
                     },
                     {
-                        "day_range": "Day 3-9",
+                        "day_range": "Day 2-8",
                         "place": "Barcelona"
                     },
                     {
-                        "day_range": "Day 10-12",
+                        "day_range": "Day 8-12",
                         "place": "Split"
                     }
                 ]
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Brussels\"}, {\"day_range\": \"Day 3-9\", \"place\": \"Barcelona\"}, {\"day_range\": \"Day 10-12\", \"place\": \"Split\"}]}",
+            "raw_model_response": "import json\n\n# Define trip constraints\ncities = ['Brussels', 'Barcelona', 'Split']\nrequired_days = {'Brussels': 2, 'Barcelona': 7, 'Split': 5}\nflight_connections = [('Brussels', 'Barcelona'), ('Barcelona', 'Split')]\n\n# Calculate itinerary\ncurrent_day = 1\nitinerary = []\n\n# Brussels (must start on day 1)\nbrussels_end = current_day + required_days['Brussels'] - 1\nitinerary.append({'day_range': f'Day {current_day}-{brussels_end}', 'place': 'Brussels'})\n\n# Barcelona (flight on brussels_end day)\ncurrent_day = brussels_end\nbarcelona_end = current_day + required_days['Barcelona'] - 1\nitinerary.append({'day_range': f'Day {current_day}-{barcelona_end}', 'place': 'Barcelona'})\n\n# Split (flight on barcelona_end day)\ncurrent_day = barcelona_end\nsplit_end = current_day + required_days['Split'] - 1\nitinerary.append({'day_range': f'Day {current_day}-{split_end}', 'place': 'Split'})\n\n# Validate total days\nassert split_end == 12, \"Invalid itinerary calculation\"\n\n# Output result\nprint(json.dumps({'itinerary': itinerary}))",
             "count": "trip_planning_example_188"
         }
     ]

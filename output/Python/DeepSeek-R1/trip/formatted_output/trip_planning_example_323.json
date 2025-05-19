@@ -4,7 +4,7 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1-6",
+                        "day_range": "Day 1-7",
                         "place": "London"
                     },
                     {
@@ -12,11 +12,11 @@
                         "place": "Split"
                     },
                     {
-                        "day_range": "Day 12-13",
+                        "day_range": "Day 11-12",
                         "place": "Oslo"
                     },
                     {
-                        "day_range": "Day 14-16",
+                        "day_range": "Day 12-16",
                         "place": "Porto"
                     }
                 ]
@@ -42,7 +42,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-6\", \"place\": \"London\"}, {\"day_range\": \"Day 7-11\", \"place\": \"Split\"}, {\"day_range\": \"Day 12-13\", \"place\": \"Oslo\"}, {\"day_range\": \"Day 14-16\", \"place\": \"Porto\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    flight_connections = {\n        'London': ['Oslo', 'Split'],\n        'Split': ['London', 'Oslo'],\n        'Oslo': ['London', 'Split', 'Porto'],\n        'Porto': ['Oslo']\n    }\n    \n    itinerary = []\n    current_day = 1\n    \n    # London (Days 1-7)\n    london_end = 7\n    itinerary.append({'day_range': f'Day 1-7', 'place': 'London'})\n    current_day = london_end\n    \n    # Split (Days 7-11)\n    if 'Split' not in flight_connections['London']:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    split_start = 7\n    split_end = 11\n    itinerary.append({'day_range': f'Day 7-11', 'place': 'Split'})\n    current_day = split_end\n    \n    # Oslo (Days 11-12)\n    if 'Oslo' not in flight_connections['Split']:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    oslo_start = current_day\n    oslo_end = oslo_start + 1\n    itinerary.append({'day_range': f'Day 11-12', 'place': 'Oslo'})\n    current_day = oslo_end\n    \n    # Porto (Days 12-16)\n    if 'Porto' not in flight_connections['Oslo']:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    porto_start = current_day\n    porto_end = porto_start + 4  # 5 days inclusive\n    if porto_end != 16:\n        print(json.dumps({\"itinerary\": []}))\n        return\n    itinerary.append({'day_range': f'Day 12-16', 'place': 'Porto'})\n    \n    # Validate day counts\n    days = {\n        'London': 7,\n        'Split': 5,\n        'Oslo': 2,\n        'Porto': 5\n    }\n    valid = True\n    for entry in itinerary:\n        start, end = map(int, entry['day_range'].split(' ')[1].split('-'))\n        days_spent = end - start + 1\n        if days_spent != days[entry['place']]:\n            valid = False\n            break\n    \n    if valid:\n        print(json.dumps({\"itinerary\": itinerary}))\n    else:\n        print(json.dumps({\"itinerary\": []}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_323"
         }
     ]

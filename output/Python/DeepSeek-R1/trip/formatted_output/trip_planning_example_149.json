@@ -4,11 +4,11 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1",
+                        "day_range": "Day 1-3",
                         "place": "Istanbul"
                     },
                     {
-                        "day_range": "Day 2-4",
+                        "day_range": "Day 3-5",
                         "place": "London"
                     },
                     {
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1\", \"place\": \"Istanbul\"}, {\"day_range\": \"Day 2-4\", \"place\": \"London\"}, {\"day_range\": \"Day 5-10\", \"place\": \"Santorini\"}]}",
+            "raw_model_response": "import json\n\n# Define constraints\nlondon_days = 3\nsantorini_days = 6\nistanbul_days = 3\ntotal_days = 10\nconference_days = {5, 10}\n\n# Calculate Santorini segment\nsantorini_start = min(conference_days)\nsantorini_end = santorini_start + santorini_days - 1\n\n# Calculate London segment\nlondon_end = santorini_start\nlondon_start = london_end - london_days + 1\n\n# Calculate Istanbul segment\nistanbul_end = london_start\nistanbul_start = istanbul_end - istanbul_days + 1\n\n# Validate all constraints are met\nassert santorini_end == max(conference_days), \"Conference day mismatch\"\nassert (london_end - london_start + 1) == london_days, \"London days mismatch\"\nassert (istanbul_end - istanbul_start + 1) == istanbul_days, \"Istanbul days mismatch\"\n\n# Build itinerary\nitinerary = []\n\nistanbul_range = f\"Day {istanbul_start}-{istanbul_end}\" if istanbul_start != istanbul_end else f\"Day {istanbul_start}\"\nitinerary.append({\"day_range\": istanbul_range, \"place\": \"Istanbul\"})\n\nlondon_range = f\"Day {london_start}-{london_end}\" if london_start != london_end else f\"Day {london_start}\"\nitinerary.append({\"day_range\": london_range, \"place\": \"London\"})\n\nsantorini_range = f\"Day {santorini_start}-{santorini_end}\" if santorini_start != santorini_end else f\"Day {santorini_start}\"\nitinerary.append({\"day_range\": santorini_range, \"place\": \"Santorini\"})\n\n# Output result\nprint(json.dumps({\"itinerary\": itinerary}))",
             "count": "trip_planning_example_149"
         }
     ]

@@ -4,11 +4,11 @@
             "final_program_time": {
                 "itinerary": [
                     {
-                        "day_range": "Day 1-4",
+                        "day_range": "Day 1-6",
                         "place": "Split"
                     },
                     {
-                        "day_range": "Day 5-11",
+                        "day_range": "Day 6-12",
                         "place": "London"
                     },
                     {
@@ -34,7 +34,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Split\"}, {\"day_range\": \"Day 5-11\", \"place\": \"London\"}, {\"day_range\": \"Day 12-18\", \"place\": \"Santorini\"}]}",
+            "raw_model_response": "import json\n\n# Input parameters\ntotal_days = 18\nsplit_days = 6\nsantorini_days = 7\nlondon_days = 7\nconference_start = 12\nconference_end = 18\n\n# Calculate Split segment\nsplit_start = 1\nsplit_end = split_start + split_days - 1\n\n# Calculate London segment (must end at conference_start)\nlondon_start = split_end\nlondon_end = london_start + london_days - 1\n\n# Calculate Santorini segment\nsantorini_start = conference_start\nsantorini_end = conference_end\n\n# Build itinerary\nitinerary = []\nitinerary.append({\"day_range\": f\"Day {split_start}-{split_end}\", \"place\": \"Split\"})\nitinerary.append({\"day_range\": f\"Day {london_start}-{london_end}\", \"place\": \"London\"})\nitinerary.append({\"day_range\": f\"Day {santorini_start}-{santorini_end}\", \"place\": \"Santorini\"})\n\n# Output result\nprint(json.dumps({\"itinerary\": itinerary}))",
             "count": "trip_planning_example_116"
         }
     ]

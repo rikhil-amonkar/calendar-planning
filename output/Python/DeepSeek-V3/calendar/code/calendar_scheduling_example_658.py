@@ -1,0 +1,1 @@
+This script finds a suitable meeting time for Shirley and Albert based on their schedules and preferences.

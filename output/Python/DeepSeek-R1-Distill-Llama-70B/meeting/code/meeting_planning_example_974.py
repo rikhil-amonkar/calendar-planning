@@ -1,0 +1,258 @@
+def time_to_minutes(time_str):
+    hours, mins = map(int, time_str.split(':'))
+    return hours * 60 + mins
+
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}:{mins:02d}"
+
+# Travel times dictionary
+travel_times = {
+    ('Sunset District', 'Presidio'): 16,
+    ('Sunset District', 'Nob Hill'): 27,
+    ('Sunset District', 'Pacific Heights'): 21,
+    ('Sunset District', 'Mission District'): 25,
+    ('Sunset District', 'Marina District'): 21,
+    ('Sunset District', 'North Beach'): 28,
+    ('Sunset District', 'Russian Hill'): 24,
+    ('Sunset District', 'Richmond District'): 12,
+    ('Sunset District', 'Embarcadero'): 30,
+    ('Sunset District', 'Alamo Square'): 17,
+    ('Presidio', 'Sunset District'): 15,
+    ('Presidio', 'Nob Hill'): 18,
+    ('Presidio', 'Pacific Heights'): 11,
+    ('Presidio', 'Mission District'): 26,
+    ('Presidio', 'Marina District'): 11,
+    ('Presidio', 'North Beach'): 18,
+    ('Presidio', 'Russian Hill'): 14,
+    ('Presidio', 'Richmond District'): 7,
+    ('Presidio', 'Embarcadero'): 20,
+    ('Presidio', 'Alamo Square'): 19,
+    ('Nob Hill', 'Sunset District'): 24,
+    ('Nob Hill', 'Presidio'): 17,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Mission District'): 13,
+    ('Nob Hill', 'Marina District'): 11,
+    ('Nob Hill', 'North Beach'): 8,
+    ('Nob Hill', 'Russian Hill'): 5,
+    ('Nob Hill', 'Richmond District'): 14,
+    ('Nob Hill', 'Embarcadero'): 9,
+    ('Nob Hill', 'Alamo Square'): 11,
+    ('Pacific Heights', 'Sunset District'): 21,
+    ('Pacific Heights', 'Presidio'): 11,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Mission District'): 15,
+    ('Pacific Heights', 'Marina District'): 6,
+    ('Pacific Heights', 'North Beach'): 9,
+    ('Pacific Heights', 'Russian Hill'): 7,
+    ('Pacific Heights', 'Richmond District'): 12,
+    ('Pacific Heights', 'Embarcadero'): 10,
+    ('Pacific Heights', 'Alamo Square'): 10,
+    ('Mission District', 'Sunset District'): 24,
+    ('Mission District', 'Presidio'): 25,
+    ('Mission District', 'Nob Hill'): 12,
+    ('Mission District', 'Pacific Heights'): 16,
+    ('Mission District', 'Marina District'): 19,
+    ('Mission District', 'North Beach'): 17,
+    ('Mission District', 'Russian Hill'): 15,
+    ('Mission District', 'Richmond District'): 20,
+    ('Mission District', 'Embarcadero'): 19,
+    ('Mission District', 'Alamo Square'): 11,
+    ('Marina District', 'Sunset District'): 19,
+    ('Marina District', 'Presidio'): 10,
+    ('Marina District', 'Nob Hill'): 12,
+    ('Marina District', 'Pacific Heights'): 7,
+    ('Marina District', 'Mission District'): 20,
+    ('Marina District', 'North Beach'): 11,
+    ('Marina District', 'Russian Hill'): 8,
+    ('Marina District', 'Richmond District'): 11,
+    ('Marina District', 'Embarcadero'): 14,
+    ('Marina District', 'Alamo Square'): 15,
+    ('North Beach', 'Sunset District'): 27,
+    ('North Beach', 'Presidio'): 17,
+    ('North Beach', 'Nob Hill'): 7,
+    ('North Beach', 'Pacific Heights'): 8,
+    ('North Beach', 'Mission District'): 18,
+    ('North Beach', 'Marina District'): 9,
+    ('North Beach', 'Russian Hill'): 4,
+    ('North Beach', 'Richmond District'): 18,
+    ('North Beach', 'Embarcadero'): 6,
+    ('North Beach', 'Alamo Square'): 16,
+    ('Russian Hill', 'Sunset District'): 23,
+    ('Russian Hill', 'Presidio'): 14,
+    ('Russian Hill', 'Nob Hill'): 5,
+    ('Russian Hill', 'Pacific Heights'): 7,
+    ('Russian Hill', 'Mission District'): 16,
+    ('Russian Hill', 'Marina District'): 7,
+    ('Russian Hill', 'North Beach'): 5,
+    ('Russian Hill', 'Richmond District'): 14,
+    ('Russian Hill', 'Embarcadero'): 8,
+    ('Russian Hill', 'Alamo Square'): 15,
+    ('Richmond District', 'Sunset District'): 11,
+    ('Richmond District', 'Presidio'): 7,
+    ('Richmond District', 'Nob Hill'): 17,
+    ('Richmond District', 'Pacific Heights'): 10,
+    ('Richmond District', 'Mission District'): 20,
+    ('Richmond District', 'Marina District'): 9,
+    ('Richmond District', 'North Beach'): 17,
+    ('Richmond District', 'Russian Hill'): 13,
+    ('Richmond District', 'Embarcadero'): 19,
+    ('Richmond District', 'Alamo Square'): 13,
+    ('Embarcadero', 'Sunset District'): 30,
+    ('Embarcadero', 'Presidio'): 20,
+    ('Embarcadero', 'Nob Hill'): 10,
+    ('Embarcadero', 'Pacific Heights'): 11,
+    ('Embarcadero', 'Mission District'): 20,
+    ('Embarcadero', 'Marina District'): 12,
+    ('Embarcadero', 'North Beach'): 5,
+    ('Embarcadero', 'Russian Hill'): 8,
+    ('Embarcadero', 'Richmond District'): 21,
+    ('Embarcadero', 'Alamo Square'): 19,
+    ('Alamo Square', 'Sunset District'): 16,
+    ('Alamo Square', 'Presidio'): 17,
+    ('Alamo Square', 'Nob Hill'): 11,
+    ('Alamo Square', 'Pacific Heights'): 10,
+    ('Alamo Square', 'Mission District'): 10,
+    ('Alamo Square', 'Marina District'): 15,
+    ('Alamo Square', 'North Beach'): 15,
+    ('Alamo Square', 'Russian Hill'): 13,
+    ('Alamo Square', 'Richmond District'): 11,
+    ('Alamo Square', 'Embarcadero'): 16
+}
+
+# Friends data
+friends = [
+    {
+        'name': 'Charles',
+        'location': 'Presidio',
+        'start': '13:15',
+        'end': '15:00',
+        'duration': 105
+    },
+    {
+        'name': 'Robert',
+        'location': 'Nob Hill',
+        'start': '13:15',
+        'end': '17:30',
+        'duration': 90
+    },
+    {
+        'name': 'Nancy',
+        'location': 'Pacific Heights',
+        'start': '14:45',
+        'end': '22:00',
+        'duration': 105
+    },
+    {
+        'name': 'Brian',
+        'location': 'Mission District',
+        'start': '15:30',
+        'end': '22:00',
+        'duration': 60
+    },
+    {
+        'name': 'Kimberly',
+        'location': 'Marina District',
+        'start': '17:00',
+        'end': '19:45',
+        'duration': 75
+    },
+    {
+        'name': 'David',
+        'location': 'North Beach',
+        'start': '14:45',
+        'end': '16:30',
+        'duration': 75
+    },
+    {
+        'name': 'William',
+        'location': 'Russian Hill',
+        'start': '12:30',
+        'end': '19:15',
+        'duration': 120
+    },
+    {
+        'name': 'Jeffrey',
+        'location': 'Richmond District',
+        'start': '12:00',
+        'end': '19:15',
+        'duration': 45
+    },
+    {
+        'name': 'Karen',
+        'location': 'Embarcadero',
+        'start': '14:15',
+        'end': '20:45',
+        'duration': 60
+    },
+    {
+        'name': 'Joshua',
+        'location': 'Alamo Square',
+        'start': '18:45',
+        'end': '22:00',
+        'duration': 60
+    }
+]
+
+current_time = time_to_minutes('9:00')  # Starting at 9:00 AM
+current_location = 'Sunset District'
+itinerary = []
+remaining_friends = friends.copy()
+
+while remaining_friends:
+    best_friend = None
+    best_end = float('inf')
+    
+    for friend in remaining_friends:
+        # Calculate travel time from current location to friend's location
+        travel_time = travel_times.get((current_location, friend['location']), None)
+        if travel_time is None:
+            continue  # No known travel time, skip
+        
+        arrival = current_time + travel_time
+        friend_start = time_to_minutes(friend['start'])
+        friend_end = time_to_minutes(friend['end'])
+        
+        # Calculate meeting start and end times
+        meeting_start = max(arrival, friend_start)
+        meeting_end = meeting_start + friend['duration']
+        
+        # Check if the meeting can fit within the friend's available time
+        if meeting_end > friend_end:
+            continue
+        
+        # Update best friend if this meeting ends earlier
+        if meeting_end < best_end:
+            best_end = meeting_end
+            best_friend = friend
+    
+    if best_friend is not None:
+        # Calculate start and end times for the itinerary
+        travel = travel_times[(current_location, best_friend['location'])]
+        arrival = current_time + travel
+        meeting_start = max(arrival, time_to_minutes(best_friend['start']))
+        meeting_end = meeting_start + best_friend['duration']
+        
+        start_time = minutes_to_time(meeting_start)
+        end_time = minutes_to_time(meeting_end)
+        
+        itinerary.append({
+            'action': 'meet',
+            'location': best_friend['location'],
+            'person': best_friend['name'],
+            'start_time': start_time,
+            'end_time': end_time
+        })
+        
+        current_time = meeting_end
+        current_location = best_friend['location']
+        remaining_friends.remove(best_friend)
+    else:
+        break  # No more friends can be scheduled
+
+# Output the result
+print('SOLUTION:')
+print({
+    "itinerary": itinerary
+})

@@ -8,11 +8,11 @@
                         "place": "Warsaw"
                     },
                     {
-                        "day_range": "Day 3-9",
+                        "day_range": "Day 2-8",
                         "place": "Budapest"
                     },
                     {
-                        "day_range": "Day 10-10",
+                        "day_range": "Day 8-11",
                         "place": "Paris"
                     },
                     {
@@ -42,7 +42,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Warsaw\"}, {\"day_range\": \"Day 3-9\", \"place\": \"Budapest\"}, {\"day_range\": \"Day 10-10\", \"place\": \"Paris\"}, {\"day_range\": \"Day 11-17\", \"place\": \"Riga\"}]}",
+            "raw_model_response": "import json\n\ndef calculate_itinerary():\n    cities = {\"Warsaw\": 2, \"Budapest\": 7, \"Paris\": 4, \"Riga\": 7}\n    direct_flights = {\n        \"Warsaw\": [\"Budapest\", \"Riga\", \"Paris\"],\n        \"Budapest\": [\"Warsaw\", \"Paris\"],\n        \"Paris\": [\"Budapest\", \"Warsaw\", \"Riga\"],\n        \"Riga\": [\"Warsaw\", \"Paris\"]\n    }\n\n    itinerary = []\n    current_day = 1\n\n    # Warsaw (days 1-2)\n    itinerary.append({\"day_range\": f\"Day 1-2\", \"place\": \"Warsaw\"})\n    current_day += 2 - 1  # Move to day 2 (flight day)\n\n    # Check valid next city\n    next_city = \"Budapest\"\n    if next_city not in direct_flights[\"Warsaw\"]:\n        raise ValueError(\"Invalid flight path\")\n\n    # Budapest (days 2-8)\n    start = current_day\n    end = start + cities[\"Budapest\"] - 1\n    itinerary.append({\"day_range\": f\"Day {start}-{end}\", \"place\": \"Budapest\"})\n    current_day = end\n\n    # Check next flight\n    next_city = \"Paris\"\n    if next_city not in direct_flights[\"Budapest\"]:\n        raise ValueError(\"Invalid flight path\")\n\n    # Paris (days 8-11)\n    start = current_day\n    end = start + cities[\"Paris\"] - 1\n    itinerary.append({\"day_range\": f\"Day {start}-{end}\", \"place\": \"Paris\"})\n    current_day = end\n\n    # Final flight to Riga\n    next_city = \"Riga\"\n    if next_city not in direct_flights[\"Paris\"]:\n        raise ValueError(\"Invalid flight path\")\n\n    # Riga (days 11-17)\n    start = current_day\n    end = 17  # Enforce wedding constraint\n    if end - start + 1 != cities[\"Riga\"]:\n        raise ValueError(\"Riga days mismatch\")\n    itinerary.append({\"day_range\": f\"Day {start}-{end}\", \"place\": \"Riga\"})\n\n    return {\"itinerary\": itinerary}\n\nprint(json.dumps(calculate_itinerary()))",
             "count": "trip_planning_example_339"
         }
     ]

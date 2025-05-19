@@ -8,16 +8,16 @@
                         "place": "Hamburg"
                     },
                     {
-                        "day_range": "Day 8-13",
-                        "place": "Munich"
+                        "day_range": "Day 7-13",
+                        "place": "Split"
                     },
                     {
-                        "day_range": "Day 14-15",
+                        "day_range": "Day 13-14",
                         "place": "Lyon"
                     },
                     {
-                        "day_range": "Day 16-22",
-                        "place": "Split"
+                        "day_range": "Day 14-19",
+                        "place": "Munich"
                     },
                     {
                         "day_range": "Day 19-20",
@@ -50,7 +50,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-7\", \"place\": \"Hamburg\"}, {\"day_range\": \"Day 8-13\", \"place\": \"Munich\"}, {\"day_range\": \"Day 14-15\", \"place\": \"Lyon\"}, {\"day_range\": \"Day 16-22\", \"place\": \"Split\"}, {\"day_range\": \"Day 19-20\", \"place\": \"Manchester\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    itinerary = []\n    # Hamburg: 7 days (days 1-7, departure on day 7)\n    itinerary.append({\"day_range\": \"Day 1-7\", \"place\": \"Hamburg\"})\n    # Split: 7 days (days 7-13, departure on day 13)\n    itinerary.append({\"day_range\": \"Day 7-13\", \"place\": \"Split\"})\n    # Lyon: 2 days (days 13-14, departure on day 14)\n    itinerary.append({\"day_range\": \"Day 13-14\", \"place\": \"Lyon\"})\n    # Munich: 6 days (days 14-19, departure on day 19)\n    itinerary.append({\"day_range\": \"Day 14-19\", \"place\": \"Munich\"})\n    # Manchester: 2 days (days 19-20)\n    itinerary.append({\"day_range\": \"Day 19-20\", \"place\": \"Manchester\"})\n    \n    # Validate flight connections\n    flight_routes = {\n        'Hamburg': ['Manchester', 'Munich', 'Split'],\n        'Split': ['Hamburg', 'Munich', 'Lyon'],\n        'Lyon': ['Split', 'Munich'],\n        'Munich': ['Manchester', 'Hamburg', 'Split', 'Lyon'],\n        'Manchester': ['Hamburg', 'Munich', 'Split']\n    }\n    prev_city = None\n    for entry in itinerary:\n        current_city = entry['place']\n        if prev_city and current_city not in flight_routes.get(prev_city, []):\n            raise ValueError(f\"No flight from {prev_city} to {current_city}\")\n        prev_city = current_city\n    \n    # Validate day counts\n    required_days = {\n        'Hamburg': 7,\n        'Munich': 6,\n        'Manchester': 2,\n        'Lyon': 2,\n        'Split': 7\n    }\n    for entry in itinerary:\n        days = entry['day_range']\n        start, end = map(int, days.split()[1].split('-'))\n        city = entry['place']\n        required_days[city] -= (end - start + 1)\n    if any(required_days.values()):\n        raise ValueError(\"Day count mismatch\")\n    \n    print(json.dumps({\"itinerary\": itinerary}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_500"
         }
     ]

@@ -2,40 +2,7 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": [
-                    {
-                        "day_range": "Day 1-5",
-                        "place": "Frankfurt"
-                    },
-                    {
-                        "day_range": "Day 13-17",
-                        "place": "Seville"
-                    },
-                    {
-                        "day_range": "Day 6-8",
-                        "place": "Rome"
-                    },
-                    {
-                        "day_range": "Day 10-11",
-                        "place": "Mykonos"
-                    },
-                    {
-                        "day_range": "Day 12-14",
-                        "place": "Nice"
-                    },
-                    {
-                        "day_range": "Day 15-16",
-                        "place": "Lisbon"
-                    },
-                    {
-                        "day_range": "Day 17-18",
-                        "place": "Dublin"
-                    },
-                    {
-                        "day_range": "Day 19-20",
-                        "place": "Bucharest"
-                    }
-                ]
+                "itinerary": []
             },
             "expected_time": {
                 "itinerary": [
@@ -82,7 +49,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-5\", \"place\": \"Frankfurt\"}, {\"day_range\": \"Day 13-17\", \"place\": \"Seville\"}, {\"day_range\": \"Day 6-8\", \"place\": \"Rome\"}, {\"day_range\": \"Day 10-11\", \"place\": \"Mykonos\"}, {\"day_range\": \"Day 12-14\", \"place\": \"Nice\"}, {\"day_range\": \"Day 15-16\", \"place\": \"Lisbon\"}, {\"day_range\": \"Day 17-18\", \"place\": \"Dublin\"}, {\"day_range\": \"Day 19-20\", \"place\": \"Bucharest\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    # Direct flights graph\n    direct_flights = {\n        'Rome': ['Stuttgart', 'Venice', 'Mykonos', 'Seville', 'Frankfurt', 'Bucharest', 'Dublin', 'Lisbon', 'Nice'],\n        'Stuttgart': ['Rome', 'Venice', 'Frankfurt', 'Lisbon'],\n        'Venice': ['Rome', 'Frankfurt', 'Lisbon', 'Dublin', 'Stuttgart', 'Nice'],\n        'Dublin': ['Bucharest', 'Lisbon', 'Frankfurt', 'Venice', 'Rome', 'Nice', 'Seville'],\n        'Mykonos': ['Rome', 'Nice'],\n        'Lisbon': ['Seville', 'Bucharest', 'Venice', 'Dublin', 'Rome', 'Frankfurt', 'Nice', 'Stuttgart'],\n        'Frankfurt': ['Venice', 'Rome', 'Dublin', 'Bucharest', 'Nice', 'Stuttgart', 'Lisbon'],\n        'Bucharest': ['Dublin', 'Lisbon', 'Rome', 'Frankfurt'],\n        'Nice': ['Mykonos', 'Dublin', 'Rome', 'Venice', 'Lisbon', 'Frankfurt'],\n        'Seville': ['Lisbon', 'Rome', 'Dublin']\n    }\n\n    # Fixed constraints\n    itinerary = [\n        {'day_range': 'Day 1-5', 'place': 'Frankfurt'},  # 5 days\n        {'day_range': 'Day 5-8', 'place': 'Stuttgart'},  # 4 days (flight from Frankfurt)\n        {'day_range': 'Day 8-10', 'place': 'Rome'},      # 3 days (flight from Stuttgart)\n        {'day_range': 'Day 10-11', 'place': 'Mykonos'}, # 2 days (flight from Rome)\n        {'day_range': 'Day 11-13', 'place': 'Nice'},    # 3 days (flight from Mykonos)\n        {'day_range': 'Day 13-17', 'place': 'Seville'}, # 5 days (flight from Lisbon)\n        {'day_range': 'Day 17-19', 'place': 'Lisbon'},  # 2 days (flight from Seville)\n        {'day_range': 'Day 19-22', 'place': 'Venice'},  # 4 days (flight from Lisbon)\n        {'day_range': 'Day 22-23', 'place': 'Dublin'},  # 2 days (flight from Venice)\n        {'day_range': 'Day 23-23', 'place': 'Bucharest'} # 2 days (flight from Dublin)\n    ]\n\n    # Validate flight connections\n    valid = True\n    prev_place = None\n    for entry in itinerary:\n        current_place = entry['place']\n        if prev_place and prev_place != current_place:\n            if current_place not in direct_flights.get(prev_place, []):\n                valid = False\n                break\n        prev_place = current_place\n\n    if valid:\n        print(json.dumps({'itinerary': itinerary}))\n    else:\n        print(json.dumps({'itinerary': []}))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_1434"
         }
     ]

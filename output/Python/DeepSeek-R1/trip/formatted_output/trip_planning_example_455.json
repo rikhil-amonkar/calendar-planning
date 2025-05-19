@@ -2,7 +2,28 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-2",
+                        "place": "Riga"
+                    },
+                    {
+                        "day_range": "Day 2-7",
+                        "place": "Istanbul"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Krakow"
+                    },
+                    {
+                        "day_range": "Day 13-15",
+                        "place": "Warsaw"
+                    },
+                    {
+                        "day_range": "Day 15-21",
+                        "place": "Reykjavik"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -29,7 +50,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import json\nfrom itertools import permutations\n\ncities = {\n    'Reykjavik': 7,\n    'Riga': 2,\n    'Warsaw': 3,\n    'Istanbul': 6,\n    'Krakow': 7\n}\n\ndirect_flights = {\n    'Istanbul': ['Krakow', 'Warsaw', 'Riga'],\n    'Krakow': ['Istanbul', 'Warsaw'],\n    'Warsaw': ['Istanbul', 'Krakow', 'Riga', 'Reykjavik'],\n    'Riga': ['Istanbul', 'Warsaw'],\n    'Reykjavik': ['Warsaw']\n}\n\nfor perm in permutations(cities.keys()):\n    valid = True\n    for i in range(len(perm)-1):\n        if perm[i+1] not in direct_flights[perm[i]]:\n            valid = False\n            break\n    if not valid:\n        continue\n    \n    day_ranges = []\n    current_day = 1\n    for idx, city in enumerate(perm):\n        duration = cities[city]\n        if idx == 0:\n            start = current_day\n            end = start + duration - 1\n        else:\n            start = current_day\n            end = start + duration - 1\n        day_ranges.append((city, start, end))\n        current_day = end\n    \n    total_transitions = len(perm) - 1\n    if sum(cities.values()) - total_transitions != 21:\n        continue\n    \n    riga_valid = False\n    istanbul_valid = False\n    for city, start, end in day_ranges:\n        if city == 'Riga':\n            if start <= 1 and end >= 2:\n                riga_valid = True\n        if city == 'Istanbul':\n            if start <= 2 and end >= 7:\n                istanbul_valid = True\n    \n    if riga_valid and istanbul_valid:\n        itinerary = []\n        for city, start, end in day_ranges:\n            day_range = f\"Day {start}-{end}\" if start != end else f\"Day {start}\"\n            itinerary.append({\"day_range\": day_range, \"place\": city})\n        print(json.dumps({\"itinerary\": itinerary}))\n        exit()\n\nprint(json.dumps({\"itinerary\": []}))",
             "count": "trip_planning_example_455"
         }
     ]

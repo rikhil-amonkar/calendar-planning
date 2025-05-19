@@ -2,7 +2,28 @@
     "0shot": [
         {
             "final_program_time": {
-                "itinerary": []
+                "itinerary": [
+                    {
+                        "day_range": "Day 1-7",
+                        "place": "Geneva"
+                    },
+                    {
+                        "day_range": "Day 7-13",
+                        "place": "Porto"
+                    },
+                    {
+                        "day_range": "Day 13-18",
+                        "place": "Paris"
+                    },
+                    {
+                        "day_range": "Day 18-19",
+                        "place": "Reykjavik"
+                    },
+                    {
+                        "day_range": "Day 19-23",
+                        "place": "Oslo"
+                    }
+                ]
             },
             "expected_time": {
                 "itinerary": [
@@ -29,7 +50,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "",
+            "raw_model_response": "import itertools\nimport json\n\nrequired_days = {\n    \"Paris\": 6,\n    \"Porto\": 7,\n    \"Reykjavik\": 2\n}\ndirect_flights = {\n    \"Geneva\": [\"Paris\", \"Oslo\", \"Porto\"],\n    \"Paris\": [\"Geneva\", \"Oslo\", \"Porto\", \"Reykjavik\"],\n    \"Porto\": [\"Paris\", \"Geneva\", \"Oslo\"],\n    \"Reykjavik\": [\"Paris\", \"Oslo\"],\n    \"Oslo\": [\"Paris\", \"Geneva\", \"Porto\", \"Reykjavik\"]\n}\n\nremaining_cities = list(required_days.keys())\nvalid_sequence = None\n\nfor perm in itertools.permutations(remaining_cities):\n    if perm[0] not in direct_flights[\"Geneva\"]:\n        continue\n    valid = True\n    for i in range(len(perm)-1):\n        if perm[i+1] not in direct_flights[perm[i]]:\n            valid = False\n            break\n    if not valid or \"Oslo\" not in direct_flights[perm[-1]]:\n        continue\n    \n    current_day = 7\n    day_usage = []\n    for city in perm:\n        duration = required_days[city]\n        end = current_day + duration - 1\n        day_usage.append(end)\n        current_day = end\n    if current_day != 19:\n        continue\n    \n    valid_sequence = perm\n    break\n\nitinerary = [{\"day_range\": \"Day 1-7\", \"place\": \"Geneva\"}]\ncurrent_day = 7\nfor city in valid_sequence:\n    duration = required_days[city]\n    start = current_day\n    end = start + duration - 1\n    itinerary.append({\"day_range\": f\"Day {start}-{end}\", \"place\": city})\n    current_day = end\nitinerary.append({\"day_range\": \"Day 19-23\", \"place\": \"Oslo\"})\n\nprint(json.dumps({\"itinerary\": itinerary}))",
             "count": "trip_planning_example_580"
         }
     ]

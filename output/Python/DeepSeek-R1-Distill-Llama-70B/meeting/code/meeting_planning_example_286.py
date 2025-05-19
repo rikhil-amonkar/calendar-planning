@@ -1,0 +1,75 @@
+import itertools
+
+def time_to_minutes(t):
+    h, m = map(int, t.split(':'))
+    return h * 60 + m
+
+def minutes_to_time(m):
+    h = m // 60
+    m = m % 60
+    return f"{h}:{m:02d}"
+
+travel_times = {
+    'Union Square': {
+        'Mission District': 14,
+        'Bayview': 15,
+        'Sunset District': 26,
+    },
+    'Mission District': {
+        'Union Square': 15,
+        'Bayview': 13,
+        'Sunset District': 24,
+    },
+    'Bayview': {
+        'Union Square': 17,
+        'Mission District': 13,
+        'Sunset District': 23,
+    },
+    'Sunset District': {
+        'Union Square': 30,
+        'Mission District': 24,
+        'Bayview': 22,
+    },
+}
+
+friends = [
+    {'name': 'Rebecca', 'location': 'Mission District', 'start': '11:30', 'end': '20:15', 'duration': 120},
+    {'name': 'Karen', 'location': 'Bayview', 'start': '12:45', 'end': '15:00', 'duration': 120},
+    {'name': 'Carol', 'location': 'Sunset District', 'start': '10:15', 'end': '11:45', 'duration': 30},
+]
+
+best_itinerary = []
+
+for perm in itertools.permutations(friends):
+    current_location = 'Union Square'
+    current_time = 540  # 9:00 AM
+    itinerary = []
+    valid = True
+    for friend in perm:
+        travel = travel_times[current_location][friend['location']]
+        arrival = current_time + travel
+        start = time_to_minutes(friend['start'])
+        end = time_to_minutes(friend['end'])
+        meet_start = max(arrival, start)
+        meet_end = meet_start + friend['duration']
+        if meet_end > end:
+            valid = False
+            break
+        itinerary.append({
+            'action': 'meet',
+            'location': friend['location'],
+            'person': friend['name'],
+            'start_time': minutes_to_time(meet_start),
+            'end_time': minutes_to_time(meet_end)
+        })
+        current_location = friend['location']
+        current_time = meet_end
+    if valid:
+        if len(itinerary) > len(best_itinerary):
+            best_itinerary = itinerary.copy()
+
+print('SOLUTION:')
+print('{ "itinerary": [')
+for i, meeting in enumerate(best_itinerary):
+    print(f'    {{"action": "meet", "location": "{meeting["location"]}", "person": "{meeting["person"]}", "start_time": "{meeting["start_time"]}", "end_time": "{meeting["end_time"]}"}}' + ('' if i == len(best_itinerary)-1 else ','))
+print(']}')

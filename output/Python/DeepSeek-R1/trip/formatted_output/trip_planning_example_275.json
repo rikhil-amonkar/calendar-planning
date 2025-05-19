@@ -8,11 +8,11 @@
                         "place": "Vilnius"
                     },
                     {
-                        "day_range": "Day 5-9",
+                        "day_range": "Day 4-8",
                         "place": "Split"
                     },
                     {
-                        "day_range": "Day 10-12",
+                        "day_range": "Day 8-13",
                         "place": "Madrid"
                     },
                     {
@@ -42,7 +42,7 @@
                 ]
             },
             "has_error": false,
-            "raw_model_response": "{\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Vilnius\"}, {\"day_range\": \"Day 5-9\", \"place\": \"Split\"}, {\"day_range\": \"Day 10-12\", \"place\": \"Madrid\"}, {\"day_range\": \"Day 13-14\", \"place\": \"Santorini\"}]}",
+            "raw_model_response": "import json\n\ndef main():\n    required_days = {\n        'Split': 5,\n        'Vilnius': 4,\n        'Santorini': 2,\n        'Madrid': 6\n    }\n    conference_start = 13\n    conference_end = 14\n    \n    santorini_start = conference_start\n    santorini_end = conference_end\n    \n    madrid_end = santorini_start\n    madrid_start = madrid_end - required_days['Madrid'] + 1\n    \n    split_end = madrid_start\n    split_start = split_end - required_days['Split'] + 1\n    \n    vilnius_end = split_start\n    vilnius_start = vilnius_end - required_days['Vilnius'] + 1\n    \n    itinerary = [\n        {\"day_range\": f\"Day {vilnius_start}-{vilnius_end}\", \"place\": \"Vilnius\"},\n        {\"day_range\": f\"Day {split_start}-{split_end}\", \"place\": \"Split\"},\n        {\"day_range\": f\"Day {madrid_start}-{madrid_end}\", \"place\": \"Madrid\"},\n        {\"day_range\": f\"Day {santorini_start}-{santorini_end}\", \"place\": \"Santorini\"}\n    ]\n    \n    print(json.dumps({\"itinerary\": itinerary}, indent=2))\n\nif __name__ == \"__main__\":\n    main()",
             "count": "trip_planning_example_275"
         }
     ]
