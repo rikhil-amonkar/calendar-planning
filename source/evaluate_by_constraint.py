@@ -15,9 +15,18 @@ parser.add_argument('--output', choices=['plan', 'python', 'z3'], required=True,
 args = parser.parse_args()
 
 def evaluate_calendar(constraints, pred_dict):
+    # Check for missing day, start_time, or end_time
+    if not pred_dict or "day" not in pred_dict or "start_time" not in pred_dict or "end_time" not in pred_dict:
+        return False, {"missing_fields": True}
+    
     pred_day = pred_dict["day"]
     pred_start = pred_dict["start_time"]
     pred_end = pred_dict["end_time"]
+    
+    # Check for None values in any of the fields
+    if pred_day is None or pred_start is None or pred_end is None:
+        return False, {"null_fields": True}
+    
     # Convert time strings to numerical values
     if isinstance(pred_start, str):
         pred_start_parts = pred_start.split(":")
@@ -27,7 +36,10 @@ def evaluate_calendar(constraints, pred_dict):
             return False, {"unparsable": True}
     if isinstance(pred_end, str):
         pred_end_parts = pred_end.split(":")
-        pred_end = float(pred_end_parts[0]) + float(pred_end_parts[1]) / 60
+        try:
+            pred_end = float(pred_end_parts[0]) + float(pred_end_parts[1]) / 60
+        except ValueError:
+            return False, {"unparsable": True}
     meeting_duration = constraints["meeting_duration"]
     if (pred_end - pred_start) != meeting_duration:
         #print(pred_dict)
@@ -48,13 +60,20 @@ def evaluate_trip(constraints, pred_dict):
     # parse the predicted itinerary segments
     segments = []
     for seg in pred_dict["itinerary"]:
+        # Handle special cases like "Day {current_day}-{current_day + 2}"
+        if not seg["day_range"].startswith("Day ") or "{" in seg["day_range"] or "}" in seg["day_range"]:
+            return False, {"invalid_day_range_format": seg["day_range"]}
+            
         # "Day X-Y"
         dr = seg["day_range"].replace("Day ", "")
         if "-" in dr:
             start_s, end_s = dr.split("-")
         else:
             start_s, end_s = [dr, dr]
-        start, end = int(start_s), int(end_s)
+        try:
+            start, end = int(start_s), int(end_s)
+        except ValueError:
+            return False, {"unparsable_day_range": seg["day_range"]}
         segments.append({"place": seg["place"], "start": start, "end": end})
 
     # 1) check full coverage from day 1 to total_days, with no gaps/overlaps
@@ -101,10 +120,14 @@ def evaluate_meeting(constraints, pred_dict):
     from datetime import datetime
 
     def parse_time(s):
-        # handles "H:MM" or "H:MMAM"/"H:MMPM"
-        if s.endswith(("AM", "PM")):
-            return datetime.strptime(s, "%I:%M%p")
-        return datetime.strptime(s, "%H:%M")
+        # Return None for invalid time formats instead of raising exception
+        try:
+            # handles "H:MM" or "H:MMAM"/"H:MMPM"
+            if s.endswith(("AM", "PM")):
+                return datetime.strptime(s, "%I:%M%p")
+            return datetime.strptime(s, "%H:%M")
+        except ValueError:
+            return None
 
     # build map person→availability & location
     people = {p["name"]: p for p in constraints.get("people_to_meet", [])}
@@ -117,8 +140,10 @@ def evaluate_meeting(constraints, pred_dict):
     for m in pred_dict.get("itinerary", []):
         name = m["person"]
         start = parse_time(m["start_time"])
-        end   = parse_time(m["end_time"])
-        loc   = people.get(name, {}).get("location")
+        end = parse_time(m["end_time"])
+        if start is None or end is None:  # Invalid time format
+            return False, {"invalid_time_format": {"start": m["start_time"], "end": m["end_time"]}}
+        loc = people.get(name, {}).get("location")
         meetings.append({"person": name, "start": start, "end": end, "location": loc})
 
     if len(meetings) < num_people_to_meet:
@@ -133,7 +158,7 @@ def evaluate_meeting(constraints, pred_dict):
             continue
         avail = p["time_of_day"]
         av_from = parse_time(avail["from"])
-        av_to   = parse_time(avail["to"])
+        av_to = parse_time(avail["to"])
         if m["start"] < av_from or m["end"] > av_to:
             return False, {"person": m["person"], "time_of_day": avail}
 
@@ -142,7 +167,7 @@ def evaluate_meeting(constraints, pred_dict):
     for d in constraints.get("travel_distances", []):
         pl = d["place"]
         frm = pl.get("from", constraints.get("start", {}).get("location"))
-        to  = pl["to"]
+        to = pl["to"]
         travel[(frm, to)] = d["walking_time"]
 
     # 3) check start‐to‐first meeting
@@ -159,7 +184,7 @@ def evaluate_meeting(constraints, pred_dict):
         if walk0 is not None and walk0 > gap0:
             return False, {
                 "travel_start": {
-                    "to_person":   first["person"],
+                    "to_person": first["person"],
                     "to_location": first["location"],
                     "travel_time": walk0
                 }
@@ -168,15 +193,15 @@ def evaluate_meeting(constraints, pred_dict):
     # 3) check following meetings
     for a, b in zip(meetings, meetings[1:]):
         gap_mins = (b["start"] - a["end"]).total_seconds() / 60
-        walk     = travel.get((a["location"], b["location"]))
+        walk = travel.get((a["location"], b["location"]))
         if walk is not None and walk > gap_mins:
             return False, {
                 "travel": {
                     "from_person": a["person"],
-                    "to_person":   b["person"],
+                    "to_person": b["person"],
                     "from_location": a["location"],
-                    "to_location":   b["location"],
-                    "travel_time":   walk
+                    "to_location": b["location"],
+                    "travel_time": walk
                 }
             }
 
@@ -305,7 +330,9 @@ for task in tasks:
         total_count += 1
         if entry.get("has_error"):
             status = "Error"
-        elif "itinerary" in pred_dict and not pred_dict["itinerary"] or not pred_dict:
+        elif not pred_dict or (task == "calendar" and ("day" not in pred_dict or "start_time" not in pred_dict or "end_time" not in pred_dict)) or \
+             (task == "trip" and ("itinerary" not in pred_dict or not pred_dict["itinerary"])) or \
+             (task == "meeting" and ("itinerary" not in pred_dict or not pred_dict["itinerary"])):
             no_error_count += 1
             status = "No plan"
         else:
@@ -319,6 +346,7 @@ for task in tasks:
                 itinerary = pred_dict.get("itinerary")
                 itinerary = [{
                                 "action": x["action"],
+                                "location": x["location"],
                                 "person": x["person"],
                                 "start_time": x["start_time"],
                                 "end_time": x["end_time"]
@@ -378,3 +406,4 @@ for task in tasks:
     print("Correct examples:", correct_count)
     with open(report_path, "w") as f:
         json.dump(report_data, f, indent=4)
+

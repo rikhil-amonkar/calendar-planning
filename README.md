@@ -31,7 +31,7 @@ For plan generation with reasoning on DeepSeek models, go to [source/](source/) 
 where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported DeepSeek API
 
 Now evaluate the output plan with
-> python evaluate_by_constraint_adjusted.py --task TASK --model MODEL --output OUTPUT
+> python evaluate_by_constraint.py --task TASK --model MODEL --output OUTPUT
 
 where `TASK` is one of *calendar*, *trip*, *meeting*, or all.; `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `OUTPUT` is either *plan* or *python*
 
@@ -54,7 +54,7 @@ For Python code generation with reasoning on DeepSeek models, go to [source/](so
 where `TASK` is one of *calendar*, *trip*, *meeting* tasks; `MODEL` is a model name supported DeepSeek API
 
 Now evaluate the output plan from the Python generated outputs with
-> python evaluate_by_constraint_adjusted.py --task TASK --model MODEL --output OUTPUT
+> python evaluate_by_constraint.py --task TASK --model MODEL --output OUTPUT
 
 where `TASK` is one of *calendar*, *trip*, *meeting*, or all.; `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `OUTPUT` is either *plan* or *python*
 
@@ -66,10 +66,13 @@ For Z3 code generation, go to [source/](source/) and run
 
 where `MODEL` is a model name supported HuggingFace, OpenAI API, or DeepSeek API; `DATA` is one of *calendar*, *trip*, *meeting*, or all. 
 
-Next, execute the generated code with
+Execute the generated code:
 > python execute_smt.py --model MODEL --data DATA
 
-and evaluate the output plan with
-> python evaluate_smt_output.py --model MODEL --data DATA
+Convert the output into a unified format:
+> python convert_smt_output_format.py --model MODEL --data DATA
+
+Evaluate against constraints:
+> python evaluate_by_constraint.py --output z3 --model MODEL --data DATA
 
 This creates corresponding files and a readable report in [output/SMT/](output/SMT/)`MODEL/TASK/report.json`. 
