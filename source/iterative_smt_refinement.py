@@ -494,6 +494,15 @@ async def main():
                                          not execution_output.strip())
                     
                     if has_execution_error:
+                        # Extract gold plan for consistency
+                        gold = example["golden_plan"]
+                        if isinstance(gold, list):
+                            gold = "\n".join(gold)
+                        try:
+                            gold_formatted = extract_answer(gold, task)
+                        except Exception as e:
+                            gold_formatted = {}
+                        
                         # Prepare feedback for next iteration
                         current_prompt = f"The previous code had the following error:\n{execution_output}\n\nPlease fix the code and provide a corrected version. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
                         
@@ -501,8 +510,12 @@ async def main():
                         eval_result = {
                             "has_execution_error": True,
                             "execution_output": execution_output,
+                            "pred": {},
+                            "gold": gold_formatted,
+                            "status": "Error",
+                            "violated_constraint": {},
+                            "is_exact_match": False,
                             "constraints_satisfied": False,
-                            "violated_constraints": {},
                             "pass_number": pass_num
                         }
                         with open(f"{pass_output_dir}/evaluation.json", "w") as f:
@@ -516,28 +529,45 @@ async def main():
                     except Exception as e:
                         pred_formatted = {}
                     
+                    # Extract gold plan
+                    gold = example["golden_plan"]
+                    if isinstance(gold, list):
+                        gold = "\n".join(gold)
+                    try:
+                        gold_formatted = extract_answer(gold, task)
+                    except Exception as e:
+                        gold_formatted = {}
+                    
                     # Evaluate constraints
                     eval_func = eval_functions[task]
                     
                     # Special handling for meeting task
                     if task == "meeting":
                         # Add num_people_to_meet constraint from gold solution
-                        gold = example["golden_plan"]
-                        if isinstance(gold, list):
-                            gold = "\n".join(gold)
-                        gold_formatted = extract_answer(gold, task)
                         num_people_to_meet = len(gold_formatted.get("itinerary", []))
                         example_constraints["num_people_to_meet"] = num_people_to_meet
                     
                     constraints_satisfied, violated_constraints = eval_func(example_constraints, pred_formatted)
                     
+                    # Check exact match
+                    is_exact_match = pred_formatted == gold_formatted
+                    
+                    # Determine status
+                    if constraints_satisfied:
+                        status = "Correct"
+                    else:
+                        status = "Wrong plan"
+                    
                     # Save evaluation result
                     eval_result = {
                         "has_execution_error": False,
                         "execution_output": execution_output,
-                        "pred_formatted": pred_formatted,
+                        "pred": pred_formatted,
+                        "gold": gold_formatted,
+                        "status": status,
+                        "violated_constraint": violated_constraints,
+                        "is_exact_match": is_exact_match,
                         "constraints_satisfied": constraints_satisfied,
-                        "violated_constraints": violated_constraints,
                         "pass_number": pass_num
                     }
                     with open(f"{pass_output_dir}/evaluation.json", "w") as f:
