@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument("--model", type=str, required=True, help="Model to use (e.g., 'DeepSeek-R1')")
     parser.add_argument("--task", type=str, required=True, choices=["calendar", "trip", "meeting"], help="Task type")
     parser.add_argument("--max_passes", type=int, default=5, help="Maximum number of refinement passes")
-    parser.add_argument("--max_concurrent", type=int, default=5, help="Maximum number of concurrent examples to process")
+    parser.add_argument("--max_concurrent", type=int, default=10, help="Maximum number of concurrent examples to process")
     parser.add_argument("--rate_limit", type=int, default=60, help="Rate limit (requests per minute)")
     parser.add_argument("--start", type=int, help="Start example number (inclusive)")
     parser.add_argument("--end", type=int, help="End example number (inclusive)")

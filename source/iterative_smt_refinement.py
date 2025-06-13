@@ -65,7 +65,7 @@ parser.add_argument('--end', type=int, default=-1,
                    help="Ending index for processing examples")
 parser.add_argument('--max_passes', type=int, default=5, 
                    help="Maximum number of refinement passes per example")
-parser.add_argument('--max_concurrent', type=int, default=20,
+parser.add_argument('--max_concurrent', type=int, default=10,
                    help="Maximum number of examples to process concurrently")
 parser.add_argument('--rate_limit', type=float, default=1.0,
                    help="Requests per second limit (to avoid API rate limits)")
