@@ -1,37 +1,57 @@
-from z3 import Solver, Int, Or
+from z3 import Int, Solver, Or, sat
 
-def main():
-    s = Solver()
-    start = Int('start')
+def time_to_minutes(time_str):
+    h, m = map(int, time_str.split(':'))
+    return h * 60 + m - 9 * 60  # Subtract 540 minutes (9 hours) to start from 0 at 9:00
 
-    # Work hours: 9:00 (0 min) to 17:00 (480 min)
-    # Meeting duration: 60 min -> start between 0 and 420 inclusive
-    s.add(start >= 0)
-    s.add(start <= 420)
+def minutes_to_time(minutes):
+    total_minutes = minutes + 9 * 60
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-    # Kayla's blocked intervals (minutes from 9:00)
-    kayla_blocks = [(60, 90), (330, 420)]
-    for a, b in kayla_blocks:
-        s.add(Or(start + 60 <= a, start >= b))
+# Define work day boundaries in minutes (9:00 to 17:00)
+work_start = 0  # 9:00
+work_end = 480  # 17:00 (8 hours * 60 minutes)
+meeting_duration = 60  # 1 hour
 
-    # Rebecca's blocked intervals
-    rebecca_blocks = [(0, 240), (270, 360), (390, 420)]
-    for a, b in rebecca_blocks:
-        s.add(Or(start + 60 <= a, start >= b))
+# Convert blocked times to minutes relative to 9:00
+kayla_blocked = [
+    (time_to_minutes("10:00"), time_to_minutes("10:30")),
+    (time_to_minutes("14:30"), time_to_minutes("16:00"))
+]
 
-    if s.check() == 'sat':
-        model = s.model()
-        start_min = model[start].as_long()
-        # Convert to time string
-        start_hr = 9 + start_min // 60
-        start_min %= 60
-        end_min_val = start_min + 60
-        end_hr = 9 + (start_min + 60) // 60
-        end_min_val %= 60
-        
-        print(f"Monday {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min_val:02d}")
-    else:
-        print("No solution found")
+rebecca_blocked = [
+    (time_to_minutes("9:00"), time_to_minutes("13:00")),
+    (time_to_minutes("13:30"), time_to_minutes("15:00")),
+    (time_to_minutes("15:30"), time_to_minutes("16:00"))
+]
 
-if __name__ == "__main__":
-    main()
+# Combine all blocked intervals
+all_blocked = kayla_blocked + rebecca_blocked
+
+# Create Z3 solver and variable for meeting start time
+s = Solver()
+start = Int('start')
+
+# Meeting must be within work hours
+s.add(start >= work_start)
+s.add(start + meeting_duration <= work_end)
+
+# Meeting must not overlap with any blocked intervals
+for block_start, block_end in all_blocked:
+    s.add(Or(start + meeting_duration <= block_start, start >= block_end))
+
+# Check for solution
+if s.check() == sat:
+    model = s.model()
+    start_minutes = model[start].as_long()
+    start_time_str = minutes_to_time(start_minutes)
+    end_time_str = minutes_to_time(start_minutes + meeting_duration)
+    
+    print("SOLUTION:")
+    print("Day: Monday")
+    print(f"Start Time: {start_time_str}")
+    print(f"End Time: {end_time_str}")
+else:
+    print("No solution found")

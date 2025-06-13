@@ -34,6 +34,8 @@ from datetime import datetime
 from kani import Kani
 from kani.engines.huggingface import HuggingEngine
 from kani.engines.openai import OpenAIEngine
+import shutil
+import logging
 
 # Argument parsing
 parser = argparse.ArgumentParser(
@@ -51,18 +53,6 @@ Examples:
   python iterative_smt_refinement.py --task meeting --model o3-mini --fresh
 """
 )
-# parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True,
-#                     help="Task to run: calendar (scheduling meetings), trip (planning itineraries), meeting (scheduling multiple meetings), or all")
-# parser.add_argument('--model', required=True, nargs='+',
-#                     help="Model(s) to use: gpt-4o-mini, o3-mini, DeepSeek-V3, DeepSeek-R1, or any HuggingFace model path")
-# parser.add_argument('--fresh', action='store_true',
-#                     help="Re-run all examples, ignoring existing successful solutions")
-# parser.add_argument('--start', type=int, default=0,
-#                     help="Starting index for processing examples (default: 0)")
-# parser.add_argument('--end', type=int, default=-1,
-#                     help="Ending index for processing examples (default: -1, process all)")
-# parser.add_argument('--max_passes', type=int, default=5,
-#                     help="Maximum number of refinement passes per example (default: 5)")
 parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True, 
                    help="Task to run")
 parser.add_argument('--model', required=True, nargs='+', 
@@ -79,6 +69,7 @@ parser.add_argument('--max_concurrent', type=int, default=20,
                    help="Maximum number of examples to process concurrently")
 parser.add_argument('--rate_limit', type=float, default=1.0,
                    help="Requests per second limit (to avoid API rate limits)")
+parser.add_argument('--examples', type=str, help="Comma-separated list of example numbers to rerun (e.g., '25,35')")
 args = parser.parse_args()
 
 try:
@@ -400,207 +391,152 @@ eval_functions = {
     "meeting": evaluate_meeting
 }
 
-async def main():
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description="Run iterative SMT refinement")
+    parser.add_argument("--model", type=str, required=True, help="Model name to use")
+    parser.add_argument("--task", type=str, choices=["calendar", "trip", "meeting"], required=True, help="Task to run")
+    parser.add_argument("--max_passes", type=int, default=5, help="Maximum number of refinement passes")
+    parser.add_argument("--rate_limit", type=float, default=1.0, help="API rate limit (requests per second)")
+    parser.add_argument("--start", type=int, help="Start example number (inclusive)")
+    parser.add_argument("--end", type=int, help="End example number (inclusive)")
+    parser.add_argument("--fresh", action="store_true", help="Force fresh run even if output exists")
+    parser.add_argument("--examples", type=str, help="Comma-separated list of example numbers to rerun (e.g., '25,35')")
+    
+    args = parser.parse_args()
+    
+    # Clean up examples argument
+    if args.examples:
+        # Remove all quotes and whitespace
+        args.examples = args.examples.replace('"', '').replace("'", "").strip()
+        # Split and clean each number
+        args.examples = ','.join(num.strip() for num in args.examples.split(','))
+    
+    return args
+
+def main():
     """Main execution function"""
-    for model_name in args.model:
-        ai = initialize_model(model_name, keys)
-        model_short_name = model_name.split("/")[-1] if "/" in model_name else model_name
+    args = parse_args()
+    
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Task prefix mapping
+    task_prefix_map = {
+        "calendar": "calendar_scheduling",
+        "trip": "trip_planning",
+        "meeting": "meeting_planning"
+    }
+    
+    rate_limiter = RateLimiter(args.rate_limit)
+    model_short_name = args.model.split("/")[-1] if "/" in args.model else args.model
+    logging.info(f"Starting model: {args.model}")
+    logging.info(f"Starting task: {args.task}")
+    
+    # Load examples and constraints
+    examples = load_examples(args.task)
+    constraints = load_constraints(args.task)
+    
+    # Handle specific examples if provided
+    if args.examples:
+        logging.info(f"Processing specific examples: {args.examples}")
+        try:
+            # Split and convert to integers, with extra cleaning
+            example_numbers = [int(num.strip()) for num in args.examples.split(",") if num.strip()]
+            logging.info(f"Parsed example numbers: {example_numbers}")
+            
+            # Filter examples to only include specified numbers
+            task_prefix = task_prefix_map[args.task]
+            example_ids = [f"{task_prefix}_example_{num}" for num in example_numbers]
+            examples = {example_id: examples[example_id] for example_id in example_ids if example_id in examples}
+            
+            if not examples:
+                logging.error("No valid examples found in the specified range")
+                return
+                
+            # Clear output directories for specified examples
+            for example_id in examples:
+                output_dir = f"../output/SMT/{model_short_name}/{args.task}/n_pass/{example_id}"
+                if os.path.exists(output_dir):
+                    logging.info(f"Clearing output directory for {example_id}")
+                    shutil.rmtree(output_dir)
+        except ValueError as e:
+            logging.error(f"Error parsing example numbers: {e}")
+            logging.error(f"Raw examples string: '{args.examples}'")
+            return
+    
+    # Process examples
+    success_count = 0
+    failed_count = 0
+    error_count = 0
+    
+    for example_id, example in examples.items():
+        # Verify example_id matches task prefix
+        task_prefix = task_prefix_map[args.task]
+        if not example_id.startswith(f"{task_prefix}_example_"):
+            logging.warning(f"Example ID {example_id} does not match expected format for task {args.task}, skipping")
+            continue
+            
+        if example_id not in constraints:
+            logging.warning(f"No constraints found for {example_id}, skipping")
+            continue
+            
+        # Skip examples outside the range if specified
+        if args.start is not None or args.end is not None:
+            example_num = int(example_id.split("_")[-1])
+            if (args.start is not None and example_num < args.start) or \
+               (args.end is not None and example_num >= args.end):
+                continue
+        
+        try:
+            result = process_single_example(
+                args.model,
+                model_short_name,
+                args.task,
+                example_id,
+                example,
+                constraints[example_id],
+                rate_limiter
+            )
+            
+            if result["status"] == "success":
+                success_count += 1
+            elif result["status"] == "failed":
+                failed_count += 1
+            elif result["status"] == "api_error":
+                error_count += 1
+                
+        except Exception as e:
+            logging.error(f"Error processing {example_id}: {str(e)}")
+            error_count += 1
+    
+    logging.info(f"Results: {success_count} succeeded, {failed_count} failed, {error_count} API errors")
 
-        if args.task == "all":
-            tasks = ["calendar", "trip", "meeting"]
-        else:
-            tasks = [args.task]
+def load_examples(task):
+    """Load examples from the appropriate JSON file"""
+    task_name_map = {
+        "calendar": "calendar_scheduling",
+        "trip": "trip_planning",
+        "meeting": "meeting_planning"
+    }
+    with open(f"../data/{task_name_map[task]}_100.json") as f:
+        return json.load(f)
 
-        for task in tasks:
-            print(f"Running task: {task}")
-
-            # Load data and constraints
-            with open(f"../data/{task_name_map[task]}_100.json") as f:
-                data = json.load(f)
-
-            with open(f"../data/{task_name_map[task]}_100_constraints.json") as f:
-                constraints_data = json.load(f)
-
-            for idx, (example_id, example) in enumerate(data.items()):
-                if idx < args.start or (args.end != -1 and idx >= args.end):
-                    continue
-
-                print(f"Processing example: {example}")
-
-                # Check if we should skip this example
-                base_output_dir = f"../output/SMT/{model_short_name}/{task}/n_pass/{example}"
-                if not args.fresh and os.path.exists(base_output_dir):
-                    # Check if we already have a successful solution
-                    for pass_num in range(1, args.max_passes + 1):
-                        eval_path = f"{base_output_dir}/{pass_num}_pass/evaluation.json"
-                        if os.path.exists(eval_path):
-                            with open(eval_path, 'r') as f:
-                                eval_data = json.load(f)
-                                if eval_data.get("constraints_satisfied", False):
-                                    print(f"Skipping {example}, already has successful solution in pass {pass_num}")
-                                    break
-                    else:
-                        # No successful solution found, continue processing
-                        pass
-                    continue
-
-                # Get constraints for this example
-                example_constraints = constraints_data.get(example_id, {}).get("constraints", {})
-
-                # Initialize conversation history
-                conversation_history = []
-
-                # Initial prompt
-                initial_prompt = "Given the following scheduling problem:\n"
-                initial_prompt += f"{example['prompt_0shot']}\n"
-                if task == "calendar":
-                    initial_prompt += "Your solution should always have three things: the day to meet, the start time, and the end time.\n"
-                if task == "trip":
-                    initial_prompt += "Note that if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.\n"
-                initial_prompt += "Write a Python program that solves it using the Z3 solver. Always surround your final code with ```python\nYOUR_CODE\n```.\n"
-
-                current_prompt = initial_prompt
-
-                for pass_num in range(1, args.max_passes + 1):
-                    print(f"Pass {pass_num} for example {example}")
-
-                    # Create output directory for this pass
-                    pass_output_dir = f"{base_output_dir}/{pass_num}_pass"
-                    os.makedirs(pass_output_dir, exist_ok=True)
-
-                    # Get response from model
-                    while True:
-                        try:
-                            response_txt = await run_model(ai, current_prompt)
-                            break
-                        except Exception as e:
-                            print(f"An error occurred: {e}. Retrying in 5 seconds...")
-                            time.sleep(5)
-                            ai = initialize_model(model_name, keys)
-
-                    # Add to conversation history
-                    conversation_history.append({
-                        "role": "user",
-                        "content": current_prompt
-                    })
-                    conversation_history.append({
-                        "role": "assistant",
-                        "content": response_txt
-                    })
-
-                    # Save conversation
-                    with open(f"{pass_output_dir}/conversation.json", "w") as f:
-                        json.dump(conversation_history, f, indent=4)
-
-                    # Extract and save code
-                    generated_code = extract_code(response_txt)
-                    code_path = f"{pass_output_dir}/solution.py"
-                    with open(code_path, "w") as f:
-                        f.write(generated_code)
-
-                    # Execute code
-                    execution_output = execute_python_code(code_path)
-                    with open(f"{pass_output_dir}/output.out", "w") as f:
-                        f.write(execution_output)
-
-                    # Check if execution had errors
-                    has_execution_error = ("Error" in execution_output or
-                                           "Exception" in execution_output or
-                                           "Traceback" in execution_output or
-                                           not execution_output.strip())
-
-                    if has_execution_error:
-                        # Extract gold plan for consistency
-                        gold = example["golden_plan"]
-                        if isinstance(gold, list):
-                            gold = "\n".join(gold)
-                        try:
-                            gold_formatted = extract_answer(gold, task)
-                        except Exception as e:
-                            gold_formatted = {}
-
-                        # Prepare feedback for next iteration
-                        current_prompt = f"The previous code had the following error:\n{execution_output}\n\nPlease fix the code and provide a corrected version. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
-
-                        # Save evaluation indicating execution error
-                        eval_result = {
-                            "has_execution_error": True,
-                            "execution_output": execution_output,
-                            "pred": {},
-                            "gold": gold_formatted,
-                            "status": "Error",
-                            "violated_constraint": {},
-                            "is_exact_match": False,
-                            "constraints_satisfied": False,
-                            "pass_number": pass_num
-                        }
-                        with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                            json.dump(eval_result, f, indent=4)
-
-                        continue
-
-                    # Extract structured answer from execution output
-                    try:
-                        pred_formatted = extract_answer(execution_output, task)
-                    except Exception as e:
-                        pred_formatted = {}
-
-                    # Extract gold plan
-                    gold = example["golden_plan"]
-                    if isinstance(gold, list):
-                        gold = "\n".join(gold)
-                    try:
-                        gold_formatted = extract_answer(gold, task)
-                    except Exception as e:
-                        gold_formatted = {}
-
-                    # Evaluate constraints
-                    eval_func = eval_functions[task]
-
-                    # Special handling for meeting task
-                    if task == "meeting":
-                        # Add num_people_to_meet constraint from gold solution
-                        num_people_to_meet = len(gold_formatted.get("itinerary", []))
-                        example_constraints["num_people_to_meet"] = num_people_to_meet
-
-                    constraints_satisfied, violated_constraints = eval_func(example_constraints, pred_formatted)
-
-                    # Check exact match
-                    is_exact_match = pred_formatted == gold_formatted
-
-                    # Determine status
-                    if constraints_satisfied and is_exact_match:
-                        status = "Correct"
-                    elif constraints_satisfied:
-                        status = "Success"
-                    else:
-                        status = "Constraint Violation"
-
-                    # Save evaluation result
-                    eval_result = {
-                        "has_execution_error": False,
-                        "execution_output": execution_output,
-                        "pred": pred_formatted,
-                        "gold": gold_formatted,
-                        "status": status,
-                        "violated_constraint": violated_constraints,
-                        "is_exact_match": is_exact_match,
-                        "constraints_satisfied": constraints_satisfied,
-                        "pass_number": pass_num
-                    }
-                    with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                        json.dump(eval_result, f, indent=4)
-
-                    if constraints_satisfied:
-                        print(f"Success! Example {example} solved in pass {pass_num}")
-                        break
-                    else:
-                        # Prepare feedback for next iteration
-                        constraint_feedback = format_constraint_feedback(violated_constraints, task)
-                        current_prompt = f"The previous solution produced the following output:\n{execution_output}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
-
-                else:
-                    print(f"Failed to solve example {example} within {args.max_passes} passes")
+def load_constraints(task):
+    """Load constraints from the appropriate JSON file"""
+    task_name_map = {
+        "calendar": "calendar_scheduling",
+        "trip": "trip_planning",
+        "meeting": "meeting_planning"
+    }
+    with open(f"../data/{task_name_map[task]}_100_constraints.json") as f:
+        constraints_data = json.load(f)
+        return {example_id: data.get("constraints", {}) 
+                for example_id, data in constraints_data.items()}
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

@@ -1,0 +1,1 @@
+s.add(Sum([If(In[('Tallinn', 11)], 1, 0), If(In[('Tallinn', 12)], 1, 0)]) == 1)

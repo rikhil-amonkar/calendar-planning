@@ -1,76 +1,69 @@
 from z3 import *
 
+def min_to_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    am_pm = "AM"
+    if h >= 12:
+        am_pm = "PM"
+        if h > 12:
+            h -= 12
+    if h == 0:
+        h = 12
+    return f"{h}:{m:02d} {am_pm}"
+
 def main():
-    # Define the variables
-    T0 = Int('T0')        # Time leaving The Castro (minutes after 9:00 AM)
-    A_start = Int('A_start')  # Start time for meeting with Anthony
-    A_end = Int('A_end')      # End time for meeting with Anthony
-    L_start = Int('L_start')  # Start time for meeting with Laura
-    L_end = Int('L_end')      # End time for meeting with Laura
-    order = Bool('order')   # True: Anthony first, False: Laura first
-
     s = Solver()
-
-    # Constraints for both orders
-    order1_constraints = And(
-        T0 >= 0,
-        A_start >= T0 + 20,      # Travel from Castro to Financial District takes 20 minutes
-        A_start >= 210,           # Anthony available from 12:30 PM (210 minutes after 9:00 AM)
-        A_end == A_start + 30,    # Meet Anthony for exactly 30 minutes
-        A_end <= 345,             # Anthony must leave by 2:45 PM (345 minutes)
-        L_start >= A_end + 17,    # Travel from Financial to Mission District takes 17 minutes
-        L_start >= 195,           # Laura available from 12:15 PM (195 minutes)
-        L_end == L_start + 75,    # Meet Laura for exactly 75 minutes
-        L_end <= 645              # Laura must leave by 7:45 PM (645 minutes)
-    )
-
-    order2_constraints = And(
-        T0 >= 0,
-        L_start >= T0 + 7,        # Travel from Castro to Mission District takes 7 minutes
-        L_start >= 195,            # Laura available from 12:15 PM (195 minutes)
-        L_end == L_start + 75,    # Meet Laura for exactly 75 minutes
-        L_end <= 645,             # Laura must leave by 7:45 PM (645 minutes)
-        A_start >= L_end + 17,    # Travel from Mission to Financial District takes 17 minutes
-        A_start >= 210,            # Anthony available from 12:30 PM (210 minutes)
-        A_end == A_start + 30,    # Meet Anthony for exactly 30 minutes
-        A_end <= 345              # Anthony must leave by 2:45 PM (345 minutes)
-    )
-
-    s.add(Or(And(order, order1_constraints), And(Not(order), order2_constraints)))
-
+    
+    order = Int('order')
+    s.add(Or(order == 0, order == 1))
+    
+    T1_arrive = If(order == 0, 540 + 7, 540 + 20)
+    
+    first_start = Int('first_start')
+    first_end = Int('first_end')
+    
+    s.add(If(order == 0,
+             And(first_start >= T1_arrive, first_start >= 735, 
+                 first_end == first_start + 75, first_end <= 1185),
+             And(first_start >= T1_arrive, first_start >= 750,
+                 first_end == first_start + 30, first_end <= 885)
+          ))
+    
+    T2_arrive = first_end + 17
+    
+    second_start = Int('second_start')
+    second_end = Int('second_end')
+    
+    s.add(If(order == 0,
+             And(second_start >= T2_arrive, second_start >= 750,
+                 second_end == second_start + 30, second_end <= 885),
+             And(second_start >= T2_arrive, second_start >= 735,
+                 second_end == second_start + 75, second_end <= 1185)
+          ))
+    
     if s.check() == sat:
         m = s.model()
-        T0_val = m.eval(T0).as_long()
-        A_start_val = m.eval(A_start).as_long()
-        A_end_val = m.eval(A_end).as_long()
-        L_start_val = m.eval(L_start).as_long()
-        L_end_val = m.eval(L_end).as_long()
-        order_val = is_true(m.eval(order))
-
-        def min_to_time(mins):
-            total_minutes = 9 * 60 + mins
-            hours = total_minutes // 60
-            minutes = total_minutes % 60
-            am_pm = "AM" if hours < 12 else "PM"
-            hours12 = hours % 12
-            if hours12 == 0:
-                hours12 = 12
-            return f"{hours12}:{minutes:02d} {am_pm}"
-
-        if order_val:
-            print("Order: Meet Anthony first, then Laura.")
-            print(f"Leave The Castro at {min_to_time(T0_val)}")
-            print(f"Meet Anthony in Financial District from {min_to_time(A_start_val)} to {min_to_time(A_end_val)}")
-            print(f"Travel to Mission District (17 minutes), arriving at {min_to_time(A_end_val + 17)}")
-            print(f"Meet Laura in Mission District from {min_to_time(L_start_val)} to {min_to_time(L_end_val)}")
+        ord_val = m[order].as_long()
+        first_start_val = m[first_start].as_long()
+        first_end_val = m[first_end].as_long()
+        second_start_val = m[second_start].as_long()
+        second_end_val = m[second_end].as_long()
+        
+        print("SOLUTION:")
+        print("Start at The Castro at 9:00 AM.")
+        if ord_val == 0:
+            print(f"Travel to Mission District (7 minutes). Arrive at {min_to_time(540+7)}.")
+            print(f"Meet Laura from {min_to_time(first_start_val)} to {min_to_time(first_end_val)} at Mission District.")
+            print(f"Travel to Financial District (17 minutes). Arrive at {min_to_time(first_end_val+17)}.")
+            print(f"Meet Anthony from {min_to_time(second_start_val)} to {min_to_time(second_end_val)} at Financial District.")
         else:
-            print("Order: Meet Laura first, then Anthony.")
-            print(f"Leave The Castro at {min_to_time(T0_val)}")
-            print(f"Meet Laura in Mission District from {min_to_time(L_start_val)} to {min_to_time(L_end_val)}")
-            print(f"Travel to Financial District (17 minutes), arriving at {min_to_time(L_end_val + 17)}")
-            print(f"Meet Anthony in Financial District from {min_to_time(A_start_val)} to {min_to_time(A_end_val)}")
+            print(f"Travel to Financial District (20 minutes). Arrive at {min_to_time(540+20)}.")
+            print(f"Meet Anthony from {min_to_time(first_start_val)} to {min_to_time(first_end_val)} at Financial District.")
+            print(f"Travel to Mission District (17 minutes). Arrive at {min_to_time(first_end_val+17)}.")
+            print(f"Meet Laura from {min_to_time(second_start_val)} to {min_to_time(second_end_val)} at Mission District.")
     else:
-        print("No feasible schedule found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()
