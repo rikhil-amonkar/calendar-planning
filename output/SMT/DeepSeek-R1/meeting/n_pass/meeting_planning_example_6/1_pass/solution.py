@@ -1,58 +1,45 @@
 from z3 import *
 
-def main():
-    # Define the variables
-    t0 = Int('t0')   # departure time from Fisherman's Wharf (minutes after 9:00 AM)
-    depart_NH = Int('depart_NH') # departure time from Nob Hill (minutes after 9:00 AM)
-    
-    s = Solver()
-    
-    # Constraints
-    s.add(t0 >= 0)  # must leave Fisherman's Wharf after 9:00 AM
-    arrive_NH = t0 + 11  # arrival time at Nob Hill
-    s.add(depart_NH >= arrive_NH)  # must leave Nob Hill after arriving
-    
-    # Kenneth's availability window: 315 to 645 minutes (2:15 PM to 7:45 PM)
-    s.add(arrive_NH <= 645)  # must arrive at Nob Hill by 7:45 PM
-    s.add(depart_NH >= 315)  # must leave Nob Hill after 2:15 PM
-    
-    # Overlap constraint: at least 90 minutes
-    overlap = Min(depart_NH, 645) - Max(arrive_NH, 315)
-    s.add(overlap >= 90)
-    
-    if s.check() == sat:
-        m = s.model()
-        t0_val = m[t0].as_long()
-        depart_NH_val = m[depart_NH].as_long()
-        arrive_NH_val = t0_val + 11
-        
-        # Function to convert minutes since 9:00 AM to formatted time string (12-hour with AM/PM)
-        def format_time(minutes_since_9am):
-            total_minutes = minutes_since_9am
-            total_hours = 9 + total_minutes // 60
-            minutes = total_minutes % 60
-            hour12 = total_hours % 12
-            if hour12 == 0:
-                hour12 = 12
-            period = "AM" if total_hours < 12 else "PM"
-            return f"{hour12}:{minutes:02d} {period}"
-        
-        leave_fw_time = format_time(t0_val)
-        arrive_nh_time = format_time(arrive_NH_val)
-        leave_nh_time = format_time(depart_NH_val)
-        
-        # Calculate actual meeting start and end times
-        start_meeting = max(arrive_NH_val, 315)
-        end_meeting = min(depart_NH_val, 645)
-        meeting_duration = end_meeting - start_meeting
-        
-        print("SOLUTION:")
-        print(f"Leave Fisherman's Wharf at {leave_fw_time}")
-        print(f"Arrive at Nob Hill at {arrive_nh_time}")
-        print(f"Leave Nob Hill at {leave_nh_time}")
-        print(f"Meeting time with Kenneth: {meeting_duration} minutes (from {format_time(start_meeting)} to {format_time(end_meeting)})")
-    else:
-        print("No solution found")
+def minutes_to_time(t):
+    total_minutes = 540 + t  # 540 minutes = 9:00 AM
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
 
-if __name__ == "__main__":
-    main()
+s = Solver()
+
+t_depart_fw = Int('t_depart_fw')
+t_depart_nh = Int('t_depart_nh')
+
+t_arrive_nh = t_depart_fw + 11
+
+s.add(t_depart_fw >= 0)
+s.add(t_depart_nh >= t_arrive_nh)
+
+s_start = If(t_arrive_nh < 315, 315, t_arrive_nh)
+e_end = If(t_depart_nh > 645, 645, t_depart_nh)
+
+meeting_duration = If(e_end > s_start, e_end - s_start, 0)
+s.add(meeting_duration >= 90)
+
+if s.check() == sat:
+    m = s.model()
+    dep_fw = m[t_depart_fw].as_long()
+    dep_nh = m[t_depart_nh].as_long()
+    arr_nh = dep_fw + 11
+
+    time_dep_fw = minutes_to_time(dep_fw)
+    time_arr_nh = minutes_to_time(arr_nh)
+    time_dep_nh = minutes_to_time(dep_nh)
+
+    s_start_val = max(arr_nh, 315)
+    e_end_val = min(dep_nh, 645)
+    actual_duration = max(0, e_end_val - s_start_val)
+
+    print("SOLUTION:")
+    print(f"Leave Fisherman's Wharf at: {time_dep_fw}")
+    print(f"Arrive at Nob Hill at: {time_arr_nh}")
+    print(f"Leave Nob Hill at: {time_dep_nh}")
+    print(f"Meeting duration: {actual_duration} minutes")
+else:
+    print("No solution found")

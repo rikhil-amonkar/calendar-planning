@@ -18,6 +18,7 @@ from kani.engines.openai import OpenAIEngine
 import concurrent.futures
 from typing import List, Dict, Any
 import logging
+import shutil
 
 # Configure logging for timestamps
 logging.basicConfig(
@@ -26,36 +27,29 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# Argument parsing
-parser = argparse.ArgumentParser(
-    description="Parallel Iterative SMT refinement with constraint feedback",
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    epilog="""
-Examples:
-  # Run calendar scheduling with 5 concurrent examples
-  python iterative_smt_refinement_parallel.py --task calendar --model DeepSeek-R1 --start 0 --end 10 --max_passes 3 --max_concurrent 5
-  
-  # Run with rate limiting (2 requests per second)
-  python iterative_smt_refinement_parallel.py --task all --model gpt-4o-mini --rate_limit 2.0
-"""
-)
-parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True, 
-                   help="Task to run")
-parser.add_argument('--model', required=True, nargs='+', 
-                   help="Model(s) to use")
-parser.add_argument('--fresh', action='store_true', 
-                   help="Re-run all examples, ignoring existing successful solutions")
-parser.add_argument('--start', type=int, default=0, 
-                   help="Starting index for processing examples")
-parser.add_argument('--end', type=int, default=-1, 
-                   help="Ending index for processing examples")
-parser.add_argument('--max_passes', type=int, default=5, 
-                   help="Maximum number of refinement passes per example")
-parser.add_argument('--max_concurrent', type=int, default=20,
-                   help="Maximum number of examples to process concurrently")
-parser.add_argument('--rate_limit', type=float, default=1.0,
-                   help="Requests per second limit (to avoid API rate limits)")
-args = parser.parse_args()
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description="Run iterative SMT refinement with parallel processing")
+    parser.add_argument("--model", type=str, required=True, help="Model to use (e.g., 'DeepSeek-R1')")
+    parser.add_argument("--task", type=str, required=True, choices=["calendar", "trip", "meeting"], help="Task type")
+    parser.add_argument("--max_passes", type=int, default=5, help="Maximum number of refinement passes")
+    parser.add_argument("--max_concurrent", type=int, default=10, help="Maximum number of concurrent examples to process")
+    parser.add_argument("--rate_limit", type=int, default=60, help="Rate limit (requests per minute)")
+    parser.add_argument("--start", type=int, help="Start example number (inclusive)")
+    parser.add_argument("--end", type=int, help="End example number (inclusive)")
+    parser.add_argument("--fresh", action="store_true", help="Clear all output directories before running")
+    parser.add_argument("--examples", type=str, help="Comma-separated list of example numbers to run (e.g., '25,35')")
+    
+    args = parser.parse_args()
+    
+    # Clean up examples argument
+    if args.examples:
+        # Remove all quotes and whitespace
+        args.examples = args.examples.replace('"', '').replace("'", "").strip()
+        # Split and clean each number
+        args.examples = ','.join(num.strip() for num in args.examples.split(','))
+    
+    return args
 
 try:
     with open("../../scheduling_key.json") as f:
@@ -98,6 +92,54 @@ def extract_answer(answer_str, task):
         print("Warning: Could not initialize OpenAI client for answer extraction")
         return {}
     
+    # If answer_str is None or empty, return empty dict
+    if not answer_str:
+        return {}
+        
+    # For meeting task, try to extract meeting information even if it doesn't start with SOLUTION:
+    if task == "meeting":
+        # Look for patterns like "Meet X at Y from HH:MM to HH:MM" or "Meet X (Y) from HH:MM to HH:MM"
+        meetings = []
+        lines = answer_str.split('\n')
+        for line in lines:
+            # Try different patterns
+            patterns = [
+                r"Meet\s+(\w+)\s+(?:at\s+)?(?:[^(]+)?(?:\([^)]+\))?\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
+                r"Meet\s+(\w+)\s+(?:at\s+)?(?:[^(]+)?(?:\([^)]+\))?\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
+                r"(\w+):\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?"
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, line, re.IGNORECASE)
+                if match:
+                    person = match.group(1)
+                    start_time = match.group(2)
+                    end_time = match.group(3)
+                    
+                    # Convert to 24-hour format if needed
+                    if "PM" in line and int(start_time.split(':')[0]) < 12:
+                        start_hour = int(start_time.split(':')[0]) + 12
+                        start_time = f"{start_hour:02d}:{start_time.split(':')[1]}"
+                    if "PM" in line and int(end_time.split(':')[0]) < 12:
+                        end_hour = int(end_time.split(':')[0]) + 12
+                        end_time = f"{end_hour:02d}:{end_time.split(':')[1]}"
+                    if "AM" in line and int(start_time.split(':')[0]) == 12:
+                        start_time = f"00:{start_time.split(':')[1]}"
+                    if "AM" in line and int(end_time.split(':')[0]) == 12:
+                        end_time = f"00:{end_time.split(':')[1]}"
+                    
+                    meetings.append({
+                        "action": "meet",
+                        "person": person,
+                        "start_time": start_time,
+                        "end_time": end_time
+                    })
+                    break
+        
+        if meetings:
+            return {"itinerary": meetings}
+    
+    # If we couldn't extract meetings or it's not a meeting task, use GPT
     prompt = {
         "calendar": "Given the following time range:\n" + answer_str + "\nExtract the meeting start day and time in a JSON like {\"day\": \"Monday\", \"start_time\": \"14:30\", \"end_time\": \"15:30\"}. The time should be in 24-hour format. If no time range is given at all, output an empty JSON.",
         "trip": "Given the following itinerary:\n" + answer_str + "\nExtract the days spent in each city in a JSON format like {\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 2-4\", \"place\": \"Stockholm\"}......]}. Only keep the days in a city. If flying from city A to city B, that day should be included in both ranges for both cites. The day range should be inclusive. For example, arrving at Reykjavik in Day 1 and flying to Stockholm on Day 2 will result in the dictionary above. If no itinerary is given, output an empty JSON.",
@@ -181,324 +223,323 @@ async def run_model_with_rate_limit(ai, prompt, rate_limiter):
     return response
 
 async def process_single_example(
-    model_name: str,
-    model_short_name: str,
-    task: str,
-    example_id: str,
-    example: Dict,
-    example_constraints: Dict,
-    rate_limiter: RateLimiter,
-    semaphore: asyncio.Semaphore
-) -> Dict[str, Any]:
-    """Process a single example with iterative refinement"""
-    
-    example_start_time = time.time()
-    async with semaphore:  # Limit concurrent examples
-        logging.info(f"[{example_id}] Starting processing")
-        
-        # Check if we should skip this example
-        skip_check_start = time.time()
-        base_output_dir = f"../output/SMT/{model_short_name}/{task}/n_pass/{example_id}"
-        if not args.fresh and os.path.exists(base_output_dir):
-            # Check if we already have a successful solution
-            for pass_num in range(1, args.max_passes + 1):
-                eval_path = f"{base_output_dir}/{pass_num}_pass/evaluation.json"
-                if os.path.exists(eval_path):
-                    with open(eval_path, 'r') as f:
-                        eval_data = json.load(f)
-                        if eval_data.get("constraints_satisfied", False):
-                            skip_check_time = time.time() - skip_check_start
-                            logging.info(f"[{example_id}] Skipped (existing solution in pass {pass_num}) - {skip_check_time:.2f}s")
-                            return {"example_id": example_id, "status": "skipped", "pass": pass_num, "total_time": skip_check_time}
-
-        # Initialize AI model for this example
-        model_init_start = time.time()
-        ai = initialize_model(model_name, keys)
-        model_init_time = time.time() - model_init_start
-        logging.info(f"[{example_id}] Model initialized - {model_init_time:.2f}s")
-        
-        # Initialize conversation history
-        conversation_history = []
-        
-        # Initial prompt
-        prompt_prep_start = time.time()
-        initial_prompt = "Given the following scheduling problem:\n"
-        initial_prompt += f"{example['prompt_0shot']}\n"
-        if task == "calendar":
-            initial_prompt += "Your solution should always have three things: the day to meet, the start time, and the end time.\n"
-        if task == "trip":
-            initial_prompt += "Note that if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.\n"
-        initial_prompt += "Write a Python program that solves it using the Z3 solver. Always surround your final code with ```python\nYOUR_CODE\n```.\n"
-        
-        current_prompt = initial_prompt
-        prompt_prep_time = time.time() - prompt_prep_start
-        logging.info(f"[{example_id}] Prompt prepared - {prompt_prep_time:.2f}s")
-        
-        for pass_num in range(1, args.max_passes + 1):
-            pass_start_time = time.time()
-            logging.info(f"[{example_id}] Starting pass {pass_num}")
+    example_id,
+    example,
+    constraints,
+    model,
+    max_passes,
+    rate_limiter,
+    semaphore,
+    task
+):
+    """Process a single example with rate limiting and semaphore"""
+    async with semaphore:
+        try:
+            # Get task prefix for output directory
+            task_prefix_map = {
+                "calendar": "calendar_scheduling",
+                "trip": "trip_planning",
+                "meeting": "meeting_planning"
+            }
+            task_prefix = task_prefix_map[task]
             
-            # Create output directory for this pass
-            dir_create_start = time.time()
-            pass_output_dir = f"{base_output_dir}/{pass_num}_pass"
-            os.makedirs(pass_output_dir, exist_ok=True)
-            dir_create_time = time.time() - dir_create_start
+            # Verify example_id matches task prefix
+            if not example_id.startswith(f"{task_prefix}_example_"):
+                logging.warning(f"Example ID {example_id} does not match expected format for task {task}, skipping")
+                return
             
-            # Get response from model with rate limiting
-            api_call_start = time.time()
-            retry_count = 0
-            max_retries = 3
-            while retry_count < max_retries:
-                try:
-                    response_txt = await run_model_with_rate_limit(ai, current_prompt, rate_limiter)
-                    break
-                except Exception as e:
-                    retry_count += 1
-                    logging.warning(f"[{example_id}] API error in pass {pass_num} (attempt {retry_count}): {e}")
-                    if retry_count >= max_retries:
-                        total_time = time.time() - example_start_time
-                        return {"example_id": example_id, "status": "api_error", "error": str(e), "total_time": total_time}
-                    await asyncio.sleep(5)
-                    ai = initialize_model(model_name, keys)
+            output_dir = f"../output/SMT/{model}/{task}/n_pass/{example_id}"
+            os.makedirs(output_dir, exist_ok=True)
             
-            api_call_time = time.time() - api_call_start
-            logging.info(f"[{example_id}] Pass {pass_num} API call completed - {api_call_time:.2f}s")
+            logging.info(f"[{example_id}] Starting processing with model {model}")
+            logging.info(f"[{example_id}] Output directory: {output_dir}")
             
-            # Add to conversation history
-            conversation_history.append({"role": "user", "content": current_prompt})
-            conversation_history.append({"role": "assistant", "content": response_txt})
-            
-            # Save conversation
-            save_start = time.time()
-            with open(f"{pass_output_dir}/conversation.json", "w") as f:
-                json.dump(conversation_history, f, indent=4)
-            
-            # Extract and save code
-            code_extract_start = time.time()
-            generated_code = extract_code(response_txt)
-            code_path = f"{pass_output_dir}/solution.py"
-            with open(code_path, "w") as f:
-                f.write(generated_code)
-            code_extract_time = time.time() - code_extract_start
-            
-            # Execute code
-            execution_start = time.time()
-            execution_output = execute_python_code(code_path)
-            execution_time = time.time() - execution_start
-            logging.info(f"[{example_id}] Pass {pass_num} code execution - {execution_time:.2f}s")
-            
-            with open(f"{pass_output_dir}/output.out", "w") as f:
-                f.write(execution_output)
-            save_time = time.time() - save_start
-            logging.info(f"[{example_id}] Pass {pass_num} files saved - {save_time:.2f}s")
-            
-            # Check if execution had errors
-            has_execution_error = ("Error" in execution_output or 
-                                 "Exception" in execution_output or 
-                                 "Traceback" in execution_output or
-                                 not execution_output.strip())
-            
-            # Extract gold plan
-            gold_extract_start = time.time()
-            gold = example["golden_plan"]
-            if isinstance(gold, list):
-                gold = "\n".join(gold)
+            # Initialize AI model
             try:
-                gold_formatted = extract_answer(gold, task)
+                with open("../../scheduling_key.json") as f:
+                    keys = json.load(f)
+                ai = initialize_model(model, keys)
+                logging.info(f"[{example_id}] Model initialized successfully")
             except Exception as e:
-                gold_formatted = {}
-            gold_extract_time = time.time() - gold_extract_start
+                logging.error(f"[{example_id}] Failed to initialize model: {str(e)}")
+                return
             
-            if has_execution_error:
-                logging.warning(f"[{example_id}] Pass {pass_num} execution error, preparing feedback")
-                # Prepare feedback for next iteration
-                current_prompt = f"The previous code had the following error:\n{execution_output}\n\nPlease fix the code and provide a corrected version. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
+            # Initialize conversation history
+            conversation_history = []
+            
+            # Initial prompt
+            prompt_prep_start = time.time()
+            initial_prompt = "Given the following scheduling problem:\n"
+            initial_prompt += f"{example['prompt_0shot']}\n"
+            if task == "calendar":
+                initial_prompt += "Your solution should always have three things: the day to meet, the start time, and the end time.\n"
+                initial_prompt += "Your output should be a string that starts with 'SOLUTION:' followed by three lines in this exact format:\nDay: <day>\nStart Time: <HH:MM> (24-hour format)\nEnd Time: <HH:MM> (24-hour format)\n"
+            if task == "trip":
+                initial_prompt += "Note that if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.\n"
+            initial_prompt += "Write a Python program that solves it using the Z3 solver. Always surround your final code with ```python\nYOUR_CODE\n```.\n"
+            
+            current_prompt = initial_prompt
+            prompt_prep_time = time.time() - prompt_prep_start
+            logging.info(f"[{example_id}] Prompt prepared - {prompt_prep_time:.2f}s")
+            
+            for pass_num in range(1, max_passes + 1):
+                pass_start_time = time.time()
+                logging.info(f"[{example_id}] Starting pass {pass_num}")
                 
-                # Save evaluation indicating execution error
+                # Create output directory for this pass
+                dir_create_start = time.time()
+                pass_output_dir = f"{output_dir}/{pass_num}_pass"
+                os.makedirs(pass_output_dir, exist_ok=True)
+                dir_create_time = time.time() - dir_create_start
+                
+                # Get response from model with rate limiting
+                api_call_start = time.time()
+                retry_count = 0
+                max_retries = 3
+                while retry_count < max_retries:
+                    try:
+                        logging.info(f"[{example_id}] Making API call (attempt {retry_count + 1})")
+                        response_txt = await run_model_with_rate_limit(ai, current_prompt, rate_limiter)
+                        logging.info(f"[{example_id}] API call successful")
+                        break
+                    except Exception as e:
+                        retry_count += 1
+                        logging.warning(f"[{example_id}] API error in pass {pass_num} (attempt {retry_count}): {e}")
+                        if retry_count >= max_retries:
+                            logging.error(f"[{example_id}] Max retries reached, giving up")
+                            return
+                        await asyncio.sleep(5)
+                        try:
+                            ai = initialize_model(model, keys)
+                            logging.info(f"[{example_id}] Model reinitialized after error")
+                        except Exception as init_error:
+                            logging.error(f"[{example_id}] Failed to reinitialize model: {str(init_error)}")
+                            return
+                
+                api_call_time = time.time() - api_call_start
+                logging.info(f"[{example_id}] Pass {pass_num} API call completed - {api_call_time:.2f}s")
+                
+                # Add to conversation history
+                conversation_history.append({"role": "user", "content": current_prompt})
+                conversation_history.append({"role": "assistant", "content": response_txt})
+                
+                # Save conversation
+                save_start = time.time()
+                with open(f"{pass_output_dir}/conversation.json", "w") as f:
+                    json.dump(conversation_history, f, indent=4)
+                
+                # Extract and save code
+                code_extract_start = time.time()
+                generated_code = extract_code(response_txt)
+                if not generated_code:
+                    logging.error(f"[{example_id}] No code found in model response")
+                    return
+                    
+                code_path = f"{pass_output_dir}/solution.py"
+                with open(code_path, "w") as f:
+                    f.write(generated_code)
+                code_extract_time = time.time() - code_extract_start
+                logging.info(f"[{example_id}] Pass {pass_num} code extracted and saved - {code_extract_time:.2f}s")
+                
+                # Execute code
+                execution_start = time.time()
+                execution_output = execute_python_code(code_path)
+                execution_time = time.time() - execution_start
+                logging.info(f"[{example_id}] Pass {pass_num} code execution - {execution_time:.2f}s")
+                
+                with open(f"{pass_output_dir}/output.out", "w") as f:
+                    f.write(execution_output)
+                save_time = time.time() - save_start
+                logging.info(f"[{example_id}] Pass {pass_num} files saved - {save_time:.2f}s")
+                
+                # Check if execution had errors
+                has_execution_error = ("Error" in execution_output or 
+                                     "Exception" in execution_output or 
+                                     "Traceback" in execution_output or
+                                     not execution_output.strip())
+                
+                if has_execution_error:
+                    logging.warning(f"[{example_id}] Pass {pass_num} execution error: {execution_output}")
+                    # Prepare feedback for next iteration
+                    current_prompt = f"The previous code had the following error:\n{execution_output}\n\nPlease fix the code and provide a corrected version. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
+                    continue
+                
+                # Extract structured answer from execution output
+                pred_extract_start = time.time()
+                try:
+                    pred_formatted = extract_answer(execution_output, task)
+                    logging.info(f"[{example_id}] Pass {pass_num} extracted prediction: {pred_formatted}")
+                except Exception as e:
+                    logging.error(f"[{example_id}] Pass {pass_num} failed to extract prediction: {str(e)}")
+                    pred_formatted = {}
+                
+                # Get gold answer
+                gold = example["golden_plan"]
+                if isinstance(gold, list):
+                    gold = "\n".join(gold)
+                try:
+                    gold_formatted = extract_answer(gold, task)
+                    logging.info(f"[{example_id}] Pass {pass_num} extracted gold: {gold_formatted}")
+                except Exception as e:
+                    logging.error(f"[{example_id}] Pass {pass_num} failed to extract gold: {str(e)}")
+                    gold_formatted = {}
+                
+                # Evaluate constraints
+                constraint_eval_start = time.time()
+                eval_func = eval_functions[task]
+                
+                # Special handling for meeting task
+                if task == "meeting":
+                    num_people_to_meet = len(gold_formatted.get("itinerary", []))
+                    constraints["num_people_to_meet"] = num_people_to_meet
+                
+                constraints_satisfied, violated_constraints = eval_func(constraints, pred_formatted)
+                constraint_eval_time = time.time() - constraint_eval_start
+                logging.info(f"[{example_id}] Pass {pass_num} constraint evaluation - {constraint_eval_time:.2f}s")
+                logging.info(f"[{example_id}] Pass {pass_num} constraints satisfied: {constraints_satisfied}")
+                if violated_constraints:
+                    logging.info(f"[{example_id}] Pass {pass_num} violated constraints: {violated_constraints}")
+                
+                # Check exact match
+                is_exact_match = pred_formatted == gold_formatted
+                logging.info(f"[{example_id}] Pass {pass_num} exact match: {is_exact_match}")
+                
+                # Determine status
+                status = "Correct" if constraints_satisfied else "Wrong plan"
+                
+                # Save evaluation result
                 eval_result = {
-                    "has_execution_error": True,
+                    "has_execution_error": False,
                     "execution_output": execution_output,
-                    "pred": {},
+                    "pred": pred_formatted,
                     "gold": gold_formatted,
-                    "status": "Error",
-                    "violated_constraint": {},
-                    "is_exact_match": False,
-                    "constraints_satisfied": False,
+                    "status": status,
+                    "violated_constraint": violated_constraints,
+                    "is_exact_match": is_exact_match,
+                    "constraints_satisfied": constraints_satisfied,
                     "pass_number": pass_num
                 }
                 with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                     json.dump(eval_result, f, indent=4)
                 
-                pass_time = time.time() - pass_start_time
-                logging.info(f"[{example_id}] Pass {pass_num} completed (error) - {pass_time:.2f}s")
-                continue
+                if constraints_satisfied:
+                    logging.info(f"[{example_id}] SUCCESS! Solved in pass {pass_num}")
+                    return
+                else:
+                    logging.info(f"[{example_id}] Pass {pass_num} failed constraints, preparing feedback")
+                    # Prepare feedback for next iteration
+                    constraint_feedback = format_constraint_feedback(violated_constraints, task)
+                    current_prompt = f"The previous solution produced the following output:\n{execution_output}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
             
-            # Extract structured answer from execution output
-            pred_extract_start = time.time()
-            try:
-                pred_formatted = extract_answer(execution_output, task)
-            except Exception as e:
-                pred_formatted = {}
-            pred_extract_time = time.time() - pred_extract_start
+            logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
+            return
             
-            # Evaluate constraints
-            constraint_eval_start = time.time()
-            eval_func = eval_functions[task]
-            
-            # Special handling for meeting task
-            if task == "meeting":
-                num_people_to_meet = len(gold_formatted.get("itinerary", []))
-                example_constraints["num_people_to_meet"] = num_people_to_meet
-            
-            constraints_satisfied, violated_constraints = eval_func(example_constraints, pred_formatted)
-            constraint_eval_time = time.time() - constraint_eval_start
-            logging.info(f"[{example_id}] Pass {pass_num} constraint evaluation - {constraint_eval_time:.2f}s")
-            
-            # Check exact match
-            is_exact_match = pred_formatted == gold_formatted
-            
-            # Determine status
-            status = "Correct" if constraints_satisfied else "Wrong plan"
-            
-            # Save evaluation result
-            eval_save_start = time.time()
-            eval_result = {
-                "has_execution_error": False,
-                "execution_output": execution_output,
-                "pred": pred_formatted,
-                "gold": gold_formatted,
-                "status": status,
-                "violated_constraint": violated_constraints,
-                "is_exact_match": is_exact_match,
-                "constraints_satisfied": constraints_satisfied,
-                "pass_number": pass_num,
-                "timing": {
-                    "api_call_time": api_call_time,
-                    "execution_time": execution_time,
-                    "constraint_eval_time": constraint_eval_time,
-                    "pred_extract_time": pred_extract_time,
-                    "gold_extract_time": gold_extract_time
-                }
-            }
-            with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                json.dump(eval_result, f, indent=4)
-            eval_save_time = time.time() - eval_save_start
-            
-            pass_time = time.time() - pass_start_time
-            
-            if constraints_satisfied:
-                total_time = time.time() - example_start_time
-                logging.info(f"[{example_id}] SUCCESS! Solved in pass {pass_num} - Pass: {pass_time:.2f}s, Total: {total_time:.2f}s")
-                return {"example_id": example_id, "status": "success", "pass": pass_num, "total_time": total_time}
-            else:
-                logging.info(f"[{example_id}] Pass {pass_num} failed constraints - {pass_time:.2f}s")
-                # Prepare feedback for next iteration
-                constraint_feedback = format_constraint_feedback(violated_constraints, task)
-                current_prompt = f"The previous solution produced the following output:\n{execution_output}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
-        
-        total_time = time.time() - example_start_time
-        logging.warning(f"[{example_id}] FAILED to solve within {args.max_passes} passes - Total: {total_time:.2f}s")
-        return {"example_id": example_id, "status": "failed", "max_passes": args.max_passes, "total_time": total_time}
+        except Exception as e:
+            logging.error(f"[{example_id}] Unexpected error: {str(e)}")
+            return
 
 async def main():
-    """Main execution function with parallel processing"""
+    """Main function to run the iterative refinement process"""
+    args = parse_args()
+    
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Task prefix mapping
+    task_prefix_map = {
+        "calendar": "calendar_scheduling",
+        "trip": "trip_planning",
+        "meeting": "meeting_planning"
+    }
+    
+    logging.info(f"Starting model: {args.model} with {args.max_concurrent} concurrent examples")
+    logging.info(f"Starting task: {args.task}")
+    
+    # Load examples and constraints
+    examples = load_examples(args.task)
+    constraints = load_constraints(args.task)
+    
+    # Process specific examples if provided
+    if args.examples:
+        logging.info(f"Processing specific examples: {args.examples}")
+        try:
+            # Split and convert to integers, with extra cleaning
+            example_numbers = [int(num.strip()) for num in args.examples.split(",") if num.strip()]
+            logging.info(f"Parsed example numbers: {example_numbers}")
+            
+            # Filter examples to only include specified numbers
+            task_prefix = task_prefix_map[args.task]
+            example_ids = [f"{task_prefix}_example_{num}" for num in example_numbers]
+            examples = {example_id: examples[example_id] for example_id in example_ids if example_id in examples}
+            
+            if not examples:
+                logging.error("No valid examples found in the specified range")
+                return
+                
+            # Clear output directories for specified examples
+            for example_id in examples:
+                output_dir = f"../output/{example_id}"
+                if os.path.exists(output_dir):
+                    logging.info(f"Clearing output directory for {example_id}")
+                    shutil.rmtree(output_dir)
+        except ValueError as e:
+            logging.error(f"Error parsing example numbers: {e}")
+            logging.error(f"Raw examples string: '{args.examples}'")
+            return
+    
     rate_limiter = RateLimiter(args.rate_limit)
     semaphore = asyncio.Semaphore(args.max_concurrent)
     
-    for model_name in args.model:
-        model_start_time = time.time()
-        model_short_name = model_name.split("/")[-1] if "/" in model_name else model_name
-        logging.info(f"Starting model: {model_name} with {args.max_concurrent} concurrent examples")
+    # Process examples
+    tasks = []
+    for example_id, example in examples.items():
+        task = asyncio.create_task(
+            process_single_example(
+                example_id,
+                example,
+                constraints.get(example_id, {}),
+                args.model,
+                args.max_passes,
+                rate_limiter,
+                semaphore,
+                args.task
+            )
+        )
+        tasks.append(task)
+    
+    # Wait for all tasks to complete
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Log results
+    success_count = sum(1 for r in results if not isinstance(r, Exception))
+    error_count = len(results) - success_count
+    logging.info(f"Completed processing {len(results)} examples: {success_count} successful, {error_count} failed")
 
-        if args.task == "all":
-            tasks = ["calendar", "trip", "meeting"]
-        else:
-            tasks = [args.task]
+def load_examples(task):
+    """Load examples from the appropriate JSON file"""
+    task_name_map = {
+        "calendar": "calendar_scheduling",
+        "trip": "trip_planning",
+        "meeting": "meeting_planning"
+    }
+    with open(f"../data/{task_name_map[task]}_100.json") as f:
+        return json.load(f)
 
-        for task in tasks:
-            task_start_time = time.time()
-            logging.info(f"Starting task: {task}")
-            
-            # Load data and constraints
-            data_load_start = time.time()
-            with open(f"../data/{task_name_map[task]}_100.json") as f:
-                data = json.load(f)
-            
-            with open(f"../data/{task_name_map[task]}_100_constraints.json") as f:
-                constraints_data = json.load(f)
-            data_load_time = time.time() - data_load_start
-            logging.info(f"Data loaded for {task} - {data_load_time:.2f}s")
-
-            # Prepare examples to process
-            prep_start_time = time.time()
-            examples_to_process = []
-            for idx, (example_id, example) in enumerate(data.items()):
-                if idx < args.start or (args.end != -1 and idx >= args.end):
-                    continue
-                
-                example_constraints = constraints_data.get(example_id, {}).get("constraints", {})
-                examples_to_process.append((example_id, example, example_constraints))
-            prep_time = time.time() - prep_start_time
-            
-            logging.info(f"Processing {len(examples_to_process)} examples concurrently - Prep: {prep_time:.2f}s")
-            
-            # Create tasks for parallel processing
-            task_create_start = time.time()
-            tasks_list = [
-                process_single_example(
-                    model_name, model_short_name, task, 
-                    example_id, example, example_constraints,
-                    rate_limiter, semaphore
-                )
-                for example_id, example, example_constraints in examples_to_process
-            ]
-            task_create_time = time.time() - task_create_start
-            logging.info(f"Created {len(tasks_list)} async tasks - {task_create_time:.2f}s")
-            
-            # Execute all tasks concurrently
-            execution_start_time = time.time()
-            logging.info(f"Starting concurrent execution of {len(tasks_list)} examples...")
-            results = await asyncio.gather(*tasks_list, return_exceptions=True)
-            execution_end_time = time.time()
-            execution_time = execution_end_time - execution_start_time
-            
-            # Calculate detailed statistics
-            success_results = [r for r in results if isinstance(r, dict) and r.get("status") == "success"]
-            failed_results = [r for r in results if isinstance(r, dict) and r.get("status") == "failed"]
-            error_results = [r for r in results if isinstance(r, Exception) or (isinstance(r, dict) and r.get("status") == "api_error")]
-            skipped_results = [r for r in results if isinstance(r, dict) and r.get("status") == "skipped"]
-            
-            success_count = len(success_results)
-            failed_count = len(failed_results)
-            error_count = len(error_results)
-            skipped_count = len(skipped_results)
-            
-            # Calculate timing statistics
-            if success_results:
-                success_times = [r.get("total_time", 0) for r in success_results if r.get("total_time")]
-                avg_success_time = sum(success_times) / len(success_times) if success_times else 0
-                min_success_time = min(success_times) if success_times else 0
-                max_success_time = max(success_times) if success_times else 0
-            else:
-                avg_success_time = min_success_time = max_success_time = 0
-            
-            task_total_time = time.time() - task_start_time
-            
-            # Log comprehensive summary
-            logging.info(f"=== TASK {task.upper()} COMPLETED ===")
-            logging.info(f"Total time: {task_total_time:.2f}s (Execution: {execution_time:.2f}s)")
-            logging.info(f"Results: {success_count} success, {failed_count} failed, {error_count} errors, {skipped_count} skipped")
-            if success_results:
-                logging.info(f"Success timing - Avg: {avg_success_time:.2f}s, Min: {min_success_time:.2f}s, Max: {max_success_time:.2f}s")
-            logging.info(f"Throughput: {len(examples_to_process)/execution_time:.2f} examples/second")
-            
-            # Log any errors
-            for i, result in enumerate(results):
-                if isinstance(result, Exception):
-                    example_id = examples_to_process[i][0]
-                    logging.error(f"Exception in {example_id}: {result}")
-                elif isinstance(result, dict) and result.get("status") == "api_error":
-                    logging.error(f"API error in {result['example_id']}: {result.get('error', 'Unknown')}")
+def load_constraints(task):
+    """Load constraints from the appropriate JSON file"""
+    task_name_map = {
+        "calendar": "calendar_scheduling",
+        "trip": "trip_planning",
+        "meeting": "meeting_planning"
+    }
+    with open(f"../data/{task_name_map[task]}_100_constraints.json") as f:
+        constraints_data = json.load(f)
+        return {example_id: data.get("constraints", {}) 
+                for example_id, data in constraints_data.items()}
 
 if __name__ == "__main__":
     asyncio.run(main()) 

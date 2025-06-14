@@ -1,0 +1,1 @@
+s.add(If(idx3 == 1, And(start3 >= 11, start3 <= 15), True))
