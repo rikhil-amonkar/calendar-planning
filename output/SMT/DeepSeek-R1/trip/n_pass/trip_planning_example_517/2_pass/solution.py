@@ -1,84 +1,68 @@
 from z3 import *
 
 def main():
-    n_days = 19
-    cities = ["Bucharest", "Warsaw", "Stuttgart", "Copenhagen", "Dubrovnik"]
-    n_cities = len(cities)
-    
-    base_city = [Int('base_%d' % d) for d in range(n_days)]
-    flight_taken = [Bool('flight_%d' % d) for d in range(n_days)]
-    to_city = [Int('to_%d' % d) for d in range(n_days)]
-    
     s = Solver()
+    cities = ['Bucharest', 'Warsaw', 'Stuttgart', 'Copenhagen', 'Dubrovnik']
+    n_days = 19
+    n_travel_days = n_days - 1
+    city = [Int('city_%d' % i) for i in range(1, n_days+1)]
+    travel = [Bool('travel_%d' % i) for i in range(1, n_days)]
     
-    # Define direct flight connections (bidirectional)
-    edges = [
-        (0, 1), (0, 3),  # Bucharest to Warsaw, Bucharest to Copenhagen
-        (1, 0), (1, 2), (1, 3),  # Warsaw to Bucharest, Warsaw to Stuttgart, Warsaw to Copenhagen
-        (2, 1), (2, 3),  # Stuttgart to Warsaw, Stuttgart to Copenhagen
-        (3, 0), (3, 1), (3, 2), (3, 4),  # Copenhagen to Bucharest, Warsaw, Stuttgart, Dubrovnik
-        (4, 3)  # Dubrovnik to Copenhagen
+    for i in range(n_days):
+        s.add(city[i] >= 0, city[i] <= 4)
+    
+    allowed_edges = [
+        (1, 3), (3, 1),
+        (2, 3), (3, 2),
+        (1, 2), (2, 1),
+        (0, 3), (3, 0),
+        (0, 1), (1, 0),
+        (3, 4), (4, 3)
     ]
     
-    # City indices must be valid
-    for d in range(n_days):
-        s.add(base_city[d] >= 0, base_city[d] < n_cities)
-        s.add(to_city[d] >= 0, to_city[d] < n_cities)
+    for i in range(n_travel_days):
+        edge_constraints = []
+        for a, b in allowed_edges:
+            edge_constraints.append(And(city[i] == a, city[i+1] == b))
+        s.add(Implies(travel[i], Or(edge_constraints)))
+        s.add(Implies(Not(travel[i]), city[i] == city[i+1]))
     
-    # Next day's base city is the flight destination if flight taken
-    for d in range(n_days - 1):
-        s.add(base_city[d+1] == If(flight_taken[d], to_city[d], base_city[d]))
+    s.add(Sum([If(travel[i], 1, 0) for i in range(n_travel_days)]) == 4)
     
-    # Flight constraints: no self-flights, only allowed direct flights
-    for d in range(n_days):
-        s.add(Implies(flight_taken[d], base_city[d] != to_city[d]))
-        valid_flight = Or([And(base_city[d] == a, to_city[d] == b) for (a, b) in edges])
-        s.add(Implies(flight_taken[d], valid_flight))
+    required_days = [6, 2, 7, 3, 5]
+    for c_idx in range(5):
+        total = 0
+        for i in range(n_travel_days):
+            total += If(Not(travel[i]), 
+                        If(city[i] == c_idx, 1, 0),
+                        If(city[i] == c_idx, 1, 0) + If(city[i+1] == c_idx, 1, 0))
+        total += If(city[n_days-1] == c_idx, 1, 0)
+        s.add(total == required_days[c_idx])
     
-    # Exactly 4 flight days (since 5+2+7+6+3=23 days, 23-19=4 flight days)
-    total_flights = Sum([If(ft, 1, 0) for ft in flight_taken])
-    s.add(total_flights == 4)
+    s.add(city[6] == 2)
+    s.add(Not(travel[6]))
+    s.add(city[12] == 2)
+    s.add(Not(travel[12]))
     
-    # Matrix: in_city[day][city] is True if present in that city on that day
-    in_city = [[Bool('in_%d_%s' % (d, cities[c])) for c in range(n_cities)] for d in range(n_days)]
-    for d in range(n_days):
-        for c in range(n_cities):
-            s.add(in_city[d][c] == Or(base_city[d] == c, And(flight_taken[d], to_city[d] == c)))
+    wedding_constraints = []
+    for i in range(6):
+        cond = Or(city[i] == 0, And(travel[i], city[i+1] == 0))
+        wedding_constraints.append(cond)
+    s.add(Or(wedding_constraints))
     
-    # Total days per city
-    total_days = [Int('total_%s' % cities[c]) for c in range(n_cities)]
-    for c in range(n_cities):
-        s.add(total_days[c] == Sum([If(in_city[d][c], 1, 0) for d in range(n_days)]))
-    
-    # City day requirements
-    s.add(total_days[0] == 6)  # Bucharest
-    s.add(total_days[1] == 2)  # Warsaw
-    s.add(total_days[2] == 7)  # Stuttgart
-    s.add(total_days[3] == 3)  # Copenhagen
-    s.add(total_days[4] == 5)  # Dubrovnik
-    
-    # Conference in Stuttgart on day 7 (index 6) and day 13 (index 12)
-    s.add(in_city[6][2] == True)   # Day 7
-    s.add(in_city[12][2] == True)  # Day 13
-    
-    # Wedding in Bucharest between day 1-6 (indices 0-5)
-    s.add(Or([in_city[d][0] for d in range(6)]))
-    
-    # Solve and print schedule
     if s.check() == sat:
         m = s.model()
         schedule = []
-        for d in range(n_days):
-            base_val = m.evaluate(base_city[d]).as_long()
-            ft_val = is_true(m.evaluate(flight_taken[d]))
-            to_val = m.evaluate(to_city[d]).as_long() if ft_val else None
-            day_cities = [cities[base_val]]
-            if ft_val:
-                day_cities.append(cities[to_val])
-            schedule.append((d+1, day_cities))
-        
-        for day, cities_list in schedule:
-            print(f"Day {day}: {', '.join(cities_list)}")
+        for i in range(n_days):
+            if i < n_travel_days and m.eval(travel[i]):
+                start_city = m.eval(city[i]).as_long()
+                end_city = m.eval(city[i+1]).as_long()
+                schedule.append(f"Day {i+1}: {cities[start_city]} and {cities[end_city]}")
+            else:
+                c_val = m.eval(city[i]).as_long()
+                schedule.append(f"Day {i+1}: {cities[c_val]}")
+        for day in schedule:
+            print(day)
     else:
         print("No solution found")
 

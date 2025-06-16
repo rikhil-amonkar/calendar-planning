@@ -1,124 +1,90 @@
 from z3 import *
 
 def main():
-    # Define the variables
+    # Initialize solver
+    s = Optimize()
+    
+    # Start time variables (in minutes from 9:00 AM)
+    s_n = Int('s_n')
+    s_m = Int('s_m')
+    s_j = Int('s_j')
+    
+    # Boolean variables for whether we meet each friend
     nancy_met = Bool('nancy_met')
     mary_met = Bool('mary_met')
     jessica_met = Bool('jessica_met')
-    T_n = Int('T_n')
-    T_m = Int('T_m')
-    T_j = Int('T_j')
-
-    # Travel times dictionary: from location A to location B
-    travel_time = {
-        ('FD', 'CT'): 5,   # Financial District to Chinatown
-        ('FD', 'AS'): 17,  # Financial District to Alamo Square
-        ('FD', 'BV'): 19,  # Financial District to Bayview
-        ('CT', 'AS'): 17,  # Chinatown to Alamo Square
-        ('CT', 'BV'): 22,  # Chinatown to Bayview
-        ('AS', 'CT'): 16,  # Alamo Square to Chinatown
-        ('AS', 'BV'): 16,  # Alamo Square to Bayview
-        ('BV', 'CT'): 18,  # Bayview to Chinatown
-        ('BV', 'AS'): 16   # Bayview to Alamo Square
-    }
-
-    # Availability start times (in minutes after 9:00 AM)
-    avail_start = {
-        'nancy': 30,    # 9:30 AM
-        'mary': 0,       # 7:00 AM, but we start at 9:00 so effective start is travel time (17 min)
-        'jessica': 135   # 11:15 AM
-    }
-
-    # Availability end times (in minutes after 9:00 AM)
-    avail_end = {
-        'nancy': 270,   # 1:30 PM
-        'mary': 720,     # 9:00 PM
-        'jessica': 285   # 1:45 PM
-    }
-
-    # Minimum meeting durations (in minutes)
-    durations = {
-        'nancy': 90,
-        'mary': 75,
-        'jessica': 45
-    }
-
-    s = Optimize()
-
-    # Individual constraints for Nancy
-    s.add(Implies(nancy_met, T_n >= max(avail_start['nancy'], travel_time[('FD','CT')])))
-    s.add(Implies(nancy_met, T_n + durations['nancy'] <= avail_end['nancy']))
-
-    # Individual constraints for Mary
-    s.add(Implies(mary_met, T_m >= max(avail_start['mary'], travel_time[('FD','AS')])))
-    s.add(Implies(mary_met, T_m + durations['mary'] <= avail_end['mary']))
-
-    # Individual constraints for Jessica
-    s.add(Implies(jessica_met, T_j >= max(avail_start['jessica'], travel_time[('FD','BV')])))
-    s.add(Implies(jessica_met, T_j + durations['jessica'] <= avail_end['jessica']))
-
-    # Pairwise constraints: Nancy and Mary
-    s.add(Implies(And(nancy_met, mary_met),
-                 Or( T_n + durations['nancy'] + travel_time[('CT','AS')] <= T_m,
-                     T_m + durations['mary'] + travel_time[('AS','CT')] <= T_n ))
-
-    # Pairwise constraints: Nancy and Jessica
-    s.add(Implies(And(nancy_met, jessica_met),
-                 Or( T_n + durations['nancy'] + travel_time[('CT','BV')] <= T_j,
-                     T_j + durations['jessica'] + travel_time[('BV','CT')] <= T_n ))
-
-    # Pairwise constraints: Mary and Jessica
-    s.add(Implies(And(mary_met, jessica_met),
-                 Or( T_m + durations['mary'] + travel_time[('AS','BV')] <= T_j,
-                     T_j + durations['jessica'] + travel_time[('BV','AS')] <= T_m ))
-
-    # Maximize the total number of meetings
-    total_meetings = If(nancy_met, 1, 0) + If(mary_met, 1, 0) + If(jessica_met, 1, 0)
-    s.maximize(total_meetings)
-
-    # Check if a solution exists
+    
+    # Boolean variables for meeting order
+    b_nm = Bool('b_nm')  # True: Nancy before Mary
+    b_nj = Bool('b_nj')  # True: Nancy before Jessica
+    b_mj = Bool('b_mj')  # True: Mary before Jessica
+    
+    # Constraints for Nancy
+    c1 = Implies(nancy_met, And(s_n >= 30, s_n <= 180))  # 30 to 180 minutes (90 min meeting)
+    
+    # Constraints for Mary
+    c2 = Implies(mary_met, And(s_m >= 17, s_m <= 645))  # 17 to 645 minutes (75 min meeting)
+    
+    # Constraints for Jessica
+    c3 = Implies(jessica_met, And(s_j >= 135, s_j <= 240))  # 135 to 240 minutes (45 min meeting)
+    
+    # Pairwise constraints for Nancy and Mary
+    c4 = Implies(And(nancy_met, mary_met),
+                 Or(
+                     And(b_nm, s_m >= s_n + 90 + 17),  # Nancy -> Mary: CT to AS (17 min)
+                     And(Not(b_nm), s_n >= s_m + 75 + 16)  # Mary -> Nancy: AS to CT (16 min)
+                 ))
+    
+    # Pairwise constraints for Nancy and Jessica
+    c5 = Implies(And(nancy_met, jessica_met),
+                 Or(
+                     And(b_nj, s_j >= s_n + 90 + 22),  # Nancy -> Jessica: CT to BV (22 min)
+                     And(Not(b_nj), s_n >= s_j + 45 + 18)  # Jessica -> Nancy: BV to CT (18 min)
+                 ))
+    
+    # Pairwise constraints for Mary and Jessica
+    c6 = Implies(And(mary_met, jessica_met),
+                 Or(
+                     And(b_mj, s_j >= s_m + 75 + 16),  # Mary -> Jessica: AS to BV (16 min)
+                     And(Not(b_mj), s_m >= s_j + 45 + 16)  # Jessica -> Mary: BV to AS (16 min)
+                 ))
+    
+    # Transitivity constraint when all three are met
+    c7 = Implies(And(nancy_met, mary_met, jessica_met),
+                 Or(
+                    And(b_nm, b_nj, b_mj),        # Order: N, M, J
+                    And(b_nm, b_nj, Not(b_mj)),    # Order: N, J, M
+                    And(Not(b_nm), b_nj, b_mj),    # Order: M, N, J
+                    And(Not(b_nm), Not(b_nj), b_mj), # Order: M, J, N
+                    And(b_nm, Not(b_nj), Not(b_mj)), # Order: J, N, M
+                    And(Not(b_nm), Not(b_nj), Not(b_mj))  # Order: J, M, N
+                 )
+    
+    # Add all constraints
+    s.add(c1, c2, c3, c4, c5, c6, c7)
+    
+    # Objective: maximize the number of meetings
+    total_met = If(nancy_met, 1, 0) + If(mary_met, 1, 0) + If(jessica_met, 1, 0)
+    s.maximize(total_met)
+    
+    # Check for a solution
     if s.check() == sat:
-        m = s.model()
-        total_met = 0
-        if is_true(m[nancy_met]):
-            total_met += 1
-        if is_true(m[mary_met]):
-            total_met += 1
-        if is_true(m[jessica_met]):
-            total_met += 1
-
+        model = s.model()
         print("SOLUTION:")
-        print(f"We can meet {total_met} friends.")
-
-        # Helper function to format time (minutes after 9:00 AM) to string
-        def format_time(minutes_after_9am):
-            total_minutes_from_midnight = 9 * 60 + minutes_after_9am
-            hour = total_minutes_from_midnight // 60
-            minute = total_minutes_from_midnight % 60
-            hour12 = hour % 12
-            if hour12 == 0:
-                hour12 = 12
-            suffix = "AM" if hour < 12 else "PM"
-            return f"{hour12}:{minute:02d} {suffix}"
-
-        # Print schedule for each friend if met
-        if is_true(m[nancy_met]):
-            start_n = m[T_n].as_long()
-            end_n = start_n + durations['nancy']
-            print(f"  Nancy: {format_time(start_n)} to {format_time(end_n)} at Chinatown")
-
-        if is_true(m[mary_met]):
-            start_m = m[T_m].as_long()
-            end_m = start_m + durations['mary']
-            print(f"  Mary: {format_time(start_m)} to {format_time(end_m)} at Alamo Square")
-
-        if is_true(m[jessica_met]):
-            start_j = m[T_j].as_long()
-            end_j = start_j + durations['jessica']
-            print(f"  Jessica: {format_time(start_j)} to {format_time(end_j)} at Bayview")
+        print(f"Nancy met: {model.evaluate(nancy_met)}")
+        if model.evaluate(nancy_met):
+            start_n = model.evaluate(s_n)
+            print(f"  Start time: {start_n} minutes after 9:00 AM")
+        print(f"Mary met: {model.evaluate(mary_met)}")
+        if model.evaluate(mary_met):
+            start_m = model.evaluate(s_m)
+            print(f"  Start time: {start_m} minutes after 9:00 AM")
+        print(f"Jessica met: {model.evaluate(jessica_met)}")
+        if model.evaluate(jessica_met):
+            start_j = model.evaluate(s_j)
+            print(f"  Start time: {start_j} minutes after 9:00 AM")
     else:
-        print("SOLUTION:")
-        print("No feasible schedule found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

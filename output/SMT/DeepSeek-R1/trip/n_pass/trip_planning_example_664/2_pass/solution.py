@@ -1,117 +1,80 @@
-from z3 import *
+import z3
 
 def main():
-    cities = ['Tallinn', 'Bucharest', 'Seville', 'Stockholm', 'Munich', 'Milan']
-    edges_list = [
-        ('Milan', 'Stockholm'),
-        ('Munich', 'Stockholm'),
-        ('Bucharest', 'Munich'),
-        ('Munich', 'Seville'),
-        ('Stockholm', 'Tallinn'),
-        ('Munich', 'Milan'),
-        ('Munich', 'Tallinn'),
-        ('Seville', 'Milan')
-    ]
-    normalized_edges = set(tuple(sorted(edge)) for edge in edges_list)
+    solver = z3.Solver()
+    days = list(range(1, 19))
+    cities = [0, 1, 2, 3, 4, 5]  # 0: Bucharest, 1: Munich, 2: Seville, 3: Stockholm, 4: Tallinn, 5: Milan
+    city_names = {
+        0: "Bucharest",
+        1: "Munich",
+        2: "Seville",
+        3: "Stockholm",
+        4: "Tallinn",
+        5: "Milan"
+    }
     
-    non_edges = []
-    for i in range(len(cities)):
-        for j in range(i+1, len(cities)):
-            c1 = cities[i]
-            c2 = cities[j]
-            pair = tuple(sorted([c1, c2]))
-            if pair not in normalized_edges:
-                non_edges.append((c1, c2))
+    in_city = {}
+    for d in days:
+        for i in cities:
+            in_city[(d, i)] = z3.Bool(f"in_{d}_{i}")
     
-    s = Solver()
-    present = {}
-    for c in cities:
-        present[c] = {}
-        for d in range(1, 19):
-            present[c][d] = Bool(f"{c}_{d}")
+    direct_flights = [(0,1), (1,2), (1,3), (1,4), (1,5), (2,5), (3,4), (3,5)]
+    allowed_pairs = set()
+    for (i,j) in direct_flights:
+        allowed_pairs.add((i,j))
+        allowed_pairs.add((j,i))
     
-    # Fix Bucharest: days 1-4 (inclusive)
-    for d in range(1, 5):
-        s.add(present['Bucharest'][d] == True)
-    for d in range(5, 19):
-        s.add(present['Bucharest'][d] == False)
+    for d in days:
+        solver.add(z3.Or([in_city[(d, i)] for i in cities]))
+        for i in range(6):
+            for j in range(i+1, 6):
+                if (i,j) not in allowed_pairs and (j,i) not in allowed_pairs:
+                    solver.add(z3.Not(z3.And(in_city[(d, i)], in_city[(d, j)])))
     
-    # Fix Munich: days 4-8 (inclusive)
-    for d in range(1, 4):
-        s.add(present['Munich'][d] == False)
-    for d in range(4, 9):
-        s.add(present['Munich'][d] == True)
-    for d in range(9, 19):
-        s.add(present['Munich'][d] == False)
-    
-    # Fix Seville: days 8-12 (inclusive)
-    for d in range(1, 8):
-        s.add(present['Seville'][d] == False)
-    for d in range(8, 13):
-        s.add(present['Seville'][d] == True)
-    for d in range(13, 19):
-        s.add(present['Seville'][d] == False)
-    
-    # Days 1-3: Only in Bucharest
-    for d in [1, 2, 3]:
-        for c in cities:
-            if c != 'Bucharest':
-                s.add(present[c][d] == False)
-    
-    # Day 4: Only Bucharest and Munich (flight day)
-    d4_exclude = ['Tallinn', 'Seville', 'Stockholm', 'Milan']
-    for c in d4_exclude:
-        s.add(present[c][4] == False)
-    
-    # Day 8: Only Munich and Seville (flight day)
-    d8_exclude = ['Tallinn', 'Bucharest', 'Stockholm', 'Milan']
-    for c in d8_exclude:
-        s.add(present[c][8] == False)
-    
-    # Total stay duration constraints
-    total_days = {}
-    for c in cities:
-        total_days[c] = 0
-        for d in range(1, 19):
-            total_days[c] += If(present[c][d], 1, 0)
-    s.add(total_days['Tallinn'] == 2)
-    s.add(total_days['Bucharest'] == 4)
-    s.add(total_days['Seville'] == 5)
-    s.add(total_days['Stockholm'] == 5)
-    s.add(total_days['Munich'] == 5)
-    s.add(total_days['Milan'] == 2)
-    
-    # At least one city per day
-    for d in range(1, 19):
-        s.add(Or([present[c][d] for c in cities]))
-    
-    # Flight constraints:
-    # - At most two cities per day
-    # - Two cities only if connected by direct flight
-    for d in range(1, 19):
-        # No three cities on the same day
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                for k in range(j+1, len(cities)):
-                    c1, c2, c3 = cities[i], cities[j], cities[k]
-                    s.add(Not(And(present[c1][d], present[c2][d], present[c3][d])))
-        # No two cities without direct flight
-        for (c1, c2) in non_edges:
-            s.add(Not(And(present[c1][d], present[c2][d])))
-    
-    # Continuity: Consecutive days must share at least one city
     for d in range(1, 18):
-        s.add(Or([And(present[c][d], present[c][d+1]) for c in cities]))
+        common = []
+        for i in cities:
+            common.append(z3.And(in_city[(d, i)], in_city[(d+1, i)]))
+        solver.add(z3.Or(common))
     
-    # Solve and print solution
-    if s.check() == sat:
-        m = s.model()
-        for d in range(1, 19):
-            cities_today = []
-            for c in cities:
-                if m.evaluate(present[c][d]):
-                    cities_today.append(c)
-            print(f"Day {d}: {', '.join(cities_today)}")
+    total_days = [4, 5, 5, 5, 2, 2]
+    for i in cities:
+        solver.add(z3.Sum([z3.If(in_city[(d, i)], 1, 0) for d in days]) == total_days[i])
+    
+    solver.add(z3.Or([in_city[(d, 0)] for d in [1,2,3,4]]))
+    exclusive_bucharest = []
+    for d in [1,2,3,4]:
+        other_cities = [in_city[(d, j)] for j in cities if j != 0]
+        exclusive_bucharest.append(z3.And(in_city[(d,0)], z3.Not(z3.Or(other_cities))))
+    solver.add(z3.Or(exclusive_bucharest))
+    
+    solver.add(z3.Or([in_city[(d, 1)] for d in [4,5,6,7,8]]))
+    exclusive_munich = []
+    for d in [4,5,6,7,8]:
+        other_cities = [in_city[(d, j)] for j in cities if j != 1]
+        exclusive_munich.append(z3.And(in_city[(d,1)], z3.Not(z3.Or(other_cities))))
+    solver.add(z3.Or(exclusive_munich))
+    
+    solver.add(z3.Or([in_city[(d, 2)] for d in [8,9,10,11,12]]))
+    exclusive_seville = []
+    for d in [8,9,10,11,12]:
+        other_cities = [in_city[(d, j)] for j in cities if j != 2]
+        exclusive_seville.append(z3.And(in_city[(d,2)], z3.Not(z3.Or(other_cities))))
+    solver.add(z3.Or(exclusive_seville))
+    
+    if solver.check() == z3.sat:
+        model = solver.model()
+        schedule = {d: [] for d in days}
+        for d in days:
+            for i in cities:
+                if z3.is_true(model.eval(in_city[(d, i)])):
+                    schedule[d].append(city_names[i])
+        for d in days:
+            print(f"Day {d}: {', '.join(schedule[d])}")
+        print("\nTotal days per city:")
+        for i in cities:
+            count = sum(1 for d in days if z3.is_true(model.eval(in_city[(d, i)])))
+            print(f"{city_names[i]}: {count} days")
     else:
         print("No solution found")
 

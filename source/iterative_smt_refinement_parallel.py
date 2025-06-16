@@ -360,6 +360,20 @@ async def process_single_example(
                 
                 if has_execution_error:
                     logging.warning(f"[{example_id}] Pass {pass_num} execution error: {execution_output}")
+                    # Save evaluation result with empty prediction
+                    eval_result = {
+                        "has_execution_error": True,
+                        "execution_output": execution_output,
+                        "pred": {},
+                        "gold": gold_formatted,
+                        "status": "Error",
+                        "violated_constraint": {},
+                        "is_exact_match": False,
+                        "constraints_satisfied": False,
+                        "pass_number": pass_num
+                    }
+                    with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                        json.dump(eval_result, f, indent=4)
                     # Prepare feedback for next iteration
                     current_prompt = f"The previous code had the following error:\n{execution_output}\n\nPlease fix the code and provide a corrected version. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
                     continue

@@ -1,70 +1,78 @@
 from z3 import *
 
 def main():
-    n_days = 19
-    cities = ["Bucharest", "Warsaw", "Stuttgart", "Copenhagen", "Dubrovnik"]
-    n_cities = len(cities)
-    
-    base_city = [Int('base_%d' % d) for d in range(n_days)]
-    flight_taken = [Bool('flight_%d' % d) for d in range(n_days)]
-    to_city = [Int('to_%d' % d) for d in range(n_days)]
-    
     s = Solver()
+    city_dict = {
+        'Bucharest': 0,
+        'Warsaw': 1,
+        'Stuttgart': 2,
+        'Copenhagen': 3,
+        'Dubrovnik': 4
+    }
+    num_days = 19
+    c = [Int('c_%d' % i) for i in range(1, 21)]
+    travel = [Bool('travel_%d' % i) for i in range(1, 20)]
     
-    edges = [(0,1), (0,3), (1,0), (1,2), (1,3), (2,1), (2,3), (3,0), (3,1), (3,2), (3,4), (4,3)]
+    for i in range(20):
+        s.add(c[i] >= 0)
+        s.add(c[i] <= 4)
     
-    for d in range(n_days):
-        s.add(base_city[d] >= 0, base_city[d] < n_cities)
-        s.add(to_city[d] >= 0, to_city[d] < n_cities)
+    allowed_edges = [
+        (1, 3), (3, 1),
+        (2, 3), (3, 2),
+        (1, 2), (2, 1),
+        (0, 3), (3, 0),
+        (0, 1), (1, 0),
+        (3, 4), (4, 3)
+    ]
     
-    for d in range(n_days - 1):
-        s.add(base_city[d+1] == If(flight_taken[d], to_city[d], base_city[d]))
+    for i in range(19):
+        s.add(If(travel[i], c[i] != c[i+1], c[i] == c[i+1]))
+        edge_constraints = []
+        for a, b in allowed_edges:
+            edge_constraints.append(And(c[i] == a, c[i+1] == b))
+        s.add(Implies(travel[i], Or(edge_constraints)))
     
-    for d in range(n_days):
-        s.add(Implies(flight_taken[d], base_city[d] != to_city[d]))
-        edge_conds = []
-        for (a, b) in edges:
-            edge_conds.append(And(base_city[d] == a, to_city[d] == b))
-        s.add(Implies(flight_taken[d], Or(edge_conds)))
+    s.add(Sum([If(travel[i], 1, 0) for i in range(19)]) == 4)
     
-    total_flights = Sum([If(ft, 1, 0) for ft in flight_taken])
-    s.add(total_flights == 4)
+    required_days = [6, 2, 7, 3, 5]
+    for city in range(5):
+        total_days = 0
+        for i in range(19):
+            total_days += If(c[i] == city, 1, 0)
+        for i in range(19):
+            total_days += If(And(travel[i], c[i+1] == city), 1, 0)
+        s.add(total_days == required_days[city])
     
-    in_city = [[None] * n_cities for _ in range(n_days)]
-    for d in range(n_days):
-        for c in range(n_cities):
-            in_city[d][c] = Or(base_city[d] == c, And(flight_taken[d], to_city[d] == c))
+    s.add(Or(c[6] == 2, And(travel[6], c[7] == 2)))
+    s.add(Or(c[12] == 2, And(travel[12], c[13] == 2)))
     
-    total_days = [Int('total_%s' % cities[c]) for c in range(n_cities)]
-    for c in range(n_cities):
-        s.add(total_days[c] == Sum([If(in_city[d][c], 1, 0) for d in range(n_days)]))
-    
-    s.add(total_days[0] == 6)  # Bucharest
-    s.add(total_days[1] == 2)  # Warsaw
-    s.add(total_days[2] == 7)  # Stuttgart
-    s.add(total_days[3] == 3)  # Copenhagen
-    s.add(total_days[4] == 5)  # Dubrovnik
-    
-    s.add(in_city[6][2] == True)   # Day 7 in Stuttgart
-    s.add(in_city[12][2] == True)  # Day 13 in Stuttgart
-    
-    wedding_constraint = Or([in_city[d][0] for d in range(6)])
-    s.add(wedding_constraint)
+    wedding_days = []
+    for i in range(6):
+        wedding_days.append(Or(c[i] == 0, And(travel[i], c[i+1] == 0)))
+    s.add(Or(wedding_days))
     
     if s.check() == sat:
         m = s.model()
-        schedule = []
-        for d in range(n_days):
-            base_val = m.evaluate(base_city[d]).as_long()
-            ft_val = is_true(m.evaluate(flight_taken[d]))
-            to_val = m.evaluate(to_city[d]).as_long() if ft_val else None
-            day_cities = [cities[base_val]]
-            if ft_val:
-                day_cities.append(cities[to_val])
-            schedule.append((d+1, day_cities))
-        
-        for day, cities_list in schedule:
-            print(f"Day {day}: {', '.join(cities_list)}")
+        city_names = {
+            0: 'Bucharest',
+            1: 'Warsaw',
+            2: 'Stuttgart',
+            3: 'Copenhagen',
+            4: 'Dubrovnik'
+        }
+        for day in range(1, 20):
+            idx = day - 1
+            if m.eval(travel[idx]):
+                start_city = m.eval(c[idx])
+                end_city = m.eval(c[idx+1])
+                start_name = city_names[start_city.as_long()]
+                end_name = city_names[end_city.as_long()]
+                print(f"Day {day}: {start_name} and {end_name}")
+            else:
+                city_val = m.eval(c[idx])
+                city_name = city_names[city_val.as_long()]
+                print(f"Day {day}: {city_name}")
     else:
         print("No solution found")
 

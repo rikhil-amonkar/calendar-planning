@@ -1,102 +1,80 @@
-from z3 import *
+import z3
 
 def main():
-    cities = ['Tallinn', 'Bucharest', 'Seville', 'Stockholm', 'Munich', 'Milan']
-    edges_list = [
-        ('Milan', 'Stockholm'),
-        ('Munich', 'Stockholm'),
-        ('Bucharest', 'Munich'),
-        ('Munich', 'Seville'),
-        ('Stockholm', 'Tallinn'),
-        ('Munich', 'Milan'),
-        ('Munich', 'Tallinn'),
-        ('Seville', 'Milan')
-    ]
-    normalized_edges = set(tuple(sorted(edge)) for edge in edges_list)
+    solver = z3.Solver()
+    days = list(range(1, 19))
+    cities = [0, 1, 2, 3, 4, 5]
+    city_names = {
+        0: "Bucharest",
+        1: "Munich",
+        2: "Seville",
+        3: "Stockholm",
+        4: "Tallinn",
+        5: "Milan"
+    }
     
-    non_edges = []
-    for i in range(len(cities)):
-        for j in range(i+1, len(cities)):
-            c1 = cities[i]
-            c2 = cities[j]
-            pair = tuple(sorted([c1, c2]))
-            if pair not in normalized_edges:
-                non_edges.append((c1, c2))
+    c = {}
+    for d in days:
+        for i in cities:
+            c[(d, i)] = z3.Bool(f"c_{d}_{i}")
     
-    s = Solver()
-    present = {}
-    for c in cities:
-        present[c] = {}
-        for d in range(1, 19):
-            present[c][d] = Bool(f"{c}_{d}")
+    edges = set()
+    edges.add((0, 1))
+    edges.add((1, 2))
+    edges.add((1, 3))
+    edges.add((1, 4))
+    edges.add((1, 5))
+    edges.add((2, 5))
+    edges.add((3, 4))
+    edges.add((3, 5))
     
-    for d in range(1, 5):
-        s.add(present['Bucharest'][d] == True)
-    for d in range(5, 19):
-        s.add(present['Bucharest'][d] == False)
-    
-    for d in range(1, 4):
-        s.add(present['Munich'][d] == False)
-    for d in range(4, 9):
-        s.add(present['Munich'][d] == True)
-    for d in range(9, 19):
-        s.add(present['Munich'][d] == False)
-    
-    for d in range(1, 8):
-        s.add(present['Seville'][d] == False)
-    for d in range(8, 13):
-        s.add(present['Seville'][d] == True)
-    for d in range(13, 19):
-        s.add(present['Seville'][d] == False)
-    
-    for d in [1, 2, 3]:
-        for c in cities:
-            if c != 'Bucharest':
-                s.add(present[c][d] == False)
-    
-    d4_exclude = ['Tallinn', 'Seville', 'Stockholm', 'Milan']
-    for c in d4_exclude:
-        s.add(present[c][4] == False)
-    
-    d8_exclude = ['Tallinn', 'Bucharest', 'Stockholm', 'Milan']
-    for c in d8_exclude:
-        s.add(present[c][8] == False)
-    
-    total_days = {}
-    for c in cities:
-        total_days[c] = 0
-        for d in range(1, 19):
-            total_days[c] += If(present[c][d], 1, 0)
-    s.add(total_days['Tallinn'] == 2)
-    s.add(total_days['Bucharest'] == 4)
-    s.add(total_days['Seville'] == 5)
-    s.add(total_days['Stockholm'] == 5)
-    s.add(total_days['Munich'] == 5)
-    s.add(total_days['Milan'] == 2)
-    
-    for d in range(1, 19):
-        s.add(Or([present[c][d] for c in cities]))
-    
-    for d in range(1, 19):
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                for k in range(j+1, len(cities)):
-                    c1, c2, c3 = cities[i], cities[j], cities[k]
-                    s.add(Not(And(present[c1][d], present[c2][d], present[c3][d])))
-        for (c1, c2) in non_edges:
-            s.add(Not(And(present[c1][d], present[c2][d])))
+    for d in days:
+        in_cities = [c[(d, i)] for i in cities]
+        solver.add(z3.Or(in_cities))
+        solver.add(z3.AtMost(*in_cities, 2))
+        for i in range(6):
+            for j in range(i + 1, 6):
+                if (i, j) not in edges and (j, i) not in edges:
+                    solver.add(z3.Not(z3.And(c[(d, i)], c[(d, j)])))
     
     for d in range(1, 18):
-        s.add(Or([And(present[c][d], present[c][d+1]) for c in cities]))
+        common_cities = []
+        for i in cities:
+            common_cities.append(z3.And(c[(d, i)], c[(d + 1, i)]))
+        solver.add(z3.Or(common_cities))
     
-    if s.check() == sat:
-        m = s.model()
-        for d in range(1, 19):
-            cities_today = []
-            for c in cities:
-                if m.evaluate(present[c][d]):
-                    cities_today.append(c)
-            print(f"Day {d}: {', '.join(cities_today)}")
+    totals = [4, 5, 5, 5, 2, 2]
+    for i in cities:
+        total_days = z3.Sum([z3.If(c[(d, i)], 1, 0) for d in days])
+        solver.add(total_days == totals[i])
+    
+    bucharest_days = [c[(d, 0)] for d in [1, 2, 3, 4]]
+    solver.add(z3.Or(bucharest_days))
+    munich_days = [c[(d, 1)] for d in [4, 5, 6, 7, 8]]
+    solver.add(z3.Or(munich_days))
+    seville_days = [c[(d, 2)] for d in [8, 9, 10, 11, 12]]
+    solver.add(z3.Or(seville_days))
+    
+    if solver.check() == z3.sat:
+        model = solver.model()
+        schedule = {}
+        for d in days:
+            schedule[d] = []
+            for i in cities:
+                if z3.is_true(model.eval(c[(d, i)])):
+                    schedule[d].append(city_names[i])
+        
+        for d in days:
+            cities_str = ", ".join(schedule[d])
+            print(f"Day {d}: {cities_str}")
+        
+        print("\nTotal days per city:")
+        for i in cities:
+            count = 0
+            for d in days:
+                if z3.is_true(model.eval(c[(d, i)])):
+                    count += 1
+            print(f"{city_names[i]}: {count} days")
     else:
         print("No solution found")
 
