@@ -1,81 +1,78 @@
 from z3 import *
 
 def main():
-    # Define the City enum
-    City = Datatype('City')
-    City.declare('Porto')
-    City.declare('Stuttgart')
-    City.declare('Seville')
-    City.declare('Madrid')
-    City = City.create()
-    
-    Porto = City.Porto
-    Stuttgart = City.Stuttgart
-    Seville = City.Seville
-    Madrid = City.Madrid
-    
     n_days = 13
-    n_cities = 14  # c0 to c13 (14 points: start day1 to end day13)
+    n_cities = 4
+    cities = ['Madrid', 'Seville', 'Porto', 'Stuttgart']
+    edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
     
-    # City variables: c0, c1, ... c13
-    c = [Const('c_%d' % i, City) for i in range(n_cities)]
-    # Flight variables: flight0 to flight12 (for day1 to day13)
-    flight = [Bool('flight_%d' % i) for i in range(n_days)]
-    
-    # Define direct flights (both directions)
-    direct_flights = [(Porto, Stuttgart), (Seville, Porto), (Madrid, Porto), (Madrid, Seville)]
-    allowed_edges = set()
-    for u, v in direct_flights:
-        allowed_edges.add((u, v))
-        allowed_edges.add((v, u))
+    start_city = [Int(f'start_city_{i}') for i in range(1, n_days+1)]
+    travel = [Bool(f'travel_{i}') for i in range(1, n_days+1)]
+    dest_city = [Int(f'dest_city_{i}') for i in range(1, n_days+1)]
     
     s = Solver()
     
-    # Flight constraints for each day
     for i in range(n_days):
-        edge_constraints = []
-        for u, v in allowed_edges:
-            edge_constraints.append(And(c[i] == u, c[i+1] == v))
-        s.add(If(flight[i],
-                 And(c[i] != c[i+1], Or(edge_constraints)),
-                 c[i] == c[i+1]))
+        s.add(start_city[i] >= 0, start_city[i] < n_cities)
+        s.add(dest_city[i] >= 0, dest_city[i] < n_cities)
     
-    # Count days per city
-    def count_city(city):
+    for i in range(1, n_days):
+        end_city_prev = If(travel[i-1], dest_city[i-1], start_city[i-1])
+        s.add(start_city[i] == end_city_prev)
+    
+    in_city = []
+    for i in range(n_days):
+        in_city_day = []
+        for c in range(n_cities):
+            in_city_c = If(travel[i], 
+                           Or(start_city[i] == c, dest_city[i] == c),
+                           start_city[i] == c)
+            in_city_day.append(in_city_c)
+        in_city.append(in_city_day)
+    
+    for i in range(4):
+        s.add(in_city[i][0] == True)
+    for i in range(4, n_days):
+        s.add(in_city[i][0] == False)
+    
+    s.add(in_city[6][3] == True)
+    s.add(in_city[12][3] == True)
+    
+    totals = [0]*n_cities
+    for c in range(n_cities):
         total = 0
         for i in range(n_days):
-            term1 = If(c[i] == city, 1, 0)
-            term2 = If(And(flight[i], c[i+1] == city), 1, 0)
-            total = total + term1 + term2
-        return total
+            total += If(in_city[i][c], 1, 0)
+        totals[c] = total
     
-    s.add(count_city(Stuttgart) == 7)
-    s.add(count_city(Seville) == 2)
-    s.add(count_city(Porto) == 3)
-    s.add(count_city(Madrid) == 4)
+    s.add(totals[0] == 4)
+    s.add(totals[1] == 2)
+    s.add(totals[2] == 3)
+    s.add(totals[3] == 7)
     
-    # Conference in Stuttgart on day7 (i=6) and day13 (i=12)
-    s.add(Or(c[6] == Stuttgart, c[7] == Stuttgart))  # day7: start c6, end c7
-    s.add(Or(c[12] == Stuttgart, c[13] == Stuttgart)) # day13: start c12, end c13
+    for i in range(n_days):
+        allowed_pairs = []
+        for (a, b) in edges:
+            allowed_pairs.append(And(start_city[i] == a, dest_city[i] == b))
+            allowed_pairs.append(And(start_city[i] == b, dest_city[i] == a))
+        s.add(Implies(travel[i], Or(allowed_pairs)))
     
-    # Visit relatives in Madrid between day1 and day4 (c0 to c4)
-    s.add(Or([c[i] == Madrid for i in range(5)]))
+    total_travel = Sum([If(travel[i], 1, 0) for i in range(n_days)])
+    s.add(total_travel == 3)
     
-    # Check and get the model
     if s.check() == sat:
         m = s.model()
-        city_names = {Porto: 'Porto', Stuttgart: 'Stuttgart', Seville: 'Seville', Madrid: 'Madrid'}
+        start_city_val = [m.evaluate(start_city[i]).as_long() for i in range(n_days)]
+        travel_val = [m.evaluate(travel[i]) for i in range(n_days)]
+        dest_city_val = [m.evaluate(dest_city[i]).as_long() for i in range(n_days)]
         
-        # Print the plan
         for i in range(n_days):
-            start_city = m.eval(c[i])
-            end_city = m.eval(c[i+1])
-            flight_taken = m.eval(flight[i])
-            day = i + 1
-            if flight_taken:
-                print(f"Day {day}: Fly from {city_names[start_city]} to {city_names[end_city]}")
+            if is_true(travel_val[i]):
+                city_list = [cities[start_city_val[i]], cities[dest_city_val[i]]]
+                print(f"Day {i+1}: {city_list}")
             else:
-                print(f"Day {day}: Stay in {city_names[start_city]}")
+                city_list = [cities[start_city_val[i]]]
+                print(f"Day {i+1}: {city_list}")
     else:
         print("No solution found")
 
