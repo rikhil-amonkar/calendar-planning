@@ -1,3 +1,47 @@
+"""
+Parallel Scheduling Program with Iterative LLM Refinement
+
+This program solves calendar scheduling, meeting planning, and trip planning problems using LLMs
+to generate and iteratively refine Python solutions. It processes multiple examples in parallel
+with rate limiting and provides detailed feedback on constraint violations and execution errors.
+
+Key Features:
+1. Supports multiple LLM models (DeepSeek, OpenAI, and HuggingFace models)
+2. Parallel processing of examples with configurable concurrency (--max_concurrent)
+3. Rate limiting to prevent API overuse (--rate_limit)
+4. Three task types with specialized evaluation:
+   - Calendar scheduling (find meeting times)
+   - Meeting planning (optimize multi-person schedules)
+   - Trip planning (create travel itineraries)
+5. Full error reporting including complete Python tracebacks
+6. Multiple refinement passes with constraint feedback
+7. Comprehensive logging and output saving
+
+Evaluation Approach:
+1. Generates executable Python code using LLMs
+2. Runs the code and captures output/errors
+3. Extracts structured answers using GPT-4.1-nano when needed
+4. Evaluates against golden solutions and constraints
+5. Provides detailed feedback for iterative improvement
+
+Output Structure:
+../output/Python/{model}/{task}/n_pass/{example_id}/{pass_num}_pass/
+  - conversation.json: Full chat history with model
+  - solution.py: Generated Python code
+  - output.out: Execution results or error trace
+  - evaluation.json: Detailed evaluation metrics
+
+Example Usage:
+# Run calendar examples 0-4 with DeepSeek-R1 (5 concurrent)
+python iterative_python_refinement_parallel.py --task calendar --model DeepSeek-R1 --start 0 --end 5 --max_concurrent 5
+
+# Run all tasks with multiple models (3 passes max)
+python iterative_python_refinement_parallel.py --task all --model DeepSeek-R1 gpt-4o-mini --max_passes 3
+
+# Specific examples with high concurrency and rate limiting
+python iterative_python_refinement_parallel.py --task trip --model DeepSeek-R1 --examples "25,30,35" --max_concurrent 10 --rate_limit 5
+"""
+
 import argparse
 import asyncio
 import json
@@ -28,6 +72,26 @@ logging.basicConfig(
     ]
 )
 
+class RateLimiter:
+    """Simple rate limiter to avoid API limits"""
+    def __init__(self, requests_per_second: float):
+        self.requests_per_second = requests_per_second
+        self.last_request_time = 0
+    
+    async def wait(self):
+        if self.requests_per_second <= 0:
+            return
+        
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        min_interval = 1.0 / self.requests_per_second
+        
+        if time_since_last < min_interval:
+            wait_time = min_interval - time_since_last
+            await asyncio.sleep(wait_time)
+        
+        self.last_request_time = time.time()
+
 class SchedulingProgram:
     def __init__(self):
         self.args = self.parse_arguments()
@@ -45,6 +109,9 @@ class SchedulingProgram:
         
         # Load all prompts and constraints
         self.load_data()
+        
+        # Initialize rate limiter
+        self.rate_limiter = RateLimiter(self.args.rate_limit)
         
         # Task-specific configurations
         self.task_config = {
@@ -100,6 +167,9 @@ Examples:
   
   # Force re-run all examples (ignore existing results)
   python scheduling_program.py --task meeting --model DeepSeek-R1 --fresh
+  
+  # Run with parallel processing (10 concurrent examples)
+  python scheduling_program.py --task trip --model DeepSeek-V3 --max_concurrent 10 --rate_limit 5
 """
         )
         parser.add_argument('--task', choices=['calendar', 'trip', 'meeting', 'all'], required=True,
@@ -120,6 +190,8 @@ Examples:
                           help="Requests per second limit (to avoid API rate limits)")
         parser.add_argument('--api_key_file', type=str, default='../../openai_research/deepseek_api_key.json',
                           help="Path to file containing API keys")
+        parser.add_argument('--examples', type=str,
+                          help="Comma-separated list of specific example numbers to run")
         return parser.parse_args()
 
     def setup_directories(self):
@@ -385,6 +457,7 @@ Examples:
         return feedback
 
     def parse_meeting_golden(self, golden_plan):
+        """Parse the golden plan into a structured format with 'itinerary' key."""
         itinerary = []
         current_location = None
         
@@ -421,7 +494,8 @@ Examples:
                         "end_time": end_time
                     })
                     
-        return itinerary
+        # Return with 'itinerary' key to match predicted output structure
+        return {"itinerary": itinerary}
 
     def parse_meeting_output(self, output):
         """Parse meeting output with consistent itinerary ordering."""
@@ -534,16 +608,23 @@ Examples:
         return {"itinerary": normalized_itinerary}
 
     def evaluate_meeting(self, constraints, predicted_itinerary):
+        """Evaluate meeting plan against constraints with structured comparison."""
         if not predicted_itinerary or "itinerary" not in predicted_itinerary:
             return False, {"missing_itinerary": True}
 
+        # Ensure golden output has same structure
+        golden_itinerary = {"itinerary": self.parse_meeting_golden(constraints.get("golden_plan", []))["itinerary"]}
+        
+        # First check for exact match of structured plans
+        if predicted_itinerary == golden_itinerary:
+            return True, {}
+        
         people = {p["name"]: p for p in constraints.get("people_to_meet", [])}
         start_location = constraints.get("start", {}).get("location")
         start_time_str = constraints.get("start", {}).get("time_of_day")
         num_people_to_meet = constraints.get("num_people_to_meet", 0)
 
         meetings = []
-        # Make sure predicted_itinerary["itinerary"] is a list of dictionaries
         if isinstance(predicted_itinerary["itinerary"], list):
             for m in predicted_itinerary["itinerary"]:
                 if isinstance(m, dict):
@@ -559,7 +640,7 @@ Examples:
             return False, {"num_people_to_meet": num_people_to_meet}
 
         if not meetings:
-            return True, {}
+            return False, {"no_valid_meetings": True}
 
         meetings.sort(key=lambda x: x["start"])
 
@@ -619,7 +700,7 @@ Examples:
                     }
                 }
 
-        return True, {}
+        return False, {"constraints_satisfied_but_no_exact_match": True}
 
     def format_meeting_feedback(self, violated_constraints):
         if not violated_constraints:
@@ -942,15 +1023,6 @@ Examples:
         
         return code
 
-    def categorize_error(self, error_message):
-        error_types = ["SyntaxError", "IndentationError", "NameError", "TypeError", 
-                      "ValueError", "ImportError", "RuntimeError", "AttributeError", 
-                      "KeyError", "IndexError"]
-        for error_type in error_types:
-            if error_type in error_message:
-                return error_type
-        return "Other"
-
     def run_generated_code(self, code, task):
         """Execute generated Python code and return output"""
         try:
@@ -969,8 +1041,9 @@ Examples:
             return output, None, exec_time
         except subprocess.CalledProcessError as e:
             exec_time = time.time() - start_time
-            error_type = self.categorize_error(e.stderr)
-            return None, error_type, exec_time
+            # Return the full error message including traceback
+            error_message = e.stderr.strip()
+            return None, error_message, exec_time
         except Exception as e:
             exec_time = time.time() - start_time
             return None, str(e), exec_time
@@ -997,6 +1070,7 @@ Examples:
         start_time = time.time()
         try:
             # Use the Kani instance to chat with the model
+            await self.rate_limiter.wait()
             response = await self.models[model_name].chat_round_str(prompt)
             api_time = time.time() - start_time
             
@@ -1012,7 +1086,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/Llama-3.1-8B-Instruct/{task}/n_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/DeepSeek-R1/{task}/n_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1031,130 +1105,135 @@ Examples:
         with open(f"{output_dir}/evaluation.json", "w") as f:
             json.dump(evaluation, f, indent=4)
 
-    async def process_example(self, task, example_id, example_data, model_name):
-        """Process a single example with multiple passes if needed"""
-        config = self.task_config[task]
-        constraints = self.constraints[task].get(example_id, {}).get("constraints", {})
-        
-        # Initialize conversation history
-        conversation = []
-        
-        # Get initial prompt
-        initial_prompt = config["prefix"] + example_data["prompt_0shot"] + config["suffix"]
-        current_prompt = initial_prompt
-        
-        for pass_num in range(1, self.args.max_passes + 1):
-            logging.info(f"Processing {task} example {example_id}, pass {pass_num} with {model_name}")
+    async def process_example(self, task, example_id, example_data, model_name, semaphore):
+        """Process a single example with multiple passes if needed."""
+        async with semaphore:
+            config = self.task_config[task]
+            constraints = self.constraints[task].get(example_id, {}).get("constraints", {})
+            constraints["golden_plan"] = example_data["golden_plan"]  # Add golden plan to constraints
             
-            # Get model response with timing
-            response_start = time.time()
-            response, api_time, token_count = await self.run_model(model_name, current_prompt)
-            if not response:
-                logging.error(f"Failed to get response for {example_id}")
-                return
+            # Initialize conversation history
+            conversation = []
             
-            # Add to conversation history
-            conversation.append({"role": "user", "content": current_prompt})
-            conversation.append({"role": "assistant", "content": response})
+            # Get initial prompt
+            initial_prompt = config["prefix"] + example_data["prompt_0shot"] + config["suffix"]
+            current_prompt = initial_prompt
             
-            # Extract code
-            code = self.extract_code(response)
-            if not code:
-                logging.warning(f"No code found in response for {example_id}")
+            for pass_num in range(1, self.args.max_passes + 1):
+                logging.info(f"Processing {task} example {example_id}, pass {pass_num} with {model_name}")
                 
-                # Save output files even if no code was found
+                # Get model response with timing
+                response_start = time.time()
+                response, api_time, token_count = await self.run_model(model_name, current_prompt)
+                if not response:
+                    logging.error(f"Failed to get response for {example_id}")
+                    return
+                
+                # Add to conversation history
+                conversation.append({"role": "user", "content": current_prompt})
+                conversation.append({"role": "assistant", "content": response})
+                
+                # Extract code
+                code = self.extract_code(response)
+                if not code:
+                    logging.warning(f"No code found in response for {example_id}")
+                    
+                    # Save output files even if no code was found
+                    self.save_output_files(
+                        task, example_id, pass_num,
+                        conversation, response, "",
+                        {
+                            "error": "No code found in model response",
+                            "timing": {
+                                "api_call_time": api_time,
+                                "token_count": token_count
+                            }
+                        }
+                    )
+                    return
+                
+                # Execute code with timing
+                output, error, exec_time = self.run_generated_code(code, task)
+                
+                # Parse output and golden plan with timing
+                pred_extract_start = time.time()
+                predicted_output = config["parse_output"](output if not error else None)
+                pred_extract_time = time.time() - pred_extract_start
+                
+                gold_extract_start = time.time()
+                golden_output = config["parse_golden"](example_data["golden_plan"])
+                gold_extract_time = time.time() - gold_extract_start
+                
+                # Evaluate constraints with timing
+                constraint_eval_start = time.time()
+                constraints_satisfied, violated = config["evaluate"](constraints, predicted_output)
+                constraint_eval_time = time.time() - constraint_eval_start
+                
+                # Check if output matches golden solution
+                is_exact_match = predicted_output == golden_output
+                
+                # Prepare evaluation result
+                eval_result = {
+                    "predicted_output": predicted_output,
+                    "golden_output": golden_output,
+                    "constraints_satisfied": constraints_satisfied,
+                    "is_exact_match": is_exact_match,
+                    "violated_constraints": violated,
+                    "has_execution_error": error is not None,
+                    "execution_error": error if error else None,
+                    "execution_output": output if not error else None,
+                    "pass_number": pass_num,
+                    "timing": {
+                        "api_call_time": api_time,
+                        "execution_time": exec_time,
+                        "constraint_eval_time": constraint_eval_time,
+                        "pred_extract_time": pred_extract_time,
+                        "gold_extract_time": gold_extract_time,
+                        "token_count": token_count
+                    }
+                }
+                
+                # Save output files
                 self.save_output_files(
                     task, example_id, pass_num,
-                    conversation, response, "",
-                    {
-                        "error": "No code found in model response",
-                        "timing": {
-                            "api_call_time": api_time,
-                            "token_count": token_count
-                        }
-                    }
+                    conversation, code, output if not error else error,
+                    eval_result
                 )
-                return
-            
-            # Execute code with timing
-            output, error, exec_time = self.run_generated_code(code, task)
-            
-            # Parse output and golden plan with timing
-            pred_extract_start = time.time()
-            predicted_output = config["parse_output"](output if not error else None)
-            pred_extract_time = time.time() - pred_extract_start
-            
-            gold_extract_start = time.time()
-            golden_output = config["parse_golden"](example_data["golden_plan"])
-            gold_extract_time = time.time() - gold_extract_start
-            
-            # Evaluate constraints with timing
-            constraint_eval_start = time.time()
-            if task == "calendar":
-                constraints_satisfied, violated = config["evaluate"](constraints, predicted_output)
-            else:
-                constraints_satisfied, violated = config["evaluate"](constraints, predicted_output)
-            constraint_eval_time = time.time() - constraint_eval_start
-            
-            # Check if output matches golden solution
-            is_exact_match = predicted_output == golden_output
-            
-            # Prepare evaluation result
-            eval_result = {
-                "predicted_output": predicted_output,
-                "golden_output": golden_output,
-                "constraints_satisfied": constraints_satisfied,
-                "is_exact_match": is_exact_match,
-                "violated_constraints": violated,
-                "has_execution_error": error is not None,
-                "execution_error": error if error else None,
-                "execution_output": output if not error else None,
-                "pass_number": pass_num,
-                "timing": {
-                    "api_call_time": api_time,
-                    "execution_time": exec_time,
-                    "constraint_eval_time": constraint_eval_time,
-                    "pred_extract_time": pred_extract_time,
-                    "gold_extract_time": gold_extract_time,
-                    "token_count": token_count
-                }
-            }
-            
-            # Save output files
-            self.save_output_files(
-                task, example_id, pass_num,
-                conversation, code, output if not error else error,
-                eval_result
-            )
-            
-            # Update state
-            self.state.update_example(task, example_id, pass_num, constraints_satisfied, is_exact_match)
-            self.state.save()
-            
-            # Check if we're done
-            if constraints_satisfied:
-                logging.info(f"Successfully solved {task} example {example_id} in pass {pass_num}")
-                return
-            
-            # Prepare enhanced feedback for next iteration
-            feedback_parts = []
-            
-            if error:
-                feedback_parts.append(f"Previous code execution failed with error:\n{error}")
-                feedback_parts.append(f"\nGenerated code that caused the error:\n```python\n{code}\n```")
-            else:
-                feedback_parts.append(f"Previous code produced this output:\n{output}")
-                feedback_parts.append(config["format_feedback"](violated))
-                feedback_parts.append(f"\nGenerated code that produced this output:\n```python\n{code}\n```")
-            
-            feedback_parts.append("\nPlease carefully review the error/output, the constraints violated, and the code.")
-            feedback_parts.append("Revise your solution to fix these issues while maintaining all required functionality.")
-            
-            current_prompt = "\n".join(feedback_parts)
+                
+                # Update state
+                self.state.update_example(task, example_id, pass_num, constraints_satisfied, is_exact_match)
+                self.state.save()
+                
+                # Check if we're done
+                if constraints_satisfied and is_exact_match:
+                    logging.info(f"Successfully solved {task} example {example_id} in pass {pass_num}")
+                    return
+                
+                # Prepare enhanced feedback for next iteration
+                feedback_parts = []
+                
+                if error:
+                    feedback_parts.append(f"Previous code execution failed with error:\n{error}")
+                    feedback_parts.append(f"\nGenerated code that caused the error:\n```python\n{code}\n```")
+                else:
+                    feedback_parts.append(f"Previous code produced this output:\n{output}")
+                    feedback_parts.append(config["format_feedback"](violated))
+                    feedback_parts.append(f"\nGenerated code that produced this output:\n```python\n{code}\n```")
+                
+                feedback_parts.append("\nPlease carefully review the error/output, the constraints violated, and the code.")
+                feedback_parts.append("Revise your solution to fix these issues while maintaining all required functionality.")
+                
+                current_prompt = "\n".join(feedback_parts)
 
     async def run(self):
-        """Main execution method"""
+        """Main execution method with parallel processing"""
         tasks_to_run = ["calendar", "meeting", "trip"] if self.args.task == "all" else [self.args.task]
+        
+        # Create a semaphore to limit concurrent tasks
+        semaphore = asyncio.Semaphore(self.args.max_concurrent)
+        
+        # Create a list to hold all our tasks
+        all_tasks = []
         
         for model_name in self.args.model:
             if model_name not in self.models:
@@ -1177,20 +1256,34 @@ Examples:
                 
                 # Process examples
                 examples = list(self.prompts[task].items())
-                end_idx = self.args.end if self.args.end != -1 else len(examples)
                 
-                for idx in range(self.args.start, end_idx):
-                    example_id, example_data = examples[idx]
-                    
+                # Handle example filtering
+                if self.args.examples:
+                    # Parse comma-separated example numbers
+                    example_numbers = [int(num.strip()) for num in self.args.examples.split(",") if num.strip()]
+                    # Filter examples to only include specified numbers
+                    task_prefix = "calendar_scheduling" if task == "calendar" else f"{task}_planning"
+                    examples = [(f"{task_prefix}_example_{num}", ex) for num in example_numbers 
+                              for ex_id, ex in examples if ex_id == f"{task_prefix}_example_{num}"]
+                
+                end_idx = self.args.end if self.args.end != -1 else len(examples)
+                examples_to_process = examples[self.args.start:end_idx]
+                
+                # Create tasks for all examples
+                for example_id, example_data in examples_to_process:
                     # Skip if already successfully processed (unless --fresh)
                     if not self.args.fresh and self.state.is_example_complete(task, example_id):
                         logging.info(f"Skipping already completed {task} example {example_id}")
                         continue
                     
-                    await self.process_example(task, example_id, example_data, model_name)
-                    
-                    # Rate limiting - use asyncio.sleep instead of datetime.time.sleep
-                    await asyncio.sleep(1 / self.args.rate_limit)
+                    # Create task for this example
+                    task_obj = asyncio.create_task(
+                        self.process_example(task, example_id, example_data, model_name, semaphore)
+                    )
+                    all_tasks.append(task_obj)
+        
+        # Wait for all tasks to complete
+        await asyncio.gather(*all_tasks)
         
         # Print final statistics
         self.state.print_statistics()
