@@ -4,42 +4,6 @@ Parallel Scheduling Program with Iterative LLM Refinement
 This program solves calendar scheduling, meeting planning, and trip planning problems using LLMs
 to generate and iteratively refine Python solutions. It processes multiple examples in parallel
 with rate limiting and provides detailed feedback on constraint violations and execution errors.
-
-Key Features:
-1. Supports multiple LLM models (DeepSeek, OpenAI, and HuggingFace models)
-2. Parallel processing of examples with configurable concurrency (--max_concurrent)
-3. Rate limiting to prevent API overuse (--rate_limit)
-4. Three task types with specialized evaluation:
-   - Calendar scheduling (find meeting times)
-   - Meeting planning (optimize multi-person schedules)
-   - Trip planning (create travel itineraries)
-5. Full error reporting including complete Python tracebacks
-6. Multiple refinement passes with constraint feedback
-7. Comprehensive logging and output saving
-
-Evaluation Approach:
-1. Generates executable Python code using LLMs
-2. Runs the code and captures output/errors
-3. Extracts structured answers using GPT-4.1-nano when needed
-4. Evaluates against golden solutions and constraints
-5. Provides detailed feedback for iterative improvement
-
-Output Structure:
-../output/Python/{model}/{task}/n_pass/{example_id}/{pass_num}_pass/
-  - conversation.json: Full chat history with model
-  - solution.py: Generated Python code
-  - output.out: Execution results or error trace
-  - evaluation.json: Detailed evaluation metrics
-
-Example Usage:
-# Run calendar examples 0-4 with DeepSeek-R1 (5 concurrent)
-python iterative_python_refinement_parallel.py --task calendar --model DeepSeek-R1 --start 0 --end 5 --max_concurrent 5
-
-# Run all tasks with multiple models (3 passes max)
-python iterative_python_refinement_parallel.py --task all --model DeepSeek-R1 gpt-4o-mini --max_passes 3
-
-# Specific examples with high concurrency and rate limiting
-python iterative_python_refinement_parallel.py --task trip --model DeepSeek-R1 --examples "25,30,35" --max_concurrent 10 --rate_limit 5
 """
 
 import argparse
@@ -212,7 +176,9 @@ Examples:
             logging.error(f"Invalid JSON in API key file {self.args.api_key_file}")
             sys.exit(1)
 
-        self.models = {}
+        self.engines = {}  # Store engines separately from Kani instances
+        self.models = {}    # Will store Kani instances
+        
         for model_name in self.args.model:
             try:
                 if model_name.startswith("DeepSeek"):
@@ -230,15 +196,30 @@ Examples:
                             api_base="https://api.deepseek.com",
                             max_context_size=50000
                         )
+                    # For DeepSeek models, create Kani instance immediately
+                    self.models[model_name] = Kani(engine)
                 else:
                     # For other models (including local HuggingFace models)
-                    engine = HuggingEngine(model_id=model_name)
-                
-                # Create Kani instance with the engine
-                self.models[model_name] = Kani(engine)
+                    # Just store the engine, we'll create Kani instances per-request
+                    if model_name.startswith("gpt"):
+                        engine = OpenAIEngine(api_key=self.keys.get("openai"), model=model_name)
+                    else:
+                        engine = HuggingEngine(model_id=model_name)
+                    self.engines[model_name] = engine
                 
             except Exception as e:
                 logging.error(f"Failed to initialize model {model_name}: {e}")
+
+    async def get_model_instance(self, model_name):
+        """Get a model instance, creating a new Kani instance for non-DeepSeek models"""
+        if model_name in self.models:
+            return self.models[model_name]
+        
+        if model_name in self.engines:
+            # For non-DeepSeek models, create a fresh Kani instance each time
+            return Kani(self.engines[model_name], system_prompt="")
+        
+        raise ValueError(f"Model {model_name} not initialized")
 
     def load_data(self):
         """Load all prompts and constraints"""
@@ -345,7 +326,6 @@ Examples:
             "The code must run independently and output valid JSON when executed."
         )
     
-    # Add a helper method to remove leading zeros from time strings
     def remove_leading_zeros(self, time_str):
         """Remove leading zeros from time strings (e.g., '09:00' -> '9:00')"""
         if not time_str:
@@ -880,7 +860,6 @@ Examples:
         feedback += "\nPlease revise your solution to satisfy these constraints."
         return feedback
 
-    # Helper methods
     def extract_answer(self, answer_str, task):
         """Extract structured answer from text output using GPT-4.1-nano"""
         try:
@@ -1069,9 +1048,12 @@ Examples:
         """Run the specified model with the given prompt and return timing info"""
         start_time = time.time()
         try:
+            # Get a fresh model instance (important for non-DeepSeek models)
+            ai = await self.get_model_instance(model_name)
+            
             # Use the Kani instance to chat with the model
             await self.rate_limiter.wait()
-            response = await self.models[model_name].chat_round_str(prompt)
+            response = await ai.chat_round_str(prompt)
             api_time = time.time() - start_time
             
             # Only count tokens for DeepSeek models
@@ -1155,9 +1137,16 @@ Examples:
                 # Execute code with timing
                 output, error, exec_time = self.run_generated_code(code, task)
                 
+                # Check for execution errors
+                has_execution_error = (error is not None or 
+                                      "Error" in (output or "") or 
+                                      "Exception" in (output or "") or 
+                                      "Traceback" in (output or "") or 
+                                      not (output or "").strip())
+                
                 # Parse output and golden plan with timing
                 pred_extract_start = time.time()
-                predicted_output = config["parse_output"](output if not error else None)
+                predicted_output = config["parse_output"](output if not has_execution_error else None)
                 pred_extract_time = time.time() - pred_extract_start
                 
                 gold_extract_start = time.time()
@@ -1175,17 +1164,16 @@ Examples:
                 # Determine status
                 status = "Correct" if constraints_satisfied else "Wrong plan"
                 
-                # Prepare evaluation result
+                # Prepare evaluation result with new structure
                 eval_result = {
+                    "has_execution_error": has_execution_error,
+                    "execution_output": output if not has_execution_error else error,
                     "pred": predicted_output,
                     "gold": golden_output,
                     "status": status,
-                    "constraints_satisfied": constraints_satisfied,
+                    "violated_constraint": violated,
                     "is_exact_match": is_exact_match,
-                    "violated_constraints": violated,
-                    "has_execution_error": error is not None,
-                    "execution_error": error if error else None,
-                    "execution_output": output if not error else None,
+                    "constraints_satisfied": constraints_satisfied,
                     "pass_number": pass_num,
                     "timing": {
                         "api_call_time": api_time,
@@ -1200,7 +1188,7 @@ Examples:
                 # Save output files
                 self.save_output_files(
                     task, example_id, pass_num,
-                    conversation, code, output if not error else error,
+                    conversation, code, output if not has_execution_error else error,
                     eval_result
                 )
                 
@@ -1216,8 +1204,8 @@ Examples:
                 # Prepare enhanced feedback for next iteration
                 feedback_parts = []
                 
-                if error:
-                    feedback_parts.append(f"Previous code execution failed with error:\n{error}")
+                if has_execution_error:
+                    feedback_parts.append(f"Previous code execution failed with error:\n{error if error else output}")
                     feedback_parts.append(f"\nGenerated code that caused the error:\n```python\n{code}\n```")
                 else:
                     feedback_parts.append(f"Previous code produced this output:\n{output}")
@@ -1240,7 +1228,7 @@ Examples:
         all_tasks = []
         
         for model_name in self.args.model:
-            if model_name not in self.models:
+            if model_name not in self.models and model_name not in self.engines:
                 logging.warning(f"Skipping model {model_name} - not initialized")
                 continue
             
@@ -1363,4 +1351,3 @@ class EvaluationState:
 if __name__ == "__main__":
     program = SchedulingProgram()
     asyncio.run(program.run())
-
