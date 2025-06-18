@@ -1,75 +1,82 @@
 from z3 import *
 
 def main():
-    cities = ['Dublin', 'Madrid', 'Oslo', 'London', 'Vilnius', 'Berlin']
-    req_list = [3, 2, 3, 2, 3, 5]
-    edges = [
-        (0, 1), (0, 2), (0, 3), (0, 5),
-        (1, 2), (1, 3), (1, 5),
-        (2, 3), (2, 4), (2, 5),
-        (3, 5),
-        (4, 5)
+    # City indices
+    dublin = 0
+    madrid = 1
+    oslo = 2
+    london = 3
+    vilnius = 4
+    berlin = 5
+
+    cities = ["Dublin", "Madrid", "Oslo", "London", "Vilnius", "Berlin"]
+    dur = [3, 2, 3, 2, 3, 5]
+
+    edges_undirected = [
+        (dublin, madrid), (dublin, oslo), (dublin, london), (dublin, berlin),
+        (madrid, oslo), (madrid, london), (madrid, berlin),
+        (oslo, london), (oslo, vilnius), (oslo, berlin),
+        (london, berlin),
+        (vilnius, berlin)
     ]
 
-    s = [Int(f's{i}') for i in range(6)]
-    solver = Solver()
+    edges_list = []
+    for (i, j) in edges_undirected:
+        edges_list.append((i, j))
+        edges_list.append((j, i))
 
-    for i in range(6):
-        solver.add(And(s[i] >= 0, s[i] <= 5))
-    solver.add(Distinct(s))
+    s = Solver()
 
-    for i in range(5):
-        constraints = []
-        for u, v in edges:
-            constraints.append(Or(And(s[i] == u, s[i+1] == v), And(s[i] == v, s[i+1] == u)))
-        solver.add(Or(constraints))
+    pos = [Int(f'pos_{i}') for i in range(6)]
+    for i in range(6):
+        s.add(pos[i] >= 0, pos[i] < 6)
+    s.add(Distinct(pos))
 
-    cum_expr = [Int(f'cum_expr{i}') for i in range(7)]
-    solver.add(cum_expr[0] == 0)
+    for k in range(5):
+        cons_expr = []
+        for (i, j) in edges_list:
+            cons_expr.append(And(pos[i] == k, pos[j] == k+1))
+        s.add(Or(cons_expr))
 
-    req_at_segment = []
+    start_days = [Int(f'start_{i}') for i in range(6)]
     for i in range(6):
-        expr = If(s[i] == 0, req_list[0],
-                If(s[i] == 1, req_list[1],
-                If(s[i] == 2, req_list[2],
-                If(s[i] == 3, req_list[3],
-                If(s[i] == 4, req_list[4], req_list[5]))))
-        req_at_segment.append(expr)
-    
-    for i in range(6):
-        solver.add(cum_expr[i+1] == cum_expr[i] + req_at_segment[i])
-    
-    a = [Int(f'a{i}') for i in range(6)]
-    for i in range(6):
-        solver.add(a[i] == 1 + cum_expr[i] - i)
-    
-    for i in range(6):
-        solver.add(If(s[i] == 0, And(a[i] >= 5, a[i] <= 9), True))
-        solver.add(If(s[i] == 1, And(a[i] >= 1, a[i] <= 3), True))
-        solver.add(If(s[i] == 5, a[i] <= 7, True))
+        sum_expr = Sum([If(pos[j] < pos[i], dur[j], 0) for j in range(6)])
+        s.add(start_days[i] == 1 - pos[i] + sum_expr)
 
-    if solver.check() == sat:
-        model = solver.model()
-        s_val = [model.evaluate(s[i]).as_long() for i in range(6)]
-        cum_val = [0] * 7
-        for i in range(1, 7):
-            cum_val[i] = cum_val[i-1] + req_list[s_val[i-1]]
-        
-        a_val = [1 + cum_val[i] - i for i in range(6)]
-        end_val = [a_val[i] + req_list[s_val[i]] - 1 for i in range(6)]
-        
+    s.add(start_days[dublin] >= 5)
+    s.add(start_days[dublin] <= 9)
+    s.add(start_days[madrid] >= 1)
+    s.add(start_days[madrid] <= 3)
+    s.add(start_days[berlin] >= 1)
+    s.add(start_days[berlin] <= 7)
+
+    if s.check() == sat:
+        model = s.model()
+        pos_vals = [model.evaluate(pos[i]).as_long() for i in range(6)]
+        start_vals = [model.evaluate(start_days[i]).as_long() for i in range(6)]
+
+        order = sorted(range(6), key=lambda i: pos_vals[i])
         itinerary = []
-        for i in range(6):
-            city_name = cities[s_val[i]]
-            start = a_val[i]
-            end = end_val[i]
-            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_name})
-            if i < 5:
-                flight_day = end_val[i]
-                itinerary.append({"day_range": f"Day {flight_day}", "place": cities[s_val[i]]})
-                itinerary.append({"day_range": f"Day {flight_day}", "place": cities[s_val[i+1]]})
-        
-        print({"itinerary": itinerary})
+        for idx, city_idx in enumerate(order):
+            start = start_vals[city_idx]
+            d = dur[city_idx]
+            end = start + d - 1
+            itinerary.append({
+                "day_range": f"Day {start}-{end}",
+                "place": cities[city_idx]
+            })
+            if idx < 5:
+                next_city_idx = order[idx+1]
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": cities[city_idx]
+                })
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": cities[next_city_idx]
+                })
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

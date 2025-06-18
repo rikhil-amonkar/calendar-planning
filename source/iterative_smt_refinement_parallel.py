@@ -144,7 +144,7 @@ def extract_answer(answer_str, task):
     # If we couldn't extract meetings or it's not a meeting task, use GPT
     prompt = {
         "calendar": "Given the following time range:\n" + answer_str + "\nExtract the meeting start day and time in a JSON like {\"day\": \"Monday\", \"start_time\": \"14:30\", \"end_time\": \"15:30\"}. The time should be in 24-hour format. If no time range is given at all, output an empty JSON.",
-        "trip": "Given the following itinerary:\n" + answer_str + "\nExtract the days spent in each city in a JSON format like {\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Munich\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Munich\"}]}. Preserve the original day ranges as they appear in the output. For flight days, create separate records for both the departure city and arrival city. For flight days, repeat the day record for both the departure city and arrival city (e.g., if staying in Tallinn from Day 1-4 and flying to Munich on Day 4, include {\"day_range\": \"Day 1-4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Munich\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Munich\"}). The day range should be inclusive. If no itinerary is given, output an empty JSON.",
+        "trip": "Given the following itinerary:\n" + answer_str + "\nExtract the days spent in each city in a JSON format like {\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Munich\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Munich\"}]}. Preserve the original day ranges as they appear in the output. For flight days, create separate records for both the departure city and arrival city. For flight days, repeat the day record for both the departure city and arrival city (e.g., if staying in Venice from Day 1-3 and flying to Vienna on Day 3, include {\"day_range\": \"Day 1-3\", \"place\": \"Venice\"}, {\"day_range\": \"Day 3\", \"place\": \"Venice\"}, {\"day_range\": \"Day 3\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 3-5\", \"place\": \"Vienna\"}). The day range should be inclusive. If no itinerary is given, output an empty JSON.",
         "meeting": "Given the following meeting schedule:\n" + answer_str + "\nExtract the time and the person of each meeting in a JSON format like {\"itinerary\": [{\"action\": \"meet\", \"person\": \"David\",\"start_time\": \"13:00\", \"end_time\": \"14:00\"}, ...]}. Do not include location. Only keep the meeting times, and ignore time for starting, waiting, or traveling. The time should be converted to a 24-hour format. If no time range is given at all, output an empty JSON"
     }
     
@@ -280,6 +280,20 @@ async def process_single_example(
                 logging.info(f"[{example_id}] Model initialized successfully")
             except Exception as e:
                 logging.error(f"[{example_id}] Failed to initialize model: {str(e)}")
+                # Save error evaluation result
+                error_eval_result = {
+                    "has_execution_error": True,
+                    "execution_output": f"Model initialization failed: {str(e)}",
+                    "pred": {},
+                    "gold": {},
+                    "status": "Model initialization error",
+                    "violated_constraint": {},
+                    "is_exact_match": False,
+                    "constraints_satisfied": False,
+                    "pass_number": 0
+                }
+                with open(f"{output_dir}/1_pass/evaluation.json", "w") as f:
+                    json.dump(error_eval_result, f, indent=4)
                 return
             
             # Initialize conversation history
@@ -330,6 +344,20 @@ async def process_single_example(
                         logging.warning(f"[{example_id}] API error in pass {pass_num} (attempt {retry_count}): {e}")
                         if retry_count >= max_retries:
                             logging.error(f"[{example_id}] Max retries reached, giving up")
+                            # Save error evaluation result
+                            error_eval_result = {
+                                "has_execution_error": True,
+                                "execution_output": f"Max API retries ({max_retries}) reached in pass {pass_num}",
+                                "pred": {},
+                                "gold": {},
+                                "status": "API retry limit exceeded",
+                                "violated_constraint": {},
+                                "is_exact_match": False,
+                                "constraints_satisfied": False,
+                                "pass_number": pass_num
+                            }
+                            with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                                json.dump(error_eval_result, f, indent=4)
                             return
                         await asyncio.sleep(5)
                         try:
@@ -337,6 +365,20 @@ async def process_single_example(
                             logging.info(f"[{example_id}] Model reinitialized after error")
                         except Exception as init_error:
                             logging.error(f"[{example_id}] Failed to reinitialize model: {str(init_error)}")
+                            # Save error evaluation result
+                            error_eval_result = {
+                                "has_execution_error": True,
+                                "execution_output": f"Model reinitialization failed: {str(init_error)}",
+                                "pred": {},
+                                "gold": {},
+                                "status": "Model reinitialization error",
+                                "violated_constraint": {},
+                                "is_exact_match": False,
+                                "constraints_satisfied": False,
+                                "pass_number": pass_num
+                            }
+                            with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                                json.dump(error_eval_result, f, indent=4)
                             return
                 
                 api_call_time = time.time() - api_call_start
@@ -356,6 +398,20 @@ async def process_single_example(
                 generated_code = extract_code(response_txt)
                 if not generated_code:
                     logging.error(f"[{example_id}] No code found in model response")
+                    # Save error evaluation result
+                    error_eval_result = {
+                        "has_execution_error": True,
+                        "execution_output": "No code found in model response",
+                        "pred": {},
+                        "gold": {},
+                        "status": "No code extracted",
+                        "violated_constraint": {},
+                        "is_exact_match": False,
+                        "constraints_satisfied": False,
+                        "pass_number": pass_num
+                    }
+                    with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                        json.dump(error_eval_result, f, indent=4)
                     return
                     
                 code_path = f"{pass_output_dir}/solution.py"
@@ -416,9 +472,10 @@ async def process_single_example(
                         # Try to parse JSON directly from execution output
                         logging.info(f"[{example_id}] Pass {pass_num} using execution output JSON directly for {task} task")
                         try:
-                            # Try to find JSON in the execution output
+                            # Try to find JSON in the execution output - use a simpler approach
                             import re
-                            json_match = re.search(r'\{.*\}', execution_output, re.DOTALL)
+                            # Look for the first complete JSON object
+                            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', execution_output, re.DOTALL)
                             if json_match:
                                 pred_formatted = json.loads(json_match.group())
                                 logging.info(f"[{example_id}] Pass {pass_num} successfully parsed JSON from execution output")
@@ -501,10 +558,49 @@ async def process_single_example(
                     current_prompt = f"The previous solution produced the following output:\n{execution_output}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
             
             logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
+            
+            # Save final evaluation result even if we failed to solve
+            if 'pred_formatted' in locals() and 'gold_formatted' in locals():
+                final_eval_result = {
+                    "has_execution_error": False,
+                    "execution_output": execution_output,
+                    "pred": pred_formatted,
+                    "gold": gold_formatted,
+                    "status": "Failed to solve within max passes",
+                    "violated_constraint": violated_constraints,
+                    "is_exact_match": is_exact_match,
+                    "constraints_satisfied": constraints_satisfied,
+                    "pass_number": pass_num
+                }
+                with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                    json.dump(final_eval_result, f, indent=4)
+                logging.info(f"[{example_id}] Saved final evaluation result from pass {pass_num}")
+            
             return
             
         except Exception as e:
             logging.error(f"[{example_id}] Unexpected error: {str(e)}")
+            # Save error evaluation result
+            try:
+                error_eval_result = {
+                    "has_execution_error": True,
+                    "execution_output": f"Unexpected error: {str(e)}",
+                    "pred": {},
+                    "gold": {},
+                    "status": "Unexpected error",
+                    "violated_constraint": {},
+                    "is_exact_match": False,
+                    "constraints_satisfied": False,
+                    "pass_number": 0
+                }
+                # Try to save to first pass directory, create if needed
+                first_pass_dir = f"{output_dir}/1_pass"
+                os.makedirs(first_pass_dir, exist_ok=True)
+                with open(f"{first_pass_dir}/evaluation.json", "w") as f:
+                    json.dump(error_eval_result, f, indent=4)
+                logging.info(f"[{example_id}] Saved error evaluation result")
+            except Exception as save_error:
+                logging.error(f"[{example_id}] Failed to save error evaluation: {str(save_error)}")
             return
 
 async def main():

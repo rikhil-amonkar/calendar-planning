@@ -2,98 +2,107 @@ from z3 import *
 import json
 
 def main():
-    cities = ["Reykjavik", "Stuttgart", "Split", "Geneva", "Porto", "Tallinn", "Oslo", "Stockholm"]
-    n = len(cities)
-    
-    # Reduction: required_days - 1 for each city
-    reduction = [1, 4, 2, 1, 2, 4, 4, 2]  # [Reykjavik, Stuttgart, Split, Geneva, Porto, Tallinn, Oslo, Stockholm]
-    
-    # Graph of direct flights (undirected)
-    graph = {
-        0: [1, 7, 5, 6],   # Reykjavik
-        1: [0, 4, 7, 2],    # Stuttgart
-        2: [6, 7, 1, 3],    # Split
-        3: [6, 7, 4, 2],    # Geneva
-        4: [1, 6, 3],       # Porto
-        5: [0, 6],          # Tallinn
-        6: [7, 0, 2, 3, 4, 5], # Oslo
-        7: [0, 6, 1, 2, 3]  # Stockholm
-    }
-    
+    # Define the cities by indices for the middle part (c2 to c7)
+    # 0: Oslo, 1: Stuttgart, 2: Split, 3: Geneva, 4: Tallinn, 5: Stockholm
+    c = [Int('c2'), Int('c3'), Int('c4'), Int('c5'), Int('c6'), Int('c7')]
     s = Solver()
+
+    # Each c[i] is between 0 and 5
+    for i in range(6):
+        s.add(And(c[i] >= 0, c[i] <= 5))
     
-    # City assignment for 8 segments
-    city_vars = [Int(f'city_{i}') for i in range(n)]
+    # All distinct
+    s.add(Distinct(c))
+
+    # Adjacency list for the graph of the 6 cities (undirected)
+    adj = {
+        0: [2, 3, 4, 5],   # Oslo
+        1: [2, 5],          # Stuttgart
+        2: [0, 1, 3],       # Split
+        3: [0, 2, 5],       # Geneva
+        4: [0],             # Tallinn
+        5: [0, 1, 2, 3]     # Stockholm
+    }
+
+    # Consecutive cities in the sequence must be connected
+    for i in range(5):
+        current = c[i]
+        next_city = c[i+1]
+        # next_city must be in the adjacency list of current
+        s.add(Or([next_city == j for j in adj[current]]))
+
+    # First flight: from Reykjavik to c2. Reykjavik is connected to Oslo(0), Stuttgart(1), Tallinn(4), Stockholm(5)
+    s.add(Or(c[0] == 0, c[0] == 1, c[0] == 4, c[0] == 5))
     
-    # Constraints: city0 is Reykjavik (0), city7 is Porto (4)
-    s.add(city_vars[0] == 0)
-    s.add(city_vars[7] == 4)
+    # Last flight: from c7 to Porto. Porto is connected to Oslo(0), Stuttgart(1), Geneva(3)
+    s.add(Or(c[5] == 0, c[5] == 1, c[5] == 3))
+
+    # Stockholm constraint: must be at c2 or c3
+    st_at_c2 = (c[0] == 5)
+    st_at_c3 = (c[1] == 5)
+    s.add(Or(st_at_c2, st_at_c3))
     
-    # All cities are distinct
-    s.add(Distinct(city_vars))
-    
-    # Flight constraints between consecutive segments
-    for i in range(7):
-        current = city_vars[i]
-        next_city = city_vars[i+1]
-        conds = []
-        for idx in range(n):
-            allowed_next = graph[idx]
-            conds.append(And(current == idx, Or([next_city == j for j in allowed_next])))
-        s.add(Or(conds))
-    
-    # Cumulative reduction array (cum[0..8])
-    cum = [Int(f'cum_{i}') for i in range(n+1)]
-    s.add(cum[0] == 0)
-    for i in range(1, n+1):
-        expr = cum[i-1]
-        for j in range(n):
-            expr = If(city_vars[i-1] == j, expr + reduction[j], expr)
-        s.add(cum[i] == expr)
-    
-    # Constraint for Stockholm (index 7): must start by day 4
-    for i in range(n):
-        s.add(If(city_vars[i] == 7, cum[i] <= 3, True))
-    
-    # Total reduction must be 20
-    s.add(cum[8] == 20)
-    
-    # Check and get model
+    # If Stockholm is at c3, then c2 must be Split(2) or Geneva(3)
+    s.add(If(st_at_c3, Or(c[0] == 2, c[0] == 3), True))
+
     if s.check() == sat:
         m = s.model()
-        city_val = [m.eval(city_vars[i]).as_long() for i in range(n)]
-        cum_val = [0] * (n+1)
-        cum_val[0] = 0
-        for i in range(1, n+1):
-            cum_val[i] = cum_val[i-1] + reduction[city_val[i-1]]
+        seq = [m.evaluate(c[i]) for i in range(6)]
+        city_map = {
+            0: "Oslo",
+            1: "Stuttgart",
+            2: "Split",
+            3: "Geneva",
+            4: "Tallinn",
+            5: "Stockholm"
+        }
+        city_sequence = ["Reykjavik"] + [city_map[int(str(seq[i]))] for i in range(6)] + ["Porto"]
         
-        start_days = [1 + cum_val[i] for i in range(n)]
-        end_days = [start_days[i] + reduction[city_val[i]] for i in range(n)]
+        days_map = {
+            "Reykjavik": 2,
+            "Oslo": 5,
+            "Stuttgart": 5,
+            "Split": 3,
+            "Geneva": 2,
+            "Porto": 3,
+            "Tallinn": 5,
+            "Stockholm": 3
+        }
+        
+        starts = [1]  # Start at day1 for Reykjavik
+        ends = [2]    # Reykjavik ends at day2 (2 days: day1 and day2)
+        
+        # Compute start and end days for the rest of the cities
+        for i in range(1, 8):  # from the second city (index1) to Porto (index7)
+            prev_end = ends[i-1]
+            city = city_sequence[i]
+            duration = days_map[city]
+            start_i = prev_end  # because we arrive on the same day we leave the previous
+            end_i = start_i + duration - 1
+            starts.append(start_i)
+            ends.append(end_i)
         
         itinerary = []
-        for i in range(n):
-            city_name = cities[city_val[i]]
-            start = start_days[i]
-            end = end_days[i]
-            itinerary.append({
-                "day_range": f"Day {start}-{end}",
-                "place": city_name
-            })
-            if i < n-1:  # not the last segment
-                itinerary.append({
-                    "day_range": f"Day {end}",
-                    "place": city_name
-                })
-                next_city_name = cities[city_val[i+1]]
-                itinerary.append({
-                    "day_range": f"Day {end}",
-                    "place": next_city_name
-                })
+        for i in range(8):  # for each of the 8 cities
+            L = starts[i]
+            R = ends[i]
+            city = city_sequence[i]
+            if L == R:
+                itinerary.append({"day_range": f"Day {L}", "place": city})
+            else:
+                itinerary.append({"day_range": f"Day {L}-{R}", "place": city})
+            # If this is not the last city, add the flight day records
+            if i < 7:
+                # Departure from current city on day R
+                itinerary.append({"day_range": f"Day {R}", "place": city})
+                # Arrival at next city on day R
+                next_city = city_sequence[i+1]
+                itinerary.append({"day_range": f"Day {R}", "place": next_city})
         
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print("No solution found")
+        print(json.dumps({"error": "No solution found"}))
 
 if __name__ == "__main__":
     main()

@@ -218,7 +218,9 @@ def evaluate_trip(constraints, pred_dict):
         return False, {"total_days": total}
 
     for a, b in zip(segments, segments[1:]):
-        if a["end"] != b["start"]:
+        # Only check gap/overlap for different places
+        # For the same place, we allow overlaps and gaps (flight days, duplicates, etc.)
+        if a["place"] != b["place"] and a["end"] != b["start"]:
             return False, {"gap/overlap": (a, b)}
 
     for seg in segments:

@@ -1,82 +1,95 @@
-from z3 import Solver, Int, Distinct, If, Or, And, sat
+import json
+from z3 import *
 
 def main():
+    d2 = Int('d2')
+    d3 = Int('d3')
+    s1 = Int('s1')
+    s2 = Int('s2')
+    s3 = Int('s3')
+    
     s = Solver()
     
-    d1 = Int('d1')
-    d2 = Int('d2')
-    seg1 = Int('seg1')
-    seg2 = Int('seg2')
-    seg3 = Int('seg3')
+    s.add(d2 > 5, d2 < 19)
+    s.add(d3 > d2, d3 < 19)
     
-    s.add(d1 >= 5, d1 <= 19)
-    s.add(d2 >= d1, d2 <= 19)
+    dur1 = d2 - 4
+    dur2 = d3 - d2 + 1
+    dur3 = 20 - d3
     
-    dur1 = d1 - 5 + 1
-    dur2 = d2 - d1 + 1
-    dur3 = 19 - d2 + 1
+    s.add(dur1 > 0, dur2 > 0, dur3 > 0)
     
-    cities = ['Dublin', 'Krakow', 'Lyon']
+    s.add(Distinct(s1, s2, s3))
+    s.add(s1 >= 1, s1 <= 3)
+    s.add(s2 >= 1, s2 <= 3)
+    s.add(s3 >= 1, s3 <= 3)
     
-    s.add(seg1 >= 0, seg1 <= 2)
-    s.add(seg2 >= 0, seg2 <= 2)
-    s.add(seg3 >= 0, seg3 <= 2)
-    s.add(Distinct(seg1, seg2, seg3))
+    dur_s1 = If(s1 == 1, 7, If(s1 == 2, 6, 4))
+    dur_s2 = If(s2 == 1, 7, If(s2 == 2, 6, 4))
+    dur_s3 = If(s3 == 1, 7, If(s3 == 2, 6, 4))
     
-    s.add(If(seg1 == 0, dur1 == 7, If(seg1 == 1, dur1 == 6, dur1 == 4)))
-    s.add(If(seg2 == 0, dur2 == 7, If(seg2 == 1, dur2 == 6, dur2 == 4)))
-    s.add(If(seg3 == 0, dur3 == 7, If(seg3 == 1, dur3 == 6, dur3 == 4)))
+    s.add(dur1 == dur_s1)
+    s.add(dur2 == dur_s2)
+    s.add(dur3 == dur_s3)
     
-    s.add(Or(seg1 == 0, seg1 == 2))
+    s.add(Or(s1 == 1, s1 == 3))
     
     s.add(Or(
-        And(seg1 == 0, Or(seg2 == 1, seg2 == 2)),
-        And(seg1 == 1, seg2 == 0),
-        And(seg1 == 2, seg2 == 0)
+        And(s1 == 1, Or(s2 == 2, s2 == 3)),
+        And(s1 == 3, s2 == 1)
     ))
     
     s.add(Or(
-        And(seg2 == 0, Or(seg3 == 1, seg3 == 2)),
-        And(seg2 == 1, seg3 == 0),
-        And(seg2 == 2, seg3 == 0)
+        And(s2 == 1, Or(s3 == 2, s3 == 3)),
+        And(s2 == 2, s3 == 1),
+        And(s2 == 3, s3 == 1)
     ))
     
     if s.check() == sat:
         m = s.model()
-        d1_val = m[d1].as_long()
         d2_val = m[d2].as_long()
-        seg1_val = m[seg1].as_long()
-        seg2_val = m[seg2].as_long()
-        seg3_val = m[seg3].as_long()
+        d3_val = m[d3].as_long()
+        s1_val = m[s1].as_long()
+        s2_val = m[s2].as_long()
+        s3_val = m[s3].as_long()
         
-        city1 = cities[seg1_val]
-        city2 = cities[seg2_val]
-        city3 = cities[seg3_val]
+        city_names = {
+            0: "Nice",
+            1: "Dublin",
+            2: "Krakow",
+            3: "Lyon",
+            4: "Frankfurt"
+        }
+        
+        segments = [
+            (1, 5, 0),
+            (5, d2_val, s1_val),
+            (d2_val, d3_val, s2_val),
+            (d3_val, 19, s3_val),
+            (19, 20, 4)
+        ]
         
         itinerary = []
         
-        itinerary.append({"day_range": "Day 1-5", "place": "Nice"})
-        itinerary.append({"day_range": "Day 5", "place": "Nice"})
-        
-        itinerary.append({"day_range": f"Day 5", "place": city1})
-        itinerary.append({"day_range": f"Day 5-{d1_val}", "place": city1})
-        itinerary.append({"day_range": f"Day {d1_val}", "place": city1})
-        
-        itinerary.append({"day_range": f"Day {d1_val}", "place": city2})
-        itinerary.append({"day_range": f"Day {d1_val}-{d2_val}", "place": city2})
-        itinerary.append({"day_range": f"Day {d2_val}", "place": city2})
-        
-        itinerary.append({"day_range": f"Day {d2_val}", "place": city3})
-        itinerary.append({"day_range": f"Day {d2_val}-19", "place": city3})
-        itinerary.append({"day_range": "Day 19", "place": city3})
-        
-        itinerary.append({"day_range": "Day 19", "place": "Frankfurt"})
-        itinerary.append({"day_range": "Day 19-20", "place": "Frankfurt"})
-        
+        for i, seg in enumerate(segments):
+            start, end, city_idx = seg
+            city = city_names[city_idx]
+            if start == end:
+                day_range_str = f"Day {start}"
+            else:
+                day_range_str = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range_str, "place": city})
+            
+            if i < len(segments) - 1:
+                next_city_idx = segments[i+1][2]
+                next_city = city_names[next_city_idx]
+                itinerary.append({"day_range": f"Day {end}", "place": city})
+                itinerary.append({"day_range": f"Day {end}", "place": next_city})
+                
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

@@ -1,72 +1,106 @@
 from z3 import *
+import json
 
 def main():
-    cities = ["Vienna", "Lyon", "Edinburgh", "Reykjavik", "Stuttgart", "Manchester", "Split", "Prague"]
-    durations = [4, 3, 4, 5, 5, 2, 5, 4]
+    city_names = ["Vienna", "Lyon", "Edinburgh", "Reykjavik", "Stuttgart", "Manchester", "Split", "Prague"]
+    days_arr = [4, 3, 4, 5, 5, 2, 5, 4]
+    index_dict = {city: idx for idx, city in enumerate(city_names)}
     
-    graph = {
-        0: [4, 7, 5, 1, 3, 6],   # Vienna
-        1: [0, 6, 7],              # Lyon
-        2: [7, 4],                 # Edinburgh
-        3: [0, 4, 7],              # Reykjavik
-        4: [3, 6, 0, 2, 5],        # Stuttgart
-        5: [7, 6, 0, 4],           # Manchester
-        6: [4, 5, 7, 1, 0],        # Split
-        7: [5, 2, 0, 6, 1, 3]      # Prague
-    }
+    edges = [
+        ("Reykjavik", "Stuttgart"), 
+        ("Stuttgart", "Split"),
+        ("Stuttgart", "Vienna"),
+        ("Prague", "Manchester"),
+        ("Edinburgh", "Prague"),
+        ("Manchester", "Split"),
+        ("Prague", "Vienna"),
+        ("Vienna", "Manchester"),
+        ("Prague", "Split"),
+        ("Vienna", "Lyon"),
+        ("Stuttgart", "Edinburgh"),
+        ("Split", "Lyon"),
+        ("Stuttgart", "Manchester"),
+        ("Prague", "Lyon"),
+        ("Reykjavik", "Vienna"),
+        ("Prague", "Reykjavik"),
+        ("Vienna", "Split")
+    ]
+    
+    allowed_pairs = set()
+    for a, b in edges:
+        i = index_dict[a]
+        j = index_dict[b]
+        allowed_pairs.add((i, j))
+        allowed_pairs.add((j, i))
+    
+    order = [Int(f"order_{i}") for i in range(8)]
+    
+    constraints = [Distinct(order)]
+    for i in range(8):
+        constraints.append(And(order[i] >= 0, order[i] < 8))
+    
+    for i in range(7):
+        cons = Or([And(order[i] == a, order[i+1] == b) for (a, b) in allowed_pairs])
+        constraints.append(cons)
+    
+    S = [Int(f"S_{i}") for i in range(9)]
+    constraints.append(S[0] == 0)
+    for i in range(1, 9):
+        day_expr = Int(f"day_{i-1}")
+        options = []
+        for idx in range(8):
+            options.append(And(order[i-1] == idx, day_expr == days_arr[idx]))
+        constraints.append(Or(options))
+        constraints.append(S[i] == S[i-1] + day_expr)
+    
+    edinburgh_cons = Or([And(order[k] == 2, S[k] - k == 4) for k in range(8)])
+    constraints.append(edinburgh_cons)
+    
+    split_cons = Or([And(order[k] == 6, S[k] - k == 18) for k in range(8)])
+    constraints.append(split_cons)
     
     s = Solver()
-    
-    n = 8
-    order = [Int(f"order_{i}") for i in range(n)]
-    start = [Int(f"start_{i}") for i in range(n)]
-    
-    for i in range(n):
-        s.add(order[i] >= 0, order[i] < n)
-    s.add(Distinct(order))
-    
-    s.add(start[0] == 1)
-    for i in range(n-1):
-        s.add(start[i+1] == start[i] + durations[order[i]] - 1)
-    s.add(start[n-1] + durations[order[n-1]] - 1 == 25)
-    
-    for j in range(n):
-        s.add(If(order[j] == 2, start[j] == 5, True))
-        s.add(If(order[j] == 6, start[j] == 19, True))
-    
-    for i in range(n-1):
-        current = order[i]
-        next_city = order[i+1]
-        edges = graph[current]
-        s.add(Or([next_city == adj for adj in edges]))
-    
+    s.add(constraints)
     if s.check() == sat:
-        model = s.model()
-        order_val = [model.evaluate(order[i]).as_long() for i in range(n)]
-        start_val = [model.evaluate(start[i]).as_long() for i in range(n)]
-        end_val = [start_val[i] + durations[order_val[i]] - 1 for i in range(n)]
+        m = s.model()
+        order_vals = [m.evaluate(order[i]) for i in range(8)]
+        order_indices = [val.as_long() for val in order_vals]
+        prefix = [0] * 9
+        for i in range(1, 9):
+            city_idx = order_indices[i-1]
+            prefix[i] = prefix[i-1] + days_arr[city_idx]
         
         itinerary = []
-        for i in range(n):
-            city_name = cities[order_val[i]]
-            s_day = start_val[i]
-            e_day = end_val[i]
-            if s_day == e_day:
-                day_range_str = f"Day {s_day}"
-            else:
-                day_range_str = f"Day {s_day}-{e_day}"
-            itinerary.append({"day_range": day_range_str, "place": city_name})
-            
-            if i < n-1:
-                flight_day = end_val[i]
-                itinerary.append({"day_range": f"Day {flight_day}", "place": city_name})
-                next_city_name = cities[order_val[i+1]]
-                itinerary.append({"day_range": f"Day {flight_day}", "place": next_city_name})
+        s0 = 1
+        d0 = days_arr[order_indices[0]]
+        e0 = s0 + d0 - 1
+        city0 = city_names[order_indices[0]]
+        itinerary.append({"day_range": f"Day {s0}-{e0}", "place": city0})
+        if 0 < 7:
+            itinerary.append({"day_range": f"Day {e0}", "place": city0})
+        
+        for i in range(1, 7):
+            s_i = 1 + prefix[i] - i
+            d_i = days_arr[order_indices[i]]
+            e_i = s_i + d_i - 1
+            city_i = city_names[order_indices[i]]
+            itinerary.append({"day_range": f"Day {s_i}", "place": city_i})
+            itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": city_i})
+            if i < 7:
+                itinerary.append({"day_range": f"Day {e_i}", "place": city_i})
+        
+        i = 7
+        s_i = 1 + prefix[i] - i
+        d_i = days_arr[order_indices[i]]
+        e_i = s_i + d_i - 1
+        city_i = city_names[order_indices[i]]
+        itinerary.append({"day_range": f"Day {s_i}", "place": city_i})
+        itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": city_i})
         
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()
