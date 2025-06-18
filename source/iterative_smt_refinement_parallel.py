@@ -36,9 +36,11 @@ def parse_args():
     parser.add_argument("--max_concurrent", type=int, default=10, help="Maximum number of concurrent examples to process")
     parser.add_argument("--rate_limit", type=int, default=60, help="Rate limit (requests per minute)")
     parser.add_argument("--start", type=int, help="Start example number (inclusive)")
-    parser.add_argument("--end", type=int, help="End example number (inclusive)")
+    parser.add_argument("--end", type=int, help="End example number (exclusive)")
     parser.add_argument("--fresh", action="store_true", help="Clear all output directories before running")
     parser.add_argument("--examples", type=str, help="Comma-separated list of example numbers to run (e.g., '25,35')")
+    parser.add_argument("--skip_extract", action="store_true", help="Force skip extract_answer for all tasks (default: True for trip tasks)")
+    parser.add_argument("--use_extract", action="store_true", help="Force use extract_answer for all tasks (overrides default)")
     
     args = parser.parse_args()
     
@@ -142,7 +144,7 @@ def extract_answer(answer_str, task):
     # If we couldn't extract meetings or it's not a meeting task, use GPT
     prompt = {
         "calendar": "Given the following time range:\n" + answer_str + "\nExtract the meeting start day and time in a JSON like {\"day\": \"Monday\", \"start_time\": \"14:30\", \"end_time\": \"15:30\"}. The time should be in 24-hour format. If no time range is given at all, output an empty JSON.",
-        "trip": "Given the following itinerary:\n" + answer_str + "\nExtract the days spent in each city in a JSON format like {\"itinerary\": [{\"day_range\": \"Day 1-2\", \"place\": \"Reykjavik\"}, {\"day_range\": \"Day 2-4\", \"place\": \"Stockholm\"}......]}. Only keep the days in a city. If flying from city A to city B, that day should be included in both ranges for both cites. The day range should be inclusive. For example, arrving at Reykjavik in Day 1 and flying to Stockholm on Day 2 will result in the dictionary above. If no itinerary is given, output an empty JSON.",
+        "trip": "Given the following itinerary:\n" + answer_str + "\nExtract the days spent in each city in a JSON format like {\"itinerary\": [{\"day_range\": \"Day 1-4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Munich\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Munich\"}]}. Preserve the original day ranges as they appear in the output. For flight days, create separate records for both the departure city and arrival city. For flight days, repeat the day record for both the departure city and arrival city (e.g., if staying in Tallinn from Day 1-4 and flying to Munich on Day 4, include {\"day_range\": \"Day 1-4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Tallinn\"}, {\"day_range\": \"Day 4\", \"place\": \"Munich\"}, {\"day_range\": \"Day 4-6\", \"place\": \"Munich\"}). The day range should be inclusive. If no itinerary is given, output an empty JSON.",
         "meeting": "Given the following meeting schedule:\n" + answer_str + "\nExtract the time and the person of each meeting in a JSON format like {\"itinerary\": [{\"action\": \"meet\", \"person\": \"David\",\"start_time\": \"13:00\", \"end_time\": \"14:00\"}, ...]}. Do not include location. Only keep the meeting times, and ignore time for starting, waiting, or traveling. The time should be converted to a 24-hour format. If no time range is given at all, output an empty JSON"
     }
     
@@ -177,6 +179,21 @@ def extract_answer(answer_str, task):
     except Exception as e:
         print(f"Error in answer extraction: {e}")
         return {}
+
+def normalize_trip_itinerary(itinerary):
+    """Normalize trip itinerary for comparison by sorting segments and removing duplicates"""
+    if not itinerary or "itinerary" not in itinerary:
+        return itinerary
+    
+    segments = itinerary["itinerary"]
+    
+    # Sort segments by start day, then by place
+    sorted_segments = sorted(segments, key=lambda x: (
+        int(x["day_range"].replace("Day ", "").split("-")[0]), 
+        x["place"]
+    ))
+    
+    return {"itinerary": sorted_segments}
 
 # Import evaluation functions from the original script
 from iterative_smt_refinement import (
@@ -230,7 +247,8 @@ async def process_single_example(
     max_passes,
     rate_limiter,
     semaphore,
-    task
+    task,
+    args
 ):
     """Process a single example with rate limiting and semaphore"""
     async with semaphore:
@@ -271,11 +289,16 @@ async def process_single_example(
             prompt_prep_start = time.time()
             initial_prompt = "Given the following scheduling problem:\n"
             initial_prompt += f"{example['prompt_0shot']}\n"
+
             if task == "calendar":
                 initial_prompt += "Your solution should always have three things: the day to meet, the start time, and the end time.\n"
                 initial_prompt += "Your output should be a string that starts with 'SOLUTION:' followed by three lines in this exact format:\nDay: <day>\nStart Time: <HH:MM> (24-hour format)\nEnd Time: <HH:MM> (24-hour format)\n"
             if task == "trip":
                 initial_prompt += "Note that if one flies from city A to city B on day X, then they are in both cities A and B on day X, which contributes to the total number of days in each city.\n"
+                initial_prompt += "Your output should be a JSON-formatted dictionary with an 'itinerary' key containing a list of day-place mappings.\n"
+                initial_prompt += "For flight days, create separate records for both the departure city and arrival city.\n"
+                initial_prompt += "For flight days, repeat the day record for both the departure city and arrival city (e.g., if staying in Venice from Day 1-3 and flying to Vienna on Day 3, include {\"day_range\": \"Day 1-3\", \"place\": \"Venice\"}, {\"day_range\": \"Day 3\", \"place\": \"Venice\"}, {\"day_range\": \"Day 3\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 3-5\", \"place\": \"Vienna\"}).\n"
+                initial_prompt += "Example structure: {\"itinerary\": [{\"day_range\": \"Day 1-3\", \"place\": \"Venice\"}, {\"day_range\": \"Day 3\", \"place\": \"Venice\"}, {\"day_range\": \"Day 3\", \"place\": \"Vienna\"}, {\"day_range\": \"Day 3-5\", \"place\": \"Vienna\"}]}\n"
             initial_prompt += "Write a Python program that solves it using the Z3 solver. Always surround your final code with ```python\nYOUR_CODE\n```.\n"
             
             current_prompt = initial_prompt
@@ -381,7 +404,33 @@ async def process_single_example(
                 # Extract structured answer from execution output
                 pred_extract_start = time.time()
                 try:
-                    pred_formatted = extract_answer(execution_output, task)
+                    # Determine whether to skip extract_answer based on task and arguments
+                    if task == "trip":
+                        # For trip tasks: default to skip, but can be overridden
+                        should_skip_extract = not args.use_extract
+                    else:
+                        # For other tasks: default to use extract_answer, unless --skip_extract is specified
+                        should_skip_extract = args.skip_extract
+                    
+                    if should_skip_extract:
+                        # Try to parse JSON directly from execution output
+                        logging.info(f"[{example_id}] Pass {pass_num} using execution output JSON directly for {task} task")
+                        try:
+                            # Try to find JSON in the execution output
+                            import re
+                            json_match = re.search(r'\{.*\}', execution_output, re.DOTALL)
+                            if json_match:
+                                pred_formatted = json.loads(json_match.group())
+                                logging.info(f"[{example_id}] Pass {pass_num} successfully parsed JSON from execution output")
+                            else:
+                                logging.warning(f"[{example_id}] Pass {pass_num} no JSON found in execution output, using extract_answer")
+                                pred_formatted = extract_answer(execution_output, task)
+                        except (json.JSONDecodeError, KeyError) as e:
+                            logging.warning(f"[{example_id}] Pass {pass_num} failed to parse JSON from execution output: {e}, falling back to extract_answer")
+                            pred_formatted = extract_answer(execution_output, task)
+                    else:
+                        # Use the normal extract_answer process
+                        pred_formatted = extract_answer(execution_output, task)
                     logging.info(f"[{example_id}] Pass {pass_num} extracted prediction: {pred_formatted}")
                 except Exception as e:
                     logging.error(f"[{example_id}] Pass {pass_num} failed to extract prediction: {str(e)}")
@@ -415,7 +464,13 @@ async def process_single_example(
                     logging.info(f"[{example_id}] Pass {pass_num} violated constraints: {violated_constraints}")
                 
                 # Check exact match
-                is_exact_match = pred_formatted == gold_formatted
+                if task == "trip":
+                    # For trip tasks, normalize both prediction and gold before comparison
+                    normalized_pred = normalize_trip_itinerary(pred_formatted)
+                    normalized_gold = normalize_trip_itinerary(gold_formatted)
+                    is_exact_match = normalized_pred == normalized_gold
+                else:
+                    is_exact_match = pred_formatted == gold_formatted
                 logging.info(f"[{example_id}] Pass {pass_num} exact match: {is_exact_match}")
                 
                 # Determine status
@@ -496,7 +551,7 @@ async def main():
                 
             # Clear output directories for specified examples
             for example_id in examples:
-                output_dir = f"../output/{example_id}"
+                output_dir = f"../output/SMT/{args.model}/{args.task}/n_pass/{example_id}"
                 if os.path.exists(output_dir):
                     logging.info(f"Clearing output directory for {example_id}")
                     shutil.rmtree(output_dir)
@@ -504,6 +559,19 @@ async def main():
             logging.error(f"Error parsing example numbers: {e}")
             logging.error(f"Raw examples string: '{args.examples}'")
             return
+    
+    # Filter examples by start/end range if specified
+    if args.start is not None or args.end is not None:
+        logging.info(f"Filtering examples: start={args.start}, end={args.end}")
+        # Convert examples dict to list of (example_id, example) tuples and slice
+        examples_list = list(examples.items())
+        start_idx = args.start if args.start is not None else 0
+        end_idx = args.end if args.end is not None else len(examples_list)
+        
+        # Slice the examples list
+        filtered_examples_list = examples_list[start_idx:end_idx]
+        examples = dict(filtered_examples_list)
+        logging.info(f"Filtered to {len(examples)} examples (indices {start_idx} to {end_idx-1})")
     
     rate_limiter = RateLimiter(args.rate_limit)
     semaphore = asyncio.Semaphore(args.max_concurrent)
@@ -520,7 +588,8 @@ async def main():
                 args.max_passes,
                 rate_limiter,
                 semaphore,
-                args.task
+                args.task,
+                args
             )
         )
         tasks.append(task)

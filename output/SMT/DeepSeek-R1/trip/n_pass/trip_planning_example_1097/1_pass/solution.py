@@ -1,90 +1,102 @@
-from z3 import *
+from z3 import Solver, Int, Distinct, And, Or, sat
+import json
 
 def main():
-    # City indices
-    Reykjavik = 0
-    Riga = 1
-    Oslo = 2
-    Lyon = 3
-    Dubrovnik = 4
-    Madrid = 5
-    Warsaw = 6
-    London = 7
+    # City names and their indices
+    city_names = ["Reykjavik", "Riga", "Oslo", "Lyon", "Dubrovnik", "Madrid", "Warsaw", "London"]
+    n = len(city_names)
+    city_index = {name: idx for idx, name in enumerate(city_names)}
+    durations = [4, 2, 3, 5, 2, 2, 4, 3]  # Corresponding to city_names order
 
-    cities = ["Reykjavik", "Riga", "Oslo", "Lyon", "Dubrovnik", "Madrid", "Warsaw", "London"]
+    # Flight connections: list of direct flight pairs (undirected)
+    flight_strings = [
+        "Warsaw and Reykjavik",
+        "Oslo and Madrid",
+        "Warsaw and Riga",
+        "Lyon and London",
+        "Madrid and London",
+        "Warsaw and London",
+        "from Reykjavik to Madrid",
+        "Warsaw and Oslo",
+        "Oslo and Dubrovnik",
+        "Oslo and Reykjavik",
+        "Riga and Oslo",
+        "Oslo and Lyon",
+        "Oslo and London",
+        "London and Reykjavik",
+        "Warsaw and Madrid",
+        "Madrid and Lyon",
+        "Dubrovnik and Madrid"
+    ]
     
-    # Required days per city
-    required_days = [4, 2, 3, 5, 2, 2, 4, 3]  # Reykjavik, Riga, Oslo, Lyon, Dubrovnik, Madrid, Warsaw, London
-
-    # Define directed flight edges
-    edges = set()
-    edges.add((6, 0)); edges.add((0, 6))  # Warsaw-Reykjavik
-    edges.add((2, 5)); edges.add((5, 2))  # Oslo-Madrid
-    edges.add((6, 1)); edges.add((1, 6))  # Warsaw-Riga
-    edges.add((3, 7)); edges.add((7, 3))  # Lyon-London
-    edges.add((5, 7)); edges.add((7, 5))  # Madrid-London
-    edges.add((6, 7)); edges.add((7, 6))  # Warsaw-London
-    edges.add((0, 5))                     # Reykjavik to Madrid (directed)
-    edges.add((6, 2)); edges.add((2, 6))  # Warsaw-Oslo
-    edges.add((2, 4)); edges.add((4, 2))  # Oslo-Dubrovnik
-    edges.add((2, 0)); edges.add((0, 2))  # Oslo-Reykjavik
-    edges.add((1, 2)); edges.add((2, 1))  # Riga-Oslo
-    edges.add((2, 3)); edges.add((3, 2))  # Oslo-Lyon
-    edges.add((2, 7)); edges.add((7, 2))  # Oslo-London
-    edges.add((7, 0)); edges.add((0, 7))  # London-Reykjavik
-    edges.add((6, 5)); edges.add((5, 6))  # Warsaw-Madrid
-    edges.add((5, 3)); edges.add((3, 5))  # Madrid-Lyon
-    edges.add((4, 5)); edges.add((5, 4))  # Dubrovnik-Madrid
-
+    # Build set of directed flight pairs (both directions for undirected flights)
+    allowed_directed = set()
+    for s_str in flight_strings:
+        words = s_str.split()
+        found = [word for word in words if word in city_names]
+        if len(found) == 2:
+            a, b = found
+            idx_a = city_index[a]
+            idx_b = city_index[b]
+            allowed_directed.add((idx_a, idx_b))
+            allowed_directed.add((idx_b, idx_a))
+    
+    # Initialize Z3 solver and variables
     s = Solver()
-
-    # at[0] to at[18]: 19 variables representing the city at the end of each day (at[0] is start of day 1)
-    at = [Int('at_%d' % i) for i in range(19)]
+    Seq = [Int(f'Seq_{i}') for i in range(n)]
+    S = [Int(f'S_{i}') for i in range(n)]
     
-    # Each at variable must be between 0 and 7 (inclusive)
-    for a in at:
-        s.add(a >= 0, a <= 7)
+    # Constraints: Seq is a permutation of 0..7
+    s.add([And(Seq[i] >= 0, Seq[i] < n) for i in range(n)])
+    s.add(Distinct(Seq))
     
-    # Flight constraints: for each consecutive day pair, either stay or take a direct flight
-    for d in range(18):
-        stay_condition = (at[d] == at[d+1])
-        flight_condition = Or([And(at[d] == i, at[d+1] == j) for (i, j) in edges])
-        s.add(Or(stay_condition, flight_condition))
+    # Start day constraints: S[0]=1, and S[i] = S[i-1] + duration of previous city - 1
+    s.add(S[0] == 1)
+    for i in range(1, n):
+        prev_city_dur = durations[Seq[i-1]]
+        s.add(S[i] == S[i-1] + prev_city_dur - 1)
     
-    # Total travel days must be 7 (since 18 days + 7 travel days = 25 required city-days)
-    travel_days = [If(at[d] != at[d+1], 1, 0) for d in range(18)]
-    s.add(Sum(travel_days) == 7)
+    # Constraints for Riga (index 1) and Dubrovnik (index 4)
+    riga_constraint = Or([And(Seq[i] == 1, S[i] >= 3, S[i] <= 5) for i in range(n)])
+    dubrovnik_constraint = Or([And(Seq[i] == 4, S[i] >= 6, S[i] <= 8) for i in range(n)])
+    s.add(riga_constraint, dubrovnik_constraint)
     
-    # Constraints for total days per city
-    for city_idx in range(8):
-        total = 0
-        for d in range(1, 19):  # Days 1 to 18
-            # Day d involves at[d-1] (start) and at[d] (end)
-            total += If(Or(at[d-1] == city_idx, at[d] == city_idx), 1, 0)
-        s.add(total == required_days[city_idx])
+    # Flight constraints between consecutive cities
+    for i in range(n - 1):
+        conds = []
+        for (a, b) in allowed_directed:
+            conds.append(And(Seq[i] == a, Seq[i+1] == b))
+        s.add(Or(conds))
     
-    # Event constraints: Riga on day 4 or 5, Dubrovnik on day 7 or 8
-    s.add(Or(Or(at[3] == Riga, at[4] == Riga), Or(at[4] == Riga, at[5] == Riga)))
-    s.add(Or(Or(at[6] == Dubrovnik, at[7] == Dubrovnik), Or(at[7] == Dubrovnik, at[8] == Dubrovnik)))
-    
-    # Solve the problem
+    # Check for solution and output
     if s.check() == sat:
         m = s.model()
-        at_vals = [m.evaluate(at[i]) for i in range(19)]
+        seq_val = [m.evaluate(Seq[i]).as_long() for i in range(n)]
+        start_days = [1]
+        for i in range(1, n):
+            prev_city_idx = seq_val[i-1]
+            dur_prev = durations[prev_city_idx]
+            start_days.append(start_days[i-1] + dur_prev - 1)
         
-        # Convert Z3 integers to Python integers
-        at_vals = [a.as_long() for a in at_vals]
+        itinerary = []
+        for i in range(n):
+            city_idx = seq_val[i]
+            city_name = city_names[city_idx]
+            start = start_days[i]
+            dur = durations[city_idx]
+            end = start + dur - 1
+            
+            # Add the continuous stay record
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_name})
+            if i != 0:
+                itinerary.append({"day_range": f"Day {start}", "place": city_name})
+            if i != n - 1:
+                itinerary.append({"day_range": f"Day {end}", "place": city_name})
         
-        # Print the travel plan
-        for d in range(1, 19):
-            start_city = at_vals[d-1]
-            end_city = at_vals[d]
-            if start_city == end_city:
-                print(f"Day {d}: stay in {cities[start_city]}")
-            else:
-                print(f"Day {d}: fly from {cities[start_city]} to {cities[end_city]}")
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
-        print("No valid plan found.")
+        print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

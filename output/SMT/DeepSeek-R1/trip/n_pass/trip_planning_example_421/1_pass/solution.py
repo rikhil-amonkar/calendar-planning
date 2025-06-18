@@ -1,76 +1,80 @@
-from z3 import *
+from z3 import Solver, Int, Distinct, If, Or, And, sat
 
 def main():
-    # Define the cities and days
-    cities = ['Nice', 'Krakow', 'Dublin', 'Lyon', 'Frankfurt']
-    days = list(range(1, 21))
-    
-    # Create a solver instance
     s = Solver()
     
-    # Create variables: in_city[c, d] is True if the traveler is in city c on day d
-    in_city = {}
-    for c in cities:
-        for d in days:
-            in_city[(c, d)] = Bool(f'in_{c}_{d}')
+    d1 = Int('d1')
+    d2 = Int('d2')
+    seg1 = Int('seg1')
+    seg2 = Int('seg2')
+    seg3 = Int('seg3')
     
-    # Constraint: Total days for each city
-    s.add(Sum([If(in_city[('Nice', d)], 1, 0) for d in days]) == 5)
-    s.add(Sum([If(in_city[('Krakow', d)], 1, 0) for d in days]) == 6)
-    s.add(Sum([If(in_city[('Dublin', d)], 1, 0) for d in days]) == 7)
-    s.add(Sum([If(in_city[('Lyon', d)], 1, 0) for d in days]) == 4)
-    s.add(Sum([If(in_city[('Frankfurt', d)], 1, 0) for d in days]) == 2)
+    s.add(d1 >= 5, d1 <= 19)
+    s.add(d2 >= d1, d2 <= 19)
     
-    # Constraint: Nice only on days 1-5
-    for d in range(6, 21):
-        s.add(in_city[('Nice', d)] == False)
+    dur1 = d1 - 5 + 1
+    dur2 = d2 - d1 + 1
+    dur3 = 19 - d2 + 1
     
-    # Constraint: Frankfurt only on days 19-20
-    s.add(in_city[('Frankfurt', 19)] == True)
-    s.add(in_city[('Frankfurt', 20)] == True)
-    for d in range(1, 19):
-        s.add(in_city[('Frankfurt', d)] == False)
+    cities = ['Dublin', 'Krakow', 'Lyon']
     
-    # Constraint: Each day has 1 or 2 cities
-    for d in days:
-        or_expr = Or(
-            Sum([If(in_city[(c, d)], 1, 0) for c in cities]) == 1,
-            Sum([If(in_city[(c, d)], 1, 0) for c in cities]) == 2
-        )
-        s.add(or_expr)
+    s.add(seg1 >= 0, seg1 <= 2)
+    s.add(seg2 >= 0, seg2 <= 2)
+    s.add(seg3 >= 0, seg3 <= 2)
+    s.add(Distinct(seg1, seg2, seg3))
     
-    # Constraint: Consecutive days share at least one city
-    for d in range(1, 20):
-        or_expr = Or([And(in_city[(c, d)], in_city[(c, d+1)]) for c in cities])
-        s.add(or_expr)
+    s.add(If(seg1 == 0, dur1 == 7, If(seg1 == 1, dur1 == 6, dur1 == 4)))
+    s.add(If(seg2 == 0, dur2 == 7, If(seg2 == 1, dur2 == 6, dur2 == 4)))
+    s.add(If(seg3 == 0, dur3 == 7, If(seg3 == 1, dur3 == 6, dur3 == 4)))
     
-    # Define allowed direct flight pairs
-    allowed_pairs = [
-        ('Nice', 'Dublin'),
-        ('Dublin', 'Frankfurt'),
-        ('Dublin', 'Krakow'),
-        ('Krakow', 'Frankfurt'),
-        ('Lyon', 'Frankfurt'),
-        ('Nice', 'Frankfurt'),
-        ('Lyon', 'Dublin'),
-        ('Nice', 'Lyon')
-    ]
+    s.add(Or(seg1 == 0, seg1 == 2))
     
-    # Constraint: For days with two cities, they must be connected by a direct flight
-    for d in days:
-        total_cities = Sum([If(in_city[(c, d)], 1, 0) for c in cities])
-        or_list = []
-        for (c1, c2) in allowed_pairs:
-            or_list.append(And(in_city[(c1, d)], in_city[(c2, d)]))
-        s.add(Implies(total_cities == 2, Or(or_list)))
+    s.add(Or(
+        And(seg1 == 0, Or(seg2 == 1, seg2 == 2)),
+        And(seg1 == 1, seg2 == 0),
+        And(seg1 == 2, seg2 == 0)
+    ))
     
-    # Check if a solution exists
+    s.add(Or(
+        And(seg2 == 0, Or(seg3 == 1, seg3 == 2)),
+        And(seg2 == 1, seg3 == 0),
+        And(seg2 == 2, seg3 == 0)
+    ))
+    
     if s.check() == sat:
-        model = s.model()
-        # Print the itinerary
-        for d in days:
-            cities_today = [c for c in cities if model.evaluate(in_city[(c, d)])]
-            print(f"Day {d}: {', '.join(cities_today)}")
+        m = s.model()
+        d1_val = m[d1].as_long()
+        d2_val = m[d2].as_long()
+        seg1_val = m[seg1].as_long()
+        seg2_val = m[seg2].as_long()
+        seg3_val = m[seg3].as_long()
+        
+        city1 = cities[seg1_val]
+        city2 = cities[seg2_val]
+        city3 = cities[seg3_val]
+        
+        itinerary = []
+        
+        itinerary.append({"day_range": "Day 1-5", "place": "Nice"})
+        itinerary.append({"day_range": "Day 5", "place": "Nice"})
+        
+        itinerary.append({"day_range": f"Day 5", "place": city1})
+        itinerary.append({"day_range": f"Day 5-{d1_val}", "place": city1})
+        itinerary.append({"day_range": f"Day {d1_val}", "place": city1})
+        
+        itinerary.append({"day_range": f"Day {d1_val}", "place": city2})
+        itinerary.append({"day_range": f"Day {d1_val}-{d2_val}", "place": city2})
+        itinerary.append({"day_range": f"Day {d2_val}", "place": city2})
+        
+        itinerary.append({"day_range": f"Day {d2_val}", "place": city3})
+        itinerary.append({"day_range": f"Day {d2_val}-19", "place": city3})
+        itinerary.append({"day_range": "Day 19", "place": city3})
+        
+        itinerary.append({"day_range": "Day 19", "place": "Frankfurt"})
+        itinerary.append({"day_range": "Day 19-20", "place": "Frankfurt"})
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

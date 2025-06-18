@@ -1,121 +1,118 @@
 from z3 import *
 
-# Define the City datatype
-City = Datatype('City')
-City.declare('Venice')
-City.declare('Reykjavik')
-City.declare('Munich')
-City.declare('Santorini')
-City.declare('Manchester')
-City.declare('Porto')
-City.declare('Bucharest')
-City.declare('Tallinn')
-City.declare('Valencia')
-City.declare('Vienna')
-City = City.create()
-
-# Define direct flights
-edges_str = [
-    "Bucharest and Manchester",
-    "Munich and Venice",
-    "Santorini and Manchester",
-    "Vienna and Reykjavik",
-    "Venice and Santorini",
-    "Munich and Porto",
-    "Valencia and Vienna",
-    "Manchester and Vienna",
-    "Porto and Vienna",
-    "Venice and Manchester",
-    "Santorini and Vienna",
-    "Munich and Manchester",
-    "Munich and Reykjavik",
-    "Bucharest and Valencia",
-    "Venice and Vienna",
-    "Bucharest and Vienna",
-    "Porto and Manchester",
-    "Munich and Vienna",
-    "Valencia and Porto",
-    "Munich and Bucharest",
-    "Tallinn and Munich",
-    "Santorini and Bucharest",
-    "Munich and Valencia"
-]
-
-allowed_pairs = []
-for s in edges_str:
-    u_str, v_str = s.split(' and ')
-    u_str = u_str.strip()
-    v_str = v_str.strip()
-    u_const = getattr(City, u_str)
-    v_const = getattr(City, v_str)
-    allowed_pairs.append((u_const, v_const))
-    allowed_pairs.append((v_const, u_const))
-
-# Create variables for each day: c[0] for day1, c[1] for day2, ..., c[23] for day24
-c = [Const('c_%d' % i, City) for i in range(24)]
-
-s = Solver()
-
-# Travel constraints: for consecutive days, if different cities, must be connected by direct flight
-for i in range(23):
-    constraint = Or([And(c[i] == u, c[i+1] == v) for (u, v) in allowed_pairs])
-    s.add(If(c[i] != c[i+1], constraint, True))
-
-# Function to determine if we are in a city on a given day
-def y(day, city):
-    if day == 1:
-        return c[0] == city
+def main():
+    d = [Int('d_%d' % i) for i in range(11)]
+    C = [Int('C_%d' % i) for i in range(10)]
+    
+    s = Solver()
+    
+    city_names = {
+        0: "Venice",
+        1: "Reykjavik",
+        2: "Munich",
+        3: "Santorini",
+        4: "Manchester",
+        5: "Porto",
+        6: "Bucharest",
+        7: "Tallinn",
+        8: "Valencia",
+        9: "Vienna"
+    }
+    
+    allowed_edges = [
+        (6,4), (4,6), 
+        (2,0), (0,2),
+        (3,4), (4,3),
+        (9,1), (1,9),
+        (0,3), (3,0),
+        (2,5), (5,2),
+        (8,9), (9,8),
+        (4,9), (9,4),
+        (5,9), (9,5),
+        (0,4), (4,0),
+        (3,9), (9,3),
+        (2,4), (4,2),
+        (2,1), (1,2),
+        (6,8), (8,6),
+        (0,9), (9,0),
+        (6,9), (9,6),
+        (5,4), (4,5),
+        (2,9), (9,2),
+        (8,5), (5,8),
+        (2,6), (6,2),
+        (7,2), (2,7),
+        (3,6), (6,3),
+        (2,8), (8,2)
+    ]
+    
+    s.add(d[0] == 1)
+    s.add(d[10] == 24)
+    
+    for i in range(10):
+        s.add(d[i] >= 1, d[i] <= 24)
+        s.add(d[i] < d[i+1])
+    
+    s.add(Distinct(C))
+    for i in range(10):
+        s.add(C[i] >= 0, C[i] <= 9)
+    
+    for i in range(10):
+        s.add(Implies(C[i] == 2, And(d[i] == 4, d[i+1] == 6)))
+        s.add(Implies(C[i] == 3, And(d[i] == 8, d[i+1] == 10)))
+        s.add(Implies(C[i] == 8, And(d[i] == 14, d[i+1] == 15)))
+        
+        s.add(Implies(C[i] == 0, d[i+1] == d[i] + 2))
+        s.add(Implies(C[i] == 1, d[i+1] == d[i] + 1))
+        s.add(Implies(C[i] == 2, d[i+1] == d[i] + 2))
+        s.add(Implies(C[i] == 3, d[i+1] == d[i] + 2))
+        s.add(Implies(C[i] == 4, d[i+1] == d[i] + 2))
+        s.add(Implies(C[i] == 5, d[i+1] == d[i] + 2))
+        s.add(Implies(C[i] == 6, d[i+1] == d[i] + 4))
+        s.add(Implies(C[i] == 7, d[i+1] == d[i] + 3))
+        s.add(Implies(C[i] == 8, d[i+1] == d[i] + 1))
+        s.add(Implies(C[i] == 9, d[i+1] == d[i] + 4))
+    
+    for i in range(9):
+        constraints = []
+        for edge in allowed_edges:
+            a, b = edge
+            constraints.append(And(C[i] == a, C[i+1] == b))
+        s.add(Or(constraints))
+    
+    if s.check() == sat:
+        m = s.model()
+        d_vals = [m.evaluate(d_i).as_long() for d_i in d]
+        C_vals = [m.evaluate(C_i).as_long() for C_i in C]
+        
+        itinerary = []
+        
+        # First block (block0)
+        a0 = d_vals[0]
+        a1 = d_vals[1]
+        city0_name = city_names[C_vals[0]]
+        itinerary.append({"day_range": "Day %d-%d" % (a0, a1), "place": city0_name})
+        itinerary.append({"day_range": "Day %d" % (a1), "place": city0_name})
+        
+        # Blocks 1 to 8
+        for i in range(1, 9):
+            a_i = d_vals[i]
+            a_i_plus_1 = d_vals[i+1]
+            city_i_name = city_names[C_vals[i]]
+            itinerary.append({"day_range": "Day %d" % (a_i), "place": city_i_name})
+            itinerary.append({"day_range": "Day %d-%d" % (a_i, a_i_plus_1), "place": city_i_name})
+            itinerary.append({"day_range": "Day %d" % (a_i_plus_1), "place": city_i_name})
+        
+        # Last block (block9)
+        a9 = d_vals[9]
+        a10 = d_vals[10]
+        city9_name = city_names[C_vals[9]]
+        itinerary.append({"day_range": "Day %d" % (a9), "place": city9_name})
+        itinerary.append({"day_range": "Day %d-%d" % (a9, a10), "place": city9_name})
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        prev_idx = day - 2
-        curr_idx = day - 1
-        return Or(c[curr_idx] == city, And(c[prev_idx] == city, c[prev_idx] != c[curr_idx]))
+        print("No solution found")
 
-# Fixed event constraints
-s.add(y(4, City.Munich))
-s.add(y(5, City.Munich))
-s.add(y(6, City.Munich))
-s.add(y(8, City.Santorini))
-s.add(y(9, City.Santorini))
-s.add(y(10, City.Santorini))
-s.add(y(14, City.Valencia))
-s.add(y(15, City.Valencia))
-
-# Total days per city constraints
-city_days = [
-    ('Venice', 3),
-    ('Reykjavik', 2),
-    ('Munich', 3),
-    ('Santorini', 3),
-    ('Manchester', 3),
-    ('Porto', 3),
-    ('Bucharest', 5),
-    ('Tallinn', 4),
-    ('Valencia', 2),
-    ('Vienna', 5)
-]
-
-for name, total_req in city_days:
-    city_const = getattr(City, name)
-    total_count = 0
-    for day in range(1, 25):
-        total_count += If(y(day, city_const), 1, 0)
-    s.add(total_count == total_req)
-
-# Solve and output the schedule
-if s.check() == sat:
-    m = s.model()
-    c_vals = [m.evaluate(c[i]) for i in range(24)]
-    for day in range(1, 25):
-        if day == 1:
-            cities_today = {c_vals[0]}
-        else:
-            prev_city = c_vals[day-2]
-            curr_city = c_vals[day-1]
-            if prev_city == curr_city:
-                cities_today = {curr_city}
-            else:
-                cities_today = {prev_city, curr_city}
-        cities_list = sorted(cities_today, key=lambda x: str(x))
-        print(f"Day {day}: {', '.join([str(city) for city in cities_list])}")
-else:
-    print("No solution found")
+if __name__ == '__main__':
+    main()

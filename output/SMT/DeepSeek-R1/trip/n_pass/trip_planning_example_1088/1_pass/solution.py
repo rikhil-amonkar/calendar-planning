@@ -1,80 +1,97 @@
 from z3 import *
+import json
 
 def main():
-    cities = ["Reykjavik", "Stuttgart", "Stockholm", "Tallinn", "Oslo", "Split", "Geneva", "Porto"]
-    dur_all = [2, 5, 3, 5, 5, 3, 2, 3]  # durations for cities 0 to 7
-
-    edge_set = set()
-    edges = [
-        (0, 1), (0, 2), (0, 3), (0, 4),
-        (1, 2), (1, 5), (1, 7),
-        (2, 4), (2, 5), (2, 6),
-        (3, 4),
-        (4, 5), (4, 6), (4, 7),
-        (5, 6),
-        (6, 7)
-    ]
-    for u, v in edges:
-        edge_set.add((min(u, v), max(u, v)))
+    cities = ["Reykjavik", "Stuttgart", "Split", "Geneva", "Porto", "Tallinn", "Oslo", "Stockholm"]
+    n = len(cities)
+    
+    # Reduction: required_days - 1 for each city
+    reduction = [1, 4, 2, 1, 2, 4, 4, 2]  # [Reykjavik, Stuttgart, Split, Geneva, Porto, Tallinn, Oslo, Stockholm]
+    
+    # Graph of direct flights (undirected)
+    graph = {
+        0: [1, 7, 5, 6],   # Reykjavik
+        1: [0, 4, 7, 2],    # Stuttgart
+        2: [6, 7, 1, 3],    # Split
+        3: [6, 7, 4, 2],    # Geneva
+        4: [1, 6, 3],       # Porto
+        5: [0, 6],          # Tallinn
+        6: [7, 0, 2, 3, 4, 5], # Oslo
+        7: [0, 6, 1, 2, 3]  # Stockholm
+    }
     
     s = Solver()
     
-    seg_city = [Int(f'seg_city_{i}') for i in range(6)]
-    e = [Int(f'e{i+1}') for i in range(6)]  # e1, e2, ..., e6
-
-    # Constraint: seg_city contains distinct integers from 1 to 6
-    s.add(Distinct(seg_city))
-    for i in range(6):
-        s.add(seg_city[i] >= 1, seg_city[i] <= 6)
+    # City assignment for 8 segments
+    city_vars = [Int(f'city_{i}') for i in range(n)]
     
-    # Duration constraints
-    s.add(e[0] - 1 == dur_all[seg_city[0]])
-    s.add(e[1] - e[0] + 1 == dur_all[seg_city[1]])
-    s.add(e[2] - e[1] + 1 == dur_all[seg_city[2]])
-    s.add(e[3] - e[2] + 1 == dur_all[seg_city[3]])
-    s.add(e[4] - e[3] + 1 == dur_all[seg_city[4]])
-    s.add(e[5] == 19)  # because segment6 ends at day 19
-    s.add(20 - e[4] == dur_all[seg_city[5]])  # segment6: start e5, end 19 -> length = 19 - e5 + 1 = 20 - e5
-
-    # Stockholm constraint: if a segment (index j in 1 to 5) is Stockholm (city2), then its start day <= 4
-    for j in range(1, 6):
-        s.add(If(seg_city[j] == 2, e[j-1] <= 4, True))
+    # Constraints: city0 is Reykjavik (0), city7 is Porto (4)
+    s.add(city_vars[0] == 0)
+    s.add(city_vars[7] == 4)
     
-    # Flight constraints for 7 legs
-    legs = [
-        (0, seg_city[0]),
-        (seg_city[0], seg_city[1]),
-        (seg_city[1], seg_city[2]),
-        (seg_city[2], seg_city[3]),
-        (seg_city[3], seg_city[4]),
-        (seg_city[4], seg_city[5]),
-        (seg_city[5], 7)
-    ]
-    for (a, b) in legs:
-        low = If(a < b, a, b)
-        high = If(a < b, b, a)
-        cond = False
-        for edge in edge_set:
-            x, y = edge
-            cond = Or(cond, And(low == x, high == y))
-        s.add(cond)
+    # All cities are distinct
+    s.add(Distinct(city_vars))
     
+    # Flight constraints between consecutive segments
+    for i in range(7):
+        current = city_vars[i]
+        next_city = city_vars[i+1]
+        conds = []
+        for idx in range(n):
+            allowed_next = graph[idx]
+            conds.append(And(current == idx, Or([next_city == j for j in allowed_next])))
+        s.add(Or(conds))
+    
+    # Cumulative reduction array (cum[0..8])
+    cum = [Int(f'cum_{i}') for i in range(n+1)]
+    s.add(cum[0] == 0)
+    for i in range(1, n+1):
+        expr = cum[i-1]
+        for j in range(n):
+            expr = If(city_vars[i-1] == j, expr + reduction[j], expr)
+        s.add(cum[i] == expr)
+    
+    # Constraint for Stockholm (index 7): must start by day 4
+    for i in range(n):
+        s.add(If(city_vars[i] == 7, cum[i] <= 3, True))
+    
+    # Total reduction must be 20
+    s.add(cum[8] == 20)
+    
+    # Check and get model
     if s.check() == sat:
         m = s.model()
-        seg_city_val = [m[var].as_long() for var in seg_city]
-        e_val = [m[var].as_long() for var in e]
+        city_val = [m.eval(city_vars[i]).as_long() for i in range(n)]
+        cum_val = [0] * (n+1)
+        cum_val[0] = 0
+        for i in range(1, n+1):
+            cum_val[i] = cum_val[i-1] + reduction[city_val[i-1]]
         
-        print("Full itinerary:")
-        print("City\tStart\tEnd")
-        print("Reykjavik\t1\t2")
-        start_days = [2] + e_val[:-1]
-        for i in range(6):
-            city_idx = seg_city_val[i]
-            city_name = cities[city_idx]
+        start_days = [1 + cum_val[i] for i in range(n)]
+        end_days = [start_days[i] + reduction[city_val[i]] for i in range(n)]
+        
+        itinerary = []
+        for i in range(n):
+            city_name = cities[city_val[i]]
             start = start_days[i]
-            end = e_val[i]
-            print(f"{city_name}\t{start}\t{end}")
-        print("Porto\t19\t21")
+            end = end_days[i]
+            itinerary.append({
+                "day_range": f"Day {start}-{end}",
+                "place": city_name
+            })
+            if i < n-1:  # not the last segment
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": city_name
+                })
+                next_city_name = cities[city_val[i+1]]
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": next_city_name
+                })
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
         print("No solution found")
 

@@ -228,16 +228,30 @@ def evaluate_trip(constraints, pred_dict):
             if actual != required:
                 return False, {"stay_days": {seg["place"]: required}}
 
+    # Fix: Check event ranges against ALL segments for a place, not just the first one
     for ev in constraints.get("city_day_ranges", []):
         place = ev["city"]
-        container = next((s for s in segments if s["place"] == place), None)
-        if not container:
+        place_segments = [s for s in segments if s["place"] == place]
+        if not place_segments:
             return False, {"missing_place": place}
-        if container["start"] > ev["start"] or container["end"] < ev["end"]:
+        
+        # Check if the event range is covered by any combination of segments for this place
+        event_covered = False
+        for seg in place_segments:
+            if seg["start"] <= ev["start"] and seg["end"] >= ev["end"]:
+                event_covered = True
+                break
+        
+        if not event_covered:
             return False, {"event_range": ev}
 
+    # Fix: Check flight constraints, but skip consecutive segments that are the same place on the same day
     allowed = [(d["from"], d["to"]) for d in constraints.get("direct_flights")]
     for a, b in zip(segments, segments[1:]):
+        # Skip if both segments are the same place and overlap in time (same day)
+        if a["place"] == b["place"]:
+            continue
+        
         pair = (a["place"], b["place"])
         if pair not in allowed:
             return False, {"flight": {"from": a["place"], "to": b["place"]}}
@@ -347,6 +361,18 @@ def format_constraint_feedback(violated_constraints, task):
         if "flight" in violated_constraints:
             flight = violated_constraints["flight"]
             feedback += f"- No direct flight available from {flight['from']} to {flight['to']}\n"
+        if "gap/overlap" in violated_constraints:
+            segments = violated_constraints["gap/overlap"]
+            feedback += f"- There is a gap or overlap between segments: {segments[0]} and {segments[1]}\n"
+        if "invalid_day_range_format" in violated_constraints:
+            feedback += f"- Invalid day range format: {violated_constraints['invalid_day_range_format']}\n"
+        if "unparsable_day_range" in violated_constraints:
+            feedback += f"- Cannot parse day range: {violated_constraints['unparsable_day_range']}\n"
+        if "missing_place" in violated_constraints:
+            feedback += f"- Required place is missing: {violated_constraints['missing_place']}\n"
+        if "event_range" in violated_constraints:
+            event = violated_constraints["event_range"]
+            feedback += f"- Event {event} does not fit within any city's visit period\n"
     elif task == "meeting":
         if "num_people_to_meet" in violated_constraints:
             feedback += f"- Must meet with exactly {violated_constraints['num_people_to_meet']} people\n"
@@ -355,6 +381,14 @@ def format_constraint_feedback(violated_constraints, task):
             feedback += f"- Not enough time to travel from {travel['from_location']} to {travel['to_location']} (need {travel['travel_time']} minutes)\n"
         if "person" in violated_constraints:
             feedback += f"- Meeting time with {violated_constraints['person']} is outside their availability\n"
+        if "invalid_time_format" in violated_constraints:
+            time_info = violated_constraints["invalid_time_format"]
+            feedback += f"- Invalid time format: start={time_info['start']}, end={time_info['end']}\n"
+        if "start_time" in violated_constraints:
+            feedback += f"- Meeting starts before the allowed start time: {violated_constraints['start_time']}\n"
+        if "travel_start" in violated_constraints:
+            travel = violated_constraints["travel_start"]
+            feedback += f"- Not enough time to travel from start location to {travel['to_person']} at {travel['to_location']} (need {travel['travel_time']} minutes)\n"
 
     feedback += "\nPlease revise your solution to satisfy these constraints."
     return feedback
