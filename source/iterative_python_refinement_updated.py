@@ -37,24 +37,25 @@ logging.basicConfig(
 )
 
 class RateLimiter:
-    """Simple rate limiter to avoid API limits"""
     def __init__(self, requests_per_second: float):
         self.requests_per_second = requests_per_second
         self.last_request_time = 0
+        self.lock = asyncio.Lock()
     
     async def wait(self):
-        if self.requests_per_second <= 0:
-            return
-        
-        current_time = time.time()
-        time_since_last = current_time - self.last_request_time
-        min_interval = 1.0 / self.requests_per_second
-        
-        if time_since_last < min_interval:
-            wait_time = min_interval - time_since_last
-            await asyncio.sleep(wait_time)
-        
-        self.last_request_time = time.time()
+        async with self.lock:  # Add this lock to prevent concurrent access
+            if self.requests_per_second <= 0:
+                return
+            
+            current_time = time.time()
+            time_since_last = current_time - self.last_request_time
+            min_interval = 1.0 / self.requests_per_second
+            
+            if time_since_last < min_interval:
+                wait_time = min_interval - time_since_last
+                await asyncio.sleep(wait_time)
+            
+            self.last_request_time = time.time()
 
 class SchedulingProgram:
     def __init__(self):
@@ -107,7 +108,7 @@ class SchedulingProgram:
 
     def configure_logging(self):
         """Configure logging with task-specific filename"""
-        log_filename = f'scheduling_{self.task_name}.log'
+        log_filename = f'scheduling_{self.task_name}_{current_time}.log'
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
@@ -165,7 +166,7 @@ Examples:
             os.makedirs(f"output/{task}", exist_ok=True)
 
     def initialize_models(self):
-        """Initialize all requested models using Kani's OpenAIEngine"""
+        """Initialize all requested models using proper kani pattern"""
         try:
             with open(self.args.api_key_file) as f:
                 self.keys = json.load(f)
@@ -176,50 +177,37 @@ Examples:
             logging.error(f"Invalid JSON in API key file {self.args.api_key_file}")
             sys.exit(1)
 
-        self.engines = {}  # Store engines separately from Kani instances
-        self.models = {}    # Will store Kani instances
+        self.engines = {}  # Store all engines here
         
         for model_name in self.args.model:
             try:
                 if model_name.startswith("DeepSeek"):
-                    if model_name == "DeepSeek-R1":
-                        engine = OpenAIEngine(
-                            api_key=self.keys.get("deepseek"),
-                            model="deepseek-reasoner",
-                            api_base="https://api.deepseek.com",
-                            max_context_size=50000
-                        )
-                    elif model_name == "DeepSeek-V3":
-                        engine = OpenAIEngine(
-                            api_key=self.keys.get("deepseek"),
-                            model="deepseek-chat",
-                            api_base="https://api.deepseek.com",
-                            max_context_size=50000
-                        )
-                    # For DeepSeek models, create Kani instance immediately
-                    self.models[model_name] = Kani(engine)
+                    # Treat DeepSeek like any other OpenAI model
+                    self.engines[model_name] = OpenAIEngine(
+                        api_key=self.keys.get("deepseek"),
+                        model="deepseek-chat" if model_name == "DeepSeek-V3" else "deepseek-reasoner",
+                        api_base="https://api.deepseek.com",
+                        max_context_size=50000
+                    )
+                elif model_name.startswith("gpt"):
+                    self.engines[model_name] = OpenAIEngine(
+                        api_key=self.keys.get("openai"), 
+                        model=model_name
+                    )
                 else:
-                    # For other models (including local HuggingFace models)
-                    # Just store the engine, we'll create Kani instances per-request
-                    if model_name.startswith("gpt"):
-                        engine = OpenAIEngine(api_key=self.keys.get("openai"), model=model_name)
-                    else:
-                        engine = HuggingEngine(model_id=model_name)
-                    self.engines[model_name] = engine
-                
+                    # HuggingFace model
+                    self.engines[model_name] = HuggingEngine(model_id=model_name)
+                    
             except Exception as e:
                 logging.error(f"Failed to initialize model {model_name}: {e}")
 
     async def get_model_instance(self, model_name):
-        """Get a model instance, creating a new Kani instance for non-DeepSeek models"""
-        if model_name in self.models:
-            return self.models[model_name]
+        """Get a fresh Kani instance for each request"""
+        if model_name not in self.engines:
+            raise ValueError(f"Model {model_name} not initialized")
         
-        if model_name in self.engines:
-            # For non-DeepSeek models, create a fresh Kani instance each time
-            return Kani(self.engines[model_name], system_prompt="")
-        
-        raise ValueError(f"Model {model_name} not initialized")
+        # Create new Kani instance with the engine
+        return Kani(self.engines[model_name], system_prompt="")
 
     def load_data(self):
         """Load all prompts and constraints"""
@@ -1006,7 +994,7 @@ Examples:
         """Execute generated Python code and return output"""
         try:
             # Save the exact code to be executed
-            filename = f"generated_code_{task}.py"
+            filename = f"generated_code_{task}_{current_time}.py"
             with open(filename, "w") as file:
                 file.write(code)
             
@@ -1068,7 +1056,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/DeepSeek-R1/{task}/n_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/Llama-3.1-8B-Instruct/{task}/n_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1162,7 +1150,12 @@ Examples:
                 is_exact_match = predicted_output == golden_output
 
                 # Determine status
-                status = "Correct" if constraints_satisfied else "Wrong plan"
+                if constraints_satisfied and not has_execution_error:
+                    status = "Correct"
+                elif has_execution_error:
+                    status = "Error"
+                else:
+                    status = "Wrong plan"
                 
                 # Prepare evaluation result with new structure
                 eval_result = {
@@ -1228,7 +1221,7 @@ Examples:
         all_tasks = []
         
         for model_name in self.args.model:
-            if model_name not in self.models and model_name not in self.engines:
+            if model_name not in self.engines:
                 logging.warning(f"Skipping model {model_name} - not initialized")
                 continue
             
@@ -1283,7 +1276,7 @@ Examples:
 class EvaluationState:
     """Class to track evaluation state across runs"""
     def __init__(self, task_name):
-        self.state_file = f"1_evaluation_state_{task_name}.json"
+        self.state_file = f"evaluation_state_{task_name}_{current_time}.json"
         self.data = {
             "calendar": {},
             "meeting": {},

@@ -74,9 +74,23 @@ class SchedulingProgram:
             }
         }
 
+    def clean_model_name(self, model_name):
+        """Convert model names to filesystem-friendly versions"""
+        # Handle DeepSeek models
+        if model_name.startswith("DeepSeek"):
+            return model_name
+        
+        # Handle Llama models
+        if "Llama-3.1-8B-Instruct" in model_name:
+            return "Llama-3.1-8B-Instruct"
+        
+        # Handle other HuggingFace models
+        return model_name.split("/")[-1]  # Take last part after slash
+    
     def configure_logging(self):
         """Configure logging with task-specific filename"""
-        log_filename = f'scheduling_{self.task_name}.log'
+        clean_name = self.clean_model_name(self.current_model)
+        log_filename = f'scheduling_{self.task_name}_{clean_name}.log'
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
@@ -1031,126 +1045,140 @@ Examples:
         with open(f"{output_dir}/evaluation.json", "w") as f:
             json.dump(evaluation, f, indent=4)
 
-    async def process_example(self, task, example_id, example_data, model_name):
-        """Process a single example with multiple passes if needed"""
-        config = self.task_config[task]
-        constraints = self.constraints[task].get(example_id, {}).get("constraints", {})
-        
-        # Initialize conversation history
-        conversation = []
-        
-        # Get initial prompt
-        initial_prompt = config["prefix"] + example_data["prompt_0shot"] + config["suffix"]
-        current_prompt = initial_prompt
-        
-        for pass_num in range(1, self.args.max_passes + 1):
-            logging.info(f"Processing {task} example {example_id}, pass {pass_num} with {model_name}")
+    async def process_example(self, task, example_id, example_data, model_name, semaphore):
+        """Process a single example with multiple passes if needed."""
+        async with semaphore:
+            config = self.task_config[task]
+            constraints = self.constraints[task].get(example_id, {}).get("constraints", {})
+            constraints["golden_plan"] = example_data["golden_plan"]  # Add golden plan to constraints
             
-            # Get model response with timing
-            response_start = time.time()
-            response, api_time, token_count = await self.run_model(model_name, current_prompt)
-            if not response:
-                logging.error(f"Failed to get response for {example_id}")
-                return
+            # Initialize conversation history
+            conversation = []
             
-            # Add to conversation history
-            conversation.append({"role": "user", "content": current_prompt})
-            conversation.append({"role": "assistant", "content": response})
+            # Get initial prompt
+            initial_prompt = config["prefix"] + example_data["prompt_0shot"] + config["suffix"]
+            current_prompt = initial_prompt
             
-            # Extract code
-            code = self.extract_code(response)
-            if not code:
-                logging.warning(f"No code found in response for {example_id}")
+            for pass_num in range(1, self.args.max_passes + 1):
+                logging.info(f"Processing {task} example {example_id}, pass {pass_num} with {model_name}")
                 
-                # Save output files even if no code was found
+                # Get model response with timing
+                response_start = time.time()
+                response, api_time, token_count = await self.run_model(model_name, current_prompt)
+                if not response:
+                    logging.error(f"Failed to get response for {example_id}")
+                    return
+                
+                # Add to conversation history
+                conversation.append({"role": "user", "content": current_prompt})
+                conversation.append({"role": "assistant", "content": response})
+                
+                # Extract code
+                code = self.extract_code(response)
+                if not code:
+                    logging.warning(f"No code found in response for {example_id}")
+                    
+                    # Save output files even if no code was found
+                    self.save_output_files(
+                        task, example_id, pass_num,
+                        conversation, response, "",
+                        {
+                            "error": "No code found in model response",
+                            "timing": {
+                                "api_call_time": api_time,
+                                "token_count": token_count
+                            }
+                        }
+                    )
+                    return
+                
+                # Execute code with timing
+                output, error, exec_time = self.run_generated_code(code, task)
+                
+                # Check for execution errors
+                has_execution_error = (error is not None or 
+                                    "Error" in (output or "") or 
+                                    "Exception" in (output or "") or 
+                                    "Traceback" in (output or "") or 
+                                    not (output or "").strip())
+                
+                # Parse output and golden plan with timing
+                pred_extract_start = time.time()
+                predicted_output = config["parse_output"](output if not has_execution_error else None)
+                pred_extract_time = time.time() - pred_extract_start
+                
+                gold_extract_start = time.time()
+                golden_output = config["parse_golden"](example_data["golden_plan"])
+                gold_extract_time = time.time() - gold_extract_start
+                
+                # Evaluate constraints with timing
+                constraint_eval_start = time.time()
+                constraints_satisfied, violated = config["evaluate"](constraints, predicted_output)
+                constraint_eval_time = time.time() - constraint_eval_start
+                
+                # Check if output matches golden solution
+                is_exact_match = predicted_output == golden_output
+
+                # Determine status - CHANGED: Only consider execution errors and constraint violations as failures
+                if has_execution_error:
+                    status = "Error"
+                elif not constraints_satisfied:
+                    status = "Wrong plan"
+                else:
+                    status = "Correct"
+                
+                # Prepare evaluation result with new structure
+                eval_result = {
+                    "has_execution_error": has_execution_error,
+                    "execution_output": output if not has_execution_error else error,
+                    "pred": predicted_output,
+                    "gold": golden_output,
+                    "status": status,
+                    "violated_constraint": violated,
+                    "is_exact_match": is_exact_match,
+                    "constraints_satisfied": constraints_satisfied,
+                    "pass_number": pass_num,
+                    "timing": {
+                        "api_call_time": api_time,
+                        "execution_time": exec_time,
+                        "constraint_eval_time": constraint_eval_time,
+                        "pred_extract_time": pred_extract_time,
+                        "gold_extract_time": gold_extract_time,
+                        "token_count": token_count
+                    }
+                }
+                
+                # Save output files
                 self.save_output_files(
                     task, example_id, pass_num,
-                    conversation, response, "",
-                    {
-                        "error": "No code found in model response",
-                        "timing": {
-                            "api_call_time": api_time,
-                            "token_count": token_count
-                        }
-                    }
+                    conversation, code, output if not has_execution_error else error,
+                    eval_result
                 )
-                return
-            
-            # Execute code with timing
-            output, error, exec_time = self.run_generated_code(code, task)
-            
-            # Parse output and golden plan with timing
-            pred_extract_start = time.time()
-            predicted_output = config["parse_output"](output if not error else None)
-            pred_extract_time = time.time() - pred_extract_start
-            
-            gold_extract_start = time.time()
-            golden_output = config["parse_golden"](example_data["golden_plan"])
-            gold_extract_time = time.time() - gold_extract_start
-            
-            # Evaluate constraints with timing
-            constraint_eval_start = time.time()
-            if task == "calendar":
-                constraints_satisfied, violated = config["evaluate"](constraints, predicted_output)
-            else:
-                constraints_satisfied, violated = config["evaluate"](constraints, predicted_output)
-            constraint_eval_time = time.time() - constraint_eval_start
-            
-            # Check if output matches golden solution
-            is_exact_match = predicted_output == golden_output
-            
-            # Prepare evaluation result
-            eval_result = {
-                "predicted_output": predicted_output,
-                "golden_output": golden_output,
-                "constraints_satisfied": constraints_satisfied,
-                "is_exact_match": is_exact_match,
-                "violated_constraints": violated,
-                "has_execution_error": error is not None,
-                "execution_error": error if error else None,
-                "execution_output": output if not error else None,
-                "pass_number": pass_num,
-                "timing": {
-                    "api_call_time": api_time,
-                    "execution_time": exec_time,
-                    "constraint_eval_time": constraint_eval_time,
-                    "pred_extract_time": pred_extract_time,
-                    "gold_extract_time": gold_extract_time,
-                    "token_count": token_count
-                }
-            }
-            
-            # Save output files
-            self.save_output_files(
-                task, example_id, pass_num,
-                conversation, code, output if not error else error,
-                eval_result
-            )
-            
-            # Update state
-            self.state.update_example(task, example_id, pass_num, constraints_satisfied, is_exact_match)
-            self.state.save()
-            
-            # Check if we're done
-            if constraints_satisfied:
-                logging.info(f"Successfully solved {task} example {example_id} in pass {pass_num}")
-                return
-            
-            # Prepare enhanced feedback for next iteration
-            feedback_parts = []
-            
-            if error:
-                feedback_parts.append(f"Previous code execution failed with error:\n{error}")
-                feedback_parts.append(f"\nGenerated code that caused the error:\n```python\n{code}\n```")
-            else:
-                feedback_parts.append(f"Previous code produced this output:\n{output}")
-                feedback_parts.append(config["format_feedback"](violated))
-                feedback_parts.append(f"\nGenerated code that produced this output:\n```python\n{code}\n```")
-            
-            feedback_parts.append("\nPlease carefully review the error/output, the constraints violated, and the code.")
-            feedback_parts.append("Revise your solution to fix these issues while maintaining all required functionality.")
-            
-            current_prompt = "\n".join(feedback_parts)
+                
+                # Update state - CHANGED: Only need constraints_satisfied to mark as completed
+                self.state.update_example(task, example_id, pass_num, constraints_satisfied, is_exact_match)
+                self.state.save()
+                
+                # Check if we're done - CHANGED: Only need constraints_satisfied to stop
+                if constraints_satisfied:
+                    logging.info(f"Successfully solved {task} example {example_id} in pass {pass_num}")
+                    return
+                
+                # Prepare enhanced feedback for next iteration
+                feedback_parts = []
+                
+                if has_execution_error:
+                    feedback_parts.append(f"Previous code execution failed with error:\n{error if error else output}")
+                    feedback_parts.append(f"\nGenerated code that caused the error:\n```python\n{code}\n```")
+                else:
+                    feedback_parts.append(f"Previous code produced this output:\n{output}")
+                    feedback_parts.append(config["format_feedback"](violated))
+                    feedback_parts.append(f"\nGenerated code that produced this output:\n```python\n{code}\n```")
+                
+                feedback_parts.append("\nPlease carefully review the error/output, the constraints violated, and the code.")
+                feedback_parts.append("Revise your solution to fix these issues while maintaining all required functionality.")
+                
+                current_prompt = "\n".join(feedback_parts)
 
     async def run(self):
         """Main execution method"""
@@ -1233,6 +1261,7 @@ class EvaluationState:
             "timestamp": datetime.now().isoformat()
         })
         
+        # CHANGED: Only need constraints_satisfied to mark as completed
         if constraints_satisfied:
             self.data[task][example_id]["best_pass"] = pass_num
             self.data[task][example_id]["completed"] = True
