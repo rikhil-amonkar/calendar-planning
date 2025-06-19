@@ -1,0 +1,44 @@
+from datetime import datetime, timedelta
+
+def find_meeting_time(russell_schedule, alexander_schedule, meeting_duration, day, russell_preference):
+    # Find available time slots for Russell
+    russell_available = [(start, end) for start, end in russell_schedule if start.date() == day.date() and end.date() == day.date()]
+
+    # Find available time slots for Alexander
+    alexander_available = [(start, end) for start, end in alexander_schedule if start.date() == day.date() and end.date() == day.date()]
+
+    # Filter available time slots based on Russell's preference
+    russell_available_day = [slot for slot in russell_available if slot[0].date() == day.date() and slot[0].hour >= 13 and slot[0].minute >= 30 if russell_preference]
+    alexander_available_day = [slot for slot in alexander_available if slot[0].date() == day.date()]
+
+    # Combine available time slots for both participants
+    combined_available = []
+    for russell_slot in russell_available_day:
+        for alexander_slot in alexander_available_day:
+            combined_available.append((max(russell_slot[0], alexander_slot[0]), min(russell_slot[1], alexander_slot[1])))
+
+    # Find overlapping time slots that are long enough for the meeting
+    meeting_time_slots = []
+    for slot in combined_available:
+        if slot[1] - slot[0] >= meeting_duration:
+            meeting_time_slots.append(slot)
+
+    # Sort time slots by start time
+    meeting_time_slots.sort(key=lambda x: x[0])
+
+    # Find the first time slot that meets the meeting duration
+    for slot in meeting_time_slots:
+        if (slot[1] - slot[0]) >= meeting_duration:
+            return f"{slot[0].strftime('%H:%M')}:{slot[1].strftime('%H:%M')} on {day.strftime('%A')}"
+
+    # If no time slot is found, return a message indicating that
+    return "No available time slots found"
+
+# Define schedules and constraints
+russell_schedule = [(datetime(2024, 7, 22, 10, 30), datetime(2024, 7, 22, 11, 0)), (datetime(2024, 7, 23, 13, 0), datetime(2024, 7, 23, 13, 30))]
+alexander_schedule = [(datetime(2024, 7, 22, 9, 0), datetime(2024, 7, 22, 11, 30)), (datetime(2024, 7, 22, 12, 0), datetime(2024, 7, 22, 14, 30)), (datetime(2024, 7, 22, 15, 0), datetime(2024, 7, 22, 17, 0)), (datetime(2024, 7, 23, 9, 0), datetime(2024, 7, 23, 10, 0)), (datetime(2024, 7, 23, 13, 0), datetime(2024, 7, 23, 14, 0)), (datetime(2024, 7, 23, 15, 0), datetime(2024, 7, 23, 15, 30)), (datetime(2024, 7, 23, 16, 0), datetime(2024, 7, 23, 16, 30))]
+meeting_duration = timedelta(hours=1)
+day = datetime(2024, 7, 23)
+russell_preference = True
+
+print(find_meeting_time(russell_schedule, alexander_schedule, meeting_duration, day, russell_preference))

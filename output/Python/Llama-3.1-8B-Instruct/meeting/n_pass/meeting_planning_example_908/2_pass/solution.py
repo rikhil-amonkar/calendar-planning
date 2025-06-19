@@ -1,0 +1,1 @@
+'meet_brian': {'action':'meet', 'location': 'The Castro', 'person': 'Brian','start_time': start_time, 'end_time': (start_time + timedelta(minutes=travel_distances['Fisherman\'s Wharf']['The Castro'] + constraints['Brian']['duration'])).strftime('%H:%M')}

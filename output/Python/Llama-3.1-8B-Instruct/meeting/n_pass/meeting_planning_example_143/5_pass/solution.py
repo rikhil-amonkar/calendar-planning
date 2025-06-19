@@ -1,0 +1,143 @@
+import json
+from datetime import datetime, timedelta
+
+def calculate_travel_time(distance):
+    return int(distance / 60)
+
+def calculate_meeting_duration(min_duration):
+    return min_duration / 60
+
+def is_valid_meeting(meeting, constraints):
+    start_time = datetime.strptime(meeting['start_time'], '%H:%M')
+    end_time = datetime.strptime(meeting['end_time'], '%H:%M')
+    duration = (end_time - start_time).total_seconds() / 60
+    return duration >= constraints['min_duration']
+
+def compute_optimal_schedule(constraints):
+    # Define travel distances and times
+    travel_distances = {
+        'North Beach to Pacific Heights': 8,
+        'North Beach to Embarcadero': 6,
+        'Pacific Heights to North Beach': 9,
+        'Pacific Heights to Embarcadero': 10,
+        'Embarcadero to North Beach': 5,
+        'Embarcadero to Pacific Heights': 11
+    }
+
+    # Initialize schedule
+    schedule = []
+
+    # Karen's availability
+    karen_start = datetime.strptime('18:45', '%H:%M')
+    karen_end = datetime.strptime('20:15', '%H:%M')
+    karen_duration = calculate_meeting_duration(constraints['min_duration_karen'])
+
+    # Mark's availability
+    mark_start = datetime.strptime('13:00', '%H:%M')
+    mark_end = datetime.strptime('17:45', '%H:%M')
+    mark_duration = calculate_meeting_duration(constraints['min_duration_mark'])
+
+    # Travel to Pacific Heights
+    travel_time = calculate_travel_time(travel_distances['North Beach to Pacific Heights'])
+    schedule.append({
+        'action': 'travel',
+        'location': 'Pacific Heights',
+        'person': 'Karen',
+     'start_time': '09:00',
+        'end_time': '09:{0:02d}'.format(travel_time)
+    })
+
+    # Meet Karen
+    schedule.append({
+        'action':'meet',
+        'location': 'Pacific Heights',
+        'person': 'Karen',
+     'start_time': '09:{0:02d}'.format(travel_time),
+        'end_time': '09:{0:02d}'.format(travel_time + int(karen_duration * 60))
+    })
+
+    # Travel back to North Beach
+    schedule.append({
+        'action': 'travel',
+        'location': 'North Beach',
+        'person': 'Karen',
+     'start_time': '09:{0:02d}'.format(travel_time + int(karen_duration * 60)),
+        'end_time': '09:{0:02d}'.format(calculate_travel_time(travel_distances['Pacific Heights to North Beach']) + travel_time + int(karen_duration * 60))
+    })
+
+    # Add Karen's availability
+    schedule.append({
+        'action': 'wait',
+        'location': 'Pacific Heights',
+        'person': 'Karen',
+     'start_time': '09:{0:02d}'.format(calculate_travel_time(travel_distances['Pacific Heights to North Beach']) + travel_time + int(karen_duration * 60)),
+        'end_time': karen_start.strftime('%H:%M')
+    })
+
+    # Meet Karen
+    schedule.append({
+        'action':'meet',
+        'location': 'Pacific Heights',
+        'person': 'Karen',
+     'start_time': karen_start.strftime('%H:%M'),
+        'end_time': karen_end.strftime('%H:%M')
+    })
+
+    # Travel to Embarcadero
+    travel_time = calculate_travel_time(travel_distances['Pacific Heights to Embarcadero']) + calculate_travel_time(travel_distances['North Beach to Pacific Heights'])
+    schedule.append({
+        'action': 'travel',
+        'location': 'Embarcadero',
+        'person': 'Mark',
+     'start_time': '09:{0:02d}'.format(karen_end.strftime('%H:%M') if karen_end > mark_start else mark_start.strftime('%H:%M')),
+        'end_time': '09:{0:02d}'.format(travel_time + (int(karen_end.strftime('%H:%M')) if karen_end > mark_start else int(mark_start.strftime('%H:%M'))))
+    })
+
+    # Meet Mark
+    schedule.append({
+        'action':'meet',
+        'location': 'Embarcadero',
+        'person': 'Mark',
+     'start_time': '09:{0:02d}'.format(travel_time + (int(karen_end.strftime('%H:%M')) if karen_end > mark_start else int(mark_start.strftime('%H:%M')))),
+        'end_time': '09:{0:02d}'.format(travel_time + (int(karen_end.strftime('%H:%M')) if karen_end > mark_start else int(mark_start.strftime('%H:%M'))) + int(mark_duration * 60))
+    })
+
+    # Travel back to North Beach
+    schedule.append({
+        'action': 'travel',
+        'location': 'North Beach',
+        'person': 'Mark',
+     'start_time': '09:{0:02d}'.format(travel_time + (int(karen_end.strftime('%H:%M')) if karen_end > mark_start else int(mark_start.strftime('%H:%M'))) + int(mark_duration * 60)),
+        'end_time': '09:{0:02d}'.format(calculate_travel_time(travel_distances['Embarcadero to North Beach']) + travel_time + (int(karen_end.strftime('%H:%M')) if karen_end > mark_start else int(mark_start.strftime('%H:%M'))) + int(mark_duration * 60))
+    })
+
+    # Add Mark's availability
+    schedule.append({
+        'action': 'wait',
+        'location': 'Embarcadero',
+        'person': 'Mark',
+     'start_time': '09:{0:02d}'.format(calculate_travel_time(travel_distances['Embarcadero to North Beach']) + travel_time + (int(karen_end.strftime('%H:%M')) if karen_end > mark_start else int(mark_start.strftime('%H:%M'))) + int(mark_duration * 60)),
+        'end_time': mark_start.strftime('%H:%M')
+    })
+
+    # Meet Mark
+    schedule.append({
+        'action':'meet',
+        'location': 'Embarcadero',
+        'person': 'Mark',
+     'start_time': mark_start.strftime('%H:%M'),
+        'end_time': mark_end.strftime('%H:%M')
+    })
+
+    return schedule
+
+def main():
+    constraints = {
+     'min_duration_karen': 90,
+     'min_duration_mark': 120
+    }
+    schedule = compute_optimal_schedule(constraints)
+    print(json.dumps({'itinerary': schedule}, indent=4))
+
+if __name__ == "__main__":
+    main()

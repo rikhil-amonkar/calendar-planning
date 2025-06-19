@@ -1,0 +1,1 @@
+schedule.append({"action": "meet", "location": location, "person": person, "start_time": add_minutes(location, calculate_travel_time(location, loc)), "end_time": add_minutes(location, calculate_travel_time(location, loc) + min_meeting_time)})

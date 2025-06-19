@@ -1,0 +1,1 @@
+if all(not (start_time <= current_time < end_time) for start_time, end_time in participants[participant] for participant in participants):

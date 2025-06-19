@@ -1,0 +1,172 @@
+import itertools
+import json
+
+def main():
+    # Convert time string to minutes since midnight
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+        return hour * 60 + minute
+
+    # Convert minutes to time string (HH:MM)
+    def minutes_to_time(minutes):
+        h = minutes // 60
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
+
+    # Build corrected travel_times dictionary with symmetric times
+    travel_times = {
+        ('Richmond District', 'Marina District'): 9,
+        ('Richmond District', 'Chinatown'): 20,
+        ('Richmond District', 'Financial District'): 22,
+        ('Richmond District', 'Bayview'): 26,
+        ('Richmond District', 'Union Square'): 21,
+        ('Marina District', 'Richmond District'): 9,
+        ('Marina District', 'Chinatown'): 16,
+        ('Marina District', 'Financial District'): 17,
+        ('Marina District', 'Bayview'): 25,
+        ('Marina District', 'Union Square'): 18,
+        ('Chinatown', 'Richmond District'): 20,
+        ('Chinatown', 'Marina District'): 16,
+        ('Chinatown', 'Financial District'): 5,
+        ('Chinatown', 'Bayview'): 18,
+        ('Chinatown', 'Union Square'): 7,
+        ('Financial District', 'Richmond District'): 22,
+        ('Financial District', 'Marina District'): 17,
+        ('Financial District', 'Chinatown'): 5,
+        ('Financial District', 'Bayview'): 19,
+        ('Financial District', 'Union Square'): 9,
+        ('Bayview', 'Richmond District'): 26,
+        ('Bayview', 'Marina District'): 25,
+        ('Bayview', 'Chinatown'): 18,
+        ('Bayview', 'Financial District'): 19,
+        ('Bayview', 'Union Square'): 15,
+        ('Union Square', 'Richmond District'): 21,
+        ('Union Square', 'Marina District'): 18,
+        ('Union Square', 'Chinatown'): 7,
+        ('Union Square', 'Financial District'): 9,
+        ('Union Square', 'Bayview'): 15
+    }
+
+    # Define meetings with availability and duration
+    meetings = [
+        {
+            'name': 'Margaret',
+            'location': 'Bayview',
+            'start_avail': time_to_minutes('9:30'),
+            'end_avail': time_to_minutes('13:30'),
+            'duration': 30
+        },
+        {
+            'name': 'Kimberly',
+            'location': 'Marina District',
+            'start_avail': time_to_minutes('13:15'),
+            'end_avail': time_to_minutes('16:45'),
+            'duration': 15
+        },
+        {
+            'name': 'Robert',
+            'location': 'Chinatown',
+            'start_avail': time_to_minutes('12:15'),
+            'end_avail': time_to_minutes('20:15'),
+            'duration': 15
+        },
+        {
+            'name': 'Rebecca',
+            'location': 'Financial District',
+            'start_avail': time_to_minutes('13:15'),
+            'end_avail': time_to_minutes('16:45'),
+            'duration': 75
+        },
+        {
+            'name': 'Kenneth',
+            'location': 'Union Square',
+            'start_avail': time_to_minutes('19:30'),
+            'end_avail': time_to_minutes('21:15'),
+            'duration': 75
+        }
+    ]
+
+    # Start time and location
+    start_time = time_to_minutes('9:00')
+    start_loc = 'Richmond District'
+    
+    # Variables to track the best itinerary
+    best_size = 0
+    best_finish_time = float('inf')
+    best_itinerary = []
+    
+    # Iterate subset sizes from 5 down to 1
+    for size in range(5, 0, -1):
+        found_any_for_size = False
+        for subset in itertools.combinations(meetings, size):
+            for perm in itertools.permutations(subset):
+                current_time = start_time
+                current_loc = start_loc
+                itinerary = []
+                valid = True
+                
+                for meeting in perm:
+                    # Travel to meeting location
+                    travel_key = (current_loc, meeting['location'])
+                    if travel_key not in travel_times:
+                        valid = False
+                        break
+                    travel_duration = travel_times[travel_key]
+                    travel_start = current_time
+                    travel_end = current_time + travel_duration
+                    
+                    # Add travel event
+                    itinerary.append({
+                        'action': 'travel',
+                        'start_location': current_loc,
+                        'end_location': meeting['location'],
+                        'start_time': minutes_to_time(travel_start),
+                        'end_time': minutes_to_time(travel_end)
+                    })
+                    
+                    current_time = travel_end
+                    current_loc = meeting['location']
+                    
+                    # Schedule meeting
+                    meeting_start = max(current_time, meeting['start_avail'])
+                    meeting_end = meeting_start + meeting['duration']
+                    
+                    # Check availability
+                    if meeting_end > meeting['end_avail']:
+                        valid = False
+                        break
+                    
+                    # Add meeting event
+                    itinerary.append({
+                        'action': 'meet',
+                        'location': meeting['location'],
+                        'person': meeting['name'],
+                        'start_time': minutes_to_time(meeting_start),
+                        'end_time': minutes_to_time(meeting_end)
+                    })
+                    
+                    current_time = meeting_end
+                
+                if valid:
+                    found_any_for_size = True
+                    # Update if larger size or same size with earlier finish
+                    if size > best_size:
+                        best_size = size
+                        best_finish_time = current_time
+                        best_itinerary = itinerary
+                    elif size == best_size and current_time < best_finish_time:
+                        best_finish_time = current_time
+                        best_itinerary = itinerary
+        
+        # Break if found any valid itinerary for this size
+        if found_any_for_size:
+            break
+    
+    # Prepare result
+    result = {"itinerary": best_itinerary}
+    print(json.dumps(result))
+
+if __name__ == "__main__":
+    main()

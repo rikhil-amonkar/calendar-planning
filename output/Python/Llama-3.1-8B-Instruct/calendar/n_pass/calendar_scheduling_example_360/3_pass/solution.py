@@ -1,0 +1,46 @@
+from datetime import datetime, timedelta
+
+def find_meeting_time(participants, meeting_duration):
+    # Sort participants by their earliest available time
+    participants.sort(key=lambda x: min([start for start, end in x['schedules']] if x['schedules'] else [datetime(1900, 1, 1, 0, 0)]))
+
+    # Initialize the earliest available time
+    earliest_time = min([start for start, end in participants[0]['schedules']] if participants[0]['schedules'] else [datetime(1900, 1, 1, 0, 0)])
+
+    # Iterate over the participants to find a common available time
+    for participant in participants[1:]:
+        earliest_participant_time = min([start for start, end in participant['schedules']] if participant['schedules'] else [datetime(1900, 1, 1, 0, 0)])
+        if earliest_participant_time < earliest_time:
+            earliest_time = earliest_participant_time
+
+    # Check if the earliest available time is within the work hours
+    if earliest_time < datetime(1900, 1, 1, 9, 0) or earliest_time > datetime(1900, 1, 1, 17, 0):
+        earliest_time = datetime(1900, 1, 1, 9, 0)
+
+    # Calculate the meeting time with the exact duration
+    meeting_start_time = earliest_time
+    meeting_end_time = earliest_time + timedelta(minutes=meeting_duration)
+
+    # Ensure the meeting end time is within the work hours
+    if meeting_end_time > datetime(1900, 1, 1, 17, 0):
+        meeting_end_time = datetime(1900, 1, 1, 17, 0)
+        meeting_start_time = meeting_end_time - timedelta(minutes=meeting_duration)
+
+    # Format the output
+    output = f"{participants[0]['name']} found a meeting time: {meeting_start_time.strftime('%A')} {meeting_start_time.strftime('%H:%M')} - {meeting_end_time.strftime('%H:%M')}"
+
+    return output
+
+# Define the participants and their schedules
+participants = [
+    {'name': 'Emily','schedules': [(datetime(1900, 1, 1, 10, 0), datetime(1900, 1, 1, 10, 30)), (datetime(1900, 1, 1, 16, 0), datetime(1900, 1, 1, 16, 30))]},
+    {'name': 'Mason','schedules': []},
+    {'name': 'Maria','schedules': [(datetime(1900, 1, 1, 10, 30), datetime(1900, 1, 1, 11, 0)), (datetime(1900, 1, 1, 14, 0), datetime(1900, 1, 1, 14, 30))]},
+    {'name': 'Carl','schedules': [(datetime(1900, 1, 1, 9, 30), datetime(1900, 1, 1, 10, 0)), (datetime(1900, 1, 1, 10, 30), datetime(1900, 1, 1, 12, 30)), (datetime(1900, 1, 1, 13, 30), datetime(1900, 1, 1, 14, 0)), (datetime(1900, 1, 1, 14, 30), datetime(1900, 1, 1, 15, 30)), (datetime(1900, 1, 1, 16, 0), datetime(1900, 1, 1, 17, 0))]},
+    {'name': 'David','schedules': [(datetime(1900, 1, 1, 9, 30), datetime(1900, 1, 1, 11, 0)), (datetime(1900, 1, 1, 11, 30), datetime(1900, 1, 1, 12, 0)), (datetime(1900, 1, 1, 12, 30), datetime(1900, 1, 1, 13, 30)), (datetime(1900, 1, 1, 14, 0), datetime(1900, 1, 1, 15, 0)), (datetime(1900, 1, 1, 16, 0), datetime(1900, 1, 1, 17, 0))]},
+    {'name': 'Frank','schedules': [(datetime(1900, 1, 1, 9, 30), datetime(1900, 1, 1, 10, 30)), (datetime(1900, 1, 1, 11, 0), datetime(1900, 1, 1, 11, 30)), (datetime(1900, 1, 1, 12, 30), datetime(1900, 1, 1, 13, 30)), (datetime(1900, 1, 1, 14, 30), datetime(1900, 1, 1, 17, 0))]}
+]
+
+# Find a meeting time
+meeting_duration = 30  # in minutes
+print(find_meeting_time(participants, meeting_duration))

@@ -1,0 +1,1 @@
+if all(time not in slot for slot in schedule['Nicole']):

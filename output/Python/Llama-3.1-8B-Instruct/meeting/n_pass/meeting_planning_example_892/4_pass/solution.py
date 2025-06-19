@@ -1,0 +1,1 @@
+end_location = datetime.strptime(constraint["start"], "%H%M").time()

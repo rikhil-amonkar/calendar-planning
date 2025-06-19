@@ -1,0 +1,1 @@
+if (block_start <= time and time <= block_end) or (block_start <= time + duration and time + duration <= block_end):

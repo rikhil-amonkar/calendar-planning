@@ -1,0 +1,129 @@
+from datetime import datetime, timedelta
+
+def find_meeting_time(susan_schedule, sandra_schedule, meeting_duration, day_preferences):
+    """
+    Find a suitable time for a meeting between Susan and Sandra.
+
+    Args:
+    - susan_schedule (dict): Susan's schedule with day names as keys and lists of time slots as values.
+    - sandra_schedule (dict): Sandra's schedule with day names as keys and lists of time slots as values.
+    - meeting_duration (int): The duration of the meeting in minutes.
+    - day_preferences (list): A list of preferred days for the meeting.
+
+    Returns:
+    - A tuple containing the day of the week, start time, and end time for the meeting.
+    """
+
+    # Define the start and end times for the work hours
+    start_time = datetime.strptime('09:00', '%H:%M')
+    end_time = datetime.strptime('17:00', '%H:%M')
+
+    # Initialize the meeting time
+    meeting_time = None
+
+    # Iterate over the preferred days
+    for day in day_preferences:
+        # Determine the day of the week
+        if day == 'Monday':
+            day_name = 'Monday'
+            day_start = datetime.strptime('09:00', '%H:%M')
+            day_end = datetime.strptime('17:00', '%H:%M')
+        elif day == 'Tuesday':
+            day_name = 'Tuesday'
+            day_start = datetime.strptime('09:00', '%H:%M')
+            day_end = datetime.strptime('17:00', '%H:%M')
+        elif day == 'Wednesday':
+            day_name = 'Wednesday'
+            day_start = datetime.strptime('09:00', '%H:%M')
+            day_end = datetime.strptime('17:00', '%H:%M')
+
+        # Generate time slots for the day
+        time_slots = []
+        current_time = day_start
+        while current_time < day_end:
+            time_slots.append((current_time.strftime('%H:%M'), (current_time + timedelta(minutes=30)).strftime('%H:%M')))
+            current_time += timedelta(minutes=30)
+
+        # Filter time slots based on schedules
+        susan_time_slots = [slot for slot in time_slots if slot[0] not in susan_schedule.get(day, []) and slot[1] not in susan_schedule.get(day, [])]
+        sandra_time_slots = [slot for slot in time_slots if slot[0] not in sandra_schedule.get(day, []) and slot[1] not in sandra_schedule.get(day, [])]
+
+        # Find common available time slots
+        common_time_slots = [slot for slot in susan_time_slots if slot in sandra_time_slots]
+
+        # Iterate over the common time slots
+        for slot in common_time_slots:
+            # Convert time slots to datetime objects
+            susan_start = datetime.strptime(slot[0], '%H:%M')
+            susan_end = datetime.strptime(slot[1], '%H:%M')
+            sandra_start = datetime.strptime(slot[0], '%H:%M')
+            sandra_end = datetime.strptime(slot[1], '%H:%M')
+
+            # Check if the time slot has enough duration for the meeting
+            if (susan_end - susan_start).total_seconds() / 60 >= meeting_duration and (sandra_end - sandra_start).total_seconds() / 60 >= meeting_duration:
+                # Check if the time slot is within the work hours
+                if (susan_start >= start_time and susan_end <= end_time) and (sandra_start >= start_time and sandra_end <= end_time):
+                    # Check if the time slot conflicts with unavailable time slots
+                    susan_unavailable = susan_schedule.get(day, [])
+                    sandra_unavailable = sandra_schedule.get(day, [])
+
+                    # Sort unavailable time slots by start time
+                    susan_unavailable.sort(key=lambda x: datetime.strptime(x, '%H:%M'))
+                    sandra_unavailable.sort(key=lambda x: datetime.strptime(x, '%H:%M'))
+
+                    # Initialize the previous end time
+                    prev_end = None
+
+                    # Iterate over the unavailable time slots
+                    for unavailable in susan_unavailable + sandra_unavailable:
+                        unavailable_time = datetime.strptime(unavailable, '%H:%M')
+
+                        # If the unavailable time slot conflicts with the meeting time, break
+                        if (unavailable_time >= susan_start and unavailable_time < susan_end) or (unavailable_time > susan_start and unavailable_time <= susan_end):
+                            break
+                        elif prev_end and (unavailable_time >= prev_end or (unavailable_time == prev_end and (unavailable_time >= susan_start and unavailable_time < susan_end))):
+                            # If the unavailable time slot conflicts with the previous end time, break
+                            break
+                        else:
+                            # Update the previous end time
+                            prev_end = unavailable_time
+
+                    else:
+                        # If no conflicts are found, update the meeting time
+                        meeting_time = (slot[0], slot[1], day_name)
+                        break
+
+        # If a meeting time is found, break the loop
+        if meeting_time:
+            break
+
+    return meeting_time
+
+
+# Define the schedules
+susan_schedule = {
+    'Monday': ['09:30', '10:00', '12:30', '13:00', '13:30', '14:00'],
+    'Tuesday': ['11:30', '12:00'],
+    'Wednesday': ['9:30', '10:30', '14:00', '14:30', '15:30', '16:30']
+}
+
+sandra_schedule = {
+    'Monday': ['9:00', '13:00', '14:00', '15:00', '16:00', '16:30'],
+    'Tuesday': ['9:00', '9:30', '10:30', '12:00', '12:30', '13:30', '14:00', '14:30', '16:00', '17:00'],
+    'Wednesday': ['9:00', '11:30', '12:00', '12:30', '13:00', '17:00']
+}
+
+# Define the meeting duration
+meeting_duration = 30
+
+# Define the preferred days
+day_preferences = ['Monday', 'Tuesday', 'Wednesday']
+
+# Find a meeting time
+meeting_time = find_meeting_time(susan_schedule, sandra_schedule, meeting_duration, day_preferences)
+
+# Print the meeting time
+if meeting_time:
+    print(f"{meeting_time[2]}: {meeting_time[0]} - {meeting_time[1]}")
+else:
+    print("No meeting time found.")

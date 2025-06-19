@@ -1,0 +1,1 @@
+if proposed_time and (datetime(2024, 1, 1, 11, 0) <= proposed_time[0] and proposed_time[1] <= datetime(2024, 1, 1, 11, 0) + timedelta(minutes=meeting_duration)):

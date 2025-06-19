@@ -1,0 +1,54 @@
+from datetime import datetime, timedelta
+
+def find_meeting_time(participants, duration):
+    """
+    Find a meeting time that works for all participants.
+
+    Args:
+    participants (list): A list of dictionaries containing the participant's name and schedule.
+    duration (int): The duration of the meeting in minutes.
+
+    Returns:
+    str: The proposed meeting time in the format "HH:MM - HH:MM Day".
+    """
+    # Sort participants by their earliest available time
+    participants.sort(key=lambda x: x['start'])
+
+    # Initialize the proposed meeting time
+    proposed_time = participants[0]['start']
+
+    # Check if the proposed time works for all participants
+    while proposed_time < datetime(2024, 1, 1, 17, 0):  # assuming the day is Monday
+        works = True
+        unavailable_slots = set()
+        for participant in participants:
+            for i in range(int((participant['end'] - participant['start']).total_seconds()/30)):
+                unavailable_slots.add(participant['start'] + timedelta(minutes=i*30))
+                unavailable_slots.add(participant['start'] + timedelta(minutes=(i+1)*30-1))
+        if proposed_time + timedelta(minutes=duration) <= participants[0]['start'] + timedelta(days=1):
+            if proposed_time not in unavailable_slots and (proposed_time + timedelta(minutes=duration)) not in unavailable_slots:
+                return proposed_time.strftime("%H:%M") + "-" + (proposed_time + timedelta(minutes=duration)).strftime("%H:%M") + " " + proposed_time.strftime("%A")
+        proposed_time += timedelta(minutes=1)
+
+    # If no meeting time is found, return a message
+    return "No meeting time found that works for all participants."
+
+# Define the participants' schedules
+participants = [
+    {'name': 'Gregory','start': datetime(2024, 1, 1, 9, 0), 'end': datetime(2024, 1, 1, 10, 0)},
+    {'name': 'Gregory','start': datetime(2024, 1, 1, 10, 30), 'end': datetime(2024, 1, 1, 11, 30)},
+    {'name': 'Gregory','start': datetime(2024, 1, 1, 12, 30), 'end': datetime(2024, 1, 1, 13, 0)},
+    {'name': 'Gregory','start': datetime(2024, 1, 1, 13, 30), 'end': datetime(2024, 1, 1, 14, 0)},
+    {'name': 'Natalie','start': datetime(2024, 1, 1, 0, 0), 'end': datetime(2024, 1, 1, 17, 0)},
+    {'name': 'Christine','start': datetime(2024, 1, 1, 9, 0), 'end': datetime(2024, 1, 1, 11, 30)},
+    {'name': 'Christine','start': datetime(2024, 1, 1, 13, 30), 'end': datetime(2024, 1, 1, 17, 0)},
+    {'name': 'Vincent','start': datetime(2024, 1, 1, 9, 0), 'end': datetime(2024, 1, 1, 9, 30)},
+    {'name': 'Vincent','start': datetime(2024, 1, 1, 10, 30), 'end': datetime(2024, 1, 1, 12, 0)},
+    {'name': 'Vincent','start': datetime(2024, 1, 1, 12, 30), 'end': datetime(2024, 1, 1, 14, 0)},
+    {'name': 'Vincent','start': datetime(2024, 1, 1, 14, 30), 'end': datetime(2024, 1, 1, 17, 0)},
+    {'name': 'Unavailable Participant','start': datetime(2024, 1, 1, 17, 0), 'end': datetime(2024, 1, 1, 23, 59)},  # Changed to 23:59
+]
+
+# Find the meeting time
+duration = 30  # minutes
+print(find_meeting_time(participants, duration))
