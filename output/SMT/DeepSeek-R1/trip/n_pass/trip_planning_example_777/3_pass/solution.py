@@ -1,107 +1,102 @@
 from z3 import *
 
 def main():
-    cities = ["Dublin", "Helsinki", "Riga", "Reykjavik", "Vienna", "Tallinn"]
-    n_days = 15
-    n_travel_days = n_days - 1
-
-    dublin = 0
-    helsinki = 1
-    riga = 2
-    reykjavik = 3
-    vienna = 4
-    tallinn = 5
-
-    flights_undir = [
-        (helsinki, riga),
-        (riga, tallinn),
-        (vienna, helsinki),
-        (riga, dublin),
-        (vienna, riga),
-        (reykjavik, vienna),
-        (helsinki, dublin),
-        (tallinn, dublin),
-        (reykjavik, helsinki),
-        (reykjavik, dublin),
-        (helsinki, tallinn),
-        (vienna, dublin)
+    name_to_int = {
+        'Dublin': 0,
+        'Helsinki': 1,
+        'Riga': 2,
+        'Reykjavik': 3,
+        'Vienna': 4,
+        'Tallinn': 5
+    }
+    int_to_name = {v: k for k, v in name_to_int.items()}
+    
+    days_arr = [5, 3, 3, 2, 2, 5]
+    
+    edges_str = [
+        "Helsinki and Riga",
+        "Riga and Tallinn",
+        "Vienna and Helsinki",
+        "Riga and Dublin",
+        "Vienna and Riga",
+        "Reykjavik and Vienna",
+        "Helsinki and Dublin",
+        "Tallinn and Dublin",
+        "Reykjavik and Helsinki",
+        "Reykjavik and Dublin",
+        "Helsinki and Tallinn",
+        "Vienna and Dublin"
     ]
-
-    directed_flights = []
-    for (a, b) in flights_undir:
-        directed_flights.append((a, b))
-        directed_flights.append((b, a))
-
-    req_days = [5, 3, 3, 2, 2, 5]
-
-    base_city = [Int('base_city_%d' % i) for i in range(n_days)]
-    travel = [Bool('travel_%d' % i) for i in range(n_travel_days)]
-
-    s = Solver()
-
-    for i in range(n_days):
-        s.add(base_city[i] >= 0, base_city[i] <= 5)
-
-    s.add(base_city[0] == riga)
-    s.add(base_city[14] == tallinn)
-
-    for i in range(n_travel_days):
-        s.add(Implies(travel[i], base_city[i] != base_city[i+1]))
-        allowed_flight = Or([And(base_city[i] == a, base_city[i+1] == b) for (a, b) in directed_flights])
-        s.add(Implies(travel[i], allowed_flight))
-
-    total_per_city = [0] * 6
-    for c in range(6):
-        total = 0
-        for i in range(n_days):
-            total += If(base_city[i] == c, 1, 0)
-        for i in range(n_travel_days):
-            total += If(And(travel[i], base_city[i+1] == c), 1, 0)
-        s.add(total == req_days[c])
-
-    helsinki_days = []
-    for day in [3,4,5]:
-        i = day - 1
-        conds = [base_city[i] == helsinki]
-        if i < n_travel_days:
-            conds.append(And(travel[i], base_city[i+1] == helsinki))
-        helsinki_days.append(Or(conds))
-    s.add(Or(helsinki_days))
-
-    vienna_days = []
-    for day in [2,3]:
-        i = day - 1
-        conds = [base_city[i] == vienna]
-        if i < n_travel_days:
-            conds.append(And(travel[i], base_city[i+1] == vienna))
-        vienna_days.append(Or(conds))
-    s.add(Or(vienna_days))
-
-    tallinn_days = []
-    for day in range(7,12):
-        i = day - 1
-        conds = [base_city[i] == tallinn]
-        if i < n_travel_days:
-            conds.append(And(travel[i], base_city[i+1] == tallinn))
-        tallinn_days.append(Or(conds))
-    s.add(Or(tallinn_days))
-
-    s.add(Sum([If(travel[i], 1, 0) for i in range(n_travel_days)]) == 5)
-
-    if s.check() == sat:
-        m = s.model()
-        base_vals = [m.evaluate(base_city[i]) for i in range(n_days)]
-        travel_vals = [m.evaluate(travel[i]) for i in range(n_travel_days)]
-        print("Day\tCities")
-        for i in range(n_days):
-            day = i + 1
-            cities_today = set()
-            c0 = base_vals[i].as_long()
-            cities_today.add(cities[c0])
-            if i < n_travel_days and travel_vals[i]:
-                c1 = base_vals[i+1].as_long()
-                cities_today.add(cities[c1])
-            print(f"{day}\t{', '.join(sorted(cities_today))}")
+    allowed_edges = set()
+    for e in edges_str:
+        a, b = e.split(' and ')
+        a_int = name_to_int[a]
+        b_int = name_to_int[b]
+        allowed_edges.add((a_int, b_int))
+        allowed_edges.add((b_int, a_int))
+    
+    s = IntVector('s', 6)
+    constraints = []
+    
+    for i in range(6):
+        constraints.append(And(s[i] >= 0, s[i] < 6))
+    
+    constraints.append(Distinct(s))
+    
+    for i in range(5):
+        constraints.append(Or([And(s[i] == a, s[i+1] == b) for (a, b) in allowed_edges]))
+    
+    def get_day(city_expr):
+        return If(city_expr == 0, 5,
+              If(city_expr == 1, 3,
+              If(city_expr == 2, 3,
+              If(city_expr == 3, 2,
+              If(city_expr == 4, 2, 5)))))
+    
+    a = IntVector('a', 6)
+    constraints.append(a[0] == 1)
+    for k in range(1, 6):
+        sum_expr = Sum([get_day(s[i]) for i in range(k)])
+        constraints.append(a[k] == 1 - k + sum_expr)
+    
+    for k in range(6):
+        city_k = s[k]
+        constraints.append(If(city_k == 4, a[k] <= 3, True))  # Vienna event
+        constraints.append(If(city_k == 5, And(a[k] >= 3, a[k] <= 11), True))  # Tallinn event
+        constraints.append(If(city_k == 1, And(a[k] >= 2, a[k] <= 5), True))  # Helsinki event
+    
+    # Avoid Helsinki as the first city for better sequencing
+    constraints.append(s[0] != 1)
+    
+    solver = Solver()
+    solver.add(constraints)
+    if solver.check() == sat:
+        model = solver.model()
+        s_val = [model.evaluate(s[i]).as_long() for i in range(6)]
+        a_val = [model.evaluate(a[i]).as_long() for i in range(6)]
+        
+        end_val = []
+        for i in range(6):
+            city = s_val[i]
+            dur = days_arr[city]
+            end_val.append(a_val[i] + dur - 1)
+        
+        itinerary = []
+        for i in range(6):
+            city = s_val[i]
+            city_name = int_to_name[city]
+            start = a_val[i]
+            end = end_val[i]
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_name})
+            if i < 5:
+                itinerary.append({"day_range": f"Day {end}", "place": city_name})
+                next_city = s_val[i+1]
+                next_city_name = int_to_name[next_city]
+                itinerary.append({"day_range": f"Day {end}", "place": next_city_name})
+        
+        import json
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

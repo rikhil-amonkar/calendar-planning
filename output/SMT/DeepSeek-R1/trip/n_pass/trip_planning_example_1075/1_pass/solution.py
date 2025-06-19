@@ -1,114 +1,106 @@
 from z3 import *
+import json
 
 def main():
-    s = Solver()
+    city_names = ["Vienna", "Lyon", "Edinburgh", "Reykjavik", "Stuttgart", "Manchester", "Split", "Prague"]
+    days_arr = [4, 3, 4, 5, 5, 2, 5, 4]
+    index_dict = {city: idx for idx, city in enumerate(city_names)}
     
-    # City mapping
-    Reykjavik = 0
-    Stuttgart = 1
-    Vienna = 2
-    Lyon = 3
-    Edinburgh = 4
-    Manchester = 5
-    Split = 6
-    Prague = 7
-    
-    city_names = {
-        0: "Reykjavik",
-        1: "Stuttgart",
-        2: "Vienna",
-        3: "Lyon",
-        4: "Edinburgh",
-        5: "Manchester",
-        6: "Split",
-        7: "Prague"
-    }
-    
-    required_days = [5, 5, 4, 3, 4, 2, 5, 4]  # [0:Rey,1:Stutt,2:Vienna,3:Lyon,4:Edin,5:Manch,6:Split,7:Prague]
-    
-    edges_list = [
-        (0,1), (0,2), (0,7),
-        (1,2), (1,4), (1,5), (1,6),
-        (2,3), (2,5), (2,6), (2,7),
-        (3,6), (3,7),
-        (4,7),
-        (5,6), (5,7),
-        (6,7)
+    edges = [
+        ("Reykjavik", "Stuttgart"), 
+        ("Stuttgart", "Split"),
+        ("Stuttgart", "Vienna"),
+        ("Prague", "Manchester"),
+        ("Edinburgh", "Prague"),
+        ("Manchester", "Split"),
+        ("Prague", "Vienna"),
+        ("Vienna", "Manchester"),
+        ("Prague", "Split"),
+        ("Vienna", "Lyon"),
+        ("Stuttgart", "Edinburgh"),
+        ("Split", "Lyon"),
+        ("Stuttgart", "Manchester"),
+        ("Prague", "Lyon"),
+        ("Reykjavik", "Vienna"),
+        ("Prague", "Reykjavik"),
+        ("Vienna", "Split")
     ]
-    directed_edges = []
-    for (a, b) in edges_list:
-        directed_edges.append((a, b))
-        directed_edges.append((b, a))
     
-    num_days = 25
-    num_flights = num_days - 1
+    allowed_pairs = set()
+    for a, b in edges:
+        i = index_dict[a]
+        j = index_dict[b]
+        allowed_pairs.add((i, j))
+        allowed_pairs.add((j, i))
     
-    start_city = [Int('start_city_%d' % i) for i in range(num_days)]
-    flight = [Bool('flight_%d' % i) for i in range(num_flights)]
+    order = [Int(f"order_{i}") for i in range(8)]
     
-    # Domain constraint for start_city
-    for i in range(num_days):
-        s.add(start_city[i] >= 0, start_city[i] <= 7)
+    constraints = [Distinct(order)]
+    for i in range(8):
+        constraints.append(And(order[i] >= 0, order[i] < 8))
     
-    # Flight and next city constraints
-    for i in range(num_flights):
+    for i in range(7):
+        cons = Or([And(order[i] == a, order[i+1] == b) for (a, b) in allowed_pairs])
+        constraints.append(cons)
+    
+    S = [Int(f"S_{i}") for i in range(9)]
+    constraints.append(S[0] == 0)
+    for i in range(1, 9):
+        day_expr = Int(f"day_{i-1}")
         options = []
-        for (x, y) in directed_edges:
-            options.append(And(start_city[i] == x, start_city[i+1] == y))
-        s.add(If(flight[i],
-                 Or(options),
-                 start_city[i] == start_city[i+1]))
+        for idx in range(8):
+            options.append(And(order[i-1] == idx, day_expr == days_arr[idx]))
+        constraints.append(Or(options))
+        constraints.append(S[i] == S[i-1] + day_expr)
     
-    # Total flights must be 7
-    s.add(Sum([If(flight[i], 1, 0) for i in range(num_flights)]) == 7)
+    edinburgh_cons = Or([And(order[k] == 2, S[k] - k == 4) for k in range(8)])
+    constraints.append(edinburgh_cons)
     
-    # Count for each city
-    for c in range(8):
-        base_count = Sum([If(start_city[i] == c, 1, 0) for i in range(num_days)])
-        flight_count = Sum([If(And(flight[i], start_city[i+1] == c), 1, 0) for i in range(num_flights)])
-        total_count = base_count + flight_count
-        s.add(total_count == required_days[c])
+    split_cons = Or([And(order[k] == 6, S[k] - k == 18) for k in range(8)])
+    constraints.append(split_cons)
     
-    # Fixed Edinburgh from day5 to day8 (indices 4 to 7 for start_city, and no flights during days 5,6,7 (indices 4,5,6 in flight array)
-    s.add(start_city[4] == Edinburgh)
-    s.add(start_city[5] == Edinburgh)
-    s.add(start_city[6] == Edinburgh)
-    s.add(start_city[7] == Edinburgh)
-    s.add(flight[4] == False)  # no flight at the end of day5
-    s.add(flight[5] == False)  # no flight at the end of day6
-    s.add(flight[6] == False)  # no flight at the end of day7
-    
-    # Split wedding: must be in Split on at least one day between 19 to 23 (start_city indices 18 to 22)
-    conditions = []
-    # For day19 (start_city index 18)
-    conditions.append(Or(start_city[18] == Split, And(flight[18], start_city[19] == Split)))
-    # For day20 (start_city index 19)
-    conditions.append(Or(start_city[19] == Split, And(flight[19], start_city[20] == Split)))
-    # For day21 (start_city index 20)
-    conditions.append(Or(start_city[20] == Split, And(flight[20], start_city[21] == Split)))
-    # For day22 (start_city index 21)
-    conditions.append(Or(start_city[21] == Split, And(flight[21], start_city[22] == Split)))
-    # For day23 (start_city index 22)
-    conditions.append(Or(start_city[22] == Split, And(flight[22], start_city[23] == Split)))
-    s.add(Or(conditions))
-    
+    s = Solver()
+    s.add(constraints)
     if s.check() == sat:
         m = s.model()
-        schedule_start = [m.evaluate(start_city[i]) for i in range(num_days)]
-        schedule_flight = [m.evaluate(flight[i]) for i in range(num_flights)]
+        order_vals = [m.evaluate(order[i]) for i in range(8)]
+        order_indices = [val.as_long() for val in order_vals]
+        prefix = [0] * 9
+        for i in range(1, 9):
+            city_idx = order_indices[i-1]
+            prefix[i] = prefix[i-1] + days_arr[city_idx]
         
-        for day in range(num_days):
-            idx = day
-            city_start = schedule_start[idx]
-            city_start_val = city_start.as_long()
-            if day < num_flights and is_true(schedule_flight[day]):
-                city_next = schedule_start[day+1]
-                city_next_val = city_next.as_long()
-                print(f"Day {day+1}: Start in {city_names[city_start_val]}, then fly to {city_names[city_next_val]}")
-            else:
-                print(f"Day {day+1}: Stay in {city_names[city_start_val]}")
+        itinerary = []
+        s0 = 1
+        d0 = days_arr[order_indices[0]]
+        e0 = s0 + d0 - 1
+        city0 = city_names[order_indices[0]]
+        itinerary.append({"day_range": f"Day {s0}-{e0}", "place": city0})
+        if 0 < 7:
+            itinerary.append({"day_range": f"Day {e0}", "place": city0})
+        
+        for i in range(1, 7):
+            s_i = 1 + prefix[i] - i
+            d_i = days_arr[order_indices[i]]
+            e_i = s_i + d_i - 1
+            city_i = city_names[order_indices[i]]
+            itinerary.append({"day_range": f"Day {s_i}", "place": city_i})
+            itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": city_i})
+            if i < 7:
+                itinerary.append({"day_range": f"Day {e_i}", "place": city_i})
+        
+        i = 7
+        s_i = 1 + prefix[i] - i
+        d_i = days_arr[order_indices[i]]
+        e_i = s_i + d_i - 1
+        city_i = city_names[order_indices[i]]
+        itinerary.append({"day_range": f"Day {s_i}", "place": city_i})
+        itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": city_i})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

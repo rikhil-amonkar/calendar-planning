@@ -1,90 +1,102 @@
 from z3 import *
 
 def main():
+    cities = ["Mykonos", "Dublin", "Krakow", "Istanbul", "Venice", "Naples", "Brussels", "Frankfurt"]
+    n = len(cities)
+    req_days = [4, 5, 4, 3, 3, 4, 2, 3]  # in the order of the cities list
+
+    allowed_edges = [
+        (0, 5), (1, 6), (3, 4), (2, 7), (1, 5), (2, 6), (3, 5), (5, 6), (3, 7), (6, 7), 
+        (2, 3), (3, 6), (4, 7), (5, 7), (1, 2), (4, 6), (4, 5), (1, 3), (1, 4), (1, 7)
+    ]
+
+    # Create solver and variables
     s = Solver()
     
-    cities = ["Dublin", "Krakow", "Istanbul", "Venice", "Naples", "Brussels", "Mykonos", "Frankfurt"]
-    n_days = 21
-    n_cities = 8
+    # Sequence of cities (indexed 0 to 7)
+    seq = [Int('seq_%d' % i) for i in range(n)]
     
-    c = [Int(f"c_{i}") for i in range(1, n_days+1)]
-    for i in range(n_days):
-        s.add(c[i] >= 0, c[i] < n_cities)
+    # Start and end days for each city
+    start = [Int('start_%d' % i) for i in range(n)]
+    end = [Int('end_%d' % i) for i in range(n)]
     
-    edges = [
-        (0, 5), (5, 0), (6, 4), (4, 6), (3, 2), (2, 3), (7, 1), (1, 7), (4, 0), (0, 4),
-        (1, 5), (5, 1), (4, 2), (2, 4), (4, 5), (5, 4), (2, 7), (7, 2), (5, 7),
-        (2, 1), (1, 2), (2, 5), (5, 2), (3, 7), (7, 3), (4, 7), (7, 4), (0, 1),
-        (1, 0), (3, 5), (5, 3), (4, 3), (3, 4), (2, 0), (0, 2), (3, 0), (0, 3),
-        (0, 7), (7, 0)
-    ]
+    # Fix the first city as Mykonos (index0)
+    s.add(seq[0] == 0)
     
-    for i in range(n_days - 1):
-        current_city = c[i]
-        next_city = c[i+1]
-        flight_taken = current_city != next_city
-        valid_flight = Or([And(current_city == a, next_city == b) for (a, b) in edges])
-        s.add(If(flight_taken, valid_flight, True))
+    # Sequence must be a permutation of cities
+    s.add(Distinct(seq))
+    for i in range(n):
+        s.add(seq[i] >= 0, seq[i] < n)
     
-    total_days_per_city = [0] * n_cities
-    for city in range(n_cities):
-        conditions = []
-        for i in range(n_days - 1):
-            in_city_depart = c[i] == city
-            flight_arrive = And(c[i] != c[i+1], c[i+1] == city)
-            conditions.append(If(Or(in_city_depart, flight_arrive), 1, 0))
-        conditions.append(If(c[n_days-1] == city, 1, 0))
-        total_days_per_city[city] = Sum(conditions)
+    # Fixed constraints for Mykonos and Dublin
+    s.add(start[0] == 1, end[0] == 4)
+    s.add(start[1] == 11, end[1] == 15)
     
-    s.add(total_days_per_city[0] == 5)
-    s.add(total_days_per_city[1] == 4)
-    s.add(total_days_per_city[2] == 3)
-    s.add(total_days_per_city[3] == 3)
-    s.add(total_days_per_city[4] == 4)
-    s.add(total_days_per_city[5] == 2)
-    s.add(total_days_per_city[6] == 4)
-    s.add(total_days_per_city[7] == 3)
+    # Duration constraints for each city
+    for i in range(n):
+        s.add(end[i] == start[i] + req_days[i] - 1)
     
-    dublin_days = [10, 11, 12, 13, 14]
-    for d in dublin_days:
-        in_dublin_depart = c[d] == 0
-        flight_arrive_dublin = And(c[d] != c[d+1], c[d+1] == 0)
-        s.add(Or(in_dublin_depart, flight_arrive_dublin))
+    # Chain constraints: end of current city equals start of next city
+    for i in range(n-1):
+        curr_city = seq[i]
+        next_city = seq[i+1]
+        s.add(end[curr_city] == start[next_city])
     
-    mykonos_days = []
-    for d in [0, 1, 2, 3]:
-        in_mykonos_depart = c[d] == 6
-        flight_arrive_mykonos = And(c[d] != c[d+1], c[d+1] == 6)
-        mykonos_days.append(Or(in_mykonos_depart, flight_arrive_mykonos))
-    s.add(Or(mykonos_days))
+    # Entire trip ends at day 21
+    s.add(end[seq[n-1]] == 21)
     
-    istanbul_days = []
-    for d in [8, 9, 10]:
-        in_istanbul_depart = c[d] == 2
-        flight_arrive_istanbul = And(c[d] != c[d+1], c[d+1] == 2)
-        istanbul_days.append(Or(in_istanbul_depart, flight_arrive_istanbul))
-    s.add(Or(istanbul_days))
+    # Event constraints
+    # Istanbul (index3) must have at least one day between 9 and 11
+    s.add(start[3] <= 11, end[3] >= 9)
+    # Frankfurt (index7) must have at least one day between 15 and 17
+    s.add(start[7] <= 17, end[7] >= 15)
     
-    frankfurt_days = []
-    for d in [14, 15, 16]:
-        in_frankfurt_depart = c[d] == 7
-        flight_arrive_frankfurt = And(c[d] != c[d+1], c[d+1] == 7)
-        frankfurt_days.append(Or(in_frankfurt_depart, flight_arrive_frankfurt))
-    s.add(Or(frankfurt_days))
+    # Flight connection constraints for consecutive cities
+    for i in range(n-1):
+        city_i = seq[i]
+        city_j = seq[i+1]
+        edge_constraints = []
+        for edge in allowed_edges:
+            edge_constraints.append(Or(
+                And(city_i == edge[0], city_j == edge[1]),
+                And(city_i == edge[1], city_j == edge[0])
+            ))
+        s.add(Or(edge_constraints))
     
+    # Check for solution
     if s.check() == sat:
         m = s.model()
-        plan = [m.evaluate(c[i]).as_long() for i in range(n_days)]
-        print("Day-by-day city schedule:")
-        for day in range(1, n_days+1):
-            city_index = plan[day-1]
-            print(f"Day {day}: {cities[city_index]}")
-        print("\nFlight days (when city changes):")
-        for day in range(1, n_days):
-            if plan[day-1] != plan[day]:
-                print(f"Day {day}: Flight from {cities[plan[day-1]]} to {cities[plan[day]]}")
+        # Extract sequence
+        seq_val = [m.evaluate(seq[i]).as_long() for i in range(n)]
+        # Extract start and end days
+        start_val = [m.evaluate(start[i]).as_long() for i in range(n)]
+        end_val = [m.evaluate(end[i]).as_long() for i in range(n)]
+        
+        # Build itinerary
+        itinerary = []
+        for i in range(n):
+            city_idx = seq_val[i]
+            s_day = start_val[city_idx]
+            e_day = end_val[city_idx]
+            # Entire stay record
+            if s_day == e_day:
+                day_str = "Day %d" % s_day
+            else:
+                day_str = "Day %d-%d" % (s_day, e_day)
+            itinerary.append({"day_range": day_str, "place": cities[city_idx]})
+            # If not the last city, add departure and arrival records for the flight day
+            if i < n-1:
+                # Departure from current city
+                itinerary.append({"day_range": "Day %d" % e_day, "place": cities[city_idx]})
+                # Arrival at next city
+                next_city_idx = seq_val[i+1]
+                itinerary.append({"day_range": "Day %d" % e_day, "place": cities[next_city_idx]})
+        
+        # Output as JSON
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        print("No valid schedule found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

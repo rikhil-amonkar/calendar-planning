@@ -1,90 +1,88 @@
-from z3 import *
+import z3
+import json
 
 def main():
-    # Create the solver
-    s = Solver()
+    s_D, s_R, s_V = z3.Ints('s_D s_R s_V')
+    e_D, e_R, e_V = z3.Ints('e_D e_R e_V')
+    starts = [s_D, s_R, s_V]
+    ends = [e_D, e_R, e_V]
     
-    # Define the cities: 0=Dublin, 1=Riga, 2=Vilnius
-    S1 = Int('S1')
-    S2 = Int('S2')
-    S3 = Int('S3')
-    t1 = Int('t1')
-    t2 = Int('t2')
+    o0, o1, o2 = z3.Ints('o0 o1 o2')
+    order = [o0, o1, o2]
     
-    # Constraints for cities: must be 0, 1, or 2 and distinct
-    s.add(S1 >= 0, S1 <= 2)
-    s.add(S2 >= 0, S2 <= 2)
-    s.add(S3 >= 0, S3 <= 2)
-    s.add(Distinct(S1, S2, S3))
+    cities = ["Dublin", "Riga", "Vilnius"]
     
-    # Constraints for travel days: 1 <= t1 < t2 <= 11
-    s.add(t1 >= 1, t1 <= 11)
-    s.add(t2 >= 1, t2 <= 11)
-    s.add(t1 < t2)
+    solver = z3.Solver()
     
-    # Days in each city
-    days_dublin = If(S1 == 0, t1, 
-                    If(S2 == 0, t2 - t1 + 1,
-                     If(S3 == 0, 13 - t2, 0)))
-    days_riga   = If(S1 == 1, t1,
-                    If(S2 == 1, t2 - t1 + 1,
-                     If(S3 == 1, 13 - t2, 0)))
-    days_vilnius= If(S1 == 2, t1,
-                    If(S2 == 2, t2 - t1 + 1,
-                     If(S3 == 2, 13 - t2, 0)))
+    # Durations
+    solver.add(e_D - s_D + 1 == 2)
+    solver.add(e_R - s_R + 1 == 5)
+    solver.add(e_V - s_V + 1 == 7)
     
-    s.add(days_dublin == 2)
-    s.add(days_riga == 5)
-    s.add(days_vilnius == 7)
+    # Bounds and ordering
+    for s in starts:
+        solver.add(s >= 1, s <= 12)
+    for e in ends:
+        solver.add(e >= 1, e <= 12)
+    for i in range(3):
+        solver.add(starts[i] <= ends[i])
     
-    # Flight constraints
-    # Allowed flights: (Dublin,Riga), (Riga,Dublin), (Riga,Vilnius)
-    flight1_ok = Or(
-        And(S1 == 0, S2 == 1),  # Dublin -> Riga
-        And(S1 == 1, S2 == 0),  # Riga -> Dublin
-        And(S1 == 1, S2 == 2)   # Riga -> Vilnius
-    )
-    flight2_ok = Or(
-        And(S2 == 0, S3 == 1),  # Dublin -> Riga
-        And(S2 == 1, S3 == 0),  # Riga -> Dublin
-        And(S2 == 1, S3 == 2)   # Riga -> Vilnius
-    )
-    s.add(flight1_ok, flight2_ok)
+    # Order: distinct and in [0,2]
+    solver.add(z3.Distinct(order))
+    for o in order:
+        solver.add(o >= 0, o <= 2)
     
-    # Check and get the model
-    if s.check() == sat:
-        m = s.model()
-        S1_val = m[S1].as_long()
-        S2_val = m[S2].as_long()
-        S3_val = m[S3].as_long()
-        t1_val = m[t1].as_long()
-        t2_val = m[t2].as_long()
+    # First city starts at 1, last ends at 12
+    solver.add(starts[order[0]] == 1)
+    solver.add(ends[order[2]] == 12)
+    
+    # Connections: end of one = start of next
+    solver.add(ends[order[0]] == starts[order[1]])
+    solver.add(ends[order[1]] == starts[order[2]])
+    
+    # Flight connections: consecutive cities must be adjacent
+    solver.add(z3.Or(
+        z3.And(order[0] == 0, order[1] == 1),
+        z3.And(order[0] == 1, order[1] == 0),
+        z3.And(order[0] == 1, order[1] == 2),
+        z3.And(order[0] == 2, order[1] == 1)
+    ))
+    solver.add(z3.Or(
+        z3.And(order[1] == 0, order[2] == 1),
+        z3.And(order[1] == 1, order[2] == 0),
+        z3.And(order[1] == 1, order[2] == 2),
+        z3.And(order[1] == 2, order[2] == 1)
+    ))
+    
+    if solver.check() == z3.sat:
+        m = solver.model()
+        o0_val = m[o0].as_long()
+        o1_val = m[o1].as_long()
+        o2_val = m[o2].as_long()
+        order_vals = [o0_val, o1_val, o2_val]
         
-        city_names = {0: 'Dublin', 1: 'Riga', 2: 'Vilnius'}
-        s1_name = city_names[S1_val]
-        s2_name = city_names[S2_val]
-        s3_name = city_names[S3_val]
+        s_vals = [m.eval(s_D).as_long(), m.eval(s_R).as_long(), m.eval(s_V).as_long()]
+        e_vals = [m.eval(e_D).as_long(), m.eval(e_R).as_long(), m.eval(e_V).as_long()]
         
-        # Build the plan for each day
-        plan = []
-        for day in range(1, 13):
-            if day < t1_val:
-                cities_today = [s1_name]
-            elif day == t1_val:
-                cities_today = [s1_name, s2_name]
-            elif day < t2_val:
-                cities_today = [s2_name]
-            elif day == t2_val:
-                cities_today = [s2_name, s3_name]
-            else:  # day > t2_val
-                cities_today = [s3_name]
-            plan.append((day, cities_today))
+        flight_day1 = e_vals[order_vals[0]]
+        flight_day2 = e_vals[order_vals[1]]
         
-        # Print the plan
-        for day, cities in plan:
-            print(f"Day {day}: {', '.join(cities)}")
+        itinerary = []
+        city0 = cities[order_vals[0]]
+        itinerary.append({"day_range": f"Day {s_vals[order_vals[0]]}-{e_vals[order_vals[0]]}", "place": city0})
+        itinerary.append({"day_range": f"Day {flight_day1}", "place": city0})
+        city1 = cities[order_vals[1]]
+        itinerary.append({"day_range": f"Day {flight_day1}", "place": city1})
+        itinerary.append({"day_range": f"Day {s_vals[order_vals[1]]}-{e_vals[order_vals[1]]}", "place": city1})
+        itinerary.append({"day_range": f"Day {flight_day2}", "place": city1})
+        city2 = cities[order_vals[2]]
+        itinerary.append({"day_range": f"Day {flight_day2}", "place": city2})
+        itinerary.append({"day_range": f"Day {s_vals[order_vals[2]]}-{e_vals[order_vals[2]]}", "place": city2})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No valid plan found.")
+        print(json.dumps({"itinerary": []}))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,66 +1,84 @@
 from z3 import *
+import json
 
 def main():
+    cities = ["Prague", "Stuttgart", "Split", "Krakow", "Florence"]
     n_days = 8
-    city_names = ['Prague', 'Stuttgart', 'Split', 'Krakow', 'Florence']
-    n_cities = len(city_names)
-    
-    flights_raw = [(1, 2), (0, 4), (3, 1), (3, 2), (2, 0), (3, 0)]
-    connected = set()
-    for (u, v) in flights_raw:
-        connected.add((u, v))
-        connected.add((v, u))
-    
-    Start = [Int('Start_%d' % (d+1)) for d in range(n_days)]
-    End = [Int('End_%d' % (d+1)) for d in range(n_days)]
-    Travel = [Bool('Travel_%d' % (d+1)) for d in range(n_days)]
-    In = [[Bool('In_%s_%d' % (city_names[c], d+1)) for d in range(n_days)] for c in range(n_cities)]
-    
+    start_city = [Int(f'start_{i}') for i in range(n_days)]
+    end_city = [Int(f'end_{i}') for i in range(n_days)]
+
     s = Solver()
-    
-    s.add(Start[0] >= 0, Start[0] < n_cities)
-    
+
     for i in range(n_days):
-        s.add(Start[i] >= 0, Start[i] < n_cities)
-        s.add(End[i] >= 0, End[i] < n_cities)
-        
-        s.add(Or([And(Start[i] == c, In[c][i]) for c in range(n_cities)]))
-        
-        num_cities = Sum([If(In[c][i], 1, 0) for c in range(n_cities)])
-        s.add(Travel[i] == (num_cities == 2))
-        
-        s.add(Implies(Not(Travel[i]), And(*[In[c][i] == (c == Start[i]) for c in range(n_cities)])))
-        s.add(Implies(Not(Travel[i]), End[i] == Start[i]))
-        
-        s.add(Implies(Travel[i], In[End[i]][i]))
-        s.add(Implies(Travel[i], End[i] != Start[i]))
-        
-        flight_cond = Or([And(Start[i] == c1, End[i] == c2) for (c1, c2) in connected])
-        s.add(Implies(Travel[i], flight_cond))
-    
+        s.add(start_city[i] >= 0)
+        s.add(start_city[i] < 5)
+        s.add(end_city[i] >= 0)
+        s.add(end_city[i] < 5)
+
     for i in range(n_days - 1):
-        s.add(Start[i+1] == End[i])
-    
-    total_days = [Sum([If(In[c][d], 1, 0) for d in range(n_days)]) for c in range(n_cities)]
-    s.add(total_days[0] == 4)
-    s.add(total_days[1] == 2)
-    s.add(total_days[2] == 2)
-    s.add(total_days[3] == 2)
-    s.add(total_days[4] == 2)
-    
-    s.add(In[1][1] == True)
-    s.add(In[1][2] == True)
-    s.add(In[2][2] == True)
-    s.add(In[2][3] == True)
-    
+        s.add(end_city[i] == start_city[i + 1])
+
+    s.add(end_city[1] == 1)
+    s.add(start_city[2] == 1)
+    s.add(end_city[2] == 2)
+
+    allowed_pairs = [
+        (1, 2), (2, 1),
+        (0, 4), (4, 0),
+        (3, 1), (1, 3),
+        (3, 2), (2, 3),
+        (2, 0), (0, 2),
+        (3, 0), (0, 3)
+    ]
+    for i in range(n_days):
+        flight_day = Or([And(start_city[i] == a, end_city[i] == b) for (a, b) in allowed_pairs])
+        s.add(If(start_city[i] != end_city[i], flight_day, True))
+
+    city_days = [4, 2, 2, 2, 2]
+    for c, req_days in enumerate(city_days):
+        total = 0
+        for i in range(n_days):
+            total += If(Or(start_city[i] == c, end_city[i] == c), 1, 0)
+        s.add(total == req_days)
+
     if s.check() == sat:
         m = s.model()
-        print("Found a valid schedule:")
-        for d in range(n_days):
-            cities_on_day = [city_names[c] for c in range(n_cities) if m.evaluate(In[c][d])]
-            print(f"Day {d+1}: {', '.join(cities_on_day)}")
+        start_vals = [m.eval(start_city[i]).as_long() for i in range(n_days)]
+        end_vals = [m.eval(end_city[i]).as_long() for i in range(n_days)]
+
+        blocks = []
+        current_city = start_vals[0]
+        start_day = 0
+        for i in range(n_days):
+            if start_vals[i] != current_city:
+                current_city = start_vals[i]
+            if start_vals[i] != end_vals[i]:
+                blocks.append((start_day, i, current_city))
+                current_city = end_vals[i]
+                start_day = i
+        blocks.append((start_day, n_days - 1, current_city))
+
+        itinerary = []
+        for s_day, e_day, c in blocks:
+            city_name = cities[c]
+            if s_day == e_day:
+                day_range_str = f"Day {s_day + 1}"
+            else:
+                day_range_str = f"Day {s_day + 1}-{e_day + 1}"
+            itinerary.append({"day_range": day_range_str, "place": city_name})
+
+        for i in range(n_days):
+            if start_vals[i] != end_vals[i]:
+                dep_city = cities[start_vals[i]]
+                arr_city = cities[end_vals[i]]
+                day_str = f"Day {i + 1}"
+                itinerary.append({"day_range": day_str, "place": dep_city})
+                itinerary.append({"day_range": day_str, "place": arr_city})
+
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
-        print("No valid schedule found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

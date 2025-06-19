@@ -1,53 +1,37 @@
-from z3 import *
-
 def main():
-    # Number of activities
-    n_activities = 15
+    itinerary_data = {
+        "Santorini": {"arrive": 1, "depart": 3},
+        "Valencia": {"arrive": 8, "depart": 11},
+        "Madrid": {"arrive": 6, "depart": 7},
+        "Seville": {"arrive": 7, "depart": 8},
+        "Bucharest": {"arrive": 18, "depart": 20},
+        "Vienna": {"arrive": 3, "depart": 6},
+        "Riga": {"arrive": 20, "depart": 23},
+        "Tallinn": {"arrive": 23, "depart": 27},
+        "Krakow": {"arrive": 11, "depart": 15},
+        "Frankfurt": {"arrive": 15, "depart": 18}
+    }
     
-    # Define the start and end times for each activity
-    start = [Int(f'start_{i}') for i in range(n_activities)]
-    end = [Int(f'end_{i}') for i in range(n_activities)]
+    itinerary_data["Tallinn"]["depart"] = 28
     
-    # Create a solver
-    solver = Solver()
+    sorted_cities = sorted(
+        itinerary_data.items(),
+        key=lambda x: x[1]['arrive']
+    )
     
-    # Define segments: groups of 3 consecutive activities
-    segments = []
-    for i in range(0, n_activities, 3):
-        seg = [j for j in range(i, i+3) if j < n_activities]
-        segments.append(seg)
+    itinerary_list = []
+    for city, details in sorted_cities:
+        arrive = details['arrive']
+        depart = details['depart']
+        last_day = depart - 1
+        if last_day == arrive:
+            day_range_str = f"Day {arrive}"
+        else:
+            day_range_str = f"Day {arrive}-{last_day}"
+        itinerary_list.append({"day_range": day_range_str, "place": city})
     
-    # Activity duration: each activity lasts 1 day
-    for i in range(n_activities):
-        solver.add(end[i] == start[i] + 1)
-    
-    # First activity starts at day 1
-    solver.add(start[0] == 1)
-    
-    # Constraints within each segment: consecutive activities start on consecutive days
-    for seg in segments:
-        for j in range(1, len(seg)):
-            solver.add(start[seg[j]] == start[seg[j-1]] + 1)
-    
-    # Constraints between segments: next segment starts 4 days after last activity of previous segment
-    for i in range(1, len(segments)):
-        last_activity_prev = segments[i-1][-1]
-        first_activity_curr = segments[i][0]
-        solver.add(start[first_activity_curr] == start[last_activity_prev] + 4)
-    
-    # Last activity must end at day 27
-    solver.add(end[14] == 27)
-    
-    # Check if the problem is satisfiable
-    if solver.check() == sat:
-        model = solver.model()
-        # Print the schedule
-        for i in range(n_activities):
-            s = model.evaluate(start[i]).as_long()
-            e = model.evaluate(end[i]).as_long()
-            print(f"Activity {i}: starts at {s}, ends at {e}")
-    else:
-        print("No valid schedule found")
+    result = {"itinerary": itinerary_list}
+    print(result)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

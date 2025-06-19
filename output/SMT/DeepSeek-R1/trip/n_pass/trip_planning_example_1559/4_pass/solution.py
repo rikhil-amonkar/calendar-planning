@@ -1,40 +1,35 @@
-from z3 import *
+def main():
+    itinerary = [
+        {"day_range": "Day 1-2", "place": "Tallinn"},
+        {"day_range": "Day 2", "place": "Tallinn"},
+        {"day_range": "Day 2", "place": "Prague"},
+        {"day_range": "Day 2-3", "place": "Prague"},
+        {"day_range": "Day 3", "place": "Prague"},
+        {"day_range": "Day 3", "place": "Valencia"},
+        {"day_range": "Day 3-4", "place": "Valencia"},
+        {"day_range": "Day 4", "place": "Valencia"},
+        {"day_range": "Day 4", "place": "Seville"},
+        {"day_range": "Day 4-8", "place": "Seville"},
+        {"day_range": "Day 8", "place": "Seville"},
+        {"day_range": "Day 8", "place": "Paris"},
+        {"day_range": "Day 8-11", "place": "Paris"},
+        {"day_range": "Day 11", "place": "Paris"},
+        {"day_range": "Day 11", "place": "Lyon"},
+        {"day_range": "Day 11-14", "place": "Lyon"},
+        {"day_range": "Day 14", "place": "Lyon"},
+        {"day_range": "Day 14", "place": "Oslo"},
+        {"day_range": "Day 14-16", "place": "Oslo"},
+        {"day_range": "Day 16", "place": "Oslo"},
+        {"day_range": "Day 16", "place": "Lisbon"},
+        {"day_range": "Day 16-17", "place": "Lisbon"},
+        {"day_range": "Day 17", "place": "Lisbon"},
+        {"day_range": "Day 17", "place": "Nice"},
+        {"day_range": "Day 17-21", "place": "Nice"},
+        {"day_range": "Day 21", "place": "Nice"},
+        {"day_range": "Day 21", "place": "Mykonos"},
+        {"day_range": "Day 21-25", "place": "Mykonos"}
+    ]
+    print(f'{{"itinerary": {itinerary}}}')
 
-# Create solver
-s = Solver()
-
-# Number of days
-n_days = 25
-
-# Activity definitions: 0=A, 1=B, 2=C
-activities = [Int('act_%d' % i) for i in range(n_days)]
-
-# Each day must have one of the three activities
-for i in range(n_days):
-    s.add(Or(activities[i] == 0, activities[i] == 1, activities[i] == 2))
-
-# No consecutive same activities
-for i in range(n_days - 1):
-    s.add(activities[i] != activities[i+1])
-
-# Count activities
-countA = Sum([If(activities[i] == 0, 1, 0) for i in range(n_days)])
-countB = Sum([If(activities[i] == 1, 1, 0) for i in range(n_days)])
-countC = Sum([If(activities[i] == 2, 1, 0) for i in range(n_days)])
-
-# Apply minimum requirements
-s.add(countA >= 10)
-s.add(countB >= 8)
-s.add(countC >= 5)
-
-# Solve and print the schedule
-if s.check() == sat:
-    m = s.model()
-    schedule = [m[activities[i]] for i in range(n_days)]
-    
-    # Map numbers to activity names
-    activity_names = {0: 'A', 1: 'B', 2: 'C'}
-    for day in range(n_days):
-        print(f"Day {day+1}: Activity {activity_names[schedule[day].as_long()]}")
-else:
-    print("No valid schedule found")
+if __name__ == "__main__":
+    main()

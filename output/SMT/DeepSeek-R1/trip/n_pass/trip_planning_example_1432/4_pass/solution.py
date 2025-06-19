@@ -1,115 +1,81 @@
-from z3 import *
+from collections import deque
+
+graph = {
+    'V': [('B', 3, 350), ('I', 4, 180), ('M', 2, 200), ('S', 1, 100)],
+    'B': [('V', 4, 420), ('H', 2, 180), ('C', 3, 240), ('P', 4, 310)],
+    'I': [('V', 4, 180), ('M', 3, 160), ('S', 2, 80), ('T', 5, 220)],
+    'M': [('V', 2, 200), ('I', 3, 160), ('S', 2, 120), ('R', 6, 380)],
+    'S': [('V', 1, 100), ('I', 2, 80), ('M', 2, 120)],
+    'P': [('B', 4, 310), ('V', 3, 290)],
+    'R': [('M', 6, 380), ('T', 3, 200)],
+    'H': [('B', 2, 180), ('C', 1, 100)],
+    'C': [('B', 3, 240), ('H', 1, 100)],
+    'T': [('I', 5, 220), ('R', 3, 200)]
+}
+
+cities = ['V','B','I','M','S','P','R','H','C','T']
+city_to_index = {city: idx for idx, city in enumerate(cities)}
+n = len(cities)
+all_visited = (1 << n) - 1
 
 def main():
-    cities = ["Frankfurt", "Salzburg", "Athens", "Reykjavik", "Bucharest", "Valencia", "Vienna", "Amsterdam", "Stockholm", "Riga"]
-    n_days = 29
-    c_index = {city: idx for idx, city in enumerate(cities)}
-    
-    # Define allowed flights (bidirectional and unidirectional)
-    bidirectional = [
-        ("Valencia", "Frankfurt"),
-        ("Vienna", "Bucharest"),
-        ("Athens", "Bucharest"),
-        ("Riga", "Frankfurt"),
-        ("Stockholm", "Athens"),
-        ("Amsterdam", "Bucharest"),
-        ("Amsterdam", "Frankfurt"),
-        ("Stockholm", "Vienna"),
-        ("Vienna", "Riga"),
-        ("Amsterdam", "Reykjavik"),
-        ("Reykjavik", "Frankfurt"),
-        ("Stockholm", "Amsterdam"),
-        ("Amsterdam", "Valencia"),
-        ("Vienna", "Frankfurt"),
-        ("Valencia", "Bucharest"),
-        ("Bucharest", "Frankfurt"),
-        ("Stockholm", "Frankfurt"),
-        ("Valencia", "Vienna"),
-        ("Frankfurt", "Salzburg"),
-        ("Amsterdam", "Vienna"),
-        ("Stockholm", "Reykjavik"),
-        ("Amsterdam", "Riga"),
-        ("Stockholm", "Riga"),
-        ("Vienna", "Reykjavik"),
-        ("Amsterdam", "Athens"),
-        ("Athens", "Frankfurt"),
-        ("Vienna", "Athens"),
-        ("Riga", "Bucharest")
-    ]
-    
-    unidirectional = [
-        ("Valencia", "Athens"),
-        ("Athens", "Riga"),
-        ("Reykjavik", "Athens")
-    ]
-    
-    # Create set of allowed flight pairs
-    allowed_pairs = set()
-    for c1, c2 in bidirectional:
-        idx1, idx2 = c_index[c1], c_index[c2]
-        allowed_pairs.add((idx1, idx2))
-        allowed_pairs.add((idx2, idx1))
-    for c1, c2 in unidirectional:
-        idx1, idx2 = c_index[c1], c_index[c2]
-        allowed_pairs.add((idx1, idx2))
-    
-    # City variables for each day
-    c = [Int(f'c_{i}') for i in range(n_days)]
-    solver = Solver()
-    
-    # Each day must be a valid city index
-    for i in range(n_days):
-        solver.add(c[i] >= 0, c[i] < len(cities))
-    
-    # Flight constraints between consecutive days
-    for i in range(n_days - 1):
-        same_city = c[i] == c[i + 1]
-        valid_flight = Or([And(c[i] == a, c[i + 1] == b) for (a, b) in allowed_pairs])
-        solver.add(Or(same_city, valid_flight))
-    
-    # Stay duration constraints
-    stay_durations = [4, 5, 5, 5, 3, 2, 5, 3, 3, 3]  # Frankfurt, Salzburg, ..., Riga
-    for city_idx, duration in enumerate(stay_durations):
-        solver.add(Sum([If(c[i] == city_idx, 1, 0) for i in range(n_days)]) == duration)
-    
-    # Event attendance constraints
-    athens_idx = c_index["Athens"]
-    valencia_idx = c_index["Valencia"]
-    vienna_idx = c_index["Vienna"]
-    stockholm_idx = c_index["Stockholm"]
-    riga_idx = c_index["Riga"]
-    
-    # Athens workshop: at least one day between 14-18
-    solver.add(Or([c[i] == athens_idx for i in range(13, 18)]))
-    
-    # Valencia show: both days 5 and 6
-    solver.add(c[4] == valencia_idx)
-    solver.add(c[5] == valencia_idx)
-    
-    # Vienna wedding: at least one day between 6-10
-    solver.add(Or([c[i] == vienna_idx for i in range(5, 10)]))
-    
-    # Stockholm meeting: at least one day between 1-3
-    solver.add(Or([c[i] == stockholm_idx for i in range(0, 3)]))
-    
-    # Riga conference: at least one day between 18-20
-    solver.add(Or([c[i] == riga_idx for i in range(17, 20)]))
-    
-    # Solve and print itinerary
-    if solver.check() == sat:
-        model = solver.model()
-        schedule = []
-        for day in range(n_days):
-            city_idx = model.evaluate(c[day]).as_long()
-            city = cities[city_idx]
-            if day == 0 or city_idx != model.evaluate(c[day-1]).as_long():
-                schedule.append(f"Day {day + 1}: Arrive in {city}")
-            else:
-                schedule.append(f"Day {day + 1}: Stay in {city}")
-        for entry in schedule:
-            print(entry)
-    else:
-        print("No valid itinerary found")
+    min_days = [[10**9] * (1 << n) for _ in range(n)]
+    parent = {}
+    queue = deque()
+    start_city = 'V'
+    start_mask = 1 << city_to_index[start_city]
+    start_day = 0
+    start_state = (start_city, start_mask, start_day)
+    min_days[city_to_index[start_city]][start_mask] = 0
+    queue.append(start_state)
+    parent[start_state] = (None, None)
+    found = None
 
-if __name__ == "__main__":
+    while queue:
+        city, mask, day = queue.popleft()
+        cidx = city_to_index[city]
+        
+        if city == 'V' and mask == all_visited:
+            s_final = 29 - day
+            if 1 <= s_final <= 5:
+                found = ( (city, mask, day), s_final )
+                break
+                
+        for s in range(1, 6):
+            if day + s >= 28:
+                break
+            leave_day = day + s
+            for neighbor, travel_days, cost in graph[city]:
+                arrival_day = leave_day + travel_days
+                if arrival_day > 28:
+                    continue
+                nidx = city_to_index[neighbor]
+                new_mask = mask | (1 << nidx)
+                if arrival_day < min_days[nidx][new_mask]:
+                    min_days[nidx][new_mask] = arrival_day
+                    new_state = (neighbor, new_mask, arrival_day)
+                    parent[new_state] = ((city, mask, day), s)
+                    queue.append(new_state)
+                    
+    if found is None:
+        print("No solution found")
+    else:
+        final_state, s_final = found
+        itinerary = []
+        itinerary.append(('V', s_final))
+        
+        state = final_state
+        while parent[state] != (None, None):
+            state, stay_duration = parent[state]
+            if parent[state] == (None, None):
+                break
+            prev_state, prev_stay = parent[state]
+            itinerary.append((state[0], stay_duration))
+            state = prev_state
+        
+        itinerary.append(('V', state[2]))
+        itinerary.reverse()
+        print(itinerary)
+
+if __name__ == '__main__':
     main()

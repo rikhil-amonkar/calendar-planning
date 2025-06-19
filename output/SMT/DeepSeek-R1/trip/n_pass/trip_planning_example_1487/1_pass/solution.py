@@ -1,108 +1,89 @@
+import json
 from z3 import *
 
-# Define city names and their indices
-cities = ["Copenhagen", "Geneva", "Mykonos", "Naples", "Prague", "Dubrovnik", "Athens", "Santorini", "Brussels", "Munich"]
-n_cities = len(cities)
+def main():
+    Cities = ['Copenhagen', 'Geneva', 'Mykonos', 'Naples', 'Prague', 'Dubrovnik', 'Athens', 'Santorini', 'Brussels', 'Munich']
+    
+    durations = {
+        'Copenhagen': 5,
+        'Geneva': 3,
+        'Mykonos': 2,
+        'Naples': 4,
+        'Prague': 2,
+        'Dubrovnik': 3,
+        'Athens': 4,
+        'Santorini': 5,
+        'Brussels': 4,
+        'Munich': 5
+    }
+    
+    flights_str = "Copenhagen and Dubrovnik, Brussels and Copenhagen, Prague and Geneva, Athens and Geneva, Naples and Dubrovnik, Athens and Dubrovnik, Geneva and Mykonos, Naples and Mykonos, Naples and Copenhagen, Munich and Mykonos, Naples and Athens, Prague and Athens, Santorini and Geneva, Athens and Santorini, Naples and Munich, Prague and Copenhagen, Brussels and Naples, Athens and Mykonos, Athens and Copenhagen, Naples and Geneva, Dubrovnik and Munich, Brussels and Munich, Prague and Brussels, Brussels and Athens, Athens and Munich, Geneva and Munich, Copenhagen and Munich, Brussels and Geneva, Copenhagen and Geneva, Prague and Munich, Copenhagen and Santorini, Naples and Santorini, Geneva and Dubrovnik"
+    flight_pairs = [s.split(' and ') for s in flights_str.split(', ')]
+    allowed_directed = set()
+    for a, b in flight_pairs:
+        allowed_directed.add((a, b))
+        allowed_directed.add((b, a))
+    
+    solver = Solver()
+    
+    start = {c: Int(f'start_{c}') for c in Cities}
+    end = {c: Int(f'end_{c}') for c in Cities}
+    order = {c: Int(f'order_{c}') for c in Cities}
+    
+    for c in Cities:
+        solver.add(end[c] == start[c] + durations[c] - 1)
+        solver.add(start[c] >= 1, end[c] <= 28)
+    
+    solver.add(start['Mykonos'] == 27, end['Mykonos'] == 28)
+    
+    solver.add(Distinct([order[c] for c in Cities]))
+    for c in Cities:
+        solver.add(order[c] >= 0, order[c] <= 9)
+    
+    first_city_constraint = Or([And(order[c] == 0, start[c] == 1) for c in Cities])
+    last_city_constraint = Or([And(order[c] == 9, end[c] == 28) for c in Cities])
+    solver.add(first_city_constraint, last_city_constraint)
+    
+    for c1 in Cities:
+        for c2 in Cities:
+            if c1 == c2:
+                continue
+            solver.add(Implies(order[c1] + 1 == order[c2], end[c1] == start[c2]))
+            if (c1, c2) not in allowed_directed:
+                solver.add(order[c1] + 1 != order[c2])
+    
+    solver.add(start['Copenhagen'] <= 15, end['Copenhagen'] >= 11)
+    solver.add(start['Naples'] <= 8, end['Naples'] >= 5)
+    solver.add(start['Athens'] <= 11, end['Athens'] >= 8)
+    
+    if solver.check() == sat:
+        m = solver.model()
+        start_vals = {c: m.eval(start[c]).as_long() for c in Cities}
+        end_vals = {c: m.eval(end[c]).as_long() for c in Cities}
+        order_vals = {c: m.eval(order[c]).as_long() for c in Cities}
+        
+        sorted_cities = sorted(Cities, key=lambda c: order_vals[c])
+        
+        itinerary = []
+        for idx, c in enumerate(sorted_cities):
+            s = start_vals[c]
+            e = end_vals[c]
+            if s == e:
+                day_range_str = f"Day {s}"
+            else:
+                day_range_str = f"Day {s}-{e}"
+            itinerary.append({"day_range": day_range_str, "place": c})
+            
+            if idx < len(sorted_cities) - 1:
+                flight_day = e
+                itinerary.append({"day_range": f"Day {flight_day}", "place": c})
+                next_city = sorted_cities[idx + 1]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": next_city})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print('{"error": "No solution found"}')
 
-# Required days per city: [Copenhagen, Geneva, Mykonos, Naples, Prague, Dubrovnik, Athens, Santorini, Brussels, Munich]
-days_req = [5, 3, 2, 4, 2, 3, 4, 5, 4, 5]
-
-# Build the set of allowed transitions (direct flights and same city)
-allowed_transitions = set()
-# Add same city transitions (stay in the same city)
-for i in range(n_cities):
-    allowed_transitions.add((i, i))
-
-# List of direct flights
-flight_list = [
-    "Copenhagen and Dubrovnik",
-    "Brussels and Copenhagen",
-    "Prague and Geneva",
-    "Athens and Geneva",
-    "Naples and Dubrovnik",
-    "Athens and Dubrovnik",
-    "Geneva and Mykonos",
-    "Naples and Mykonos",
-    "Naples and Copenhagen",
-    "Munich and Mykonos",
-    "Naples and Athens",
-    "Prague and Athens",
-    "Santorini and Geneva",
-    "Athens and Santorini",
-    "Naples and Munich",
-    "Prague and Copenhagen",
-    "Brussels and Naples",
-    "Athens and Mykonos",
-    "Athens and Copenhagen",
-    "Naples and Geneva",
-    "Dubrovnik and Munich",
-    "Brussels and Munich",
-    "Prague and Brussels",
-    "Brussels and Athens",
-    "Athens and Munich",
-    "Geneva and Munich",
-    "Copenhagen and Munich",
-    "Brussels and Geneva",
-    "Copenhagen and Geneva",
-    "Prague and Munich",
-    "Copenhagen and Santorini",
-    "Naples and Santorini",
-    "Geneva and Dubrovnik"
-]
-
-# Map flight strings to city indices and add both directions to allowed_transitions
-for flight in flight_list:
-    parts = flight.split(" and ")
-    city1 = parts[0]
-    city2 = parts[1]
-    idx1 = cities.index(city1)
-    idx2 = cities.index(city2)
-    allowed_transitions.add((idx1, idx2))
-    allowed_transitions.add((idx2, idx1))
-
-# Create Z3 solver
-s = Solver()
-
-# Create 28 integer variables for the schedule (days 1 to 28)
-schedule = [Int('s_%d' % i) for i in range(28)]
-
-# Constraint: each day variable is between 0 and 9 (city indices)
-for i in range(28):
-    s.add(schedule[i] >= 0, schedule[i] < n_cities)
-
-# Constraint: total days per city
-for city_idx in range(n_cities):
-    total_days = Sum([If(schedule[i] == city_idx, 1, 0) for i in range(28)])
-    s.add(total_days == days_req[city_idx])
-
-# Constraint: Copenhagen must be visited between day 11 and 15 (days 11,12,13,14,15 -> indices 10 to 14)
-s.add(Or([schedule[i] == 0 for i in [10, 11, 12, 13, 14]]))
-
-# Constraint: Mykonos on day 27 and 28 (indices 26 and 27)
-s.add(schedule[26] == 2)  # Mykonos index is 2
-s.add(schedule[27] == 2)
-
-# Constraint: Naples between day 5 and 8 (days 5,6,7,8 -> indices 4,5,6,7)
-s.add(Or([schedule[i] == 3 for i in [4, 5, 6, 7]]))  # Naples index is 3
-
-# Constraint: Athens between day 8 and 11 (days 8,9,10,11 -> indices 7,8,9,10)
-s.add(Or([schedule[i] == 6 for i in [7, 8, 9, 10]]))  # Athens index is 6
-
-# Constraint: consecutive days must be either the same city or connected by a direct flight
-for i in range(27):
-    # Create a disjunction for all allowed transitions (a, b) such that (schedule[i], schedule[i+1]) is in allowed_transitions
-    disj = []
-    for (a, b) in allowed_transitions:
-        disj.append(And(schedule[i] == a, schedule[i+1] == b))
-    s.add(Or(disj))
-
-# Solve the problem
-if s.check() == sat:
-    model = s.model()
-    schedule_result = [model.evaluate(schedule[i]).as_long() for i in range(28)]
-    # Print the schedule
-    for day in range(28):
-        city_idx = schedule_result[day]
-        print(f"Day {day+1}: {cities[city_idx]}")
-else:
-    print("No solution found")
+if __name__ == "__main__":
+    main()

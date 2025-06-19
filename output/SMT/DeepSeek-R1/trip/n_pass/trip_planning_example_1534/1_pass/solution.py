@@ -1,103 +1,141 @@
 from z3 import *
+import json
 
 def main():
-    cities = ['Warsaw', 'Venice', 'Vilnius', 'Salzburg', 'Amsterdam', 'Barcelona', 'Paris', 'Hamburg', 'Florence', 'Tallinn']
-    
-    flight_pairs = [
-        ('Paris', 'Venice'),
-        ('Barcelona', 'Amsterdam'),
-        ('Amsterdam', 'Warsaw'),
-        ('Amsterdam', 'Vilnius'),
-        ('Barcelona', 'Warsaw'),
-        ('Warsaw', 'Venice'),
-        ('Amsterdam', 'Hamburg'),
-        ('Barcelona', 'Hamburg'),
-        ('Barcelona', 'Florence'),
-        ('Barcelona', 'Venice'),
-        ('Paris', 'Hamburg'),
-        ('Paris', 'Vilnius'),
-        ('Paris', 'Amsterdam'),
-        ('Paris', 'Florence'),
-        ('Florence', 'Amsterdam'),
-        ('Vilnius', 'Warsaw'),
-        ('Barcelona', 'Tallinn'),
-        ('Paris', 'Warsaw'),
-        ('Tallinn', 'Warsaw'),
-        ('Tallinn', 'Vilnius'),
-        ('Amsterdam', 'Tallinn'),
-        ('Paris', 'Tallinn'),
-        ('Paris', 'Barcelona'),
-        ('Venice', 'Hamburg'),
-        ('Warsaw', 'Hamburg'),
-        ('Hamburg', 'Salzburg'),
-        ('Amsterdam', 'Venice')
-    ]
-    
-    flight_set = set()
-    for (a, b) in flight_pairs:
-        flight_set.add((min(a, b), max(a, b)))
-    
-    unconnected_pairs = []
-    for i in range(len(cities)):
-        for j in range(i + 1, len(cities)):
-            c1 = cities[i]
-            c2 = cities[j]
-            pair = (min(c1, c2), max(c1, c2))
-            if pair not in flight_set:
-                unconnected_pairs.append((c1, c2))
-    
-    In = {}
-    for c in cities:
-        for d in range(1, 26):
-            In[(c, d)] = Bool(f"In_{c}_{d}")
-    
+    # City indices for clarity
+    cities = ["Amsterdam", "Warsaw", "Venice", "Vilnius", "Florence", "Tallinn"]
+    lengths = {
+        "Amsterdam": 2,
+        "Warsaw": 4,
+        "Venice": 3,
+        "Vilnius": 3,
+        "Florence": 5,
+        "Tallinn": 2
+    }
+    direct_flights = {
+        "Barcelona": ["Amsterdam", "Warsaw", "Florence", "Venice", "Tallinn"],
+        "Amsterdam": ["Warsaw", "Vilnius", "Hamburg", "Venice", "Tallinn", "Florence"],
+        "Warsaw": ["Venice", "Vilnius", "Hamburg", "Tallinn"],
+        "Venice": ["Hamburg", "Warsaw"],
+        "Vilnius": ["Warsaw"],
+        "Florence": ["Amsterdam"],
+        "Tallinn": ["Vilnius", "Warsaw"]
+    }
+    directed_flights = {
+        "Tallinn": ["Vilnius"]
+    }
+
     s = Solver()
+    start_vars = {city: Int(f'start_{city}') for city in cities}
+    order = [Int(f'order_{i}') for i in range(6)]
+    city_index = {city: idx for idx, city in enumerate(cities)}
+    idx_city = {idx: city for idx, city in enumerate(cities)}
+
+    # Ensure order is a permutation of 0 to 5
+    s.add(Distinct(order))
+    for o in order:
+        s.add(o >= 0, o < 6)
     
-    for d in range(1, 26):
-        if d == 1 or d == 25:
-            s.add(Sum([If(In[(c, d)], 1, 0) for c in cities]) == 1)
+    # First city must be reachable from Barcelona
+    first_city = idx_city[order[0]]
+    s.add(Or(*[start_vars[first_city] == 7]))
+    s.add(first_city in direct_flights["Barcelona"])
+    
+    # Last city must have a direct flight to Hamburg
+    last_city = idx_city[order[5]]
+    s.add(last_city in direct_flights["Hamburg"])
+    
+    # Start day constraints
+    for city in cities:
+        s.add(start_vars[city] >= 7, start_vars[city] <= 19 - lengths[city] + 1)
+    
+    # Sequence constraints
+    for i in range(5):
+        city_i = idx_city[order[i]]
+        city_j = idx_city[order[i+1]]
+        end_i = start_vars[city_i] + lengths[city_i] - 1
+        s.add(start_vars[city_j] == end_i)
+        # Flight constraint
+        if city_i in directed_flights and city_j in directed_flights[city_i]:
+            pass
         else:
-            total = Sum([If(In[(c, d)], 1, 0) for c in cities])
-            s.add(Or(total == 1, total == 2))
+            s.add(Or(
+                city_j in direct_flights.get(city_i, []),
+                city_i in direct_flights.get(city_j, [])
+            ))
     
-    for (c1, c2) in unconnected_pairs:
-        for d in range(1, 26):
-            s.add(Not(And(In[(c1, d)], In[(c2, d)])))
+    # Tallinn must include day 11 or 12
+    s.add(Or(
+        And(start_vars["Tallinn"] <= 11, start_vars["Tallinn"] + lengths["Tallinn"] - 1 >= 11),
+        And(start_vars["Tallinn"] <= 12, start_vars["Tallinn"] + lengths["Tallinn"] - 1 >= 12)
+    ))
     
-    for d in range(2, 25):
-        total_d = Sum([If(In[(c, d)], 1, 0) for c in cities])
-        for c in cities:
-            s.add(Implies(And(In[(c, d)], total_d == 1), 
-                          And(In[(c, d-1)], In[(c, d+1)])))
-        
-        inter_prev = Sum([If(And(In[(c, d)], In[(c, d-1)]), 1, 0) for c in cities])
-        inter_next = Sum([If(And(In[(c, d)], In[(c, d+1)]), 1, 0) for c in cities])
-        s.add(Implies(total_d == 2, And(inter_prev == 1, inter_next == 1)))
-    
-    s.add(Sum([If(In[('Warsaw', d)], 1, 0) for d in range(1, 26)]) == 4)
-    s.add(Sum([If(In[('Venice', d)], 1, 0) for d in range(1, 26)]) == 3)
-    s.add(Sum([If(In[('Vilnius', d)], 1, 0) for d in range(1, 26)]) == 3)
-    s.add(Sum([If(In[('Salzburg', d)], 1, 0) for d in range(1, 26)]) == 4)
-    s.add(And(In[('Salzburg', 22)], In[('Salzburg', 23)], In[('Salzburg', 24)], In[('Salzburg', 25)]))
-    s.add(Sum([If(In[('Amsterdam', d)], 1, 0) for d in range(1, 26)]) == 2)
-    s.add(Sum([If(In[('Barcelona', d)], 1, 0) for d in range(1, 26)]) == 5)
-    s.add(Or([In[('Barcelona', d)] for d in range(2, 7)]))
-    s.add(Sum([If(In[('Paris', d)], 1, 0) for d in range(1, 26)]) == 2)
-    s.add(And(In[('Paris', 1)], In[('Paris', 2)]))
-    s.add(Sum([If(In[('Hamburg', d)], 1, 0) for d in range(1, 26)]) == 4)
-    s.add(And(In[('Hamburg', 19)], In[('Hamburg', 20)], In[('Hamburg', 21)], In[('Hamburg', 22)]))
-    s.add(Sum([If(In[('Florence', d)], 1, 0) for d in range(1, 26)]) == 5)
-    s.add(Sum([If(In[('Tallinn', d)], 1, 0) for d in range(1, 26)]) == 2)
-    s.add(Or(In[('Tallinn', 11)], In[('Tallinn', 12)]))
-    
+    # Solve the constraints
     if s.check() == sat:
-        m = s.model()
-        for d in range(1, 26):
-            cities_on_day = []
-            for c in cities:
-                if m.evaluate(In[(c, d)]):
-                    cities_on_day.append(c)
-            print(f"Day {d}: {', '.join(cities_on_day)}")
+        model = s.model()
+        start_days = {}
+        for city in cities:
+            start_days[city] = model.evaluate(start_vars[city]).as_long()
+        
+        # Determine the sequence
+        seq_order = [model.evaluate(order[i]).as_long() for i in range(6)]
+        seq_cities = [idx_city[idx] for idx in seq_order]
+        
+        # Generate itinerary
+        itinerary = []
+        # Fixed parts
+        itinerary.append({"day_range": "Day 1-2", "place": "Paris"})
+        itinerary.append({"day_range": "Day 1", "place": "Paris"})
+        itinerary.append({"day_range": "Day 2", "place": "Paris"})
+        itinerary.append({"day_range": "Day 2", "place": "Barcelona"})
+        itinerary.append({"day_range": "Day 2-6", "place": "Barcelona"})
+        for day in range(3, 7):
+            itinerary.append({"day_range": f"Day {day}", "place": "Barcelona"})
+        
+        # Cities from day 7 to 19
+        # First city: flight from Barcelona to first_city on day 7
+        first_city = seq_cities[0]
+        itinerary.append({"day_range": f"Day 7", "place": "Barcelona"})
+        itinerary.append({"day_range": f"Day 7", "place": first_city})
+        start_day = start_days[first_city]
+        end_day = start_day + lengths[first_city] - 1
+        if lengths[first_city] > 1:
+            itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": first_city})
+        for day in range(start_day, end_day + 1):
+            itinerary.append({"day_range": f"Day {day}", "place": first_city})
+        
+        # Subsequent cities
+        for i in range(1, 6):
+            city = seq_cities[i]
+            prev_city = seq_cities[i-1]
+            start_day = start_days[city]
+            end_day = start_day + lengths[city] - 1
+            # Flight from previous city to current city
+            itinerary.append({"day_range": f"Day {start_day}", "place": prev_city})
+            itinerary.append({"day_range": f"Day {start_day}", "place": city})
+            if lengths[city] > 1:
+                itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+            for day in range(start_day, end_day + 1):
+                itinerary.append({"day_range": f"Day {day}", "place": city})
+        
+        # Flight from last city to Hamburg
+        last_city = seq_cities[5]
+        last_end = start_days[last_city] + lengths[last_city] - 1
+        itinerary.append({"day_range": f"Day {last_end}", "place": last_city})
+        itinerary.append({"day_range": f"Day {last_end}", "place": "Hamburg"})
+        # Hamburg and Salzburg
+        itinerary.append({"day_range": "Day 19-22", "place": "Hamburg"})
+        for day in range(19, 23):
+            itinerary.append({"day_range": f"Day {day}", "place": "Hamburg"})
+        itinerary.append({"day_range": "Day 22", "place": "Hamburg"})
+        itinerary.append({"day_range": "Day 22", "place": "Salzburg"})
+        itinerary.append({"day_range": "Day 22-25", "place": "Salzburg"})
+        for day in range(22, 26):
+            itinerary.append({"day_range": f"Day {day}", "place": "Salzburg"})
+        
+        # Output
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

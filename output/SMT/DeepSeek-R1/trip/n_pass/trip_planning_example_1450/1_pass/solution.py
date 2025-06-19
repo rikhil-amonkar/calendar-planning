@@ -1,99 +1,164 @@
 from z3 import *
+import json
 
 def main():
-    s = Solver()
+    # Define the City enum
+    City, (Stockholm, Hamburg, Florence, Istanbul, Oslo, Vilnius, Santorini, Munich, Frankfurt, Krakow) = EnumSort('City', 
+        ['Stockholm', 'Hamburg', 'Florence', 'Istanbul', 'Oslo', 'Vilnius', 'Santorini', 'Munich', 'Frankfurt', 'Krakow'])
     
-    cities = ['Stockholm', 'Hamburg', 'Florence', 'Istanbul', 'Oslo', 'Vilnius', 'Santorini', 'Munich', 'Frankfurt', 'Krakow']
-    n_cities = len(cities)
-    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    cities_list = [Stockholm, Hamburg, Florence, Istanbul, Oslo, Vilnius, Santorini, Munich, Frankfurt, Krakow]
+    cities_names = ['Stockholm', 'Hamburg', 'Florence', 'Istanbul', 'Oslo', 'Vilnius', 'Santorini', 'Munich', 'Frankfurt', 'Krakow']
     
-    flights = [
-        ("Oslo", "Stockholm"), ("Stockholm", "Oslo"),
-        ("Krakow", "Frankfurt"), ("Frankfurt", "Krakow"),
-        ("Krakow", "Istanbul"), ("Istanbul", "Krakow"),
-        ("Munich", "Stockholm"), ("Stockholm", "Munich"),
-        ("Hamburg", "Stockholm"), ("Stockholm", "Hamburg"),
-        ("Krakow", "Vilnius"),
-        ("Oslo", "Istanbul"), ("Istanbul", "Oslo"),
-        ("Istanbul", "Stockholm"), ("Stockholm", "Istanbul"),
-        ("Oslo", "Krakow"), ("Krakow", "Oslo"),
-        ("Vilnius", "Istanbul"), ("Istanbul", "Vilnius"),
-        ("Oslo", "Vilnius"), ("Vilnius", "Oslo"),
-        ("Frankfurt", "Istanbul"), ("Istanbul", "Frankfurt"),
-        ("Oslo", "Frankfurt"), ("Frankfurt", "Oslo"),
-        ("Munich", "Hamburg"), ("Hamburg", "Munich"),
-        ("Florence", "Munich"),
-        ("Krakow", "Munich"), ("Munich", "Krakow"),
-        ("Hamburg", "Istanbul"), ("Istanbul", "Hamburg"),
-        ("Frankfurt", "Stockholm"), ("Stockholm", "Frankfurt"),
-        ("Stockholm", "Santorini"),
-        ("Frankfurt", "Munich"), ("Munich", "Frankfurt"),
-        ("Santorini", "Oslo"),
-        ("Krakow", "Stockholm"), ("Stockholm", "Krakow"),
-        ("Vilnius", "Munich")
-    ]
-    flight_set = set()
-    for f in flights:
-        from_city, to_city = f
-        idx1 = city_to_int[from_city]
-        idx2 = city_to_int[to_city]
-        flight_set.add((idx1, idx2))
-    
-    req_days = {
-        'Stockholm': 3,
-        'Hamburg': 5,
-        'Florence': 2,
-        'Istanbul': 5,
-        'Oslo': 5,
-        'Vilnius': 5,
-        'Santorini': 2,
-        'Munich': 5,
-        'Frankfurt': 4,
-        'Krakow': 5
+    # Durations for each city
+    dur = {
+        Stockholm: 3,
+        Hamburg: 5,
+        Florence: 2,
+        Istanbul: 5,
+        Oslo: 5,
+        Vilnius: 5,
+        Santorini: 2,
+        Munich: 5,
+        Frankfurt: 4,
+        Krakow: 5
     }
     
-    city_start = [Int('city_start_%d' % i) for i in range(1, 33)]
-    travel = [Bool('travel_%d' % i) for i in range(1, 32)]
+    # Build the graph of direct flights
+    bidirectional_pairs = [
+        ("Oslo", "Stockholm"),
+        ("Krakow", "Frankfurt"),
+        ("Krakow", "Istanbul"),
+        ("Munich", "Stockholm"),
+        ("Hamburg", "Stockholm"),
+        ("Oslo", "Istanbul"),
+        ("Istanbul", "Stockholm"),
+        ("Oslo", "Krakow"),
+        ("Vilnius", "Istanbul"),
+        ("Oslo", "Vilnius"),
+        ("Frankfurt", "Istanbul"),
+        ("Oslo", "Frankfurt"),
+        ("Munich", "Hamburg"),
+        ("Munich", "Istanbul"),
+        ("Oslo", "Munich"),
+        ("Frankfurt", "Florence"),
+        ("Oslo", "Hamburg"),
+        ("Vilnius", "Frankfurt"),
+        ("Krakow", "Munich"),
+        ("Hamburg", "Istanbul"),
+        ("Frankfurt", "Stockholm"),
+        ("Frankfurt", "Munich"),
+        ("Krakow", "Stockholm"),
+        ("Frankfurt", "Hamburg")
+    ]
     
-    for i in range(32):
-        s.add(city_start[i] >= 0, city_start[i] < n_cities)
+    one_way = [
+        ("Krakow", "Vilnius"),
+        ("Florence", "Munich"),
+        ("Stockholm", "Santorini"),
+        ("Santorini", "Oslo"),
+        ("Vilnius", "Munich")
+    ]
     
-    for i in range(31):
-        s.add(Implies(Not(travel[i]), city_start[i] == city_start[i+1]))
-        s.add(Implies(travel[i], Or([And(city_start[i] == f[0], city_start[i+1] == f[1]) for f in flight_set])))
+    name_to_city = {
+        'Stockholm': Stockholm,
+        'Hamburg': Hamburg,
+        'Florence': Florence,
+        'Istanbul': Istanbul,
+        'Oslo': Oslo,
+        'Vilnius': Vilnius,
+        'Santorini': Santorini,
+        'Munich': Munich,
+        'Frankfurt': Frankfurt,
+        'Krakow': Krakow
+    }
     
-    istanbul_idx = city_to_int['Istanbul']
-    for d in [24, 25, 26, 27, 28]:
-        s.add(Or(city_start[d] == istanbul_idx, And(travel[d], city_start[d+1] == istanbul_idx)))
+    edges = set()
+    for a, b in bidirectional_pairs:
+        city_a = name_to_city[a]
+        city_b = name_to_city[b]
+        edges.add((city_a, city_b))
+        edges.add((city_b, city_a))
     
-    krakow_idx = city_to_int['Krakow']
-    for d in [4, 5, 6, 7, 8]:
-        s.add(Or(city_start[d] == krakow_idx, And(travel[d], city_start[d+1] == krakow_idx)))
+    for a, b in one_way:
+        city_a = name_to_city[a]
+        city_b = name_to_city[b]
+        edges.add((city_a, city_b))
     
-    for cidx, city in enumerate(cities):
-        total_req = req_days[city]
-        count1 = Sum([If(city_start[i] == cidx, 1, 0) for i in range(32)])
-        count2 = Sum([If(And(travel[i], city_start[i+1] == cidx, city_start[i] != cidx), 1, 0) for i in range(31)])
-        s.add(count1 + count2 == total_req)
+    s = Solver()
     
+    # Position variables: the city at each sequence position
+    pos = [Const(f'pos_{i}', City) for i in range(10)]
+    start_days = [Int(f's_{i}') for i in range(10)]
+    end_days = [Int(f'e_{i}') for i in range(10)]
+    
+    # All cities are distinct
+    s.add(Distinct(pos))
+    
+    # First city starts at day 1
+    s.add(start_days[0] == 1)
+    
+    # Last city ends at day 32
+    s.add(end_days[9] == 32)
+    
+    # Constraints for each position
+    for i in range(10):
+        d_i = Int(f'd_{i}')
+        d_i_val = If(
+            pos[i] == Stockholm, 3,
+            If(pos[i] == Hamburg, 5,
+            If(pos[i] == Florence, 2,
+            If(pos[i] == Istanbul, 5,
+            If(pos[i] == Oslo, 5,
+            If(pos[i] == Vilnius, 5,
+            If(pos[i] == Santorini, 2,
+            If(pos[i] == Munich, 5,
+            If(pos[i] == Frankfurt, 4, 5)))))))))  # last is Krakow
+        s.add(d_i == d_i_val)
+        s.add(end_days[i] == start_days[i] + d_i_val - 1)
+        if i < 9:
+            s.add(start_days[i+1] == end_days[i])
+    
+    # Fixed events
+    for i in range(10):
+        s.add(If(pos[i] == Krakow, start_days[i] == 5, True))
+        s.add(If(pos[i] == Istanbul, start_days[i] == 25, True))
+    
+    # Flight constraints: consecutive cities must have a direct flight
+    for i in range(9):
+        conditions = []
+        for (a, b) in edges:
+            conditions.append(And(pos[i] == a, pos[i+1] == b))
+        s.add(Or(conditions))
+    
+    # Bounds for start and end days
+    for i in range(10):
+        s.add(start_days[i] >= 1, start_days[i] <= 32)
+        s.add(end_days[i] >= 1, end_days[i] <= 32)
+    
+    # Solve the problem
     if s.check() == sat:
         m = s.model()
-        plan = []
-        for i in range(32):
-            cidx = m[city_start[i]].as_long()
-            plan.append(cities[cidx])
-        travel_flags = []
-        for i in range(31):
-            travel_flags.append(m[travel[i]])
+        pos_val = [m.evaluate(pos[i]) for i in range(10)]
+        start_val = [m.evaluate(start_days[i]).as_long() for i in range(10)]
+        end_val = [m.evaluate(end_days[i]).as_long() for i in range(10)]
         
-        print("Day\tCity")
-        for i in range(32):
-            if i < 31 and travel_flags[i]:
-                print(f"{i+1}\t{plan[i]} and {plan[i+1]} (travel day)")
-            else:
-                print(f"{i+1}\t{plan[i]}")
+        city_to_name = dict(zip(cities_list, cities_names))
+        itinerary_list = []
+        
+        for i in range(10):
+            city_name = city_to_name[pos_val[i]]
+            s_i = start_val[i]
+            e_i = end_val[i]
+            itinerary_list.append({"day_range": f"Day {s_i}-{e_i}", "place": city_name})
+            if i < 9:
+                itinerary_list.append({"day_range": f"Day {e_i}", "place": city_name})
+                next_city_name = city_to_name[pos_val[i+1]]
+                itinerary_list.append({"day_range": f"Day {e_i}", "place": next_city_name})
+        
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

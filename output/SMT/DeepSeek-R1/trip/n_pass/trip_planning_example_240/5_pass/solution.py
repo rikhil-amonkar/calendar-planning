@@ -1,68 +1,89 @@
 from z3 import *
 
 def main():
-    City, (Prague, Berlin, Tallinn, Stockholm) = EnumSort('City', ['Prague', 'Berlin', 'Tallinn', 'Stockholm'])
+    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
+    flights = { 
+        ('Berlin', 'Tallinn'), 
+        ('Prague', 'Tallinn'), 
+        ('Stockholm', 'Tallinn'), 
+        ('Prague', 'Stockholm'), 
+        ('Stockholm', 'Berlin')
+    }
+    allowed_pairs_sym = {frozenset(pair) for pair in flights}
     
-    # Reordered to prioritize Prague-Stockholm flight
-    allowed_pairs = [
-        (Prague, Stockholm),
-        (Stockholm, Prague),
-        (Berlin, Tallinn),
-        (Tallinn, Berlin),
-        (Prague, Tallinn),
-        (Tallinn, Prague),
-        (Stockholm, Tallinn),
-        (Tallinn, Stockholm),
-        (Stockholm, Berlin),
-        (Berlin, Stockholm)
-    ]
-    
-    L = [ Const(f'L_{i}', City) for i in range(13) ]
+    In = {}
+    for d in range(1, 13):
+        In[d] = {}
+        for c in cities:
+            In[d][c] = Bool(f"In_day{d}_{c}")
     
     s = Solver()
     
-    s.add(L[0] == Prague)
+    for d in range(1, 13):
+        total = Sum([If(In[d][c], 1, 0) for c in cities])
+        s.add(Or(total == 1, total == 2))
     
-    for d in range(12):
-        stay = (L[d] == L[d+1])
-        travel = Or([And(L[d] == c1, L[d+1] == c2) for (c1, c2) in allowed_pairs])
-        s.add(Or(stay, travel))
+    for d in range(1, 13):
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                c1 = cities[i]
+                c2 = cities[j]
+                pair = frozenset([c1, c2])
+                if pair not in allowed_pairs_sym:
+                    s.add(Not(And(In[d][c1], In[d][c2])))
     
-    total_Prague = 0
-    total_Berlin = 0
-    total_Tallinn = 0
-    total_Stockholm = 0
+    s.add(In[6]['Berlin'] == True)
+    s.add(In[8]['Berlin'] == True)
     
-    for d in range(12):
-        total_Prague += If(Or(L[d] == Prague, L[d+1] == Prague), 1, 0)
-        total_Berlin += If(Or(L[d] == Berlin, L[d+1] == Berlin), 1, 0)
-        total_Tallinn += If(Or(L[d] == Tallinn, L[d+1] == Tallinn), 1, 0)
-        total_Stockholm += If(Or(L[d] == Stockholm, L[d+1] == Stockholm), 1, 0)
+    for d in [8, 9, 10, 11, 12]:
+        s.add(In[d]['Tallinn'] == True)
     
-    s.add(total_Prague == 2)
-    s.add(total_Berlin == 3)
-    s.add(total_Tallinn == 5)
-    s.add(total_Stockholm == 5)
-    
-    s.add(Or(L[5] == Berlin, L[6] == Berlin))
-    s.add(Or(L[7] == Berlin, L[8] == Berlin))
-    
-    for day in [8, 9, 10, 11, 12]:
-        s.add(Or(L[day-1] == Tallinn, L[day] == Tallinn))
+    s.add(Sum([If(In[d]['Prague'], 1, 0) for d in range(1,13)]) == 2)
+    s.add(Sum([If(In[d]['Berlin'], 1, 0) for d in range(1,13)]) == 3)
+    s.add(Sum([If(In[d]['Tallinn'], 1, 0) for d in range(1,13)]) == 5)
+    s.add(Sum([If(In[d]['Stockholm'], 1, 0) for d in range(1,13)]) == 5)
     
     if s.check() == sat:
         m = s.model()
-        locs = [m.evaluate(L[i]) for i in range(13)]
-        city_names = {Prague: 'Prague', Berlin: 'Berlin', Tallinn: 'Tallinn', Stockholm: 'Stockholm'}
+        records = []
         
-        for day in range(1, 13):
-            start = locs[day-1]
-            end = locs[day]
-            if start == end:
-                print(f"Day {day}: in {city_names[start]}")
-            else:
-                cities = sorted([city_names[start], city_names[end]], key=lambda x: x)
-                print(f"Day {day}: in {cities[0]} and {cities[1]}")
+        for city in cities:
+            days_present = []
+            for d in range(1, 13):
+                if is_true(m.evaluate(In[d][city])):
+                    days_present.append(d)
+            if not days_present:
+                continue
+            days_present.sort()
+            segments = []
+            start = days_present[0]
+            end = days_present[0]
+            for i in range(1, len(days_present)):
+                if days_present[i] == end + 1:
+                    end = days_present[i]
+                else:
+                    segments.append((start, end))
+                    start = days_present[i]
+                    end = days_present[i]
+            segments.append((start, end))
+            
+            for seg in segments:
+                start_day, end_day = seg
+                if start_day == end_day:
+                    day_range_str = f"Day {start_day}"
+                else:
+                    day_range_str = f"Day {start_day}-{end_day}"
+                records.append({
+                    'day_range': day_range_str,
+                    'place': city,
+                    'start_day': start_day
+                })
+        
+        records_sorted = sorted(records, key=lambda x: x['start_day'])
+        itinerary_list = [{'day_range': rec['day_range'], 'place': rec['place']} for rec in records_sorted]
+        
+        result = {'itinerary': itinerary_list}
+        print(result)
     else:
         print("No solution found")
 

@@ -1,71 +1,45 @@
-from z3 import *
+from z3 import Solver, Int, sat
 
 def main():
-    # Create the solver
     s = Solver()
-    
-    # Days are 1 to 17
-    days = 17
-    n = {}  # Naples
-    vn = {} # Vienna
-    vl = {} # Vilnius
-    
-    # Initialize variables for each day
-    for i in range(1, days + 1):
-        n[i] = Bool(f'n_{i}')
-        vn[i] = Bool(f'vn_{i}')
-        vl[i] = Bool(f'vl_{i}')
-    
-    # Add constraints for each day
-    for i in range(1, days + 1):
-        # At least one city per day
-        s.add(Or(n[i], vn[i], vl[i]))
-        # Cannot be in both Naples and Vilnius on the same day
-        s.add(Not(And(n[i], vl[i])))
-    
-    # Total days in Naples must be 5, and only within days 1-5
-    s.add(sum([If(n[i], 1, 0) for i in range(1, days + 1)]) == 5)
-    for i in range(6, days + 1):
-        s.add(Not(n[i]))
-    
-    # Total days in Vienna must be 7
-    s.add(sum([If(vn[i], 1, 0) for i in range(1, days + 1)]) == 7)
-    
-    # Total days in Vilnius must be 7
-    s.add(sum([If(vl[i], 1, 0) for i in range(1, days + 1)]) == 7)
-    
-    # Continuity constraint: consecutive days must share at least one city
-    for i in range(1, days):
-        s.add(Or(
-            And(n[i], n[i + 1]),
-            And(vn[i], vn[i + 1]),
-            And(vl[i], vl[i + 1])
-        ))
-    
-    # Check for a solution
+    s1 = Int('s1')  # start day for Naples
+    e1 = Int('e1')  # end day for Naples
+    s2 = Int('s2')  # start day for Vienna
+    e2 = Int('e2')  # end day for Vienna
+    s3 = Int('s3')  # start day for Vilnius
+    e3 = Int('e3')  # end day for Vilnius
+
+    s.add(s1 == 1)  # Naples stay starts on day 1
+    s.add(e1 == s1 + 4)  # 5 days in Naples: days 1 to 5
+    s.add(s2 == e1)  # Fly from Naples to Vienna on day e1 (5), arrive same day
+    s.add(e2 == s2 + 6)  # 7 days in Vienna: days 5 to 11
+    s.add(s3 == e2)  # Fly from Vienna to Vilnius on day e2 (11), arrive same day
+    s.add(e3 == s3 + 6)  # 7 days in Vilnius: days 11 to 17
+    s.add(e3 == 17)  # Trip ends on day 17
+
     if s.check() == sat:
         m = s.model()
-        # Print the schedule
-        for i in range(1, days + 1):
-            in_n = m.evaluate(n[i])
-            in_vn = m.evaluate(vn[i])
-            in_vl = m.evaluate(vl[i])
-            
-            if in_n == True and in_vn == False and in_vl == False:
-                print(f"Day {i}: Naples")
-            elif in_n == False and in_vn == True and in_vl == False:
-                print(f"Day {i}: Vienna")
-            elif in_n == False and in_vn == False and in_vl == True:
-                print(f"Day {i}: Vilnius")
-            elif in_n == True and in_vn == True and in_vl == False:
-                print(f"Day {i}: Travel between Naples and Vienna")
-            elif in_n == False and in_vn == True and in_vl == True:
-                print(f"Day {i}: Travel between Vienna and Vilnius")
-            else:
-                # This case should not happen due to constraints
-                print(f"Day {i}: Unexpected state")
+        s1_val = m[s1].as_long()
+        e1_val = m[e1].as_long()
+        s2_val = m[s2].as_long()
+        e2_val = m[e2].as_long()
+        s3_val = m[s3].as_long()
+        e3_val = m[e3].as_long()
+        
+        itinerary = [
+            {"day_range": f"Day {s1_val}-{e1_val}", "place": "Naples"},
+            {"day_range": f"Day {e1_val}", "place": "Naples"},
+            {"day_range": f"Day {s2_val}", "place": "Vienna"},
+            {"day_range": f"Day {s2_val}-{e2_val}", "place": "Vienna"},
+            {"day_range": f"Day {e2_val}", "place": "Vienna"},
+            {"day_range": f"Day {s3_val}", "place": "Vilnius"},
+            {"day_range": f"Day {s3_val}-{e3_val}", "place": "Vilnius"}
+        ]
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        print("No valid schedule found")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

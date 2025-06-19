@@ -1,135 +1,120 @@
 from z3 import *
+import json
 
 def main():
-    # Define the City enum
-    City = Datatype('City')
-    cities_list = ['Paris', 'Warsaw', 'Krakow', 'Tallinn', 'Riga', 'Copenhagen', 'Helsinki', 'Oslo', 'Santorini', 'Lyon']
-    for c in cities_list:
-        City.declare(c)
-    City = City.create()
-    Paris, Warsaw, Krakow, Tallinn, Riga, Copenhagen, Helsinki, Oslo, Santorini, Lyon = [getattr(City, c) for c in cities_list]
+    cities = ['Paris', 'Warsaw', 'Krakow', 'Tallinn', 'Riga', 'Copenhagen', 'Helsinki', 'Oslo', 'Santorini', 'Lyon']
+    durations = {
+        'Paris': 5,
+        'Warsaw': 2,
+        'Krakow': 2,
+        'Tallinn': 2,
+        'Riga': 2,
+        'Copenhagen': 5,
+        'Helsinki': 5,
+        'Oslo': 5,
+        'Santorini': 2,
+        'Lyon': 4
+    }
+    fixed_starts = {
+        'Krakow': 17,
+        'Riga': 23,
+        'Santorini': 12
+    }
     
-    # Map city names to their enum constants
-    name_to_city = {c: getattr(City, c) for c in cities_list}
-    
-    # Define flight connections
     bidirectional_pairs = [
-        ("Warsaw", "Riga"),
-        ("Warsaw", "Tallinn"),
-        ("Copenhagen", "Helsinki"),
-        ("Lyon", "Paris"),
-        ("Copenhagen", "Warsaw"),
-        ("Lyon", "Oslo"),
-        ("Paris", "Oslo"),
-        ("Paris", "Riga"),
-        ("Krakow", "Helsinki"),
-        ("Paris", "Tallinn"),
-        ("Oslo", "Riga"),
-        ("Krakow", "Warsaw"),
-        ("Paris", "Helsinki"),
-        ("Copenhagen", "Santorini"),
-        ("Helsinki", "Warsaw"),
-        ("Helsinki", "Riga"),
-        ("Copenhagen", "Krakow"),
-        ("Copenhagen", "Riga"),
-        ("Paris", "Krakow"),
-        ("Copenhagen", "Oslo"),
-        ("Oslo", "Tallinn"),
-        ("Oslo", "Helsinki"),
-        ("Copenhagen", "Tallinn"),
-        ("Oslo", "Krakow"),
-        ("Helsinki", "Tallinn"),
-        ("Paris", "Copenhagen"),
-        ("Paris", "Warsaw"),
-        ("Oslo", "Warsaw")
+        ('Warsaw', 'Riga'),
+        ('Warsaw', 'Tallinn'),
+        ('Copenhagen', 'Helsinki'),
+        ('Lyon', 'Paris'),
+        ('Copenhagen', 'Warsaw'),
+        ('Lyon', 'Oslo'),
+        ('Paris', 'Oslo'),
+        ('Paris', 'Riga'),
+        ('Krakow', 'Helsinki'),
+        ('Paris', 'Tallinn'),
+        ('Oslo', 'Riga'),
+        ('Krakow', 'Warsaw'),
+        ('Paris', 'Helsinki'),
+        ('Copenhagen', 'Santorini'),
+        ('Helsinki', 'Warsaw'),
+        ('Helsinki', 'Riga'),
+        ('Copenhagen', 'Krakow'),
+        ('Copenhagen', 'Riga'),
+        ('Paris', 'Krakow'),
+        ('Copenhagen', 'Oslo'),
+        ('Oslo', 'Tallinn'),
+        ('Oslo', 'Helsinki'),
+        ('Copenhagen', 'Tallinn'),
+        ('Oslo', 'Krakow')
+    ]
+    directed_edges = [
+        ('Riga', 'Tallinn'),
+        ('Santorini', 'Oslo')
     ]
     
-    unidirectional = [
-        ("Riga", "Tallinn"),
-        ("Santorini", "Oslo")
-    ]
+    allowed_edges = set()
+    for (a, b) in bidirectional_pairs:
+        allowed_edges.add((a, b))
+        allowed_edges.add((b, a))
+    for (a, b) in directed_edges:
+        allowed_edges.add((a, b))
     
-    allowed_flights = []
-    for a_str, b_str in bidirectional_pairs:
-        a_city = name_to_city[a_str]
-        b_city = name_to_city[b_str]
-        allowed_flights.append((a_city, b_city))
-        allowed_flights.append((b_city, a_city))
-    for a_str, b_str in unidirectional:
-        a_city = name_to_city[a_str]
-        b_city = name_to_city[b_str]
-        allowed_flights.append((a_city, b_city))
-    
-    # Create base_city, travel, and dest arrays
-    base_city = [None]  # index 0 unused
-    for i in range(1, 27):
-        base_city.append(Const(f'base_city_{i}', City))
-    
-    travel = [None]
-    for i in range(1, 26):
-        travel.append(Bool(f'travel_{i}'))
-    
-    dest = [None]
-    for i in range(1, 26):
-        dest.append(Const(f'dest_{i}', City))
-    
+    pos = {city: Int(f'pos_{city}') for city in cities}
     s = Solver()
     
-    # Travel constraints
-    for t in range(1, 26):
-        s.add(Implies(travel[t], base_city[t] != dest[t]))
-        options = []
-        for a, b in allowed_flights:
-            options.append(And(base_city[t] == a, dest[t] == b))
-        s.add(Implies(travel[t], Or(options)))
-        s.add(base_city[t+1] == If(travel[t], dest[t], base_city[t]))
+    for city in cities:
+        s.add(pos[city] >= 0)
+        s.add(pos[city] < 10)
+    s.add(Distinct([pos[city] for city in cities]))
     
-    # Define in_city function
-    def in_city(city, day):
-        return Or(base_city[day] == city, And(travel[day], dest[day] == city))
+    start = {}
+    for city in cities:
+        sum_before = 0
+        for other in cities:
+            if other == city:
+                continue
+            sum_before += If(pos[other] < pos[city], durations[other], 0)
+        start[city] = 1 + sum_before - pos[city]
     
-    # Total days per city
-    total_days = {
-        Paris: 5,
-        Warsaw: 2,
-        Krakow: 2,
-        Tallinn: 2,
-        Riga: 2,
-        Copenhagen: 5,
-        Helsinki: 5,
-        Oslo: 5,
-        Santorini: 2,
-        Lyon: 4
-    }
-    for city, days in total_days.items():
-        s.add(Sum([If(in_city(city, t), 1, 0) for t in range(1, 26)]) == days)
+    for city, fixed_start in fixed_starts.items():
+        s.add(start[city] == fixed_start)
     
-    # Event constraints
-    s.add(Or([in_city(Paris, t) for t in [4,5,6,7,8]]))
-    s.add(Or(in_city(Krakow, 17), in_city(Krakow, 18))
-    s.add(Or(in_city(Riga, 23), in_city(Riga, 24))
-    s.add(Or([in_city(Helsinki, t) for t in range(18, 23)]))
-    s.add(Or(in_city(Santorini, 12), in_city(Santorini, 13))
+    s.add(start['Paris'] <= 8)
+    s.add(And(start['Helsinki'] >= 15, start['Helsinki'] <= 21))
     
-    # Exactly 9 travel days
-    s.add(Sum([If(travel[t], 1, 0) for t in range(1, 26)]) == 9)
+    for c0 in cities:
+        for c1 in cities:
+            if c0 == c1:
+                continue
+            if (c0, c1) not in allowed_edges:
+                s.add(pos[c1] != pos[c0] + 1)
     
-    # Check and output solution
     if s.check() == sat:
         m = s.model()
-        for t in range(1, 26):
-            base_val = m[base_city[t]]
-            travel_val = m[travel[t]]
-            if is_true(travel_val):
-                dest_val = m[dest[t]]
-                base_name = base_val.decl().name()
-                dest_name = dest_val.decl().name()
-                print(f"Day {t}: [{base_name}, {dest_name}]")
-            else:
-                base_name = base_val.decl().name()
-                print(f"Day {t}: [{base_name}]")
+        pos_val = {}
+        for city in cities:
+            pos_val[city] = m.eval(pos[city]).as_long()
+        
+        start_val = {}
+        for city in cities:
+            start_val[city] = m.eval(start[city]).as_long()
+        
+        order = sorted(cities, key=lambda city: pos_val[city])
+        
+        itinerary = []
+        for idx, city in enumerate(order):
+            s0 = start_val[city]
+            e0 = s0 + durations[city] - 1
+            itinerary.append({"day_range": f"Day {s0}-{e0}", "place": city})
+            if idx < len(order) - 1:
+                itinerary.append({"day_range": f"Day {e0}", "place": city})
+                next_city = order[idx + 1]
+                itinerary.append({"day_range": f"Day {e0}", "place": next_city})
+        
+        result = {'itinerary': itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

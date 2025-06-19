@@ -1,82 +1,112 @@
 from z3 import *
 
 def main():
-    # City representations
-    Valencia = 0
-    Athens = 1
-    Naples = 2
-    Zurich = 3
-    city_names = {
-        Valencia: 'Valencia',
-        Athens: 'Athens',
-        Naples: 'Naples',
-        Zurich: 'Zurich'
-    }
+    # Define the city indices
+    cities = ["Athens", "Naples", "Valencia", "Zurich"]
     
-    # L[0] to L[20]: L[0] is the start of day1, L[1] to L[20] are the end of days 1 to 20.
-    L = [Int(f'L_{i}') for i in range(21)]
+    # Define the directed flight edges
+    edges = [
+        (0, 1), (1, 0),  # Athens <-> Naples
+        (0, 3), (3, 0),  # Athens <-> Zurich
+        (1, 2), (2, 1),  # Naples <-> Valencia
+        (1, 3), (3, 1),  # Naples <-> Zurich
+        (2, 0),           # Valencia to Athens
+        (2, 3), (3, 2)    # Valencia <-> Zurich
+    ]
     
+    # Create solver
     s = Solver()
     
-    # Constraint: Start in Athens at the beginning of day 1
-    s.add(L[0] == Athens)
+    # City order variables (c0, c1, c2, c3 represent the segments)
+    c0, c1, c2, c3 = Ints('c0 c1 c2 c3')
+    s.add([c0 >= 0, c0 <= 3, c1 >= 0, c1 <= 3, c2 >= 0, c2 <= 3, c3 >= 0, c3 <= 3])
+    s.add(Distinct(c0, c1, c2, c3))
     
-    # Days 1-6: Must be in Athens each day
-    for d in range(1, 7):
-        s.add(Or(L[d-1] == Athens, L[d] == Athens))
+    # End day variables for segments
+    e1, e2, e3 = Ints('e1 e2 e3')
+    s.add(e1 >= 1, e1 <= 20, e2 >= e1, e2 <= 20, e3 >= e2, e3 <= 20)
     
-    # Days 16-20: Must be in Naples each day
-    for d in range(16, 21):
-        s.add(Or(L[d-1] == Naples, L[d] == Naples))
+    # Flight constraints
+    def flight_ok(x, y):
+        return Or([And(x == a, y == b) for (a, b) in edges])
     
-    # Days 7-15: Must not be in Athens
-    for d in range(7, 16):
-        s.add(And(L[d-1] != Athens, L[d] != Athens))
+    s.add(flight_ok(c0, c1))
+    s.add(flight_ok(c1, c2))
+    s.add(flight_ok(c2, c3))
     
-    # Days 1-15: Must not be in Naples
-    for d in range(1, 16):
-        s.add(And(L[d-1] != Naples, L[d] != Naples))
+    # Segment lengths
+    L0 = e1
+    L1 = e2 - e1 + 1
+    L2 = e3 - e2 + 1
+    L3 = 20 - e3 + 1
     
-    # Count days in Valencia and Zurich
-    valencia_days = 0
-    zurich_days = 0
-    for d in range(1, 21):
-        in_valencia = Or(L[d-1] == Valencia, L[d] == Valencia)
-        in_zurich = Or(L[d-1] == Zurich, L[d] == Zurich)
-        valencia_days += If(in_valencia, 1, 0)
-        zurich_days += If(in_zurich, 1, 0)
-    s.add(valencia_days == 6)
-    s.add(zurich_days == 6)
+    # Constraints for each segment
+    # Segment 0
+    s.add(If(c0 == 0, L0 == 6, True))  # Athens
+    s.add(If(c0 == 1, L0 == 5, True))  # Naples
+    s.add(If(c0 == 2, L0 == 6, True))  # Valencia
+    s.add(If(c0 == 3, L0 == 6, True))  # Zurich
+    s.add(If(c0 == 1, e1 >= 16, True)) # Naples constraint: end day >=16
     
-    # Exactly one travel day in days 7-15
-    travel_days_mid = 0
-    for d in range(7, 16):
-        travel_days_mid += If(L[d-1] != L[d], 1, 0)
-    s.add(travel_days_mid == 1)
+    # Segment 1
+    s.add(If(c1 == 0, L1 == 6, True))
+    s.add(If(c1 == 1, L1 == 5, True))
+    s.add(If(c1 == 2, L1 == 6, True))
+    s.add(If(c1 == 3, L1 == 6, True))
+    s.add(If(c1 == 0, e1 <= 6, True))  # Athens constraint: start day <=6
+    s.add(If(c1 == 1, e2 >= 16, True)) # Naples constraint: end day >=16
     
-    # In the period from day6 to day15, we are only in Valencia or Zurich
-    for d in range(6, 16):
-        s.add(Or(L[d] == Valencia, L[d] == Zurich))
+    # Segment 2
+    s.add(If(c2 == 0, L2 == 6, True))
+    s.add(If(c2 == 1, L2 == 5, True))
+    s.add(If(c2 == 2, L2 == 6, True))
+    s.add(If(c2 == 3, L2 == 6, True))
+    s.add(If(c2 == 0, e2 <= 6, True))  # Athens constraint: start day <=6
+    s.add(If(c2 == 1, e3 >= 16, True)) # Naples constraint: end day >=16
     
-    # Each location variable must be one of the four cities
-    for i in range(1, 21):
-        s.add(Or(L[i] == Valencia, L[i] == Athens, L[i] == Naples, L[i] == Zurich))
+    # Segment 3
+    s.add(If(c3 == 0, L3 == 6, True))
+    s.add(If(c3 == 1, L3 == 5, True))
+    s.add(If(c3 == 2, L3 == 6, True))
+    s.add(If(c3 == 3, L3 == 6, True))
+    s.add(If(c3 == 0, e3 <= 6, True))  # Athens constraint: start day <=6
     
-    # Check and get the model
+    # Check for a solution
     if s.check() == sat:
-        m = s.model()
-        res = [m.evaluate(L[i]).as_long() for i in range(21)]
+        model = s.model()
+        c0_val = model[c0].as_long()
+        c1_val = model[c1].as_long()
+        c2_val = model[c2].as_long()
+        c3_val = model[c3].as_long()
+        e1_val = model[e1].as_long()
+        e2_val = model[e2].as_long()
+        e3_val = model[e3].as_long()
         
-        # Output the plan
-        for d in range(1, 21):
-            start_city = res[d-1]
-            end_city = res[d]
-            if start_city == end_city:
-                print(f"Day {d}: {city_names[start_city]}")
-            else:
-                print(f"Day {d}: {city_names[start_city]} and {city_names[end_city]}")
+        # Map city indices to names
+        seg0_city = cities[c0_val]
+        seg1_city = cities[c1_val]
+        seg2_city = cities[c2_val]
+        seg3_city = cities[c3_val]
+        
+        # Build itinerary
+        itinerary = [
+            {"day_range": f"Day 1-{e1_val}", "place": seg0_city},
+            {"day_range": f"Day {e1_val}", "place": seg0_city},
+            {"day_range": f"Day {e1_val}", "place": seg1_city},
+            {"day_range": f"Day {e1_val}-{e2_val}", "place": seg1_city},
+            {"day_range": f"Day {e2_val}", "place": seg1_city},
+            {"day_range": f"Day {e2_val}", "place": seg2_city},
+            {"day_range": f"Day {e2_val}-{e3_val}", "place": seg2_city},
+            {"day_range": f"Day {e3_val}", "place": seg2_city},
+            {"day_range": f"Day {e3_val}", "place": seg3_city},
+            {"day_range": f"Day {e3_val}-20", "place": seg3_city}
+        ]
+        
+        # Output as JSON-like dictionary
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        print("No valid plan found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

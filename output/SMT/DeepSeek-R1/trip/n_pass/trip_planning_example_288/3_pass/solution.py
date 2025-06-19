@@ -1,77 +1,133 @@
 from z3 import *
 
 def main():
-    # City mapping
-    Manchester, Stuttgart, Madrid, Vienna = 0, 1, 2, 3
-    cities = {
-        Manchester: "Manchester",
-        Stuttgart: "Stuttgart",
-        Madrid: "Madrid",
-        Vienna: "Vienna"
+    manchester = 0
+    madrid = 1
+    stuttgart = 2
+    vienna = 3
+    city_names = {
+        manchester: "Manchester",
+        madrid: "Madrid",
+        stuttgart: "Stuttgart",
+        vienna: "Vienna"
     }
-    n_days = 15
     
-    # Allowed direct flights (bidirectional)
-    allowed_flights = [
-        (Vienna, Stuttgart), (Stuttgart, Vienna),
-        (Manchester, Vienna), (Vienna, Manchester),
-        (Madrid, Vienna), (Vienna, Madrid),
-        (Manchester, Stuttgart), (Stuttgart, Manchester),
-        (Manchester, Madrid), (Madrid, Manchester)
+    allowed_directed = [
+        (manchester, madrid),
+        (madrid, manchester),
+        (manchester, stuttgart),
+        (stuttgart, manchester),
+        (manchester, vienna),
+        (vienna, manchester),
+        (madrid, vienna),
+        (vienna, madrid),
+        (stuttgart, vienna),
+        (vienna, stuttgart)
     ]
     
-    solver = Solver()
+    n_days = 15
+    city_start = [Int(f'city_start_{i}') for i in range(n_days)]
+    city_end = [Int(f'city_end_{i}') for i in range(n_days)]
     
-    # Arrays for start and end cities each day (0-indexed days 0-14)
-    start_city = [Int(f'start_{i}') for i in range(n_days)]
-    end_city = [Int(f'end_{i}') for i in range(n_days)]
+    s = Solver()
     
-    # Ensure valid city assignments
     for i in range(n_days):
-        solver.add(Or([start_city[i] == c for c in cities.keys()]))
-        solver.add(Or([end_city[i] == c for c in cities.keys()]))
+        s.add(And(city_start[i] >= 0, city_start[i] <= 3))
+        s.add(And(city_end[i] >= 0, city_end[i] <= 3))
     
-    # Continuity constraint: end of day i is start of day i+1
     for i in range(n_days - 1):
-        solver.add(end_city[i] == start_city[i+1])
+        s.add(city_end[i] == city_start[i+1])
     
-    # Flight constraints: either stay or take allowed flight
     for i in range(n_days):
-        stay = (start_city[i] == end_city[i])
-        valid_flights = Or([And(start_city[i] == a, end_city[i] == b) for (a, b) in allowed_flights])
-        solver.add(Or(stay, valid_flights))
+        no_flight = (city_start[i] == city_end[i])
+        flight_conds = []
+        for (a, b) in allowed_directed:
+            flight_conds.append(And(city_start[i] == a, city_end[i] == b))
+        flight_cond = Or(flight_conds)
+        s.add(Or(no_flight, flight_cond))
     
-    # Total days per city (count city if appears at start or end)
-    manchester_days = Sum([If(Or(start_city[i] == Manchester, end_city[i] == Manchester), 1, 0) for i in range(n_days)])
-    stuttgart_days = Sum([If(Or(start_city[i] == Stuttgart, end_city[i] == Stuttgart), 1, 0) for i in range(n_days)])
-    madrid_days = Sum([If(Or(start_city[i] == Madrid, end_city[i] == Madrid), 1, 0) for i in range(n_days)])
-    vienna_days = Sum([If(Or(start_city[i] == Vienna, end_city[i] == Vienna), 1, 0) for i in range(n_days)])
-    
-    solver.add(manchester_days == 7)
-    solver.add(stuttgart_days == 5)
-    solver.add(madrid_days == 4)
-    solver.add(vienna_days == 2)
-    
-    # Event constraints: require at least one FULL day in each event period
-    wedding_days = [And(start_city[i] == Manchester, end_city[i] == Manchester) for i in range(7)]  # Days 1-7
-    workshop_days = [And(start_city[i] == Stuttgart, end_city[i] == Stuttgart) for i in range(10, 15)]  # Days 11-15
-    solver.add(Or(wedding_days))
-    solver.add(Or(workshop_days))
-    
-    # Exactly 3 travel days (where start != end)
-    travel_days = Sum([If(start_city[i] != end_city[i], 1, 0) for i in range(n_days)])
-    solver.add(travel_days == 3)
-    
-    # Solve and print
-    if solver.check() == sat:
-        model = solver.model()
+    def count_days(c):
+        total = 0
         for i in range(n_days):
-            s = model.eval(start_city[i]).as_long()
-            e = model.eval(end_city[i]).as_long()
-            if s == e:
-                print(f"Day {i+1}: {cities[s]}")
+            total += If(city_start[i] == c, 1, 0)
+            total += If(And(city_end[i] == c, city_start[i] != c), 1, 0)
+        return total
+    
+    s.add(count_days(manchester) == 7)
+    s.add(count_days(madrid) == 4)
+    s.add(count_days(stuttgart) == 5)
+    s.add(count_days(vienna) == 2)
+    
+    manchester_event = []
+    for i in range(0, 7):
+        manchester_event.append(And(city_start[i] == manchester, city_end[i] == manchester))
+    s.add(Or(manchester_event))
+    
+    stuttgart_event = []
+    for i in range(10, 15):
+        stuttgart_event.append(And(city_start[i] == stuttgart, city_end[i] == stuttgart))
+    s.add(Or(stuttgart_event))
+    
+    if s.check() == sat:
+        m = s.model()
+        start_vals = [m.eval(city_start[i]).as_long() for i in range(n_days)]
+        end_vals = [m.eval(city_end[i]).as_long() for i in range(n_days)]
+        
+        blocks = []
+        i = 0
+        while i < n_days:
+            if start_vals[i] == end_vals[i]:
+                current_city = start_vals[i]
+                j = i
+                while j < n_days and start_vals[j] == end_vals[j] and start_vals[j] == current_city:
+                    j += 1
+                start_day = i + 1
+                end_day = j
+                if start_day == end_day:
+                    day_range_str = f"Day {start_day}"
+                else:
+                    day_range_str = f"Day {start_day}-{end_day}"
+                blocks.append({
+                    'day_range': day_range_str,
+                    'place': city_names[current_city]
+                })
+                i = j
             else:
-                print(f"Day {i+1}: {cities[s]} and {cities[e]}")
+                i += 1
+        
+        flight_records = []
+        for idx in range(n_days):
+            if start_vals[idx] != end_vals[idx]:
+                flight_records.append({
+                    'day_range': f'Day {idx+1}',
+                    'place': city_names[start_vals[idx]]
+                })
+                flight_records.append({
+                    'day_range': f'Day {idx+1}',
+                    'place': city_names[end_vals[idx]]
+                })
+        
+        events = []
+        for block in blocks:
+            s = block['day_range']
+            if s.startswith('Day '):
+                parts = s.split()[1]
+                if '-' in parts:
+                    start_day = int(parts.split('-')[0])
+                else:
+                    start_day = int(parts)
+                events.append((start_day, block))
+        
+        for flight in flight_records:
+            s = flight['day_range']
+            day_num = int(s.split()[1])
+            events.append((day_num, flight))
+        
+        events.sort(key=lambda x: x[0])
+        itinerary = [item[1] for item in events]
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

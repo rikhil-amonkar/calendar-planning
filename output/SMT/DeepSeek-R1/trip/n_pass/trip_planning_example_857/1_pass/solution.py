@@ -1,119 +1,96 @@
 from z3 import *
+import json
 
 def main():
-    # Define city names and their indices
+    # Define the cities and their durations
     cities = ['Porto', 'Geneva', 'Mykonos', 'Manchester', 'Hamburg', 'Naples', 'Frankfurt']
-    n = len(cities)
-    idx = {name: i for i, name in enumerate(cities)}
-    
-    # Required days for each city
-    required_days = [0] * n
-    required_days[idx['Porto']] = 2
-    required_days[idx['Geneva']] = 3
-    required_days[idx['Mykonos']] = 3
-    required_days[idx['Manchester']] = 4
-    required_days[idx['Hamburg']] = 5
-    required_days[idx['Naples']] = 5
-    required_days[idx['Frankfurt']] = 2
-    
-    # Direct flight connections (undirected edges)
-    edges_list = [
-        (idx['Hamburg'], idx['Frankfurt']),
-        (idx['Naples'], idx['Mykonos']),
-        (idx['Hamburg'], idx['Porto']),
-        (idx['Hamburg'], idx['Geneva']),
-        (idx['Mykonos'], idx['Geneva']),
-        (idx['Frankfurt'], idx['Geneva']),
-        (idx['Frankfurt'], idx['Porto']),
-        (idx['Geneva'], idx['Porto']),
-        (idx['Geneva'], idx['Manchester']),
-        (idx['Naples'], idx['Manchester']),
-        (idx['Frankfurt'], idx['Naples']),
-        (idx['Frankfurt'], idx['Manchester']),
-        (idx['Naples'], idx['Geneva']),
-        (idx['Porto'], idx['Manchester']),
-        (idx['Hamburg'], idx['Manchester'])
-    ]
-    
-    # Create an adjacency matrix
-    adj = [[False] * n for _ in range(n)]
-    for i, j in edges_list:
-        adj[i][j] = True
-        adj[j][i] = True
-    
-    # Create Z3 variables
+    durs_list = [2, 3, 3, 4, 5, 5, 2]  # durations by city index
+
+    # Create solver
     s = Solver()
+
+    # Order variables: 7 integers representing the sequence of cities
+    order = [Int('order_%i' % i) for i in range(7)]
     
-    # Order of cities: a permutation of 0 to 6
-    order = [Int(f'order_{i}') for i in range(n)]
-    for i in range(n):
-        s.add(order[i] >= 0, order[i] < n)
+    # Constraints: each order[i] is between 0 and 6, and all are distinct
+    s.add([And(order[i] >= 0, order[i] < 7) for i in range(7)])
     s.add(Distinct(order))
+
+    # Start day variables for each city in the sequence
+    start = [Int('start_%i' % i) for i in range(7)]
     
-    # Arrival and departure days for each city
-    arrive = [Int(f'arrive_{i}') for i in range(n)]
-    leave = [Int(f'leave_{i}') for i in range(n)]
+    # Define a function to get duration by city index
+    def dur(city_idx):
+        return If(city_idx == 0, durs_list[0],
+                If(city_idx == 1, durs_list[1],
+                If(city_idx == 2, durs_list[2],
+                If(city_idx == 3, durs_list[3],
+                If(city_idx == 4, durs_list[4],
+                If(city_idx == 5, durs_list[5], durs_list[6]))))
     
-    # Constraints for the first and last cities
-    s.add(arrive[order[0]] == 1)
-    s.add(leave[order[n-1]] == 18)
+    # Start day constraints
+    s.add(start[0] == 1)
+    for i in range(1, 7):
+        s.add(start[i] == start[i-1] + dur(order[i-1]) - 1)
     
-    # Constraints for consecutive cities in the order
-    for k in range(n-1):
-        current_city = order[k]
-        next_city = order[k+1]
-        # Ensure there is a direct flight between current and next city
-        allowed_pairs = []
-        for (i, j) in edges_list:
-            allowed_pairs.append((i, j))
-            allowed_pairs.append((j, i))
-        s.add(Or([And(current_city == i, next_city == j) for (i, j) in allowed_pairs]))
-        # Departure of current city equals arrival of next city
-        s.add(leave[current_city] == arrive[next_city])
+    # Total trip must end on day 18
+    s.add(start[6] + dur(order[6]) - 1 == 18)
+
+    # Flight connections: list of allowed edges (bidirectional)
+    edges_by_index = [
+        (4, 6), (5, 2), (4, 0), (4, 1), (2, 1), (6, 1), (6, 0), 
+        (1, 0), (1, 3), (5, 3), (6, 5), (6, 3), (5, 1), (0, 3), (4, 3)
+    ]
+    allowed_set = set()
+    for a, b in edges_by_index:
+        allowed_set.add((a, b))
+        allowed_set.add((b, a))
     
-    # Stay duration constraints
-    for i in range(n):
-        s.add(leave[i] - arrive[i] + 1 == required_days[i])
-        s.add(arrive[i] >= 1, leave[i] <= 18)
-        s.add(arrive[i] <= leave[i])
+    # Constraints for consecutive cities: must have a direct flight
+    for i in range(6):
+        s.add(Or([And(order[i] == a, order[i+1] == b) for (a, b) in allowed_set]))
     
     # Event constraints
-    mykonos_idx = idx['Mykonos']
-    manchester_idx = idx['Manchester']
-    frankfurt_idx = idx['Frankfurt']
+    for j in range(7):
+        # Mykonos (index 2) must have start day between 8 and 12
+        s.add(If(order[j] == 2, And(start[j] >= 8, start[j] <= 12), True))
+        # Manchester (index 3) must start on or after day 12
+        s.add(If(order[j] == 3, start[j] >= 12, True))
+        # Frankfurt (index 6) must start on day 5
+        s.add(If(order[j] == 6, start[j] == 5, True))
     
-    # Mykonos: at least one day between day 10 and 12
-    s.add(arrive[mykonos_idx] <= 12)
-    s.add(leave[mykonos_idx] >= 10)
-    
-    # Manchester: at least one day between day 15 and 18
-    s.add(leave[manchester_idx] >= 15)
-    
-    # Frankfurt: must be present on day 5 and 6
-    s.add(arrive[frankfurt_idx] <= 5)
-    s.add(leave[frankfurt_idx] >= 6)
-    
-    # Solve the problem
+    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        order_val = [m.evaluate(order[i]).as_long() for i in range(n)]
-        arrive_val = [m.evaluate(arrive[i]).as_long() for i in range(n)]
-        leave_val = [m.evaluate(leave[i]).as_long() for i in range(n)]
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(7)]
+        start_vals = [m.evaluate(start[i]).as_long() for i in range(7)]
         
-        # Print the itinerary
-        print("Found a valid trip plan:")
-        for i in range(n-1):
-            city_index = order_val[i]
-            next_city_index = order_val[i+1]
-            start_day = arrive_val[city_index]
-            end_day = leave_val[city_index]
-            print(f"From day {start_day} to day {end_day}: stay in {cities[city_index]}")
-            print(f"On day {end_day}, fly from {cities[city_index]} to {cities[next_city_index]}")
-        last_city_index = order_val[n-1]
-        start_day_last = arrive_val[last_city_index]
-        print(f"From day {start_day_last} to day 18: stay in {cities[last_city_index]}")
+        # Build itinerary
+        itinerary = []
+        # First city
+        idx0 = order_vals[0]
+        s0 = start_vals[0]
+        e0 = s0 + durs_list[idx0] - 1
+        itinerary.append({'day_range': f'Day {s0}-{e0}', 'place': cities[idx0]})
+        
+        # Subsequent cities
+        for i in range(6):
+            flight_day = start_vals[i+1]  # same as end day of current city
+            # Departure from current city
+            itinerary.append({'day_range': f'Day {flight_day}', 'place': cities[order_vals[i]]})
+            # Arrival to next city
+            itinerary.append({'day_range': f'Day {flight_day}', 'place': cities[order_vals[i+1]]})
+            # Entire stay for next city
+            s_next = start_vals[i+1]
+            idx_next = order_vals[i+1]
+            e_next = s_next + durs_list[idx_next] - 1
+            itinerary.append({'day_range': f'Day {s_next}-{e_next}', 'place': cities[idx_next]})
+        
+        # Output as JSON
+        result = {'itinerary': itinerary}
+        print(json.dumps(result))
     else:
-        print("No valid trip plan found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

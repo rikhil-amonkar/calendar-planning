@@ -1,98 +1,100 @@
 from z3 import *
+import json
 
 def main():
-    cities = ["Reykjavik", "Stockholm", "Porto", "Nice", "Venice", "Vienna", "Split", "Copenhagen"]
-    durations = [2, 2, 5, 3, 4, 3, 3, 2]
-    
-    flight_list = [
-        ("Copenhagen", "Vienna"),
-        ("Nice", "Stockholm"),
-        ("Split", "Copenhagen"),
-        ("Nice", "Reykjavik"),
-        ("Nice", "Porto"),
-        ("Reykjavik", "Vienna"),
-        ("Stockholm", "Copenhagen"),
-        ("Nice", "Venice"),
-        ("Nice", "Vienna"),
-        ("Reykjavik", "Copenhagen"),
-        ("Nice", "Copenhagen"),
-        ("Stockholm", "Vienna"),
-        ("Venice", "Vienna"),
-        ("Copenhagen", "Porto"),
-        ("Reykjavik", "Stockholm"),
-        ("Stockholm", "Split"),
-        ("Split", "Vienna"),
-        ("Copenhagen", "Venice"),
-        ("Vienna", "Porto")
-    ]
-    
-    name_to_index = {city: idx for idx, city in enumerate(cities)}
-    flight_set = set()
-    for a, b in flight_list:
-        i = name_to_index[a]
-        j = name_to_index[b]
-        flight_set.add((min(i, j), max(i, j)))
-    
-    s = Solver()
-    s.set("timeout", 30000)  # 30 seconds timeout
+    cities = ['Reykjavik', 'Stockholm', 'Porto', 'Nice', 'Venice', 'Vienna', 'Split', 'Copenhagen']
+    reqs = [2, 2, 5, 3, 4, 3, 3, 2]  # Corresponding to the cities list
 
-    durations_arr = Array('durations_arr', IntSort(), IntSort())
+    city_to_index = {city: idx for idx, city in enumerate(cities)}
+
+    edges = [
+        ('Copenhagen', 'Vienna'),
+        ('Nice', 'Stockholm'),
+        ('Split', 'Copenhagen'),
+        ('Nice', 'Reykjavik'),
+        ('Nice', 'Porto'),
+        ('Reykjavik', 'Vienna'),
+        ('Stockholm', 'Copenhagen'),
+        ('Nice', 'Venice'),
+        ('Nice', 'Vienna'),
+        ('Reykjavik', 'Copenhagen'),
+        ('Nice', 'Copenhagen'),
+        ('Stockholm', 'Vienna'),
+        ('Venice', 'Vienna'),
+        ('Copenhagen', 'Porto'),
+        ('Reykjavik', 'Stockholm'),
+        ('Stockholm', 'Split'),
+        ('Split', 'Vienna'),
+        ('Copenhagen', 'Venice'),
+        ('Vienna', 'Porto')
+    ]
+
+    adj_set = [set() for _ in range(8)]
+    for a, b in edges:
+        i = city_to_index[a]
+        j = city_to_index[b]
+        adj_set[i].add(j)
+        adj_set[j].add(i)
+
+    seq = IntVector('seq', 8)
+    start_day = IntVector('start_day', 8)
+    end_day = IntVector('end_day', 8)
+
+    s = Solver()
+
     for i in range(8):
-        durations_arr = Store(durations_arr, i, durations[i])
-    
-    path = IntVector('path', 8)
-    start_vars = [Int(f'start_{i}') for i in range(8)]
-    end_vars = [start_vars[i] + durations[i] - 1 for i in range(8)]
-    
-    for i in range(8):
-        s.add(path[i] >= 0, path[i] < 8)
-    s.add(Distinct(path))
-    
-    s.add(start_vars[path[0]] == 1)
-    
-    for i in range(7):
-        a = path[i]
-        b = path[i+1]
-        s.add(start_vars[b] >= start_vars[a])
-        s.add(start_vars[b] <= start_vars[a] + Select(durations_arr, a) - 1)
-        flight_cons = []
-        for edge in flight_set:
-            flight_cons.append(And(a == edge[0], b == edge[1]))
-            flight_cons.append(And(a == edge[1], b == edge[0]))
-        s.add(Or(flight_cons))
-    
-    s.add([end <= 17 for end in end_vars])
-    s.add(Or([end == 17 for end in end_vars]))
-    
-    s.add(start_vars[0] <= 4, end_vars[0] >= 3)
-    s.add(start_vars[1] <= 5, end_vars[1] >= 4)
-    s.add(end_vars[2] >= 13)
-    s.add(start_vars[5] <= 13, end_vars[5] >= 11)
-    
-    for i in range(8):
-        s.add(start_vars[i] >= 1, start_vars[i] <= 17)
-    
+        s.add(seq[i] >= 0, seq[i] < 8)
+    s.add(Distinct(seq))
+
+    for k in range(7):
+        cond = False
+        for i in range(8):
+            for j in adj_set[i]:
+                cond = Or(cond, And(seq[k] == i, seq[k+1] == j))
+        s.add(cond)
+
+    s.add(start_day[0] == 1)
+    s.add(end_day[7] == 17)
+
+    for k in range(7):
+        s.add(end_day[k] == start_day[k+1])
+
+    for k in range(8):
+        cond = False
+        for i in range(8):
+            cond = Or(cond, And(seq[k] == i, end_day[k] - start_day[k] + 1 == reqs[i]))
+        s.add(cond)
+
+    for k in range(8):
+        s.add(Implies(seq[k] == 0, And(start_day[k] <= 4, end_day[k] >= 3)))
+        s.add(Implies(seq[k] == 1, And(start_day[k] <= 5, end_day[k] >= 4)))
+        s.add(Implies(seq[k] == 2, end_day[k] >= 13))
+        s.add(Implies(seq[k] == 5, And(start_day[k] <= 13, end_day[k] >= 11)))
+        s.add(start_day[k] >= 1, start_day[k] <= 17)
+        s.add(end_day[k] >= 1, end_day[k] <= 17)
+        s.add(end_day[k] >= start_day[k])
+
     if s.check() == sat:
         m = s.model()
-        path_order = []
-        for i in range(8):
-            city_index = m.evaluate(path[i], model_completion=True).as_long()
-            path_order.append((city_index, cities[city_index]))
-        start_days = [m.evaluate(start_vars[i], model_completion=True).as_long() for i in range(8)]
-        
-        print("Travel Itinerary in order of visit:")
-        for i, (idx, city) in enumerate(path_order):
-            start = start_days[idx]
-            end = start + durations[idx] - 1
-            print(f"From day {start} to day {end}: stay in {city}")
-        
-        print("\nDetailed schedule per city:")
-        for idx, city in enumerate(cities):
-            start = start_days[idx]
-            end = start + durations[idx] - 1
-            print(f"{city}: day {start} to day {end}")
-    else:
-        print("No solution found")
+        seq_val = [m[seq[i]].as_long() for i in range(8)]
+        start_val = [m[start_day[i]].as_long() for i in range(8)]
+        end_val = [m[end_day[i]].as_long() for i in range(8)]
 
-if __name__ == '__main__':
+        itinerary = []
+        for k in range(8):
+            city_name = cities[seq_val[k]]
+            s_val = start_val[k]
+            e_val = end_val[k]
+            itinerary.append({"day_range": f"Day {s_val}-{e_val}", "place": city_name})
+            if k < 7:
+                itinerary.append({"day_range": f"Day {e_val}", "place": city_name})
+                next_city = cities[seq_val[k+1]]
+                itinerary.append({"day_range": f"Day {e_val}", "place": next_city})
+
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print('{"itinerary": []}')
+
+if __name__ == "__main__":
     main()

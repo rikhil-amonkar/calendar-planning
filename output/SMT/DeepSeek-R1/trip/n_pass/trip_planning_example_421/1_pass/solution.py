@@ -1,78 +1,95 @@
+import json
 from z3 import *
 
 def main():
-    # Define the cities and days
-    cities = ['Nice', 'Krakow', 'Dublin', 'Lyon', 'Frankfurt']
-    days = list(range(1, 21))
+    d2 = Int('d2')
+    d3 = Int('d3')
+    s1 = Int('s1')
+    s2 = Int('s2')
+    s3 = Int('s3')
     
-    # Create a solver instance
     s = Solver()
     
-    # Create variables: in_city[c, d] is True if the traveler is in city c on day d
-    in_city = {}
-    for c in cities:
-        for d in days:
-            in_city[(c, d)] = Bool(f'in_{c}_{d}')
+    s.add(d2 > 5, d2 < 19)
+    s.add(d3 > d2, d3 < 19)
     
-    # Constraint: Total days for each city
-    s.add(Sum([If(in_city[('Nice', d)], 1, 0) for d in days]) == 5)
-    s.add(Sum([If(in_city[('Krakow', d)], 1, 0) for d in days]) == 6)
-    s.add(Sum([If(in_city[('Dublin', d)], 1, 0) for d in days]) == 7)
-    s.add(Sum([If(in_city[('Lyon', d)], 1, 0) for d in days]) == 4)
-    s.add(Sum([If(in_city[('Frankfurt', d)], 1, 0) for d in days]) == 2)
+    dur1 = d2 - 4
+    dur2 = d3 - d2 + 1
+    dur3 = 20 - d3
     
-    # Constraint: Nice only on days 1-5
-    for d in range(6, 21):
-        s.add(in_city[('Nice', d)] == False)
+    s.add(dur1 > 0, dur2 > 0, dur3 > 0)
     
-    # Constraint: Frankfurt only on days 19-20
-    s.add(in_city[('Frankfurt', 19)] == True)
-    s.add(in_city[('Frankfurt', 20)] == True)
-    for d in range(1, 19):
-        s.add(in_city[('Frankfurt', d)] == False)
+    s.add(Distinct(s1, s2, s3))
+    s.add(s1 >= 1, s1 <= 3)
+    s.add(s2 >= 1, s2 <= 3)
+    s.add(s3 >= 1, s3 <= 3)
     
-    # Constraint: Each day has 1 or 2 cities
-    for d in days:
-        or_expr = Or(
-            Sum([If(in_city[(c, d)], 1, 0) for c in cities]) == 1,
-            Sum([If(in_city[(c, d)], 1, 0) for c in cities]) == 2
-        )
-        s.add(or_expr)
+    dur_s1 = If(s1 == 1, 7, If(s1 == 2, 6, 4))
+    dur_s2 = If(s2 == 1, 7, If(s2 == 2, 6, 4))
+    dur_s3 = If(s3 == 1, 7, If(s3 == 2, 6, 4))
     
-    # Constraint: Consecutive days share at least one city
-    for d in range(1, 20):
-        or_expr = Or([And(in_city[(c, d)], in_city[(c, d+1)]) for c in cities])
-        s.add(or_expr)
+    s.add(dur1 == dur_s1)
+    s.add(dur2 == dur_s2)
+    s.add(dur3 == dur_s3)
     
-    # Define allowed direct flight pairs
-    allowed_pairs = [
-        ('Nice', 'Dublin'),
-        ('Dublin', 'Frankfurt'),
-        ('Dublin', 'Krakow'),
-        ('Krakow', 'Frankfurt'),
-        ('Lyon', 'Frankfurt'),
-        ('Nice', 'Frankfurt'),
-        ('Lyon', 'Dublin'),
-        ('Nice', 'Lyon')
-    ]
+    s.add(Or(s1 == 1, s1 == 3))
     
-    # Constraint: For days with two cities, they must be connected by a direct flight
-    for d in days:
-        total_cities = Sum([If(in_city[(c, d)], 1, 0) for c in cities])
-        or_list = []
-        for (c1, c2) in allowed_pairs:
-            or_list.append(And(in_city[(c1, d)], in_city[(c2, d)]))
-        s.add(Implies(total_cities == 2, Or(or_list)))
+    s.add(Or(
+        And(s1 == 1, Or(s2 == 2, s2 == 3)),
+        And(s1 == 3, s2 == 1)
+    ))
     
-    # Check if a solution exists
+    s.add(Or(
+        And(s2 == 1, Or(s3 == 2, s3 == 3)),
+        And(s2 == 2, s3 == 1),
+        And(s2 == 3, s3 == 1)
+    ))
+    
     if s.check() == sat:
-        model = s.model()
-        # Print the itinerary
-        for d in days:
-            cities_today = [c for c in cities if model.evaluate(in_city[(c, d)])]
-            print(f"Day {d}: {', '.join(cities_today)}")
+        m = s.model()
+        d2_val = m[d2].as_long()
+        d3_val = m[d3].as_long()
+        s1_val = m[s1].as_long()
+        s2_val = m[s2].as_long()
+        s3_val = m[s3].as_long()
+        
+        city_names = {
+            0: "Nice",
+            1: "Dublin",
+            2: "Krakow",
+            3: "Lyon",
+            4: "Frankfurt"
+        }
+        
+        segments = [
+            (1, 5, 0),
+            (5, d2_val, s1_val),
+            (d2_val, d3_val, s2_val),
+            (d3_val, 19, s3_val),
+            (19, 20, 4)
+        ]
+        
+        itinerary = []
+        
+        for i, seg in enumerate(segments):
+            start, end, city_idx = seg
+            city = city_names[city_idx]
+            if start == end:
+                day_range_str = f"Day {start}"
+            else:
+                day_range_str = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range_str, "place": city})
+            
+            if i < len(segments) - 1:
+                next_city_idx = segments[i+1][2]
+                next_city = city_names[next_city_idx]
+                itinerary.append({"day_range": f"Day {end}", "place": city})
+                itinerary.append({"day_range": f"Day {end}", "place": next_city})
+                
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

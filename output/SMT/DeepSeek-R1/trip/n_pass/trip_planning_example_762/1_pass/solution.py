@@ -1,79 +1,84 @@
 from z3 import *
 
 def main():
-    s = Solver()
-    days = 13
-    x = [Int(f'x_{i+1}') for i in range(days)]
-    y = [Int(f'y_{i+1}') for i in range(days)]
-    
-    cities = {
-        1: 'Dublin',
-        2: 'Madrid',
-        3: 'Oslo',
-        4: 'London',
-        5: 'Vilnius',
-        6: 'Berlin'
-    }
-    
-    city_days = {
-        1: 3,  # Dublin
-        2: 2,  # Madrid
-        3: 3,  # Oslo
-        4: 2,  # London
-        5: 3,  # Vilnius
-        6: 5   # Berlin
-    }
-    
-    direct_flights_pairs = [
-        (4, 2), (3, 5), (6, 5), (2, 3), (2, 1), (4, 3),
-        (2, 6), (6, 3), (1, 3), (4, 1), (4, 6), (6, 1)
+    # City indices
+    dublin = 0
+    madrid = 1
+    oslo = 2
+    london = 3
+    vilnius = 4
+    berlin = 5
+
+    cities = ["Dublin", "Madrid", "Oslo", "London", "Vilnius", "Berlin"]
+    dur = [3, 2, 3, 2, 3, 5]
+
+    edges_undirected = [
+        (dublin, madrid), (dublin, oslo), (dublin, london), (dublin, berlin),
+        (madrid, oslo), (madrid, london), (madrid, berlin),
+        (oslo, london), (oslo, vilnius), (oslo, berlin),
+        (london, berlin),
+        (vilnius, berlin)
     ]
-    allowed_flights = set()
-    for a, b in direct_flights_pairs:
-        allowed_flights.add((a, b))
-        allowed_flights.add((b, a))
-    allowed_flights_list = list(allowed_flights)
-    
-    for i in range(days):
-        s.add(x[i] >= 1, x[i] <= 6)
-        s.add(y[i] >= 1, y[i] <= 6)
-    
-    for i in range(days - 1):
-        s.add(x[i + 1] == y[i])
-    
-    for i in range(days):
-        no_travel = (x[i] == y[i])
-        travel_conditions = []
-        for a, b in allowed_flights_list:
-            travel_conditions.append(And(x[i] == a, y[i] == b))
-        s.add(Or(no_travel, Or(travel_conditions)))
-    
-    for city, total in city_days.items():
-        s.add(Sum([If(Or(x[i] == city, y[i] == city), 1, 0) for i in range(days)]) == total)
-    
-    dublin_days = [6, 7, 8]  # days 7,8,9 (0-indexed: 6,7,8)
-    madrid_days = [1, 2]      # days 2,3 (0-indexed: 1,2)
-    berlin_days = [2, 3, 4, 5, 6]  # days 3,4,5,6,7 (0-indexed: 2,3,4,5,6)
-    
-    s.add(Or([Or(x[i] == 1, y[i] == 1) for i in dublin_days]))
-    s.add(Or([Or(x[i] == 2, y[i] == 2) for i in madrid_days]))
-    s.add(Or([Or(x[i] == 6, y[i] == 6) for i in berlin_days]))
-    
+
+    edges_list = []
+    for (i, j) in edges_undirected:
+        edges_list.append((i, j))
+        edges_list.append((j, i))
+
+    s = Solver()
+
+    pos = [Int(f'pos_{i}') for i in range(6)]
+    for i in range(6):
+        s.add(pos[i] >= 0, pos[i] < 6)
+    s.add(Distinct(pos))
+
+    for k in range(5):
+        cons_expr = []
+        for (i, j) in edges_list:
+            cons_expr.append(And(pos[i] == k, pos[j] == k+1))
+        s.add(Or(cons_expr))
+
+    start_days = [Int(f'start_{i}') for i in range(6)]
+    for i in range(6):
+        sum_expr = Sum([If(pos[j] < pos[i], dur[j], 0) for j in range(6)])
+        s.add(start_days[i] == 1 - pos[i] + sum_expr)
+
+    s.add(start_days[dublin] >= 5)
+    s.add(start_days[dublin] <= 9)
+    s.add(start_days[madrid] >= 1)
+    s.add(start_days[madrid] <= 3)
+    s.add(start_days[berlin] >= 1)
+    s.add(start_days[berlin] <= 7)
+
     if s.check() == sat:
         model = s.model()
-        x_vals = [model.evaluate(x[i]).as_long() for i in range(days)]
-        y_vals = [model.evaluate(y[i]).as_long() for i in range(days)]
-        
-        for d in range(days):
-            day = d + 1
-            x_city = cities[x_vals[d]]
-            y_city = cities[y_vals[d]]
-            if x_vals[d] == y_vals[d]:
-                print(f"Day {day}: Stay in {x_city}")
-            else:
-                print(f"Day {day}: Travel from {x_city} to {y_city}")
+        pos_vals = [model.evaluate(pos[i]).as_long() for i in range(6)]
+        start_vals = [model.evaluate(start_days[i]).as_long() for i in range(6)]
+
+        order = sorted(range(6), key=lambda i: pos_vals[i])
+        itinerary = []
+        for idx, city_idx in enumerate(order):
+            start = start_vals[city_idx]
+            d = dur[city_idx]
+            end = start + d - 1
+            itinerary.append({
+                "day_range": f"Day {start}-{end}",
+                "place": cities[city_idx]
+            })
+            if idx < 5:
+                next_city_idx = order[idx+1]
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": cities[city_idx]
+                })
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": cities[next_city_idx]
+                })
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

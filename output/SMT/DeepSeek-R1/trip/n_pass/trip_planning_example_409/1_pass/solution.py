@@ -1,104 +1,116 @@
 from z3 import *
+import json
 
-def main():
-    # Define city names and their indices
-    cities = ['Zurich', 'Helsinki', 'Hamburg', 'Bucharest', 'Split']
-    n_cities = len(cities)
-    n_days = 12
-    
-    # Required days per city: [Zurich, Helsinki, Hamburg, Bucharest, Split]
-    required = [3, 2, 2, 2, 7]
-    
-    # Define undirected edges (both directions included)
-    undir_edges = [
-        (0, 1), (0, 2), (0, 3), (0, 4),
-        (1, 2), (1, 4),
-        (2, 3), (2, 4)
-    ]
-    allowed_edges = []
-    for (a, b) in undir_edges:
-        allowed_edges.append((a, b))
-        allowed_edges.append((b, a))
-    
-    # Create Z3 variables
-    start_city = [Int('start_city_%d' % d) for d in range(1, n_days + 1)]
-    end_city = [Int('end_city_%d' % d) for d in range(1, n_days + 1)]
-    
-    s = Solver()
-    
-    # Domain constraints for start and end cities
-    for d in range(n_days):
-        s.add(start_city[d] >= 0, start_city[d] < n_cities)
-        s.add(end_city[d] >= 0, end_city[d] < n_cities)
-    
-    # Continuity constraint: end_city of day d must equal start_city of day d+1
-    for d in range(n_days - 1):
-        s.add(end_city[d] == start_city[d + 1])
-    
-    # Direct flight constraint for travel days
-    for d in range(n_days):
-        # If traveling (start != end), ensure the flight is allowed
-        travel_condition = start_city[d] != end_city[d]
-        edge_constraints = []
-        for (a, b) in allowed_edges:
-            edge_constraints.append(And(start_city[d] == a, end_city[d] == b))
-        s.add(If(travel_condition, Or(edge_constraints), True))
-    
-    # Event constraints: Split on days 4 and 10 (0-indexed days 3 and 9)
-    s.add(Or(start_city[3] == 4, end_city[3] == 4))  # Day 4
-    s.add(Or(start_city[9] == 4, end_city[9] == 4))  # Day 10
-    
-    # Wedding in Zurich between days 1 and 3 (0-indexed days 0, 1, 2)
-    wedding_constraint = Or(
-        Or(start_city[0] == 0, end_city[0] == 0),
-        Or(start_city[1] == 0, end_city[1] == 0),
-        Or(start_city[2] == 0, end_city[2] == 0)
-    )
-    s.add(wedding_constraint)
-    
-    # Total days per city constraint
-    for c in range(n_cities):
-        total_days = 0
-        for d in range(n_days):
-            total_days += If(Or(start_city[d] == c, end_city[d] == c), 1, 0)
-        s.add(total_days == required[c])
-    
-    # Check for solution and print
-    if s.check() == sat:
-        m = s.model()
-        start_vals = [m.evaluate(start_city[d]).as_long() for d in range(n_days)]
-        end_vals = [m.evaluate(end_city[d]).as_long() for d in range(n_days)]
-        
-        # Print itinerary
-        print("Day\tStart City\tEnd City\tDescription")
-        for d in range(n_days):
-            start_city_name = cities[start_vals[d]]
-            end_city_name = cities[end_vals[d]]
-            if start_vals[d] == end_vals[d]:
-                desc = f"Stay in {start_city_name}"
-            else:
-                desc = f"Travel from {start_city_name} to {end_city_name}"
-            print(f"{d+1}\t{start_city_name}\t\t{end_city_name}\t\t{desc}")
-        
-        # Verify days per city
-        city_days = [0] * n_cities
-        for d in range(n_days):
-            city_days[start_vals[d]] += 1
-            city_days[end_vals[d]] += 1
-            if start_vals[d] != end_vals[d]:
-                # Travel day: day counted for both cities
-                pass
-        # Correct for non-travel days: if start and end same, counted once
-        for d in range(n_days):
-            if start_vals[d] == end_vals[d]:
-                # We counted this city twice (start and end) but should be once
-                city_days[start_vals[d]] -= 1
-        
-        print("\nTotal days per city:")
-        for c in range(n_cities):
-            print(f"{cities[c]}: {city_days[c]}")
-    else:
-        print("No solution found")
+# Mapping cities to integers
+cities = ["Zurich", "Helsinki", "Hamburg", "Bucharest", "Split"]
+city_to_int = {city: idx for idx, city in enumerate(cities)}
+int_to_city = {idx: city for idx, city in enumerate(cities)}
 
-if __name__ == '__main__':
-    main()
+allowed_pairs = [
+    (0, 1), (1, 0),
+    (2, 3), (3, 2),
+    (1, 2), (2, 1),
+    (0, 2), (2, 0),
+    (0, 3), (3, 0),
+    (0, 4), (4, 0),
+    (1, 4), (4, 1),
+    (4, 2), (2, 4)
+]
+
+s = [Int(f's_{i}') for i in range(12)]
+e = [Int(f'e_{i}') for i in range(12)]
+
+solver = Solver()
+
+for i in range(12):
+    solver.add(And(s[i] >= 0, s[i] <= 4))
+    solver.add(And(e[i] >= 0, e[i] <= 4))
+
+for i in range(11):
+    solver.add(e[i] == s[i+1])
+
+for i in range(12):
+    flight_condition = Or([And(s[i] == a, e[i] == b) for (a, b) in allowed_pairs])
+    solver.add(If(s[i] != e[i], flight_condition, BoolVal(True)))
+
+counts = [0] * 5
+for city in range(5):
+    total = 0
+    for i in range(12):
+        total = total + If(s[i] == city, 1, 0)
+        total = total + If(And(s[i] != e[i], e[i] == city), 1, 0)
+    counts[city] = total
+
+solver.add(counts[city_to_int["Zurich"]] == 3)
+solver.add(counts[city_to_int["Helsinki"]] == 2)
+solver.add(counts[city_to_int["Hamburg"]] == 2)
+solver.add(counts[city_to_int["Bucharest"]] == 2)
+solver.add(counts[city_to_int["Split"]] == 7)
+
+wedding_constraint = Or(
+    Or(s[0] == city_to_int["Zurich"], And(s[0] != e[0], e[0] == city_to_int["Zurich"])),
+    Or(s[1] == city_to_int["Zurich"], And(s[1] != e[1], e[1] == city_to_int["Zurich"])),
+    Or(s[2] == city_to_int["Zurich"], And(s[2] != e[2], e[2] == city_to_int["Zurich"]))
+)
+solver.add(wedding_constraint)
+
+solver.add(Or(s[3] == city_to_int["Split"], e[3] == city_to_int["Split"]))
+solver.add(Or(s[9] == city_to_int["Split"], e[9] == city_to_int["Split"]))
+
+if solver.check() == sat:
+    model = solver.model()
+    s_val = [model.evaluate(s_i).as_long() for s_i in s]
+    e_val = [model.evaluate(e_i).as_long() for e_i in e]
+    
+    days_in_city = {i: set() for i in range(5)}
+    for i in range(12):
+        day = i+1
+        start_city = s_val[i]
+        days_in_city[start_city].add(day)
+        if s_val[i] != e_val[i]:
+            end_city = e_val[i]
+            days_in_city[end_city].add(day)
+    
+    itinerary_blocks = []
+    for city in range(5):
+        if days_in_city[city]:
+            sorted_days = sorted(days_in_city[city])
+            start_block = sorted_days[0]
+            end_block = start_block
+            blocks = []
+            for idx in range(1, len(sorted_days)):
+                if sorted_days[idx] == end_block + 1:
+                    end_block = sorted_days[idx]
+                else:
+                    blocks.append((start_block, end_block))
+                    start_block = sorted_days[idx]
+                    end_block = start_block
+            blocks.append((start_block, end_block))
+            for (start, end) in blocks:
+                if start == end:
+                    day_str = f"Day {start}"
+                else:
+                    day_str = f"Day {start}-{end}"
+                itinerary_blocks.append((start, day_str, city))
+    
+    itinerary_flights = []
+    for i in range(12):
+        if s_val[i] != e_val[i]:
+            day = i+1
+            day_str = f"Day {day}"
+            itinerary_flights.append((day, day_str, s_val[i]))
+            itinerary_flights.append((day, day_str, e_val[i]))
+    
+    events = []
+    for (start, day_str, city) in itinerary_blocks:
+        events.append((start, 1, day_str, int_to_city[city]))
+    for (day, day_str, city) in itinerary_flights:
+        events.append((day, 0, day_str, int_to_city[city]))
+    
+    events_sorted = sorted(events, key=lambda x: (x[0], x[1]))
+    itinerary_list = [{"day_range": day_str, "place": city_name} for (_, _, day_str, city_name) in events_sorted]
+    
+    result = {"itinerary": itinerary_list}
+    print(json.dumps(result, indent=2))
+else:
+    print("No solution found")

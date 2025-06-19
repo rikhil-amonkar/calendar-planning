@@ -1,124 +1,110 @@
+import json
 from z3 import *
 
 def main():
-    # Define city names and their mapping to integers
-    cities = ['Naples', 'Valencia', 'Stuttgart', 'Split', 'Venice', 'Amsterdam', 'Nice', 'Barcelona', 'Porto']
-    city_map = {city: idx for idx, city in enumerate(cities)}
+    # Define city data
+    city_ids = {
+        "Barcelona": 0,
+        "Venice": 1,
+        "Nice": 2,
+        "Naples": 3,
+        "Valencia": 4,
+        "Stuttgart": 5,
+        "Split": 6,
+        "Amsterdam": 7,
+        "Porto": 8
+    }
+    id_to_name = {v: k for k, v in city_ids.items()}
     
-    # Define direct flight pairs
-    flight_pairs = [
-        ("Venice", "Nice"), ("Naples", "Amsterdam"), ("Barcelona", "Nice"), ("Amsterdam", "Nice"),
-        ("Stuttgart", "Valencia"), ("Stuttgart", "Porto"), ("Split", "Stuttgart"), ("Split", "Naples"),
-        ("Valencia", "Amsterdam"), ("Barcelona", "Porto"), ("Valencia", "Naples"), ("Venice", "Amsterdam"),
-        ("Barcelona", "Naples"), ("Barcelona", "Valencia"), ("Split", "Amsterdam"), ("Barcelona", "Venice"),
-        ("Stuttgart", "Amsterdam"), ("Naples", "Nice"), ("Venice", "Stuttgart"), ("Split", "Barcelona"),
-        ("Porto", "Nice"), ("Barcelona", "Stuttgart"), ("Venice", "Naples"), ("Porto", "Amsterdam"),
-        ("Porto", "Valencia"), ("Stuttgart", "Naples"), ("Barcelona", "Amsterdam")
+    required_days_list = [2, 5, 2, 3, 5, 2, 5, 4, 4]  # for ids 0 to 8
+    
+    # Allowed direct flight pairs (bidirectional)
+    allowed_pairs = [
+        (1, 2), (2, 1), (3, 7), (7, 3), (0, 2), (2, 0), (7, 2), (2, 7),
+        (5, 4), (4, 5), (5, 8), (8, 5), (6, 5), (5, 6), (6, 3), (3, 6),
+        (4, 7), (7, 4), (0, 8), (8, 0), (0, 3), (3, 0), (0, 4), (4, 0),
+        (6, 7), (7, 6), (0, 1), (1, 0), (5, 7), (7, 5), (3, 2), (2, 3),
+        (1, 5), (5, 1), (6, 0), (0, 6), (8, 2), (2, 8), (0, 5), (5, 0),
+        (1, 3), (3, 1), (8, 7), (7, 8), (8, 4), (4, 8), (5, 3), (3, 5),
+        (0, 7), (7, 0)
     ]
     
-    # Create set of directed flights (both directions for each pair)
-    directed_edges = set()
-    for a, b in flight_pairs:
-        a_idx = city_map[a]
-        b_idx = city_map[b]
-        directed_edges.add((a_idx, b_idx))
-        directed_edges.add((b_idx, a_idx))
-    directed_edges = list(directed_edges)
+    # Create arrays for start and end days
+    s_arr = [Int(f's_{i}') for i in range(9)]
+    e_arr = [Int(f'e_{i}') for i in range(9)]
     
-    # Initialize Z3 solver
-    s = Solver()
+    # Create order array (sequence of city visits)
+    Order = [Int(f'Order_{i}') for i in range(9)]
     
-    # Create variables for each day: start_city and next_city
-    start_city = [Int(f'start_city_{i+1}') for i in range(24)]
-    next_city = [Int(f'next_city_{i+1}') for i in range(24)]
+    solver = Solver()
     
-    # Constraint: Each city variable must be between 0 and 8
-    for i in range(24):
-        s.add(start_city[i] >= 0, start_city[i] < 9)
-        s.add(next_city[i] >= 0, next_city[i] < 9)
+    # Fixed start and end days for Barcelona, Venice, Nice
+    solver.add(s_arr[0] == 5, e_arr[0] == 6)   # Barcelona: days 5-6
+    solver.add(s_arr[1] == 6, e_arr[1] == 10)  # Venice: days 6-10
+    solver.add(s_arr[2] == 23, e_arr[2] == 24) # Nice: days 23-24
     
-    # Constraint: Next day's start city must be the current day's next city (for days 1 to 23)
-    for i in range(23):
-        s.add(start_city[i+1] == next_city[i])
+    # Set required stay duration for all cities
+    for i in range(9):
+        solver.add(e_arr[i] - s_arr[i] + 1 == required_days_list[i])
+        solver.add(s_arr[i] >= 1, s_arr[i] <= 24)
+        solver.add(e_arr[i] >= 1, e_arr[i] <= 24)
+        solver.add(e_arr[i] >= s_arr[i])
     
-    # Constraint: Travel must use direct flights
-    for i in range(24):
-        # If traveling (start_city != next_city), ensure the flight is in directed_edges
-        travel_condition = start_city[i] != next_city[i]
-        flight_options = []
-        for (a, b) in directed_edges:
-            flight_options.append(And(start_city[i] == a, next_city[i] == b))
-        s.add(If(travel_condition, Or(flight_options), True)
+    # Order constraints: each Order[i] is a city ID (0-8), all distinct, last city is Nice (id=2)
+    for i in range(9):
+        solver.add(Order[i] >= 0, Order[i] <= 8)
+    solver.add(Distinct(Order))
+    solver.add(Order[8] == 2)  # Last city is Nice
     
-    # Total travel days must be 8 (since total city-days = 24 + 8 = 32)
-    travel_days = Sum([If(start_city[i] != next_city[i], 1, 0) for i in range(24)])
-    s.add(travel_days == 8)
+    # First city starts at day 1
+    solver.add(s_arr[Order[0]] == 1)
     
-    # Total days per city
-    totals = [0] * 9
-    for c in range(9):
-        total_c = 0
-        for i in range(24):
-            # If traveling, count both start and next cities if they match
-            total_c += If(start_city[i] != next_city[i],
-                          If(start_city[i] == c, 1, 0) + If(next_city[i] == c, 1, 0),
-                          If(start_city[i] == c, 1, 0))
-        s.add(total_c == [3, 5, 2, 5, 5, 4, 2, 2, 4][c])
+    # Sequence constraint: end day of current city = start day of next city
+    for i in range(8):
+        solver.add(e_arr[Order[i]] == s_arr[Order[i+1]])
     
-    # Meeting in Naples between days 18-20
-    naples_days = []
-    for day in [17, 18, 19]:  # Indices for days 18, 19, 20
-        in_naples = Or(start_city[day] == 0, And(start_city[day] != next_city[day], next_city[day] == 0))
-        naples_days.append(in_naples)
-    s.add(Or(naples_days))
+    # Flight constraints: consecutive cities must have a direct flight
+    for i in range(8):
+        constraints = []
+        for a, b in allowed_pairs:
+            constraints.append(And(Order[i] == a, Order[i+1] == b))
+        solver.add(Or(constraints))
     
-    # Conference in Venice between days 6-10
-    venice_days = []
-    for day in [5, 6, 7, 8, 9]:  # Indices for days 6 to 10
-        in_venice = Or(start_city[day] == 4, And(start_city[day] != next_city[day], next_city[day] == 4))
-        venice_days.append(in_venice)
-    s.add(Or(venice_days))
+    # Naples must be visited between days 18-20 (at least one day in this range)
+    solver.add(s_arr[3] <= 20)
+    solver.add(e_arr[3] >= 18)
     
-    # Meeting in Nice between days 23-24
-    nice_days = []
-    for day in [22, 23]:  # Indices for days 23, 24
-        in_nice = Or(start_city[day] == 6, And(start_city[day] != next_city[day], next_city[day] == 6))
-        nice_days.append(in_nice)
-    s.add(Or(nice_days))
-    
-    # Workshop in Barcelona between days 5-6
-    barcelona_days = []
-    for day in [4, 5]:  # Indices for days 5, 6
-        in_barcelona = Or(start_city[day] == 7, And(start_city[day] != next_city[day], next_city[day] == 7))
-        barcelona_days.append(in_barcelona)
-    s.add(Or(barcelona_days))
-    
-    # Check and print solution
-    if s.check() == sat:
-        model = s.model()
-        schedule = []
-        for i in range(24):
-            start_val = model.evaluate(start_city[i]).as_long()
-            next_val = model.evaluate(next_city[i]).as_long()
-            if start_val == next_val:
-                schedule.append(f"Day {i+1}: Stay in {cities[start_val]}")
-            else:
-                schedule.append(f"Day {i+1}: Travel from {cities[start_val]} to {cities[next_val]} (present in both)")
-        print("\n".join(schedule))
+    # Check for a solution
+    if solver.check() == sat:
+        m = solver.model()
+        order_vals = [m.eval(Order[i]).as_long() for i in range(9)]
+        s_vals = [m.eval(s_arr[i]).as_long() for i in range(9)]
+        e_vals = [m.eval(e_arr[i]).as_long() for i in range(9)]
         
-        # Verify total days per city
-        city_days = {city: 0 for city in cities}
-        for i in range(24):
-            start_val = model.evaluate(start_city[i]).as_long()
-            next_val = model.evaluate(next_city[i]).as_long()
-            city_days[cities[start_val]] += 1
-            if start_val != next_val:
-                city_days[cities[next_val]] += 1
-        print("\nTotal days per city:")
-        for city in cities:
-            print(f"{city}: {city_days[city]}")
+        itinerary = []
+        for i in range(9):
+            city_id = order_vals[i]
+            s = s_vals[city_id]
+            e = e_vals[city_id]
+            name = id_to_name[city_id]
+            
+            # Add entire stay for the city
+            if s == e:
+                itinerary.append({"day_range": f"Day {s}", "place": name})
+            else:
+                itinerary.append({"day_range": f"Day {s}-{e}", "place": name})
+            
+            # Add flight day entries if not the last city
+            if i < 8:
+                next_city_id = order_vals[i+1]
+                next_name = id_to_name[next_city_id]
+                itinerary.append({"day_range": f"Day {e}", "place": name})  # Departure
+                itinerary.append({"day_range": f"Day {e}", "place": next_name})  # Arrival
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

@@ -1,87 +1,109 @@
 from z3 import *
 
 def main():
-    # Define the City enum
-    City, (Paris, Oslo, Porto, Geneva, Reykjavik) = EnumSort('City', ['Paris', 'Oslo', 'Porto', 'Geneva', 'Reykjavik'])
-    
-    # Create end_city variables for 24 positions (0 to 23)
-    end_city = [Const('end_city_%d' % i, City) for i in range(24)]
-    
+    # Create solver
     s = Solver()
-    
-    # Fix the first 7 days (indices 0 to 6) to Geneva
-    for i in range(0, 7):
-        s.add(end_city[i] == Geneva)
-    
-    # From index 7 to 23, we cannot be in Geneva
-    for i in range(7, 24):
-        s.add(end_city[i] != Geneva)
-    
-    # Define the flight constraints: direct flights
-    def flight_ok(c1, c2):
-        return Or(
-            And(c1 == Paris, Or(c2 == Oslo, c2 == Porto, c2 == Geneva, c2 == Reykjavik)),
-            And(c1 == Oslo, Or(c2 == Paris, c2 == Geneva, c2 == Reykjavik, c2 == Porto)),
-            And(c1 == Porto, Or(c2 == Paris, c2 == Geneva, c2 == Oslo)),
-            And(c1 == Geneva, Or(c2 == Oslo, c2 == Paris, c2 == Porto)),
-            And(c1 == Reykjavik, Or(c2 == Paris, c2 == Oslo))
+
+    # City indices: Geneva=0, Paris=1, Oslo=2, Porto=3, Reykjavik=4
+    # Define variables for intermediate cities and travel days
+    cityA = Int('cityA')
+    cityB = Int('cityB')
+    cityC = Int('cityC')
+    x = Int('x')  # day we leave cityA (and arrive in cityB)
+    y = Int('y')  # day we leave cityB (and arrive in cityC)
+
+    # Constraints for cityA, cityB, cityC: must be Paris(1), Porto(3), or Reykjavik(4)
+    s.add(cityA >= 1, cityA <= 4, cityA != 2)  # not Oslo(2) or Geneva(0)
+    s.add(cityB >= 1, cityB <= 4, cityB != 2)
+    s.add(cityC >= 1, cityC <= 4, cityC != 2)
+    s.add(Distinct(cityA, cityB, cityC))
+
+    # Flight constraints
+    # From Geneva(0) to cityA: only Paris(1) or Porto(3)
+    s.add(Or(cityA == 1, cityA == 3))
+
+    # From cityA to cityB
+    s.add(
+        Or(
+            And(cityA == 1, Or(cityB == 3, cityB == 4)),
+            And(cityA == 3, cityB == 1)
         )
-    
-    # Travel constraints for days 1 to 23
-    for i in range(1, 24):
-        c1 = end_city[i-1]
-        c2 = end_city[i]
-        s.add(If(c1 != c2, flight_ok(c1, c2), True))
-    
-    # Total days in each city
-    total_paris = 0
-    total_oslo = 0
-    total_porto = 0
-    total_geneva = 0
-    total_reykjavik = 0
-    
-    for i in range(1, 24):  # days 1 to 23
-        total_paris += If(Or(end_city[i-1] == Paris, end_city[i] == Paris), 1, 0)
-        total_oslo += If(Or(end_city[i-1] == Oslo, end_city[i] == Oslo), 1, 0)
-        total_porto += If(Or(end_city[i-1] == Porto, end_city[i] == Porto), 1, 0)
-        total_geneva += If(Or(end_city[i-1] == Geneva, end_city[i] == Geneva), 1, 0)
-        total_reykjavik += If(Or(end_city[i-1] == Reykjavik, end_city[i] == Reykjavik), 1, 0)
-    
-    s.add(total_paris == 6)
-    s.add(total_oslo == 5)
-    s.add(total_porto == 7)
-    s.add(total_geneva == 7)
-    s.add(total_reykjavik == 2)
-    
-    # Constraint: Oslo must be visited between days 19 and 23 (inclusive)
-    oslo_presence = []
-    for day in [19, 20, 21, 22, 23]:
-        oslo_presence.append(Or(end_city[day-1] == Oslo, end_city[day] == Oslo))
-    s.add(Or(oslo_presence))
-    
-    # Check and output
+    )
+
+    # From cityB to cityC: avoid (Porto to Reykjavik) and (Reykjavik to Porto)
+    s.add(
+        Or(
+            And(cityB == 1, Or(cityC == 3, cityC == 4)),
+            And(cityB == 3, cityC == 1),
+            And(cityB == 4, cityC == 1)
+        )
+    )
+
+    # Stay constraints
+    stayA = x - 6  # because stay in cityA is from day7 to day x (inclusive): (x - 7 + 1) = x - 6
+    s.add(
+        If(cityA == 1, stayA == 6,
+           If(cityA == 3, stayA == 7,
+              stayA == 2  # if cityA==4
+           )
+        )
+    )
+
+    stayB = y - x + 1  # from day x to day y (inclusive)
+    s.add(
+        If(cityB == 1, stayB == 6,
+           If(cityB == 3, stayB == 7,
+              stayB == 2  # if cityB==4
+           )
+        )
+    )
+
+    stayC = 20 - y  # from day y to day 19 (inclusive): 19 - y + 1 = 20 - y
+    s.add(
+        If(cityC == 1, stayC == 6,
+           If(cityC == 3, stayC == 7,
+              stayC == 2  # if cityC==4
+           )
+        )
+    )
+
+    # Constraints on x and y
+    s.add(x >= 7, x <= 18)
+    s.add(y >= x, y <= 19)
+
+    # Check and get model
     if s.check() == sat:
         m = s.model()
-        res = [m[end_city[i]] for i in range(24)]
-        
-        # Map the constants to their names
-        city_names = {
-            Paris: "Paris",
-            Oslo: "Oslo",
-            Porto: "Porto",
-            Geneva: "Geneva",
-            Reykjavik: "Reykjavik"
-        }
-        
-        for day in range(1, 24):
-            start_city = res[day-1]
-            end_city_val = res[day]
-            start_name = city_names[start_city]
-            end_name = city_names[end_city_val]
-            if start_city.eq(end_city_val):
-                print(f"Day {day}: Stay in {start_name}")
-            else:
-                print(f"Day {day}: Travel from {start_name} to {end_name}")
+        cityA_val = m[cityA].as_long()
+        cityB_val = m[cityB].as_long()
+        cityC_val = m[cityC].as_long()
+        x_val = m[x].as_long()
+        y_val = m[y].as_long()
+
+        # Map city indices to names
+        mapping = {1: "Paris", 3: "Porto", 4: "Reykjavik"}
+
+        # Build itinerary
+        itinerary = [
+            {"day_range": "Day 1-7", "place": "Geneva"},
+            {"day_range": "Day 7", "place": "Geneva"},
+            {"day_range": "Day 7", "place": mapping[cityA_val]},
+            {"day_range": f"Day 7-{x_val}", "place": mapping[cityA_val]},
+            {"day_range": f"Day {x_val}", "place": mapping[cityA_val]},
+            {"day_range": f"Day {x_val}", "place": mapping[cityB_val]},
+            {"day_range": f"Day {x_val}-{y_val}", "place": mapping[cityB_val]},
+            {"day_range": f"Day {y_val}", "place": mapping[cityB_val]},
+            {"day_range": f"Day {y_val}", "place": mapping[cityC_val]},
+            {"day_range": f"Day {y_val}-19", "place": mapping[cityC_val]},
+            {"day_range": "Day 19", "place": mapping[cityC_val]},
+            {"day_range": "Day 19", "place": "Oslo"},
+            {"day_range": "Day 19-23", "place": "Oslo"}
+        ]
+
+        # Output as JSON
+        import json
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
         print("No solution found")
 

@@ -1,87 +1,44 @@
+import json
 from z3 import *
 
 def main():
-    # Define the city enumeration
-    CitySort, (stuttgart, seville, manchester) = EnumSort('City', ['stuttgart', 'seville', 'manchester'])
-    city_map = {
-        stuttgart: "Stuttgart",
-        seville: "Seville",
-        manchester: "Manchester"
-    }
-    
-    # Declare variables
-    s = Int('s')
-    t = Int('t')
-    city1 = Const('city1', CitySort)
-    city2 = Const('city2', CitySort)
-    city3 = Const('city3', CitySort)
+    s_start, s_end, m_start, m_end, v_start, v_end = Ints('s_start s_end m_start m_end v_start v_end')
     
     solver = Solver()
     
-    # Constraints on travel days
-    solver.add(s >= 1, s < t, t <= 15)
+    solver.add(s_start == 1)
+    solver.add(v_end == 15)
+    solver.add(s_end == m_start)
+    solver.add(m_end == v_start)
+    solver.add(s_end - s_start + 1 == 6)
+    solver.add(m_end - m_start + 1 == 4)
+    solver.add(v_end - v_start + 1 == 7)
     
-    # All cities are distinct
-    solver.add(Distinct(city1, city2, city3))
+    solver.add(s_start >= 1, s_end <= 15)
+    solver.add(m_start >= 1, m_end <= 15)
+    solver.add(v_start >= 1, v_end <= 15)
+    solver.add(s_start <= s_end, m_start <= m_end, v_start <= v_end)
     
-    # Direct flight constraints between consecutive cities
-    solver.add(Or(
-        And(city1 == manchester, city2 == seville),
-        And(city1 == seville, city2 == manchester),
-        And(city1 == stuttgart, city2 == manchester),
-        And(city1 == manchester, city2 == stuttgart)
-    ))
-    solver.add(Or(
-        And(city2 == manchester, city3 == seville),
-        And(city2 == seville, city3 == manchester),
-        And(city2 == stuttgart, city3 == manchester),
-        And(city2 == manchester, city3 == stuttgart)
-    ))
-    
-    # Days per city
-    stuttgart_days = If(city1 == stuttgart, s,
-                       If(city2 == stuttgart, t - s + 1,
-                          16 - t))
-    seville_days = If(city1 == seville, s,
-                     If(city2 == seville, t - s + 1,
-                        16 - t))
-    manchester_days = If(city1 == manchester, s,
-                        If(city2 == manchester, t - s + 1,
-                            16 - t))
-    
-    solver.add(stuttgart_days == 6, seville_days == 7, manchester_days == 4)
-    
-    # Meeting constraint: at least one day in Stuttgart between day 1 and 6
-    solver.add(Or(
-        city1 == stuttgart,
-        And(city2 == stuttgart, s <= 6),
-        And(city3 == stuttgart, t <= 6)
-    ))
-    
-    # Check for a solution
+    events = []
     if solver.check() == sat:
-        m = solver.model()
-        s_val = m[s].as_long()
-        t_val = m[t].as_long()
-        city1_val = m[city1]
-        city2_val = m[city2]
-        city3_val = m[city3]
+        model = solver.model()
+        s_start_val = model[s_start].as_long()
+        s_end_val = model[s_end].as_long()
+        m_start_val = model[m_start].as_long()
+        m_end_val = model[m_end].as_long()
+        v_start_val = model[v_start].as_long()
+        v_end_val = model[v_end].as_long()
         
-        # Print the schedule
-        for day in range(1, 16):
-            if day < s_val:
-                cities = [city_map[city1_val]]
-            elif day == s_val:
-                cities = [city_map[city1_val], city_map[city2_val]]
-            elif day < t_val:
-                cities = [city_map[city2_val]]
-            elif day == t_val:
-                cities = [city_map[city2_val], city_map[city3_val]]
-            else:  # day > t_val
-                cities = [city_map[city3_val]]
-            print(f"Day {day}: {', '.join(cities)}")
-    else:
-        print("No valid trip plan found.")
+        events.append({"day_range": f"Day {s_start_val}-{s_end_val}", "place": "Stuttgart"})
+        events.append({"day_range": f"Day {s_end_val}", "place": "Stuttgart"})
+        events.append({"day_range": f"Day {s_end_val}", "place": "Manchester"})
+        events.append({"day_range": f"Day {m_start_val}-{m_end_val}", "place": "Manchester"})
+        events.append({"day_range": f"Day {m_end_val}", "place": "Manchester"})
+        events.append({"day_range": f"Day {m_end_val}", "place": "Seville"})
+        events.append({"day_range": f"Day {v_start_val}-{v_end_val}", "place": "Seville"})
+    
+    result = {"itinerary": events}
+    print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

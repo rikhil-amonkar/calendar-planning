@@ -1,105 +1,89 @@
 from z3 import *
+import json
 
 def main():
-    cities = ['Lyon', 'Paris', 'Riga', 'Berlin', 'Stockholm', 'Zurich', 'Nice', 'Seville', 'Milan', 'Naples']
-    req = [3, 5, 2, 2, 3, 5, 2, 3, 3, 4]
-    
-    flight_pairs = [
-        ('Paris', 'Stockholm'),
-        ('Seville', 'Paris'),
-        ('Naples', 'Zurich'),
-        ('Nice', 'Riga'),
-        ('Berlin', 'Milan'),
-        ('Paris', 'Zurich'),
-        ('Paris', 'Nice'),
-        ('Milan', 'Paris'),
-        ('Milan', 'Riga'),
-        ('Paris', 'Lyon'),
-        ('Milan', 'Naples'),
-        ('Paris', 'Riga'),
-        ('Berlin', 'Stockholm'),
-        ('Stockholm', 'Riga'),
-        ('Nice', 'Zurich'),
-        ('Milan', 'Zurich'),
-        ('Lyon', 'Nice'),
-        ('Zurich', 'Stockholm'),
-        ('Zurich', 'Riga'),
-        ('Berlin', 'Naples'),
-        ('Milan', 'Stockholm'),
-        ('Berlin', 'Zurich'),
-        ('Milan', 'Seville'),
-        ('Paris', 'Naples'),
-        ('Berlin', 'Riga'),
-        ('Nice', 'Stockholm'),
-        ('Berlin', 'Paris'),
-        ('Nice', 'Naples'),
-        ('Berlin', 'Nice')
+    cities = ['Berlin', 'Nice', 'Stockholm', 'Lyon', 'Paris', 'Riga', 'Zurich', 'Seville', 'Milan', 'Naples']
+    dur = {
+        'Berlin': 2,
+        'Nice': 2,
+        'Stockholm': 3,
+        'Lyon': 3,
+        'Paris': 5,
+        'Riga': 2,
+        'Zurich': 5,
+        'Seville': 3,
+        'Milan': 3,
+        'Naples': 4
+    }
+    dur_minus_one = {city: dur[city] - 1 for city in cities}
+
+    flight_list = [
+        "Paris and Stockholm", "Seville and Paris", "Naples and Zurich", "Nice and Riga", 
+        "Berlin and Milan", "Paris and Zurich", "Paris and Nice", "Milan and Paris", 
+        "Milan and Riga", "Paris and Lyon", "Milan and Naples", "Paris and Riga", 
+        "Berlin and Stockholm", "Stockholm and Riga", "Nice and Zurich", "Milan and Zurich", 
+        "Lyon and Nice", "Zurich and Stockholm", "Zurich and Riga", "Berlin and Naples", 
+        "Milan and Stockholm", "Berlin and Zurich", "Milan and Seville", "Paris and Naples", 
+        "Berlin and Riga", "Nice and Stockholm", "Berlin and Paris", "Nice and Naples", 
+        "Berlin and Nice"
     ]
-    
-    flight_set = set()
-    for (c1, c2) in flight_pairs:
-        key = (min(c1, c2), max(c1, c2))
-        flight_set.add(key)
-    
-    num_days = 23
-    num_cities = len(cities)
-    
-    In = [[Bool(f'In_{d}_{c}') for c in range(num_cities)] for d in range(num_days)]
-    
+
+    allowed_pairs_set = set()
+    for s in flight_list:
+        a, b = s.split(' and ')
+        allowed_pairs_set.add((a, b))
+        allowed_pairs_set.add((b, a))
+
     s = Solver()
-    
-    for d in range(num_days):
-        num_in_day = Sum([If(In[d][c], 1, 0) for c in range(num_cities)])
-        s.add(Or(num_in_day == 1, num_in_day == 2))
-    
-    for c_index in range(num_cities):
-        total_days = Sum([If(In[d][c_index], 1, 0) for d in range(num_days)])
-        s.add(total_days == req[c_index])
-    
-    berlin_index = cities.index('Berlin')
-    s.add(In[0][berlin_index])
-    s.add(In[1][berlin_index])
-    
-    stockholm_index = cities.index('Stockholm')
-    s.add(In[19][stockholm_index])
-    s.add(In[20][stockholm_index])
-    s.add(In[21][stockholm_index])
-    
-    nice_index = cities.index('Nice')
-    s.add(In[11][nice_index])
-    s.add(In[12][nice_index])
-    
-    for d in range(num_days):
-        for i in range(num_cities):
-            for j in range(i + 1, num_cities):
-                city_i = cities[i]
-                city_j = cities[j]
-                key = (min(city_i, city_j), max(city_i, city_j))
-                if key not in flight_set:
-                    s.add(Not(And(In[d][i], In[d][j])))
-    
-    for c_index in range(num_cities):
-        for d in range(num_days - 1):
-            leave_condition = And(In[d][c_index], Not(In[d + 1][c_index]))
-            other_cities_leave = [In[d][j] for j in range(num_cities) if j != c_index]
-            if other_cities_leave:
-                s.add(Implies(leave_condition, Or(other_cities_leave)))
-            
-            arrive_condition = And(Not(In[d][c_index]), In[d + 1][c_index]))
-            other_cities_arrive = [In[d + 1][j] for j in range(num_cities) if j != c_index]
-            if other_cities_arrive:
-                s.add(Implies(arrive_condition, Or(other_cities_arrive)))
-    
+
+    pos = {}
+    for city in cities:
+        pos[city] = Int(f'pos_{city}')
+        s.add(pos[city] >= 0, pos[city] < 10)
+
+    s.add(Distinct([pos[city] for city in cities]))
+    s.add(pos['Berlin'] == 0)
+
+    cumulative_nice = Sum([If(pos[other] < pos['Nice'], dur_minus_one[other], 0) for other in cities if other != 'Nice'])
+    s.add(cumulative_nice == 11)
+
+    cumulative_stockholm = Sum([If(pos[other] < pos['Stockholm'], dur_minus_one[other], 0) for other in cities if other != 'Stockholm'])
+    s.add(cumulative_stockholm == 19)
+
+    for i in range(len(cities)):
+        for j in range(i+1, len(cities)):
+            c1 = cities[i]
+            c2 = cities[j]
+            if (c1, c2) not in allowed_pairs_set:
+                s.add(Abs(pos[c1] - pos[c2]) != 1)
+
     if s.check() == sat:
         m = s.model()
-        for d in range(num_days):
-            cities_today = []
-            for c_index in range(num_cities):
-                if is_true(m.evaluate(In[d][c_index])):
-                    cities_today.append(cities[c_index])
-            print(f"Day {d + 1}: {', '.join(cities_today)}")
+        position_values = {}
+        for city in cities:
+            position_values[city] = m.evaluate(pos[city]).as_long()
+        
+        ordered_cities = sorted(cities, key=lambda c: position_values[c])
+        
+        start_days = []
+        current = 1
+        for city in ordered_cities:
+            start_days.append((city, current))
+            current = current + dur[city] - 1
+        
+        itinerary = []
+        for idx, (city, start) in enumerate(start_days):
+            end = start + dur[city] - 1
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+            if idx < len(ordered_cities) - 1:
+                itinerary.append({"day_range": f"Day {end}", "place": city})
+                next_city = ordered_cities[idx+1]
+                itinerary.append({"day_range": f"Day {end}", "place": next_city})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

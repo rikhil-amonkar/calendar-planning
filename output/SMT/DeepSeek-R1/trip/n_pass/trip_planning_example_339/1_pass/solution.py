@@ -1,102 +1,107 @@
 from z3 import *
 
 def main():
-    # City mapping: 0=Warsaw, 1=Riga, 2=Budapest, 3=Paris
-    city_names = ["Warsaw", "Riga", "Budapest", "Paris"]
-    
-    # Flight connections: symmetric and without self-loops
-    def connected(i, j):
-        return Or(
-            And(i == 0, Or(j == 1, j == 2, j == 3)),
-            And(i == 1, Or(j == 0, j == 3)),
-            And(i == 2, Or(j == 0, j == 3)),
-            And(i == 3, Or(j == 0, j == 1, j == 2))
-        )
-    
-    # Create Z3 variables for 17 days of BaseCity and 16 days of TravelDest
-    BaseCity = [Int(f'BaseCity_{d}') for d in range(1, 18)]
-    TravelDest = [Int(f'TravelDest_{d}') for d in range(1, 17)]
-    
+    # Create solver
     s = Solver()
     
-    # Constraint: BaseCity[0] (day1) is Warsaw (0)
-    s.add(BaseCity[0] == 0)
-    # Constraint: No travel on day1 (TravelDest[0] = -1)
-    s.add(TravelDest[0] == -1)
+    # Variables for the cities of the three stays after Warsaw
+    s1 = Int('s1')
+    s2 = Int('s2')
+    s3 = Int('s3')
     
-    # Domain constraints for BaseCity and TravelDest
-    for i in range(17):
-        s.add(BaseCity[i] >= 0, BaseCity[i] <= 3)
-    for i in range(16):
-        s.add(TravelDest[i] >= -1, TravelDest[i] <= 3)
+    # Variables for the end days of the second and third stays
+    a = Int('a')  # end day of stay1 (which starts at day2)
+    b = Int('b')  # end day of stay2 (which starts at day a)
     
-    # TravelDest constraints: if not -1, must be a valid city and not same as BaseCity
-    for d in range(1, 16):  # d: day index for TravelDest (1 to 15, representing day2 to day16)
-        s.add(Or(
-            TravelDest[d] == -1,
-            And(TravelDest[d] >= 0, TravelDest[d] <= 3, TravelDest[d] != BaseCity[d])
-        ))
+    # Constraints for s1, s2, s3: each is one of 1,2,3 (Budapest, Paris, Riga) and they are distinct
+    s.add(s1 >= 1, s1 <= 3)
+    s.add(s2 >= 1, s2 <= 3)
+    s.add(s3 >= 1, s3 <= 3)
+    s.add(Distinct(s1, s2, s3))
     
-    # BaseCity propagation: BaseCity[d] = (TravelDest[d-1] if not -1 else BaseCity[d-1])
-    for d in range(2, 18):  # d: day index from 2 to 17
-        prev_travel = TravelDest[d-2]  # TravelDest for day d-1 (index d-2)
-        s.add(BaseCity[d-1] == If(prev_travel != -1, prev_travel, BaseCity[d-2]))
+    # Constraints for a and b: a is at least 2, b is at least a, and both at most 17
+    s.add(a >= 2, a <= 17)
+    s.add(b >= a, b <= 17)
     
-    # After day2, BaseCity cannot be Warsaw (0)
-    for d in range(3, 18):  # days 3 to 17
-        s.add(BaseCity[d-1] != 0)
+    # Days in each city (city0: Warsaw, city1: Budapest, city2: Paris, city3: Riga)
+    # Warsaw: stay0: days 1 to 2 -> 2 days (fixed)
+    # For the other cities: sum over the stays
+    days_city1 = If(s1 == 1, a - 1, 0) + If(s2 == 1, b - a + 1, 0) + If(s3 == 1, 17 - b + 1, 0)
+    days_city2 = If(s1 == 2, a - 1, 0) + If(s2 == 2, b - a + 1, 0) + If(s3 == 2, 17 - b + 1, 0)
+    days_city3 = If(s1 == 3, a - 1, 0) + If(s2 == 3, b - a + 1, 0) + If(s3 == 3, 17 - b + 1, 0)
     
-    # Flight connection constraints for travel days
-    for d in range(0, 16):  # d: index for TravelDest (0 to 15) representing day1 to day16
-        # For day1, TravelDest[0] is -1 (no constraint). For others, if TravelDest[d] != -1, check connection.
-        s.add(If(
-            TravelDest[d] != -1,
-            connected(BaseCity[d], TravelDest[d]),
-            True
-        ))
+    s.add(days_city1 == 7)  # Budapest
+    s.add(days_city2 == 4)  # Paris
+    s.add(days_city3 == 7)  # Riga
     
-    # Total travel days must be 3 (including day2)
-    travel_days = [If(TravelDest[d] != -1, 1, 0) for d in range(0, 16)]
-    s.add(Sum(travel_days) == 3)
+    # Wedding constraint: must be in Riga during day11 to day17
+    s.add(Or(
+        And(s1 == 3, a >= 11),   # Riga in stay1 (ends at a) and a>=11
+        And(s2 == 3, b >= 11),    # Riga in stay2 (ends at b) and b>=11
+        s3 == 3                  # Riga in stay3 (ends at 17) -> always in [11,17]
+    ))
     
-    # Define in_city: for each city and day, whether present
-    in_city = {}
-    for c in range(4):
-        for d in range(1, 18):
-            if d < 17:
-                # TravelDest index d-1 exists for day d
-                in_city[(c, d)] = Or(
-                    BaseCity[d-1] == c,
-                    And(TravelDest[d-1] != -1, TravelDest[d-1] == c)
-                )
-            else:
-                # Day17: no travel defined, so only BaseCity
-                in_city[(c, d)] = (BaseCity[16] == c)
+    # Function to check direct flight
+    def direct_flight(c1, c2):
+        return Or(
+            And(c1 == 0, c2 == 1), And(c1 == 0, c2 == 2), And(c1 == 0, c2 == 3),
+            And(c1 == 1, c2 == 0), And(c1 == 1, c2 == 2),
+            And(c1 == 2, c2 == 0), And(c1 == 2, c2 == 1), And(c1 == 2, c2 == 3),
+            And(c1 == 3, c2 == 0), And(c1 == 3, c2 == 2)
+        )
     
-    # Total days per city
-    total_days = [0] * 4
-    for c in range(4):
-        total = 0
-        for d in range(1, 18):
-            total += If(in_city[(c, d)], 1, 0)
-        s.add(total == [2, 7, 7, 4][c])
+    # Flight constraints: 
+    s.add(direct_flight(0, s1))  # from Warsaw (0) to s1
+    s.add(direct_flight(s1, s2)) # from s1 to s2
+    s.add(direct_flight(s2, s3)) # from s2 to s3
     
-    # Wedding constraint: at least one day in Riga (city1) between days 11 and 17
-    s.add(Or([in_city[(1, d)] for d in range(11, 18)]))
-    
-    # Solve the problem
+    # Check if there is a solution
     if s.check() == sat:
         m = s.model()
-        # Output the itinerary
-        print("Day-by-Day Itinerary:")
-        for d in range(1, 18):
-            cities_today = []
-            for c in range(4):
-                if m.evaluate(in_city[(c, d)]):
-                    cities_today.append(city_names[c])
-            print(f"Day {d}: {', '.join(cities_today)}")
+        s1_val = m[s1].as_long()
+        s2_val = m[s2].as_long()
+        s3_val = m[s3].as_long()
+        a_val = m[a].as_long()
+        b_val = m[b].as_long()
+        
+        # Map city indices to names
+        city_names = {
+            0: "Warsaw",
+            1: "Budapest",
+            2: "Paris",
+            3: "Riga"
+        }
+        s1_name = city_names[s1_val]
+        s2_name = city_names[s2_val]
+        s3_name = city_names[s3_val]
+        
+        # Function to format day range
+        def format_day_range(start, end):
+            if start == end:
+                return "Day " + str(start)
+            else:
+                return "Day {}-{}".format(start, end)
+        
+        # Build itinerary
+        itinerary = [
+            {"day_range": "Day 1-2", "place": "Warsaw"},
+            {"day_range": "Day 2", "place": "Warsaw"},
+            {"day_range": "Day 2", "place": s1_name},
+            {"day_range": format_day_range(2, a_val), "place": s1_name},
+            {"day_range": "Day " + str(a_val), "place": s1_name},
+            {"day_range": "Day " + str(a_val), "place": s2_name},
+            {"day_range": format_day_range(a_val, b_val), "place": s2_name},
+            {"day_range": "Day " + str(b_val), "place": s2_name},
+            {"day_range": "Day " + str(b_val), "place": s3_name},
+            {"day_range": format_day_range(b_val, 17), "place": s3_name}
+        ]
+        
+        # Output as JSON
+        import json
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
-        print("No valid plan found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

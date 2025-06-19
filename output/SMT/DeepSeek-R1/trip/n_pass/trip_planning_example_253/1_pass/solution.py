@@ -1,80 +1,114 @@
 from z3 import *
+import json
 
 def main():
-    # Define the 15 variables: x0 to x14 (for x1 to x15)
-    x = [Int('x%d' % i) for i in range(15)]
+    # Define city indices
+    ams, vie, san, lyo = 0, 1, 2, 3
+    reqs = {ams: 3, vie: 7, san: 4, lyo: 3}
+    names = {ams: "Amsterdam", vie: "Vienna", san: "Santorini", lyo: "Lyon"}
     
     s = Solver()
     
-    # Each x_i must be in [0,3]
-    for i in range(15):
-        s.add(x[i] >= 0)
-        s.add(x[i] <= 3)
+    # Order of cities (4 integers)
+    order = [Int('order_%d' % i) for i in range(4)]
     
-    # Direct flights: set of allowed pairs (a,b) for a direct flight (if a != b)
-    edges = [(0,1), (1,0), (0,2), (2,0), (0,3), (3,0), (1,2), (2,1), (1,3), (3,1)]
-    # For each consecutive pair (x_i, x_{i+1]) for i in 0 to 13
-    for i in range(14):
-        # If x[i] != x[i+1], then (x[i], x[i+1]) must be in edges
-        s.add(If(x[i] != x[i+1],
-                 Or([And(x[i] == a, x[i+1] == b) for (a, b) in edges]),
-                 True))
+    # Constraints: each city in [0,3] and distinct
+    for i in range(4):
+        s.add(order[i] >= 0, order[i] <= 3)
+    s.add(Distinct(order[0], order[1], order[2], order[3]))
     
-    # Total days per city:
-    # Amsterdam (0)
-    starts0 = Sum([If(x[i] == 0, 1, 0) for i in range(14)])   # x0 to x13 (start of day1 to start of day14)
-    ends0   = Sum([If(x[i] == 0, 1, 0) for i in range(1, 15)]) # x1 to x14 (end of day1 to end of day14)
-    non_travel0 = Sum([If(And(x[i] == 0, x[i+1] == 0), 1, 0) for i in range(14)]) # non-travel days in Amsterdam
-    total0 = starts0 + ends0 - non_travel0
-    s.add(total0 == 3)
+    # Departure days
+    d0 = Int('d0')
+    d1 = Int('d1')
+    d2 = Int('d2')
     
-    # Vienna (1)
-    starts1 = Sum([If(x[i] == 1, 1, 0) for i in range(14)])
-    ends1   = Sum([If(x[i] == 1, 1, 0) for i in range(1, 15)])
-    non_travel1 = Sum([If(And(x[i] == 1, x[i+1] == 1), 1, 0) for i in range(14)])
-    total1 = starts1 + ends1 - non_travel1
-    s.add(total1 == 7)
+    # d0 = required days of the first city
+    s.add(d0 == If(order[0] == ams, reqs[ams],
+                If(order[0] == vie, reqs[vie],
+                If(order[0] == san, reqs[san], reqs[lyo]))))
     
-    # Santorini (2)
-    starts2 = Sum([If(x[i] == 2, 1, 0) for i in range(14)])
-    ends2   = Sum([If(x[i] == 2, 1, 0) for i in range(1, 15)])
-    non_travel2 = Sum([If(And(x[i] == 2, x[i+1] == 2), 1, 0) for i in range(14)])
-    total2 = starts2 + ends2 - non_travel2
-    s.add(total2 == 4)
+    # d1 = d0 + reqs[order[1]] - 1
+    s.add(d1 == d0 + 
+          If(order[1] == ams, reqs[ams],
+          If(order[1] == vie, reqs[vie],
+          If(order[1] == san, reqs[san], reqs[lyo]))) - 1)
     
-    # Lyon (3)
-    starts3 = Sum([If(x[i] == 3, 1, 0) for i in range(14)])
-    ends3   = Sum([If(x[i] == 3, 1, 0) for i in range(1, 15)])
-    non_travel3 = Sum([If(And(x[i] == 3, x[i+1] == 3), 1, 0) for i in range(14)])
-    total3 = starts3 + ends3 - non_travel3
-    s.add(total3 == 3)
+    # d2 = d1 + reqs[order[2]] - 1
+    s.add(d2 == d1 + 
+          If(order[2] == ams, reqs[ams],
+          If(order[2] == vie, reqs[vie],
+          If(order[2] == san, reqs[san], reqs[lyo]))) - 1)
     
-    # Workshop in Amsterdam: between day9 and day11 (days 9,10,11) -> we require at least one of the days has Amsterdam.
-    # Day9: start x8, end x9 -> Amsterdam if x8==0 or x9==0.
-    # Day10: x9==0 or x10==0
-    # Day11: x10==0 or x11==0
-    s.add(Or(Or(x[8] == 0, x[9] == 0), Or(x[9] == 0, x[10] == 0), Or(x[10] == 0, x[11] == 0)))
+    # Constraint: d2 = 15 - reqs[order[3]]
+    s.add(d2 == 15 - 
+          If(order[3] == ams, reqs[ams],
+          If(order[3] == vie, reqs[vie],
+          If(order[3] == san, reqs[san], reqs[lyo]))))
     
-    # Wedding in Lyon: between day7 and day9 (days 7,8,9)
-    # Day7: x6 or x7
-    # Day8: x7 or x8
-    # Day9: x8 or x9
-    s.add(Or(Or(x[6] == 3, x[7] == 3), Or(x[7] == 3, x[8] == 3), Or(x[8] == 3, x[9] == 3)))
+    # Event constraints for Amsterdam
+    for i in range(4):
+        cond_ams = (order[i] == ams)
+        if i == 0:
+            s.add(Implies(cond_ams, d0 >= 9))
+        elif i == 1:
+            s.add(Implies(cond_ams, And(d0 <= 11, d1 >= 9)))
+        elif i == 2:
+            s.add(Implies(cond_ams, And(d1 <= 11, d2 >= 9)))
+        else:  # i == 3
+            s.add(Implies(cond_ams, d2 <= 11))
     
+    # Event constraints for Lyon
+    for i in range(4):
+        cond_lyo = (order[i] == lyo)
+        if i == 0:
+            s.add(Implies(cond_lyo, d0 >= 7))
+        elif i == 1:
+            s.add(Implies(cond_lyo, And(d0 <= 9, d1 >= 7)))
+        elif i == 2:
+            s.add(Implies(cond_lyo, And(d1 <= 9, d2 >= 7)))
+        else:  # i == 3
+            s.add(Implies(cond_lyo, d2 <= 9))
+    
+    # Flight connections
+    for k in range(3):
+        a = order[k]
+        b = order[k+1]
+        s.add(Or(
+            And(a == ams, Or(b == vie, b == san, b == lyo)),
+            And(a == vie, Or(b == ams, b == san, b == lyo)),
+            And(a == san, Or(b == ams, b == vie)),
+            And(a == lyo, Or(b == ams, b == vie))
+        ))
+    
+    # Check and get model
     if s.check() == sat:
         m = s.model()
-        sol = [m.evaluate(x[i]).as_long() for i in range(15)]
-        city_names = ['Amsterdam', 'Vienna', 'Santorini', 'Lyon']
-        print("Day-by-day itinerary:")
-        for day in range(1, 15):
-            start_city = sol[day-1]
-            end_city = sol[day]
-            if start_city == end_city:
-                print(f"Day {day}: Stay in {city_names[start_city]}")
-            else:
-                print(f"Day {day}: Travel from {city_names[start_city]} to {city_names[end_city]} (thus in both cities on day {day})")
+        ord_val = [m.evaluate(order[i]).as_long() for i in range(4)]
+        d0_val = m.evaluate(d0).as_long()
+        d1_val = m.evaluate(d1).as_long()
+        d2_val = m.evaluate(d2).as_long()
+        
+        # Build itinerary
+        itinerary = []
+        city0 = ord_val[0]
+        itinerary.append({"day_range": "Day 1-{}".format(d0_val), "place": names[city0]})
+        itinerary.append({"day_range": "Day {}".format(d0_val), "place": names[city0]})
+        city1 = ord_val[1]
+        itinerary.append({"day_range": "Day {}".format(d0_val), "place": names[city1]})
+        itinerary.append({"day_range": "Day {}-{}".format(d0_val, d1_val), "place": names[city1]})
+        itinerary.append({"day_range": "Day {}".format(d1_val), "place": names[city1]})
+        city2 = ord_val[2]
+        itinerary.append({"day_range": "Day {}".format(d1_val), "place": names[city2]})
+        itinerary.append({"day_range": "Day {}-{}".format(d1_val, d2_val), "place": names[city2]})
+        itinerary.append({"day_range": "Day {}".format(d2_val), "place": names[city2]})
+        city3 = ord_val[3]
+        itinerary.append({"day_range": "Day {}".format(d2_val), "place": names[city3]})
+        itinerary.append({"day_range": "Day {}-14".format(d2_val), "place": names[city3]})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

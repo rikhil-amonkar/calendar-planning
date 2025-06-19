@@ -1,108 +1,89 @@
 from z3 import *
 
 def main():
-    days = list(range(1, 23))
-    cities = ['Brussels', 'Helsinki', 'Split', 'Dubrovnik', 'Istanbul', 'Milan', 'Vilnius', 'Frankfurt']
-    
-    in_city = {}
-    for d in days:
-        for c in cities:
-            in_city[(d, c)] = Bool(f"in_{d}_{c}")
-    
-    s = Solver()
-    
-    # Fixed constraints for Istanbul: days 1-5 inclusive
-    for d in range(1, 6):
-        s.add(in_city[(d, 'Istanbul')])
-    for d in range(6, 23):
-        s.add(Not(in_city[(d, 'Istanbul')]))
-    
-    # Fixed constraints for Vilnius: days 18-22 inclusive
-    for d in range(1, 18):
-        s.add(Not(in_city[(d, 'Vilnius')]))
-    for d in range(18, 23):
-        s.add(in_city[(d, 'Vilnius')])
-    
-    # Fixed constraints for Frankfurt: days 16-18 inclusive
-    for d in range(1, 16):
-        s.add(Not(in_city[(d, 'Frankfurt')]))
-    for d in range(16, 19):
-        s.add(in_city[(d, 'Frankfurt')])
-    for d in range(19, 23):
-        s.add(Not(in_city[(d, 'Frankfurt')]))
-    
-    # Total days for other cities
-    total_days = {
-        'Brussels': 3,
-        'Helsinki': 3,
-        'Split': 4,
-        'Dubrovnik': 2,
-        'Milan': 4
+    cities = ["Brussels", "Helsinki", "Split", "Dubrovnik", "Milan"]
+    days_req = [3, 3, 4, 2, 4]
+    graph = {
+        0: [1, 4],
+        1: [0, 2, 3, 4],
+        2: [1, 4],
+        3: [1],
+        4: [0, 1, 2]
     }
-    for city, total in total_days.items():
-        s.add(Sum([If(in_city[(d, city)], 1, 0) for d in days]) == total)
+    allowed_set = set()
+    for i in range(5):
+        for j in graph[i]:
+            allowed_set.add((i, j))
     
-    # Define allowed flight pairs (as frozenset for unordered pairs)
-    bidirectional_connections = [
-        ('Milan', 'Frankfurt'),
-        ('Split', 'Frankfurt'),
-        ('Milan', 'Split'),
-        ('Brussels', 'Vilnius'),
-        ('Brussels', 'Helsinki'),
-        ('Istanbul', 'Brussels'),
-        ('Milan', 'Vilnius'),
-        ('Brussels', 'Milan'),
-        ('Istanbul', 'Helsinki'),
-        ('Helsinki', 'Vilnius'),
-        ('Helsinki', 'Dubrovnik'),
-        ('Split', 'Vilnius'),
-        ('Istanbul', 'Milan'),
-        ('Helsinki', 'Frankfurt'),
-        ('Istanbul', 'Vilnius'),
-        ('Split', 'Helsinki'),
-        ('Milan', 'Helsinki'),
-        ('Istanbul', 'Frankfurt'),
-        ('Dubrovnik', 'Frankfurt'),
-        ('Frankfurt', 'Vilnius')
-    ]
-    unidirectional_connections = [
-        ('Dubrovnik', 'Istanbul'),
-        ('Brussels', 'Frankfurt')
-    ]
-    allowed_pairs = set()
-    for a, b in bidirectional_connections:
-        allowed_pairs.add(frozenset({a, b}))
-    for a, b in unidirectional_connections:
-        allowed_pairs.add(frozenset({a, b}))
+    c0, c1, c2, c3, c4 = Ints('c0 c1 c2 c3 c4')
+    s = Solver()
+    s.add(c0 >= 0, c0 < 5, c1 >= 0, c1 < 5, c2 >= 0, c2 < 5, c3 >= 0, c3 < 5, c4 >= 0, c4 < 5)
+    s.add(Distinct(c0, c1, c2, c3, c4))
+    s.add(Or(c0 == 0, c0 == 1, c0 == 4))
     
-    # Constraints for each day: at least one city, at most two cities, and allowed pairs if two cities
-    for d in days:
-        bools = [in_city[(d, c)] for c in cities]
-        s.add(Or(bools))  # At least one city per day
-        s.add(AtMost(*bools, 2))  # At most two cities per day
-        
-        for i in range(len(cities)):
-            for j in range(i + 1, len(cities)):
-                c1 = cities[i]
-                c2 = cities[j]
-                pair = frozenset({c1, c2})
-                if pair not in allowed_pairs:
-                    s.add(Or(Not(in_city[(d, c1)]), Not(in_city[(d, c2)])))
+    # Constraints for consecutive edges
+    s.add(Or([And(c0 == i, c1 == j) for (i, j) in allowed_set]))
+    s.add(Or([And(c1 == i, c2 == j) for (i, j) in allowed_set]))
+    s.add(Or([And(c2 == i, c3 == j) for (i, j) in allowed_set]))
+    s.add(Or([And(c3 == i, c4 == j) for (i, j) in allowed_set]))
     
-    # Continuity constraint: consecutive days must share at least one city
-    for d in range(1, 22):
-        common_cities = [And(in_city[(d, c)], in_city[(d + 1, c)]) for c in cities]
-        s.add(Or(common_cities))
-    
-    # Solve and output the plan
     if s.check() == sat:
         m = s.model()
-        plan = []
-        for d in days:
-            cities_today = [c for c in cities if m.evaluate(in_city[(d, c)]).eq(True)]
-            plan.append((d, cities_today))
-        for d, cities_list in plan:
-            print(f"Day {d}: {cities_list}")
+        c0_val = m[c0].as_long()
+        c1_val = m[c1].as_long()
+        c2_val = m[c2].as_long()
+        c3_val = m[c3].as_long()
+        c4_val = m[c4].as_long()
+        
+        d0 = days_req[c0_val]
+        d1 = days_req[c1_val]
+        d2 = days_req[c2_val]
+        d3 = days_req[c3_val]
+        d4 = days_req[c4_val]
+        
+        a0 = d0 + 4
+        a1 = d0 + d1 + 3
+        a2 = d0 + d1 + d2 + 2
+        a3 = d0 + d1 + d2 + d3 + 1
+        
+        itinerary = []
+        itinerary.append({"day_range": "Day 1-5", "place": "Istanbul"})
+        itinerary.append({"day_range": "Day 5", "place": "Istanbul"})
+        
+        city0 = cities[c0_val]
+        itinerary.append({"day_range": "Day 5", "place": city0})
+        itinerary.append({"day_range": f"Day 5-{a0}", "place": city0})
+        itinerary.append({"day_range": f"Day {a0}", "place": city0})
+        
+        city1 = cities[c1_val]
+        itinerary.append({"day_range": f"Day {a0}", "place": city1})
+        itinerary.append({"day_range": f"Day {a0}-{a1}", "place": city1})
+        itinerary.append({"day_range": f"Day {a1}", "place": city1})
+        
+        city2 = cities[c2_val]
+        itinerary.append({"day_range": f"Day {a1}", "place": city2})
+        itinerary.append({"day_range": f"Day {a1}-{a2}", "place": city2})
+        itinerary.append({"day_range": f"Day {a2}", "place": city2})
+        
+        city3 = cities[c3_val]
+        itinerary.append({"day_range": f"Day {a2}", "place": city3})
+        itinerary.append({"day_range": f"Day {a2}-{a3}", "place": city3})
+        itinerary.append({"day_range": f"Day {a3}", "place": city3})
+        
+        city4 = cities[c4_val]
+        itinerary.append({"day_range": f"Day {a3}", "place": city4})
+        itinerary.append({"day_range": f"Day {a3}-16", "place": city4})
+        itinerary.append({"day_range": "Day 16", "place": city4})
+        
+        itinerary.append({"day_range": "Day 16", "place": "Frankfurt"})
+        itinerary.append({"day_range": "Day 16-18", "place": "Frankfurt"})
+        itinerary.append({"day_range": "Day 18", "place": "Frankfurt"})
+        
+        itinerary.append({"day_range": "Day 18", "place": "Vilnius"})
+        itinerary.append({"day_range": "Day 18-22", "place": "Vilnius"})
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

@@ -1,124 +1,103 @@
 from z3 import *
 
 def main():
-    # Cities and their required days
-    cities_list = ['Lisbon', 'Dubrovnik', 'Copenhagen', 'Prague', 'Tallinn', 'Stockholm', 'Split', 'Lyon']
-    required_days = {
-        'Lisbon': 2,
-        'Dubrovnik': 5,
-        'Copenhagen': 5,
-        'Prague': 3,
-        'Tallinn': 2,
-        'Stockholm': 4,
-        'Split': 3,
-        'Lyon': 2
-    }
+    cities = ["Lisbon", "Dubrovnik", "Copenhagen", "Prague", "Tallinn", "Stockholm", "Split", "Lyon"]
+    required_days = [2, 5, 5, 3, 2, 4, 3, 2]
+    city_to_index = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flight pairs (both directions)
-    given_pairs = [
-        ('Dubrovnik', 'Stockholm'),
-        ('Lisbon', 'Copenhagen'),
-        ('Lisbon', 'Lyon'),
-        ('Copenhagen', 'Stockholm'),
-        ('Copenhagen', 'Split'),
-        ('Prague', 'Stockholm'),
-        ('Tallinn', 'Stockholm'),
-        ('Prague', 'Lyon'),
-        ('Lisbon', 'Stockholm'),
-        ('Prague', 'Lisbon'),
-        ('Stockholm', 'Split'),
-        ('Prague', 'Split'),
-        ('Split', 'Lyon'),
-        ('Copenhagen', 'Dubrovnik'),
-        ('Tallinn', 'Copenhagen'),
-        ('Tallinn', 'Prague')
+    direct_flights = [
+        ("Dubrovnik", "Stockholm"),
+        ("Lisbon", "Copenhagen"),
+        ("Lisbon", "Lyon"),
+        ("Copenhagen", "Stockholm"),
+        ("Copenhagen", "Split"),
+        ("Prague", "Stockholm"),
+        ("Tallinn", "Stockholm"),
+        ("Prague", "Lyon"),
+        ("Lisbon", "Stockholm"),
+        ("Prague", "Lisbon"),
+        ("Stockholm", "Split"),
+        ("Prague", "Copenhagen"),
+        ("Split", "Lyon"),
+        ("Copenhagen", "Dubrovnik"),
+        ("Prague", "Split"),
+        ("Tallinn", "Copenhagen"),
+        ("Tallinn", "Prague")
     ]
     
-    # Create Z3 enums for cities
-    City, city_consts = EnumSort('City', cities_list)
-    city_dict = {city: const for city, const in zip(cities_list, city_consts)}
+    allowed_pairs = set()
+    for city1, city2 in direct_flights:
+        idx1 = city_to_index[city1]
+        idx2 = city_to_index[city2]
+        allowed_pairs.add((min(idx1, idx2), max(idx1, idx2)))
     
-    # Build directed flight set (both directions)
-    direct_flights_const = set()
-    for a, b in given_pairs:
-        direct_flights_const.add((city_dict[a], city_dict[b]))
-        direct_flights_const.add((city_dict[b], city_dict[a]))
+    s = [Int(f's_{i}') for i in range(8)]
+    e = [Int(f'e_{i}') for i in range(8)]
+    order = [Int(f'order_{i}') for i in range(8)]
     
-    # Initialize solver
-    s = Solver()
+    solver = Solver()
     
-    # Variables for each day (1 to 19)
-    days = 19
-    flight_vars = [Bool(f'flight_{i+1}') for i in range(days)]
-    start_city_vars = [Const(f'start_city_{i+1}', City) for i in range(days)]
-    end_city_vars = [Const(f'end_city_{i+1}', City) for i in range(days)]
+    for i in range(8):
+        solver.add(s[i] >= 1)
+        solver.add(e[i] <= 19)
+        solver.add(e[i] == s[i] + required_days[i] - 1)
     
-    # Flight and city constraints per day
-    for i in range(days):
-        flight_day = flight_vars[i]
-        start = start_city_vars[i]
-        end = end_city_vars[i]
+    solver.add(Distinct(order))
+    for i in range(8):
+        solver.add(order[i] >= 0)
+        solver.add(order[i] < 8)
+    
+    solver.add(order[7] == city_to_index["Lyon"])
+    
+    solver.add(s[order[0]] == 1)
+    
+    for i in range(7):
+        solver.add(e[order[i]] == s[order[i+1]])
+    
+    solver.add(s[city_to_index["Lisbon"]] <= 5)
+    solver.add(e[city_to_index["Lisbon"]] >= 4)
+    
+    solver.add(s[city_to_index["Tallinn"]] <= 2)
+    solver.add(e[city_to_index["Tallinn"]] >= 1)
+    
+    solver.add(s[city_to_index["Stockholm"]] <= 16)
+    solver.add(e[city_to_index["Stockholm"]] >= 13)
+    
+    solver.add(s[city_to_index["Lyon"]] == 18)
+    solver.add(e[city_to_index["Lyon"]] == 19)
+    
+    for i in range(7):
+        x = order[i]
+        y = order[i+1]
+        constraints = []
+        for pair in allowed_pairs:
+            a, b = pair
+            constraints.append(Or(And(x == a, y == b), And(x == b, y == a)))
+        solver.add(Or(constraints))
+    
+    if solver.check() == sat:
+        model = solver.model()
+        order_vals = [model.eval(order[i]).as_long() for i in range(8)]
+        s_vals = [model.eval(s[i]).as_long() for i in range(8)]
+        e_vals = [model.eval(e[i]).as_long() for i in range(8)]
         
-        # If flying, ensure direct flight and different cities
-        flight_cond = Or([And(start == c1, end == c2) for (c1, c2) in direct_flights_const])
-        s.add(If(flight_day, And(start != end, flight_cond), end == start))
-    
-    # Continuity between days
-    for i in range(days - 1):
-        s.add(start_city_vars[i+1] == end_city_vars[i])
-    
-    # Total days per city
-    for city in cities_list:
-        total = 0
-        city_const = city_dict[city]
-        for i in range(days):
-            total += If(start_city_vars[i] == city_const, 1, 0)
-            total += If(And(flight_vars[i], end_city_vars[i] == city_const), 1, 0)
-        s.add(total == required_days[city])
-    
-    # Total flight days must be 7
-    s.add(Sum([If(flight_vars[i], 1, 0) for i in range(days)]) == 7)
-    
-    # Event constraints
-    lyon = city_dict['Lyon']
-    s.add(Or(start_city_vars[17] == lyon, And(flight_vars[17], end_city_vars[17] == lyon)))  # Day 18
-    s.add(Or(start_city_vars[18] == lyon, And(flight_vars[18], end_city_vars[18] == lyon)))  # Day 19
-    
-    tallinn = city_dict['Tallinn']
-    s.add(Or(
-        Or(start_city_vars[0] == tallinn, And(flight_vars[0], end_city_vars[0] == tallinn)),
-        Or(start_city_vars[1] == tallinn, And(flight_vars[1], end_city_vars[1] == tallinn))
-    ))  # Day 1 or 2
-    
-    lisbon = city_dict['Lisbon']
-    s.add(Or(
-        Or(start_city_vars[3] == lisbon, And(flight_vars[3], end_city_vars[3] == lisbon)),
-        Or(start_city_vars[4] == lisbon, And(flight_vars[4], end_city_vars[4] == lisbon))
-    ))  # Day 4 or 5
-    
-    stockholm = city_dict['Stockholm']
-    stockholm_days = [12, 13, 14, 15]  # Days 13 to 16 (0-indexed)
-    s.add(Or([Or(start_city_vars[d] == stockholm, And(flight_vars[d], end_city_vars[d] == stockholm)) for d in stockholm_days]))
-    
-    # Solve and output
-    if s.check() == sat:
-        m = s.model()
-        rev_city_dict = {const: name for name, const in city_dict.items()}
+        itinerary = []
+        for i in range(8):
+            city_idx = order_vals[i]
+            city = cities[city_idx]
+            start_val = s_vals[city_idx]
+            end_val = e_vals[city_idx]
+            itinerary.append({"day_range": f"Day {start_val}-{end_val}", "place": city})
+            if i < 7:
+                next_city_idx = order_vals[i+1]
+                next_city = cities[next_city_idx]
+                itinerary.append({"day_range": f"Day {end_val}", "place": city})
+                itinerary.append({"day_range": f"Day {end_val}", "place": next_city})
         
-        for i in range(days):
-            day = i + 1
-            start_val = m.eval(start_city_vars[i])
-            flight_val = m.eval(flight_vars[i])
-            end_val = m.eval(end_city_vars[i])
-            start_name = rev_city_dict[start_val]
-            end_name = rev_city_dict[end_val]
-            
-            if is_true(flight_val):
-                print(f"Day {day}: Start in {start_name}, fly to {end_name}")
-            else:
-                print(f"Day {day}: Stay in {start_name}")
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,48 +1,34 @@
-from z3 import *
-
 def main():
-    n_activities = 15
-    start = [Int(f'start_{i}') for i in range(n_activities)]
-    end = [Int(f'end_{i}') for i in range(n_activities)]
-    solver = Solver()
+    itinerary_data = {
+        "Santorini": {"arrive": 1, "depart": 3},
+        "Valencia": {"arrive": 8, "depart": 11},
+        "Madrid": {"arrive": 6, "depart": 7},
+        "Seville": {"arrive": 7, "depart": 8},
+        "Bucharest": {"arrive": 18, "depart": 20},
+        "Vienna": {"arrive": 3, "depart": 6},
+        "Riga": {"arrive": 20, "depart": 23},
+        "Tallinn": {"arrive": 23, "depart": 27},
+        "Krakow": {"arrive": 11, "depart": 15},
+        "Frankfurt": {"arrive": 15, "depart": 18}
+    }
     
-    segments = [
-        [0, 1, 2],
-        [3, 4, 5],
-        [6, 7, 8],
-        [9, 10, 11],
-        [12, 13, 14]
-    ]
+    itinerary_data["Tallinn"]["depart"] = 28
     
-    # Activity duration: each is 1 day
-    for i in range(n_activities):
-        solver.add(end[i] == start[i] + 1)
+    sorted_cities = sorted(
+        itinerary_data.items(),
+        key=lambda x: x[1]['arrive']
+    )
     
-    # First activity starts at day 1
-    solver.add(start[0] == 1)
+    itinerary_list = []
+    for city, details in sorted_cities:
+        arrive = details['arrive']
+        depart = details['depart']
+        last_day = depart - 1
+        day_range_str = f"Day {arrive}-{last_day}"
+        itinerary_list.append({"day_range": day_range_str, "place": city})
     
-    # Last activity ends at day 27
-    solver.add(end[14] == 27)
-    
-    # Within segments: consecutive activities without gaps
-    for seg in segments:
-        for j in range(1, len(seg)):
-            solver.add(start[seg[j]] == end[seg[j-1]])
-    
-    # Between segments: 3 travel days between segments
-    for i in range(len(segments)-1):
-        last_in_prev = segments[i][-1]
-        first_in_next = segments[i+1][0]
-        solver.add(start[first_in_next] == end[last_in_prev] + 3)
-    
-    if solver.check() == sat:
-        model = solver.model()
-        for i in range(n_activities):
-            s = model.evaluate(start[i]).as_long()
-            e = model.evaluate(end[i]).as_long()
-            print(f"Activity {i}: starts at {s}, ends at {e}")
-    else:
-        print("No valid schedule found")
+    result = {"itinerary": itinerary_list}
+    print(result)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

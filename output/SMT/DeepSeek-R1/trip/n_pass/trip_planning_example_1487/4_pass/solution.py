@@ -1,85 +1,94 @@
+import json
 from z3 import *
 
-# Define city names and their indices
-cities = ["Copenhagen", "Geneva", "Mykonos", "Naples", "Prague", "Dubrovnik", "Athens", "Santorini", "Brussels", "Munich"]
-n_cities = len(cities)
+def main():
+    Cities = ['Copenhagen', 'Geneva', 'Mykonos', 'Naples', 'Prague', 'Dubrovnik', 'Athens', 'Santorini', 'Brussels', 'Munich']
+    
+    durations = {
+        'Copenhagen': 5,
+        'Geneva': 3,
+        'Mykonos': 2,
+        'Naples': 4,
+        'Prague': 2,
+        'Dubrovnik': 3,
+        'Athens': 4,
+        'Santorini': 5,
+        'Brussels': 4,
+        'Munich': 5
+    }
+    
+    flights_str = "Copenhagen and Dubrovnik, Brussels and Copenhagen, Prague and Geneva, Athens and Geneva, Naples and Dubrovnik, Athens and Dubrovnik, Geneva and Mykonos, Naples and Mykonos, Naples and Copenhagen, Munich and Mykonos, Naples and Athens, Prague and Athens, Santorini and Geneva, Athens and Santorini, Naples and Munich, Prague and Copenhagen, Brussels and Naples, Athens and Mykonos, Athens and Copenhagen, Naples and Geneva, Dubrovnik and Munich, Brussels and Munich, Prague and Brussels, Brussels and Athens, Athens and Munich, Geneva and Munich, Copenhagen and Munich, Brussels and Geneva, Copenhagen and Geneva, Prague and Munich, Copenhagen and Santorini, Naples and Santorini, Geneva and Dubrovnik"
+    flight_pairs = [s.split(' and ') for s in flights_str.split(', ')]
+    allowed_directed = set()
+    for a, b in flight_pairs:
+        allowed_directed.add((a, b))
+        allowed_directed.add((b, a))
+    
+    solver = Solver()
+    
+    start = {c: Int(f'start_{c}') for c in Cities}
+    end = {c: Int(f'end_{c}') for c in Cities}
+    order = {c: Int(f'order_{c}') for c in Cities}
+    
+    for c in Cities:
+        solver.add(end[c] == start[c] + durations[c] - 1)
+        solver.add(start[c] >= 1, end[c] <= 28)
+    
+    solver.add(start['Mykonos'] == 27, end['Mykonos'] == 28)
+    
+    solver.add(start['Naples'] <= 8, end['Naples'] >= 5)
+    solver.add(start['Athens'] <= 11, end['Athens'] >= 8)
+    
+    count_copenhagen = 0
+    for d in range(11, 16):
+        in_interval = And(start['Copenhagen'] <= d, d <= end['Copenhagen'])
+        count_copenhagen += If(in_interval, 1, 0)
+    solver.add(count_copenhagen >= 2)
+    
+    solver.add(Distinct([order[c] for c in Cities]))
+    for c in Cities:
+        solver.add(order[c] >= 0, order[c] <= 9)
+    
+    first_city = Or([And(order[c] == 0, start[c] == 1) for c in Cities])
+    last_city = Or([And(order[c] == 9, end[c] == 28) for c in Cities])
+    solver.add(first_city, last_city)
+    
+    for c1 in Cities:
+        for c2 in Cities:
+            if c1 == c2:
+                continue
+            solver.add(Implies(order[c1] + 1 == order[c2], end[c1] == start[c2]))
+            if (c1, c2) not in allowed_directed:
+                solver.add(order[c1] + 1 != order[c2])
+    
+    if solver.check() == sat:
+        m = solver.model()
+        start_vals = {c: m.eval(start[c]).as_long() for c in Cities}
+        end_vals = {c: m.eval(end[c]).as_long() for c in Cities}
+        order_vals = {c: m.eval(order[c]).as_long() for c in Cities}
+        
+        sorted_cities = sorted(Cities, key=lambda c: order_vals[c])
+        
+        itinerary = []
+        for idx, c in enumerate(sorted_cities):
+            s = start_vals[c]
+            e = end_vals[c]
+            if s == e:
+                day_range_str = f"Day {s}"
+            else:
+                day_range_str = f"Day {s}-{e}"
+            itinerary.append({"day_range": day_range_str, "place": c})
+            
+            if idx < len(sorted_cities) - 1:
+                flight_day = e
+                itinerary.append({"day_range": f"Day {flight_day}", "place": c})
+                next_city = sorted_cities[idx + 1]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": next_city})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print('{"error": "No solution found"}')
 
-# Required days per city
-days_req = [5, 3, 2, 4, 2, 3, 4, 5, 4, 5]
-
-# Build the set of allowed transitions (direct flights and same city)
-allowed_set = set()
-for i in range(n_cities):
-    allowed_set.add((i, i))
-
-flight_list = [
-    "Copenhagen and Dubrovnik", "Brussels and Copenhagen", "Prague and Geneva", "Athens and Geneva",
-    "Naples and Dubrovnik", "Athens and Dubrovnik", "Geneva and Mykonos", "Naples and Mykonos",
-    "Naples and Copenhagen", "Munich and Mykonos", "Naples and Athens", "Prague and Athens",
-    "Santorini and Geneva", "Athens and Santorini", "Naples and Munich", "Prague and Copenhagen",
-    "Brussels and Naples", "Athens and Mykonos", "Athens and Copenhagen", "Naples and Geneva",
-    "Dubrovnik and Munich", "Brussels and Munich", "Prague and Brussels", "Brussels and Athens",
-    "Athens and Munich", "Geneva and Munich", "Copenhagen and Munich", "Brussels and Geneva",
-    "Copenhagen and Geneva", "Prague and Munich", "Copenhagen and Santorini", "Naples and Santorini",
-    "Geneva and Dubrovnik"
-]
-
-for flight in flight_list:
-    parts = flight.split(" and ")
-    city1 = parts[0]
-    city2 = parts[1]
-    idx1 = cities.index(city1)
-    idx2 = cities.index(city2)
-    allowed_set.add((idx1, idx2))
-    allowed_set.add((idx2, idx1))
-
-s = Solver()
-
-b = [Int('b_%d' % i) for i in range(28)]
-
-for i in range(28):
-    s.add(b[i] >= 0, b[i] < n_cities)
-
-flight_segments = [Bool('flight_%d' % i) for i in range(27)]
-for i in range(27):
-    s.add(flight_segments[i] == (b[i] != b[i+1]))
-
-s.add(Sum([If(flight_segments[i], 1, 0) for i in range(27)]) == 9)
-
-for city_idx in range(n_cities):
-    count_b = Sum([If(b[i] == city_idx, 1, 0) for i in range(28)])
-    count_arrival = Sum([If(And(flight_segments[i], b[i+1] == city_idx), 1, 0) for i in range(27)])
-    total_days = count_b + count_arrival
-    s.add(total_days == days_req[city_idx])
-
-copenhagen_days = []
-for i in range(10, 15):
-    cond = Or(b[i] == 0, And(i < 27, flight_segments[i], b[i+1] == 0))
-    copenhagen_days.append(cond)
-s.add(Or(copenhagen_days))
-
-naples_days = []
-for i in range(4, 8):
-    cond = Or(b[i] == 3, And(i < 27, flight_segments[i], b[i+1] == 3))
-    naples_days.append(cond)
-s.add(Or(naples_days))
-
-athens_days = []
-for i in range(7, 11):
-    cond = Or(b[i] == 6, And(i < 27, flight_segments[i], b[i+1] == 6))
-    athens_days.append(cond)
-s.add(Or(athens_days))
-
-s.add(b[27] == 2)
-
-for i in range(27):
-    s.add(Or(Not(flight_segments[i]), (b[i], b[i+1]) in allowed_set))
-
-if s.check() == sat:
-    model = s.model()
-    res = [model.evaluate(b[i]).as_long() for i in range(28)]
-    for day in range(28):
-        city_idx = res[day]
-        print(f"Day {day+1}: {cities[city_idx]}")
-else:
-    print("No solution found")
+if __name__ == "__main__":
+    main()

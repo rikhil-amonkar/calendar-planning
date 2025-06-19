@@ -1,85 +1,62 @@
-from z3 import *
-
-def main():
-    # Define city names and their indices
-    cities = ['Zurich', 'Helsinki', 'Hamburg', 'Bucharest', 'Split']
-    n_cities = len(cities)
-    n_days = 12
+def generate_itinerary(events):
+    if not events:
+        return {"itinerary": []}
     
-    # Required days per city: [Zurich, Helsinki, Hamburg, Bucharest, Split]
-    required = [3, 2, 2, 2, 7]
+    max_event_day = max(event['end'] for event in events)
+    max_itinerary_day = max_event_day + 1
+    active = [set() for _ in range(max_itinerary_day + 2)]
     
-    # Define undirected edges (both directions included)
-    undir_edges = [
-        (0, 1), (0, 2), (0, 3), (0, 4),
-        (1, 2), (1, 4),
-        (2, 3), (2, 4)
-    ]
-    allowed_edges = []
-    for (a, b) in undir_edges:
-        allowed_edges.append((a, b))
-        allowed_edges.append((b, a))
+    for event in events:
+        start_it = event['start'] + 1
+        end_it = event['end'] + 1
+        for day in range(start_it, end_it + 1):
+            if day < len(active):
+                active[day].add(event['city'])
     
-    # Create Z3 variables
-    start_city = [Int('start_city_%d' % d) for d in range(n_days)]
-    end_city = [Int('end_city_%d' % d) for d in range(n_days)]
+    itinerary_entries = []
+    events_sorted = sorted(events, key=lambda x: x['start'])
     
-    s = Solver()
-    
-    # Domain constraints for start and end cities
-    for d in range(n_days):
-        s.add(start_city[d] >= 0, start_city[d] < n_cities)
-        s.add(end_city[d] >= 0, end_city[d] < n_cities)
-    
-    # Continuity constraint: end_city of day d must equal start_city of day d+1
-    for d in range(n_days - 1):
-        s.add(end_city[d] == start_city[d + 1])
-    
-    # Direct flight constraint for travel days
-    for d in range(n_days):
-        travel_condition = start_city[d] != end_city[d]
-        edge_constraints = []
-        for (a, b) in allowed_edges:
-            edge_constraints.append(And(start_city[d] == a, end_city[d] == b))
-        s.add(If(travel_condition, Or(edge_constraints), True))
-    
-    # Event constraints: Split on days 4 and 10 (0-indexed days 3 and 9)
-    s.add(Or(start_city[3] == 4, end_city[3] == 4))  # Day 4
-    s.add(Or(start_city[9] == 4, end_city[9] == 4))  # Day 10
-    
-    # Wedding in Zurich between days 1 and 3 (0-indexed days 0, 1, 2)
-    wedding_constraint = Or(
-        Or(start_city[0] == 0, end_city[0] == 0),
-        Or(start_city[1] == 0, end_city[1] == 0),
-        Or(start_city[2] == 0, end_city[2] == 0)
-    )
-    s.add(wedding_constraint)
-    
-    # Total days per city constraint
-    for c in range(n_cities):
-        total_days = 0
-        for d in range(n_days):
-            total_days += If(Or(start_city[d] == c, end_city[d] == c), 1, 0)
-        s.add(total_days == required[c])
-    
-    # Check for solution and print
-    if s.check() == sat:
-        m = s.model()
-        start_vals = [m.evaluate(start_city[d]).as_long() for d in range(n_days)]
-        end_vals = [m.evaluate(end_city[d]).as_long() for d in range(n_days)]
+    for event in events_sorted:
+        city = event['city']
+        start_it = event['start'] + 1
+        end_it = event['end'] + 1
         
-        # Print itinerary
-        print("Day\tStart City\tEnd City\tDescription")
-        for d in range(n_days):
-            start_city_name = cities[start_vals[d]]
-            end_city_name = cities[end_vals[d]]
-            if start_vals[d] == end_vals[d]:
-                desc = f"Stay in {start_city_name}"
+        if start_it < len(active) and len(active[start_it]) > 1:
+            itinerary_entries.append({"day_range": f"Day {start_it}", "place": city})
+            start_it += 1
+            if start_it > end_it:
+                continue
+        
+        last_day = None
+        if end_it < len(active) and len(active[end_it]) > 1:
+            last_day = end_it
+            end_it -= 1
+        
+        if start_it <= end_it:
+            if start_it == end_it:
+                itinerary_entries.append({"day_range": f"Day {start_it}", "place": city})
             else:
-                desc = f"Travel from {start_city_name} to {end_city_name}"
-            print(f"{d+1}\t{start_city_name}\t\t{end_city_name}\t\t{desc}")
-    else:
-        print("No solution found")
+                itinerary_entries.append({"day_range": f"Day {start_it}-{end_it}", "place": city})
+        
+        if last_day is not None:
+            itinerary_entries.append({"day_range": f"Day {last_day}", "place": city})
+    
+    def get_start_day(entry):
+        day_str = entry['day_range'].split()[1]
+        if '-' in day_str:
+            return int(day_str.split('-')[0])
+        else:
+            return int(day_str)
+    
+    sorted_entries = sorted(itinerary_entries, key=get_start_day)
+    return {"itinerary": sorted_entries}
 
-if __name__ == '__main__':
-    main()
+events = [
+    {'city': 'Bucharest', 'start': 0, 'end': 1},
+    {'city': 'Zurich', 'start': 1, 'end': 3},
+    {'city': 'Split', 'start': 3, 'end': 9},
+    {'city': 'Helsinki', 'start': 9, 'end': 10},
+    {'city': 'Hamburg', 'start': 10, 'end': 11}
+]
+
+result = generate_itinerary(events)

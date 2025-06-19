@@ -1,65 +1,89 @@
 from z3 import *
 
 def main():
-    s = [Int('s%d' % (i+1)) for i in range(10)]
-    t = [Bool('t%d' % (i+1)) for i in range(10)]
-    d10 = Int('d10')
+    cities = ["London", "Santorini", "Istanbul"]
+    n_days = 10
+    
+    s = [Int(f's_{i}') for i in range(1, n_days+1)]
+    e = [Int(f'e_{i}') for i in range(1, n_days+1)]
     
     solver = Solver()
-    allowed_pairs = [(0, 1), (1, 0), (1, 2), (2, 1)]
     
-    for i in range(9):
-        cons = Or([And(s[i] == a, s[i+1] == b) for (a, b) in allowed_pairs])
-        solver.add(If(t[i], cons, s[i] == s[i+1]))
-    
-    cons10 = Or([And(s[9] == a, d10 == b) for (a, b) in allowed_pairs])
-    solver.add(If(t[9], cons10, True))
-    solver.add(Or(d10 == 0, d10 == 1, d10 == 2))
-    
-    count0 = count1 = count2 = 0
-    for i in range(9):
-        count0 += If(s[i] == 0, 1, 0)
-        count1 += If(s[i] == 1, 1, 0)
-        count2 += If(s[i] == 2, 1, 0)
-        count0 += If(And(t[i], s[i+1] == 0), 1, 0)
-        count1 += If(And(t[i], s[i+1] == 1), 1, 0)
-        count2 += If(And(t[i], s[i+1] == 2), 1, 0)
-    
-    count0 += If(s[9] == 0, 1, 0)
-    count1 += If(s[9] == 1, 1, 0)
-    count2 += If(s[9] == 2, 1, 0)
-    count0 += If(And(t[9], d10 == 0), 1, 0)
-    count1 += If(And(t[9], d10 == 1), 1, 0)
-    count2 += If(And(t[9], d10 == 2), 1, 0)
-    
-    solver.add(count0 == 3, count1 == 3, count2 == 6)
-    solver.add(Or(s[4] == 2, And(t[4], s[5] == 2)))
-    solver.add(Or(s[9] == 2, And(t[9], d10 == 2)))
-    
-    for i in range(10):
+    for i in range(n_days):
         solver.add(Or(s[i] == 0, s[i] == 1, s[i] == 2))
+        solver.add(Or(e[i] == 0, e[i] == 1, e[i] == 2))
     
-    total_travels = Sum([If(t_i, 1, 0) for t_i in t])
-    solver.add(total_travels == 2)
+    for i in range(n_days-1):
+        solver.add(e[i] == s[i+1])
+    
+    allowed_flights = [(0,1), (1,0), (0,2), (2,0)]
+    for i in range(n_days):
+        solver.add(If(s[i] != e[i], 
+                     Or([And(s[i] == a, e[i] == b) for (a,b) in allowed_flights]),
+                     True))
+    
+    solver.add(Or(s[4] == 1, e[4] == 1))
+    solver.add(Or(s[9] == 1, e[9] == 1))
+    
+    london_days = 0
+    santorini_days = 0
+    istanbul_days = 0
+    
+    for i in range(n_days):
+        london_days += If(Or(s[i] == 0, And(e[i] == 0, s[i] != 0)), 1, 0)
+        santorini_days += If(Or(s[i] == 1, And(e[i] == 1, s[i] != 1)), 1, 0)
+        istanbul_days += If(Or(s[i] == 2, And(e[i] == 2, s[i] != 2)), 1, 0)
+    
+    solver.add(london_days == 3)
+    solver.add(santorini_days == 6)
+    solver.add(istanbul_days == 3)
     
     if solver.check() == sat:
-        m = solver.model()
-        s_val = [m.evaluate(s_i) for s_i in s]
-        t_val = [m.evaluate(t_i) for t_i in t]
-        d10_val = m.evaluate(d10)
+        model = solver.model()
+        s_val = [model.evaluate(s_i).as_long() for s_i in s]
+        e_val = [model.evaluate(e_i).as_long() for e_i in e]
         
-        cities = ["Istanbul", "London", "Santorini"]
-        for i in range(10):
-            city_idx = s_val[i].as_long()
-            start_city = cities[city_idx]
-            if t_val[i]:
-                if i < 9:
-                    dest_city = cities[s_val[i+1].as_long()]
+        flight_days = [s_val[i] != e_val[i] for i in range(n_days)]
+        
+        segments = []
+        current_segment = None
+        
+        for i in range(n_days):
+            day_num = i + 1
+            if flight_days[i]:
+                dep_city = cities[s_val[i]]
+                arr_city = cities[e_val[i]]
+                if current_segment is not None and current_segment['place'] == dep_city:
+                    current_segment['end'] = day_num
                 else:
-                    dest_city = cities[d10_val.as_long()]
-                print(f"Day {i+1}: Start in {start_city}, fly to {dest_city} -> in {start_city} and {dest_city}")
+                    if current_segment is not None:
+                        segments.append(current_segment)
+                    current_segment = {'start': day_num, 'end': day_num, 'place': dep_city}
+                segments.append(current_segment)
+                current_segment = {'start': day_num, 'end': day_num, 'place': arr_city}
             else:
-                print(f"Day {i+1}: Stay in {start_city}")
+                city = cities[s_val[i]]
+                if current_segment is not None and current_segment['place'] == city:
+                    current_segment['end'] = day_num
+                else:
+                    if current_segment is not None:
+                        segments.append(current_segment)
+                    current_segment = {'start': day_num, 'end': day_num, 'place': city}
+        
+        if current_segment is not None:
+            segments.append(current_segment)
+        
+        itinerary = []
+        for seg in segments:
+            start = seg['start']
+            end = seg['end']
+            if start == end:
+                day_range_str = f"Day {start}"
+            else:
+                day_range_str = f"Day {start}-{end}"
+            itinerary.append({'day_range': day_range_str, 'place': seg['place']})
+        
+        print({"itinerary": itinerary})
     else:
         print("No solution found")
 

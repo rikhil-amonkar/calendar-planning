@@ -1,112 +1,73 @@
-import z3
+from z3 import *
+import json
 
 def main():
-    s = z3.Solver()
+    s_G, s_M, s_B, s_V, s_S = Ints('s_G s_M s_B s_V s_S')
+    e_G = s_G + 3  # Geneva: 4 days
+    e_M = s_M + 6  # Munich: 7 days
+    e_B = s_B + 1  # Bucharest: 2 days
+    e_V = s_V + 5  # Valencia: 6 days
+    e_S = s_S + 1  # Stuttgart: 2 days
+
+    solver = Solver()
+
+    # Geneva constraints: must be within [1,4]
+    solver.add(s_G >= 1, e_G <= 4)
     
-    # Cities: Stuttgart, Bucharest, Geneva, Valencia, Munich
-    cities = {
-        0: "Stuttgart",
-        1: "Bucharest",
-        2: "Geneva",
-        3: "Valencia",
-        4: "Munich"
-    }
-    n_days = 17
-    n_cities = 5
+    # Munich constraints: must cover [4,10]
+    solver.add(s_M <= 4, e_M >= 10)
     
-    # Create variables for L_1 to L_17
-    L = [z3.Int(f"L_{d+1}") for d in range(n_days)]
+    # Sequence constraints (flight connections)
+    solver.add(e_G == s_M)  # Fly from Geneva to Munich on day 4
+    solver.add(e_M == s_B)  # Fly from Munich to Bucharest on day 10
+    solver.add(e_B == s_V)  # Fly from Bucharest to Valencia on day 11
+    solver.add(e_V == s_S)  # Fly from Valencia to Stuttgart on day 16
     
-    # Constraint: Each L_d must be in [0, 4]
-    for d in range(n_days):
-        s.add(L[d] >= 0)
-        s.add(L[d] < n_cities)
+    # Total trip must be 17 days
+    min_start = Min(s_G, s_M, s_B, s_V, s_S)
+    max_end = Max(e_G, e_M, e_B, e_V, e_S)
+    solver.add(min_start == 1, max_end == 17)
     
-    # Required days per city: [Stuttgart, Bucharest, Geneva, Valencia, Munich]
-    required = [2, 2, 4, 6, 7]
-    
-    # Total days per city constraint
-    for i in range(n_cities):
-        term1 = z3.Sum([z3.If(L[d] == i, 1, 0) for d in range(n_days)])
-        term2 = z3.Sum([z3.If(z3.And(L[d] != L[d+1], L[d+1] == i), 1, 0) for d in range(n_days-1)])
-        total_i = term1 + term2
-        s.add(total_i == required[i])
-    
-    # Geneva must be only on days 1 to 4
-    s.add(L[16] != 2)  # L_17 != Geneva
-    for d in range(1, 17):  # d: actual day number (1 to 16)
-        idx1 = d-1  # index for L_d
-        idx2 = d    # index for L_{d+1}
-        condition = z3.Or(L[idx1] == 2, z3.And(L[idx2] == 2, L[idx1] != L[idx2]))
-        s.add(z3.Implies(condition, d <= 4))
-    
-    # Munich must be only on days 4 to 10
-    s.add(L[16] != 4)  # L_17 != Munich
-    for d in range(1, 17):  # d: actual day number (1 to 16)
-        idx1 = d-1  # index for L_d
-        idx2 = d    # index for L_{d+1}
-        condition = z3.Or(L[idx1] == 4, z3.And(L[idx2] == 4, L[idx1] != L[idx2]))
-        s.add(z3.Implies(condition, z3.And(d >= 4, d <= 10)))
-    
-    # Flight constraints: allowed direct flights (both directions)
-    directed_edges = [
-        (2, 4), (4, 2),  # Geneva-Munich
-        (4, 3), (3, 4),  # Munich-Valencia
-        (1, 3), (3, 1),  # Bucharest-Valencia
-        (4, 1), (1, 4),  # Munich-Bucharest
-        (3, 0), (0, 3),  # Valencia-Stuttgart
-        (2, 3), (3, 2)   # Geneva-Valencia
-    ]
-    for d in range(0, n_days-1):  # d: index from 0 to 15 (days 1 to 16)
-        # Constraint: if L_d != L_{d+1}, then (L_d, L_{d+1}) must be in directed_edges
-        edge_condition = z3.Or([z3.And(L[d] == a, L[d+1] == b) for (a, b) in directed_edges])
-        s.add(z3.Implies(L[d] != L[d+1], edge_condition))
-    
-    # Force Geneva on days 1, 2, 3, 4
-    for d in [1, 2, 3, 4]:
-        idx1 = d-1  # index for L_d
-        if d < 4:
-            condition = z3.Or(L[idx1] == 2, z3.And(L[d] == 2, L[idx1] != L[d]))
-        else:  # d == 4
-            condition = z3.Or(L[idx1] == 2, z3.And(L[4] == 2, L[idx1] != L[4]))
-        s.add(condition)
-    
-    # Force Munich on days 4, 5, 6, 7, 8, 9, 10
-    for d in range(4, 11):  # d: actual day number 4 to 10
-        idx1 = d-1  # index for L_d
-        if d < 10:
-            condition = z3.Or(L[idx1] == 4, z3.And(L[d] == 4, L[idx1] != L[d]))
-        else:  # d == 10
-            condition = z3.Or(L[idx1] == 4, z3.And(L[10] == 4, L[idx1] != L[10]))
-        s.add(condition)
-    
-    # Solve the problem
-    if s.check() == z3.sat:
-        m = s.model()
-        plan = [m.evaluate(L[d]).as_long() for d in range(n_days)]
+    if solver.check() == sat:
+        model = solver.model()
+        s_G_val = model[s_G].as_long()
+        s_M_val = model[s_M].as_long()
+        s_B_val = model[s_B].as_long()
+        s_V_val = model[s_V].as_long()
+        s_S_val = model[s_S].as_long()
         
-        # Determine the set of cities for each day
-        schedule = []
-        for d in range(n_days):
-            if d == n_days-1:  # Last day: no travel
-                cities_set = {plan[d]}
-            else:
-                if plan[d] == plan[d+1]:
-                    cities_set = {plan[d]}
-                else:
-                    cities_set = {plan[d], plan[d+1]}
-            schedule.append(cities_set)
+        s_val = {
+            'Geneva': s_G_val,
+            'Munich': s_M_val,
+            'Bucharest': s_B_val,
+            'Valencia': s_V_val,
+            'Stuttgart': s_S_val
+        }
         
-        # Print the schedule
-        for d in range(n_days):
-            day = d + 1
-            cities_list = sorted([cities[c] for c in schedule[d]])
-            if len(cities_list) == 1:
-                print(f"Day {day}: {cities_list[0]}")
-            else:
-                print(f"Day {day}: {cities_list[0]} and {cities_list[1]}")
+        e_val = {
+            'Geneva': s_val['Geneva'] + 3,
+            'Munich': s_val['Munich'] + 6,
+            'Bucharest': s_val['Bucharest'] + 1,
+            'Valencia': s_val['Valencia'] + 5,
+            'Stuttgart': s_val['Stuttgart'] + 1
+        }
+        
+        route = ['Geneva', 'Munich', 'Bucharest', 'Valencia', 'Stuttgart']
+        itinerary = []
+        
+        for i, city in enumerate(route):
+            start = s_val[city]
+            end = e_val[city]
+            if i > 0:
+                itinerary.append({"day_range": f"Day {start}", "place": city})
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+            if i < len(route) - 1:
+                itinerary.append({"day_range": f"Day {end}", "place": city})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

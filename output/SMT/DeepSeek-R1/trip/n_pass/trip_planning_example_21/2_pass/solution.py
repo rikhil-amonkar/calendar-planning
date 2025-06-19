@@ -1,72 +1,59 @@
 from z3 import *
 
 def main():
-    n_days = 10
-    cities = ["Mykonos", "Vienna", "Venice"]
-    n_cities = len(cities)
-    adj = [[1], [0, 2], [1]]  # Adjacency: Mykonos(0)-Vienna(1), Vienna(1)-Venice(2)
+    s0, s1, s2 = Ints('s0 s1 s2')
+    f1, f2 = Ints('f1 f2')
     
-    s = Solver()
-    in_city = [[Bool(f"in_{i}_{c}") for c in range(n_cities)] for i in range(n_days)]
+    solver = Solver()
     
-    # Constraint 1: Each day is either one city or two adjacent cities
-    for i in range(n_days):
-        one_city = Or(
-            And(in_city[i][0], Not(in_city[i][1]), Not(in_city[i][2])),
-            And(in_city[i][1], Not(in_city[i][0]), Not(in_city[i][2])),
-            And(in_city[i][2], Not(in_city[i][0]), Not(in_city[i][1]))
-        )
-        two_cities = Or(
-            And(in_city[i][0], in_city[i][1], Not(in_city[i][2])),
-            And(in_city[i][1], in_city[i][2], Not(in_city[i][0]))
-        )
-        s.add(Or(one_city, two_cities))
+    # Define valid sequences: only [Mykonos, Vienna, Venice] is feasible
+    solver.add(And(s0 == 0, s1 == 1, s2 == 2))
     
-    # Constraint 2: Exactly two travel days (days in two adjacent cities)
-    travel_days = []
-    for i in range(n_days):
-        is_travel = Or(
-            And(in_city[i][0], in_city[i][1], Not(in_city[i][2])),
-            And(in_city[i][1], in_city[i][2], Not(in_city[i][0]))
-        )
-        travel_days.append(If(is_travel, 1, 0))
-    s.add(Sum(travel_days) == 2)
+    # Constraints for stay durations
+    # Mykonos (city0): f1 = 2 days
+    solver.add(If(s0 == 0, f1 == 2, False))
+    # Vienna (city1): f2 - f1 + 1 = 4 days
+    solver.add(If(s1 == 1, f2 - f1 + 1 == 4, False))
+    # Venice (city2): 10 - f2 + 1 = 6 days
+    solver.add(If(s2 == 2, 11 - f2 == 6, False))
     
-    # Constraint 3: Total days per city
-    total_mykonos = Sum([If(in_city[i][0], 1, 0) for i in range(n_days)])
-    total_vienna = Sum([If(in_city[i][1], 1, 0) for i in range(n_days)])
-    total_venice = Sum([If(in_city[i][2], 1, 0) for i in range(n_days)])
-    s.add(total_mykonos == 2)
-    s.add(total_vienna == 4)
-    s.add(total_venice == 6)
+    # Workshop constraint: Venice must cover days 5-10
+    solver.add(Or(
+        And(s0 == 2, f1 >= 10),  # Venice is first city
+        And(s1 == 2, And(f1 <= 5, f2 >= 10)),  # Venice is second city
+        And(s2 == 2, f2 <= 5)  # Venice is third city
+    ))
     
-    # Constraint 4: Workshop in Venice between days 5-10 (indices 4-9)
-    s.add(Or([in_city[i][2] for i in range(4, 10)]))
+    # Flight day constraints
+    solver.add(f1 >= 1, f2 > f1, f2 <= 10)
     
-    # Constraint 5: Connectivity for consecutive days
-    for c in range(n_cities):
-        for i in range(n_days - 1):
-            # Leaving city c: if in c on day i but not on day i+1, then day i must include an adjacent city
-            s.add(Implies(
-                And(in_city[i][c], Not(in_city[i+1][c])),
-                Or([in_city[i][d] for d in adj[c]])
-            ))
-            # Entering city c: if not in c on day i but in c on day i+1, then day i+1 must include an adjacent city
-            s.add(Implies(
-                And(Not(in_city[i][c]), in_city[i+1][c]),
-                Or([in_city[i+1][d] for d in adj[c]])
-            ))
-    
-    if s.check() == sat:
-        m = s.model()
-        for i in range(n_days):
-            present = []
-            for c in range(n_cities):
-                if m.evaluate(in_city[i][c]):
-                    present.append(cities[c])
-            print(f"Day {i+1}: {', '.join(present)}")
+    if solver.check() == sat:
+        model = solver.model()
+        f1_val = model[f1].as_long()
+        f2_val = model[f2].as_long()
+        s0_val = model[s0].as_long()
+        s1_val = model[s1].as_long()
+        s2_val = model[s2].as_long()
+        
+        city_names = {0: "Mykonos", 1: "Vienna", 2: "Venice"}
+        name0 = city_names[s0_val]
+        name1 = city_names[s1_val]
+        name2 = city_names[s2_val]
+        
+        itinerary = [
+            {"day_range": f"Day 1-{f1_val}", "place": name0},
+            {"day_range": f"Day {f1_val}", "place": name0},
+            {"day_range": f"Day {f1_val}", "place": name1},
+            {"day_range": f"Day {f1_val}-{f2_val}", "place": name1},
+            {"day_range": f"Day {f2_val}", "place": name1},
+            {"day_range": f"Day {f2_val}", "place": name2},
+            {"day_range": f"Day {f2_val}-10", "place": name2}
+        ]
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        print("No valid schedule found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

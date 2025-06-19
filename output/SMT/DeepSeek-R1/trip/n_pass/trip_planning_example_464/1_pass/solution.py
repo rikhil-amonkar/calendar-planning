@@ -1,74 +1,80 @@
-from z3 import *
+import z3
+import json
 
 def main():
-    # City mapping: indices to names
-    cities = ["Krakow", "Frankfurt", "Oslo", "Dubrovnik", "Naples"]
-    # Allowed direct flights as tuples (city_index1, city_index2)
-    allowed_edges_list = [(3, 2), (1, 0), (1, 2), (3, 1), (0, 2), (4, 2), (4, 3), (4, 1)]
-    # Required days per city: Krakow(0), Frankfurt(1), Oslo(2), Dubrovnik(3), Naples(4)
-    required_days = [5, 4, 3, 5, 5]
+    d_dict = {0: 5, 1: 4, 2: 5, 3: 5, 4: 3}
+    city_names = {0: 'Dubrovnik', 1: 'Frankfurt', 2: 'Krakow', 3: 'Naples', 4: 'Oslo'}
     
-    # Create Z3 variables: s1 to s19 (19 variables for 18 days)
-    s = [Int('s%d' % i) for i in range(1, 20)]
+    valid_edges = set()
+    edges = [(0,4), (1,2), (1,4), (0,1), (2,4), (3,4), (0,3), (1,3)]
+    for u, v in edges:
+        valid_edges.add((u, v))
+        valid_edges.add((v, u))
+    valid_edges = list(valid_edges)
     
-    solver = Solver()
+    s = z3.Solver()
+    order = [z3.Int(f'o{i}') for i in range(4)]
     
-    # Each s_i must be between 0 and 4 (inclusive)
-    for i in range(19):
-        solver.add(s[i] >= 0, s[i] <= 4)
+    for i in range(4):
+        s.add(order[i] >= 0, order[i] <= 3)
+    s.add(z3.Distinct(order))
     
-    # Flight constraints: if s_i != s_{i+1}, then (s_i, s_{i+1}) must be in allowed_edges_list (considering both orders)
-    for i in range(18):  # from s1 to s18 (for s_i and s_{i+1})
-        edge_constraints = []
-        for a, b in allowed_edges_list:
-            # Either (s_i = a and s_{i+1} = b) or (s_i = b and s_{i+1} = a)
-            edge_constraints.append(Or(And(s[i] == a, s[i+1] == b), And(s[i] == b, s[i+1] == a)))
-        # If s_i != s_{i+1}, then one of the allowed edges must be used
-        solver.add(Implies(s[i] != s[i+1], Or(edge_constraints)))
+    cities_seq = [order[0], order[1], order[2], order[3], 4]
     
-    # Total days per city constraint
-    for c in range(5):
-        total = 0
-        for i in range(18):  # i from 0 to 17, representing days 1 to 18
-            # Check if the city c is either the start (s_i) or end (s_{i+1}) of the day
-            total += If(Or(s[i] == c, s[i+1] == c), 1, 0)
-        solver.add(total == required_days[c])
+    start = [1] * 5
+    for i in range(1, 5):
+        prev_city = cities_seq[i-1]
+        prev_days = d_dict[prev_city]
+        start[i] = start[i-1] + (prev_days - 1)
     
-    # Constraint: Oslo (city index 2) must be visited on at least one day between 16 and 18 (inclusive)
-    # Days 16, 17, 18 correspond to indices 15, 16, 17 in the s array (since days start at 1, s[15] is s16, s[16] is s17, s[17] is s18, s[18] is s19)
-    oslo_constraints = []
-    # For day 16: we are in Oslo if s16 or s17 is Oslo -> s[15] or s[16] is 2
-    oslo_constraints.append(Or(s[15] == 2, s[16] == 2))
-    # For day 17: s17 or s18 -> s[16] or s[17] is 2
-    oslo_constraints.append(Or(s[16] == 2, s[17] == 2))
-    # For day 18: s18 or s19 -> s[17] or s[18] is 2
-    oslo_constraints.append(Or(s[17] == 2, s[18] == 2))
-    solver.add(Or(oslo_constraints))
+    s.add(start[4] == 16)
     
-    # Constraint: Dubrovnik (city index 3) must be visited on at least one day between 5 and 9 (inclusive)
-    dubrovnik_constraints = []
-    # Days 5 to 9: indices 4 to 8 in s (s[4] is s5, s[5] is s6, ..., s[8] is s9, s[9] is s10)
-    for i in range(4, 9):  # for days 5 to 9: i from 4 to 8
-        dubrovnik_constraints.append(Or(s[i] == 3, s[i+1] == 3))
-    solver.add(Or(dubrovnik_constraints))
+    for i in range(4):
+        city_val = cities_seq[i]
+        s.add(z3.If(city_val == 0, start[i] <= 9, True))
     
-    # Check and get model
-    if solver.check() == sat:
-        model = solver.model()
-        # Get the values for s1 to s19
-        s_vals = [model.evaluate(s[i]).as_long() for i in range(19)]
+    for i in range(4):
+        a = cities_seq[i]
+        b = cities_seq[i+1]
+        cond = z3.Or([z3.And(a == u, b == v) for u, v in valid_edges])
+        s.add(cond)
+    
+    if s.check() == z3.sat:
+        m = s.model()
+        order_vals = [m[var].as_long() for var in order]
+        seq = order_vals + [4]
         
-        # Output the plan
-        for day in range(1, 19):  # days 1 to 18
-            idx = day - 1  # index in s_vals for the start of the day
-            start_city = s_vals[idx]
-            end_city = s_vals[idx+1]
-            if start_city == end_city:
-                print(f"Day {day}: Stay in {cities[start_city]}")
+        starts = [1]
+        for i in range(4):
+            city_index = seq[i]
+            days = d_dict[city_index]
+            next_start = starts[-1] + (days - 1)
+            starts.append(next_start)
+        
+        itinerary = []
+        for i in range(5):
+            city_idx = seq[i]
+            name = city_names[city_idx]
+            s_i = starts[i]
+            d_val = d_dict[city_idx]
+            e_i = s_i + d_val - 1
+            
+            if i != 0:
+                itinerary.append({"day_range": f"Day {s_i}", "place": name})
+            
+            if i == 4:
+                if s_i < e_i:
+                    itinerary.append({"day_range": f"Day {s_i+1}-{e_i}", "place": name})
             else:
-                print(f"Day {day}: Travel from {cities[start_city]} to {cities[end_city]}")
+                itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": name})
+            
+            if i != 4:
+                itinerary.append({"day_range": f"Day {e_i}", "place": name})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

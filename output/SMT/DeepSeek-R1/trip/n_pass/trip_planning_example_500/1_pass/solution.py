@@ -1,75 +1,104 @@
 from z3 import *
 
 def main():
+    # City names and their required days
+    cities = ["Hamburg", "Munich", "Manchester", "Lyon", "Split"]
+    req_days = [7, 6, 2, 2, 7]
+    c_map = {city: idx for idx, city in enumerate(cities)}
+    
+    # Define allowed flights (directed)
+    flights = []
+    # Bidirectional flights
+    bidirectional = [
+        ("Split", "Munich"),
+        ("Munich", "Manchester"),
+        ("Hamburg", "Manchester"),
+        ("Hamburg", "Munich"),
+        ("Split", "Lyon"),
+        ("Lyon", "Munich"),
+        ("Hamburg", "Split")
+    ]
+    for a, b in bidirectional:
+        flights.append((c_map[a], c_map[b]))
+        flights.append((c_map[b], c_map[a]))
+    # Directed flight from Manchester to Split
+    flights.append((c_map["Manchester"], c_map["Split"]))
+    
+    # Initialize Z3 solver
     s = Solver()
     
-    # Cities: 0: Hamburg, 1: Munich, 2: Manchester, 3: Lyon, 4: Split
-    n_days = 20
-    city_names = {0: 'Hamburg', 1: 'Munich', 2: 'Manchester', 3: 'Lyon', 4: 'Split'}
+    # Block variables: which city in each of the 5 blocks
+    block = [Int(f'block_{i}') for i in range(5)]
+    for i in range(5):
+        s.add(block[i] >= 0, block[i] < 5)
+    s.add(Distinct(block))
     
-    directed_edges_list = [
-        (0, 1), (1, 0),
-        (0, 2), (2, 0),
-        (0, 4), (4, 0),
-        (1, 2), (2, 1),
-        (1, 3), (3, 1),
-        (1, 4), (4, 1),
-        (3, 4), (4, 3),
-        (2, 4)
-    ]
+    # Start and end days for each block
+    start = [Int(f'start_{i}') for i in range(5)]
+    end = [Int(f'end_{i}') for i in range(5)]
+    length = [Int(f'length_{i}') for i in range(5)]
     
-    city_day = [Int(f'city_day_{i}') for i in range(1, n_days+1)]
-    flight_taken = [Bool(f'flight_taken_{i}') for i in range(1, n_days+1)]
-    to_city = [Int(f'to_city_{i}') for i in range(1, n_days+1)]
+    # Fixed constraints
+    s.add(start[0] == 1)  # Start on day 1
+    s.add(end[4] == 20)   # End on day 20
+    # Manchester must be in block 4 (last block) from day 19 to 20
+    s.add(block[4] == c_map["Manchester"])
+    s.add(start[4] == 19, end[4] == 20)
     
-    # Constraints for each day
-    for i in range(n_days):
-        s.add(city_day[i] >= 0, city_day[i] <= 4)
-        s.add(to_city[i] >= 0, to_city[i] <= 4)
-        
-        edge_constraints = []
-        for (u, v) in directed_edges_list:
-            edge_constraints.append(And(city_day[i] == u, to_city[i] == v))
-        s.add(Implies(flight_taken[i], Or(edge_constraints)))
+    # Block continuity: end[i] = start[i+1]
+    for i in range(4):
+        s.add(end[i] == start[i+1])
     
-    # Continuity constraints
-    for i in range(n_days - 1):
-        s.add(city_day[i+1] == If(flight_taken[i], to_city[i], city_day[i]))
+    # Length of each block
+    for i in range(5):
+        s.add(length[i] == end[i] - start[i] + 1)
+        s.add(length[i] >= 1)
     
-    # Fixed constraints for day 14 and day 20
-    s.add(city_day[13] == 3)  # Day 14 is index 13 (0-based: days 1 to 20 are indices 0 to 19)
-    s.add(city_day[19] == 2)  # Day 20 is index 19
+    # Lyon must be in one of the first four blocks and span days 13-14
+    lyon_constraints = []
+    for i in range(4):  # Blocks 0 to 3
+        lyon_constraints.append(And(block[i] == c_map["Lyon"], start[i] == 13, end[i] == 14))
+    s.add(Or(lyon_constraints))
     
     # Total days per city
-    totals = [0] * 5
-    for c in range(5):
-        total_count = 0
-        for i in range(n_days):
-            total_count += If(city_day[i] == c, 1, 0)
-            total_count += If(And(flight_taken[i], to_city[i] == c), 1, 0)
-        totals[c] = total_count
+    for c_idx in range(5):
+        total_days = 0
+        for b_idx in range(5):
+            total_days += If(block[b_idx] == c_idx, length[b_idx], 0)
+        s.add(total_days == req_days[c_idx])
     
-    s.add(totals[0] == 7)  # Hamburg
-    s.add(totals[1] == 6)  # Munich
-    s.add(totals[2] == 2)  # Manchester
-    s.add(totals[3] == 2)  # Lyon
-    s.add(totals[4] == 7)  # Split
+    # Flight constraints between consecutive blocks
+    for i in range(4):
+        valid_flight = Or([And(block[i] == f[0], block[i+1] == f[1]) for f in flights])
+        s.add(valid_flight)
     
-    # Check and output the solution
+    # Check for solution
     if s.check() == sat:
-        m = s.model()
-        plan = []
-        for i in range(n_days):
-            start_city = m.evaluate(city_day[i])
-            is_flight = m.evaluate(flight_taken[i])
-            dest_city = m.evaluate(to_city[i])
-            start_name = city_names[start_city.as_long()]
-            if is_flight:
-                dest_name = city_names[dest_city.as_long()]
-                plan.append(f"Day {i+1}: Start in {start_name}, fly to {dest_name}")
-            else:
-                plan.append(f"Day {i+1}: Stay in {start_name}")
-        print("\n".join(plan))
+        model = s.model()
+        itinerary = []
+        for i in range(5):
+            s_val = model.eval(start[i]).as_long()
+            e_val = model.eval(end[i]).as_long()
+            city_idx = model.eval(block[i]).as_long()
+            city_name = cities[city_idx]
+            itinerary.append({
+                "day_range": f"Day {s_val}-{e_val}",
+                "place": city_name
+            })
+            if i < 4:
+                flight_day = e_val
+                dep_city = city_name
+                arr_city = cities[model.eval(block[i+1]).as_long()]
+                itinerary.append({
+                    "day_range": f"Day {flight_day}",
+                    "place": dep_city
+                })
+                itinerary.append({
+                    "day_range": f"Day {flight_day}",
+                    "place": arr_city
+                })
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

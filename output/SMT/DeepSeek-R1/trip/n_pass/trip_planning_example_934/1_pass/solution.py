@@ -1,146 +1,116 @@
 from z3 import *
+import json
 
 def main():
     # Define the cities
-    city_names = ['Brussels', 'Rome', 'Dubrovnik', 'Geneva', 'Budapest', 'Riga', 'Valencia']
-    CitySort, city_consts = EnumSort('City', city_names)
-    Brussels, Rome, Dubrovnik, Geneva, Budapest, Riga, Valencia = city_consts
-    city_dict = {name: const for name, const in zip(city_names, city_consts)}
+    cities = ['Brussels', 'Rome', 'Dubrovnik', 'Geneva', 'Budapest', 'Riga', 'Valencia']
+    City, city_const = EnumSort('City', cities)
+    (Brussels, Rome, Dubrovnik, Geneva, Budapest, Riga, Valencia) = city_const
+    city_map = {name: const for name, const in zip(cities, city_const)}
     
-    # Define direct flights (undirected edges)
-    direct_flights_undir = [
-        ('Brussels','Valencia'),
-        ('Rome','Valencia'),
-        ('Brussels','Geneva'),
-        ('Rome','Geneva'),
-        ('Dubrovnik','Geneva'),
-        ('Valencia','Geneva'),
-        ('Rome','Riga'),
-        ('Geneva','Budapest'),
-        ('Riga','Brussels'),
-        ('Rome','Budapest'),
-        ('Rome','Brussels'),
-        ('Brussels','Budapest'),
-        ('Dubrovnik','Rome')
+    # Define the direct flight edges
+    edges_str = [
+        ('Brussels', 'Valencia'),
+        ('Rome', 'Valencia'),
+        ('Brussels', 'Geneva'),
+        ('Rome', 'Geneva'),
+        ('Dubrovnik', 'Geneva'),
+        ('Valencia', 'Geneva'),
+        ('Rome', 'Riga'),
+        ('Geneva', 'Budapest'),
+        ('Riga', 'Brussels'),
+        ('Rome', 'Budapest'),
+        ('Rome', 'Brussels'),
+        ('Brussels', 'Budapest'),
+        ('Dubrovnik', 'Rome')
     ]
+    edges = []
+    for a, b in edges_str:
+        edges.append((city_map[a], city_map[b]))
     
-    # Remove duplicates by using a set of sorted tuples
-    undir_set = set()
-    for u, v in direct_flights_undir:
-        key = tuple(sorted([u, v]))
-        undir_set.add(key)
-    
-    # Create directed flights (both directions)
-    directed_flights = []
-    for u, v in undir_set:
-        directed_flights.append((u, v))
-        directed_flights.append((v, u))
-    
-    # Convert to Z3 constants
-    z3_directed_flights = []
-    for u_str, v_str in directed_flights:
-        u_const = city_dict[u_str]
-        v_const = city_dict[v_str]
-        z3_directed_flights.append((u_const, v_const))
-    
-    # Create Z3 variables for each day (1 to 17)
-    start_city = [None] * 18  # index 0 unused
-    travel = [None] * 18
-    end_city = [None] * 18
-    
-    for i in range(1, 18):
-        start_city[i] = Const(f'start_city_{i}', CitySort)
-        travel[i] = Bool(f'travel_{i}')
-        end_city[i] = Const(f'end_city_{i}', CitySort)
-    
+    n = len(cities)
     s = Solver()
     
-    # Continuity constraint: start_city[i+1] = end_city[i] for i in 1..16
-    for i in range(1, 17):
-        s.add(start_city[i+1] == end_city[i])
+    # Sequence of cities (permutation)
+    seq = [Const(f'seq_{i}', City) for i in range(n)]
+    s.add(Distinct(seq))
     
-    # Travel constraints for each day
-    for i in range(1, 18):
-        c1 = start_city[i]
-        t = travel[i]
-        c2 = end_city[i]
-        
-        # If traveling, c1 != c2 and (c1, c2) must be in directed flights
-        flight_conds = []
-        for (u, v) in z3_directed_flights:
-            flight_conds.append(And(c1 == u, c2 == v))
-        s.add(If(t, 
-                 And(c1 != c2, Or(flight_conds)),
-                 c2 == c1))
+    # Flight constraints: consecutive cities must have a direct flight
+    for i in range(n-1):
+        cons = []
+        for a, b in edges:
+            cons.append(And(seq[i] == a, seq[i+1] == b))
+            cons.append(And(seq[i] == b, seq[i+1] == a))
+        s.add(Or(cons))
     
-    # Total travel days must be 6
-    total_travel = Sum([If(travel[i], 1, 0) for i in range(1, 18)])
-    s.add(total_travel == 6)
-    
-    # Constraints for days in each city
-    req_days = {
-        'Brussels': 5,
-        'Rome': 2,
-        'Dubrovnik': 3,
-        'Geneva': 5,
-        'Budapest': 2,
-        'Riga': 4,
-        'Valencia': 2
+    # Required days for each city
+    req_vals = {
+        Brussels: 5,
+        Rome: 2,
+        Dubrovnik: 3,
+        Geneva: 5,
+        Budapest: 2,
+        Riga: 4,
+        Valencia: 2
     }
+    req_fun = Function('req', City, IntSort())
+    for city, days in req_vals.items():
+        s.add(req_fun(city) == days)
     
-    for city_name, req in req_days.items():
-        city_const = city_dict[city_name]
-        total = 0
-        for i in range(1, 18):
-            in_city = Or(start_city[i] == city_const, And(travel[i], end_city[i] == city_const))
-            total += If(in_city, 1, 0)
-        s.add(total == req)
+    # Start and end days for each city segment
+    start = [Int(f'start_{i}') for i in range(n)]
+    end = [Int(f'end_{i}') for i in range(n)]
     
-    # Event constraints
-    # Brussels workshop between days 7-11 (inclusive)
-    brussels_workshop = []
-    for i in range(7, 12):  # days 7 to 11
-        in_brussels = Or(start_city[i] == Brussels, And(travel[i], end_city[i] == Brussels))
-        brussels_workshop.append(in_brussels)
-    s.add(Or(brussels_workshop))
+    # First segment starts on day 1
+    s.add(start[0] == 1)
+    s.add(end[0] == start[0] + req_fun(seq[0]) - 1)
     
-    # Budapest meeting between days 16-17
-    budapest_meeting = []
-    for i in range(16, 18):  # days 16 and 17
-        in_budapest = Or(start_city[i] == Budapest, And(travel[i], end_city[i] == Budapest))
-        budapest_meeting.append(in_budapest)
-    s.add(Or(budapest_meeting))
+    # Subsequent segments start where the previous ends
+    for i in range(1, n):
+        s.add(start[i] == end[i-1])
+        s.add(end[i] == start[i] + req_fun(seq[i]) - 1)
     
-    # Riga meeting between days 4-7
-    riga_meeting = []
-    for i in range(4, 8):  # days 4 to 7
-        in_riga = Or(start_city[i] == Riga, And(travel[i], end_city[i] == Riga))
-        riga_meeting.append(in_riga)
-    s.add(Or(riga_meeting))
+    # Workshop and meeting constraints
+    for i in range(n):
+        # Brussels must include a day between 7 and 11
+        s.add(If(seq[i] == Brussels, And(start[i] <= 11, end[i] >= 7), True))
+        # Budapest must include a day between 16 and 17
+        s.add(If(seq[i] == Budapest, And(start[i] <= 17, end[i] >= 16), True))
+        # Riga must include a day between 4 and 7
+        s.add(If(seq[i] == Riga, And(start[i] <= 7, end[i] >= 4), True))
     
-    # Check and get the model
+    # Check for a solution
     if s.check() == sat:
         m = s.model()
-        # Helper to get city name from constant
-        def get_city_name(c):
-            for name, const in city_dict.items():
-                if m.eval(const).eq(m.eval(c)):
-                    return name
-            return "Unknown"
+        seq_val = [m.eval(seq[i]) for i in range(n)]
+        start_val = [m.eval(start[i]).as_long() for i in range(n)]
+        end_val = [m.eval(end[i]).as_long() for i in range(n)]
         
-        # Print the itinerary
-        print("Day\tStart City\tTravel?\tEnd City\tCities Visited")
-        for i in range(1, 18):
-            sc_val = m.eval(start_city[i])
-            t_val = m.eval(travel[i])
-            ec_val = m.eval(end_city[i])
-            sc_name = get_city_name(sc_val)
-            ec_name = get_city_name(ec_val)
-            if is_true(t_val):
-                visited = f"{sc_name}, {ec_name}"
+        # Map enum values to city names
+        city_names = []
+        for c in seq_val:
+            for idx, const in enumerate(city_const):
+                if m.eval(c).eq(m.eval(const)):
+                    city_names.append(cities[idx])
+                    break
+        
+        # Build itinerary
+        itinerary = []
+        for i in range(n):
+            s_i = start_val[i]
+            e_i = end_val[i]
+            if s_i == e_i:
+                day_range = f"Day {s_i}"
             else:
-                visited = sc_name
-            print(f"{i}\t{sc_name}\t{is_true(t_val)}\t{ec_name}\t{visited}")
+                day_range = f"Day {s_i}-{e_i}"
+            itinerary.append({"day_range": day_range, "place": city_names[i]})
+            
+            if i < n-1:
+                itinerary.append({"day_range": f"Day {e_i}", "place": city_names[i]})
+                itinerary.append({"day_range": f"Day {e_i}", "place": city_names[i+1]})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
         print("No solution found")
 

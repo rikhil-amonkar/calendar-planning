@@ -1,143 +1,145 @@
 from z3 import *
+import json
 
 def main():
-    # Define the City enum
-    City, (Rome, Mykonos, Lisbon, Frankfurt, Nice, Stuttgart, Venice, Dublin, Bucharest, Seville) = \
-        EnumSort('City', ['Rome', 'Mykonos', 'Lisbon', 'Frankfurt', 'Nice', 'Stuttgart', 'Venice', 'Dublin', 'Bucharest', 'Seville'])
+    # City names and their durations
+    city_names = ["Rome", "Mykonos", "Lisbon", "Frankfurt", "Nice", "Stuttgart", "Venice", "Dublin", "Bucharest", "Seville"]
+    durations = [3, 2, 2, 5, 3, 4, 4, 2, 2, 5]
     
-    city_dict = {
-        "Rome": Rome,
-        "Mykonos": Mykonos,
-        "Lisbon": Lisbon,
-        "Frankfurt": Frankfurt,
-        "Nice": Nice,
-        "Stuttgart": Stuttgart,
-        "Venice": Venice,
-        "Dublin": Dublin,
-        "Bucharest": Bucharest,
-        "Seville": Seville
-    }
+    # Flight connections
+    flight_pairs_str = "Rome and Stuttgart, Venice and Rome, Dublin and Bucharest, Mykonos and Rome, Seville and Lisbon, Frankfurt and Venice, Venice and Stuttgart, Bucharest and Lisbon, Nice and Mykonos, Venice and Lisbon, Dublin and Lisbon, Venice and Nice, Rome and Seville, Frankfurt and Rome, Nice and Dublin, Rome and Bucharest, Frankfurt and Dublin, Rome and Dublin, Venice and Dublin, Rome and Lisbon, Frankfurt and Lisbon, Nice and Rome, Frankfurt and Nice, Frankfurt and Stuttgart, Frankfurt and Bucharest, Lisbon and Stuttgart, Nice and Lisbon, Seville and Dublin"
+    flight_pairs = [pair.split(' and ') for pair in flight_pairs_str.split(', ')]
     
-    # Required days for each city
-    required_days = {
-        Rome: 3,
-        Mykonos: 2,
-        Lisbon: 2,
-        Frankfurt: 5,
-        Nice: 3,
-        Stuttgart: 4,
-        Venice: 4,
-        Dublin: 2,
-        Bucharest: 2,
-        Seville: 5
-    }
+    # Create a set of directed flight edges (both directions)
+    flight_edges = set()
+    for a, b in flight_pairs:
+        i = city_names.index(a)
+        j = city_names.index(b)
+        flight_edges.add((i, j))
+        flight_edges.add((j, i))
+    flight_edges = list(flight_edges)
     
-    # Given flight connections (as string pairs)
-    given_flight_list = [
-        ("Rome", "Stuttgart"),
-        ("Venice", "Rome"),
-        ("Dublin", "Bucharest"),
-        ("Mykonos", "Rome"),
-        ("Seville", "Lisbon"),
-        ("Frankfurt", "Venice"),
-        ("Venice", "Stuttgart"),
-        ("Bucharest", "Lisbon"),
-        ("Nice", "Mykonos"),
-        ("Venice", "Lisbon"),
-        ("Dublin", "Lisbon"),
-        ("Venice", "Nice"),
-        ("Rome", "Seville"),
-        ("Frankfurt", "Rome"),
-        ("Nice", "Dublin"),
-        ("Rome", "Bucharest"),
-        ("Frankfurt", "Dublin"),
-        ("Rome", "Dublin"),
-        ("Venice", "Dublin"),
-        ("Rome", "Lisbon"),
-        ("Frankfurt", "Lisbon"),
-        ("Nice", "Rome"),
-        ("Frankfurt", "Nice"),
-        ("Frankfurt", "Stuttgart"),
-        ("Frankfurt", "Bucharest"),
-        ("Lisbon", "Stuttgart"),
-        ("Nice", "Lisbon"),
-        ("Seville", "Dublin")
-    ]
+    # Create Z3 variables
+    s = [Int(f's_{i}') for i in range(10)]  # Sequence of cities (by index)
+    pos = [Int(f'pos_{i}') for i in range(10)]  # Position of each city in the sequence
+    start_vars = [Int(f'start_{i}') for i in range(10)]  # Start day for each city
     
-    # Convert string pairs to City enum pairs (both directions)
-    flight_pairs_const = []
-    for a, b in given_flight_list:
-        c1 = city_dict[a]
-        c2 = city_dict[b]
-        flight_pairs_const.append((c1, c2))
-        flight_pairs_const.append((c2, c1))
+    solver = Solver()
     
-    # Create Z3 variables for each day: city_start[d] and city_end[d] for d in 0..22 (representing days 1 to 23)
-    num_days = 23
-    city_start = [Const(f'city_start_{i+1}', City) for i in range(num_days)]
-    city_end = [Const(f'city_end_{i+1}', City) for i in range(num_days)]
+    # Constraints for s: permutation of 0 to 9
+    solver.add([And(s_i >= 0, s_i < 10) for s_i in s])
+    solver.add(Distinct(s))
     
-    s = Solver()
+    # Constraints for pos: pos[i] is the position of city i in s
+    for i in range(10):
+        or_conditions = []
+        for k in range(10):
+            or_conditions.append(And(s[k] == i, pos[i] == k))
+        solver.add(Or(or_conditions))
     
-    # Constraint 1: Chain constraint: city_start of day i+1 equals city_end of day i
-    for i in range(num_days - 1):
-        s.add(city_start[i+1] == city_end[i])
+    # Constraints for start_vars: start_vars[i] = 1 + sum of (durations[j]-1) for all j before i
+    for i in range(10):
+        sum_before = 0
+        for j in range(10):
+            if j == i:
+                continue
+            condition = And(j != i, pos[j] < pos[i])
+            sum_before += If(condition, durations[j] - 1, 0)
+        solver.add(start_vars[i] == 1 + sum_before)
     
-    # Constraint 2: Travel constraint: if start != end on a day, then the pair must be in flight_pairs_const
-    for i in range(num_days):
-        start = city_start[i]
-        end = city_end[i]
-        travel_condition = Or([And(start == c1, end == c2) for (c1, c2) in flight_pairs_const])
-        s.add(If(start != end, travel_condition, True))
+    # Specific constraints
+    solver.add(start_vars[city_names.index("Seville")] == 13)  # Seville start day is 13
+    mykonos_idx = city_names.index("Mykonos")
+    solver.add(And(start_vars[mykonos_idx] >= 9, start_vars[mykonos_idx] <= 11))  # Mykonos between day 9 and 11
+    frankfurt_idx = city_names.index("Frankfurt")
+    solver.add(start_vars[frankfurt_idx] <= 5)  # Frankfurt starts by day 5
     
-    # Constraint 3: City duration constraints
-    for city in [Rome, Mykonos, Lisbon, Frankfurt, Nice, Stuttgart, Venice, Dublin, Bucharest, Seville]:
-        total = 0
-        for i in range(num_days):
-            # Count if city_start is the city
-            total += If(city_start[i] == city, 1, 0)
-            # Count if city_end is the city and city_start is not (to avoid double-counting when staying)
-            total += If(And(city_end[i] == city, city_start[i] != city), 1, 0)
-        s.add(total == required_days[city])
+    # Flight constraints for consecutive cities in the sequence
+    for k in range(9):
+        or_conditions = []
+        for edge in flight_edges:
+            a, b = edge
+            or_conditions.append(And(s[k] == a, s[k+1] == b))
+        solver.add(Or(or_conditions))
     
-    # Constraint 4: Fixed events
-    # Mykonos must be visited on day 10 and 11 (days at index 9 and 10)
-    s.add(Or(city_start[9] == Mykonos, city_end[9] == Mykonos))
-    s.add(Or(city_start[10] == Mykonos, city_end[10] == Mykonos))
-    
-    # Seville: must be occupied entirely from day 13 to 17 (index 12 to 16)
-    for i in [12, 13, 14, 15, 16]:
-        s.add(city_start[i] == Seville)
-        s.add(city_end[i] == Seville)
-    # And not in Seville on other days
-    for i in range(num_days):
-        if i not in [12, 13, 14, 15, 16]:
-            s.add(city_start[i] != Seville)
-            s.add(city_end[i] != Seville)
-    
-    # Frankfurt: must be in Frankfurt at least one day between day 1 and 5 (index 0 to 4)
-    s.add(Or([Or(city_start[i] == Frankfurt, city_end[i] == Frankfurt) for i in range(0, 5)]))
-    
-    # Check and get the model
-    if s.check() == sat:
-        m = s.model()
-        # Helper to convert enum to string
-        def city_str(city_val):
-            for name, c in city_dict.items():
-                if m.evaluate(c) == city_val:
-                    return name
-            return "Unknown"
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        # Get the sequence
+        seq_cities = []
+        for i in range(10):
+            seq_cities.append(model.eval(s[i]).as_long())
+        # Get start days for each city
+        start_days = []
+        for i in range(10):
+            start_days.append(model.eval(start_vars[i]).as_long())
         
-        # Print the plan
-        print("Day\tStart City\tEnd City")
-        for i in range(num_days):
-            start_val = m.evaluate(city_start[i])
-            end_val = m.evaluate(city_end[i])
-            start_name = city_str(start_val)
-            end_name = city_str(end_val)
-            print(f"{i+1}\t{start_name}\t{end_name}")
+        # Build itinerary
+        itinerary = []
+        for idx, city_idx in enumerate(seq_cities):
+            start = start_days[city_idx]
+            duration_val = durations[city_idx]
+            end = start + duration_val - 1
+            place = city_names[city_idx]
+            
+            # Entire stay record
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": place})
+            
+            # If not last city, add departure record
+            if idx < 9:
+                itinerary.append({"day_range": f"Day {end}", "place": place})
+            
+            # If not first city, add arrival record for current city (already handled in previous departure)
+            # For the next city, we add its arrival record when processing it
+            if idx > 0:
+                # But note: we already added the entire stay and departure for the previous city
+                # Now, for the current city (starting from idx=1), we need to add the arrival record at the beginning?
+                # Instead, we adjust: we added the entire stay and then departure for the previous.
+                # Then we add the arrival for the current city at the start of processing the current?
+                # But in our loop, we are processing one city at a time.
+                # We have already added the arrival record for the current city in the previous iteration? 
+                # Actually, no: we add the arrival record when we process the current city.
+                # How? We don't have a separate step for arrival. 
+                # So we add the arrival record for the current city here, but before the entire stay?
+                # But we already added the entire stay and departure for the current city above.
+                # Therefore, we need to insert the arrival record for the current city before the entire stay.
+                # But we cannot do that in the current loop structure.
+                # Instead, we restructure the loop to add the arrival record for the current city (except the first) at the beginning of processing.
+                # We do this by moving the arrival record addition to before the entire stay for cities that are not the first.
+                pass
+        
+        # We rebuild the itinerary correctly
+        itinerary = []
+        # First city
+        city_idx0 = seq_cities[0]
+        start0 = start_days[city_idx0]
+        end0 = start0 + durations[city_idx0] - 1
+        itinerary.append({"day_range": f"Day {start0}-{end0}", "place": city_names[city_idx0]})
+        if len(seq_cities) > 1:
+            itinerary.append({"day_range": f"Day {end0}", "place": city_names[city_idx0]})
+        
+        # Middle cities (from index1 to index8)
+        for idx in range(1, 9):
+            city_idx = seq_cities[idx]
+            start = start_days[city_idx]
+            end = start + durations[city_idx] - 1
+            itinerary.append({"day_range": f"Day {start}", "place": city_names[city_idx]})
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_names[city_idx]})
+            itinerary.append({"day_range": f"Day {end}", "place": city_names[city_idx]})
+        
+        # Last city (index9)
+        if len(seq_cities) > 1:
+            city_idx9 = seq_cities[9]
+            start9 = start_days[city_idx9]
+            end9 = start9 + durations[city_idx9] - 1
+            itinerary.append({"day_range": f"Day {start9}", "place": city_names[city_idx9]})
+            itinerary.append({"day_range": f"Day {start9}-{end9}", "place": city_names[city_idx9]})
+        
+        # Create the final JSON
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
-        print("No valid plan found.")
+        print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

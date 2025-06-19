@@ -1,84 +1,128 @@
 from z3 import *
 
 def main():
-    # Cities: Istanbul=0, Rome=1, Seville=2, Naples=3, Santorini=4
-    city_names = ['Istanbul', 'Rome', 'Seville', 'Naples', 'Santorini']
-    n_cities = 5
-    days = 16
+    # Define city indices and their required days
+    cities = ["Istanbul", "Rome", "Seville", "Naples", "Santorini"]
+    city_to_index = {city: idx for idx, city in enumerate(cities)}
+    days_arr = [2, 3, 4, 7, 4]  # days for Istanbul, Rome, Seville, Naples, Santorini
 
-    # Define the undirected flight edges
-    edges_undirected = [(0, 1), (0, 3), (1, 2), (1, 3), (1, 4), (3, 4)]
-    directed_edges = []
-    for (a, b) in edges_undirected:
-        directed_edges.append((a, b))
-        directed_edges.append((b, a))
+    # Direct flights (undirected) as tuples of indices
+    flights_set = [
+        (city_to_index['Rome'], city_to_index['Santorini']),
+        (city_to_index['Seville'], city_to_index['Rome']),
+        (city_to_index['Istanbul'], city_to_index['Naples']),
+        (city_to_index['Naples'], city_to_index['Santorini']),
+        (city_to_index['Rome'], city_to_index['Naples']),
+        (city_to_index['Rome'], city_to_index['Istanbul'])
+    ]
 
-    # Variables for each day
-    s = [Int('s_%d' % i) for i in range(1, days+1)]  # start city
-    f = [Bool('f_%d' % i) for i in range(1, days+1)]  # whether we fly on day i
-    d = [Int('d_%d' % i) for i in range(1, days+1)]   # flight destination if flying
+    # Setup Z3 variables
+    stay0, stay1, stay2, stay3, stay4 = Ints('stay0 stay1 stay2 stay3 stay4')
+    stay_vars = [stay0, stay1, stay2, stay3, stay4]
+    s = Solver()
 
-    solver = Solver()
+    # Each stay variable must be between 0 and 4 (city indices)
+    for var in stay_vars:
+        s.add(var >= 0, var < 5)
+    s.add(Distinct(stay0, stay1, stay2, stay3, stay4))
 
-    # Constraints for each day
-    for i in range(days):
-        # s[i] and d[i] are in [0,4]
-        solver.add(s[i] >= 0, s[i] < n_cities)
-        solver.add(d[i] >= 0, d[i] < n_cities)
+    # Function to get days for a city index
+    def get_days(city_var):
+        return If(city_var == 0, days_arr[0],
+                If(city_var == 1, days_arr[1],
+                If(city_var == 2, days_arr[2],
+                If(city_var == 3, days_arr[3],
+                If(city_var == 4, days_arr[4], 0)))))
 
-        # If flying, then the flight must be valid (directed edge exists and different cities)
-        solver.add(Implies(f[i], s[i] != d[i]))
-        # Create condition for valid flight: (s[i], d[i]) must be in directed_edges
-        flight_constraint = Or([And(s[i] == a, d[i] == b) for (a, b) in directed_edges])
-        solver.add(Implies(f[i], flight_constraint))
+    # Define start and end days for each stay
+    start0 = 1
+    end0 = start0 + get_days(stay0) - 1
+    start1 = end0
+    end1 = start1 + get_days(stay1) - 1
+    start2 = end1
+    end2 = start2 + get_days(stay2) - 1
+    start3 = end2
+    end3 = start3 + get_days(stay3) - 1
+    start4 = end3
+    end4 = start4 + get_days(stay4) - 1
+    s.add(end4 == 16)  # Total days must be 16
 
-        # Transition to next day (if not last day)
-        if i < days - 1:
-            solver.add(If(f[i], s[i+1] == d[i], s[i+1] == s[i]))
+    # Flight connectivity constraints
+    def flight_ok(c1, c2):
+        options = []
+        for (a, b) in flights_set:
+            options.append(And(c1 == a, c2 == b))
+            options.append(And(c1 == b, c2 == a))
+        return Or(options)
 
-    # Total days per city
-    total_days = [0] * n_cities
-    for c in range(n_cities):
-        total = 0
-        for i in range(days):
-            in_city = Or(s[i] == c, And(f[i], d[i] == c))
-            total += If(in_city, 1, 0)
-        total_days[c] = total
+    s.add(flight_ok(stay0, stay1))
+    s.add(flight_ok(stay1, stay2))
+    s.add(flight_ok(stay2, stay3))
+    s.add(flight_ok(stay3, stay4))
 
-    solver.add(total_days[0] == 2)  # Istanbul
-    solver.add(total_days[1] == 3)  # Rome
-    solver.add(total_days[2] == 4)  # Seville
-    solver.add(total_days[3] == 7)  # Naples
-    solver.add(total_days[4] == 4)  # Santorini
+    # Istanbul must cover day 6 or 7
+    istanbul_cond = False
+    for i, (s_var, start, end) in enumerate(zip(
+        stay_vars, 
+        [start0, start1, start2, start3, start4],
+        [end0, end1, end2, end3, end4]
+    )):
+        cond_i = And(s_var == city_to_index['Istanbul'], 
+                    Or(And(start <= 6, 6 <= end),
+                       And(start <= 7, 7 <= end)))
+        istanbul_cond = Or(istanbul_cond, cond_i)
+    s.add(istanbul_cond)
 
-    # Event constraints
-    # Istanbul must be visited on day 6 or 7 (indices 5 and 6 in 0-indexed)
-    istanbul_day6 = Or(s[5] == 0, And(f[5], d[5] == 0))
-    istanbul_day7 = Or(s[6] == 0, And(f[6], d[6] == 0))
-    solver.add(Or(istanbul_day6, istanbul_day7))
+    # Santorini must cover at least one day between 13 and 16
+    santorini_cond = False
+    for i, (s_var, start, end) in enumerate(zip(
+        stay_vars, 
+        [start0, start1, start2, start3, start4],
+        [end0, end1, end2, end3, end4]
+    )):
+        cond_i = And(s_var == city_to_index['Santorini'], 
+                    And(start <= 16, end >= 13))
+        santorini_cond = Or(santorini_cond, cond_i)
+    s.add(santorini_cond)
 
-    # Santorini must be visited on at least one day from 13 to 16 (indices 12 to 15)
-    santorini_days = []
-    for i in range(12, 16):
-        cond = Or(s[i] == 4, And(f[i], d[i] == 4))
-        santorini_days.append(cond)
-    solver.add(Or(santorini_days))
+    # Check and get model
+    if s.check() == sat:
+        model = s.model()
+        stay0_val = model[stay0].as_long()
+        stay1_val = model[stay1].as_long()
+        stay2_val = model[stay2].as_long()
+        stay3_val = model[stay3].as_long()
+        stay4_val = model[stay4].as_long()
+        stay_vals = [stay0_val, stay1_val, stay2_val, stay3_val, stay4_val]
+        city_sequence = [cities[idx] for idx in stay_vals]
 
-    # Check and print model
-    if solver.check() == sat:
-        model = solver.model()
-        # Print the schedule
-        print("Day\tStart City\tFlight To")
-        for i in range(days):
-            s_val = model.evaluate(s[i])
-            f_val = model.evaluate(f[i])
-            d_val = model.evaluate(d[i])
-            start_city_name = city_names[s_val.as_long()]
-            if f_val:
-                flight_dest_name = city_names[d_val.as_long()]
-                print(f"{i+1}\t{start_city_name}\t\tFly to {flight_dest_name}")
-            else:
-                print(f"{i+1}\t{start_city_name}\t\tStay")
+        # Calculate start and end days
+        start_days = [1]
+        end_days = [1 + days_arr[stay_vals[0]] - 1]
+        for i in range(1, 5):
+            start_days.append(end_days[i-1])
+            end_days.append(start_days[i] + days_arr[stay_vals[i]] - 1)
+
+        # Build itinerary
+        itinerary = []
+        for i in range(5):
+            city = city_sequence[i]
+            start = start_days[i]
+            end = end_days[i]
+            # Add the block for the entire stay
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+            # Add the departure day if not the last city
+            if i < 4:
+                itinerary.append({"day_range": f"Day {end}", "place": city})
+                # Add the arrival day for the next city
+                next_city = city_sequence[i+1]
+                itinerary.append({"day_range": f"Day {end}", "place": next_city})
+        # For the last city, no departure, but add the block for the entire stay
+        # The block for the last city is already added in the loop
+
+        # Output the result
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

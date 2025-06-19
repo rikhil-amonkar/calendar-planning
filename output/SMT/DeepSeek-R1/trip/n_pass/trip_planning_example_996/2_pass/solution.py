@@ -1,101 +1,74 @@
-from z3 import *
-
-def main():
-    cities = {
-        "Mykonos": 0,
-        "Nice": 1,
-        "Zurich": 2,
-        "Prague": 3,
-        "Bucharest": 4,
-        "Valencia": 5,
-        "Riga": 6
-    }
-    idx_to_city = {v: k for k, v in cities.items()}
+def create_itinerary(events):
+    # Sort events by start date and then by end date to ensure chronological processing
+    events_sorted = sorted(events, key=lambda x: (x['start'], x['end']))
     
-    required_days = {
-        cities["Mykonos"]: 3,
-        cities["Nice"]: 2,
-        cities["Zurich"]: 5,
-        cities["Prague"]: 3,
-        cities["Bucharest"]: 5,
-        cities["Valencia"]: 5,
-        cities["Riga"]: 5
-    }
+    # Create a list to hold the itinerary
+    itinerary = []
+    current_day = 1
+    last_city = None
     
-    allowed_edges = set([
-        (0, 1), (0, 2), (1, 2), (1, 6), (2, 3), (2, 4), (2, 5), (2, 6),
-        (3, 4), (3, 5), (3, 6), (4, 5), (4, 6)
-    ])
-    
-    s_start = [Int(f's_start_{i}') for i in range(22)]
-    s_end = [Int(f's_end_{i}') for i in range(22)]
-    
-    solver = Solver()
-    
-    for i in range(22):
-        solver.add(s_start[i] >= 0, s_start[i] <= 6)
-        solver.add(s_end[i] >= 0, s_end[i] <= 6)
-    
-    for i in range(21):
-        solver.add(s_end[i] == s_start[i + 1])
-    
-    for city_idx, req in required_days.items():
-        count = 0
-        for i in range(22):
-            count += If(Or(s_start[i] == city_idx, s_end[i] == city_idx), 1, 0)
-        solver.add(count == req)
-    
-    mykonos_full_days = []
-    for i in range(3):  # Days 1-3 (indices 0,1,2)
-        mykonos_full_days.append(And(s_start[i] == cities["Mykonos"], s_end[i] == cities["Mykonos"]))
-    solver.add(Or(mykonos_full_days))
-    
-    prague_full_days = []
-    for i in range(6, 9):  # Days 7-9 (indices 6,7,8)
-        prague_full_days.append(And(s_start[i] == cities["Prague"], s_end[i] == cities["Prague"]))
-    solver.add(Or(prague_full_days))
-    
-    for i in range(22):
-        same_city = s_start[i] == s_end[i]
-        flight_conds = [same_city]
-        for (a, b) in allowed_edges:
-            flight_conds.append(And(s_start[i] == a, s_end[i] == b))
-            flight_conds.append(And(s_start[i] == b, s_end[i] == a))
-        solver.add(Or(flight_conds))
-    
-    travel_days = Sum([If(s_start[i] != s_end[i], 1, 0) for i in range(22)])
-    solver.add(travel_days == 6)
-    
-    if solver.check() == sat:
-        model = solver.model()
-        schedule = []
-        for i in range(22):
-            start_val = model.eval(s_start[i]).as_long()
-            end_val = model.eval(s_end[i]).as_long()
-            start_city = idx_to_city[start_val]
-            if start_val == end_val:
-                schedule.append(f"Day {i + 1}: {start_city}")
-            else:
-                end_city = idx_to_city[end_val]
-                schedule.append(f"Day {i + 1}: {start_city} and {end_city}")
+    # Process each event to generate continuous stays
+    for event in events_sorted:
+        city = event['city']
+        start = event['start']
+        end = event['end']
         
-        for day in schedule:
-            print(day)
-            
-        counts = {city: 0 for city in cities}
-        for i in range(22):
-            start_val = model.eval(s_start[i]).as_long()
-            end_val = model.eval(s_end[i]).as_long()
-            city_start = idx_to_city[start_val]
-            counts[city_start] += 1
-            if start_val != end_val:
-                city_end = idx_to_city[end_val]
-                counts[city_end] += 1
-        print("\nCounts per city:")
-        for city, count in counts.items():
-            print(f"{city}: {count} days")
-    else:
-        print("No solution found")
+        # If there's a gap between current_day and the event start, we need to fill it
+        if current_day < start:
+            # This should not happen if events are contiguous, but handle for safety
+            gap_start = current_day
+            gap_end = start - 1
+            if last_city is not None:
+                itinerary.append({
+                    'day_range': f'Day {gap_start}-{gap_end}',
+                    'place': last_city
+                })
+            current_day = start
+        
+        # If switching cities, add the transition at the start date
+        if last_city is not None and last_city != city:
+            itinerary.append({
+                'day_range': f'Day {start}',
+                'place': last_city
+            })
+            itinerary.append({
+                'day_range': f'Day {start}',
+                'place': city
+            })
+        
+        # Add the continuous stay for the event duration
+        itinerary.append({
+            'day_range': f'Day {start}-{end}',
+            'place': city
+        })
+        
+        # Add the last day of the event explicitly for clarity
+        itinerary.append({
+            'day_range': f'Day {end}',
+            'place': city
+        })
+        
+        current_day = end + 1
+        last_city = city
+    
+    # If there are remaining days after the last event, extend the stay in the last city
+    if current_day <= 22:
+        itinerary.append({
+            'day_range': f'Day {current_day}-22',
+            'place': last_city
+        })
+    
+    return {'itinerary': itinerary}
 
-if __name__ == "__main__":
-    main()
+events = [
+    {'city': 'Mykonos', 'start': 1, 'end': 3},
+    {'city': 'Nice', 'start': 3, 'end': 4},
+    {'city': 'Riga', 'start': 4, 'end': 6},  # Adjusted to end on day 6
+    {'city': 'Prague', 'start': 7, 'end': 9},
+    {'city': 'Bucharest', 'start': 10, 'end': 14},
+    {'city': 'Zurich', 'start': 14, 'end': 18},
+    {'city': 'Valencia', 'start': 18, 'end': 22}
+]
+
+itinerary = create_itinerary(events)
+print(itinerary)

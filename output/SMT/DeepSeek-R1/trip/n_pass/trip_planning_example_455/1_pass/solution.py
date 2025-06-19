@@ -1,80 +1,91 @@
-from z3 import Solver, Bool, Sum, If, And, Or, Not, sat
-import itertools
+from z3 import *
+import json
 
 def main():
     cities = ['Reykjavik', 'Riga', 'Warsaw', 'Istanbul', 'Krakow']
-    required_days = {
+    dur = {
         'Reykjavik': 7,
         'Riga': 2,
         'Warsaw': 3,
         'Istanbul': 6,
         'Krakow': 7
     }
-    total_days = 21
-
-    flights_list = [
-        ('Istanbul', 'Krakow'),
+    
+    flight_set = { 
+        ('Istanbul', 'Krakow'), 
         ('Warsaw', 'Reykjavik'),
         ('Istanbul', 'Warsaw'),
         ('Riga', 'Istanbul'),
         ('Krakow', 'Warsaw'),
         ('Riga', 'Warsaw')
-    ]
+    }
     
-    flight_set = set()
-    for a, b in flights_list:
-        key = tuple(sorted([a, b]))
-        flight_set.add(key)
+    allowed_edges = []
+    for (c1, c2) in flight_set:
+        allowed_edges.append((c1, c2))
+        allowed_edges.append((c2, c1))
     
-    non_flight_pairs = []
-    for i in range(len(cities)):
-        for j in range(i+1, len(cities)):
-            c1 = cities[i]
-            c2 = cities[j]
-            key = tuple(sorted([c1, c2]))
-            if key not in flight_set:
-                non_flight_pairs.append((c1, c2))
-    
+    # Create solver and variables
     s = Solver()
-    in_city = {}
-    for day in range(1, total_days + 1):
-        for city in cities:
-            in_city[(day, city)] = Bool(f"in_{day}_{city}")
+    city_vars = [String(f'city_{i}') for i in range(5)]
+    start_days = [Int(f'start_{i}') for i in range(5)]
     
-    for day in range(1, total_days + 1):
-        cities_day = [in_city[(day, c)] for c in cities]
-        s.add(Sum([If(var, 1, 0) for var in cities_day]) >= 1)
-        s.add(Sum([If(var, 1, 0) for var in cities_day]) <= 2)
+    # Each city_vars must be one of the cities and all distinct
+    for i in range(5):
+        s.add(Or(*[city_vars[i] == c for c in cities]))
+    s.add(Distinct(city_vars))
     
-    for day in range(1, total_days + 1):
-        for (c1, c2) in non_flight_pairs:
-            s.add(Not(And(in_city[(day, c1)], in_city[(day, c2)])))
+    # Flight constraints between consecutive cities
+    for i in range(4):
+        edge_constraints = []
+        for (c1, c2) in allowed_edges:
+            edge_constraints.append(And(city_vars[i] == c1, city_vars[i+1] == c2))
+        s.add(Or(edge_constraints))
     
-    for day in range(1, total_days):
-        common_city = [And(in_city[(day, c)], in_city[(day+1, c)]) for c in cities]
-        s.add(Or(common_city))
+    # Start day constraints
+    s.add(start_days[0] == 1)
+    for i in range(4):
+        dur_i = Int(f'dur_{i}')
+        s.add(dur_i == If(city_vars[i] == 'Reykjavik', dur['Reykjavik'],
+                        If(city_vars[i] == 'Riga', dur['Riga'],
+                        If(city_vars[i] == 'Warsaw', dur['Warsaw'],
+                        If(city_vars[i] == 'Istanbul', dur['Istanbul'],
+                        dur['Krakow']))))
+        s.add(start_days[i+1] == start_days[i] + dur_i - 1)
     
-    s.add(Or(in_city[(1, 'Riga')], in_city[(2, 'Riga')]))
-    s.add(Or([in_city[(d, 'Istanbul')] for d in [2,3,4,5,6,7]]))
+    dur_last = Int('dur_last')
+    s.add(dur_last == If(city_vars[4] == 'Reykjavik', dur['Reykjavik'],
+                       If(city_vars[4] == 'Riga', dur['Riga'],
+                       If(city_vars[4] == 'Warsaw', dur['Warsaw'],
+                       If(city_vars[4] == 'Istanbul', dur['Istanbul'],
+                       dur['Krakow']))))
+    s.add(start_days[4] + dur_last - 1 == 21)
     
-    for city in cities:
-        total = Sum([If(in_city[(d, city)], 1, 0) for d in range(1, total_days+1)])
-        s.add(total == required_days[city])
+    # Event constraints
+    for i in range(5):
+        s.add(If(city_vars[i] == 'Riga', Or(start_days[i] == 1, start_days[i] == 2), True))
+        s.add(If(city_vars[i] == 'Istanbul', start_days[i] <= 7, True))
     
     if s.check() == sat:
         m = s.model()
-        schedule = []
-        for day in range(1, total_days + 1):
-            cities_today = []
-            for city in cities:
-                if m.evaluate(in_city[(day, city)]):
-                    cities_today.append(city)
-            schedule.append((day, cities_today))
+        order = [m.eval(city_vars[i]).as_string() for i in range(5)]
+        starts = [m.eval(start_days[i]).as_long() for i in range(5)]
         
-        for day, cities_list in schedule:
-            print(f"Day {day}: {', '.join(cities_list)}")
+        itinerary = []
+        for i in range(5):
+            c = order[i]
+            start = starts[i]
+            d = dur[c]
+            end = start + d - 1
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": c})
+            if i < 4:
+                itinerary.append({"day_range": f"Day {end}", "place": c})
+                itinerary.append({"day_range": f"Day {end}", "place": order[i+1]})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No valid schedule found.")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

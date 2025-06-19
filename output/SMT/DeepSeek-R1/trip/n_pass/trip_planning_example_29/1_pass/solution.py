@@ -1,91 +1,88 @@
 import z3
+import json
 
 def main():
-    # Create solver
     s = z3.Solver()
-    
-    # City mapping: 0=Frankfurt, 1=Krakow, 2=Dubrovnik
     n_days = 10
-    days = list(range(1, n_days+1))
+
+    # City mapping: 0=Dubrovnik, 1=Frankfurt, 2=Krakow
+    c = [z3.Int(f'c_{i}') for i in range(1, 12)]
+    flight = [z3.Bool(f'flight_{i}') for i in range(1, 11)]
     
-    # Variables for the start location of each day
-    loc_start = [z3.Int(f'loc_start_{d}') for d in days]
-    # Variables for flight each day: -1 means no flight, otherwise the destination city
-    flight = [z3.Int(f'flight_{d}') for d in days]
+    # Each c[i] must be 0, 1, or 2
+    for i in range(11):
+        s.add(c[i] >= 0)
+        s.add(c[i] <= 2)
     
-    # Constraint: loc_start for each day must be 0, 1, or 2
-    for d in days:
-        s.add(z3.Or(loc_start[d-1] == 0, loc_start[d-1] == 1, loc_start[d-1] == 2))
-        s.add(z3.Or(flight[d-1] == -1, flight[d-1] == 0, flight[d-1] == 1, flight[d-1] == 2))
+    direct_flights = [(0, 1), (1, 0), (1, 2), (2, 1)]
     
-    # Constraint: for days 1 to 9, next day's start is flight destination if flight, else same as current
-    for d in range(1, n_days):
-        s.add(loc_start[d] == z3.If(flight[d-1] != -1, flight[d-1], loc_start[d-1]))
+    for i in range(10):
+        flight_condition = z3.Or([z3.And(c[i] == a, c[i+1] == b) for (a, b) in direct_flights])
+        s.add(z3.If(flight[i], flight_condition, c[i+1] == c[i]))
     
-    # Flight constraints: if flying, must be to a connected city
-    for d in range(0, n_days):
-        # Condition when flight is taken
-        cond = flight[d] != -1
-        # Allowed flights:
-        #   From Frankfurt (0): can fly to Krakow (1) or Dubrovnik (2)
-        #   From Krakow (1): can fly to Frankfurt (0)
-        #   From Dubrovnik (2): can fly to Frankfurt (0)
-        s.add(z3.Implies(cond, 
-                         z3.Or(
-                             z3.And(loc_start[d] == 0, z3.Or(flight[d] == 1, flight[d] == 2)),
-                             z3.And(loc_start[d] == 1, flight[d] == 0),
-                             z3.And(loc_start[d] == 2, flight[d] == 0)
-                         )))
-        # Cannot fly to the same city
-        s.add(z3.Implies(cond, loc_start[d] != flight[d]))
+    s.add(z3.Sum([z3.If(flight[i], 1, 0) for i in range(10)]) == 2)
     
-    # Exactly two flights
-    flight_indicators = [z3.If(flight[d] != -1, 1, 0) for d in range(0, n_days)]
-    s.add(sum(flight_indicators) == 2)
+    k_count = 0
+    d_count = 0
+    f_count = 0
+    for i in range(10):
+        in_k_flight = z3.Or(c[i] == 2, c[i+1] == 2)
+        in_k_non_flight = c[i] == 2
+        k_count += z3.If(flight[i], z3.If(in_k_flight, 1, 0), z3.If(in_k_non_flight, 1, 0))
+        
+        in_d_flight = z3.Or(c[i] == 0, c[i+1] == 0)
+        in_d_non_flight = c[i] == 0
+        d_count += z3.If(flight[i], z3.If(in_d_flight, 1, 0), z3.If(in_d_non_flight, 1, 0))
+        
+        in_f_flight = z3.Or(c[i] == 1, c[i+1] == 1)
+        in_f_non_flight = c[i] == 1
+        f_count += z3.If(flight[i], z3.If(in_f_flight, 1, 0), z3.If(in_f_non_flight, 1, 0))
     
-    # Presence in each city each day
-    # in_city[city, d] = (loc_start[d] == city) or (flight[d] != -1 and flight[d] == city)
-    in_city = {}
-    for city in [0,1,2]:
-        for d in range(0, n_days):
-            in_city[(city, d)] = z3.Or(loc_start[d] == city, 
-                                        z3.And(flight[d] != -1, flight[d] == city))
+    s.add(k_count == 2)
+    s.add(d_count == 7)
+    s.add(f_count == 3)
     
-    # Total days in each city
-    total_frankfurt = z3.Sum([z3.If(in_city[(0, d)], 1, 0) for d in range(0, n_days)])
-    total_krakow = z3.Sum([z3.If(in_city[(1, d)], 1, 0) for d in range(0, n_days)])
-    total_dubrovnik = z3.Sum([z3.If(in_city[(2, d)], 1, 0) for d in range(0, n_days)])
+    s.add(z3.If(flight[8], z3.Or(c[8] == 2, c[9] == 2), c[8] == 2))
+    s.add(z3.If(flight[9], z3.Or(c[9] == 2, c[10] == 2), c[9] == 2))
     
-    s.add(total_frankfurt == 3)
-    s.add(total_krakow == 2)
-    s.add(total_dubrovnik == 7)
-    
-    # Must be in Krakow on day 9 and 10 (which are index 8 and 9)
-    s.add(in_city[(1, 8)] == True)  # Day 9
-    s.add(in_city[(1, 9)] == True)  # Day 10
-    
-    # Check and get the model
     if s.check() == z3.sat:
         model = s.model()
-        city_names = {0: "Frankfurt", 1: "Krakow", 2: "Dubrovnik"}
+        c_vals = [model.evaluate(c_i).as_long() for c_i in c]
+        flight_vals = [z3.is_true(model.evaluate(flight_i)) for flight_i in flight]
         
-        # Print the plan
-        for d in range(0, n_days):
-            start_val = model[loc_start[d]].as_long()
-            flight_val = model[flight[d]].as_long()
-            start_city = city_names[start_val]
-            
-            if flight_val == -1:
-                action = f"Stay in {start_city}"
-                present = [start_city]
+        city_names = ["Dubrovnik", "Frankfurt", "Krakow"]
+        start = 1
+        current_city = c_vals[0]
+        itinerary = []
+        
+        for i in range(10):
+            day_num = i + 1
+            if flight_vals[i]:
+                if start <= day_num:
+                    if start == day_num:
+                        day_str = f"Day {day_num}"
+                    else:
+                        day_str = f"Day {start}-{day_num}"
+                    itinerary.append({"day_range": day_str, "place": city_names[current_city]})
+                
+                itinerary.append({"day_range": f"Day {day_num}", "place": city_names[current_city]})
+                next_city = c_vals[i+1]
+                itinerary.append({"day_range": f"Day {day_num}", "place": city_names[next_city]})
+                
+                current_city = next_city
+                start = day_num
+                
+        if start <= 10:
+            if start == 10:
+                day_str = "Day 10"
             else:
-                dest_city = city_names[flight_val]
-                action = f"Fly from {start_city} to {dest_city}"
-                present = [start_city, dest_city]
-            
-            print(f"Day {d+1}: Start in {start_city}. {action}. Present in {', '.join(present)}.")
+                day_str = f"Day {start}-10"
+            itinerary.append({"day_range": day_str, "place": city_names[current_city]})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No valid plan found.")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

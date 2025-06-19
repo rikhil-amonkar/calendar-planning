@@ -1,125 +1,127 @@
-from z3 import *
-import itertools
+import z3
+import json
 
 def main():
-    # Define cities and days
-    cities = ['Prague', 'Lyon', 'Frankfurt', 'Helsinki', 'Naples']
-    days = list(range(1, 13))
+    # Define city names and their indices
+    cities = ["Prague", "Helsinki", "Frankfurt", "Naples", "Lyon"]
+    city_to_index = {name: idx for idx, name in enumerate(cities)}
     
-    # Create solver and variables
-    s = Solver()
-    c_vars = {}
-    for day in days:
-        for city in cities:
-            c_vars[(day, city)] = Bool(f"c_{day}_{city}")
+    # Allowed direct flight pairs (symmetric)
+    allowed_pairs = [
+        (0, 1), (1, 0),  # Prague <-> Helsinki
+        (0, 2), (2, 0),  # Prague <-> Frankfurt
+        (0, 4), (4, 0),  # Prague <-> Lyon
+        (1, 2), (2, 1),  # Helsinki <-> Frankfurt
+        (1, 3), (3, 1),  # Helsinki <-> Naples
+        (2, 3), (3, 2),  # Frankfurt <-> Naples
+        (2, 4), (4, 2)   # Frankfurt <-> Lyon
+    ]
+    
+    # Create Z3 variables for start and end cities for each day (12 days)
+    start_city = [z3.Int(f'start_city_{d}') for d in range(12)]
+    end_city = [z3.Int(f'end_city_{d}') for d in range(12)]
+    
+    solver = z3.Solver()
     
     # Fixed constraints for the first 5 days
-    # Day 1: Only in Prague
-    s.add(c_vars[(1, 'Prague')] == True)
-    for city in cities:
-        if city != 'Prague':
-            s.add(c_vars[(1, city)] == False)
+    # Day 1: Start and end in Prague
+    solver.add(start_city[0] == city_to_index["Prague"])
+    solver.add(end_city[0] == city_to_index["Prague"])
+    # Day 2: Start in Prague, end in Helsinki
+    solver.add(start_city[1] == city_to_index["Prague"])
+    solver.add(end_city[1] == city_to_index["Helsinki"])
+    # Day 3: Start and end in Helsinki
+    solver.add(start_city[2] == city_to_index["Helsinki"])
+    solver.add(end_city[2] == city_to_index["Helsinki"])
+    # Day 4: Start and end in Helsinki
+    solver.add(start_city[3] == city_to_index["Helsinki"])
+    solver.add(end_city[3] == city_to_index["Helsinki"])
+    # Day 5: Start in Helsinki, end in either Naples or Frankfurt
+    solver.add(start_city[4] == city_to_index["Helsinki"])
+    solver.add(z3.Or(end_city[4] == city_to_index["Naples"], end_city[4] == city_to_index["Frankfurt"]))
     
-    # Day 2: In Prague and Helsinki
-    s.add(c_vars[(2, 'Prague')] == True)
-    s.add(c_vars[(2, 'Helsinki')] == True)
-    for city in ['Lyon', 'Frankfurt', 'Naples']:
-        s.add(c_vars[(2, city)] == False)
+    # Continuity constraint: Next day's start is the previous day's end
+    for d in range(1, 12):
+        solver.add(start_city[d] == end_city[d-1])
     
-    # Day 3: Only in Helsinki
-    s.add(c_vars[(3, 'Helsinki')] == True)
-    for city in ['Prague', 'Lyon', 'Frankfurt', 'Naples']:
-        s.add(c_vars[(3, city)] == False)
-    
-    # Day 4: Only in Helsinki
-    s.add(c_vars[(4, 'Helsinki')] == True)
-    for city in ['Prague', 'Lyon', 'Frankfurt', 'Naples']:
-        s.add(c_vars[(4, city)] == False)
-    
-    # Day 5: In Helsinki and either Naples or Frankfurt (exactly one)
-    s.add(c_vars[(5, 'Helsinki')] == True)
-    s.add(Or(c_vars[(5, 'Naples')], c_vars[(5, 'Frankfurt')]))
-    s.add(Not(And(c_vars[(5, 'Naples')], c_vars[(5, 'Frankfurt')])))
-    for city in ['Prague', 'Lyon']:
-        s.add(c_vars[(5, city)] == False)
-    
-    # For days 6 to 12, not in Prague or Helsinki
-    for day in range(6, 13):
-        s.add(c_vars[(day, 'Prague')] == False)
-        s.add(c_vars[(day, 'Helsinki')] == False)
-    
-    # Direct flight constraints
-    edges_list = [
-        ('Prague', 'Lyon'),
-        ('Prague', 'Frankfurt'),
-        ('Frankfurt', 'Lyon'),
-        ('Helsinki', 'Naples'),
-        ('Helsinki', 'Frankfurt'),
-        ('Naples', 'Frankfurt'),
-        ('Prague', 'Helsinki')
-    ]
-    edges_set = set()
-    for a, b in edges_list:
-        edges_set.add((a, b))
-        edges_set.add((b, a))
-    
-    # For each day, ensure that if two cities are visited, they are connected by a direct flight
-    for day in days:
-        for i in range(len(cities)):
-            for j in range(i + 1, len(cities)):
-                city_i = cities[i]
-                city_j = cities[j]
-                if (city_i, city_j) not in edges_set:
-                    s.add(Not(And(c_vars[(day, city_i)], c_vars[(day, city_j)])))
-    
-    # For each day, at most two cities can be visited
-    for day in days:
-        for triple in itertools.combinations(cities, 3):
-            s.add(Not(And(
-                c_vars[(day, triple[0])],
-                c_vars[(day, triple[1])],
-                c_vars[(day, triple[2])]
-            )))
-    
-    # Each day must have at least one city
-    for day in days:
-        s.add(Or([c_vars[(day, city)] for city in cities]))
+    # Flight constraints: If start and end cities differ, the flight must be allowed
+    for d in range(12):
+        s = start_city[d]
+        e = end_city[d]
+        # If start and end are different, check if the flight is allowed
+        flight_cond = z3.Or([z3.And(s == a, e == b) for (a, b) in allowed_pairs])
+        solver.add(z3.If(s != e, flight_cond, True))
     
     # Total days per city constraints
-    total_days = 0
-    for city in cities:
+    total_days = [0] * 5
+    for c in range(5):
         total = 0
-        for day in days:
-            total += If(c_vars[(day, city)], 1, 0)
-        if city == 'Prague':
-            s.add(total == 2)
-        elif city == 'Lyon':
-            s.add(total == 3)
-        elif city == 'Frankfurt':
-            s.add(total == 3)
-        elif city == 'Helsinki':
-            s.add(total == 4)
-        elif city == 'Naples':
-            s.add(total == 4)
-        total_days += total
-    
-    # Total city-days must be 16
-    s.add(total_days == 16)
+        for d in range(12):
+            total += z3.If(z3.Or(start_city[d] == c, end_city[d] == c), 1, 0)
+        solver.add(total == [2, 4, 3, 4, 3][c])
     
     # Solve the problem
-    if s.check() == sat:
-        m = s.model()
-        schedule = {}
-        for day in days:
-            schedule[day] = []
-            for city in cities:
-                if m.evaluate(c_vars[(day, city)]):
-                    schedule[day].append(city)
+    if solver.check() == z3.sat:
+        model = solver.model()
+        # Extract the start and end cities from the model
+        start_vals = [model.evaluate(start_city[d]).as_long() for d in range(12)]
+        end_vals = [model.evaluate(end_city[d]).as_long() for d in range(12)]
         
-        # Print the schedule
-        for day in sorted(schedule.keys()):
-            cities_on_day = schedule[day]
-            print(f"Day {day}: {', '.join(cities_on_day)}")
+        # Build itinerary records
+        records = []
+        # For each city, collect the days it is visited
+        for c in range(5):
+            days_set = set()
+            flight_days_set = set()
+            for d in range(12):
+                day_num = d + 1
+                if start_vals[d] == c or end_vals[d] == c:
+                    days_set.add(day_num)
+                if (start_vals[d] == c and end_vals[d] != c) or (end_vals[d] == c and start_vals[d] != c):
+                    flight_days_set.add(day_num)
+            
+            if not days_set:
+                continue
+            
+            # Form continuous segments (without breaking at flight days)
+            sorted_days = sorted(days_set)
+            segments = []
+            if sorted_days:
+                start_seg = sorted_days[0]
+                end_seg = sorted_days[0]
+                for i in range(1, len(sorted_days)):
+                    if sorted_days[i] == end_seg + 1:
+                        end_seg = sorted_days[i]
+                    else:
+                        segments.append((start_seg, end_seg))
+                        start_seg = sorted_days[i]
+                        end_seg = sorted_days[i]
+                segments.append((start_seg, end_seg))
+            
+            # Add continuous stay records
+            for seg in segments:
+                s, e = seg
+                if s == e:
+                    records.append({"day_range": f"Day {s}", "place": cities[c]})
+                else:
+                    records.append({"day_range": f"Day {s}-{e}", "place": cities[c]})
+            
+            # Add flight day records
+            for d in flight_days_set:
+                records.append({"day_range": f"Day {d}", "place": cities[c]})
+        
+        # Sort records by the start day of the day_range
+        def get_start_day(rec):
+            s = rec['day_range'].replace('Day ', '')
+            if '-' in s:
+                return int(s.split('-')[0])
+            return int(s)
+        
+        records_sorted = sorted(records, key=lambda x: (get_start_day(x), x['place'], x['day_range']))
+        
+        # Output the itinerary as JSON
+        result = {"itinerary": records_sorted}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

@@ -1,88 +1,116 @@
-import z3
+from z3 import *
 
-# Map cities to integers
-city_map = {
-    'Riga': 0,
-    'Frankfurt': 1,
-    'Amsterdam': 2,
-    'Vilnius': 3,
-    'London': 4,
-    'Stockholm': 5,
-    'Bucharest': 6
-}
-reverse_city_map = {v: k for k, v in city_map.items()}
+def main():
+    # Create the solver
+    s = Solver()
 
-# Define directed flights (bidirectional pairs and one-way Riga->Vilnius)
-pairs = [
-    (4, 2),  # London - Amsterdam
-    (3, 1),  # Vilnius - Frankfurt
-    (0, 5),  # Riga - Stockholm
-    (4, 6),  # London - Bucharest
-    (2, 5),  # Amsterdam - Stockholm
-    (2, 1),  # Amsterdam - Frankfurt
-    (1, 5),  # Frankfurt - Stockholm
-    (6, 0),  # Bucharest - Riga
-    (2, 0),  # Amsterdam - Riga
-    (2, 6),  # Amsterdam - Bucharest
-    (0, 1),  # Riga - Frankfurt
-    (6, 1),  # Bucharest - Frankfurt
-    (4, 1),  # London - Frankfurt
-    (4, 5),  # London - Stockholm
-    (2, 3)   # Amsterdam - Vilnius
-]
-directed_edges_list = []
-for (a, b) in pairs:
-    directed_edges_list.append((a, b))
-    directed_edges_list.append((b, a))
-directed_edges_list.append((0, 3))  # Riga -> Vilnius (one-way)
+    # City indices
+    cities = ["Riga", "Frankfurt", "Amsterdam", "Vilnius", "London", "Stockholm", "Bucharest"]
+    city_idx = {city: i for i, city in enumerate(cities)}
+    n_cities = len(cities)
+    n_segments = 7  # 7 segments for 7 cities
+    total_days = 15
 
-# Create Z3 variables for each day (t0 to t15)
-t = [z3.Int('t%d' % i) for i in range(16)]
+    # Segment variables: start and end days for each segment
+    starts = [Int(f"start_{i}") for i in range(n_segments)]
+    ends = [Int(f"end_{i}") for i in range(n_segments)]
+    city_vars = [Int(f"city_{i}") for i in range(n_segments)]  # city index for each segment
 
-s = z3.Solver()
+    # Each segment's city is one of the 7 cities
+    for i in range(n_segments):
+        s.add(And(city_vars[i] >= 0, city_vars[i] < n_cities))
 
-# Domain constraint: each t[i] must be in [0, 6]
-for i in range(16):
-    s.add(t[i] >= 0, t[i] <= 6)
+    # First segment starts on day 1
+    s.add(starts[0] == 1)
+    # Last segment ends on day 15
+    s.add(ends[n_segments - 1] == total_days)
+    # For consecutive segments, the next start is the same as the current end (flight day)
+    for i in range(n_segments - 1):
+        s.add(starts[i+1] == ends[i])
+    # End day must be at least start day
+    for i in range(n_segments):
+        s.add(ends[i] >= starts[i])
 
-# Flight constraints for transitions between consecutive days
-for i in range(15):  # from t[i] to t[i+1] for i in 0..14
-    stay = (t[i] == t[i+1])
-    flight_options = []
-    for (a, b) in directed_edges_list:
-        flight_options.append(z3.And(t[i] == a, t[i+1] == b))
-    s.add(z3.Or(stay, z3.Or(flight_options)))
+    # Direct flight connections between consecutive segments
+    direct_flights = [
+        ("London", "Amsterdam"),
+        ("Vilnius", "Frankfurt"),
+        ("Riga", "Vilnius"),
+        ("Riga", "Stockholm"),
+        ("London", "Bucharest"),
+        ("Amsterdam", "Stockholm"),
+        ("Amsterdam", "Frankfurt"),
+        ("Frankfurt", "Stockholm"),
+        ("Bucharest", "Riga"),
+        ("Amsterdam", "Riga"),
+        ("Amsterdam", "Bucharest"),
+        ("Riga", "Frankfurt"),
+        ("Bucharest", "Frankfurt"),
+        ("London", "Frankfurt"),
+        ("London", "Stockholm"),
+        ("Amsterdam", "Vilnius")
+    ]
+    # Convert to city indices
+    flight_pairs = []
+    for a, b in direct_flights:
+        flight_pairs.append((city_idx[a], city_idx[b]))
+        flight_pairs.append((city_idx[b], city_idx[a]))
+    
+    for i in range(n_segments - 1):
+        c1 = city_vars[i]
+        c2 = city_vars[i+1]
+        s.add(Or([And(c1 == a, c2 == b) for a, b in flight_pairs]))
 
-# Duration constraints for each city
-days_per_city = [2, 3, 2, 5, 2, 3, 4]  # Riga, Frankfurt, Amsterdam, Vilnius, London, Stockholm, Bucharest
-for c in range(7):
-    total = 0
-    for i in range(15):  # 15 days, each day uses t[i] and t[i+1]
-        total += z3.If(z3.Or(t[i] == c, t[i+1] == c), 1, 0)
-    s.add(total == days_per_city[c])
+    # Total days per city
+    total_days_per_city = [0] * n_cities
+    for c in range(n_cities):
+        total_days_per_city[c] = sum(If(city_vars[i] == c, ends[i] - starts[i] + 1, 0) for i in range(n_segments))
+    s.add(total_days_per_city[city_idx["Riga"]] == 2)
+    s.add(total_days_per_city[city_idx["Frankfurt"]] == 3)
+    s.add(total_days_per_city[city_idx["Amsterdam"]] == 2)
+    s.add(total_days_per_city[city_idx["Vilnius"]] == 5)
+    s.add(total_days_per_city[city_idx["London"]] == 2)
+    s.add(total_days_per_city[city_idx["Stockholm"]] == 3)
+    s.add(total_days_per_city[city_idx["Bucharest"]] == 4)
 
-# Event constraints
-# Amsterdam (c=2) between day 2 and 3: days 2 (t1, t2) and 3 (t2, t3)
-s.add(z3.Or(t[1] == 2, t[2] == 2, t[3] == 2))
-# Vilnius (c=3) between day 7 and 11: days 7 (t6, t7) to 11 (t10, t11)
-s.add(z3.Or(t[6] == 3, t[7] == 3, t[8] == 3, t[9] == 3, t[10] == 3, t[11] == 3))
-# Stockholm (c=5) between day 13 and 15: days 13 (t12, t13) to 15 (t14, t15)
-s.add(z3.Or(t[12] == 5, t[13] == 5, t[14] == 5, t[15] == 5))
+    # Event constraints: Vilnius must include at least one day between 7 and 11, similarly for Stockholm and Amsterdam.
+    # For Vilnius: there must be a segment where the city is Vilnius and the segment overlaps [7, 11]
+    vilnius_segment = Or([And(city_vars[i] == city_idx["Vilnius"], starts[i] <= 11, ends[i] >= 7) for i in range(n_segments)])
+    s.add(vilnius_segment)
+    # For Stockholm: overlaps [13, 15]
+    stockholm_segment = Or([And(city_vars[i] == city_idx["Stockholm"], starts[i] <= 15, ends[i] >= 13) for i in range(n_segments)])
+    s.add(stockholm_segment)
+    # For Amsterdam: at least one day between 2 and 3
+    amsterdam_segment = Or([And(city_vars[i] == city_idx["Amsterdam"], starts[i] <= 3, ends[i] >= 2) for i in range(n_segments)])
+    s.add(amsterdam_segment)
 
-# Solve the problem
-if s.check() == z3.sat:
-    model = s.model()
-    # Output the schedule
-    for day in range(15):
-        start_index = day
-        end_index = day + 1
-        start_val = model[t[start_index]].as_long()
-        end_val = model[t[end_index]].as_long()
-        start_city = reverse_city_map[start_val]
-        end_city = reverse_city_map[end_val]
-        if start_val == end_val:
-            print(f"Day {day+1}: Stay in {start_city}")
-        else:
-            print(f"Day {day+1}: Fly from {start_city} to {end_city}")
-else:
-    print("No solution found")
+    # Check and get the model
+    if s.check() == sat:
+        model = s.model()
+        # Extract the itinerary
+        itinerary = []
+        for i in range(n_segments):
+            start_val = model[starts[i]].as_long()
+            end_val = model[ends[i]].as_long()
+            city_val = model[city_vars[i]].as_long()
+            city_name = cities[city_val]
+            # Add the continuous stay
+            itinerary.append({"day_range": f"Day {start_val}-{end_val}", "place": city_name})
+            # If this is not the first segment, then the start day is also the end day of the previous segment (flight day)
+            if i > 0:
+                # Add the flight day for the departure from the previous city
+                prev_city = cities[model[city_vars[i-1]].as_long()]
+                itinerary.append({"day_range": f"Day {start_val}", "place": prev_city})
+                # Add the flight day for the arrival to the current city
+                itinerary.append({"day_range": f"Day {start_val}", "place": city_name})
+            # For the last day of the segment, if it is not the last segment, then we will handle the flight in the next segment
+            # For the last segment, no flight after
+        # Output as JSON
+        import json
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

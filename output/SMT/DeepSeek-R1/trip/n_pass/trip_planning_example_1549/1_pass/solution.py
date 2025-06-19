@@ -1,29 +1,12 @@
 from z3 import *
 
 def main():
-    # Cities and their required days
-    cities = {
-        "Prague": 5,
-        "Tallinn": 3,
-        "Warsaw": 2,
-        "Porto": 3,
-        "Naples": 5,
-        "Milan": 3,
-        "Lisbon": 5,
-        "Santorini": 5,
-        "Riga": 4,
-        "Stockholm": 2
-    }
+    cities = ["Prague", "Tallinn", "Warsaw", "Porto", "Naples", "Milan", "Lisbon", "Santorini", "Riga", "Stockholm"]
+    days = [5, 3, 2, 3, 5, 3, 5, 5, 4, 2]
     
-    # Fixed stays
-    fixed_stays = [
-        ("Riga", 5, 8),
-        ("Tallinn", 18, 20),
-        ("Milan", 24, 26)
-    ]
+    city_index = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flights
-    direct_flights = {
+    flight_list_str = [
         ("Riga", "Prague"),
         ("Stockholm", "Milan"),
         ("Riga", "Milan"),
@@ -52,72 +35,75 @@ def main():
         ("Warsaw", "Milan"),
         ("Santorini", "Naples"),
         ("Warsaw", "Prague")
-    }
+    ]
     
-    # Bidirectional flights
-    bidirectional_flights = set()
-    for a, b in direct_flights:
-        bidirectional_flights.add((a, b))
-        bidirectional_flights.add((b, a))
+    graph_edges = set()
+    for (u_str, v_str) in flight_list_str:
+        u = city_index[u_str]
+        v = city_index[v_str]
+        graph_edges.add((min(u, v), max(u, v)))
     
-    # Create a solver
+    edges_list = list(graph_edges)
+    
+    pos = [Int('pos_%d' % i) for i in range(10)]
+    start = [Int('start_%d' % i) for i in range(10)]
+    
     s = Solver()
     
-    # Create variables: for each day (1 to 28) and each city, a boolean indicating if we are in that city on that day
-    in_city = {}
-    for city in cities:
-        for day in range(1, 29):
-            in_city[(city, day)] = Bool(f"in_{city}_{day}")
+    for i in range(10):
+        s.add(pos[i] >= 0, pos[i] <= 9)
     
-    # Constraint 1: For each city, the number of days we are in that city must be equal to the required days
-    for city, days_req in cities.items():
-        s.add(Sum([If(in_city[(city, day)], 1, 0) for day in range(1, 29)]) == days_req
+    s.add(Distinct(pos))
     
-    # Constraint 2: Fixed stays
-    for city, start, end in fixed_stays:
-        for day in range(start, end + 1):
-            s.add(in_city[(city, day)])
+    s.add(start[0] == 1)
     
-    # Constraint 3: On each day, we are in at least one city and at most two cities
-    for day in range(1, 29):
-        in_cities = [in_city[(city, day)] for city in cities]
-        s.add(Or(in_cities))  # At least one city
-        s.add(Sum([If(v, 1, 0) for v in in_cities]) <= 2)
+    for k in range(1, 10):
+        prev_city_duration = days[pos[k-1]]
+        s.add(start[k] == start[k-1] + prev_city_duration - 1)
     
-    # Constraint 4: If on a day we are in two cities, then there must be a direct flight between them
-    for day in range(1, 29):
-        for city1 in cities:
-            for city2 in cities:
-                if city1 != city2:
-                    # If we are in both city1 and city2 on this day, then there must be a flight
-                    s.add(Implies(And(in_city[(city1, day)], in_city[(city2, day)]), 
-                           Or((city1, city2) in bidirectional_flights, (city2, city1) in bidirectional_flights)))
+    last_city_duration = days[pos[9]]
+    s.add(start[9] + last_city_duration - 1 == 28)
     
-    # Constraint 5: The entire trip is connected
-    # We ensure that consecutive days are either the same city or adjacent via a direct flight
-    for day in range(1, 28):
-        for city1 in cities:
-            for city2 in cities:
-                if city1 != city2:
-                    # If we are in city1 on day and city2 on day+1, then we must be in both on day+1 (travel from city1 to city2 on day+1)
-                    s.add(Implies(And(in_city[(city1, day)], in_city[(city2, day + 1)]),
-                           And(in_city[(city1, day + 1)], in_city[(city2, day + 1)])))
+    for k in range(9):
+        a = pos[k]
+        b = pos[k+1]
+        edge_constraint = Or([Or(And(a == u, b == v), And(a == v, b == u)) for (u, v) in edges_list])
+        s.add(edge_constraint)
     
-    # Solve the problem
+    for k in range(10):
+        s.add(If(pos[k] == 8, And(start[k] >= 2, start[k] <= 8), True))
+        s.add(If(pos[k] == 1, And(start[k] >= 16, start[k] <= 20), True))
+        s.add(If(pos[k] == 5, And(start[k] >= 22, start[k] <= 26), True))
+    
     if s.check() == sat:
         m = s.model()
-        # Print the schedule
-        schedule = {}
-        for day in range(1, 29):
-            for city in cities:
-                if is_true(m.eval(in_city[(city, day)])):
-                    if day not in schedule:
-                        schedule[day] = []
-                    schedule[day].append(city)
-        # Output the schedule
-        for day in sorted(schedule.keys()):
-            cities_on_day = schedule[day]
-            print(f"Day {day}: {', '.join(cities_on_day)}")
+        pos_val = [m.evaluate(pos[i]).as_long() for i in range(10)]
+        start_val = [m.evaluate(start[i]).as_long() for i in range(10)]
+        
+        itinerary = []
+        
+        for k in range(10):
+            city_idx = pos_val[k]
+            city_name = cities[city_idx]
+            s_day = start_val[k]
+            duration = days[city_idx]
+            e_day = s_day + duration - 1
+            
+            if s_day == e_day:
+                day_range_str = "Day %d" % s_day
+            else:
+                day_range_str = "Day %d-%d" % (s_day, e_day)
+            itinerary.append({"day_range": day_range_str, "place": city_name})
+            
+            if k < 9:
+                flight_day = e_day
+                itinerary.append({"day_range": "Day %d" % flight_day, "place": city_name})
+                next_city_idx = pos_val[k+1]
+                next_city_name = cities[next_city_idx]
+                itinerary.append({"day_range": "Day %d" % flight_day, "place": next_city_name})
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

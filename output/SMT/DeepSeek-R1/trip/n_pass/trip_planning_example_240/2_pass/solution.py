@@ -1,91 +1,117 @@
 from z3 import *
 
 def main():
-    # Define the city enumeration
-    City, (Prague, Berlin, Tallinn, Stockholm) = EnumSort('City', ['Prague', 'Berlin', 'Tallinn', 'Stockholm'])
+    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
+    flights = { 
+        ('Berlin', 'Tallinn'), 
+        ('Prague', 'Tallinn'), 
+        ('Stockholm', 'Tallinn'), 
+        ('Prague', 'Stockholm'), 
+        ('Stockholm', 'Berlin')
+    }
+    allowed_pairs_sym = {frozenset(pair) for pair in flights}
     
-    # Define the allowed direct flight pairs (symmetric)
-    allowed_pairs = [
-        (Berlin, Tallinn),
-        (Tallinn, Berlin),
-        (Prague, Tallinn),
-        (Tallinn, Prague),
-        (Stockholm, Tallinn),
-        (Tallinn, Stockholm),
-        (Prague, Stockholm),
-        (Stockholm, Prague),
-        (Stockholm, Berlin),
-        (Berlin, Stockholm)
-    ]
-    
-    # Create location variables for each day (L0 to L12)
-    L = [ Const(f'L_{i}', City) for i in range(13) ]
+    # Create a 2D array of Bool variables: In[day][city]
+    In = {}
+    for d in range(1, 13):
+        In[d] = {}
+        for c in cities:
+            In[d][c] = Bool(f"In_day{d}_{c}")
     
     s = Solver()
     
-    # Add travel constraints: for each day, either stay in the same city or travel via direct flight
-    for d in range(12):
-        stay_condition = (L[d] == L[d+1])
-        travel_conditions = [ And(L[d] == c1, L[d+1] == c2) for (c1, c2) in allowed_pairs ]
-        s.add(Or(stay_condition, Or(travel_conditions)))
+    # Constraint: Each day has either 1 or 2 cities.
+    for d in range(1, 13):
+        total = Sum([If(In[d][c], 1, 0) for c in cities])
+        s.add(Or(total == 1, total == 2))
+    
+    # Constraint: If two cities are present on the same day, they must be connected by a direct flight.
+    for d in range(1, 13):
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                c1 = cities[i]
+                c2 = cities[j]
+                pair = frozenset([c1, c2])
+                if pair not in allowed_pairs_sym:
+                    s.add(Not(And(In[d][c1], In[d][c2])))
+    
+    # Fixed constraints for Berlin: must be present on day 6 and 8.
+    s.add(In[6]['Berlin'] == True)
+    s.add(In[8]['Berlin'] == True)
+    
+    # Fixed constraints for Tallinn: must be present on days 8 to 12.
+    for d in [8, 9, 10, 11, 12]:
+        s.add(In[d]['Tallinn'] == True)
     
     # Total days per city
-    total_Prague = 0
-    total_Berlin = 0
-    total_Tallinn = 0
-    total_Stockholm = 0
+    s.add(Sum([If(In[d]['Prague'], 1, 0) for d in range(1,13)]) == 2)
+    s.add(Sum([If(In[d]['Berlin'], 1, 0) for d in range(1,13)]) == 3)
+    s.add(Sum([If(In[d]['Tallinn'], 1, 0) for d in range(1,13)]) == 5)
+    s.add(Sum([If(In[d]['Stockholm'], 1, 0) for d in range(1,13)]) == 5)
     
-    # Each day d (from 0 to 11) corresponds to day d+1 in the itinerary
-    for d in range(12):
-        total_Prague += If(Or(L[d] == Prague, L[d+1] == Prague), 1, 0)
-        total_Berlin += If(Or(L[d] == Berlin, L[d+1] == Berlin), 1, 0)
-        total_Tallinn += If(Or(L[d] == Tallinn, L[d+1] == Tallinn), 1, 0)
-        total_Stockholm += If(Or(L[d] == Stockholm, L[d+1] == Stockholm), 1, 0)
-    
-    s.add(total_Prague == 2)
-    s.add(total_Berlin == 3)
-    s.add(total_Tallinn == 5)
-    s.add(total_Stockholm == 5)
-    
-    # Specific day constraints
-    # Day 6: must be in Berlin (L5 or L6)
-    s.add(Or(L[5] == Berlin, L[6] == Berlin))
-    # Day 8: must be in Berlin (L7 or L8)
-    s.add(Or(L[7] == Berlin, L[8] == Berlin))
-    
-    # Must be in Tallinn from day 8 to day 12 (days 8, 9, 10, 11, 12)
-    s.add(Or(L[7] == Tallinn, L[8] == Tallinn))  # Day 8
-    s.add(Or(L[8] == Tallinn, L[9] == Tallinn))  # Day 9
-    s.add(Or(L[9] == Tallinn, L[10] == Tallinn)) # Day 10
-    s.add(Or(L[10] == Tallinn, L[11] == Tallinn))# Day 11
-    s.add(Or(L[11] == Tallinn, L[12] == Tallinn))# Day 12
-    
-    # Check for a solution
+    # Check and get the model
     if s.check() == sat:
         m = s.model()
-        locs = [ m.evaluate(L[i]) for i in range(13) ]
+        # Create a list to hold all records
+        records = []
         
-        # Map the model to city names
-        city_names = {
-            Prague: 'Prague',
-            Berlin: 'Berlin',
-            Tallinn: 'Tallinn',
-            Stockholm: 'Stockholm'
-        }
-        
-        # Print the itinerary
-        for day in range(12):
-            start_city = locs[day]
-            end_city = locs[day+1]
-            start_name = city_names[start_city]
-            end_name = city_names[end_city]
+        # Step 1: For each city, find contiguous blocks of days
+        for city in cities:
+            days_present = []
+            for d in range(1, 13):
+                if is_true(m.evaluate(In[d][city])):
+                    days_present.append(d)
+            if not days_present:
+                continue
+            days_present.sort()
+            segments = []
+            start = days_present[0]
+            end = days_present[0]
+            for i in range(1, len(days_present)):
+                if days_present[i] == end + 1:
+                    end = days_present[i]
+                else:
+                    segments.append((start, end))
+                    start = days_present[i]
+                    end = days_present[i]
+            segments.append((start, end))
             
-            if start_city == end_city:
-                print(f"Day {day+1}: in {start_name}")
-            else:
-                # Sort city names alphabetically for consistent output
-                cities = sorted([start_name, end_name])
-                print(f"Day {day+1}: in {cities[0]} and {cities[1]}")
+            for seg in segments:
+                start_day, end_day = seg
+                if start_day == end_day:
+                    day_range_str = f"Day {start_day}"
+                else:
+                    day_range_str = f"Day {start_day}-{end_day}"
+                records.append({
+                    'day_range': day_range_str,
+                    'place': city,
+                    'start_day': start_day,
+                    'type_order': 1  # for contiguous block
+                })
+        
+        # Step 2: For each day with two cities, create flight day records
+        for d in range(1, 13):
+            cities_on_d = []
+            for city in cities:
+                if is_true(m.evaluate(In[d][city])):
+                    cities_on_d.append(city)
+            if len(cities_on_d) == 2:
+                for city in cities_on_d:
+                    records.append({
+                        'day_range': f"Day {d}",
+                        'place': city,
+                        'start_day': d,
+                        'type_order': 0  # for flight day record
+                    })
+        
+        # Sort records: first by start_day, then by type_order (0 before 1), then by place name
+        records_sorted = sorted(records, key=lambda x: (x['start_day'], x['type_order'], x['place']))
+        # Remove helper keys
+        itinerary_list = [{'day_range': rec['day_range'], 'place': rec['place']} for rec in records_sorted]
+        
+        # Output the result as JSON
+        result = {'itinerary': itinerary_list}
+        print(result)
     else:
         print("No solution found")
 

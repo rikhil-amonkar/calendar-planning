@@ -1,90 +1,98 @@
 from z3 import *
+import json
 
 def main():
     # Define the City datatype
     City = Datatype('City')
     City.declare('Naples')
-    City.declare('Seville')
     City.declare('Milan')
+    City.declare('Seville')
     City = City.create()
     
-    # Arrays for the variables for each day (1 to 12)
-    city_start = [None] + [Const(f'city_start_{i}', City) for i in range(1, 13)]
-    travel = [None] + [Bool(f'travel_{i}') for i in range(1, 13)]
-    city_end = [None] + [Const(f'city_end_{i}', City) for i in range(1, 13)]
+    # Direct flights (as a list of tuples, symmetric)
+    direct_flights = [
+        (City.Milan, City.Seville),
+        (City.Seville, City.Milan),
+        (City.Naples, City.Milan),
+        (City.Milan, City.Naples)
+    ]
     
     s = Solver()
     
-    # Constraint: For each day, if traveling, the start and end must be connected by a direct flight; otherwise, end equals start.
-    for i in range(1, 13):
-        s.add(If(travel[i],
-                 Or(
-                     And(city_start[i] == City.Milan, city_end[i] == City.Seville),
-                     And(city_start[i] == City.Seville, city_end[i] == City.Milan),
-                     And(city_start[i] == City.Naples, city_end[i] == City.Milan),
-                     And(city_start[i] == City.Milan, city_end[i] == City.Naples)
-                 ),
-                 city_end[i] == city_start[i]
-             ))
+    # Fixed segment boundaries
+    start1 = 1
+    start3 = 9  # because the show in Seville is from day9 to day12
+    end3 = 12
     
-    # Constraint: The end city of day i must be the start city of day i+1 for days 1-11.
-    for i in range(1, 12):
-        s.add(city_start[i+1] == city_end[i])
+    # Variables: end1 (end day of segment1), and cities for the three segments
+    end1 = Int('end1')
+    C1 = Const('C1', City)
+    C2 = Const('C2', City)
+    C3 = Const('C3', City)
     
-    # Constraint: Exactly 2 travel days.
-    s.add(Sum([If(travel[i], 1, 0) for i in range(1, 13)]) == 2)
+    # Lengths of segments
+    L1 = end1 - start1 + 1  # because start1 is 1
+    L2 = start3 - end1 + 1  # segment2: from end1 to start3 (which is 9)
+    L3 = end3 - start3 + 1  # 4 days (9 to 12 inclusive)
     
-    # Expressions for counting days in each city
-    n_days = []  # Naples days
-    s_days = []  # Seville days
-    m_days = []  # Milan days
+    # Constraints on end1: must be an integer between 1 and 9
+    s.add(end1 >= 1, end1 <= 9)
     
-    for i in range(1, 13):
-        # On day i, we are in the start city. If traveling, we are also in the end city.
-        in_naples = If(Or(city_start[i] == City.Naples, 
-                          And(travel[i], city_end[i] == City.Naples)), 1, 0)
-        in_seville = If(Or(city_start[i] == City.Seville, 
-                           And(travel[i], city_end[i] == City.Seville)), 1, 0)
-        in_milan = If(Or(city_start[i] == City.Milan, 
-                         And(travel[i], city_end[i] == City.Milan)), 1, 0)
-        n_days.append(in_naples)
-        s_days.append(in_seville)
-        m_days.append(in_milan)
+    # Segment3 must be Seville
+    s.add(C3 == City.Seville)
     
-    # Constraint: Total days in each city
-    s.add(Sum(n_days) == 3)
-    s.add(Sum(s_days) == 4)
-    s.add(Sum(m_days) == 7)
+    # Flight from C1 to C2 must be in the direct_flights list
+    s.add(Or([And(C1 == c1, C2 == c2) for (c1, c2) in direct_flights]))
+    # Flight from C2 to C3 must be in the direct_flights list
+    s.add(Or([And(C2 == c1, C3 == c2) for (c1, c2) in direct_flights]))
     
-    # Constraint: Days 9 to 12 must be in Seville (index 8 to 11 in zero-based list)
-    for idx in [8, 9, 10, 11]:
-        s.add(s_days[idx] == 1)
+    # Days in each city: since consecutive segments are in different cities (due to direct flights), 
+    # the days in a city is simply the sum of the lengths of segments where that city is visited.
+    days_naples = If(C1 == City.Naples, L1, 0) + If(C2 == City.Naples, L2, 0) + If(C3 == City.Naples, L3, 0)
+    days_milan = If(C1 == City.Milan, L1, 0) + If(C2 == City.Milan, L2, 0) + If(C3 == City.Milan, L3, 0)
+    days_seville = If(C1 == City.Seville, L1, 0) + If(C2 == City.Seville, L2, 0) + If(C3 == City.Seville, L3, 0)
     
-    # Check for a solution
+    s.add(days_naples == 3)
+    s.add(days_milan == 7)
+    s.add(days_seville == 4)
+    
     if s.check() == sat:
         m = s.model()
-        # Helper function to convert Z3 constant to string
-        def city_str(val):
-            if val.eq(City.Naples):
-                return "Naples"
-            elif val.eq(City.Seville):
-                return "Seville"
-            elif val.eq(City.Milan):
-                return "Milan"
-            else:
-                return "Unknown"
+        end1_val = m[end1].as_long()
+        C1_val = m[C1]
+        C2_val = m[C2]
+        C3_val = m[C3]
         
-        # Output the travel plan
-        for i in range(1, 13):
-            start_val = m[city_start[i]]
-            travel_val = m[travel[i]]
-            end_val = m[city_end[i]]
-            if is_true(travel_val):
-                print(f"Day {i}: Travel from {city_str(start_val)} to {city_str(end_val)}")
-            else:
-                print(f"Day {i}: Stay in {city_str(start_val)}")
+        # Map Z3 city constants to strings
+        city_str = {
+            City.Naples: "Naples",
+            City.Milan: "Milan",
+            City.Seville: "Seville"
+        }
+        C1_str = city_str[C1_val]
+        C2_str = city_str[C2_val]
+        C3_str = city_str[C3_val]
+        
+        # Build the itinerary
+        itinerary = []
+        
+        # Segment1: from day1 to end1_val (inclusive)
+        itinerary.append({"day_range": f"Day 1-{end1_val}", "place": C1_str})
+        # Flight day: end1_val (departure from C1 and arrival in C2)
+        itinerary.append({"day_range": f"Day {end1_val}", "place": C1_str})
+        itinerary.append({"day_range": f"Day {end1_val}", "place": C2_str})
+        # Segment2: from end1_val to 9 (inclusive)
+        itinerary.append({"day_range": f"Day {end1_val}-9", "place": C2_str})
+        # Flight day: day9 (departure from C2 and arrival in C3)
+        itinerary.append({"day_range": "Day 9", "place": C2_str})
+        itinerary.append({"day_range": "Day 9", "place": C3_str})
+        # Segment3: from day9 to day12
+        itinerary.append({"day_range": "Day 9-12", "place": C3_str})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution")
+        print('{"error": "No solution found"}')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,74 +1,45 @@
-from z3 import *
+from z3 import Solver, Int, And, sat
 
-def main():
-    s = Solver()
-    days = 14
-    cities = {0: 'Split', 1: 'Vilnius', 2: 'Santorini', 3: 'Madrid'}
+# Initialize the solver
+s = Solver()
+
+# Define flight days: f1 (Vilnius to Split), f2 (Split to Madrid), f3 (Madrid to Santorini)
+f1 = Int('f1')
+f2 = Int('f2')
+f3 = 13  # Fixed flight day to Santorini
+
+# Constraints for flight days
+s.add(And(f1 >= 1, f1 < f2, f2 < f3, f3 == 13))
+# Days in Vilnius: from day 1 to f1 (inclusive) -> f1 days
+s.add(f1 == 4)
+# Days in Split: from f1 to f2 (inclusive) -> (f2 - f1 + 1) days
+s.add(f2 - f1 + 1 == 5)
+# Days in Madrid: from f2 to f3 (inclusive) -> (f3 - f2 + 1) days
+s.add(13 - f2 + 1 == 6)
+
+# Check if the constraints are satisfiable
+if s.check() == sat:
+    model = s.model()
+    f1_val = model[f1].as_long()
+    f2_val = model[f2].as_long()
+    f3_val = 13
     
-    start = [Int('start_%d' % (i+1)) for i in range(days)]
-    travel = [Bool('travel_%d' % (i+1)) for i in range(days)]
-    dest = [Int('dest_%d' % (i+1)) for i in range(days)]
-    
-    for i in range(days):
-        s.add(start[i] >= 0, start[i] <= 3)
-        s.add(dest[i] >= 0, dest[i] <= 3)
-    
-    for i in range(days-1):
-        s.add(If(travel[i], start[i+1] == dest[i], start[i+1] == start[i]))
-    
-    allowed_pairs = [
-        (0, 1), (0, 3),
-        (1, 0),
-        (3, 0), (3, 2),
-        (2, 3)
+    # Build the itinerary
+    itinerary = [
+        {"day_range": f"Day 1-{f1_val}", "place": "Vilnius"},
+        {"day_range": f"Day {f1_val}", "place": "Vilnius"},
+        {"day_range": f"Day {f1_val}", "place": "Split"},
+        {"day_range": f"Day {f1_val}-{f2_val}", "place": "Split"},
+        {"day_range": f"Day {f2_val}", "place": "Split"},
+        {"day_range": f"Day {f2_val}", "place": "Madrid"},
+        {"day_range": f"Day {f2_val}-{f3_val}", "place": "Madrid"},
+        {"day_range": f"Day {f3_val}", "place": "Madrid"},
+        {"day_range": f"Day {f3_val}", "place": "Santorini"},
+        {"day_range": f"Day {f3_val}-14", "place": "Santorini"}
     ]
     
-    for i in range(days):
-        constraints = []
-        for pair in allowed_pairs:
-            constraints.append(And(start[i] == pair[0], dest[i] == pair[1]))
-        s.add(Implies(travel[i], Or(constraints)))
-    
-    total_travel = Sum([If(travel[i], 1, 0) for i in range(days)])
-    s.add(total_travel == 3)
-    
-    non_travel_days = [0]*4
-    travel_days = [0]*4
-    total_days = [0]*4
-    
-    for c in range(4):
-        non_travel_list = [If(And(Not(travel[i]), start[i] == c), 1, 0) for i in range(days)]
-        non_travel_days[c] = Sum(non_travel_list)
-        
-        travel_list = [If(And(travel[i], Or(start[i] == c, dest[i] == c)), 1, 0) for i in range(days)]
-        travel_days[c] = Sum(travel_list)
-        
-        total_days[c] = non_travel_days[c] + travel_days[c]
-    
-    s.add(total_days[0] == 5)
-    s.add(total_days[1] == 4)
-    s.add(total_days[2] == 2)
-    s.add(total_days[3] == 6)
-    
-    s.add(Or(start[12] == 2, And(travel[12], dest[12] == 2)))
-    s.add(Or(start[13] == 2, And(travel[13], dest[13] == 2)))
-    
-    if s.check() == sat:
-        m = s.model()
-        start_vals = [m.evaluate(start[i]).as_long() for i in range(days)]
-        travel_vals = [m.evaluate(travel[i]) for i in range(days)]
-        dest_vals = [m.evaluate(dest[i]).as_long() for i in range(days)]
-        
-        print("Day-by-Day Plan:")
-        for i in range(days):
-            if travel_vals[i]:
-                cities_list = sorted({start_vals[i], dest_vals[i]})
-                cities_str = [cities[c] for c in cities_list]
-                print(f"Day {i+1}: {cities_str}")
-            else:
-                print(f"Day {i+1}: [{cities[start_vals[i]]}]")
-    else:
-        print("No solution found")
-
-if __name__ == "__main__":
-    main()
+    # Output the result as a JSON-formatted dictionary
+    result = {"itinerary": itinerary}
+    print(result)
+else:
+    print("No valid itinerary found.")

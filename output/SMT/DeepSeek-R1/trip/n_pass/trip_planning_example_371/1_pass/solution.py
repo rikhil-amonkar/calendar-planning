@@ -1,83 +1,95 @@
 from z3 import *
 
 def main():
-    # Define the City enum
-    City = Datatype('City')
-    City.declare('Vienna')
-    City.declare('Stockholm')
-    City.declare('Nice')
-    City.declare('Split')
-    City = City.create()
+    # Create the solver
+    s = Solver()
     
-    # Create variables for the starting city of each day (days 1 to 9)
-    s = [ Const('s_' + str(i), City) for i in range(1,10) ]
+    # Cities: Vienna=0, Stockholm=1, Nice=2, Split=3
+    c1, c2, c3, c4 = Ints('c1 c2 c3 c4')
+    F1, F2, F3 = Ints('F1 F2 F3')
     
-    solver = Solver()
+    # Define the direct flight graph as a list of allowed edges
+    edges = [(0,1), (0,2), (0,3),
+             (1,0), (1,2), (1,3),
+             (2,0), (2,1),
+             (3,0), (3,1)]
     
-    # Allowed direct flight pairs (both directions)
-    allowed_pairs = [
-        (City.Vienna, City.Stockholm),
-        (City.Vienna, City.Nice),
-        (City.Vienna, City.Split),
-        (City.Stockholm, City.Split),
-        (City.Nice, City.Stockholm)
-    ]
-    allowed_directed = []
-    for pair in allowed_pairs:
-        allowed_directed.append(pair)
-        allowed_directed.append((pair[1], pair[0]))
+    # Constraints
+    s.add(c1 == 0)  # Start in Vienna
+    s.add(F1 == 2)   # First flight day is day 2
     
-    # Flight constraints: if two consecutive days have different starting cities, the pair must be in allowed_directed
-    for i in range(0, 8):  # from day1 to day8 (flights on day1 to day8)
-        constraint = Or([ And(s[i] == a, s[i+1] == b) for (a, b) in allowed_directed ])
-        solver.add(If(s[i] != s[i+1], constraint, True))
+    s.add(c4 == 3)   # End in Split
+    s.add(F3 == 7)   # Last flight day is day 7
     
-    # Function to compute total days in a city
-    def total_days(city):
-        # Days where the day starts in the city
-        start_days = Sum([If(s[i] == city, 1, 0) for i in range(0, 9)])
-        # Days where a flight arrives in the city (next day starts here, and flight occurred)
-        flight_arrivals = Sum([If(And(s[i] != s[i+1], s[i+1] == city), 1, 0) for i in range(0, 8)])
-        return start_days + flight_arrivals
+    # c1, c2, c3, c4 are distinct and in {0,1,2,3}
+    s.add(Distinct(c1, c2, c3, c4))
+    s.add(And(c1 >= 0, c1 <= 3))
+    s.add(And(c2 >= 0, c2 <= 3))
+    s.add(And(c3 >= 0, c3 <= 3))
+    s.add(And(c4 >= 0, c4 <= 3))
     
-    # Add constraints for total days in each city
-    solver.add(total_days(City.Nice) == 2
-    solver.add(total_days(City.Stockholm) == 5
-    solver.add(total_days(City.Split) == 3
-    solver.add(total_days(City.Vienna) == 2)
+    # F1, F2, F3 are days: F1=2, F2 in [3,6], F3=7
+    s.add(F1 == 2)
+    s.add(F2 >= 3, F2 <= 6)
+    s.add(F3 == 7)
+    s.add(F2 < F3)
     
-    # Constraint: Must be in Split on day7 and day9
-    # Day7: either start in Split or fly to Split (so next day starts in Split and flight occurred)
-    solver.add(Or(s[6] == City.Split, And(s[6] != s[7], s[7] == City.Split)))
-    # Day9: must start in Split (since no flight on day9)
-    solver.add(s[8] == City.Split)
+    # Days for Nice (2) and Stockholm (1)
+    # If Nice is in c2, then days = F2 - F1 = F2 - 2? Actually: F2 - F1 + 1 = F2 - 1
+    # If Nice is in c3, then days = F3 - F2 + 1 = 7 - F2 + 1 = 8 - F2
+    s.add(
+        Or(
+            And(c2 == 2, F2 == 3, c3 == 1),   # Nice in c2: F2-1=2 => F2=3; Stockholm in c3: 8-3=5
+            And(c2 == 1, F2 == 6, c3 == 2)    # Stockholm in c2: F2-1=5 => F2=6; Nice in c3: 8-6=2
+        )
+    )
     
-    # Constraint: Must be in Vienna on day1 and day2
-    # Day1: either start in Vienna or fly to Vienna (so next day starts in Vienna and flight occurred)
-    solver.add(Or(s[0] == City.Vienna, And(s[0] != s[1], s[1] == City.Vienna)))
-    # Day2: either start in Vienna or fly to Vienna (so next day starts in Vienna and flight occurred)
-    solver.add(Or(s[1] == City.Vienna, And(s[1] != s[2], s[2] == City.Vienna)))
+    # Flight connections
+    # From c1 to c2
+    s.add(Or([And(c1 == i, c2 == j) for (i, j) in edges if i != j]))  # Ensure different cities
+    # From c2 to c3
+    s.add(Or([And(c2 == i, c3 == j) for (i, j) in edges if i != j]))
+    # From c3 to c4
+    s.add(Or([And(c3 == i, c4 == j) for (i, j) in edges if i != j]))
     
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        # Get the starting city for each day
-        start_cities = [model.evaluate(s_i) for s_i in s]
-        # Print the itinerary
-        print("Day-by-Day Itinerary:")
-        for day in range(0, 9):
-            day_num = day + 1
-            cities_today = []
-            # Always include the starting city of the day
-            start_city = start_cities[day]
-            cities_today.append(str(start_city))
-            # If there's a flight on this day (to next day's starting city), include the arrival city
-            if day < 8 and start_cities[day] != start_cities[day+1]:
-                cities_today.append(str(start_cities[day+1]))
-            # Format the cities for this day
-            print(f"Day {day_num}: {' and '.join(cities_today)}")
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        c1_val = m[c1].as_long()
+        c2_val = m[c2].as_long()
+        c3_val = m[c3].as_long()
+        c4_val = m[c4].as_long()
+        F1_val = m[F1].as_long()
+        F2_val = m[F2].as_long()
+        F3_val = m[F3].as_long()
+        
+        # Map city numbers to names
+        city_names = {0: "Vienna", 1: "Stockholm", 2: "Nice", 3: "Split"}
+        c1_name = city_names[c1_val]
+        c2_name = city_names[c2_val]
+        c3_name = city_names[c3_val]
+        c4_name = city_names[c4_val]
+        
+        # Build itinerary
+        itinerary = [
+            {"day_range": "Day 1-{}".format(F1_val), "place": c1_name},
+            {"day_range": "Day {}".format(F1_val), "place": c1_name},
+            {"day_range": "Day {}".format(F1_val), "place": c2_name},
+            {"day_range": "Day {}-{}".format(F1_val, F2_val), "place": c2_name},
+            {"day_range": "Day {}".format(F2_val), "place": c2_name},
+            {"day_range": "Day {}".format(F2_val), "place": c3_name},
+            {"day_range": "Day {}-{}".format(F2_val, F3_val), "place": c3_name},
+            {"day_range": "Day {}".format(F3_val), "place": c3_name},
+            {"day_range": "Day {}".format(F3_val), "place": c4_name},
+            {"day_range": "Day {}-9".format(F3_val), "place": c4_name}
+        ]
+        
+        # Output as JSON
+        import json
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

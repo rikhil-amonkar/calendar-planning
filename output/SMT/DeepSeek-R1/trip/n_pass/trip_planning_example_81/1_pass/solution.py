@@ -1,80 +1,85 @@
-from z3 import *
+import z3
+import json
 
 def main():
-    # Create solver
-    s = Solver()
+    # Define the cities
+    Mykonos = 0
+    Budapest = 1
+    Hamburg = 2
+    city_names = {Mykonos: "Mykonos", Budapest: "Budapest", Hamburg: "Hamburg"}
     
-    # Days are 1 to 9, we use 0-indexed arrays for start_city and end_city
-    start_city = [Int(f'start_city_{d+1}') for d in range(9)]
-    end_city = [Int(f'end_city_{d+1}') for d in range(9)]
+    # Allowed flight pairs: (start, end)
+    allowed_pairs = [(Budapest, Mykonos), (Mykonos, Budapest), (Hamburg, Budapest), (Budapest, Hamburg)]
     
-    # City mapping: 0 = Mykonos, 1 = Budapest, 2 = Hamburg
-    mykonos = 0
-    budapest = 1
-    hamburg = 2
+    # Create Z3 variables for StartCity and EndCity for each day (1 to 9)
+    StartCity = [z3.Int(f'StartCity_{i}') for i in range(1, 10)]
+    EndCity = [z3.Int(f'EndCity_{i}') for i in range(1, 10)]
     
-    # Each city variable must be 0, 1, or 2
-    for d in range(9):
-        s.add(Or(start_city[d] == mykonos, start_city[d] == budapest, start_city[d] == hamburg))
-        s.add(Or(end_city[d] == mykonos, end_city[d] == budapest, end_city[d] == hamburg))
+    s = z3.Solver()
     
-    # Flight constraints: direct flights between Budapest-Mykonos and Budapest-Hamburg
-    for d in range(9):
-        start = start_city[d]
-        end = end_city[d]
-        s.add(If(start != end,
-                 Or(
-                    And(start == budapest, end == mykonos),
-                    And(start == mykonos, end == budapest),
-                    And(start == budapest, end == hamburg),
-                    And(start == hamburg, end == budapest)
-                 ),
-                 True))  # If same city, no flight needed
+    # Constrain StartCity and EndCity to be 0, 1, or 2
+    for i in range(9):
+        s.add(StartCity[i] >= 0, StartCity[i] <= 2)
+        s.add(EndCity[i] >= 0, EndCity[i] <= 2)
     
-    # Continuity: end_city of day d must be start_city of day d+1 for d in 0 to 7 (days 1 to 8)
-    for d in range(8):
-        s.add(end_city[d] == start_city[d+1])
+    # Constraint: For consecutive days, StartCity of day i must equal EndCity of day i-1
+    for i in range(1, 9):
+        s.add(StartCity[i] == EndCity[i-1])
     
-    # Conference constraints: must be in Mykonos on day 4 (index 3) and day 9 (index 8)
-    s.add(Or(start_city[3] == mykonos, end_city[3] == mykonos))  # Day 4
-    s.add(Or(start_city[8] == mykonos, end_city[8] == mykonos))  # Day 9
+    # Flight constraints: if StartCity != EndCity, the pair must be in allowed_pairs
+    for i in range(9):
+        flight_condition = StartCity[i] != EndCity[i]
+        allowed_conditions = []
+        for a, b in allowed_pairs:
+            allowed_conditions.append(z3.And(StartCity[i] == a, EndCity[i] == b))
+        s.add(z3.Implies(flight_condition, z3.Or(allowed_conditions)))
     
-    # Count days in each city
-    myk_days = 0
-    bud_days = 0
-    ham_days = 0
+    # Must be in Mykonos on day 4 and day 9
+    s.add(z3.Or(StartCity[3] == Mykonos, EndCity[3] == Mykonos))  # Day 4 (index 3)
+    s.add(z3.Or(StartCity[8] == Mykonos, EndCity[8] == Mykonos))  # Day 9 (index 8)
     
-    for d in range(9):
-        # For Mykonos
-        myk_days += If(start_city[d] == mykonos, 1, 0)
-        myk_days += If(And(end_city[d] == mykonos, start_city[d] != mykonos), 1, 0)
-        
-        # For Budapest
-        bud_days += If(start_city[d] == budapest, 1, 0)
-        bud_days += If(And(end_city[d] == budapest, start_city[d] != budapest), 1, 0)
-        
-        # For Hamburg
-        ham_days += If(start_city[d] == hamburg, 1, 0)
-        ham_days += If(And(end_city[d] == hamburg, start_city[d] != hamburg), 1, 0)
+    # Count days in each city: a day counts for a city if the city is StartCity or EndCity that day
+    days_in_Mykonos = z3.Sum([z3.If(z3.Or(StartCity[i] == Mykonos, EndCity[i] == Mykonos), 1, 0) for i in range(9)])
+    days_in_Budapest = z3.Sum([z3.If(z3.Or(StartCity[i] == Budapest, EndCity[i] == Budapest), 1, 0) for i in range(9)])
+    days_in_Hamburg = z3.Sum([z3.If(z3.Or(StartCity[i] == Hamburg, EndCity[i] == Hamburg), 1, 0) for i in range(9)])
     
-    # Add total day constraints
-    s.add(myk_days == 6)
-    s.add(bud_days == 3)
-    s.add(ham_days == 2)
+    s.add(days_in_Mykonos == 6)
+    s.add(days_in_Budapest == 3)
+    s.add(days_in_Hamburg == 2)
     
-    # Check and get model
-    if s.check() == sat:
+    # Check if the problem is satisfiable
+    if s.check() == z3.sat:
         m = s.model()
-        city_names = {0: 'Mykonos', 1: 'Budapest', 2: 'Hamburg'}
+        start_vals = [m.eval(StartCity[i]).as_long() for i in range(9)]
+        end_vals = [m.eval(EndCity[i]).as_long() for i in range(9)]
+        
+        # Build events: contiguous blocks and flight records
+        events = []
+        current_city = start_vals[0]
+        start_block = 1
         for d in range(9):
-            start_val = m.eval(start_city[d]).as_long()
-            end_val = m.eval(end_city[d]).as_long()
-            if start_val == end_val:
-                print(f"Day {d+1}: {city_names[start_val]}")
+            if start_vals[d] != end_vals[d]:
+                events.append((start_block, d+1, current_city))
+                events.append((d+1, d+1, current_city))
+                events.append((d+1, d+1, end_vals[d]))
+                current_city = end_vals[d]
+                start_block = d+1
+        events.append((start_block, 9, current_city))
+        
+        # Convert events to itinerary list
+        itinerary_list = []
+        for (s_day, e_day, city_val) in events:
+            if s_day == e_day:
+                day_range_str = f"Day {s_day}"
             else:
-                print(f"Day {d+1}: {city_names[start_val]} and {city_names[end_val]}")
+                day_range_str = f"Day {s_day}-{e_day}"
+            place_str = city_names[city_val]
+            itinerary_list.append({"day_range": day_range_str, "place": place_str})
+        
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result))
     else:
-        print("No valid plan found.")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

@@ -1,82 +1,108 @@
 from z3 import *
+import json
 
 def main():
-    cities = ["Reykjavik", "Stuttgart", "Stockholm", "Tallinn", "Oslo", "Split", "Geneva", "Porto"]
-    dur_all = [2, 5, 3, 5, 5, 3, 2, 3]  # durations for cities 0 to 7
-
-    edge_set = set()
-    edges = [
-        (0, 1), (0, 2), (0, 3), (0, 4),
-        (1, 2), (1, 5), (1, 7),
-        (2, 4), (2, 5), (2, 6),
-        (3, 4),
-        (4, 5), (4, 6), (4, 7),
-        (5, 6),
-        (6, 7)
-    ]
-    for u, v in edges:
-        edge_set.add((min(u, v), max(u, v)))
-    
+    # Define the cities by indices for the middle part (c2 to c7)
+    # 0: Oslo, 1: Stuttgart, 2: Split, 3: Geneva, 4: Tallinn, 5: Stockholm
+    c = [Int('c2'), Int('c3'), Int('c4'), Int('c5'), Int('c6'), Int('c7')]
     s = Solver()
-    
-    seg_city = [Int(f'seg_city_{i}') for i in range(6)]
-    e = [Int(f'e{i+1}') for i in range(6)]  # e1, e2, ..., e6
 
-    # Constraint: seg_city contains distinct integers from 1 to 6
-    s.add(Distinct(seg_city))
+    # Each c[i] is between 0 and 5
     for i in range(6):
-        s.add(seg_city[i] >= 1, seg_city[i] <= 6)
+        s.add(And(c[i] >= 0, c[i] <= 5))
     
-    # Duration constraints
-    s.add(e[0] - 1 == dur_all[seg_city[0]])
-    s.add(e[1] - e[0] + 1 == dur_all[seg_city[1]])
-    s.add(e[2] - e[1] + 1 == dur_all[seg_city[2]])
-    s.add(e[3] - e[2] + 1 == dur_all[seg_city[3]])
-    s.add(e[4] - e[3] + 1 == dur_all[seg_city[4]])
-    s.add(e[5] == 19)  # because segment6 ends at day 19
-    s.add(20 - e[4] == dur_all[seg_city[5]])  # segment6: start e5, end 19 -> length = 19 - e5 + 1 = 20 - e5
+    # All distinct
+    s.add(Distinct(c))
 
-    # Stockholm constraint: if a segment (index j in 1 to 5) is Stockholm (city2), then its start day <= 4
-    for j in range(1, 6):
-        s.add(If(seg_city[j] == 2, e[j-1] <= 4, True))
+    # Adjacency list for the graph of the 6 cities (undirected)
+    adj = {
+        0: [2, 3, 4, 5],   # Oslo
+        1: [2, 5],          # Stuttgart
+        2: [0, 1, 3],       # Split
+        3: [0, 2, 5],       # Geneva
+        4: [0],             # Tallinn
+        5: [0, 1, 2, 3]     # Stockholm
+    }
+
+    # Consecutive cities in the sequence must be connected
+    for i in range(5):
+        current = c[i]
+        next_city = c[i+1]
+        # next_city must be in the adjacency list of current
+        s.add(Or([next_city == j for j in adj[current]]))
+
+    # First flight: from Reykjavik to c2. Reykjavik is connected to Oslo(0), Stuttgart(1), Tallinn(4), Stockholm(5)
+    s.add(Or(c[0] == 0, c[0] == 1, c[0] == 4, c[0] == 5))
     
-    # Flight constraints for 7 legs
-    legs = [
-        (0, seg_city[0]),
-        (seg_city[0], seg_city[1]),
-        (seg_city[1], seg_city[2]),
-        (seg_city[2], seg_city[3]),
-        (seg_city[3], seg_city[4]),
-        (seg_city[4], seg_city[5]),
-        (seg_city[5], 7)
-    ]
-    for (a, b) in legs:
-        low = If(a < b, a, b)
-        high = If(a < b, b, a)
-        cond = False
-        for edge in edge_set:
-            x, y = edge
-            cond = Or(cond, And(low == x, high == y))
-        s.add(cond)
+    # Last flight: from c7 to Porto. Porto is connected to Oslo(0), Stuttgart(1), Geneva(3)
+    s.add(Or(c[5] == 0, c[5] == 1, c[5] == 3))
+
+    # Stockholm constraint: must be at c2 or c3
+    st_at_c2 = (c[0] == 5)
+    st_at_c3 = (c[1] == 5)
+    s.add(Or(st_at_c2, st_at_c3))
     
+    # If Stockholm is at c3, then c2 must be Split(2) or Geneva(3)
+    s.add(If(st_at_c3, Or(c[0] == 2, c[0] == 3), True))
+
     if s.check() == sat:
         m = s.model()
-        seg_city_val = [m[var].as_long() for var in seg_city]
-        e_val = [m[var].as_long() for var in e]
+        seq = [m.evaluate(c[i]) for i in range(6)]
+        city_map = {
+            0: "Oslo",
+            1: "Stuttgart",
+            2: "Split",
+            3: "Geneva",
+            4: "Tallinn",
+            5: "Stockholm"
+        }
+        city_sequence = ["Reykjavik"] + [city_map[int(str(seq[i]))] for i in range(6)] + ["Porto"]
         
-        print("Full itinerary:")
-        print("City\tStart\tEnd")
-        print("Reykjavik\t1\t2")
-        start_days = [2] + e_val[:-1]
-        for i in range(6):
-            city_idx = seg_city_val[i]
-            city_name = cities[city_idx]
-            start = start_days[i]
-            end = e_val[i]
-            print(f"{city_name}\t{start}\t{end}")
-        print("Porto\t19\t21")
+        days_map = {
+            "Reykjavik": 2,
+            "Oslo": 5,
+            "Stuttgart": 5,
+            "Split": 3,
+            "Geneva": 2,
+            "Porto": 3,
+            "Tallinn": 5,
+            "Stockholm": 3
+        }
+        
+        starts = [1]  # Start at day1 for Reykjavik
+        ends = [2]    # Reykjavik ends at day2 (2 days: day1 and day2)
+        
+        # Compute start and end days for the rest of the cities
+        for i in range(1, 8):  # from the second city (index1) to Porto (index7)
+            prev_end = ends[i-1]
+            city = city_sequence[i]
+            duration = days_map[city]
+            start_i = prev_end  # because we arrive on the same day we leave the previous
+            end_i = start_i + duration - 1
+            starts.append(start_i)
+            ends.append(end_i)
+        
+        itinerary = []
+        for i in range(8):  # for each of the 8 cities
+            L = starts[i]
+            R = ends[i]
+            city = city_sequence[i]
+            if L == R:
+                itinerary.append({"day_range": f"Day {L}", "place": city})
+            else:
+                itinerary.append({"day_range": f"Day {L}-{R}", "place": city})
+            # If this is not the last city, add the flight day records
+            if i < 7:
+                # Departure from current city on day R
+                itinerary.append({"day_range": f"Day {R}", "place": city})
+                # Arrival at next city on day R
+                next_city = city_sequence[i+1]
+                itinerary.append({"day_range": f"Day {R}", "place": next_city})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print(json.dumps({"error": "No solution found"}))
 
 if __name__ == "__main__":
     main()

@@ -1,78 +1,119 @@
-from z3 import *
+import z3
+from itertools import combinations
 
 def main():
-    n_days = 13
-    n_cities = 4
-    cities = ['Madrid', 'Seville', 'Porto', 'Stuttgart']
-    edges = [(0, 1), (0, 2), (1, 2), (2, 3)]
+    cities = ["Madrid", "Seville", "Porto", "Stuttgart"]
+    edge_list = [("Porto", "Stuttgart"), ("Seville", "Porto"), ("Madrid", "Porto"), ("Madrid", "Seville")]
+    edge_set = set()
+    for edge in edge_list:
+        edge_set.add(tuple(sorted(edge)))
+    edge_pairs = list(edge_set)
     
-    start_city = [Int(f'start_city_{i}') for i in range(1, n_days+1)]
-    travel = [Bool(f'travel_{i}') for i in range(1, n_days+1)]
-    dest_city = [Int(f'dest_city_{i}') for i in range(1, n_days+1)]
+    days = list(range(1, 14))
+    flight_days = list(range(1, 13))
     
-    s = Solver()
+    in_city = {}
+    for city in cities:
+        in_city[city] = [z3.Bool(f"in_{city}_{d}") for d in days]
     
-    for i in range(n_days):
-        s.add(start_city[i] >= 0, start_city[i] < n_cities)
-        s.add(dest_city[i] >= 0, dest_city[i] < n_cities)
+    flight_edge = {}
+    for (A, B) in edge_pairs:
+        flight_edge[(A, B)] = [z3.Bool(f"flight_{A}_{B}_{d}") for d in flight_days]
     
-    for i in range(1, n_days):
-        end_city_prev = If(travel[i-1], dest_city[i-1], start_city[i-1])
-        s.add(start_city[i] == end_city_prev)
+    s = z3.Solver()
     
-    in_city = []
-    for i in range(n_days):
-        in_city_day = []
-        for c in range(n_cities):
-            in_city_c = If(travel[i], 
-                           Or(start_city[i] == c, dest_city[i] == c),
-                           start_city[i] == c)
-            in_city_day.append(in_city_c)
-        in_city.append(in_city_day)
+    for d in days:
+        idx = d - 1
+        total = z3.Sum([z3.If(in_city[city][idx], 1, 0) for city in cities])
+        if d < 13:
+            has_flight = z3.Or([flight_edge[edge][d-1] for edge in edge_pairs])
+            s.add(total == 1 + z3.If(has_flight, 1, 0))
+        else:
+            s.add(total == 1)
     
-    for i in range(4):
-        s.add(in_city[i][0] == True)
-    for i in range(4, n_days):
-        s.add(in_city[i][0] == False)
+    for edge in edge_pairs:
+        A, B = edge
+        for d in flight_days:
+            idx = d - 1
+            s.add(flight_edge[edge][idx] == z3.And(in_city[A][idx], in_city[B][idx]))
     
-    s.add(in_city[6][3] == True)
-    s.add(in_city[12][3] == True)
+    all_pairs = set(combinations(cities, 2))
+    non_edges = all_pairs - set(edge_pairs)
+    for (A, B) in non_edges:
+        for d in days:
+            idx = d - 1
+            s.add(z3.Not(z3.And(in_city[A][idx], in_city[B][idx])))
     
-    totals = [0]*n_cities
-    for c in range(n_cities):
-        total = 0
-        for i in range(n_days):
-            total += If(in_city[i][c], 1, 0)
-        totals[c] = total
+    required_days = {
+        "Madrid": 4,
+        "Seville": 2,
+        "Porto": 3,
+        "Stuttgart": 7
+    }
+    for city in cities:
+        total = z3.Sum([z3.If(in_city[city][d], 1, 0) for d in range(13)])
+        s.add(total == required_days[city])
     
-    s.add(totals[0] == 4)
-    s.add(totals[1] == 2)
-    s.add(totals[2] == 3)
-    s.add(totals[3] == 7)
+    s.add(in_city["Stuttgart"][6])
+    s.add(in_city["Stuttgart"][12])
     
-    for i in range(n_days):
-        allowed_pairs = []
-        for (a, b) in edges:
-            allowed_pairs.append(And(start_city[i] == a, dest_city[i] == b))
-            allowed_pairs.append(And(start_city[i] == b, dest_city[i] == a))
-        s.add(Implies(travel[i], Or(allowed_pairs)))
+    s.add(z3.Or([in_city["Madrid"][d] for d in [0,1,2,3]]))
     
-    total_travel = Sum([If(travel[i], 1, 0) for i in range(n_days)])
-    s.add(total_travel == 3)
+    flight_day_vars = []
+    for d in flight_days:
+        has_flight = z3.Or([flight_edge[edge][d-1] for edge in edge_pairs])
+        flight_day_vars.append(z3.If(has_flight, 1, 0))
+    total_flights = z3.Sum(flight_day_vars)
+    s.add(total_flights == 3)
     
-    if s.check() == sat:
+    if s.check() == z3.sat:
         m = s.model()
-        start_city_val = [m.evaluate(start_city[i]).as_long() for i in range(n_days)]
-        travel_val = [m.evaluate(travel[i]) for i in range(n_days)]
-        dest_city_val = [m.evaluate(dest_city[i]).as_long() for i in range(n_days)]
+        in_city_assign = {}
+        for city in cities:
+            in_city_assign[city] = [m.eval(in_city[city][d]) for d in range(13)]
         
-        for i in range(n_days):
-            if is_true(travel_val[i]):
-                city_list = [cities[start_city_val[i]], cities[dest_city_val[i]]]
-                print(f"Day {i+1}: {city_list}")
-            else:
-                city_list = [cities[start_city_val[i]]]
-                print(f"Day {i+1}: {city_list}")
+        blocks = {}
+        for city in cities:
+            days_present = [d+1 for d in range(13) if in_city_assign[city][d] == z3.BoolVal(True)]
+            if not days_present:
+                blocks[city] = []
+                continue
+            days_present.sort()
+            segments = []
+            start = days_present[0]
+            end = days_present[0]
+            for i in range(1, len(days_present)):
+                if days_present[i] == end + 1:
+                    end = days_present[i]
+                else:
+                    segments.append((start, end))
+                    start = days_present[i]
+                    end = days_present[i]
+            segments.append((start, end))
+            blocks[city] = segments
+        
+        flight_days_assign = set()
+        for d in flight_days:
+            for edge in edge_pairs:
+                if m.eval(flight_edge[edge][d-1]) == z3.BoolVal(True):
+                    flight_days_assign.add(d)
+        
+        itinerary = []
+        for city in cities:
+            for (start, end) in blocks[city]:
+                if start == end:
+                    day_str = f"Day {start}"
+                else:
+                    day_str = f"Day {start}-{end}"
+                itinerary.append({"day_range": day_str, "place": city})
+        
+        for d in flight_days_assign:
+            for city in cities:
+                if m.eval(in_city[city][d-1]) == z3.BoolVal(True):
+                    itinerary.append({"day_range": f"Day {d}", "place": city})
+        
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

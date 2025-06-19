@@ -1,122 +1,95 @@
 from z3 import *
+import json
 
 def main():
-    # Cities and their indices
     cities = ['Santorini', 'Krakow', 'Paris', 'Vilnius', 'Munich', 'Geneva', 'Amsterdam', 'Budapest', 'Split']
     days_required = [5, 5, 5, 3, 5, 2, 4, 5, 4]
     
-    # Mapping city names to indices
-    city_to_index = {city: idx for idx, city in enumerate(cities)}
+    edges = []
+    def add_bidir(i, j):
+        edges.append((i, j))
+        edges.append((j, i))
     
-    # Build the directed flight graph
-    graph = set()
-    
-    # Bidirectional flights: add both directions
-    bidirectional = [
-        ("Paris", "Krakow"),
-        ("Paris", "Amsterdam"),
-        ("Paris", "Split"),
-        ("Paris", "Geneva"),
-        ("Amsterdam", "Geneva"),
-        ("Munich", "Split"),
-        ("Split", "Krakow"),
-        ("Munich", "Amsterdam"),
-        ("Budapest", "Amsterdam"),
-        ("Split", "Geneva"),
-        ("Vilnius", "Split"),
-        ("Munich", "Geneva"),
-        ("Munich", "Krakow"),
-        ("Vilnius", "Amsterdam"),
-        ("Budapest", "Paris"),
-        ("Krakow", "Amsterdam"),
-        ("Vilnius", "Paris"),
-        ("Budapest", "Geneva"),
-        ("Split", "Amsterdam"),
-        ("Santorini", "Geneva"),
-        ("Amsterdam", "Santorini"),
-        ("Munich", "Budapest"),
-        ("Munich", "Paris")
-    ]
-    for a, b in bidirectional:
-        u = city_to_index[a]
-        v = city_to_index[b]
-        graph.add((u, v))
-        graph.add((v, u))
-    
-    # Unidirectional flights
-    unidirectional = [
-        ("Vilnius", "Munich"),
-        ("Krakow", "Vilnius")
-    ]
-    for a, b in unidirectional:
-        u = city_to_index[a]
-        v = city_to_index[b]
-        graph.add((u, v))
-    
-    # Initialize Z3 solver and variables
+    add_bidir(2, 1)   # Paris - Krakow
+    add_bidir(2, 6)   # Paris - Amsterdam
+    add_bidir(2, 8)   # Paris - Split
+    edges.append((3, 4))  # Vilnius to Munich (directed)
+    add_bidir(2, 5)   # Paris - Geneva
+    add_bidir(6, 5)   # Amsterdam - Geneva
+    add_bidir(4, 8)   # Munich - Split
+    add_bidir(8, 1)   # Split - Krakow
+    add_bidir(4, 6)   # Munich - Amsterdam
+    add_bidir(7, 6)   # Budapest - Amsterdam
+    add_bidir(8, 5)   # Split - Geneva
+    add_bidir(3, 8)   # Vilnius - Split
+    add_bidir(4, 5)   # Munich - Geneva
+    add_bidir(4, 1)   # Munich - Krakow
+    edges.append((1, 3))  # Krakow to Vilnius (directed)
+    add_bidir(3, 6)   # Vilnius - Amsterdam
+    add_bidir(7, 2)   # Budapest - Paris
+    add_bidir(1, 6)   # Krakow - Amsterdam
+    add_bidir(3, 2)   # Vilnius - Paris
+    add_bidir(7, 5)   # Budapest - Geneva
+    add_bidir(8, 6)   # Split - Amsterdam
+    add_bidir(0, 5)   # Santorini - Geneva
+    add_bidir(0, 6)   # Santorini - Amsterdam
+    add_bidir(4, 7)   # Munich - Budapest
+    add_bidir(4, 2)   # Munich - Paris
+
     s = Solver()
-    
-    # Arrival and departure days for each city
-    arrival = [Int(f'arrival_{i}') for i in range(9)]
-    departure = [Int(f'departure_{i}') for i in range(9)]
-    
-    # Stay duration constraints
-    for i in range(9):
-        s.add(departure[i] == arrival[i] + days_required[i] - 1)
-        s.add(arrival[i] >= 1, arrival[i] <= 30)
-        s.add(departure[i] >= 1, departure[i] <= 30)
-    
-    # Event window constraints
-    # Santorini (index 0) must be visited between days 25 and 29
-    s.add(arrival[0] <= 29, departure[0] >= 25)
-    # Krakow (index 1) must be visited between days 18 and 22
-    s.add(arrival[1] <= 22, departure[1] >= 18)
-    # Paris (index 2) must be visited between days 11 and 15
-    s.add(arrival[2] <= 15, departure[2] >= 11)
-    
-    # Order of cities (permutation)
     order = [Int(f'order_{i}') for i in range(9)]
+    
     for i in range(9):
         s.add(order[i] >= 0, order[i] < 9)
     s.add(Distinct(order))
     
-    # First city arrives on day 1
-    s.add(arrival[order[0]] == 1)
-    
-    # Consecutive city constraints: arrival of next city = departure of current
-    for i in range(1, 9):
-        s.add(arrival[order[i]] == departure[order[i-1]])
-    
-    # Flight connection constraints for consecutive cities
     for i in range(8):
-        edge_exists = Or([And(order[i] == u, order[i+1] == v) for (u, v) in graph])
-        s.add(edge_exists)
+        constraints = []
+        for (a, b) in edges:
+            constraints.append(And(order[i] == a, order[i+1] == b))
+        s.add(Or(constraints))
     
-    # Check for a solution
+    start_day = [Int(f'start_{i}') for i in range(9)]
+    end_day = [Int(f'end_{i}') for i in range(9)]
+    
+    s.add(start_day[0] == 1)
+    s.add(end_day[0] == start_day[0] + days_required[order[0]] - 1)
+    
+    for i in range(1, 9):
+        s.add(start_day[i] == end_day[i-1])
+        s.add(end_day[i] == start_day[i] + days_required[order[i]] - 1)
+    
+    for i in range(9):
+        city = order[i]
+        s.add(If(city == 0, And(start_day[i] <= 29, end_day[i] >= 25), True))
+        s.add(If(city == 1, And(start_day[i] <= 22, end_day[i] >= 18), True))
+        s.add(If(city == 2, And(start_day[i] <= 15, end_day[i] >= 11), True))
+    
     if s.check() == sat:
         m = s.model()
-        order_val = [m.evaluate(order[i]).as_long() for i in range(9)]
-        arrival_val = [m.evaluate(arrival[i]).as_long() for i in range(9)]
-        departure_val = [m.evaluate(departure[i]).as_long() for i in range(9)]
+        order_val = [m[order[i]].as_long() for i in range(9)]
+        start_val = [m[start_day[i]].as_long() for i in range(9)]
+        end_val = [m[end_day[i]].as_long() for i in range(9)]
         
-        # Print the itinerary
-        print("Trip Plan:")
-        for pos in range(9):
-            city_idx = order_val[pos]
-            city_name = cities[city_idx]
-            start_day = arrival_val[city_idx]
-            end_day = departure_val[city_idx]
-            print(f"Position {pos + 1}: {city_name} from day {start_day} to day {end_day}")
+        itinerary_list = []
+        for i in range(9):
+            a = start_val[i]
+            b = end_val[i]
+            city_name = cities[order_val[i]]
+            if a == b:
+                day_str = f"Day {a}"
+            else:
+                day_str = f"Day {a}-{b}"
+            itinerary_list.append({"day_range": day_str, "place": city_name})
+            if i < 8:
+                itinerary_list.append({"day_range": f"Day {b}", "place": city_name})
+                next_city_name = cities[order_val[i+1]]
+                itinerary_list.append({"day_range": f"Day {b}", "place": next_city_name})
         
-        # Print travel details
-        print("\nTravel between cities:")
-        for pos in range(8):
-            from_city = cities[order_val[pos]]
-            to_city = cities[order_val[pos+1]]
-            travel_day = departure_val[order_val[pos]]
-            print(f"Day {travel_day}: Travel from {from_city} to {to_city}")
+        result = {"itinerary": itinerary_list}
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

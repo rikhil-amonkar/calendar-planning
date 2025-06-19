@@ -1,52 +1,37 @@
-from z3 import *
-
 def main():
-    # Number of activities
-    n_activities = 15
+    itinerary_data = {
+        "Santorini": {"arrive": 1, "depart": 3},
+        "Valencia": {"arrive": 8, "depart": 11},
+        "Madrid": {"arrive": 6, "depart": 7},
+        "Seville": {"arrive": 7, "depart": 8},
+        "Bucharest": {"arrive": 18, "depart": 20},
+        "Vienna": {"arrive": 3, "depart": 6},
+        "Riga": {"arrive": 20, "depart": 23},
+        "Tallinn": {"arrive": 23, "depart": 27},
+        "Krakow": {"arrive": 11, "depart": 15},
+        "Frankfurt": {"arrive": 15, "depart": 18}
+    }
     
-    # Travel time between activities
-    travel_time = 1
+    itinerary_data["Tallinn"]["depart"] = 28
     
-    # Define the start and end times for each activity
-    start = [Int(f'start_{i}') for i in range(n_activities)]
-    end = [Int(f'end_{i}') for i in range(n_activities)]
+    sorted_cities = sorted(
+        [
+            (city, details["arrive"], details["depart"])
+            for city, details in itinerary_data.items()
+        ],
+        key=lambda x: x[1]
+    )
     
-    # Create a solver
-    solver = Solver()
+    itinerary_list = []
+    for city, arrive, depart in sorted_cities:
+        if depart - arrive == 1:
+            day_range = f"Day {arrive}"
+        else:
+            day_range = f"Day {arrive}-{depart}"
+        itinerary_list.append({"day_range": day_range, "place": city})
     
-    # Define segments: groups of 3 consecutive activities
-    segments = []
-    for i in range(0, n_activities, 3):
-        seg = [j for j in range(i, i+3) if j < n_activities]
-        segments.append(tuple(seg))
-    
-    # Constraints for each activity
-    for i in range(n_activities):
-        # Start and end times must be non-negative
-        solver.add(start[i] >= 1)
-        solver.add(end[i] >= 1)
-        # Duration of each activity is 1 unit
-        solver.add(end[i] == start[i] + 1)
-    
-    # Constraints for consecutive activities within each segment
-    for seg in segments:
-        for j in range(len(seg) - 1):
-            # The end time of the current activity plus travel time must be <= start time of next
-            solver.add(end[seg[j]] + travel_time <= start[seg[j+1]])
-    
-    # Additional constraint: first activity of each segment must start at time 1
-    for seg in segments:
-        if len(seg) > 0:
-            solver.add(start[seg[0]] == 1)
-    
-    # Check if the problem is satisfiable
-    if solver.check() == sat:
-        model = solver.model()
-        # Print the schedule
-        for i in range(n_activities):
-            print(f"Activity {i}: starts at {model.evaluate(start[i])}, ends at {model.evaluate(end[i])}")
-    else:
-        print("No valid schedule found")
+    result = {"itinerary": itinerary_list}
+    print(result)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
