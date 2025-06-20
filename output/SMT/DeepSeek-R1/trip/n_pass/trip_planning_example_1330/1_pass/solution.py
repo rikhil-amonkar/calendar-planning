@@ -1,117 +1,135 @@
 from z3 import *
+import json
 
-def main():
-    city_map = {
-        'Salzburg': 0,
-        'Venice': 1,
-        'Bucharest': 2,
-        'Brussels': 3,
-        'Hamburg': 4,
-        'Copenhagen': 5,
-        'Nice': 6,
-        'Zurich': 7,
-        'Naples': 8
-    }
-    days = [2, 5, 4, 2, 4, 4, 3, 5, 4]
-    
-    connections = [
-        "Zurich and Brussels", "Bucharest and Copenhagen", "Venice and Brussels", "Nice and Zurich",
-        "Hamburg and Nice", "Zurich and Naples", "Hamburg and Bucharest", "Zurich and Copenhagen",
-        "Bucharest and Brussels", "Hamburg and Brussels", "Venice and Naples", "Venice and Copenhagen",
-        "Bucharest and Naples", "Hamburg and Copenhagen", "Venice and Zurich", "Nice and Brussels",
-        "Hamburg and Venice", "Copenhagen and Naples", "Nice and Naples", "Hamburg and Zurich",
-        "Salzburg and Hamburg", "Zurich and Bucharest", "Brussels and Naples", "Copenhagen and Brussels",
-        "Venice and Nice", "Nice and Copenhagen"
-    ]
-    
-    allowed_set = set()
-    for conn in connections:
-        parts = conn.split(' and ')
-        c1 = city_map[parts[0]]
-        c2 = city_map[parts[1]]
-        allowed_set.add((c1, c2))
-        allowed_set.add((c2, c1))
-    
-    s = Solver()
-    
-    order = [Int(f'order_{i}') for i in range(9)]
-    for i in range(9):
-        s.add(order[i] >= 0, order[i] < 9)
-    s.add(Distinct(order))
-    
-    cumulative = [Int(f'cum_{i}') for i in range(9)]
-    s.add(cumulative[0] == days[order[0]])
-    for i in range(1, 9):
-        s.add(cumulative[i] == cumulative[i-1] + days[order[i]])
-    
-    s.add(order[0] == city_map['Salzburg'])
-    s.add(order[1] == city_map['Hamburg'])
-    
-    for i in range(8):
-        cons_list = []
-        for (a, b) in allowed_set:
-            cons_list.append(And(order[i] == a, order[i+1] == b))
-        s.add(Or(cons_list))
-    
-    def get_start_end(c):
-        start_c = 0
-        for pos in range(9):
-            if pos == 0:
-                term = If(order[pos] == c, 1, 0)
-            else:
-                term = If(order[pos] == c, cumulative[pos-1] - (pos-1), 0)
-            start_c += term
-        end_c = 0
-        for pos in range(9):
-            term = If(order[pos] == c, cumulative[pos] - pos, 0)
-            end_c += term
-        return (start_c, end_c)
-    
-    s_brussels, e_brussels = get_start_end(3)
-    s.add(s_brussels <= 22, e_brussels >= 21)
-    
-    s_copenhagen, e_copenhagen = get_start_end(5)
-    s.add(s_copenhagen <= 21, e_copenhagen >= 18)
-    
-    s_nice, e_nice = get_start_end(6)
-    s.add(s_nice <= 11, e_nice >= 9)
-    
-    s_naples, e_naples = get_start_end(8)
-    s.add(s_naples <= 25, e_naples >= 22)
-    
-    if s.check() == sat:
-        m = s.model()
-        order_val = [m.evaluate(order[i]).as_long() for i in range(9)]
-        cum_val = [m.evaluate(cumulative[i]).as_long() for i in range(9)]
-        
-        inv_city_map = {v: k for k, v in city_map.items()}
-        itinerary = []
-        
-        for i in range(9):
-            city_idx = order_val[i]
-            city_name = inv_city_map[city_idx]
-            if i == 0:
-                start_i = 1
-            else:
-                start_i = cum_val[i-1] - (i-1)
-            end_i = cum_val[i] - i
-            
-            if start_i == end_i:
-                day_range = f"Day {start_i}"
-            else:
-                day_range = f"Day {start_i}-{end_i}"
-            itinerary.append({'day_range': day_range, 'place': city_name})
-            
-            if i < 8:
-                itinerary.append({'day_range': f"Day {end_i}", 'place': city_name})
-                next_city_idx = order_val[i+1]
-                next_city_name = inv_city_map[next_city_idx]
-                itinerary.append({'day_range': f"Day {end_i}", 'place': next_city_name})
-        
-        result = {'itinerary': itinerary}
-        print(result)
-    else:
-        print("No solution found")
+cities = ['Salzburg', 'Venice', 'Bucharest', 'Brussels', 'Hamburg', 'Copenhagen', 'Nice', 'Zurich', 'Naples']
+stays = {
+    'Salzburg': 2,
+    'Venice': 5,
+    'Bucharest': 4,
+    'Brussels': 2,
+    'Hamburg': 4,
+    'Copenhagen': 4,
+    'Nice': 3,
+    'Zurich': 5,
+    'Naples': 4
+}
 
-if __name__ == "__main__":
-    main()
+event_constraints = {
+    'Brussels': (21, 22),
+    'Copenhagen': (18, 21),
+    'Nice': (9, 11),
+    'Naples': (22, 25)
+}
+
+direct_flights_list = [
+    ('Zurich', 'Brussels'),
+    ('Bucharest', 'Copenhagen'),
+    ('Venice', 'Brussels'),
+    ('Nice', 'Zurich'),
+    ('Hamburg', 'Nice'),
+    ('Zurich', 'Naples'),
+    ('Hamburg', 'Bucharest'),
+    ('Zurich', 'Copenhagen'),
+    ('Bucharest', 'Brussels'),
+    ('Hamburg', 'Brussels'),
+    ('Venice', 'Naples'),
+    ('Venice', 'Copenhagen'),
+    ('Bucharest', 'Naples'),
+    ('Hamburg', 'Copenhagen'),
+    ('Venice', 'Zurich'),
+    ('Nice', 'Brussels'),
+    ('Hamburg', 'Venice'),
+    ('Copenhagen', 'Naples'),
+    ('Nice', 'Naples'),
+    ('Hamburg', 'Zurich'),
+    ('Salzburg', 'Hamburg'),
+    ('Zurich', 'Bucharest'),
+    ('Brussels', 'Naples'),
+    ('Copenhagen', 'Brussels'),
+    ('Venice', 'Nice'),
+    ('Nice', 'Copenhagen')
+]
+
+direct_flights_set = set()
+for a, b in direct_flights_list:
+    direct_flights_set.add((a, b))
+    direct_flights_set.add((b, a))
+
+flight_ok = {}
+for i, c1 in enumerate(cities):
+    for j, c2 in enumerate(cities):
+        flight_ok[(c1, c2)] = ( (c1, c2) in direct_flights_set )
+
+s = Solver()
+
+start = {}
+end = {}
+order = {}
+
+for city in cities:
+    start[city] = Int(f'start_{city}')
+    end[city] = Int(f'end_{city}')
+    order[city] = Int(f'order_{city}')
+
+for city in cities:
+    s.add(start[city] >= 1)
+    s.add(end[city] <= 25)
+    s.add(end[city] == start[city] + stays[city] - 1)
+
+for city, (low, high) in event_constraints.items():
+    s.add(start[city] <= high)
+    s.add(end[city] >= low)
+
+orders = [order[city] for city in cities]
+s.add(Distinct(orders))
+for city in cities:
+    s.add(order[city] >= 0, order[city] < 9)
+
+s.add(Or([And(order[city] == 0, start[city] == 1) for city in cities]))
+s.add(Or([And(order[city] == 8, end[city] == 25) for city in cities]))
+
+for i, city_i in enumerate(cities):
+    for j, city_j in enumerate(cities):
+        if city_i == city_j:
+            continue
+        if not flight_ok[(city_i, city_j)]:
+            s.add(Not(order[city_j] == order[city_i] + 1))
+        s.add(Implies(order[city_j] == order[city_i] + 1, 
+                      end[city_i] == start[city_j]))
+
+if s.check() == sat:
+    model = s.model()
+    starts = {}
+    ends = {}
+    orders_val = {}
+    for city in cities:
+        starts[city] = model.eval(start[city]).as_long()
+        ends[city] = model.eval(end[city]).as_long()
+        orders_val[city] = model.eval(order[city]).as_long()
+    
+    ordered_cities = sorted(cities, key=lambda city: orders_val[city])
+    
+    itinerary = []
+    for idx, city in enumerate(ordered_cities):
+        s_val = starts[city]
+        e_val = ends[city]
+        itinerary.append({
+            "day_range": f"Day {s_val}-{e_val}",
+            "place": city
+        })
+        if idx < len(ordered_cities) - 1:
+            next_city = ordered_cities[idx+1]
+            fly_day = e_val
+            itinerary.append({
+                "day_range": f"Day {fly_day}",
+                "place": city
+            })
+            itinerary.append({
+                "day_range": f"Day {fly_day}",
+                "place": next_city
+            })
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result))
+else:
+    print("No solution found")

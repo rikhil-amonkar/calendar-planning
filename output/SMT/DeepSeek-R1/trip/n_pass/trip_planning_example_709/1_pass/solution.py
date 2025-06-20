@@ -1,116 +1,114 @@
-import json
 from z3 import *
 
 def main():
-    # Define city indices and names
-    cities = [0, 1, 2, 3, 4, 5]
-    city_names = {
-        0: "Helsinki",
-        1: "Valencia",
-        2: "Dubrovnik",
-        3: "Porto",
-        4: "Prague",
-        5: "Reykjavik"
-    }
-    days_required = [4, 5, 4, 3, 3, 4]  # Helsinki, Valencia, Dubrovnik, Porto, Prague, Reykjavik
+    # Define city names and their indices
+    cities = ["Helsinki", "Valencia", "Dubrovnik", "Porto", "Reykjavik", "Prague"]
+    city_to_idx = {name: idx for idx, name in enumerate(cities)}
     
-    # Allowed flight connections (symmetric)
-    allowed_edges = [
-        (0, 4), (4, 0),  # Helsinki <-> Prague
-        (4, 1), (1, 4),  # Prague <-> Valencia
-        (1, 3), (3, 1),  # Valencia <-> Porto
-        (0, 5), (5, 0),  # Helsinki <-> Reykjavik
-        (2, 0), (0, 2),  # Dubrovnik <-> Helsinki
-        (5, 4), (4, 5)   # Reykjavik <-> Prague
+    # Stay durations and stay_minus (stay - 1)
+    stay_arr = [4, 5, 4, 3, 4, 3]  # Helsinki, Valencia, Dubrovnik, Porto, Reykjavik, Prague
+    stay_minus_arr = [s-1 for s in stay_arr]  # [3,4,3,2,3,2]
+    
+    # Adjacency matrix for direct flights (symmetric)
+    adj = [
+        [0, 0, 1, 0, 1, 1],  # Helsinki (0)
+        [0, 0, 0, 1, 0, 1],  # Valencia (1)
+        [1, 0, 0, 0, 0, 0],  # Dubrovnik (2)
+        [0, 1, 0, 0, 0, 0],  # Porto (3)
+        [1, 0, 0, 0, 0, 1],  # Reykjavik (4)
+        [1, 1, 0, 0, 1, 0]   # Prague (5)
     ]
     
-    # Create Z3 solver
-    solver = Solver()
-    
-    # Sequence variables: seq[0] to seq[5] represent the order of cities
-    seq = [Int(f'seq_{i}') for i in range(6)]
-    
-    # Start and end day variables for each city (by city index)
-    s = [Int(f's_{i}') for i in range(6)]
-    e = [Int(f'e_{i}') for i in range(6)]
-    
-    # Constraints: each seq variable is between 0 and 5 and all are distinct
-    solver.add([And(seq_i >= 0, seq_i <= 5) for seq_i in seq])
-    solver.add(Distinct(seq))
-    
-    # Duration constraints: e[i] = s[i] + (days_required[i] - 1)
+    # Create a set of allowed edges (undirected)
+    allowed_edges = []
     for i in range(6):
-        solver.add(e[i] == s[i] + days_required[i] - 1)
+        for j in range(6):
+            if adj[i][j] == 1:
+                allowed_edges.append((i, j))
     
-    # First city starts on day 1, last city ends on day 18
-    solver.add(s[seq[0]] == 1)
-    solver.add(e[seq[5]] == 18)
+    # Z3 solver setup
+    s = Solver()
     
-    # Consecutive cities: end day of current equals start day of next
-    for i in range(5):
-        solver.add(e[seq[i]] == s[seq[i+1]])
+    # Order variables: 6 Ints for the permutation
+    order = [Int(f'o{i}') for i in range(6)]
     
-    # Flight connections: consecutive cities must have a direct flight
-    for i in range(5):
-        a = seq[i]
-        b = seq[i+1]
-        edge_constraints = []
-        for edge in allowed_edges:
-            edge_constraints.append(And(a == edge[0], b == edge[1]))
-        solver.add(Or(edge_constraints))
-    
-    # Porto constraint: start day between 14 and 16 (inclusive)
-    porto_index = 3
-    solver.add(s[porto_index] >= 14)
-    solver.add(s[porto_index] <= 16)
-    
-    # All start and end days between 1 and 18
+    # Constraints: each order[i] in [0,5] and distinct
     for i in range(6):
-        solver.add(s[i] >= 1)
-        solver.add(s[i] <= 18)
-        solver.add(e[i] >= 1)
-        solver.add(e[i] <= 18)
+        s.add(And(order[i] >= 0, order[i] < 6))
+    s.add(Distinct(order))
     
-    # Solve the constraints
-    if solver.check() == sat:
-        model = solver.model()
-        # Extract sequence as integers
-        seq_val = [model.evaluate(seq_i).as_long() for seq_i in seq]
-        # Extract start and end days for each city
-        s_val = [model.evaluate(s_i).as_long() for s_i in s]
-        e_val = [model.evaluate(e_i).as_long() for e_i in e]
+    # Flight constraints: consecutive cities must have a direct flight
+    for i in range(5):
+        cons = []
+        for a, b in allowed_edges:
+            cons.append(And(order[i] == a, order[i+1] == b))
+        s.add(Or(cons))
+    
+    # Porto constraint: find porto_index (position of Porto in the order)
+    porto_index = Int('porto_index')
+    s.add(porto_index >= 0, porto_index < 6)
+    porto_cons = []
+    for k in range(6):
+        porto_cons.append(And(porto_index == k, order[k] == city_to_idx["Porto"]))
+    s.add(Or(porto_cons))
+    
+    # Define stay_minus_arr_z3 as a Z3 array
+    stay_minus_arr_z3 = Array('stay_minus', IntSort(), IntSort())
+    for idx in range(6):
+        s.add(stay_minus_arr_z3[idx] == stay_minus_arr[idx])
+    
+    # Prefix_sum: sum of stay_minus for cities before Porto
+    prefix_sum = 0
+    for i in range(6):
+        prefix_sum = prefix_sum + If(i < porto_index, stay_minus_arr_z3[order[i]], 0)
+    s.add(prefix_sum >= 13, prefix_sum <= 15)
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(6)]
+        porto_index_val = m.evaluate(porto_index).as_long()
+        
+        # Compute start days for each city
+        start_days = [1]  # start day of first city is 1
+        for i in range(1, 6):
+            prev_city_idx = order_vals[i-1]
+            prev_stay_minus = stay_minus_arr[prev_city_idx]
+            start_days.append(start_days[i-1] + prev_stay_minus)
+        
+        # End days: start[i] + stay_minus_arr[order_vals[i]]
+        end_days = []
+        for i in range(6):
+            city_idx = order_vals[i]
+            end_days.append(start_days[i] + stay_minus_arr[city_idx])
         
         # Build itinerary
         itinerary = []
+        for i in range(6):
+            city_name = cities[order_vals[i]]
+            s_day = start_days[i]
+            e_day = end_days[i]
+            
+            # Entire block for the city
+            if s_day == e_day:
+                day_range_str = f"Day {s_day}"
+            else:
+                day_range_str = f"Day {s_day}-{e_day}"
+            itinerary.append({"day_range": day_range_str, "place": city_name})
+            
+            # If not the last city, add travel records
+            if i < 5:
+                # Departure from current city
+                itinerary.append({"day_range": f"Day {e_day}", "place": city_name})
+                # Arrival at next city
+                next_city_name = cities[order_vals[i+1]]
+                itinerary.append({"day_range": f"Day {e_day}", "place": next_city_name})
         
-        # First city in sequence
-        first_city = seq_val[0]
-        s0 = s_val[first_city]
-        e0 = e_val[first_city]
-        itinerary.append({"day_range": f"Day {s0}-{e0}", "place": city_names[first_city]})
-        itinerary.append({"day_range": f"Day {e0}", "place": city_names[first_city]})  # Departure
-        
-        # Middle cities (positions 1 to 4 in sequence)
-        for i in range(1, 5):
-            city_idx = seq_val[i]
-            sc = s_val[city_idx]
-            ec = e_val[city_idx]
-            itinerary.append({"day_range": f"Day {sc}", "place": city_names[city_idx]})  # Arrival
-            itinerary.append({"day_range": f"Day {sc}-{ec}", "place": city_names[city_idx]})
-            itinerary.append({"day_range": f"Day {ec}", "place": city_names[city_idx]})  # Departure
-        
-        # Last city in sequence
-        last_city = seq_val[5]
-        s_last = s_val[last_city]
-        e_last = e_val[last_city]
-        itinerary.append({"day_range": f"Day {s_last}", "place": city_names[last_city]})  # Arrival
-        itinerary.append({"day_range": f"Day {s_last}-{e_last}", "place": city_names[last_city]})
-        
-        # Output as JSON
+        # Output as JSON-like dictionary
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(result)
     else:
-        print('{"error": "No solution found"}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

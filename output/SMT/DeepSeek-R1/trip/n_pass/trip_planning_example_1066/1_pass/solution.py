@@ -1,123 +1,116 @@
-import z3
+from z3 import *
 import json
 
 def main():
-    # City names and their indices
-    city_names = ['Brussels', 'Bucharest', 'Stuttgart', 'Mykonos', 'Madrid', 'Helsinki', 'Split', 'London']
-    name_to_index = {name: idx for idx, name in enumerate(city_names)}
+    cities = ["Brussels", "Bucharest", "Stuttgart", "Mykonos", "Helsinki", "Split", "London"]
+    days_map = {
+        "Brussels": 4,
+        "Bucharest": 3,
+        "Stuttgart": 4,
+        "Mykonos": 2,
+        "Helsinki": 5,
+        "Split": 3,
+        "London": 5
+    }
     
-    # Required days for each city
-    required_days = [4, 3, 4, 2, 2, 5, 3, 5]  # Index order: 0 to 7
-    
-    # Direct flights (edges)
-    edges_list = [
-        ('Helsinki', 'London'),
-        ('Split', 'Madrid'),
-        ('Helsinki', 'Madrid'),
-        ('London', 'Madrid'),
-        ('Brussels', 'London'),
-        ('Bucharest', 'London'),
-        ('Brussels', 'Bucharest'),
-        ('Bucharest', 'Madrid'),
-        ('Split', 'Helsinki'),
-        ('Mykonos', 'Madrid'),
-        ('Stuttgart', 'London'),
-        ('Helsinki', 'Brussels'),
-        ('Brussels', 'Madrid'),
-        ('Split', 'London'),
-        ('Stuttgart', 'Split'),
-        ('London', 'Mykonos')
+    direct_flights = [
+        ("Helsinki", "London"),
+        ("Split", "Madrid"),
+        ("Helsinki", "Madrid"),
+        ("London", "Madrid"),
+        ("Brussels", "London"),
+        ("Bucharest", "London"),
+        ("Brussels", "Bucharest"),
+        ("Bucharest", "Madrid"),
+        ("Split", "Helsinki"),
+        ("Mykonos", "Madrid"),
+        ("Stuttgart", "London"),
+        ("Helsinki", "Brussels"),
+        ("Brussels", "Madrid"),
+        ("Split", "London"),
+        ("Stuttgart", "Split"),
+        ("London", "Mykonos")
     ]
     
-    # Build the graph (adjacency matrix)
-    graph = [[False] * 8 for _ in range(8)]
-    for a, b in edges_list:
-        i = name_to_index[a]
-        j = name_to_index[b]
-        graph[i][j] = True
-        graph[j][i] = True
+    pos = [String(f"pos{i}") for i in range(7)]
+    s = Solver()
     
-    # Z3 solver setup
-    solver = z3.Solver()
-    
-    # Permutation variables: P[0] to P[7]
-    P = [z3.Int(f'P_{i}') for i in range(8)]
-    # Cumulative days variables
-    Cum = [z3.Int(f'Cum_{i}') for i in range(8)]
-    
-    # Constraints
-    # Each P[i] is between 0 and 7
-    for i in range(8):
-        solver.add(P[i] >= 0, P[i] < 8)
-    
-    # All cities are distinct
-    solver.add(z3.Distinct(P))
-    
-    # Madrid is the last city (index 4 at position 7)
-    solver.add(P[7] == 4)
-    
-    # Cumulative days constraints
-    solver.add(Cum[0] == required_days[P[0]])
-    for i in range(1, 8):
-        solver.add(Cum[i] == Cum[i-1] + required_days[P[i]])
-    
-    # Flight constraints: consecutive cities must have a direct flight
     for i in range(7):
-        # Create a condition for each allowed edge
-        conditions = []
-        for a in range(8):
-            for b in range(8):
-                if graph[a][b]:
-                    conditions.append(z3.And(P[i] == a, P[i+1] == b))
-        solver.add(z3.Or(conditions))
+        s.add(Or([pos[i] == StringVal(city) for city in cities]))
+    s.add(Distinct(pos))
     
-    # Stuttgart constraint (Stuttgart index is 2)
-    for i in range(1, 8):  # positions 1 to 7
-        stuttgart_here = (P[i] == 2)
-        # s_i = Cum[i-1] - (i-1) <= 4
-        constraint = (Cum[i-1] - (i - 1) <= 4)
-        solver.add(z3.If(stuttgart_here, constraint, True))
+    def day(city_expr):
+        return If(city_expr == StringVal("Brussels"), 4,
+               If(city_expr == StringVal("Bucharest"), 3,
+               If(city_expr == StringVal("Stuttgart"), 4,
+               If(city_expr == StringVal("Mykonos"), 2,
+               If(city_expr == StringVal("Helsinki"), 5,
+               If(city_expr == StringVal("Split"), 3,
+               If(city_expr == StringVal("London"), 5, 0)))))))
     
-    # Solve the problem
-    if solver.check() == z3.sat:
-        model = solver.model()
-        # Extract the permutation
-        p_val = [model.evaluate(P[i]).as_long() for i in range(8)]
-        # Compute cumulative days from the permutation
-        cum_val = [0] * 8
-        cum_val[0] = required_days[p_val[0]]
-        for i in range(1, 8):
-            cum_val[i] = cum_val[i-1] + required_days[p_val[i]]
+    P = [0] * 8
+    P[0] = 0
+    for i in range(1, 8):
+        P[i] = P[i-1] + day(pos[i-1])
+    
+    for i in range(6):
+        c1 = pos[i]
+        c2 = pos[i+1]
+        valid = False
+        for flight in direct_flights:
+            a, b = flight
+            a_str = StringVal(a)
+            b_str = StringVal(b)
+            valid = Or(valid, And(c1 == a_str, c2 == b_str), And(c1 == b_str, c2 == a_str))
+        s.add(valid)
+    
+    valid_last = False
+    madrid_val = StringVal("Madrid")
+    for flight in direct_flights:
+        a, b = flight
+        a_str = StringVal(a)
+        b_str = StringVal(b)
+        valid_last = Or(valid_last, And(pos[6] == a_str, madrid_val == b_str), And(pos[6] == b_str, madrid_val == a_str))
+    s.add(valid_last)
+    
+    for i in range(1, 7):
+        s.add(Implies(pos[i] == StringVal("Stuttgart"), P[i] - (i-1) <= 4))
+    
+    if s.check() == sat:
+        m = s.model()
+        city_seq = []
+        for i in range(7):
+            city_expr = m.evaluate(pos[i])
+            city_name = city_expr.as_string()
+            city_name = city_name.strip('"')
+            city_seq.append(city_name)
         
-        # Compute start and end days for each stay
-        starts = []
-        ends = []
-        for i in range(8):
-            if i == 0:
-                s_i = 1
-            else:
-                s_i = cum_val[i-1] - (i - 1)
-            e_i = cum_val[i] - i
-            starts.append(s_i)
-            ends.append(e_i)
+        P_actual = [0] * 8
+        P_actual[0] = 0
+        for i in range(7):
+            city = city_seq[i]
+            P_actual[i+1] = P_actual[i] + days_map[city]
         
-        # Build itinerary
-        itinerary = []
-        for i in range(8):
-            city = city_names[p_val[i]]
-            # Contiguous stay
-            itinerary.append({"day_range": f"Day {starts[i]}-{ends[i]}", "place": city})
-            if i < 7:
-                # Flight day: departure from current city and arrival at next city
-                d = ends[i]
-                itinerary.append({"day_range": f"Day {d}", "place": city})
-                itinerary.append({"day_range": f"Day {d}", "place": city_names[p_val[i+1]]})
+        records = []
+        start0 = 1
+        end0 = P_actual[1]
+        records.append({"day_range": f"Day {start0}-{end0}", "place": city_seq[0]})
+        records.append({"day_range": f"Day {end0}", "place": city_seq[0]})
         
-        # Output as JSON
-        result = {"itinerary": itinerary}
+        for i in range(1, 7):
+            start_i = P_actual[i] - (i-1)
+            end_i = P_actual[i+1] - i
+            records.append({"day_range": f"Day {start_i}", "place": city_seq[i]})
+            records.append({"day_range": f"Day {start_i}-{end_i}", "place": city_seq[i]})
+            records.append({"day_range": f"Day {end_i}", "place": city_seq[i]})
+        
+        records.append({"day_range": "Day 20", "place": "Madrid"})
+        records.append({"day_range": "Day 20-21", "place": "Madrid"})
+        
+        result = {"itinerary": records}
         print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

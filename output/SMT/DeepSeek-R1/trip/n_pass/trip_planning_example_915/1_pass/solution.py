@@ -1,142 +1,100 @@
 from z3 import *
-import json
 
 def main():
-    # City labels
     cities = ["Bucharest", "Venice", "Prague", "Frankfurt", "Zurich", "Florence", "Tallinn"]
-    city_to_id = {name: idx for idx, name in enumerate(cities)}
-    id_to_city = {idx: name for idx, name in enumerate(cities)}
+    durations = [3, 5, 4, 5, 5, 5, 5]
+    city_to_index = {city: idx for idx, city in enumerate(cities)}
     
-    # Required days per city
-    req_days = {
-        city_to_id["Bucharest"]: 3,
-        city_to_id["Venice"]: 5,
-        city_to_id["Prague"]: 4,
-        city_to_id["Frankfurt"]: 5,
-        city_to_id["Zurich"]: 5,
-        city_to_id["Florence"]: 5,
-        city_to_id["Tallinn"]: 5
-    }
-    
-    # Directed flight edges: (from, to)
-    edges = [
-        (city_to_id["Prague"], city_to_id["Tallinn"]),
-        (city_to_id["Tallinn"], city_to_id["Prague"]),
-        (city_to_id["Prague"], city_to_id["Zurich"]),
-        (city_to_id["Zurich"], city_to_id["Prague"]),
-        (city_to_id["Florence"], city_to_id["Prague"]),
-        (city_to_id["Prague"], city_to_id["Florence"]),
-        (city_to_id["Frankfurt"], city_to_id["Bucharest"]),
-        (city_to_id["Bucharest"], city_to_id["Frankfurt"]),
-        (city_to_id["Frankfurt"], city_to_id["Venice"]),
-        (city_to_id["Venice"], city_to_id["Frankfurt"]),
-        (city_to_id["Prague"], city_to_id["Bucharest"]),
-        (city_to_id["Bucharest"], city_to_id["Prague"]),
-        (city_to_id["Bucharest"], city_to_id["Zurich"]),
-        (city_to_id["Zurich"], city_to_id["Bucharest"]),
-        (city_to_id["Tallinn"], city_to_id["Frankfurt"]),
-        (city_to_id["Frankfurt"], city_to_id["Tallinn"]),
-        (city_to_id["Zurich"], city_to_id["Florence"]),  # Only Zurich to Florence
-        (city_to_id["Frankfurt"], city_to_id["Zurich"]),
-        (city_to_id["Zurich"], city_to_id["Frankfurt"]),
-        (city_to_id["Zurich"], city_to_id["Venice"]),
-        (city_to_id["Venice"], city_to_id["Zurich"]),
-        (city_to_id["Florence"], city_to_id["Frankfurt"]),
-        (city_to_id["Frankfurt"], city_to_id["Florence"]),
-        (city_to_id["Prague"], city_to_id["Frankfurt"]),
-        (city_to_id["Frankfurt"], city_to_id["Prague"]),
-        (city_to_id["Tallinn"], city_to_id["Zurich"]),
-        (city_to_id["Zurich"], city_to_id["Tallinn"])
+    bidirectional_pairs = [
+        ("Prague", "Tallinn"),
+        ("Prague", "Zurich"),
+        ("Florence", "Prague"),
+        ("Frankfurt", "Bucharest"),
+        ("Frankfurt", "Venice"),
+        ("Prague", "Bucharest"),
+        ("Bucharest", "Zurich"),
+        ("Tallinn", "Frankfurt"),
+        ("Frankfurt", "Zurich"),
+        ("Zurich", "Venice"),
+        ("Florence", "Frankfurt"),
+        ("Prague", "Frankfurt"),
+        ("Tallinn", "Zurich")
     ]
+    directed_pairs = [("Zurich", "Florence")]
     
-    # Create Z3 variables
-    order = [Int('o%d' % i) for i in range(7)]
-    d0, d1, d2, d3, d4, d5 = Ints('d0 d1 d2 d3 d4 d5')
-    d = [d0, d1, d2, d3, d4, d5]  # Travel days
+    allowed_flights = set()
+    for a, b in bidirectional_pairs:
+        a_idx = city_to_index[a]
+        b_idx = city_to_index[b]
+        allowed_flights.add((a_idx, b_idx))
+        allowed_flights.add((b_idx, a_idx))
+    for a, b in directed_pairs:
+        a_idx = city_to_index[a]
+        b_idx = city_to_index[b]
+        allowed_flights.add((a_idx, b_idx))
     
     s = Solver()
     
-    # Domain constraints for order: each between 0 and 6
+    order = [Int(f"order_{i}") for i in range(7)]
     for i in range(7):
         s.add(order[i] >= 0, order[i] <= 6)
     s.add(Distinct(order))
     
-    # Travel day constraints: strictly increasing and within [1, 26]
-    s.add(d0 >= 1, d5 <= 26)
-    for i in range(5):
-        s.add(d[i] < d[i+1])
+    base = [Int(f"base_{i}") for i in range(7)]
+    s.add(base[0] == 1)
     
-    # Stay duration constraints
-    s.add(d0 == req_days[order[0]])
-    for i in range(1, 6):
-        s.add(d[i] - d[i-1] + 1 == req_days[order[i]])
-    s.add(27 - d5 == req_days[order[6]])
+    for i in range(1, 7):
+        expr = durations[0]
+        for idx in range(1, 7):
+            expr = If(order[i-1] == idx, durations[idx], expr)
+        s.add(base[i] == base[i-1] + (expr - 1))
     
-    # Event constraints
-    # Venice (city_to_id["Venice"] = 1)
+    last_duration = durations[0]
+    for idx in range(1, 7):
+        last_duration = If(order[6] == idx, durations[idx], last_duration)
+    s.add(base[6] + (last_duration - 1) == 26)
+    
+    for k in range(6):
+        constraints = []
+        for (a, b) in allowed_flights:
+            constraints.append(And(order[k] == a, order[k+1] == b))
+        s.add(Or(constraints))
+    
+    venice_constraint = []
     for j in range(7):
-        if j == 0:
-            s.add(Implies(order[0] == 1, d0 >= 22))
-        elif j == 6:
-            pass  # Automatically satisfied
-        else:
-            s.add(Implies(order[j] == 1, And(d[j-1] <= 26, d[j] >= 22)))
+        venice_constraint.append(And(order[j] == 1, base[j] >= 18, base[j] <= 22))
+    s.add(Or(venice_constraint))
     
-    # Frankfurt (city_to_id["Frankfurt"] = 3)
+    frankfurt_constraint = []
     for j in range(7):
-        if j == 0:
-            s.add(Implies(order[0] == 3, d0 >= 12))
-        elif j == 6:
-            s.add(Implies(order[6] == 3, d5 <= 16))
-        else:
-            s.add(Implies(order[j] == 3, And(d[j-1] <= 16, d[j] >= 12)))
+        frankfurt_constraint.append(And(order[j] == 3, base[j] >= 8, base[j] <= 16))
+    s.add(Or(frankfurt_constraint))
     
-    # Tallinn (city_to_id["Tallinn"] = 6)
+    tallinn_constraint = []
     for j in range(7):
-        if j == 0:
-            s.add(Implies(order[0] == 6, d0 >= 8))
-        elif j == 6:
-            s.add(Implies(order[6] == 6, d5 <= 12))
-        else:
-            s.add(Implies(order[j] == 6, And(d[j-1] <= 12, d[j] >= 8)))
+        tallinn_constraint.append(And(order[j] == 6, base[j] >= 4, base[j] <= 12))
+    s.add(Or(tallinn_constraint))
     
-    # Flight constraints
-    for j in range(6):
-        s.add(Or([And(order[j] == a, order[j+1] == b) for (a, b) in edges]))
-    
-    # Check and get model
     if s.check() == sat:
         m = s.model()
-        order_vals = [m[order[i]].as_long() for i in range(7)]
-        d_vals = [m[d[i]].as_long() for i in range(6)]
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(7)]
+        base_vals = [m.evaluate(base[i]).as_long() for i in range(7)]
         
         itinerary = []
-        # First city
-        c0 = order_vals[0]
-        start0 = 1
-        end0 = d_vals[0]
-        itinerary.append({"day_range": "Day %d-%d" % (start0, end0), "place": id_to_city[c0]})
-        itinerary.append({"day_range": "Day %d" % end0, "place": id_to_city[c0]})
-        c1 = order_vals[1]
-        itinerary.append({"day_range": "Day %d" % end0, "place": id_to_city[c1]})
-        
-        # Cities 1 to 5
-        for i in range(1, 6):
-            c = order_vals[i]
-            start_i = d_vals[i-1]
-            end_i = d_vals[i]
-            itinerary.append({"day_range": "Day %d-%d" % (start_i, end_i), "place": id_to_city[c]})
-            itinerary.append({"day_range": "Day %d" % end_i, "place": id_to_city[c]})
-            c_next = order_vals[i+1]
-            itinerary.append({"day_range": "Day %d" % end_i, "place": id_to_city[c_next]})
-        
-        # Last city (index 6)
-        c6 = order_vals[6]
-        start6 = d_vals[5]
-        itinerary.append({"day_range": "Day %d-26" % start6, "place": id_to_city[c6]})
+        for i in range(7):
+            city_idx = order_vals[i]
+            city = cities[city_idx]
+            start = base_vals[i]
+            duration_val = durations[city_idx]
+            end = start + duration_val - 1
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+            if i < 6:
+                itinerary.append({"day_range": f"Day {end}", "place": city})
+                next_city = cities[order_vals[i+1]]
+                itinerary.append({"day_range": f"Day {end}", "place": next_city})
         
         result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        print(result)
     else:
         print("No solution found")
 

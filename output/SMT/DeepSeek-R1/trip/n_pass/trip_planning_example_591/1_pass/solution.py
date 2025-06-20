@@ -1,73 +1,99 @@
 from z3 import *
-import json
 
 def main():
-    s_G, s_M, s_B, s_V, s_S = Ints('s_G s_M s_B s_V s_S')
-    e_G = s_G + 3  # Geneva: 4 days
-    e_M = s_M + 6  # Munich: 7 days
-    e_B = s_B + 1  # Bucharest: 2 days
-    e_V = s_V + 5  # Valencia: 6 days
-    e_S = s_S + 1  # Stuttgart: 2 days
-
-    solver = Solver()
-
-    # Geneva constraints: must be within [1,4]
-    solver.add(s_G >= 1, e_G <= 4)
+    # City indices: 0:Geneva, 1:Munich, 2:Valencia, 3:Bucharest, 4:Stuttgart
+    city_names = ["Geneva", "Munich", "Valencia", "Bucharest", "Stuttgart"]
+    durations = [4, 7, 6, 2, 2]
     
-    # Munich constraints: must cover [4,10]
-    solver.add(s_M <= 4, e_M >= 10)
+    # Allowed direct flight edges (undirected)
+    allowed_edges = [
+        (0,1), (1,0),
+        (1,2), (2,1),
+        (3,2), (2,3),
+        (1,3), (3,1),
+        (2,4), (4,2),
+        (0,2), (2,0)
+    ]
     
-    # Sequence constraints (flight connections)
-    solver.add(e_G == s_M)  # Fly from Geneva to Munich on day 4
-    solver.add(e_M == s_B)  # Fly from Munich to Bucharest on day 10
-    solver.add(e_B == s_V)  # Fly from Bucharest to Valencia on day 11
-    solver.add(e_V == s_S)  # Fly from Valencia to Stuttgart on day 16
+    # Position variables for the sequence
+    pos0, pos1, pos2, pos3, pos4 = Ints('pos0 pos1 pos2 pos3 pos4')
+    pos = [pos0, pos1, pos2, pos3, pos4]
     
-    # Total trip must be 17 days
-    min_start = Min(s_G, s_M, s_B, s_V, s_S)
-    max_end = Max(e_G, e_M, e_B, e_V, e_S)
-    solver.add(min_start == 1, max_end == 17)
+    s = Solver()
     
-    if solver.check() == sat:
-        model = solver.model()
-        s_G_val = model[s_G].as_long()
-        s_M_val = model[s_M].as_long()
-        s_B_val = model[s_B].as_long()
-        s_V_val = model[s_V].as_long()
-        s_S_val = model[s_S].as_long()
+    # Each position must be between 0 and 4
+    for p in pos:
+        s.add(p >= 0, p <= 4)
+    
+    # All positions must be distinct
+    s.add(Distinct(pos0, pos1, pos2, pos3, pos4))
+    
+    # Function to get duration of a city index
+    def dur(city_idx):
+        return If(city_idx == 0, 4,
+               If(city_idx == 1, 7,
+               If(city_idx == 2, 6,
+               If(city_idx == 3, 2, 2))))
+    
+    d_vals = [dur(p) for p in pos]
+    
+    # Cumulative sums for the first i cities (for i from 0 to 4)
+    # S[0] = 0, S[1] = d0, S[2] = d0+d1, S[3] = d0+d1+d2, S[4] = d0+d1+d2+d3
+    S = [0] 
+    for i in range(4):
+        S.append(S[-1] + d_vals[i])
+    
+    # Start days for each city in the sequence
+    starts = [1]  # start of first city is day 1
+    for i in range(1, 5):
+        starts.append(1 + S[i] - i)
+    
+    # Constraints for Geneva and Munich
+    for i in range(5):
+        s.add(If(pos[i] == 0, starts[i] <= 4, True))
+        s.add(If(pos[i] == 1, starts[i] <= 10, True))
+    
+    # Flight connection constraints between consecutive cities
+    for i in range(4):
+        edge_constraints = []
+        for a, b in allowed_edges:
+            edge_constraints.append(And(pos[i] == a, pos[i+1] == b))
+        s.add(Or(edge_constraints))
+    
+    if s.check() == sat:
+        m = s.model()
+        order = [m.evaluate(p).as_long() for p in pos]
+        fixed_durations = [4, 7, 6, 2, 2]
         
-        s_val = {
-            'Geneva': s_G_val,
-            'Munich': s_M_val,
-            'Bucharest': s_B_val,
-            'Valencia': s_V_val,
-            'Stuttgart': s_S_val
-        }
+        # Compute start days based on the resolved order
+        cum = 0
+        computed_starts = [1]
+        for i in range(1, 5):
+            cum += fixed_durations[order[i-1]]
+            computed_starts.append(1 + cum - i)
         
-        e_val = {
-            'Geneva': s_val['Geneva'] + 3,
-            'Munich': s_val['Munich'] + 6,
-            'Bucharest': s_val['Bucharest'] + 1,
-            'Valencia': s_val['Valencia'] + 5,
-            'Stuttgart': s_val['Stuttgart'] + 1
-        }
-        
-        route = ['Geneva', 'Munich', 'Bucharest', 'Valencia', 'Stuttgart']
         itinerary = []
-        
-        for i, city in enumerate(route):
-            start = s_val[city]
-            end = e_val[city]
-            if i > 0:
-                itinerary.append({"day_range": f"Day {start}", "place": city})
-            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
-            if i < len(route) - 1:
-                itinerary.append({"day_range": f"Day {end}", "place": city})
+        for i in range(5):
+            city_idx = order[i]
+            name = city_names[city_idx]
+            s_day = computed_starts[i]
+            dur_val = fixed_durations[city_idx]
+            e_day = s_day + dur_val - 1
+            
+            if i == 0:
+                itinerary.append({"day_range": f"Day {s_day}-{e_day}", "place": name})
+                if i < 4:
+                    itinerary.append({"day_range": f"Day {e_day}", "place": name})
+            else:
+                itinerary.append({"day_range": f"Day {s_day}", "place": name})
+                itinerary.append({"day_range": f"Day {s_day}-{e_day}", "place": name})
+                if i < 4:
+                    itinerary.append({"day_range": f"Day {e_day}", "place": name})
         
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(result)
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

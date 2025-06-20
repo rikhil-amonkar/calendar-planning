@@ -1,102 +1,100 @@
 from z3 import *
+import json
 
 def main():
-    cities = ["Mykonos", "Dublin", "Krakow", "Istanbul", "Venice", "Naples", "Brussels", "Frankfurt"]
-    n = len(cities)
-    req_days = [4, 5, 4, 3, 3, 4, 2, 3]  # in the order of the cities list
-
-    allowed_edges = [
-        (0, 5), (1, 6), (3, 4), (2, 7), (1, 5), (2, 6), (3, 5), (5, 6), (3, 7), (6, 7), 
-        (2, 3), (3, 6), (4, 7), (5, 7), (1, 2), (4, 6), (4, 5), (1, 3), (1, 4), (1, 7)
+    cities = ['Dublin', 'Krakow', 'Istanbul', 'Venice', 'Naples', 'Brussels', 'Mykonos', 'Frankfurt']
+    
+    edges = set()
+    bidirectional_pairs = [
+        ('Dublin', 'Brussels'),
+        ('Mykonos', 'Naples'),
+        ('Venice', 'Istanbul'),
+        ('Frankfurt', 'Krakow'),
+        ('Naples', 'Dublin'),
+        ('Krakow', 'Brussels'),
+        ('Naples', 'Istanbul'),
+        ('Naples', 'Brussels'),
+        ('Istanbul', 'Frankfurt'),
+        ('Istanbul', 'Krakow'),
+        ('Istanbul', 'Brussels'),
+        ('Venice', 'Brussels'),
+        ('Naples', 'Venice'),
+        ('Istanbul', 'Dublin'),
+        ('Venice', 'Dublin'),
+        ('Dublin', 'Frankfurt'),
+        ('Venice', 'Frankfurt'),
+        ('Naples', 'Frankfurt')
     ]
-
-    # Create solver and variables
+    for (a, b) in bidirectional_pairs:
+        edges.add((a, b))
+        edges.add((b, a))
+    edges.add(('Brussels', 'Frankfurt'))
+    
+    duration = {
+        'Dublin': 5,
+        'Krakow': 4,
+        'Istanbul': 3,
+        'Venice': 3,
+        'Naples': 4,
+        'Brussels': 2,
+        'Mykonos': 4,
+        'Frankfurt': 3
+    }
+    
+    pos = {city: Int(f'pos_{city}') for city in cities}
+    start = {city: Int(f'start_{city}') for city in cities}
     s = Solver()
     
-    # Sequence of cities (indexed 0 to 7)
-    seq = [Int('seq_%d' % i) for i in range(n)]
+    s.add(Distinct([pos[city] for city in cities]))
+    for city in cities:
+        s.add(pos[city] >= 0)
+        s.add(pos[city] < 8)
     
-    # Start and end days for each city
-    start = [Int('start_%d' % i) for i in range(n)]
-    end = [Int('end_%d' % i) for i in range(n)]
+    end = {city: start[city] + duration[city] - 1 for city in cities}
     
-    # Fix the first city as Mykonos (index0)
-    s.add(seq[0] == 0)
+    for city in cities:
+        s.add(If(pos[city] == 0, start[city] == 1, True))
+        s.add(If(pos[city] == 7, end[city] == 21, True))
     
-    # Sequence must be a permutation of cities
-    s.add(Distinct(seq))
-    for i in range(n):
-        s.add(seq[i] >= 0, seq[i] < n)
+    s.add(start['Dublin'] == 11)
+    s.add(start['Mykonos'] <= 4)
+    s.add(And(start['Istanbul'] >= 7, start['Istanbul'] <= 11))
+    s.add(And(start['Frankfurt'] >= 13, start['Frankfurt'] <= 17))
     
-    # Fixed constraints for Mykonos and Dublin
-    s.add(start[0] == 1, end[0] == 4)
-    s.add(start[1] == 11, end[1] == 15)
+    for a in cities:
+        for b in cities:
+            if a == b:
+                continue
+            if (a, b) in edges:
+                s.add(If(pos[a] + 1 == pos[b], end[a] == start[b], True))
+            else:
+                s.add(Not(pos[a] + 1 == pos[b]))
     
-    # Duration constraints for each city
-    for i in range(n):
-        s.add(end[i] == start[i] + req_days[i] - 1)
-    
-    # Chain constraints: end of current city equals start of next city
-    for i in range(n-1):
-        curr_city = seq[i]
-        next_city = seq[i+1]
-        s.add(end[curr_city] == start[next_city])
-    
-    # Entire trip ends at day 21
-    s.add(end[seq[n-1]] == 21)
-    
-    # Event constraints
-    # Istanbul (index3) must have at least one day between 9 and 11
-    s.add(start[3] <= 11, end[3] >= 9)
-    # Frankfurt (index7) must have at least one day between 15 and 17
-    s.add(start[7] <= 17, end[7] >= 15)
-    
-    # Flight connection constraints for consecutive cities
-    for i in range(n-1):
-        city_i = seq[i]
-        city_j = seq[i+1]
-        edge_constraints = []
-        for edge in allowed_edges:
-            edge_constraints.append(Or(
-                And(city_i == edge[0], city_j == edge[1]),
-                And(city_i == edge[1], city_j == edge[0])
-            ))
-        s.add(Or(edge_constraints))
-    
-    # Check for solution
     if s.check() == sat:
         m = s.model()
-        # Extract sequence
-        seq_val = [m.evaluate(seq[i]).as_long() for i in range(n)]
-        # Extract start and end days
-        start_val = [m.evaluate(start[i]).as_long() for i in range(n)]
-        end_val = [m.evaluate(end[i]).as_long() for i in range(n)]
+        order = sorted(cities, key=lambda city: m.evaluate(pos[city]).as_long())
+        starts = [m.evaluate(start[city]).as_long() for city in order]
+        ends = [m.evaluate(end[city]).as_long() for city in order]
         
-        # Build itinerary
-        itinerary = []
-        for i in range(n):
-            city_idx = seq_val[i]
-            s_day = start_val[city_idx]
-            e_day = end_val[city_idx]
-            # Entire stay record
-            if s_day == e_day:
-                day_str = "Day %d" % s_day
+        def format_day_range(s, e):
+            if s == e:
+                return f"Day {s}"
             else:
-                day_str = "Day %d-%d" % (s_day, e_day)
-            itinerary.append({"day_range": day_str, "place": cities[city_idx]})
-            # If not the last city, add departure and arrival records for the flight day
-            if i < n-1:
-                # Departure from current city
-                itinerary.append({"day_range": "Day %d" % e_day, "place": cities[city_idx]})
-                # Arrival at next city
-                next_city_idx = seq_val[i+1]
-                itinerary.append({"day_range": "Day %d" % e_day, "place": cities[next_city_idx]})
+                return f"Day {s}-{e}"
         
-        # Output as JSON
+        itinerary = []
+        for i in range(len(order)):
+            s_day = starts[i]
+            e_day = ends[i]
+            itinerary.append({"day_range": format_day_range(s_day, e_day), "place": order[i]})
+            if i < len(order) - 1:
+                itinerary.append({"day_range": format_day_range(e_day, e_day), "place": order[i]})
+                itinerary.append({"day_range": format_day_range(e_day, e_day), "place": order[i+1]})
+        
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result, indent=2))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

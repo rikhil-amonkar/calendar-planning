@@ -1,163 +1,140 @@
-import z3
-import json
+from z3 import *
 
 def main():
-    # Define the City enum
-    City = z3.DeclareSort('City')
-    cities_str = ["Barcelona", "Frankfurt", "Florence", "Stockholm", "Venice", "Stuttgart", "Salzburg"]
-    cities_sym = [z3.Const(city, City) for city in cities_str]
-    Barcelona, Frankfurt, Florence, Stockholm, Venice, Stuttgart, Salzburg = cities_sym
+    cities = ['Barcelona', 'Florence', 'Frankfurt', 'Salzburg', 'Stockholm', 'Stuttgart', 'Venice']
+    required_days = [2, 4, 4, 4, 2, 3, 5]
     
-    # Map city symbols to string names
-    sym_to_str = {sym: name for sym, name in zip(cities_sym, cities_str)}
-    str_to_sym = {name: sym for sym, name in sym_to_str.items()}
-    
-    # Define the direct flight connections (bidirectional)
-    connections = [
-        ("Barcelona", "Frankfurt"),
-        ("Florence", "Frankfurt"),
-        ("Stockholm", "Barcelona"),
-        ("Barcelona", "Florence"),
-        ("Venice", "Barcelona"),
-        ("Stuttgart", "Barcelona"),
-        ("Frankfurt", "Salzburg"),
-        ("Stockholm", "Frankfurt"),
-        ("Stuttgart", "Stockholm"),
-        ("Stuttgart", "Frankfurt"),
-        ("Venice", "Stuttgart"),
-        ("Venice", "Frankfurt")
+    direct_flights = [
+        ('Barcelona', 'Frankfurt'),
+        ('Florence', 'Frankfurt'),
+        ('Stockholm', 'Barcelona'),
+        ('Barcelona', 'Florence'),
+        ('Venice', 'Barcelona'),
+        ('Stuttgart', 'Barcelona'),
+        ('Frankfurt', 'Salzburg'),
+        ('Stockholm', 'Frankfurt'),
+        ('Stuttgart', 'Stockholm'),
+        ('Stuttgart', 'Frankfurt'),
+        ('Venice', 'Stuttgart'),
+        ('Venice', 'Frankfurt')
     ]
-    allowed_edges = set()
-    for u, v in connections:
-        u_sym = str_to_sym[u]
-        v_sym = str_to_sym[v]
-        allowed_edges.add((u_sym, v_sym))
-        allowed_edges.add((v_sym, u_sym))
     
-    # Requirements for each city
-    requirements = {
-        Salzburg: 4,
-        Stockholm: 2,
-        Venice: 5,
-        Frankfurt: 4,
-        Florence: 4,
-        Barcelona: 2,
-        Stuttgart: 3
-    }
+    direct_flights_set = set()
+    for flight in direct_flights:
+        c1, c2 = flight
+        key = tuple(sorted([c1, c2]))
+        direct_flights_set.add(key)
     
-    # Create Z3 solver
-    s = z3.Solver()
+    n_days = 18
+    n_cities = 7
+    venice_index = cities.index('Venice')
+    startable_indices = [cities.index(c) for c in ['Barcelona', 'Frankfurt', 'Stuttgart']]
     
-    # Define variables: A[1] to A[19] (start of each day)
-    A = [z3.Const(f'A_{i}', City) for i in range(1, 20)]
-    # Flight taken on days 1 to 18
-    flight_taken = [z3.Bool(f'f_{i}') for i in range(1, 19)]
+    in_city = [[Bool(f"in_city_{i}_{j}") for j in range(n_cities)] for i in range(n_days)]
+    solver = Solver()
     
-    # Flight constraints for each day
-    for i in range(18):
-        # If flight taken, ensure direct flight and different cities
-        flight_cond = z3.Or([z3.And(A[i] == u, A[i+1] == v) for (u, v) in allowed_edges])
-        s.add(z3.If(flight_taken[i], 
-                    z3.And(A[i] != A[i+1], flight_cond), 
-                    A[i] == A[i+1]))
+    # At least one city per day, at most two
+    for i in range(n_days):
+        solver.add(Or(in_city[i]))
+        for j1 in range(n_cities):
+            for j2 in range(j1+1, n_cities):
+                for j3 in range(j2+1, n_cities):
+                    solver.add(Not(And(in_city[i][j1], in_city[i][j2], in_city[i][j3])))
     
-    # Count constraints for each city
-    for city in cities_sym:
-        total = 0
-        for i in range(18):
-            # Count start of day
-            total += z3.If(A[i] == city, 1, 0)
-            # Count arrival on flight days
-            total += z3.If(z3.And(flight_taken[i], A[i+1] == city), 1, 0)
-        s.add(total == requirements[city])
+    two_cities = [Bool(f"two_cities_{i}") for i in range(n_days)]
+    for i in range(n_days):
+        conditions = []
+        for j1 in range(n_cities):
+            for j2 in range(j1+1, n_cities):
+                and_conditions = [in_city[i][j1], in_city[i][j2]]
+                for j3 in range(n_cities):
+                    if j3 != j1 and j3 != j2:
+                        and_conditions.append(Not(in_city[i][j3]))
+                conditions.append(And(and_conditions))
+        solver.add(two_cities[i] == Or(conditions))
+    solver.add(Sum([If(two_cities[i], 1, 0) for i in range(n_days)]) == 6)
     
-    # Exactly 6 flight days
-    s.add(z3.Sum([z3.If(ft, 1, 0) for ft in flight_taken]) == 6)
+    for j in range(n_cities):
+        solver.add(Sum([If(in_city[i][j], 1, 0) for i in range(n_days)]) == required_days[j])
     
-    # Must be in Venice on days 1 to 5
+    for i in range(n_days):
+        for j1 in range(n_cities):
+            for j2 in range(j1+1, n_cities):
+                c1 = cities[j1]
+                c2 = cities[j2]
+                key = tuple(sorted([c1, c2]))
+                if key not in direct_flights_set:
+                    solver.add(Not(And(two_cities[i], in_city[i][j1], in_city[i][j2])))
+    
     for i in range(5):
-        s.add(z3.Or(A[i] == Venice, 
-                    z3.And(flight_taken[i], A[i+1] == Venice)))
+        solver.add(in_city[i][venice_index] == True)
+    for i in [1, 2, 3]:
+        for j in range(n_cities):
+            if j != venice_index:
+                solver.add(in_city[i][j] == False)
+        solver.add(two_cities[i] == False)
     
-    # Check and get model
-    if s.check() == z3.sat:
-        m = s.model()
-        # Extract values for A and flight_taken
-        A_val = [m.eval(A[i], model_completion=True) for i in range(19)]
-        flight_taken_val = [m.eval(flight_taken[i], model_completion=True) for i in range(18)]
-        
-        # Map to presence sets for each city
-        presence = {city: set() for city in cities_sym}
-        for i in range(18):
-            day = i + 1
-            start_city = A_val[i]
-            presence[start_city].add(day)
-            if z3.is_true(flight_taken_val[i]):
-                next_city = A_val[i+1]
-                presence[next_city].add(day)
-        
-        # Generate block records for contiguous days
-        records = []
-        for city in cities_sym:
-            days = sorted(presence[city])
-            if not days:
+    solver.add(Or([in_city[0][j] for j in startable_indices]))
+    solver.add(two_cities[0] == True)
+    solver.add(Or([in_city[4][j] for j in startable_indices]))
+    solver.add(two_cities[4] == True)
+    
+    if solver.check() == sat:
+        model = solver.model()
+        continuous_blocks = []
+        for j in range(n_cities):
+            days_in_c = []
+            for i in range(n_days):
+                if is_true(model.eval(in_city[i][j])):
+                    days_in_c.append(i)
+            if not days_in_c:
                 continue
-            intervals = []
-            start = days[0]
-            end = days[0]
-            for d in days[1:]:
-                if d == end + 1:
-                    end = d
+            days_in_c.sort()
+            groups = []
+            start = days_in_c[0]
+            current = start
+            for idx in range(1, len(days_in_c)):
+                if days_in_c[idx] == current + 1:
+                    current = days_in_c[idx]
                 else:
-                    intervals.append((start, end))
-                    start = d
-                    end = d
-            intervals.append((start, end))
-            for s_int, e_int in intervals:
-                if s_int == e_int:
-                    day_range = f"Day {s_int}"
+                    groups.append((start, current))
+                    start = days_in_c[idx]
+                    current = days_in_c[idx]
+            groups.append((start, current))
+            for s, e in groups:
+                if s == e:
+                    continuous_blocks.append({
+                        "day_range": f"Day {s+1}",
+                        "place": cities[j]
+                    })
                 else:
-                    day_range = f"Day {s_int}-{e_int}"
-                records.append({
-                    "day_range": day_range,
-                    "place": sym_to_str[city],
-                    "start_day": s_int,
-                    "type": "block"
-                })
+                    continuous_blocks.append({
+                        "day_range": f"Day {s+1}-{e+1}",
+                        "place": cities[j]
+                    })
         
-        # Generate flight records
-        for i in range(18):
-            if z3.is_true(flight_taken_val[i]):
-                day = i + 1
-                dep_city = A_val[i]
-                arr_city = A_val[i+1]
-                records.append({
-                    "day_range": f"Day {day}",
-                    "place": sym_to_str[dep_city],
-                    "start_day": day,
-                    "type": "flight"
-                })
-                records.append({
-                    "day_range": f"Day {day}",
-                    "place": sym_to_str[arr_city],
-                    "start_day": day,
-                    "type": "flight"
-                })
+        travel_records = []
+        for i in range(n_days):
+            if is_true(model.eval(two_cities[i])):
+                for j in range(n_cities):
+                    if is_true(model.eval(in_city[i][j])):
+                        travel_records.append({
+                            "day_range": f"Day {i+1}",
+                            "place": cities[j]
+                        })
         
-        # Sort records: by start_day, then flight before block, then by place for tie-breaking
-        def record_key(rec):
-            type_order = 0 if rec['type'] == 'flight' else 1
-            return (rec['start_day'], type_order, rec['place'])
+        def get_start_day(record):
+            s = record['day_range'].split()[1]
+            if '-' in s:
+                return int(s.split('-')[0])
+            else:
+                return int(s)
         
-        records_sorted = sorted(records, key=record_key)
-        # Remove helper keys
-        for rec in records_sorted:
-            del rec['start_day']
-            del rec['type']
-        
-        # Output as JSON
-        result = {"itinerary": records_sorted}
-        print(json.dumps(result, indent=2))
+        continuous_blocks_sorted = sorted(continuous_blocks, key=get_start_day)
+        travel_records_sorted = sorted(travel_records, key=lambda x: int(x['day_range'].split()[1]))
+        itinerary_list = continuous_blocks_sorted + travel_records_sorted
+        result = {"itinerary": itinerary_list}
+        print(result)
     else:
         print("No solution found")
 

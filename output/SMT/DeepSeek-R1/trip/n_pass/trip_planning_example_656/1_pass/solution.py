@@ -1,97 +1,112 @@
 from z3 import *
 
 def main():
-    cities = ['Reykjavik', 'Istanbul', 'Edinburgh', 'Oslo', 'Stuttgart', 'Bucharest']
-    days_required = [5, 4, 5, 2, 3, 5]
-    n = len(cities)
+    # City indices: 0=Reykjavik, 1=Istanbul, 2=Edinburgh, 3=Oslo, 4=Stuttgart, 5=Bucharest
+    city_names = ["Reykjavik", "Istanbul", "Edinburgh", "Oslo", "Stuttgart", "Bucharest"]
+    durations = [5, 4, 5, 2, 3, 5]
     
-    # Build city index map
-    city_index = {city: idx for idx, city in enumerate(cities)}
+    # Direct flight edges (undirected)
+    edges = [(0, 3), (0, 4),
+             (1, 2), (1, 3), (1, 4), (1, 5),
+             (2, 3), (2, 4),
+             (3, 5)]
     
-    # Define flight connections (undirected graph)
-    graph = {
-        'Reykjavik': ['Stuttgart', 'Oslo'],
-        'Istanbul': ['Oslo', 'Bucharest', 'Edinburgh', 'Stuttgart'],
-        'Edinburgh': ['Stuttgart', 'Istanbul', 'Oslo'],
-        'Oslo': ['Bucharest', 'Istanbul', 'Reykjavik', 'Edinburgh'],
-        'Stuttgart': ['Reykjavik', 'Edinburgh', 'Istanbul'],
-        'Bucharest': ['Oslo', 'Istanbul']
-    }
+    # Create solver
+    s = Solver()
     
-    # Build adjacency matrix
-    conn_matrix = [[0]*n for _ in range(n)]
-    for city, neighbors in graph.items():
-        i = city_index[city]
-        for neighbor in neighbors:
-            j = city_index[neighbor]
-            conn_matrix[i][j] = 1
-            conn_matrix[j][i] = 1
+    # Order variables: o0, o1, ... o5: the city index at each position
+    order_vars = [Int('o%d' % i) for i in range(6)]
+    # Start and end days for each segment (in the order of the itinerary)
+    start_seg = [Int('start_seg%d' % i) for i in range(6)]
+    end_seg = [Int('end_seg%d' % i) for i in range(6)]
     
-    # Initialize Z3 variables
-    solver = Solver()
-    order = [Int(f'o{i}') for i in range(n)]
-    offsets = [Int(f'offs{i}') for i in range(n)]
+    # Each order_vars is between 0 and 5
+    for i in range(6):
+        s.add(order_vars[i] >= 0, order_vars[i] <= 5)
+    # All order_vars are distinct
+    s.add(Distinct(order_vars))
     
-    # Constraints: order is a permutation of [0, n-1]
-    solver.add(Distinct(order))
-    for i in range(n):
-        solver.add(And(order[i] >= 0, order[i] < n))
+    # Start of the first segment is 1
+    s.add(start_seg[0] == 1)
+    # End of the last segment is 19
+    s.add(end_seg[5] == 19)
     
-    # Define offsets: cumulative sum of (days - 1) for previous cities
-    solver.add(offsets[0] == 0)
-    for i in range(1, n):
-        prev_city_days = days_required[order[i-1]]
-        solver.add(offsets[i] == offsets[i-1] + (prev_city_days - 1))
+    # Function to get duration of a city by its index
+    def city_duration(city_var):
+        return If(city_var == 0, durations[0],
+               If(city_var == 1, durations[1],
+               If(city_var == 2, durations[2],
+               If(city_var == 3, durations[3],
+               If(city_var == 4, durations[4],
+               If(city_var == 5, durations[5], 0))))))
     
-    # Flight connection constraints
-    for i in range(n-1):
-        city1 = order[i]
-        city2 = order[i+1]
-        solver.add(conn_matrix[city1][city2] == 1)
+    # Constraints for each segment
+    for i in range(6):
+        dur = city_duration(order_vars[i])
+        s.add(end_seg[i] == start_seg[i] + dur - 1)
     
-    # Constraints for Istanbul and Oslo
-    istanbul_idx = city_index['Istanbul']
-    oslo_idx = city_index['Oslo']
+    # Constraints for consecutive segments: the end of segment i is the start of segment i+1
+    for i in range(5):
+        s.add(start_seg[i+1] == end_seg[i])
     
-    # Start day for a city at position k: 1 + offsets[k]
-    istanbul_start = Int('istanbul_start')
-    oslo_start = Int('oslo_start')
+    # Event constraints: 
+    # For Istanbul (city1) and Oslo (city3), we need to extract their start and end days
+    ist_start, ist_end = Int('ist_start'), Int('ist_end')
+    osl_start, osl_end = Int('osl_start'), Int('osl_end')
     
-    # Sum over k: if order[k] is Istanbul, then start = 1 + offsets[k]
-    istanbul_start_expr = 1 + Sum([If(order[k] == istanbul_idx, offsets[k], 0) for k in range(n)])
-    oslo_start_expr = 1 + Sum([If(order[k] == oslo_idx, offsets[k], 0) for k in range(n)])
-    solver.add(istanbul_start == istanbul_start_expr)
-    solver.add(oslo_start == oslo_start_expr)
-    solver.add(istanbul_start >= 2, istanbul_start <= 8)
-    solver.add(oslo_start >= 7, oslo_start <= 9)
+    ist_start_expr = start_seg[0]
+    ist_end_expr = end_seg[0]
+    osl_start_expr = start_seg[0]
+    osl_end_expr = end_seg[0]
     
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        order_sol = [model.evaluate(order[i]).as_long() for i in range(n)]
-        offsets_sol = [model.evaluate(offsets[i]).as_long() for i in range(n)]
+    for i in range(6):
+        ist_start_expr = If(order_vars[i] == 1, start_seg[i], ist_start_expr)
+        ist_end_expr = If(order_vars[i] == 1, end_seg[i], ist_end_expr)
+        osl_start_expr = If(order_vars[i] == 3, start_seg[i], osl_start_expr)
+        osl_end_expr = If(order_vars[i] == 3, end_seg[i], osl_end_expr)
+    
+    s.add(ist_start_expr <= 5, ist_end_expr >= 8)
+    s.add(osl_start_expr <= 8, osl_end_expr >= 9)
+    
+    # Constraint: Istanbul must be immediately followed by Oslo
+    consecutive_ist_osl = Or([And(order_vars[i] == 1, order_vars[i+1] == 3) for i in range(5)])
+    s.add(consecutive_ist_osl)
+    
+    # Flight constraints: consecutive cities must be connected by a direct flight
+    for i in range(5):
+        a = order_vars[i]
+        b = order_vars[i+1]
+        conds = []
+        for (x, y) in edges:
+            conds.append(And(a == x, b == y))
+            conds.append(And(a == y, b == x))
+        s.add(Or(conds))
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        order_sol = [m.evaluate(order_vars[i]).as_long() for i in range(6)]
+        start_sol = [m.evaluate(start_seg[i]).as_long() for i in range(6)]
+        end_sol = [m.evaluate(end_seg[i]).as_long() for i in range(6)]
         
-        # Build itinerary
         itinerary = []
-        for pos in range(n):
-            city_idx = order_sol[pos]
-            start_day = 1 + offsets_sol[pos]
-            stay_days = days_required[city_idx]
-            end_day = start_day + stay_days - 1
-            city_name = cities[city_idx]
-            
-            # If not the first city, add arrival record
-            if pos > 0:
-                itinerary.append({'day_range': f'Day {start_day}', 'place': city_name})
-            
-            # Entire stay record
-            itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': city_name})
-            
-            # If not the last city, add departure record
-            if pos < n - 1:
-                itinerary.append({'day_range': f'Day {end_day}', 'place': city_name})
+        for i in range(6):
+            city_idx = order_sol[i]
+            city_name = city_names[city_idx]
+            s_val = start_sol[i]
+            e_val = end_sol[i]
+            # Entire stay for the city
+            itinerary.append({"day_range": f"Day {s_val}-{e_val}", "place": city_name})
+            if i < 5:
+                next_city_idx = order_sol[i+1]
+                next_city_name = city_names[next_city_idx]
+                # Departure from current city on the flight day
+                itinerary.append({"day_range": f"Day {e_val}", "place": city_name})
+                # Arrival at next city on the flight day
+                itinerary.append({"day_range": f"Day {e_val}", "place": next_city_name})
         
-        result = {'itinerary': itinerary}
+        # Output as JSON
+        result = {"itinerary": itinerary}
         print(result)
     else:
         print("No solution found")

@@ -1,12 +1,18 @@
 from z3 import *
 
 def main():
-    # Mapping of city names to indices
     cities = ['Stuttgart', 'Edinburgh', 'Athens', 'Split', 'Krakow', 'Venice', 'Mykonos']
-    required_stays = [3, 4, 4, 2, 4, 5, 4]  # Corresponding to cities list
+    durations = {
+        'Stuttgart': 3,
+        'Edinburgh': 4,
+        'Athens': 4,
+        'Split': 2,
+        'Krakow': 4,
+        'Venice': 5,
+        'Mykonos': 4
+    }
     
-    # Direct flight pairs (undirected)
-    flight_pairs = [
+    edges_list = [
         ('Krakow', 'Split'),
         ('Split', 'Athens'),
         ('Edinburgh', 'Krakow'),
@@ -21,120 +27,95 @@ def main():
         ('Edinburgh', 'Athens')
     ]
     
-    # Create a mapping from city name to index
-    mapping = {city: idx for idx, city in enumerate(cities)}
-    flight_set_num = set()
-    for a, b in flight_pairs:
-        a_num = mapping[a]
-        b_num = mapping[b]
-        flight_set_num.add((min(a_num, b_num), max(a_num, b_num)))
+    edges_set = set()
+    for a, b in edges_list:
+        edges_set.add(frozenset([a, b]))
     
-    # Initialize Z3 solver
     s = Solver()
     
-    # Define the permutation of cities: city[i] for i in 0..6
-    city_vars = [Int(f'city_{i}') for i in range(7)]
-    for i in range(7):
-        s.add(city_vars[i] >= 0, city_vars[i] < 7)
-    s.add(Distinct(city_vars))
+    pos_vars = {city: Int(f'pos_{city}') for city in cities}
     
-    # Flight constraints between consecutive cities
-    for i in range(6):
-        c1 = city_vars[i]
-        c2 = city_vars[i+1]
-        conds = []
-        for (a, b) in flight_set_num:
-            conds.append(And(c1 == a, c2 == b))
-            conds.append(And(c1 == b, c2 == a))
-        s.add(Or(conds))
+    s.add(Distinct([pos_vars[city] for city in cities]))
+    for city in cities:
+        s.add(pos_vars[city] >= 0)
+        s.add(pos_vars[city] < 7)
     
-    # Compute cumulative flight days d[0..6]
-    d = [0] * 7
-    d[0] = 0  # d0 is 0
-    d[1] = required_stays[city_vars[0]]  # d1 = stay of first city
-    for i in range(1, 6):
-        d[i+1] = d[i] + (required_stays[city_vars[i]] - 1)
-    d[6] = d[5] + (required_stays[city_vars[5]] - 1)  # d6 for the sixth flight day
+    starts = {}
+    ends = {}
+    for city in cities:
+        sum_expr = 0
+        for other in cities:
+            if other == city:
+                continue
+            term = If(pos_vars[other] < pos_vars[city], durations[other] - 1, 0)
+            sum_expr += term
+        starts[city] = 1 + sum_expr
+        ends[city] = starts[city] + durations[city] - 1
     
-    # Function to get start and end days for a city
-    def get_start_end(city_num):
-        start_expr = None
-        end_expr = None
-        for i in range(7):
-            cond = (city_vars[i] == city_num)
-            if i == 0:
-                s_i = 1
-                e_i = d[1]
-            elif i == 6:
-                s_i = d[6]
-                e_i = 20
-            else:
-                s_i = d[i]
-                e_i = d[i+1]
-            if start_expr is None:
-                start_expr = s_i
-                end_expr = e_i
-            else:
-                start_expr = If(cond, s_i, start_expr)
-                end_expr = If(cond, e_i, end_expr)
-        return (start_expr, end_expr)
+    s.add(starts['Stuttgart'] <= 13)
+    s.add(ends['Stuttgart'] >= 11)
     
-    # Constraints for specific cities
-    start_stuttgart, end_stuttgart = get_start_end(0)  # Stuttgart index 0
-    s.add(start_stuttgart <= 13, end_stuttgart >= 11)
+    s.add(starts['Split'] <= 14)
+    s.add(ends['Split'] >= 13)
     
-    start_split, end_split = get_start_end(3)  # Split index 3
-    s.add(start_split <= 14, end_split >= 13)
+    s.add(starts['Krakow'] <= 11)
+    s.add(ends['Krakow'] >= 8)
     
-    start_krakow, end_krakow = get_start_end(4)  # Krakow index 4
-    s.add(start_krakow <= 11, end_krakow >= 8)
+    for i in range(len(cities)):
+        for j in range(i + 1, len(cities)):
+            city1 = cities[i]
+            city2 = cities[j]
+            if frozenset([city1, city2]) not in edges_set:
+                s.add(Or(
+                    pos_vars[city1] - pos_vars[city2] >= 2,
+                    pos_vars[city2] - pos_vars[city1] >= 2
+                ))
     
-    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        # Extract the city order
-        order = [m.evaluate(city_vars[i]).as_long() for i in range(7)]
-        city_names = [cities[idx] for idx in order]
+        pos_vals = {}
+        for city in cities:
+            pos_vals[city] = m.evaluate(pos_vars[city]).as_long()
         
-        # Compute actual flight days
-        d_vals = [0] * 7
-        d_vals[0] = 0
-        d_vals[1] = required_stays[order[0]]
-        for i in range(1, 6):
-            d_vals[i+1] = d_vals[i] + (required_stays[order[i]] - 1)
-        d_vals[6] = d_vals[5] + (required_stays[order[5]] - 1)
+        sequence = sorted(cities, key=lambda c: pos_vals[c])
         
-        # Build itinerary
+        starts_seq = []
+        ends_seq = []
+        start0 = 1
+        end0 = start0 + durations[sequence[0]] - 1
+        starts_seq.append(start0)
+        ends_seq.append(end0)
+        
+        for i in range(1, len(sequence)):
+            start_i = ends_seq[i - 1]
+            end_i = start_i + durations[sequence[i]] - 1
+            starts_seq.append(start_i)
+            ends_seq.append(end_i)
+        
         itinerary = []
-        for i in range(7):
-            cname = city_names[i]
-            if i == 0:
-                start = 1
-                end = d_vals[1]
-            elif i == 6:
-                start = d_vals[6]
-                end = 20
-            else:
-                start = d_vals[i]
-                end = d_vals[i+1]
-            
-            # Add consecutive stay
-            if start == end:
-                day_range_str = f"Day {start}"
-            else:
-                day_range_str = f"Day {start}-{end}"
-            itinerary.append({"day_range": day_range_str, "place": cname})
-            
-            # Add flight day entries if not the last city
-            if i < 6:
-                itinerary.append({"day_range": f"Day {end}", "place": cname})
-                itinerary.append({"day_range": f"Day {end}", "place": city_names[i+1]})
+        for i in range(len(sequence)):
+            city = sequence[i]
+            s_day = starts_seq[i]
+            e_day = ends_seq[i]
+            itinerary.append({
+                "day_range": f"Day {s_day}-{e_day}",
+                "place": city
+            })
+            if i < len(sequence) - 1:
+                itinerary.append({
+                    "day_range": f"Day {e_day}",
+                    "place": city
+                })
+                itinerary.append({
+                    "day_range": f"Day {e_day}",
+                    "place": sequence[i + 1]
+                })
         
-        # Output result
         result = {"itinerary": itinerary}
-        print(result)
+        import json
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

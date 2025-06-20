@@ -1,80 +1,89 @@
-import z3
-import json
+from z3 import *
 
 def main():
-    d_dict = {0: 5, 1: 4, 2: 5, 3: 5, 4: 3}
-    city_names = {0: 'Dubrovnik', 1: 'Frankfurt', 2: 'Krakow', 3: 'Naples', 4: 'Oslo'}
+    days_dict = {
+        'Krakow': 5,
+        'Frankfurt': 4,
+        'Dubrovnik': 5,
+        'Naples': 5,
+        'Oslo': 3
+    }
     
-    valid_edges = set()
-    edges = [(0,4), (1,2), (1,4), (0,1), (2,4), (3,4), (0,3), (1,3)]
-    for u, v in edges:
-        valid_edges.add((u, v))
-        valid_edges.add((v, u))
-    valid_edges = list(valid_edges)
+    cities = ['Krakow', 'Frankfurt', 'Dubrovnik', 'Naples']
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
     
-    s = z3.Solver()
-    order = [z3.Int(f'o{i}') for i in range(4)]
+    c1, c2, c3, c4 = Ints('c1 c2 c3 c4')
+    s = Solver()
     
-    for i in range(4):
-        s.add(order[i] >= 0, order[i] <= 3)
-    s.add(z3.Distinct(order))
+    s.add(c1 >= 0, c1 <= 3)
+    s.add(c2 >= 0, c2 <= 3)
+    s.add(c3 >= 0, c3 <= 3)
+    s.add(c4 >= 0, c4 <= 3)
+    s.add(Distinct(c1, c2, c3, c4))
     
-    cities_seq = [order[0], order[1], order[2], order[3], 4]
+    def adjacent(i, j):
+        return Or(
+            And(i == 0, j == 1),
+            And(i == 1, Or(j == 0, j == 2, j == 3)),
+            And(i == 2, Or(j == 1, j == 3)),
+            And(i == 3, Or(j == 1, j == 2))
+        )
     
-    start = [1] * 5
-    for i in range(1, 5):
-        prev_city = cities_seq[i-1]
-        prev_days = d_dict[prev_city]
-        start[i] = start[i-1] + (prev_days - 1)
+    s.add(adjacent(c1, c2))
+    s.add(adjacent(c2, c3))
+    s.add(adjacent(c3, c4))
     
-    s.add(start[4] == 16)
-    
-    for i in range(4):
-        city_val = cities_seq[i]
-        s.add(z3.If(city_val == 0, start[i] <= 9, True))
-    
-    for i in range(4):
-        a = cities_seq[i]
-        b = cities_seq[i+1]
-        cond = z3.Or([z3.And(a == u, b == v) for u, v in valid_edges])
-        s.add(cond)
-    
-    if s.check() == z3.sat:
+    if s.check() == sat:
         m = s.model()
-        order_vals = [m[var].as_long() for var in order]
-        seq = order_vals + [4]
+        c1_val = m[c1].as_long()
+        c2_val = m[c2].as_long()
+        c3_val = m[c3].as_long()
+        c4_val = m[c4].as_long()
         
-        starts = [1]
-        for i in range(4):
-            city_index = seq[i]
-            days = d_dict[city_index]
-            next_start = starts[-1] + (days - 1)
-            starts.append(next_start)
+        c1_name = cities[c1_val]
+        c2_name = cities[c2_val]
+        c3_name = cities[c3_val]
+        c4_name = cities[c4_val]
+        
+        s1 = 1
+        e1 = s1 + days_dict[c1_name] - 1
+        
+        s2 = e1
+        e2 = s2 + days_dict[c2_name] - 1
+        
+        s3 = e2
+        e3 = s3 + days_dict[c3_name] - 1
+        
+        s4 = e3
+        e4 = s4 + days_dict[c4_name] - 1
+        
+        s5 = 16
+        e5 = 18
         
         itinerary = []
-        for i in range(5):
-            city_idx = seq[i]
-            name = city_names[city_idx]
-            s_i = starts[i]
-            d_val = d_dict[city_idx]
-            e_i = s_i + d_val - 1
-            
-            if i != 0:
-                itinerary.append({"day_range": f"Day {s_i}", "place": name})
-            
-            if i == 4:
-                if s_i < e_i:
-                    itinerary.append({"day_range": f"Day {s_i+1}-{e_i}", "place": name})
-            else:
-                itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": name})
-            
-            if i != 4:
-                itinerary.append({"day_range": f"Day {e_i}", "place": name})
+        
+        itinerary.append({"day_range": f"Day {s1}-{e1}", "place": c1_name})
+        itinerary.append({"day_range": f"Day {e1}", "place": c1_name})
+        itinerary.append({"day_range": f"Day {e1}", "place": c2_name})
+        
+        itinerary.append({"day_range": f"Day {s2}-{e2}", "place": c2_name})
+        itinerary.append({"day_range": f"Day {e2}", "place": c2_name})
+        itinerary.append({"day_range": f"Day {e2}", "place": c3_name})
+        
+        itinerary.append({"day_range": f"Day {s3}-{e3}", "place": c3_name})
+        itinerary.append({"day_range": f"Day {e3}", "place": c3_name})
+        itinerary.append({"day_range": f"Day {e3}", "place": c4_name})
+        
+        itinerary.append({"day_range": f"Day {s4}-{e4}", "place": c4_name})
+        itinerary.append({"day_range": f"Day {e4}", "place": c4_name})
+        itinerary.append({"day_range": f"Day {e4}", "place": "Oslo"})
+        
+        itinerary.append({"day_range": f"Day {s5}-{e5}", "place": "Oslo"})
         
         result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        print(result)
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
