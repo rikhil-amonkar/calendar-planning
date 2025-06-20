@@ -345,7 +345,32 @@ def evaluate_meeting(constraints, pred_dict):
 def format_constraint_feedback(violated_constraints, task):
     """Format constraint violations into human-readable feedback"""
     if not violated_constraints:
-        return ""
+        # If no specific violated constraints, provide a default message listing all required constraints for the task
+        if task == "calendar":
+            return ("\nYour solution did not produce a valid meeting time. "
+                    "Please ensure your solution satisfies ALL of the following constraints:\n"
+                    "- The meeting must be scheduled within the available time slots.\n"
+                    "- The meeting duration must be exactly as required.\n"
+                    "- The meeting must not overlap with unavailable times.\n"
+                    )
+        elif task == "trip":
+            return ("\nYour solution did not produce a valid itinerary. "
+                    "Please ensure your solution satisfies ALL of the following constraints:\n"
+                    "- The itinerary must cover the required number of days.\n"
+                    "- You must stay in each required city for the specified number of days.\n"
+                    "- Only allowed direct flights between cities may be used.\n"
+                    "- There must be no gaps or overlaps in the itinerary.\n"
+                    )
+        elif task == "meeting":
+            return ("\nYour solution did not produce a valid meeting schedule. "
+                    "Please ensure your solution satisfies ALL of the following constraints:\n"
+                    "- You must meet with all required people.\n"
+                    "- Meeting times must be within each person's availability.\n"
+                    "- There must be enough time to travel between meetings.\n"
+                    "- Meeting times must be in a valid format.\n"
+                    )
+        else:
+            return "\nYour solution did not produce a valid output."
 
     feedback = "\nYour solution violates the following constraints:\n"
 
@@ -392,7 +417,7 @@ def format_constraint_feedback(violated_constraints, task):
             travel = violated_constraints["travel_start"]
             feedback += f"- Not enough time to travel from start location to {travel['to_person']} at {travel['to_location']} (need {travel['travel_time']} minutes)\n"
 
-    feedback += "\nPlease revise your solution to satisfy these constraints."
+   
     return feedback
 
 def execute_python_code(code_path):
@@ -529,6 +554,14 @@ def main():
                 continue
         
         try:
+            gold_formatted = {}
+            pred_formatted = {}
+            violated_constraints = {}
+            is_exact_match = False
+            constraints_satisfied = False
+            execution_output = ""
+            pass_num = 0
+            
             result = process_single_example(
                 args.model,
                 model_short_name,

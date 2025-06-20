@@ -111,10 +111,15 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze task results')
     parser.add_argument('--model_path', type=str, required=True,
                       help='Path to model folder (e.g., DeepSeek-R1 or output/SMT/DeepSeek-R1)')
+    parser.add_argument('--task', type=str, choices=['calendar', 'trip', 'meeting'], default=None,
+                      help='Task to analyze (calendar, trip, or meeting). If not specified, analyze all.')
     args = parser.parse_args()
 
     # Define tasks to analyze
-    tasks = ["calendar", "trip", "meeting"]
+    if args.task:
+        tasks = [args.task]
+    else:
+        tasks = ["calendar", "trip", "meeting"]
     
     # Get approach from path
     approach = get_approach_from_path(args.model_path)
