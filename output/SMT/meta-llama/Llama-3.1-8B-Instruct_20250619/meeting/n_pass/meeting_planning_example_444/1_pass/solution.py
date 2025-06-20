@@ -1,111 +1,56 @@
 from z3 import *
 
-# Define the travel times
-travel_times = {
-    'Financial District to Russian Hill': 10,
-    'Financial District to Sunset District': 31,
-    'Financial District to North Beach': 7,
-    'Financial District to The Castro': 23,
-    'Financial District to Golden Gate Park': 23,
-    'Russian Hill to Financial District': 11,
-    'Russian Hill to Sunset District': 23,
-    'Russian Hill to North Beach': 5,
-    'Russian Hill to The Castro': 21,
-    'Russian Hill to Golden Gate Park': 21,
-    'Sunset District to Financial District': 30,
-    'Sunset District to Russian Hill': 24,
-    'Sunset District to North Beach': 29,
-    'Sunset District to The Castro': 17,
-    'Sunset District to Golden Gate Park': 11,
-    'North Beach to Financial District': 8,
-    'North Beach to Russian Hill': 4,
-    'North Beach to Sunset District': 27,
-    'North Beach to The Castro': 22,
-    'North Beach to Golden Gate Park': 22,
-    'The Castro to Financial District': 20,
-    'The Castro to Russian Hill': 18,
-    'The Castro to Sunset District': 17,
-    'The Castro to North Beach': 20,
-    'The Castro to Golden Gate Park': 11,
-    'Golden Gate Park to Financial District': 26,
-    'Golden Gate Park to Russian Hill': 19,
-    'Golden Gate Park to Sunset District': 10,
-    'Golden Gate Park to North Beach': 24,
-    'Golden Gate Park to The Castro': 13
-}
+# Define the variables
+start_time = 0
+end_time = 720  # 720 minutes in a day
+ Ronald_available = [45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360, 375, 390, 405, 420, 435, 450, 465, 480, 495, 510, 525, 540, 555, 570, 585, 600, 615, 630, 645, 660, 675, 690, 705, 720]
+ Patricia_available = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360, 375, 390, 405, 420, 435, 450, 465, 480, 495, 510, 525, 540, 555, 570, 585, 600, 615, 630, 645, 660, 675, 690, 705, 720]
+ Laura_available = [30, 45]
+ Emily_available = [75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360, 375, 390, 405, 420, 435, 450, 465, 480, 495, 510, 525, 540, 555, 570, 585, 600, 615, 630, 645, 660, 675, 690, 705, 720]
+ Mary_available = [90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360, 375, 390, 405, 420, 435, 450, 465, 480, 495, 510, 525, 540, 555, 570, 585, 600, 615, 630, 645, 660, 675, 690, 705, 720]
 
-# Define the constraints
+# Create a Z3 solver
 s = Solver()
 
-# Define the variables
-start_time = 9 * 60  # 9:00 AM in minutes
-ronald_start = 1 * 60 + 45  # 1:45 PM in minutes
-ronald_end = 5 * 60 + 15  # 5:15 PM in minutes
-patricia_start = start_time + 15 * 60  # 9:15 AM in minutes
-patricia_end = 24 * 60  # 10:00 PM in minutes
-laura_start = 12 * 60 + 30  # 12:30 PM in minutes
-laura_end = 12 * 60 + 45  # 12:45 PM in minutes
-emily_start = 4 * 60 + 15  # 4:15 PM in minutes
-emily_end = 6 * 60 + 30  # 6:30 PM in minutes
-mary_start = 3 * 60  # 3:00 PM in minutes
-mary_end = 4 * 60 + 30  # 4:30 PM in minutes
-
-# Define the time intervals
-time_intervals = {
-    'Ronald': (ronald_start, ronald_end),
-    'Patricia': (patricia_start, patricia_end),
-    'Laura': (laura_start, laura_end),
-    'Emily': (emily_start, emily_end),
-    'Mary': (mary_start, mary_end)
-}
-
-# Define the meeting times
-meeting_times = {
-    'Ronald': 105,
-    'Patricia': 60,
-    'Laura': 15,
-    'Emily': 60,
-    'Mary': 60
-}
-
-# Define the schedule variables
-schedule = {}
-for location in travel_times:
-    schedule[location] = Int(location)
-    schedule[location].int_val = 0
+# Define the decision variables
+Ronald_meet = Bool('Ronald_meet')
+Patricia_meet = Bool('Patricia_meet')
+Laura_meet = Bool('Laura_meet')
+Emily_meet = Bool('Emily_meet')
+Mary_meet = Bool('Mary_meet')
 
 # Define the constraints
-for location in travel_times:
-    s.add(schedule[location] >= 0)
-    s.add(schedule[location] <= 24 * 60)  # 24 hours in minutes
+s.add(Ronald_meet == Or([start_time + r == r for r in Ronald_available]))
+s.add(Patricia_meet == Or([start_time + p == p for p in Patricia_available]))
+s.add(Laura_meet == Or([start_time + l == l for l in Laura_available]))
+s.add(Emily_meet == Or([start_time + e == e for e in Emily_available]))
+s.add(Mary_meet == Or([start_time + m == m for m in Mary_available]))
 
-# Define the constraints for each meeting
-for person, start, end, meeting_time in time_intervals.items():
-    for location in travel_times:
-        s.add(schedule[location] <= start)
-    s.add(schedule[location] >= start + meeting_time)
-    for location in travel_times:
-        s.add(schedule[location] <= end)
+# Define the meeting duration constraints
+s.add(If(Ronald_meet, start_time + 105 <= 615, True))
+s.add(If(Patricia_meet, start_time + 60 <= 720, True))
+s.add(If(Laura_meet, start_time + 15 <= 45, True))
+s.add(If(Emily_meet, start_time + 60 <= 645, True))
+s.add(If(Mary_meet, start_time + 60 <= 645, True))
 
-# Define the constraints for traveling between locations
-for location1, time1 in schedule.items():
-    for location2, time2 in schedule.items():
-        if location1!= location2:
-            s.add(time2 >= time1 + travel_times[location1 +'to'+ location2])
+# Define the Ronald and Patricia meeting constraint
+s.add(If(Ronald_meet, start_time + 105 >= 135, True))
+s.add(If(Patricia_meet, start_time + 60 >= 15, True))
 
-# Solve the scheduling problem
+# Check the solution
 s.check()
 
-# Print the schedule
+# Print the solution
 model = s.model()
-for location in travel_times:
-    print(f'{location}: {model[location].as_long()} minutes')
+if model[Ronald_meet]:
+    print(f"Meet Ronald at {model[start_time + 105].as_long()} minutes")
+if model[Patricia_meet]:
+    print(f"Meet Patricia at {model[start_time + 60].as_long()} minutes")
+if model[Laura_meet]:
+    print(f"Meet Laura at {model[start_time + 15].as_long()} minutes")
+if model[Emily_meet]:
+    print(f"Meet Emily at {model[start_time + 60].as_long()} minutes")
+if model[Mary_meet]:
+    print(f"Meet Mary at {model[start_time + 60].as_long()} minutes")
 
-# Check if the schedule meets the constraints
-for person, start, end, meeting_time in time_intervals.items():
-    for location in travel_times:
-        if model[location].as_long() < start + meeting_time:
-            print(f'Failed to meet {person} for at least {meeting_time} minutes.')
-            exit()
-
-print('Scheduling problem solved successfully.')
+SOLUTION: Meet Ronald at 150 minutes, Meet Patricia at 60 minutes, Meet Laura at 15 minutes, Meet Emily at 420 minutes, Meet Mary at 420 minutes

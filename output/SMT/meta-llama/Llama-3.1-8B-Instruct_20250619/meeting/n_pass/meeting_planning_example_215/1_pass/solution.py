@@ -2,83 +2,53 @@ from z3 import *
 
 # Define the travel times
 travel_times = {
-    ('Bayview', 'Embarcadero'): 19,
-    ('Bayview', 'Richmond District'): 25,
-    ('Bayview', 'Fisherman\'s Wharf'): 25,
-    ('Embarcadero', 'Bayview'): 21,
-    ('Embarcadero', 'Richmond District'): 21,
-    ('Embarcadero', 'Fisherman\'s Wharf'): 6,
-    ('Richmond District', 'Bayview'): 26,
-    ('Richmond District', 'Embarcadero'): 19,
-    ('Richmond District', 'Fisherman\'s Wharf'): 18,
-    ('Fisherman\'s Wharf', 'Bayview'): 26,
-    ('Fisherman\'s Wharf', 'Embarcadero'): 8,
-    ('Fisherman\'s Wharf', 'Richmond District'): 18
+    'Bayview to Embarcadero': 19,
+    'Bayview to Richmond District': 25,
+    'Bayview to Fisherman\'s Wharf': 25,
+    'Embarcadero to Bayview': 21,
+    'Embarcadero to Richmond District': 21,
+    'Embarcadero to Fisherman\'s Wharf': 6,
+    'Richmond District to Bayview': 26,
+    'Richmond District to Embarcadero': 19,
+    'Richmond District to Fisherman\'s Wharf': 18,
+    'Fisherman\'s Wharf to Bayview': 26,
+    'Fisherman\'s Wharf to Embarcadero': 8,
+    'Fisherman\'s Wharf to Richmond District': 18
 }
 
 # Define the constraints
-start_time = 9 * 60  # 9:00 AM in minutes
-jessica_arrival = 4 * 60 + 45  # 4:45 PM in minutes
-jessica_departure = 7 * 60  # 7:00 PM in minutes
-sandra_arrival = 6 * 60 + 30  # 6:30 PM in minutes
-sandra_departure = 9 * 60 + 45  # 9:45 PM in minutes
-jason_arrival = 4 * 60  # 4:00 PM in minutes
-jason_departure = 4 * 60 + 45  # 4:45 PM in minutes
+s = Optimize()
 
 # Define the variables
-locations = ['Bayview', 'Embarcadero', 'Richmond District', 'Fisherman\'s Wharf']
-times = [start_time + i * 60 for i in range(12 * 60)]  # 12 hours in minutes
-x = [[Bool(f"x_{i}_{j}") for j in locations] for i in times]
-
-# Define the solver
-s = Solver()
+x = [Bool(f'visit_{location}') for location in ['Embarcadero', 'Richmond District', 'Fisherman\'s Wharf']]
+t = Int('time')
+jason_time = Int('jason_time')
+sandra_time = Int('sandra_time')
 
 # Add constraints
-for i in times:
-    s.add(Or([x[i][loc] for loc in locations]))
-    for j in locations:
-        s.add(If(x[i][j], x[i][j] == 1, True))
-    for j in locations:
-        s.add(If(x[i][j], x[i-1][j] == 0, True))
+s.add(And([x[0], t >= 9*60 + 45*60, t <= 7*60]))
+s.add(And([x[1], t >= 9*60 + 6.5*60, t <= 9.75*60]))
+s.add(And([x[2], t >= 9*60 + 4*60, t <= 4.75*60]))
+s.add(t >= 9*60)
+s.add(t <= 9.75*60)
 
-for i in range(len(times)):
-    for j in range(len(locations)):
-        s.add(x[times[i]][locations[j]] == 0)
-        s.add(x[times[i]][locations[j]] == 0)
-        for k in range(j+1, len(locations)):
-            s.add(x[times[i]][locations[j]] == 0)
-            s.add(x[times[i]][locations[k]] == 0)
+# Add objective
+s.add(If(x[0], jason_time, 0) + If(x[1], 120, 0) + If(x[2], 30, 0) >= 0)
+s.add(jason_time >= 30)
+s.add(sandra_time >= 120)
 
-# Constraints for Jessica
-for i in range(len(times)):
-    for j in range(len(locations)):
-        if locations[j] == 'Embarcadero' and times[i] >= jessica_arrival and times[i] <= jessica_departure:
-            s.add(If(x[times[i]][locations[j]], And(x[times[i]][locations[j]] == 1, x[times[i]-30][locations[j]] == 1), True))
+# Solve
+result = s.check()
 
-# Constraints for Sandra
-for i in range(len(times)):
-    for j in range(len(locations)):
-        if locations[j] == 'Richmond District' and times[i] >= sandra_arrival and times[i] <= sandra_departure:
-            s.add(If(x[times[i]][locations[j]], And(x[times[i]][locations[j]] == 1, x[times[i]-120][locations[j]] == 1), True))
-
-# Constraints for Jason
-for i in range(len(times)):
-    for j in range(len(locations)):
-        if locations[j] == 'Fisherman\'s Wharf' and times[i] >= jason_arrival and times[i] <= jason_departure:
-            s.add(If(x[times[i]][locations[j]], And(x[times[i]][locations[j]] == 1, x[times[i]-30][locations[j]] == 1), True))
-
-# Solve the problem
-s.check()
-model = s.model()
-
-# Print the solution
-print("SOLUTION:")
-for i in range(len(times)):
-    for j in range(len(locations)):
-        if model[x[times[i]][locations[j]]]:
-            print(f"At {times[i]/60}:{int(times[i]%60):02d}, you are at {locations[j]}")
-            for k in range(len(locations)):
-                if model[x[times[i]-1][locations[k]]]:
-                    print(f"  You just came from {locations[k]}")
-                if model[x[times[i]+1][locations[k]]]:
-                    print(f"  You will go to {locations[k]}")
+# Print the result
+if result == sat:
+    model = s.model()
+    print('Best schedule:')
+    for location in ['Embarcadero', 'Richmond District', 'Fisherman\'s Wharf']:
+        if model.evaluate(x[travel_times.keys().index(f'Bayview to {location}')]).as_bool():
+            print(f'Visit {location}')
+    print(f'Time: {model.evaluate(t).as_long()} minutes')
+    print(f'Meet Jessica for {model.evaluate(jason_time).as_long()} minutes')
+    print(f'Meet Sandra for {model.evaluate(sandra_time).as_long()} minutes')
+else:
+    print('No solution found')

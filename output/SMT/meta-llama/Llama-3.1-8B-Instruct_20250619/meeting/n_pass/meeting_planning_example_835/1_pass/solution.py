@@ -2,101 +2,54 @@ from z3 import *
 
 # Define the variables
 start_time = 0
-end_time = 1440  # 1440 minutes in a day
-arrive_time = 540  # 9:00 AM in minutes
-helen_arrive_time = 570  # 9:30 AM in minutes
-helen_leave_time = 735  # 12:15 PM in minutes
-helen_duration = 3 * 60  # 45 minutes
-steven_arrive_time = 4560  # 8:15 PM in minutes
-steven_leave_time = 4800  # 10:00 PM in minutes
-steven_duration = 5 * 60  # 105 minutes
-deborah_arrive_time = 480  # 8:30 AM in minutes
-deborah_leave_time = 720  # 12:00 PM in minutes
-deborah_duration = 1.5 * 60  # 30 minutes
-matthew_arrive_time = 555  # 9:15 AM in minutes
-matthew_leave_time = 855  # 2:15 PM in minutes
-matthew_duration = 3 * 60  # 45 minutes
-joseph_arrive_time = 855  # 2:15 PM in minutes
-joseph_leave_time = 3960  # 6:45 PM in minutes
-joseph_duration = 6 * 60  # 120 minutes
-ronald_arrive_time = 2400  # 4:00 PM in minutes
-ronald_leave_time = 4980  # 8:45 PM in minutes
-ronald_duration = 3 * 60  # 60 minutes
-robert_arrive_time = 3780  # 6:30 PM in minutes
-robert_leave_time = 4350  # 9:15 PM in minutes
-robert_duration = 6 * 60  # 120 minutes
-rebecca_arrive_time = 1560  # 2:45 PM in minutes
-rebecca_leave_time = 1650  # 4:15 PM in minutes
-rebecca_duration = 1.5 * 60  # 30 minutes
-elizabeth_arrive_time = 3780  # 6:30 PM in minutes
-elizabeth_leave_time = 4380  # 9:00 PM in minutes
-elizabeth_duration = 6 * 60  # 120 minutes
-
+end_time = 720  # 720 minutes is 12 hours
 locations = ['Pacific Heights', 'Golden Gate Park', 'The Castro', 'Bayview', 'Marina District', 'Union Square', 'Sunset District', 'Alamo Square', 'Financial District', 'Mission District']
-travel_times = {
-    'Pacific Heights': {'Golden Gate Park': 15, 'The Castro': 16, 'Bayview': 22, 'Marina District': 6, 'Union Square': 12, 'Sunset District': 21, 'Alamo Square': 10, 'Financial District': 13, 'Mission District': 15},
-    'Golden Gate Park': {'Pacific Heights': 16, 'The Castro': 13, 'Bayview': 23, 'Marina District': 16, 'Union Square': 22, 'Sunset District': 10, 'Alamo Square': 9, 'Financial District': 26, 'Mission District': 17},
-    'The Castro': {'Pacific Heights': 16, 'Golden Gate Park': 11, 'Bayview': 19, 'Marina District': 21, 'Union Square': 19, 'Sunset District': 17, 'Alamo Square': 8, 'Financial District': 21, 'Mission District': 7},
-    'Bayview': {'Pacific Heights': 23, 'Golden Gate Park': 22, 'The Castro': 19, 'Marina District': 27, 'Union Square': 18, 'Sunset District': 23, 'Alamo Square': 16, 'Financial District': 19, 'Mission District': 13},
-    'Marina District': {'Pacific Heights': 7, 'Golden Gate Park': 18, 'The Castro': 22, 'Bayview': 27, 'Union Square': 16, 'Sunset District': 19, 'Alamo Square': 15, 'Financial District': 17, 'Mission District': 20},
-    'Union Square': {'Pacific Heights': 12, 'Golden Gate Park': 22, 'The Castro': 17, 'Bayview': 15, 'Marina District': 18, 'Sunset District': 27, 'Alamo Square': 15, 'Financial District': 9, 'Mission District': 14},
-    'Sunset District': {'Pacific Heights': 21, 'Golden Gate Park': 11, 'The Castro': 17, 'Bayview': 22, 'Marina District': 21, 'Union Square': 30, 'Alamo Square': 17, 'Financial District': 30, 'Mission District': 25},
-    'Alamo Square': {'Pacific Heights': 10, 'Golden Gate Park': 9, 'The Castro': 8, 'Bayview': 16, 'Marina District': 15, 'Union Square': 14, 'Sunset District': 16, 'Financial District': 17, 'Mission District': 10},
-    'Financial District': {'Pacific Heights': 13, 'Golden Gate Park': 23, 'The Castro': 20, 'Bayview': 19, 'Marina District': 15, 'Union Square': 9, 'Sunset District': 30, 'Alamo Square': 17, 'Mission District': 17},
-    'Mission District': {'Pacific Heights': 15, 'Golden Gate Park': 17, 'The Castro': 7, 'Bayview': 14, 'Marina District': 19, 'Union Square': 15, 'Sunset District': 24, 'Alamo Square': 11, 'Financial District': 15}
+times = [9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99, 102, 105, 108, 111, 114, 117, 120, 123, 126, 129, 132, 135, 138, 141, 144, 147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183, 186, 189, 192, 195, 198, 201, 204, 207, 210, 213, 216, 219, 222, 225, 228, 231, 234, 237, 240, 243, 246, 249, 252, 255, 258, 261, 264, 267, 270, 273, 276, 279, 282, 285, 288, 291, 294, 297, 300, 303, 306, 309, 312, 315, 318, 321, 324, 327, 330, 333, 336, 339, 342, 345, 348, 351, 354, 357, 360, 363, 366, 369, 372, 375, 378, 381, 384, 387, 390, 393, 396, 399, 402, 405, 408, 411, 414, 417, 420, 423, 426, 429, 432, 435, 438, 441, 444, 447, 450, 453, 456, 459, 462, 465, 468, 471, 474, 477, 480, 483, 486, 489, 492, 495, 498, 501, 504, 507, 510, 513, 516, 519, 522, 525, 528, 531, 534, 537, 540, 543, 546, 549, 552, 555, 558, 561, 564, 567, 570, 573, 576, 579, 582, 585, 588, 591, 594, 597, 600, 603, 606, 609, 612, 615, 618, 621, 624, 627, 630, 633, 636, 639, 642, 645, 648, 651, 654, 657, 660, 663, 666, 669, 672, 675, 678, 681, 684, 687, 690, 693, 696, 699, 702, 705, 708, 711, 714, 717, 720]
+meetings = {
+    'Helen': [(9*60 + 30, 12*60 + 15)],
+    'Steven': [(8*60 + 15, 10*60)],
+    'Deborah': [(8*60 + 30, 12*60)],
+    'Matthew': [(9*60 + 15, 14*60 + 15)],
+    'Joseph': [(2*60 + 15, 6*60 + 45)],
+    'Ronald': [(4*60, 8*60 + 45)],
+    'Robert': [(6*60 + 30, 9*60 + 15)],
+    'Rebecca': [(2*60 + 45, 4*60 + 15)],
+    'Elizabeth': [(6*60 + 30, 9*60)]
 }
 
+# Define the solver
 s = Solver()
 
-# Declare the variables
-meet_helen = Bool('meet_helen')
-meet_steven = Bool('meet_steven')
-meet_deborah = Bool('meet_deborah')
-meet_matthew = Bool('meet_matthew')
-meet_joseph = Bool('meet_joseph')
-meet_ronald = Bool('meet_ronald')
-meet_robert = Bool('meet_robert')
-meet_rebecca = Bool('meet_rebecca')
-meet_elizabeth = Bool('meet_elizabeth')
-start_time_var = Int('start_time')
-end_time_var = Int('end_time')
+# Define the variables
+x = [Int(f'x_{i}') for i in range(len(locations))]
+y = [Int(f'y_{i}') for i in range(len(locations))]
+z = [Int(f'z_{i}') for i in range(len(locations))]
 
-# Add constraints
-s.add(And(start_time_var >= arrive_time, start_time_var <= end_time))
-s.add(And(end_time_var >= start_time_var, end_time_var <= end_time))
-s.add(Or(meet_helen, start_time_var + travel_times['Pacific Heights']['Golden Gate Park'] + helen_duration > helen_arrive_time))
-s.add(Or(meet_helen, end_time_var - travel_times['Golden Gate Park']['Pacific Heights'] - helen_duration < helen_leave_time))
-s.add(Or(meet_steven, start_time_var + travel_times['Pacific Heights']['The Castro'] + steven_duration > steven_arrive_time))
-s.add(Or(meet_steven, end_time_var - travel_times['The Castro']['Pacific Heights'] - steven_duration < steven_leave_time))
-s.add(Or(meet_deborah, start_time_var + travel_times['Pacific Heights']['Bayview'] + deborah_duration > deborah_arrive_time))
-s.add(Or(meet_deborah, end_time_var - travel_times['Bayview']['Pacific Heights'] - deborah_duration < deborah_leave_time))
-s.add(Or(meet_matthew, start_time_var + travel_times['Pacific Heights']['Marina District'] + matthew_duration > matthew_arrive_time))
-s.add(Or(meet_matthew, end_time_var - travel_times['Marina District']['Pacific Heights'] - matthew_duration < matthew_leave_time))
-s.add(Or(meet_joseph, start_time_var + travel_times['Pacific Heights']['Union Square'] + joseph_duration > joseph_arrive_time))
-s.add(Or(meet_joseph, end_time_var - travel_times['Union Square']['Pacific Heights'] - joseph_duration < joseph_leave_time))
-s.add(Or(meet_ronald, start_time_var + travel_times['Pacific Heights']['Sunset District'] + ronald_duration > ronald_arrive_time))
-s.add(Or(meet_ronald, end_time_var - travel_times['Sunset District']['Pacific Heights'] - ronald_duration < ronald_leave_time))
-s.add(Or(meet_robert, start_time_var + travel_times['Pacific Heights']['Alamo Square'] + robert_duration > robert_arrive_time))
-s.add(Or(meet_robert, end_time_var - travel_times['Alamo Square']['Pacific Heights'] - robert_duration < robert_leave_time))
-s.add(Or(meet_rebecca, start_time_var + travel_times['Pacific Heights']['Financial District'] + rebecca_duration > rebecca_arrive_time))
-s.add(Or(meet_rebecca, end_time_var - travel_times['Financial District']['Pacific Heights'] - rebecca_duration < rebecca_leave_time))
-s.add(Or(meet_elizabeth, start_time_var + travel_times['Pacific Heights']['Mission District'] + elizabeth_duration > elizabeth_arrive_time))
-s.add(Or(meet_elizabeth, end_time_var - travel_times['Mission District']['Pacific Heights'] - elizabeth_duration < elizabeth_leave_time))
+# Define the constraints
+for i in range(len(locations)):
+    s.add(x[i] >= start_time)
+    s.add(x[i] <= end_time)
+    s.add(y[i] >= x[i])
+    s.add(y[i] <= end_time)
+    s.add(z[i] >= y[i])
+    s.add(z[i] <= end_time)
+
+for i in range(len(locations)):
+    for j in range(len(locations)):
+        if i!= j:
+            s.add(y[i] + (times.index(locations[j]) - times.index(locations[i])) >= x[i])
+            s.add(y[i] + (times.index(locations[j]) - times.index(locations[i])) <= z[i])
+
+for person, times in meetings.items():
+    for time in times:
+        s.add(y[times[0]] >= time[0])
+        s.add(y[times[1]] <= time[1])
 
 # Solve the problem
-if s.check() == sat:
-    model = s.model()
-    print("SOLUTION:")
-    print(f"Start time: {model[start_time_var].as_long()}")
-    print(f"End time: {model[end_time_var].as_long()}")
-    print(f"Meet Helen: {model[meet_helen]}")
-    print(f"Meet Steven: {model[meet_steven]}")
-    print(f"Meet Deborah: {model[meet_deborah]}")
-    print(f"Meet Matthew: {model[meet_matthew]}")
-    print(f"Meet Joseph: {model[meet_joseph]}")
-    print(f"Meet Ronald: {model[meet_ronald]}")
-    print(f"Meet Robert: {model[meet_robert]}")
-    print(f"Meet Rebecca: {model[meet_rebecca]}")
-    print(f"Meet Elizabeth: {model[meet_elizabeth]}")
-else:
-    print("No solution found")
+s.check()
+model = s.model()
+
+# Print the solution
+print('SOLUTION:')
+for i in range(len(locations)):
+    print(f'{locations[i]}: {model[x[i]].as_long()} - {model[y[i]].as_long()} - {model[z[i]].as_long()}')

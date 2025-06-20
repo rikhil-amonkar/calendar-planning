@@ -1,98 +1,87 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 1430  # 2:30 PM
-friends = ['Kevin', 'Kimberly', 'Joseph', 'Thomas']
-locations = ['Sunset District', 'Alamo Square', 'Russian Hill', 'Presidio', 'Financial District']
+# Define the travel times
 travel_times = {
-    ('Sunset District', 'Alamo Square'): 17,
-    ('Sunset District', 'Russian Hill'): 24,
-    ('Sunset District', 'Presidio'): 16,
-    ('Sunset District', 'Financial District'): 30,
-    ('Alamo Square', 'Sunset District'): 16,
-    ('Alamo Square', 'Russian Hill'): 13,
-    ('Alamo Square', 'Presidio'): 18,
-    ('Alamo Square', 'Financial District'): 17,
-    ('Russian Hill', 'Sunset District'): 23,
-    ('Russian Hill', 'Alamo Square'): 15,
-    ('Russian Hill', 'Presidio'): 14,
-    ('Russian Hill', 'Financial District'): 11,
-    ('Presidio', 'Sunset District'): 15,
-    ('Presidio', 'Alamo Square'): 18,
-    ('Presidio', 'Russian Hill'): 14,
-    ('Presidio', 'Financial District'): 23,
-    ('Financial District', 'Sunset District'): 31,
-    ('Financial District', 'Alamo Square'): 17,
-    ('Financial District', 'Russian Hill'): 10,
-    ('Financial District', 'Presidio'): 22
+    'Sunset District to Alamo Square': 17,
+    'Sunset District to Russian Hill': 24,
+    'Sunset District to Presidio': 16,
+    'Sunset District to Financial District': 30,
+    'Alamo Square to Sunset District': 16,
+    'Alamo Square to Russian Hill': 13,
+    'Alamo Square to Presidio': 18,
+    'Alamo Square to Financial District': 17,
+    'Russian Hill to Sunset District': 23,
+    'Russian Hill to Alamo Square': 15,
+    'Russian Hill to Presidio': 14,
+    'Russian Hill to Financial District': 11,
+    'Presidio to Sunset District': 15,
+    'Presidio to Alamo Square': 18,
+    'Presidio to Russian Hill': 14,
+    'Presidio to Financial District': 23,
+    'Financial District to Sunset District': 31,
+    'Financial District to Alamo Square': 17,
+    'Financial District to Russian Hill': 10,
+    'Financial District to Presidio': 22
 }
 
-s = Optimize()
+# Define the constraints
+constraints = [
+    ('Kevin', 'Alamo Square', 8*60 + 15, 9*60 + 30, 75),
+    ('Kimberly', 'Russian Hill', 8*60 + 45, 12*60 + 30, 30),
+    ('Joseph', 'Presidio', 6*60 + 30, 7*60 + 15, 45),
+    ('Thomas', 'Financial District', 7*60 + 0, 9*60 + 45, 45)
+]
 
-# Define the decision variables
-x = [[Bool(f'x_{i}_{locations.index(location)}') for location in locations] for i in range(4)]
-y = [[[[Bool(f'y_{i}_{locations.index(location)}_{locations.index(next_location)}_{locations.index(next_next_location)}') for next_next_location in locations] for next_location in locations] for location in locations] for i in range(4)]
-z = [Int(f'z_{i}') for i in range(4)]
+# Create a Z3 solver
+solver = Solver()
 
-# Add constraints
-for i in range(4):
-    s.add(z[i] >= 0)
-    s.add(z[i] <= 1430 - start_time)
+# Define the variables
+x = [Bool(f'x_{i}') for i in range(len(constraints))]
+t = [Int(f't_{i}') for i in range(len(constraints))]
 
-for i in range(4):
-    for location_index in range(len(locations)):
-        s.add(x[i][location_index] == False)
-        for next_location_index in range(len(locations)):
-            s.add(y[i][location_index][next_location_index] == False)
-            for next_next_location_index in range(len(locations)):
-                s.add(y[i][location_index][next_location_index][next_next_location_index] == False)
+# Add constraints for each person
+for i, (name, location, start_time, end_time, min_time) in enumerate(constraints):
+    # Ensure the person is at the correct location
+    solver.add(t[i] >= start_time)
+    solver.add(t[i] <= end_time)
+    # Ensure the person is at the location for at least min_time minutes
+    solver.add(t[i] + min_time >= start_time)
+    solver.add(t[i] + min_time <= end_time)
+    # Ensure we visit the person
+    solver.add(x[i])
 
-for i in range(4):
-    for location_index in range(len(locations)):
-        s.add(If(x[i][location_index], z[i] - travel_times[('Sunset District', locations[location_index])] >= 0, z[i] >= 0))
+# Add constraints for travel times
+for i in range(len(constraints)):
+    for j in range(len(constraints)):
+        if i!= j:
+            # Ensure we don't travel back in time
+            solver.add(t[i] + travel_times[f'{constraints[i][1]} to {constraints[j][1]}'] <= t[j])
 
-for i in range(4):
-    for location_index in range(len(locations)):
-        for next_location_index in range(len(locations)):
-            if location_index!= next_location_index:
-                s.add(If(y[i][location_index][next_location_index], z[i] - travel_times[(locations[location_index], locations[next_location_index])] >= 0, z[i] >= 0))
+# Add constraint to meet exactly 4 people
+meet_count = 0
+for i in range(len(constraints)):
+    meet_count += x[i]
 
-for i in range(4):
-    for location_index in range(len(locations)):
-        for next_location_index in range(len(locations)):
-            if location_index!= next_location_index:
-                s.add(If(y[i][location_index][next_location_index][next_location_index], z[i] - travel_times[(locations[next_location_index], locations[next_location_index])] >= 0, z[i] >= 0))
+# Add constraint to ensure that the meet count is exactly 4
+solver.add(meet_count == 4)
 
-for i in range(4):
-    s.add(z[i] >= 75 * x[i][1])  # Kevin will be at Alamo Square
-    s.add(z[i] >= 30 * x[i][2])  # Kimberly will be at Russian Hill
-    s.add(z[i] >= 45 * x[i][3])  # Joseph will be at Presidio
-    s.add(z[i] >= 45 * x[i][4])  # Thomas will be at Financial District
-
-# Add objective function
-s.minimize(z[0] + z[1] + z[2] + z[3])
+# Add constraints for each possible combination of 4 people
+combinations = [
+    [0, 1, 2, 3],
+    [0, 1, 2, 4],
+    [0, 1, 3, 4],
+    [0, 2, 3, 4],
+    [1, 2, 3, 4]
+]
+for combination in combinations:
+    solver.assert_and_track(And([x[i] for i in combination]), f'combination_{combination}')
 
 # Solve the problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    print("SOLUTION:")
-    for i in range(4):
-        print(f"Friend: {['Kevin', 'Kimberly', 'Joseph', 'Thomas'][i]}")
-        for location_index in range(len(locations)):
-            if model[x[i][location_index]].as_bool():
-                print(f"  Visit {locations[location_index]}: Yes")
-            else:
-                print(f"  Visit {locations[location_index]}: No")
-        for location_index in range(len(locations)):
-            for next_location_index in range(len(locations)):
-                if location_index!= next_location_index:
-                    if model[y[i][location_index][next_location_index][next_location_index]].as_bool():
-                        print(f"  Travel from {locations[location_index]} to {locations[next_location_index]}: Yes")
-                    else:
-                        print(f"  Travel from {locations[location_index]} to {locations[next_location_index]}: No")
-        print(f"  Total time: {model[z[i]]}")
-        print()
+if solver.check() == sat:
+    model = solver.model()
+    print('SOLUTION:')
+    for i, (name, location, start_time, end_time, min_time) in enumerate(constraints):
+        if model.evaluate(x[i]).as_bool():
+            print(f'Meet {name} at {location} from {model.evaluate(t[i]).as_long()} to {model.evaluate(t[i] + min_time).as_long()}')
 else:
-    print("No solution found")
+    print('No solution found')

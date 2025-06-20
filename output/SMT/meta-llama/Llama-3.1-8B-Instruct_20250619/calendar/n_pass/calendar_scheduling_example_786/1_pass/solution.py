@@ -1,77 +1,74 @@
 from z3 import *
 
-# Define the days and time slots
+# Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday']
-time_slots = [(9, 30), (10, 30), (11, 30), (13, 30), (14, 30), (15, 30), (16, 30)]
 
-# Define the existing schedules
-amy_schedule = {
-    'Monday': [(9, 30), (11, 30), (13, 30)],
-    'Tuesday': [],
-    'Wednesday': [(11, 30), (13, 30)]
-}
-
-pamela_schedule = {
-    'Monday': [(9, 30), (11, 0, 16, 30)],
-    'Tuesday': [(9, 30), (10, 0, 17, 0)],
-    'Wednesday': [(9, 30), (10, 0, 11, 0), (11, 30, 13, 30), (14, 30, 15, 0), (16, 0, 16, 30)]
-}
-
-# Define the preferences
-pamela_preferences = {
-    'Monday': [(15, 30, 17, 0)],
-    'Tuesday': [(15, 30, 17, 0)],
-    'Wednesday': [(15, 30, 16, 0)]
-}
+# Define the start and end times of the work hours
+start_time = 9
+end_time = 17
 
 # Define the meeting duration
-meeting_duration = 0.5
+meeting_duration = 0.5  # in hours
 
-# Create the solver
-solver = Solver()
+# Define the constraints for Amy's schedule
+amy_busy = [
+    (And(weekday() == 'Wednesday', And(start_time <= 11, 11 <= end_time)), 11, 11.5),
+    (And(weekday() == 'Wednesday', And(start_time <= 13.5, 14 <= end_time)), 13.5, 14)
+]
+
+# Define the constraints for Pamela's schedule
+pamela_busy = [
+    (And(weekday() == 'Monday', And(start_time <= 9.5, 10.5 <= end_time)), 9.5, 10.5),
+    (And(weekday() == 'Monday', And(start_time <= 11, 16.5 <= end_time)), 11, 16.5),
+    (And(weekday() == 'Tuesday', And(start_time <= 9, 9.5 <= end_time)), 9, 9.5),
+    (And(weekday() == 'Tuesday', And(start_time <= 10, 17 <= end_time)), 10, 17),
+    (And(weekday() == 'Wednesday', And(start_time <= 9, 9.5 <= end_time)), 9, 9.5),
+    (And(weekday() == 'Wednesday', And(start_time <= 10, 11 <= end_time)), 10, 11),
+    (And(weekday() == 'Wednesday', And(start_time <= 11.5, 13.5 <= end_time)), 11.5, 13.5),
+    (And(weekday() == 'Wednesday', And(start_time <= 14.5, 15 <= end_time)), 14.5, 15),
+    (And(weekday() == 'Wednesday', And(start_time <= 16, 16.5 <= end_time)), 16, 16.5)
+]
+
+# Define the preferences for Pamela
+pamela_preferences = [
+    (weekday()!= 'Monday', 1),
+    (weekday()!= 'Tuesday', 1),
+    (And(weekday() == 'Wednesday', start_time >= 16), 1)
+]
+
+# Define the solver
+solver = Optimize()
 
 # Define the variables
-day = [Bool(f'day_{i}') for i in range(len(days))]
-start_time = [Real(f'start_time_{i}') for i in range(len(time_slots))]
-end_time = [Real(f'end_time_{i}') for i in range(len(time_slots))]
+weekday = Int('weekday')
+start_time = Real('start_time')
+end_time = Real('end_time')
 
-# Define the constraints
-for i, day_var in enumerate(day):
-    solver.add(day_var == False)
-solver.add(Or([day_var for day_var in day]))
+# Add the constraints
+for amy_constraint in amy_busy:
+    solver.add(Not(And(weekday() == amy_constraint[0], start_time >= amy_constraint[1], end_time <= amy_constraint[2])))
 
-for i, time_slot in enumerate(time_slots):
-    start_time_var = start_time[i]
-    end_time_var = end_time[i]
-    solver.add(start_time_var >= 9)
-    solver.add(start_time_var <= 17)
-    solver.add(end_time_var >= start_time_var)
-    solver.add(end_time_var <= 17)
-    solver.add(end_time_var - start_time_var >= meeting_duration)
+for pamela_constraint in pamela_busy:
+    solver.add(Not(And(weekday() == pamela_constraint[0], start_time >= pamela_constraint[1], end_time <= pamela_constraint[2])))
 
-for day_name in days:
-    for i, time_slot in enumerate(time_slots):
-        start_time_var = start_time[i]
-        end_time_var = end_time[i]
-        if day_name in amy_schedule and time_slot in amy_schedule[day_name]:
-            solver.add(start_time_var!= amy_schedule[day_name][amy_schedule[day_name].index(time_slot)][0])
-            solver.add(end_time_var!= amy_schedule[day_name][amy_schedule[day_name].index(time_slot)][1])
-        if day_name in pamela_schedule and time_slot in pamela_schedule[day_name]:
-            solver.add(start_time_var!= pamela_schedule[day_name][pamela_schedule[day_name].index(time_slot)][0])
-            solver.add(end_time_var!= pamela_schedule[day_name][pamela_schedule[day_name].index(time_slot)][1])
-        if day_name in pamela_preferences and time_slot in pamela_preferences[day_name]:
-            solver.add(start_time_var!= pamela_preferences[day_name][pamela_preferences[day_name].index(time_slot)][0])
-            solver.add(end_time_var!= pamela_preferences[day_name][pamela_preferences[day_name].index(time_slot)][1])
+for preference in pamela_preferences:
+    solver.add(preference[0])
 
-# Solve the constraints
-if solver.check() == sat:
+# Add the objective function
+solver.minimize((end_time - start_time) - meeting_duration)
+
+# Solve the problem
+solution = solver.check()
+
+# Print the solution
+if solution == sat:
     model = solver.model()
-    day_index = [i for i, day_var in enumerate(day) if model.evaluate(day_var) == True][0]
-    start_time_index = [i for i, time_slot in enumerate(time_slots) if model.evaluate(start_time[i]) == time_slot[0]][0]
-    end_time_index = [i for i, time_slot in enumerate(time_slots) if model.evaluate(end_time[i]) == time_slot[1]][0]
-    print(f'SOLUTION:')
-    print(f'Day: {days[day_index]}')
-    print(f'Start Time: {model.evaluate(start_time[start_time_index]).as_real().numerator() / 60:.0f}:{model.evaluate(start_time[start_time_index]).as_real().numerator() % 60:02d}')
-    print(f'End Time: {model.evaluate(end_time[end_time_index]).as_real().numerator() / 60:.0f}:{model.evaluate(end_time[end_time_index]).as_real().numerator() % 60:02d}')
+    day = days[model[weekday].as_long()]
+    start_time = model[start_time].as_real().as_double()
+    end_time = model[end_time].as_real().as_double()
+    print('SOLUTION:')
+    print(f'Day: {day}')
+    print(f'Start Time: {int(start_time):02d}:{int((start_time % 1) * 60):02d}')
+    print(f'End Time: {int(end_time):02d}:{int((end_time % 1) * 60):02d}')
 else:
-    print('No solution found.')
+    print('No solution found')

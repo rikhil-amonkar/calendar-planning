@@ -1,61 +1,51 @@
 from z3 import *
 
-# Define the travel distances in minutes
-distances = {
-    'Pacific Heights to Presidio': 11,
-    'Pacific Heights to Marina District': 6,
-    'Presidio to Pacific Heights': 11,
-    'Presidio to Marina District': 10,
-    'Marina District to Pacific Heights': 7,
-    'Marina District to Presidio': 10
+# Define the variables
+start_time = 0
+end_time = 540  # 9:00AM to 4:45PM
+time_slots = [0]  # Initialize with the start time
+friend_meetings = [0, 0]  # Initialize with the minimum meeting time
+
+# Define the constraints
+travel_times = {
+    'PH': {'PR': 11, 'MD': 6},
+    'PR': {'PH': 11, 'MD': 10},
+    'MD': {'PH': 7, 'PR': 10}
 }
 
-# Define the constraints
-start_time = 0
-end_time = 480  # 10 hours
-jason_start_time = 600  # 10:00 AM
-jason_end_time = 765  # 4:15 PM
-jason_meeting_duration = 90
-kenneth_start_time = 1980  # 3:30 PM
-kenneth_end_time = 2250  # 4:45 PM
-kenneth_meeting_duration = 45
+# Define the solver
+s = Optimize()
 
 # Define the variables
-x1, x2, x3 = Ints('x1 x2 x3')
-
-# Define the constraints
-constraints = [
-    x1 >= 0,
-    x1 <= end_time,
-    x2 >= 0,
-    x2 <= end_time,
-    x3 >= 0,
-    x3 <= end_time,
-    x1 + distances['Pacific Heights to Presidio'] <= jason_start_time,
-    x2 + distances['Pacific Heights to Marina District'] <= kenneth_start_time,
-    x3 + distances['Presidio to Marina District'] <= kenneth_start_time,
-    jason_start_time + jason_meeting_duration <= x1 + distances['Pacific Heights to Presidio'],
-    kenneth_start_time + kenneth_meeting_duration <= x2 + distances['Pacific Heights to Marina District'],
-    kenneth_start_time + kenneth_meeting_duration <= x3 + distances['Presidio to Marina District'],
-    jason_start_time + jason_meeting_duration >= x1,
-    kenneth_start_time + kenneth_meeting_duration >= x2,
-    kenneth_start_time + kenneth_meeting_duration >= x3,
-]
+x = [Bool(f'meet_jason_{i}') for i in range(end_time)]
+y = [Bool(f'meet_kenneth_{i}') for i in range(end_time)]
 
 # Define the objective function
-objective_function = [x1 + x2 + x3]
+obj = [x[i] * 90 + y[i] * 45 for i in range(end_time)]
 
-# Solve the problem
-solver = Optimize()
-solver.add(constraints)
-solver.add(Maximize(sum(objective_function)))
+# Define the constraints
+for i in range(1, end_time):
+    s.add(If(x[i], i >= 180, True))  # Meet Jason for at least 90 minutes
+    s.add(If(y[i], i >= 270, True))  # Meet Kenneth for at least 45 minutes
+    s.add(If(x[i-1], i - 180 >= 0, True))  # Jason's meeting slot
+    s.add(If(y[i-1], i - 270 >= 0, True))  # Kenneth's meeting slot
+    for location in ['PH', 'PR', 'MD']:
+        if (location == 'PH' and i - travel_times['PH'][location] >= 0) or \
+           (location == 'PR' and i - travel_times['PR'][location] >= 0) or \
+           (location == 'MD' and i - travel_times['MD'][location] >= 0):
+            s.add(If(x[i] or y[i], i - travel_times[location]['PH'] >= 0, True))  # Travel time from friend's location
 
-# Check if the solver found a solution
-if solver.check() == sat:
-    model = solver.model()
-    print(f"Optimal schedule: Pacific Heights at {model[x1]} minutes, Presidio at {model[x2]} minutes, Marina District at {model[x3]} minutes")
+# Solve the optimization problem
+s.maximize(Sum(obj))
+solution = s.check()
+
+if solution == sat:
+    m = s.model()
+    print("Optimal schedule:")
+    for i in range(end_time):
+        if m.evaluate(x[i]).as_bool():
+            print(f"Meet Jason from {i}:00 to {i+90}:00")
+        if m.evaluate(y[i]).as_bool():
+            print(f"Meet Kenneth from {i}:00 to {i+45}:00")
 else:
     print("No solution found")
-
-# Print the optimal schedule
-SOLUTION: Pacific Heights at 420 minutes, Presidio at 520 minutes, Marina District at 0 minutes

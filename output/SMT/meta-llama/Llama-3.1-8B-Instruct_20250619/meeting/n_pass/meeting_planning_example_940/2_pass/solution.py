@@ -1,84 +1,244 @@
 from z3 import *
 
 # Define the variables
+union_square = 0
+mission_district = 1
+fisherman_wharf = 2
+russian_hill = 3
+marina_district = 4
+north_beach = 5
+chinatown = 6
+pacific_heights = 7
+the_castro = 8
+nob_hill = 9
+sunset_district = 10
+
+# Define the times
 start_time = 0
-end_time = 480  # 480 minutes = 8 hours
-locations = ['Union Square', 'Mission District', 'Fisherman\'s Wharf', 'Russian Hill', 'Marina District', 'North Beach', 'Chinatown', 'Pacific Heights', 'The Castro', 'Nob Hill', 'Sunset District']
-meetings = ['Kevin', 'Mark', 'Jessica', 'Jason', 'John', 'Karen', 'Sarah', 'Amanda', 'Nancy', 'Rebecca']
-meeting_times = {'Kevin': (8*60 + 45, 9*60 + 45), 'Mark': (5*60 + 15, 8*60), 'Jessica': (0, 3*60), 'Jason': (3*60 + 15, 9*60 + 45), 'John': (0, 6*60), 'Karen': (4*60 + 45, 7*60), 'Sarah': (5*60 + 30, 6*15 + 45), 'Amanda': (8*60, 9*60 + 15), 'Nancy': (0, 1*60 + 45), 'Rebecca': (0, 3*60 + 75)}
+kevin_start = 24 * 60 + 45  # 8:45 PM
+kevin_end = 24 * 60 + 45 + 60  # 9:45 PM
+mark_start = 17 * 60 + 15  # 5:15 PM
+mark_end = 20 * 60  # 8:00 PM
+jessica_start = 9 * 60  # 9:00 AM
+jessica_end = 3 * 60  # 3:00 PM
+jason_start = 3 * 60 + 15  # 3:15 PM
+jason_end = 24 * 60 + 45  # 9:45 PM
+john_start = 9 * 60 + 45  # 9:45 AM
+john_end = 18 * 60  # 6:00 PM
+karen_start = 16 * 60 + 45  # 4:45 PM
+karen_end = 19 * 60  # 7:00 PM
+sarah_start = 17 * 60 + 30  # 5:30 PM
+sarah_end = 17 * 60 + 45  # 6:15 PM
+amanda_start = 20 * 60  # 8:00 PM
+amanda_end = 21 * 60 + 15  # 9:15 PM
+nancy_start = 9 * 60 + 45  # 9:45 AM
+nancy_end = 13 * 60  # 1:00 PM
+rebecca_start = 8 * 60 + 45  # 8:45 AM
+rebecca_end = 3 * 60  # 3:00 PM
 
 # Define the travel times
 travel_times = {
-    'Union Square': {'Mission District': 14, 'Fisherman\'s Wharf': 15, 'Russian Hill': 13, 'Marina District': 18, 'North Beach': 10, 'Chinatown': 7, 'Pacific Heights': 15, 'The Castro': 17, 'Nob Hill': 9, 'Sunset District': 27},
-    'Mission District': {'Union Square': 15, 'Fisherman\'s Wharf': 22, 'Russian Hill': 15, 'Marina District': 19, 'North Beach': 17, 'Chinatown': 16, 'Pacific Heights': 16, 'The Castro': 7, 'Nob Hill': 12, 'Sunset District': 24},
-    'Fisherman\'s Wharf': {'Union Square': 13, 'Mission District': 22, 'Russian Hill': 7, 'Marina District': 9, 'North Beach': 6, 'Chinatown': 12, 'Pacific Heights': 12, 'The Castro': 27, 'Nob Hill': 11, 'Sunset District': 27},
-    'Russian Hill': {'Union Square': 10, 'Mission District': 16, 'Fisherman\'s Wharf': 7, 'Marina District': 7, 'North Beach': 5, 'Chinatown': 9, 'Pacific Heights': 7, 'The Castro': 21, 'Nob Hill': 5, 'Sunset District': 23},
-    'Marina District': {'Union Square': 16, 'Mission District': 20, 'Fisherman\'s Wharf': 10, 'Russian Hill': 8, 'North Beach': 11, 'Chinatown': 15, 'Pacific Heights': 7, 'The Castro': 22, 'Nob Hill': 12, 'Sunset District': 19},
-    'North Beach': {'Union Square': 7, 'Mission District': 18, 'Fisherman\'s Wharf': 5, 'Russian Hill': 4, 'Marina District': 9, 'Chinatown': 6, 'Pacific Heights': 8, 'The Castro': 23, 'Nob Hill': 7, 'Sunset District': 27},
-    'Chinatown': {'Union Square': 7, 'Mission District': 17, 'Fisherman\'s Wharf': 8, 'Russian Hill': 7, 'Marina District': 12, 'North Beach': 3, 'Pacific Heights': 10, 'The Castro': 22, 'Nob Hill': 9, 'Sunset District': 29},
-    'Pacific Heights': {'Union Square': 12, 'Mission District': 15, 'Fisherman\'s Wharf': 13, 'Russian Hill': 7, 'Marina District': 6, 'North Beach': 9, 'Chinatown': 11, 'The Castro': 16, 'Nob Hill': 8, 'Sunset District': 21},
-    'The Castro': {'Union Square': 19, 'Mission District': 7, 'Fisherman\'s Wharf': 24, 'Russian Hill': 18, 'Marina District': 21, 'North Beach': 20, 'Chinatown': 22, 'Pacific Heights': 16, 'Nob Hill': 16, 'Sunset District': 17},
-    'Nob Hill': {'Union Square': 7, 'Mission District': 13, 'Fisherman\'s Wharf': 10, 'Russian Hill': 5, 'Marina District': 11, 'North Beach': 8, 'Chinatown': 6, 'Pacific Heights': 8, 'The Castro': 17, 'Sunset District': 24},
-    'Sunset District': {'Union Square': 30, 'Mission District': 25, 'Fisherman\'s Wharf': 29, 'Russian Hill': 24, 'Marina District': 21, 'North Beach': 28, 'Chinatown': 30, 'Pacific Heights': 21, 'The Castro': 17, 'Nob Hill': 27}
+    (union_square, mission_district): 14,
+    (union_square, fisherman_wharf): 15,
+    (union_square, russian_hill): 13,
+    (union_square, marina_district): 18,
+    (union_square, north_beach): 10,
+    (union_square, chinatown): 7,
+    (union_square, pacific_heights): 15,
+    (union_square, the_castro): 17,
+    (union_square, nob_hill): 9,
+    (union_square, sunset_district): 27,
+    (mission_district, union_square): 15,
+    (mission_district, fisherman_wharf): 22,
+    (mission_district, russian_hill): 15,
+    (mission_district, marina_district): 19,
+    (mission_district, north_beach): 17,
+    (mission_district, chinatown): 16,
+    (mission_district, pacific_heights): 16,
+    (mission_district, the_castro): 7,
+    (mission_district, nob_hill): 12,
+    (mission_district, sunset_district): 24,
+    (fisherman_wharf, union_square): 13,
+    (fisherman_wharf, mission_district): 22,
+    (fisherman_wharf, russian_hill): 7,
+    (fisherman_wharf, marina_district): 9,
+    (fisherman_wharf, north_beach): 6,
+    (fisherman_wharf, chinatown): 12,
+    (fisherman_wharf, pacific_heights): 12,
+    (fisherman_wharf, the_castro): 27,
+    (fisherman_wharf, nob_hill): 11,
+    (fisherman_wharf, sunset_district): 27,
+    (russian_hill, union_square): 10,
+    (russian_hill, mission_district): 16,
+    (russian_hill, fisherman_wharf): 7,
+    (russian_hill, marina_district): 7,
+    (russian_hill, north_beach): 5,
+    (russian_hill, chinatown): 9,
+    (russian_hill, pacific_heights): 7,
+    (russian_hill, the_castro): 21,
+    (russian_hill, nob_hill): 5,
+    (russian_hill, sunset_district): 23,
+    (marina_district, union_square): 16,
+    (marina_district, mission_district): 20,
+    (marina_district, fisherman_wharf): 10,
+    (marina_district, russian_hill): 8,
+    (marina_district, north_beach): 11,
+    (marina_district, chinatown): 15,
+    (marina_district, pacific_heights): 7,
+    (marina_district, the_castro): 22,
+    (marina_district, nob_hill): 12,
+    (marina_district, sunset_district): 19,
+    (north_beach, union_square): 7,
+    (north_beach, mission_district): 18,
+    (north_beach, fisherman_wharf): 5,
+    (north_beach, russian_hill): 4,
+    (north_beach, marina_district): 9,
+    (north_beach, chinatown): 6,
+    (north_beach, pacific_heights): 8,
+    (north_beach, the_castro): 23,
+    (north_beach, nob_hill): 7,
+    (north_beach, sunset_district): 27,
+    (chinatown, union_square): 7,
+    (chinatown, mission_district): 17,
+    (chinatown, fisherman_wharf): 8,
+    (chinatown, russian_hill): 7,
+    (chinatown, marina_district): 12,
+    (chinatown, north_beach): 3,
+    (chinatown, pacific_heights): 10,
+    (chinatown, the_castro): 22,
+    (chinatown, nob_hill): 9,
+    (chinatown, sunset_district): 29,
+    (pacific_heights, union_square): 12,
+    (pacific_heights, mission_district): 15,
+    (pacific_heights, fisherman_wharf): 13,
+    (pacific_heights, russian_hill): 7,
+    (pacific_heights, marina_district): 6,
+    (pacific_heights, north_beach): 9,
+    (pacific_heights, chinatown): 11,
+    (pacific_heights, the_castro): 16,
+    (pacific_heights, nob_hill): 8,
+    (pacific_heights, sunset_district): 21,
+    (the_castro, union_square): 19,
+    (the_castro, mission_district): 7,
+    (the_castro, fisherman_wharf): 24,
+    (the_castro, russian_hill): 18,
+    (the_castro, marina_district): 21,
+    (the_castro, north_beach): 20,
+    (the_castro, chinatown): 22,
+    (the_castro, pacific_heights): 16,
+    (the_castro, nob_hill): 16,
+    (the_castro, sunset_district): 17,
+    (nob_hill, union_square): 7,
+    (nob_hill, mission_district): 13,
+    (nob_hill, fisherman_wharf): 10,
+    (nob_hill, russian_hill): 5,
+    (nob_hill, marina_district): 11,
+    (nob_hill, north_beach): 8,
+    (nob_hill, chinatown): 6,
+    (nob_hill, pacific_heights): 8,
+    (nob_hill, the_castro): 17,
+    (nob_hill, sunset_district): 24,
+    (sunset_district, union_square): 30,
+    (sunset_district, mission_district): 25,
+    (sunset_district, fisherman_wharf): 29,
+    (sunset_district, russian_hill): 24,
+    (sunset_district, marina_district): 21,
+    (sunset_district, north_beach): 28,
+    (sunset_district, chinatown): 30,
+    (sunset_district, pacific_heights): 21,
+    (sunset_district, the_castro): 17,
+    (sunset_district, nob_hill): 27
 }
 
-# Create the solver
+# Define the constraints
 s = Solver()
 
-# Create the variables
-x = [Bool(f'x_{location}') for location in locations]
-y = [Bool(f'y_{location}') for location in locations]
-z = [Bool(f'z_{location}') for location in locations]
-t = Int('t')
+# Define the variables
+x = [Int(f'x_{i}') for i in range(11)]
+y = [Int(f'y_{i}') for i in range(11)]
 
-# Add the constraints
-for location in locations:
-    s.add(Or(x[location], Not(x[location])))
-    s.add(Or(y[location], Not(y[location])))
-    s.add(Or(z[location], Not(z[location])))
-s.add(t >= 0)
-s.add(t <= 480)
+# Define the constraints
+for i in range(11):
+    s.add(x[i] >= 0)
+    s.add(x[i] <= 24 * 60 + 45)  # 9:45 PM
+    s.add(y[i] >= 0)
+    s.add(y[i] <= 24 * 60 + 45)  # 9:45 PM
 
-# Add the constraints for the meeting times
-for person, (start, end) in meeting_times.items():
-    s.add(And(start <= start_time, end >= start_time))
-    s.add(Or([And(start_time >= start, start_time <= end, y[location]) for location in locations if travel_times['Union Square'][location] + start <= end]))
-    s.add(Or([And(start_time >= start, start_time <= end, z[location]) for location in locations if travel_times['Union Square'][location] + start <= end]))
+# Define the constraints for each meeting
+s.add(x[mission_district] >= kevin_start)
+s.add(x[mission_district] + 60 <= kevin_end)
+s.add(y[mission_district] >= x[mission_district])
+s.add(y[mission_district] + 60 <= kevin_end)
 
-# Add the constraints for the travel times
-for location1, location2 in travel_times['Union Square'].items():
-    s.add(Or([And(x['Union Square'], y[location2], t >= travel_times['Union Square'][location1], t <= travel_times['Union Square'][location1] + location2)]))
+s.add(x[fisherman_wharf] >= mark_start)
+s.add(x[fisherman_wharf] + 90 <= mark_end)
+s.add(y[fisherman_wharf] >= x[fisherman_wharf])
+s.add(y[fisherman_wharf] + 90 <= mark_end)
 
-# Add the constraints for the meeting durations
-for person in meetings:
-    if person == 'Kevin':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 60 >= meeting_times[person][0], t + 60 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Mark':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 90 >= meeting_times[person][0], t + 90 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Jessica':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 120 >= meeting_times[person][0], t + 120 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Jason':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 120 >= meeting_times[person][0], t + 120 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'John':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 15 >= meeting_times[person][0], t + 15 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Karen':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 75 >= meeting_times[person][0], t + 75 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Sarah':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 45 >= meeting_times[person][0], t + 45 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Amanda':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 60 >= meeting_times[person][0], t + 60 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Nancy':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 45 >= meeting_times[person][0], t + 45 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
-    elif person == 'Rebecca':
-        s.add(Or([And(y[location], z[location], t >= meeting_times[person][0], t <= meeting_times[person][1], t + 75 >= meeting_times[person][0], t + 75 <= meeting_times[person][1]) for location in locations if travel_times['Union Square'][location] + meeting_times[person][0] <= meeting_times[person][1]]))
+s.add(x[russian_hill] >= jessica_start)
+s.add(x[russian_hill] + 120 <= jessica_end)
+s.add(y[russian_hill] >= x[russian_hill])
+s.add(y[russian_hill] + 120 <= jessica_end)
+
+s.add(x[marina_district] >= jason_start)
+s.add(x[marina_district] + 120 <= jason_end)
+s.add(y[marina_district] >= x[marina_district])
+s.add(y[marina_district] + 120 <= jason_end)
+
+s.add(x[north_beach] >= john_start)
+s.add(x[north_beach] + 15 <= john_end)
+s.add(y[north_beach] >= x[north_beach])
+s.add(y[north_beach] + 15 <= john_end)
+
+s.add(x[chinatown] >= karen_start)
+s.add(x[chinatown] + 75 <= karen_end)
+s.add(y[chinatown] >= x[chinatown])
+s.add(y[chinatown] + 75 <= karen_end)
+
+s.add(x[pacific_heights] >= sarah_start)
+s.add(x[pacific_heights] + 45 <= sarah_end)
+s.add(y[pacific_heights] >= x[pacific_heights])
+s.add(y[pacific_heights] + 45 <= sarah_end)
+
+s.add(x[the_castro] >= amanda_start)
+s.add(x[the_castro] + 60 <= amanda_end)
+s.add(y[the_castro] >= x[the_castro])
+s.add(y[the_castro] + 60 <= amanda_end)
+
+s.add(x[nob_hill] >= nancy_start)
+s.add(x[nob_hill] + 45 <= nancy_end)
+s.add(y[nob_hill] >= x[nob_hill])
+s.add(y[nob_hill] + 45 <= nancy_end)
+
+s.add(x[sunset_district] >= rebecca_start)
+s.add(x[sunset_district] + 75 <= rebecca_end)
+s.add(y[sunset_district] >= x[sunset_district])
+s.add(y[sunset_district] + 75 <= rebecca_end)
+
+# Add constraints to meet exactly 8 people
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[chinatown] > 0, x[pacific_heights] > 0, x[the_castro] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[chinatown] > 0, x[pacific_heights] > 0, x[nob_hill] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[chinatown] > 0, x[the_castro] > 0, x[nob_hill] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[chinatown] > 0, x[pacific_heights] > 0, x[sunset_district] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[the_castro] > 0, x[nob_hill] > 0, x[sunset_district] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[chinatown] > 0, x[pacific_heights] > 0, x[the_castro] > 0, x[nob_hill] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[chinatown] > 0, x[pacific_heights] > 0, x[the_castro] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[chinatown] > 0, x[pacific_heights] > 0, x[nob_hill] > 0))
+s.add(Or(x[mission_district] > 0, x[fisherman_wharf] > 0, x[russian_hill] > 0, x[marina_district] > 0, x[north_beach] > 0, x[chinatown] > 0, x[pacific_heights] > 0, x[sunset_district] > 0))
+
+# Define the constraints for travel times
+for i in range(11):
+    for j in range(11):
+        if i!= j:
+            s.add(x[i] + travel_times[(i, j)] <= x[j])
+            s.add(y[i] + travel_times[(i, j)] <= y[j])
 
 # Solve the problem
 if s.check() == sat:
     m = s.model()
-    solution = []
-    for location in locations:
-        if m[x[location]]:
-            solution.append(location)
-    print('SOLUTION:', solution)
+    print("SOLUTION:")
+    for i in range(11):
+        print(f'x_{i} = {m[x[i]].as_long()}')
+        print(f'y_{i} = {m[y[i]].as_long()}')
 else:
-    print('No solution exists')
+    print("No solution")

@@ -1,63 +1,51 @@
 from z3 import *
 
 # Define the variables
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
 financial_district = 0
 chinatown = 1
 golden_gate_park = 2
 
-# Define the distances
-distances = [
-    [0, 5, 23],  # Financial District to other places
-    [5, 0, 23],  # Chinatown to other places
-    [23, 23, 0]   # Golden Gate Park to other places
+# Define the travel times
+travel_times = [
+    [5, 23, 26],  # Financial District to Chinatown, Golden Gate Park, and back to Financial District
+    [5, 23, 26],  # Chinatown to Financial District, Golden Gate Park, and back to Chinatown
+    [23, 5, 23]   # Golden Gate Park to Financial District, Chinatown, and back to Golden Gate Park
 ]
 
-# Define the meeting times
-meeting_times = {
-    chinatown: [12, 3],  # Kenneth will be at Chinatown from 12:00PM to 3:00PM
-    golden_gate_park: [8, 19]  # Barbara will be at Golden Gate Park from 8:15AM to 7:00PM
-}
-
-# Define the meeting durations
-meeting_durations = {
-    chinatown: 90,  # You'd like to meet Kenneth for a minimum of 90 minutes
-    golden_gate_park: 45  # You'd like to meet Barbara for a minimum of 45 minutes
-}
-
-# Define the solver
-s = Solver()
-
-# Define the variables for the schedule
-schedule = [Bool(f'schedule_{i}') for i in range(4)]
-
 # Define the constraints
-for i in range(4):
-    s.add(schedule[i] == schedule[i-1] | (schedule[i] == Not(schedule[i-1])))
+s = Optimize()
 
-# Define the constraints for the meeting times
-for place in [chinatown, golden_gate_park]:
-    s.add(And([schedule[distances[financial_district][place]] == schedule[financial_district],
-               schedule[distances[place][financial_district]] == schedule[financial_district]]))
+# Decision variables
+x = [Bool(f'x_{i}') for i in range(3)]
+y = [Bool(f'y_{i}') for i in range(3)]
 
-# Define the constraints for the meeting durations
-for place in [chinatown, golden_gate_park]:
-    s.add(And([schedule[distances[place][financial_district]] == schedule[distances[place][financial_district]] + meeting_durations[place] >= meeting_times[place][0],
-               schedule[distances[place][financial_district]] == schedule[distances[place][financial_district]] + meeting_durations[place] <= meeting_times[place][1]]))
+# Objective function
+objective = If(x[0], 90, 0) + If(x[1], 90, 0) + If(x[2], 45, 0)
 
-# Define the objective function
-max_meetings = 0
-for i in range(4):
-    for j in range(i+1, 4):
-        if schedule[i] and schedule[j]:
-            max_meetings += 1
+# Constraints
+s.add(Implies(x[0], start_time + 5 <= 12 * 60))  # Meet Kenneth at Chinatown
+s.add(Implies(x[0], 12 * 60 + 90 <= start_time + 5 + travel_times[0][1]))  # Meet Kenneth for at least 90 minutes
+s.add(Implies(x[0], start_time + 5 + travel_times[0][1] <= 3 * 60))  # Leave Chinatown before Kenneth leaves
 
-s.add(max_meetings > 0)
+s.add(Implies(x[1], start_time + travel_times[1][0] <= 8 * 60))  # Meet Barbara at Golden Gate Park
+s.add(Implies(x[1], 8 * 60 + 45 <= start_time + travel_times[1][0] + travel_times[1][1]))  # Meet Barbara for at least 45 minutes
+s.add(Implies(x[1], start_time + travel_times[1][0] + travel_times[1][1] <= 7 * 60))  # Leave Golden Gate Park before Barbara leaves
 
-# Solve the problem
-s.check()
-model = s.model()
+s.add(Implies(x[2], start_time + travel_times[2][0] <= 8 * 60))  # Meet Barbara at Golden Gate Park
+s.add(Implies(x[2], 8 * 60 + 45 <= start_time + travel_times[2][0] + travel_times[2][1]))  # Meet Barbara for at least 45 minutes
+s.add(Implies(x[2], start_time + travel_times[2][0] + travel_times[2][1] <= 7 * 60))  # Leave Golden Gate Park before Barbara leaves
 
-# Print the schedule
-print("SCHEDULE:")
-for i in range(4):
-    print(f"Place {i+1}: {model.evaluate(schedule[i])}")
+# Optimize the objective function
+s.minimize(objective)
+
+# Solve the optimization problem
+if s.check() == sat:
+    model = s.model()
+    print("SOLUTION:")
+    print(f"Meet Kenneth at {model[x[0]].as_long() // 60}:{(model[x[0]].as_long() % 60):02d}")
+    print(f"Meet Barbara at {model[x[1]].as_long() // 60}:{(model[x[1]].as_long() % 60):02d}")
+    print(f"Meet Barbara at {model[x[2]].as_long() // 60}:{(model[x[2]].as_long() % 60):02d}")
+else:
+    print("No solution found")

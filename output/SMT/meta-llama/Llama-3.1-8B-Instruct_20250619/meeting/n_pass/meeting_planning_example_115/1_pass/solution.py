@@ -1,61 +1,39 @@
 from z3 import *
 
-# Define the travel times in minutes
-travel_times = {
-    'Richmond District to Pacific Heights': 10,
-    'Richmond District to Marina District': 9,
-    'Pacific Heights to Richmond District': 12,
-    'Pacific Heights to Marina District': 6,
-    'Marina District to Richmond District': 11,
-    'Marina District to Pacific Heights': 7
-}
-
-# Define the meeting times and durations
-meeting_times = {
-    'Jessica': {'start': 3 * 60 + 30, 'end': 4 * 60 + 45, 'duration': 45},
-    'Carol': {'start': 11 * 60, 'end': 15 * 60, 'duration': 60}
-}
-
-# Define the possible locations
-locations = ['Richmond District', 'Pacific Heights', 'Marina District']
-
 # Define the variables
-locations_order = [locations[0]]
-locations_order += [location for location in locations[1:] if location!= locations_order[-1]]
-locations_order += [locations[0]]
-
-start_time = 9 * 60
-end_time = 18 * 60
-time_slot = Int('time_slot')
-time_slot = Time('time_slot','minutes')
-
-locations_order = [Int(f'location_{i}') for i in range(len(locations_order))]
+start_time = Int('start_time')
+end_time = Int('end_time')
+meet_jessica = Bool('meet_jessica')
+meet_carol = Bool('meet_carol')
 
 # Define the constraints
 s = Optimize()
-for i in range(len(locations_order) - 1):
-    s.add(locations_order[i + 1] > locations_order[i] + travel_times[f'{locations_order[i]} to {locations_order[i + 1]}'])
+s.add(0 <= start_time)  # Start time must be non-negative
+s.add(start_time <= 9)  # Start time must be before 9:00 AM
+s.add(end_time >= 9)  # End time must be after 9:00 AM
+s.add(end_time <= 24 * 60)  # End time must be before midnight
 
-s.add(locations_order[0] == 0)
-s.add(locations_order[-1] == 0)
+# Define the constraints for meeting Jessica
+s.add(If(meet_jessica, 3 * 60 <= start_time + 45, True))
+s.add(If(meet_jessica, end_time - 45 >= 3 * 60, True))
 
-# Define the constraints for the meetings
-for friend, meeting in meeting_times.items():
-    if friend == 'Jessica':
-        s.add(And(locations_order[1] >= meeting['start'], locations_order[1] <= meeting['end']))
-        s.add(locations_order[2] == locations_order[1] + 45)
-    elif friend == 'Carol':
-        s.add(And(locations_order[1] >= meeting['start'], locations_order[1] <= meeting['end']))
-        s.add(locations_order[2] == locations_order[1] + 60)
+# Define the constraints for meeting Carol
+s.add(If(meet_carol, 11 * 60 <= start_time + 60, True))
+s.add(If(meet_carol, end_time - 60 >= 11 * 60, True))
 
 # Define the objective function
-s.minimize(locations_order[-1])
+s.minimize((start_time + 10 + 7 + 45) * If(meet_jessica, 1, 0) + 
+           (start_time + 9 + 7 + 60) * If(meet_carol, 1, 0))
 
 # Solve the problem
-if s.check() == sat:
+result = s.check()
+
+if result == sat:
     model = s.model()
-    print(f'SOLUTION:')
-    for i in range(len(locations_order)):
-        print(f'Location {i+1}: {model[locations_order[i]]}')
+    print("Best schedule:")
+    print(f"Start time: {model[start_time]}")
+    print(f"End time: {model[end_time]}")
+    print(f"Meet Jessica: {model[meet_jessica]}")
+    print(f"Meet Carol: {model[meet_carol]}")
 else:
-    print('No solution found')
+    print("No solution found")

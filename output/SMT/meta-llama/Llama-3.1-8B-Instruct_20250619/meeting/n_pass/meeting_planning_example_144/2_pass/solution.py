@@ -1,58 +1,53 @@
 from z3 import *
 
-# Define the travel distances in minutes
-distances = {
-    ('The Castro', 'Mission District'): 7,
-    ('The Castro', 'Financial District'): 20,
-    ('Mission District', 'The Castro'): 7,
-    ('Mission District', 'Financial District'): 17,
-    ('Financial District', 'The Castro'): 23,
-    ('Financial District', 'Mission District'): 17
-}
+# Define the variables
+t_castro = Int('t_castro')  # Time spent at The Castro
+t_mission = Int('t_mission')  # Time spent at Mission District
+t_financial = Int('t_financial')  # Time spent at Financial District
+t_laura = Int('t_laura')  # Time spent with Laura
+t_anthony = Int('t_anthony')  # Time spent with Anthony
 
 # Define the constraints
 s = Optimize()
+s.add(t_castro >= 0)  # Time spent at The Castro is non-negative
+s.add(t_mission >= 0)  # Time spent at Mission District is non-negative
+s.add(t_financial >= 0)  # Time spent at Financial District is non-negative
+s.add(t_laura >= 0)  # Time spent with Laura is non-negative
+s.add(t_anthony >= 0)  # Time spent with Anthony is non-negative
+s.add(t_castro + t_mission + t_financial == 480)  # Total time is 480 minutes (8 hours)
+s.add(t_castro >= 90)  # Spend at least 90 minutes at The Castro (from 9:00 AM to 10:30 AM)
+s.add(t_castro <= 120)  # Spend no more than 120 minutes at The Castro (from 9:00 AM to 11:00 AM)
 
-# Define the variables
-x_lm = Int('x_lm')  # Time spent with Laura
-x_ma = Int('x_ma')  # Time spent with Anthony
-x_cf = Int('x_cf')  # Time spent traveling from The Castro to Financial District
-x_cm = Int('x_cm')  # Time spent traveling from The Castro to Mission District
-x_mc = Int('x_mc')  # Time spent traveling from Mission District to The Castro
-x_fm = Int('x_fm')  # Time spent traveling from Financial District to Mission District
-x_mc_start = Int('x_mc_start')  # Time when leaving Mission District to meet Laura
-x_fm_start = Int('x_fm_start')  # Time when leaving Financial District to meet Anthony
+# Laura's availability
+s.add(And(t_mission >= 45, t_mission <= 270))  # Spend time at Mission District between 12:15 PM and 7:45 PM
+s.add(t_laura >= 75)  # Spend at least 75 minutes with Laura
+s.add(t_laura <= 300)  # Spend no more than 300 minutes with Laura (5 hours)
 
-# Define the objective function
-objective = x_lm + x_ma
+# Anthony's availability
+s.add(And(t_financial >= 50, t_financial <= 150))  # Spend time at Financial District between 12:30 PM and 2:45 PM
+s.add(t_anthony >= 30)  # Spend at least 30 minutes with Anthony
+s.add(t_anthony <= 150)  # Spend no more than 150 minutes with Anthony (2.5 hours)
 
-# Define the constraints
-s.add(9 <= x_mc_start)  # Laura starts at 12:15PM
-s.add(x_mc_start <= 12 * 60 + 45)  # Laura ends at 7:45PM
-s.add(9 <= x_fm_start)  # Anthony starts at 12:30PM
-s.add(x_fm_start <= 12 * 60 + 45)  # Anthony ends at 2:45PM
-s.add(x_lm >= 75)  # Meet Laura for at least 75 minutes
-s.add(x_ma >= 30)  # Meet Anthony for at least 30 minutes
-s.add(x_lm <= 9 + 7 + x_cm)  # Travel from The Castro to Mission District to meet Laura
-s.add(x_ma <= 9 + x_cf)  # Travel from The Castro to Financial District to meet Anthony
-s.add(x_cf >= 17)  # Travel from Financial District to Mission District to meet Anthony
-s.add(x_cm + x_mc <= x_mc_start - 9)  # Travel from Mission District to The Castro and back to Mission District to meet Laura
-s.add(x_cf + x_fm >= 17)  # Travel from Financial District to Mission District to meet Anthony
-s.add(x_cf + x_fm <= x_fm_start - 9)  # Travel from Financial District to Mission District and back to Financial District to meet Anthony
+# Travel times
+s.add(t_castro + 7 <= t_mission)  # Travel from The Castro to Mission District
+s.add(t_mission + 7 <= t_castro + 480)  # Travel from Mission District back to The Castro
+s.add(t_castro + 20 <= t_financial)  # Travel from The Castro to Financial District
+s.add(t_financial + 17 <= t_castro + 480)  # Travel from Financial District back to The Castro
+s.add(t_mission + 17 <= t_financial)  # Travel from Mission District to Financial District
+s.add(t_financial + 23 <= t_mission + 480)  # Travel from Financial District back to Mission District
+
+# Meet with exactly 2 people
+s.add(Or(t_laura == 0, t_anthony == 0))  # Meet with either Laura or Anthony, but not both
 
 # Solve the optimization problem
-s.maximize(objective)
-
-# Check if an optimal solution exists
-if s.check() == sat:
+solution = s.check()
+if solution == sat:
     model = s.model()
-    print(f"Optimal time spent with Laura: {model[x_lm].as_long()} minutes")
-    print(f"Optimal time spent with Anthony: {model[x_ma].as_long()} minutes")
-    print(f"Optimal time spent traveling from The Castro to Financial District: {model[x_cf].as_long()} minutes")
-    print(f"Optimal time spent traveling from The Castro to Mission District: {model[x_cm].as_long()} minutes")
-    print(f"Optimal time spent traveling from Mission District to The Castro: {model[x_mc].as_long()} minutes")
-    print(f"Optimal time spent traveling from Financial District to Mission District: {model[x_fm].as_long()} minutes")
-    print(f"Optimal time to leave Mission District to meet Laura: {model[x_mc_start].as_long()} minutes")
-    print(f"Optimal time to leave Financial District to meet Anthony: {model[x_fm_start].as_long()} minutes")
+    print("Optimal schedule:")
+    print(f"Time spent at The Castro: {model[t_castro]} minutes")
+    print(f"Time spent at Mission District: {model[t_mission]} minutes")
+    print(f"Time spent at Financial District: {model[t_financial]} minutes")
+    print(f"Time spent with Laura: {model[t_laura]} minutes")
+    print(f"Time spent with Anthony: {model[t_anthony]} minutes")
 else:
-    print("No optimal solution exists")
+    print("No solution found.")

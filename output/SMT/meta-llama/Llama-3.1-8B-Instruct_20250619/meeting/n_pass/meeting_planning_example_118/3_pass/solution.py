@@ -1,61 +1,59 @@
 from z3 import *
 
-# Define the travel times in minutes
-travel_times = {
+# Define the travel distances in minutes
+distances = {
     'Bayview': {'Union Square': 17, 'Presidio': 31},
     'Union Square': {'Bayview': 15, 'Presidio': 24},
     'Presidio': {'Bayview': 31, 'Union Square': 22}
 }
 
-# Define the arrival and departure times for each location
-arrival_times = {
-    'Richard': {'start': 8*60 + 45, 'end': 1*60 + 0},
-    'Charles': {'start': 9*60 + 45, 'end': 1*60 + 0}
-}
+# Define the constraints
+def meet_richard(start_time, end_time):
+    return start_time + 120 <= end_time
 
-# Define the minimum meeting times in minutes
-min_meeting_times = {
-    'Richard': 2*60 + 0,
-    'Charles': 2*60 + 0
-}
+def meet_charles(start_time, end_time):
+    return start_time + 120 <= end_time
+
+# Define the schedule variables
+start_time_richard = Int('start_time_richard')
+end_time_richard = Int('end_time_richard')
+start_time_charles = Int('start_time_charles')
+end_time_charles = Int('end_time_charles')
+
+# Define the meeting times
+meet_time_richard = Int('meet_time_richard')
+meet_time_charles = Int('meet_time_charles')
 
 # Define the solver
 s = Solver()
 
-# Define the variables
-x = [Bool(f'meet_{i}') for i in ['Richard', 'Charles']]
-y = [Int(f'time_{i}') for i in ['Richard', 'Charles']]
+# Add constraints
+s.add(start_time_richard >= 0)
+s.add(end_time_richard >= 0)
+s.add(start_time_charles >= 0)
+s.add(end_time_charles >= 0)
+s.add(meet_time_richard >= 0)
+s.add(meet_time_charles >= 0)
 
-# Define the constraints
-for i in ['Richard', 'Charles']:
-    s.add(y[i] >= 9*60)  # Ensure that Richard and Charles are met after 9:00AM
-    s.add(y[i] <= arrival_times[i]['end'])
+# Add constraints for meeting Richard
+s.add(start_time_richard <= 90)  # Richard is at Union Square from 8:45AM to 1:00PM
+s.add(end_time_richard >= 90)
+s.add(meet_time_richard >= 0)
+s.add(meet_time_richard <= 90 - distances['Bayview']['Union Square'])
+s.add(meet_richard(start_time_richard, meet_time_richard + distances['Bayview']['Union Square']))
 
-# Define the constraints for meeting times
-for i in ['Richard', 'Charles']:
-    s.add(x[i] == True == (y[i] + min_meeting_times[i] <= arrival_times[i]['end']))
+# Add constraints for meeting Charles
+s.add(start_time_charles >= 45)  # Charles is at Presidio from 9:45AM to 1:00PM
+s.add(end_time_charles >= 45)
+s.add(meet_time_charles >= 0)
+s.add(meet_time_charles <= 90 - distances['Bayview']['Union Square'])
+s.add(meet_charles(meet_time_richard + distances['Union Square']['Presidio'], meet_time_charles + distances['Presidio']['Bayview']))
 
-# Define the constraints for travel times
-s.add(x['Richard'] == True == (y['Richard'] >= 0))  # Richard starts at Bayview
-s.add(x['Charles'] == True == (y['Charles'] >= travel_times['Bayview']['Presidio']))  # Charles starts at Presidio
+# Add constraints for travel times
+s.add(meet_time_richard + distances['Union Square']['Presidio'] <= meet_time_charles)
 
-# Define the objective function
-s.add(x['Richard'] + x['Charles'] == Max(x['Richard'], x['Charles']))
-
-# Solve the problem
 s.check()
 
-# Get the solution
-model = s.model()
-
 # Print the solution
-print("SOLUTION:")
-if model[x['Richard']].as_bool():
-    print(f"Meet Richard at {model[y['Richard']].as_long()} minutes after 9:00AM")
-else:
-    print("Do not meet Richard")
-
-if model[x['Charles']].as_bool():
-    print(f"Meet Charles at {model[y['Charles']].as_long()} minutes after 9:00AM")
-else:
-    print("Do not meet Charles")
+model = s.model()
+print("Meet Richard at Bayview at", model[start_time_richard].as_long(), "and meet Charles at Bayview at", model[meet_time_charles].as_long())

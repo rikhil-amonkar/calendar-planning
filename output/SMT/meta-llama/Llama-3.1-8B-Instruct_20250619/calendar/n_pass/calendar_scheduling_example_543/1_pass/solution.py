@@ -1,56 +1,49 @@
 from z3 import *
 
-# Define the day of the week (Monday = 0)
-days = [0]
+def schedule_meeting(start_time, end_time, james_schedule, john_schedule):
+    # Create a solver
+    s = Solver()
 
-# Define the start and end times of the work hours
-start_times = [9, 12, 13, 14]
-end_times = [17, 12, 13, 17]
+    # Define the variables
+    day = Int('day')
+    james_start = Int('james_start')
+    james_end = Int('james_end')
+    john_start = Int('john_start')
+    john_end = Int('john_end')
 
-# Define the existing schedules for James and John
-james_schedules = [[11, 30], [14, 30]]
-john_schedules = [[9, 30], [11, 30], [12, 30], [14, 30], [16, 30]]
+    # Define the constraints
+    s.add(day == 0)  # day is 0 for Monday
+    s.add(And(start_time <= james_start, james_start <= end_time))
+    s.add(And(start_time <= john_start, john_start <= end_time))
+    for james_block in james_schedule:
+        s.add(Or(james_start < james_block[0], james_end > james_block[1]))
+    for john_block in john_schedule:
+        s.add(Or(john_start < john_block[0], john_end > john_block[1]))
+    s.add(james_end - james_start == 60)  # meeting duration is 1 hour
+    s.add(john_end - john_start == 60)  # meeting duration is 1 hour
+    s.add(james_start >= 9 * 60)  # start time is after 9:00
+    s.add(james_start <= 17 * 60)  # start time is before 17:00
+    s.add(john_start >= 9 * 60)  # start time is after 9:00
+    s.add(john_start <= 17 * 60)  # start time is before 17:00
 
-# Define the meeting duration
-meeting_duration = 1
+    # Check if there is a solution
+    if s.check() == sat:
+        # Get the solution
+        model = s.model()
+        james_start_val = model[james_start].as_long()
+        john_start_val = model[john_start].as_long()
+        # Calculate the start and end times
+        start_time = james_start_val // 60
+        end_time = (james_start_val // 60) + 1
+        # Print the solution
+        print(f"SOLUTION:")
+        print(f"Day: Monday")
+        print(f"Start Time: {start_time:02d}:00")
+        print(f"End Time: {end_time:02d}:00")
+    else:
+        print("No solution found")
 
-# Define the solver
-solver = Solver()
-
-# Define the variables
-day = Int('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
-
-# Add the constraints for the day
-solver.add(day == 0)
-
-# Add the constraints for the start and end times
-solver.add(start_time >= 9)
-solver.add(start_time <= 16)
-solver.add(end_time >= start_time + meeting_duration)
-solver.add(end_time <= 17)
-
-# Add the constraints for James' schedule
-for schedule in james_schedules:
-    solver.add(Or(start_time + meeting_duration > schedule[0], start_time + meeting_duration < schedule[1]))
-
-# Add the constraints for John's schedule
-for schedule in john_schedules:
-    solver.add(Or(start_time + meeting_duration > schedule[0], start_time + meeting_duration < schedule[1]))
-
-# Check if a solution exists
-if solver.check() == sat:
-    # Get the solution
-    model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time].as_long()
-    end_time_value = model[end_time].as_long()
-
-    # Print the solution
-    print(f"SOLUTION:")
-    print(f"Day: {days[day_value]}")
-    print(f"Start Time: {start_time_value:02d}:00")
-    print(f"End Time: {end_time_value:02d}:00")
-else:
-    print("No solution exists")
+# Example usage
+james_schedule = [(330, 360), (450, 480)]
+john_schedule = [(570, 660), (600, 660), (720, 780), (450, 840)]
+schedule_meeting(360, 420, james_schedule, john_schedule)

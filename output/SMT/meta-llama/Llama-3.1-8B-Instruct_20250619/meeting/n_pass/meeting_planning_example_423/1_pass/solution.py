@@ -35,66 +35,101 @@ travel_times = {
 }
 
 # Define the constraints
-s = Solver()
+s = Optimize()
 
 # Define the variables
-time = [Int('t_{}'.format(i)) for i in range(13)]  # 13 time points (9:00AM to 9:00PM)
-meet_jason = [Bool('m_j_{}'.format(i)) for i in range(13)]  # Meet Jason at each time point
-meet_melissa = [Bool('m_m_{}'.format(i)) for i in range(13)]  # Meet Melissa at each time point
-meet_brian = [Bool('m_b_{}'.format(i)) for i in range(13)]  # Meet Brian at each time point
-meet_elizabeth = [Bool('m_e_{}'.format(i)) for i in range(13)]  # Meet Elizabeth at each time point
-meet_laura = [Bool('m_l_{}'.format(i)) for i in range(13)]  # Meet Laura at each time point
+x = [Bool(f'x_{i}') for i in range(12)]
+y = [Bool(f'y_{i}') for i in range(12)]
+z = [Bool(f'z_{i}') for i in range(12)]
+
+# Define the objective function
+objective = 0
 
 # Define the constraints
-s.add(time[0] == 0)  # 9:00AM
-for i in range(1, 13):
-    s.add(time[i] == time[i-1] + 15)  # 15-minute intervals
+for i in range(12):
+    s.add(x[i] | y[i] | z[i])  # At least one meeting per person
+    objective += If(x[i], 90, 0) + If(y[i], 45, 0) + If(z[i], 15, 0) + If(i == 0, 105, 0) + If(i == 5, 75, 0)
 
-# Jason's availability
-s.add(And(meet_jason[1], time[1] + 90 >= time[4]))  # Meet Jason from 1:00PM to 8:45PM
-s.add(Or(meet_jason[1], meet_jason[2], meet_jason[3], meet_jason[4], meet_jason[5], meet_jason[6], meet_jason[7], meet_jason[8], meet_jason[9], meet_jason[10], meet_jason[11], meet_jason[12]))
+s.add(And(x[0],  # Meet Brian
+          y[1],  # Meet Jason
+          z[2],  # Meet Elizabeth
+          z[5],  # Meet Laura
+          Implies(x[0], 9 <= 9 + If(y[1], 7, 0) + If(z[2], 11, 0) + If(z[5], 24, 0) <= 17.75),  # Brian's meeting time
+          Implies(y[1], 13 <= 13 + If(x[0], 23, 0) + If(z[2], 26, 0) + If(z[5], 22, 0) <= 19.25),  # Jason's meeting time
+          Implies(z[2], 8.75 <= 8.75 + If(x[0], 22, 0) + If(y[1], 18, 0) + If(z[5], 22, 0) <= 20.25),  # Elizabeth's meeting time
+          Implies(z[5], 2.25 <= 2.25 + If(x[0], 22, 0) + If(y[1], 7, 0) + If(z[2], 24, 0) <= 18.75)  # Laura's meeting time
+          ))
 
-# Melissa's availability
-s.add(And(meet_melissa[6], time[6] + 45 >= time[10]))  # Meet Melissa from 6:45PM to 8:15PM
-s.add(Or(meet_melissa[6], meet_melissa[7], meet_melissa[8], meet_melissa[9], meet_melissa[10], meet_melissa[11]))
+# Solve the optimization problem
+solution = s.check()
 
-# Brian's availability
-s.add(And(meet_brian[0], time[0] + 15 >= time[1]))  # Meet Brian from 9:45AM to 9:45PM
-s.add(Or(meet_brian[0], meet_brian[1], meet_brian[2], meet_brian[3], meet_brian[4], meet_brian[5], meet_brian[6], meet_brian[7], meet_brian[8], meet_brian[9], meet_brian[10], meet_brian[11], meet_brian[12]))
-
-# Elizabeth's availability
-s.add(And(meet_elizabeth[8], time[8] + 105 >= time[12]))  # Meet Elizabeth from 8:45AM to 9:30PM
-s.add(Or(meet_elizabeth[0], meet_elizabeth[1], meet_elizabeth[2], meet_elizabeth[3], meet_elizabeth[4], meet_elizabeth[5], meet_elizabeth[6], meet_elizabeth[7], meet_elizabeth[8], meet_elizabeth[9], meet_elizabeth[10], meet_elizabeth[11], meet_elizabeth[12]))
-
-# Laura's availability
-s.add(And(meet_laura[2], time[2] + 75 >= time[5]))  # Meet Laura from 2:15PM to 7:30PM
-s.add(Or(meet_laura[2], meet_laura[3], meet_laura[4], meet_laura[5], meet_laura[6], meet_laura[7], meet_laura[8], meet_laura[9], meet_laura[10], meet_laura[11]))
-
-# Travel times
-for i in range(1, 13):
-    s.add(If(meet_jason[i], time[i-1] + travel_times[('Presidio', 'Richmond District')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_melissa[i], time[i-1] + travel_times[('Presidio', 'North Beach')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_brian[i], time[i-1] + travel_times[('Presidio', 'Financial District')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_elizabeth[i], time[i-1] + travel_times[('Presidio', 'Golden Gate Park')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_laura[i], time[i-1] + travel_times[('Presidio', 'Union Square')] >= time[i], time[i-1] == time[i]))
-
-# Check if a solution exists
-if s.check() == sat:
+if solution == sat:
     model = s.model()
-    solution = []
-    for i in range(13):
-        if model.evaluate(meet_jason[i]).as_bool():
-            solution.append('Meet Jason at {}'.format(time[i]))
-        if model.evaluate(meet_melissa[i]).as_bool():
-            solution.append('Meet Melissa at {}'.format(time[i]))
-        if model.evaluate(meet_brian[i]).as_bool():
-            solution.append('Meet Brian at {}'.format(time[i]))
-        if model.evaluate(meet_elizabeth[i]).as_bool():
-            solution.append('Meet Elizabeth at {}'.format(time[i]))
-        if model.evaluate(meet_laura[i]).as_bool():
-            solution.append('Meet Laura at {}'.format(time[i]))
-    print('SOLUTION:')
-    for s in solution:
-        print(s)
+    print("Solution found:")
+    for i in range(12):
+        if model.evaluate(x[i]):
+            print(f"Meet Brian at Presidio")
+        elif model.evaluate(y[i]):
+            print(f"Meet Jason at Richmond District")
+        elif model.evaluate(z[i]):
+            if i == 0:
+                print(f"Meet Elizabeth at Golden Gate Park")
+            elif i == 1:
+                print(f"Meet Elizabeth at Golden Gate Park")
+            elif i == 2:
+                print(f"Meet Elizabeth at Golden Gate Park")
+            elif i == 3:
+                print(f"Meet Elizabeth at Golden Gate Park")
+            elif i == 4:
+                print(f"Meet Elizabeth at Golden Gate Park")
+            elif i == 5:
+                print(f"Meet Laura at Union Square")
+            elif i == 6:
+                print(f"Meet Laura at Union Square")
+            elif i == 7:
+                print(f"Meet Laura at Union Square")
+            elif i == 8:
+                print(f"Meet Laura at Union Square")
+            elif i == 9:
+                print(f"Meet Laura at Union Square")
+            elif i == 10:
+                print(f"Meet Laura at Union Square")
+            elif i == 11:
+                print(f"Meet Laura at Union Square")
+    print(f"Total meeting time: {model.evaluate(objective)} minutes")
 else:
-    print('No solution exists')
+    print("No solution found")
+
+SOLUTION:
+print("The optimal schedule is:")
+for i in range(12):
+    if model.evaluate(x[i]):
+        print(f"Meet Brian at Presidio")
+    elif model.evaluate(y[i]):
+        print(f"Meet Jason at Richmond District")
+    elif model.evaluate(z[i]):
+        if i == 0:
+            print(f"Meet Elizabeth at Golden Gate Park")
+        elif i == 1:
+            print(f"Meet Elizabeth at Golden Gate Park")
+        elif i == 2:
+            print(f"Meet Elizabeth at Golden Gate Park")
+        elif i == 3:
+            print(f"Meet Elizabeth at Golden Gate Park")
+        elif i == 4:
+            print(f"Meet Elizabeth at Golden Gate Park")
+        elif i == 5:
+            print(f"Meet Laura at Union Square")
+        elif i == 6:
+            print(f"Meet Laura at Union Square")
+        elif i == 7:
+            print(f"Meet Laura at Union Square")
+        elif i == 8:
+            print(f"Meet Laura at Union Square")
+        elif i == 9:
+            print(f"Meet Laura at Union Square")
+        elif i == 10:
+            print(f"Meet Laura at Union Square")
+        elif i == 11:
+            print(f"Meet Laura at Union Square")
+print(f"Total meeting time: {model.evaluate(objective)} minutes")

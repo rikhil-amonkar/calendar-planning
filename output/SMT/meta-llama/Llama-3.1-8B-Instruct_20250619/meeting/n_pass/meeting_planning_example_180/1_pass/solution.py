@@ -1,62 +1,71 @@
 from z3 import *
 
-# Define the travel distances in minutes
-travel_distances = {
-    'North Beach to Mission District': 18,
-    'North Beach to The Castro': 22,
-    'Mission District to North Beach': 17,
-    'Mission District to The Castro': 7,
-    'The Castro to North Beach': 20,
-    'The Castro to Mission District': 7
+# Define the variables
+start_time = 0
+end_time = 720  # 12 hours
+time_step = 15   # 15 minutes
+
+# Define the locations
+locations = ['North Beach', 'Mission District', 'The Castro']
+
+# Define the travel times
+travel_times = {
+    'North Beach': {'Mission District': 18, 'The Castro': 22},
+    'Mission District': {'North Beach': 17, 'The Castro': 7},
+    'The Castro': {'North Beach': 20, 'Mission District': 7}
 }
 
 # Define the constraints
-start_time = 0  # 9:00 AM
-james_start_time = 12 * 60 + 45  # 12:45 PM
-james_end_time = 14 * 60 + 0  # 2:00 PM
-robert_start_time = 12 * 60 + 45  # 12:45 PM
-robert_end_time = 15 * 60 + 15  # 3:15 PM
-min_time_with_james = 75
-min_time_with_robert = 30
+constraints = [
+    And(start_time >= 0, start_time <= end_time),
+    And(start_time % 15 == 0, start_time <= end_time - 15),
+    And(start_time % 15 == 0, start_time <= end_time - 15),
+    And(start_time + 75 <= end_time, start_time + 75 >= 0),
+    And(start_time + 30 <= end_time, start_time + 30 >= 0),
+    And(start_time + 17 <= 1245, start_time + 17 >= 0),
+    And(start_time + 7 <= 1245, start_time + 7 >= 0),
+    And(start_time + 20 <= 1245, start_time + 20 >= 0),
+    And(start_time + 7 <= 1245, start_time + 7 >= 0),
+    And(start_time + 22 <= 1245, start_time + 22 >= 0),
+    And(start_time + 18 <= 1245, start_time + 18 >= 0),
+    And(start_time + 17 <= 315, start_time + 17 >= 0),
+    And(start_time + 7 <= 315, start_time + 7 >= 0),
+    And(start_time + 20 <= 315, start_time + 20 >= 0),
+    And(start_time + 7 <= 315, start_time + 7 >= 0),
+    And(start_time + 22 <= 315, start_time + 22 >= 0),
+    And(start_time + 18 <= 315, start_time + 18 >= 0)
+]
+
+# Define the solver
+solver = Optimize()
 
 # Define the variables
-x1 = Int('x1')  # Time to spend at Mission District
-x2 = Int('x2')  # Time to spend at The Castro
-x3 = Int('x3')  # Time to travel from North Beach to Mission District
-x4 = Int('x4')  # Time to travel from Mission District to The Castro
-x5 = Int('x5')  # Time to travel from North Beach to The Castro
-x6 = Int('x6')  # Time to travel from The Castro to North Beach
+x = [Bool(f'x_{i}') for i in range(len(locations) * time_step)]
 
-# Define the constraints
-s = Optimize()
-s.add(x1 >= min_time_with_james)
-s.add(x2 >= min_time_with_robert)
-s.add(x1 + x2 >= min_time_with_james + min_time_with_robert)
-s.add(x3 + x4 >= james_start_time)
-s.add(x3 + x4 + x5 + x6 >= james_start_time + min_time_with_james)
-s.add(x4 + x5 >= robert_start_time)
-s.add(x4 + x5 + x6 >= robert_start_time + min_time_with_robert)
-s.add(x3 >= 17)  # Travel from North Beach to Mission District
-s.add(x4 >= 7)  # Travel from Mission District to The Castro
-s.add(x5 >= 22)  # Travel from North Beach to The Castro
-s.add(x6 >= 20)  # Travel from The Castro to North Beach
-s.add(x1 <= 2 * 60)  # Time to spend at Mission District
-s.add(x2 <= 3 * 60)  # Time to spend at The Castro
+# Add the constraints
+for constraint in constraints:
+    solver.add(constraint)
 
-# Minimize the total time spent
-s.minimize(start_time + x3 + x1 + x4 + x5 + x2 + x6)
+# Add the constraints for travel times
+for i in range(len(locations)):
+    for j in range(len(locations)):
+        if i!= j:
+            for t in range(0, end_time, time_step):
+                solver.add(If(x[i * time_step + t], x[j * time_step + t + travel_times[locations[i]][locations[j]]], True))
+
+# Add the objective function
+solver.minimize(0)
 
 # Solve the problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    print("Optimal schedule:")
-    print(f"Travel from North Beach to Mission District: {model[x3].as_long()} minutes")
-    print(f"Time to spend at Mission District: {model[x1].as_long()} minutes")
-    print(f"Travel from Mission District to The Castro: {model[x4].as_long()} minutes")
-    print(f"Time to spend at The Castro: {model[x2].as_long()} minutes")
-    print(f"Travel from North Beach to The Castro: {model[x5].as_long()} minutes")
-    print(f"Travel from The Castro to North Beach: {model[x6].as_long()} minutes")
-    print(f"Total time: {model[x3].as_long() + model[x1].as_long() + model[x4].as_long() + model[x5].as_long() + model[x2].as_long() + model[x6].as_long()} minutes")
+solution = solver.check()
+
+# Print the solution
+if solution == sat:
+    model = solver.model()
+    print("SOLUTION:")
+    for i in range(len(locations)):
+        for t in range(0, end_time, time_step):
+            if model.evaluate(x[i * time_step + t]):
+                print(f"Visit {locations[i]} at {t // 60}:{t % 60}")
 else:
     print("No solution found")

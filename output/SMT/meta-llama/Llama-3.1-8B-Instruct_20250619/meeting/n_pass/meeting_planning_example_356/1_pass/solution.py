@@ -1,6 +1,16 @@
 from z3 import *
 
-# Define the travel distances in minutes
+# Define the variables
+arrive_time = 9 * 60  # in minutes
+barbara_start = 1 * 60 + 45  # in minutes
+barbara_end = 8 * 60 + 15  # in minutes
+margaret_start = 10 * 60 + 15  # in minutes
+margaret_end = 3 * 60 + 15  # in minutes
+kevin_start = 20 * 60  # in minutes
+kevin_end = 20 * 60 + 45  # in minutes
+kimberly_start = 7 * 60 + 45  # in minutes
+kimberly_end = 4 * 60 + 45  # in minutes
+
 distances = {
     'Bayview': {'North Beach': 21, 'Presidio': 31, 'Haight-Ashbury': 19, 'Union Square': 17},
     'North Beach': {'Bayview': 22, 'Presidio': 17, 'Haight-Ashbury': 18, 'Union Square': 7},
@@ -9,75 +19,51 @@ distances = {
     'Union Square': {'Bayview': 15, 'North Beach': 10, 'Presidio': 24, 'Haight-Ashbury': 18}
 }
 
-# Define the constraints
-start_time = 0
-barbara_start = 1 * 60 + 45  # 1:45 PM
-barbara_end = 8 * 60 + 15  # 8:15 PM
-margaret_start = 10 * 60 + 15  # 10:15 AM
-margaret_end = 3 * 60 + 15  # 3:15 PM
-kevin_start = 20 * 60 + 0  # 8:00 PM
-kevin_end = 20 * 60 + 45  # 8:45 PM
-kimberly_start = 7 * 60 + 45  # 7:45 AM
-kimberly_end = 4 * 60 + 45  # 4:45 PM
-
-# Define the variables
+# Define the Z3 solver
 s = Solver()
 
-# Variables to represent the times spent at each location
-bayview_time = Int('bayview_time')
-north_beach_time = Int('north_beach_time')
-presidio_time = Int('presidio_time')
-haight_ashbury_time = Int('haight_ashbury_time')
-union_square_time = Int('union_square_time')
+# Define the variables
+times = [Int('t_{}'.format(i)) for i in range(5)]
+locations = ['Bayview', 'North Beach', 'Presidio', 'Haight-Ashbury', 'Union Square']
+meeting_times = [Int('m_{}'.format(i)) for i in range(5)]
 
-# Constraints
-s.add(bayview_time >= 0)
-s.add(north_beach_time >= 0)
-s.add(presidio_time >= 0)
-s.add(haight_ashbury_time >= 0)
-s.add(union_square_time >= 0)
+# Define the constraints
+for i in range(5):
+    s.add(times[i] >= arrive_time)
+    s.add(times[i] <= kimberly_end)
+    s.add(meeting_times[i] >= 0)
+    s.add(meeting_times[i] <= 60)
 
-# Barbara
-s.add(north_beach_time >= 60)  # Minimum 60 minutes with Barbara
-s.add(And(bayview_time + distances['Bayview']['North Beach'] <= barbara_start,
-          north_beach_time + distances['North Beach']['Bayview'] >= barbara_start,
-          north_beach_time + distances['North Beach']['Bayview'] <= barbara_end))
+# Define the constraints for meeting Barbara
+s.add(And(times[0] + distances['Bayview']['North Beach'] <= barbara_start - 1,
+         times[0] + distances['Bayview']['North Beach'] + 60 >= barbara_start,
+         times[0] + distances['Bayview']['North Beach'] + 60 <= barbara_end))
 
-# Margaret
-s.add(presidio_time >= 30)  # Minimum 30 minutes with Margaret
-s.add(And(bayview_time + distances['Bayview']['Presidio'] <= margaret_start,
-          presidio_time + distances['Presidio']['Bayview'] >= margaret_start,
-          presidio_time + distances['Presidio']['Bayview'] <= margaret_end))
+# Define the constraints for meeting Margaret
+s.add(And(times[1] + distances['Bayview']['Presidio'] <= margaret_start - 1,
+         times[1] + distances['Bayview']['Presidio'] + 30 >= margaret_start,
+         times[1] + distances['Bayview']['Presidio'] + 30 <= margaret_end))
 
-# Kevin
-s.add(haight_ashbury_time >= 30)  # Minimum 30 minutes with Kevin
-s.add(And(bayview_time + distances['Bayview']['Haight-Ashbury'] <= kevin_start,
-          haight_ashbury_time + distances['Haight-Ashbury']['Bayview'] >= kevin_start,
-          haight_ashbury_time + distances['Haight-Ashbury']['Bayview'] <= kevin_end))
+# Define the constraints for meeting Kevin
+s.add(And(times[2] + distances['Bayview']['Haight-Ashbury'] <= kevin_start - 1,
+         times[2] + distances['Bayview']['Haight-Ashbury'] + 30 >= kevin_start,
+         times[2] + distances['Bayview']['Haight-Ashbury'] + 30 <= kevin_end))
 
-# Kimberly
-s.add(union_square_time >= 30)  # Minimum 30 minutes with Kimberly
-s.add(And(bayview_time + distances['Bayview']['Union Square'] <= kimberly_end,
-          union_square_time + distances['Union Square']['Bayview'] >= kimberly_start,
-          union_square_time + distances['Union Square']['Bayview'] <= kimberly_end))
+# Define the constraints for meeting Kimberly
+s.add(And(times[3] + distances['Bayview']['Union Square'] <= kimberly_start - 1,
+         times[3] + distances['Bayview']['Union Square'] + 30 >= kimberly_start,
+         times[3] + distances['Bayview']['Union Square'] + 30 <= kimberly_end))
 
-# Total time constraint
-total_time = bayview_time + north_beach_time + presidio_time + haight_ashbury_time + union_square_time
-s.add(total_time <= 24 * 60)  # Maximum 24 hours
+# Define the constraints for traveling between locations
+for i in range(4):
+    s.add(times[i + 1] >= times[i] + distances[locations[i]][locations[i + 1]])
 
-# Check if the solution is feasible
+# Check the solution
 if s.check() == sat:
     model = s.model()
-    bayview_time_val = model[bayview_time].as_long()
-    north_beach_time_val = model[north_beach_time].as_long()
-    presidio_time_val = model[presidio_time].as_long()
-    haight_ashbury_time_val = model[haight_ashbury_time].as_long()
-    union_square_time_val = model[union_square_time].as_long()
-    print("Optimal schedule:")
-    print(f"Bayview: {bayview_time_val} minutes")
-    print(f"North Beach: {north_beach_time_val} minutes")
-    print(f"Presidio: {presidio_time_val} minutes")
-    print(f"Haight-Ashbury: {haight_ashbury_time_val} minutes")
-    print(f"Union Square: {union_square_time_val} minutes")
+    print("SOLUTION:")
+    for i in range(5):
+        print("Time {}: {}".format(i, model[times[i]].as_long()))
+        print("Meeting time {}: {}".format(i, model[meeting_times[i]].as_long()))
 else:
-    print("No feasible solution exists")
+    print("No solution found")

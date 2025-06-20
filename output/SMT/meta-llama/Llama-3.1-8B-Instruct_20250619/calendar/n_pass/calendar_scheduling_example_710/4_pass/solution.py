@@ -1,52 +1,69 @@
 from z3 import *
 
-def schedule_meeting(cheryl_schedule, kyle_schedule, meeting_duration, preferred_days=None):
-    # Create Z3 variables for the day, start time, and end time
-    days = [Int("day") for _ in range(3)]
-    for i, day in enumerate(days):
-        day = day > 0
-        day = day < 3
-    start_times = [Int("start_time") for _ in range(3)]
-    for i, start_time in enumerate(start_times):
-        start_time = start_time >= 9
-        start_time = start_time < 17
-    end_times = [Int("end_time") for _ in range(3)]
-    for i, end_time in enumerate(end_times):
-        end_time = end_time >= 9
-        end_time = end_time < 17
-        end_time = end_time == start_times[i] + meeting_duration
+def schedule_meeting(available_days, cheryl_schedule, kyle_schedule, duration):
+    # Create Z3 variables for day, start time and end time
+    day = Int('day')
+    start_time = Int('start_time')
+    end_time = Int('end_time')
 
-    # Define the constraints
-    constraints = []
-    for i, (start_time, end_time) in enumerate(zip(start_times, end_times)):
-        constraints.append(And(start_time, end_time))
-        constraints.append(Or(days[i] == 0, Not(And(start_time, start_time < 9.5, days[i] == 0))))  # Cheryl is busy on Monday during 9:00 to 9:30
-        constraints.append(Or(days[i] == 0, Not(And(start_time, start_time < 11.5, days[i] == 0))))  # Cheryl is busy on Monday during 11:30 to 13:00
-        constraints.append(Or(days[i] == 0, Not(And(start_time, start_time < 15.5, days[i] == 0))))  # Cheryl is busy on Monday during 15:30 to 16:00
-        constraints.append(Or(days[i] == 1, Not(And(start_time, start_time < 15, days[i] == 1))))  # Cheryl is busy on Tuesday during 15:00 to 15:30
-        constraints.append(Or(days[i] == 0, Not(And(start_time, start_time < 17, days[i] == 0))))  # Kyle is busy on Monday during 9:00 to 17:00
-        constraints.append(Or(days[i] == 1, Not(And(start_time, start_time < 17, days[i] == 1))))  # Kyle is busy on Tuesday during 9:30 to 17:00
-        constraints.append(Or(days[i] == 2, Not(And(start_time, start_time < 9.5, days[i] == 2))))  # Kyle is busy on Wednesday during 9:00 to 9:30
-        constraints.append(Or(days[i] == 2, Not(And(start_time, start_time < 13, days[i] == 2))))  # Kyle is busy on Wednesday during 10:00 to 13:00
-        constraints.append(Or(days[i] == 2, Not(And(start_time, start_time < 13.5, days[i] == 2))))  # Kyle is busy on Wednesday during 13:30 to 14:00
-        constraints.append(Or(days[i] == 2, Not(And(start_time, start_time < 14.5, days[i] == 2))))  # Kyle is busy on Wednesday during 14:30 to 17:00
-        constraints.append(Or(days[i] == 2, Not(start_time == 9)))  # Cheryl can not meet on Wednesday
+    # Define the constraints for day
+    constraints = [day >= 1, day <= len(available_days)]
 
-    # Solve the constraints
+    # Define the constraints for start and end time
+    constraints += [start_time >= 9, start_time <= 17, end_time >= 9, end_time <= 17]
+
+    # Define the constraints for duration
+    constraints += [start_time + duration <= end_time]
+
+    # Define the constraints for Cheryl's schedule
+    for i, (day_name, start, end) in enumerate(cheryl_schedule):
+        if day_name == 'Monday':
+            constraints += [day!= 1, (start > 9.5).as_bool() | (end < 9.5).as_bool() | (start > end_time).as_bool() | (end_time < start).as_bool()]
+        elif day_name == 'Tuesday':
+            constraints += [day!= 2, (start > 15.5).as_bool() | (end < 15.5).as_bool() | (start > end_time).as_bool() | (end_time < start).as_bool()]
+        elif day_name == 'Wednesday':
+            constraints += [day!= 3, True]  # Cheryl can't meet on Wednesday
+
+    # Define the constraints for Kyle's schedule
+    for i, (day_name, start, end) in enumerate(kyle_schedule):
+        if day_name == 'Monday':
+            constraints += [day!= 1, (start > 9).as_bool() | (end < 9).as_bool() | (start > end_time).as_bool() | (end_time < start).as_bool()]
+        elif day_name == 'Tuesday':
+            constraints += [day!= 2, (start > 9.5).as_bool() | (end < 9.5).as_bool() | (start > end_time).as_bool() | (end_time < start).as_bool()]
+        elif day_name == 'Wednesday':
+            constraints += [day!= 3, (start > 9).as_bool() | (end < 9).as_bool() | (start > 9.5).as_bool() | (end < 9.5).as_bool() | (start > 10).as_bool() | (end < 10).as_bool() | (start > 13).as_bool() | (end < 13).as_bool() | (start > 13.5).as_bool() | (end < 13.5).as_bool() | (start > 14.5).as_bool() | (end < 14.5).as_bool() | (start > end_time).as_bool() | (end_time < start).as_bool()]
+
+    # Define the constraint for duration
+    constraints += [(start_time + duration <= 17).as_bool() & (end_time >= 9).as_bool()]
+
+    # Create the Z3 solver and add the constraints
     solver = Solver()
-    for constraint in constraints:
-        solver.add(constraint)
+    solver.add(constraints)
+
+    # Solve the problem
     if solver.check() == sat:
         model = solver.model()
-        day = model[days[0]].as_long()
-        start_time = model[start_times[0]].as_long()
-        end_time = model[end_times[0]].as_long()
-        return f"SOLUTION:\nDay: {['Monday', 'Tuesday', 'Wednesday'][day]}\nStart Time: {start_time:02d}:00\nEnd Time: {int(end_time):02d}:00"
+        # Extract the values from the model
+        day_value = model[day].as_long()
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+
+        # Convert the values to the desired format
+        day_name = available_days[day_value - 1]
+        start_time_str = "{:02d}:{}".format(start_time_value // 60, start_time_value % 60)
+        end_time_str = "{:02d}:{}".format(end_time_value // 60, end_time_value % 60)
+
+        # Print the solution
+        print("SOLUTION:")
+        print("Day: {}".format(day_name))
+        print("Start Time: {}".format(start_time_str))
+        print("End Time: {}".format(end_time_str))
     else:
-        return "No solution found"
+        print("No solution found.")
 
 # Example usage
-cheryl_schedule = [9, 9.5, 11.5, 13, 15.5, 16]
-kyle_schedule = [9, 17, 9.5, 17, 10, 13, 13.5, 14, 14.5, 17]
-meeting_duration = 0.5
-print(schedule_meeting(cheryl_schedule, kyle_schedule, meeting_duration))
+available_days = ['Monday', 'Tuesday', 'Wednesday']
+cheryl_schedule = [('Monday', 9, 9.5), ('Monday', 11.5, 13), ('Monday', 15.5, 16), ('Tuesday', 15, 15.5)]
+kyle_schedule = [('Monday', 9, 17), ('Tuesday', 9.5, 17), ('Wednesday', 9, 9.5), ('Wednesday', 10, 13), ('Wednesday', 13.5, 14), ('Wednesday', 14.5, 17)]
+duration = 0.5
+schedule_meeting(available_days, cheryl_schedule, kyle_schedule, duration)

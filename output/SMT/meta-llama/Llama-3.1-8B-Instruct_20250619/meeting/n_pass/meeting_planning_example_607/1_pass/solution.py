@@ -2,73 +2,165 @@ from z3 import *
 
 # Define the variables
 start_time = 0
-end_time = 23 * 60  # 11:00 PM
-sunset_district = 0
-russian_hill = 1
-the_castro = 2
-richmond_district = 3
-marina_district = 4
-north_beach = 5
-union_square = 6
-golden_gate_park = 7
-
-locations = [sunset_district, russian_hill, the_castro, richmond_district, marina_district, north_beach, union_square, golden_gate_park]
+end_time = 24 * 60  # 24 hours in minutes
+time_slots = [Int(f't{i}') for i in range(start_time, end_time)]
 travel_times = {
-    sunset_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [24, 17, 12, 21, 29, 30, 11]]},
-    russian_hill: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [23, 21, 14, 7, 5, 11, 21]]},
-    the_castro: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [17, 18, 16, 21, 20, 19, 11]]},
-    richmond_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [11, 13, 16, 9, 17, 21, 9]]},
-    marina_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [19, 8, 22, 11, 9, 16, 18]]},
-    north_beach: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [27, 4, 22, 18, 9, 7, 22]]},
-    union_square: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [26, 13, 19, 20, 18, 10, 22]]},
-    golden_gate_park: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [10, 19, 13, 7, 16, 24, 22]]}
+    'Sunset District': {
+        'Russian Hill': 24,
+        'The Castro': 17,
+        'Richmond District': 12,
+        'Marina District': 21,
+        'North Beach': 29,
+        'Union Square': 30,
+        'Golden Gate Park': 11
+    },
+    'Russian Hill': {
+        'Sunset District': 23,
+        'The Castro': 21,
+        'Richmond District': 14,
+        'Marina District': 7,
+        'North Beach': 5,
+        'Union Square': 11,
+        'Golden Gate Park': 21
+    },
+    'The Castro': {
+        'Sunset District': 17,
+        'Russian Hill': 18,
+        'Richmond District': 16,
+        'Marina District': 21,
+        'North Beach': 20,
+        'Union Square': 19,
+        'Golden Gate Park': 11
+    },
+    'Richmond District': {
+        'Sunset District': 11,
+        'Russian Hill': 13,
+        'The Castro': 16,
+        'Marina District': 9,
+        'North Beach': 17,
+        'Union Square': 21,
+        'Golden Gate Park': 9
+    },
+    'Marina District': {
+        'Sunset District': 19,
+        'Russian Hill': 8,
+        'The Castro': 22,
+        'Richmond District': 11,
+        'North Beach': 11,
+        'Union Square': 16,
+        'Golden Gate Park': 18
+    },
+    'North Beach': {
+        'Sunset District': 27,
+        'Russian Hill': 4,
+        'The Castro': 22,
+        'Richmond District': 18,
+        'Marina District': 9,
+        'Union Square': 7,
+        'Golden Gate Park': 22
+    },
+    'Union Square': {
+        'Sunset District': 26,
+        'Russian Hill': 13,
+        'The Castro': 19,
+        'Richmond District': 20,
+        'Marina District': 18,
+        'North Beach': 10,
+        'Golden Gate Park': 22
+    },
+    'Golden Gate Park': {
+        'Sunset District': 10,
+        'Russian Hill': 19,
+        'The Castro': 13,
+        'Richmond District': 7,
+        'Marina District': 16,
+        'North Beach': 24,
+        'Union Square': 22
+    }
 }
 
-meetings = [
-    {'name': 'Karen', 'location': russian_hill,'start_time': 8 * 60 + 45, 'end_time': 9 * 60 + 45,'min_meeting_time': 60},
-    {'name': 'Jessica', 'location': the_castro,'start_time': 3 * 60 + 45, 'end_time': 7 * 60 + 30,'min_meeting_time': 60},
-    {'name': 'Matthew', 'location': richmond_district,'start_time': 7 * 60, 'end_time': 3 * 60 + 15,'min_meeting_time': 15},
-    {'name': 'Michelle', 'location': marina_district,'start_time': 10 * 60 + 30, 'end_time': 18 * 60 + 45,'min_meeting_time': 75},
-    {'name': 'Carol', 'location': north_beach,'start_time': 12 * 60, 'end_time': 17 * 60,'min_meeting_time': 90},
-    {'name': 'Stephanie', 'location': union_square,'start_time': 10 * 60 + 45, 'end_time': 2 * 60 + 15,'min_meeting_time': 30},
-    {'name': 'Linda', 'location': golden_gate_park,'start_time': 10 * 60 + 45, 'end_time': 22 * 60,'min_meeting_time': 90}
-]
+# Define the constraints
+s = Solver()
 
-# Create the solver
-solver = Solver()
+# Karen
+karen_arrival = 9 * 60 + 45  # 8:45PM
+karen_departure = 10 * 60  # 9:45PM
+karen_meeting_time = 60  # 60 minutes
 
-# Create the variables
-visit_times = [Int(f'visit_{i}') for i in locations]
-meet_times = [Int(f'meet_{i}') for i in range(len(meetings))]
+# Jessica
+jessica_arrival = 3 * 60 + 45  # 3:45PM
+jessica_departure = 7 * 60 + 30  # 7:30PM
+jessica_meeting_time = 60  # 60 minutes
 
-# Add constraints
-for i in locations:
-    solver.add(visit_times[i] >= 9 * 60)  # Start visiting after 9:00 AM
-    solver.add(visit_times[i] <= end_time)  # Finish visiting before 11:00 PM
+# Matthew
+matthew_arrival = 7 * 60  # 7:00AM
+matthew_departure = 3 * 60 + 15  # 3:15PM
+matthew_meeting_time = 15  # 15 minutes
 
-for i in range(len(meetings)):
-    meeting = meetings[i]
-    solver.add(meet_times[i] >= meeting['start_time'])
-    solver.add(meet_times[i] <= meeting['end_time'])
-    solver.add(meet_times[i] >= visit_times[meeting['location']])
-    solver.add(meet_times[i] + meeting['min_meeting_time'] <= visit_times[meeting['location']])
+# Michelle
+michelle_arrival = 10 * 60 + 30  # 10:30AM
+michelle_departure = 6 * 60 + 45  # 6:45PM
+michelle_meeting_time = 75  # 75 minutes
 
-for i in locations:
-    for j in locations:
-        if i!= j:
-            solver.add(visit_times[i] + travel_times[i][j] <= visit_times[j])
+# Carol
+carol_arrival = 12 * 60  # 12:00PM
+carol_departure = 5 * 60  # 5:00PM
+carol_meeting_time = 90  # 90 minutes
 
-# Add the objective function
-objective = [visit_times[i] for i in locations]
-solver.minimize(objective)
+# Stephanie
+stephanie_arrival = 10 * 60 + 45  # 10:45AM
+stephanie_departure = 2 * 60 + 15  # 2:15PM
+stephanie_meeting_time = 30  # 30 minutes
+
+# Linda
+linda_arrival = 10 * 60 + 45  # 10:45AM
+linda_departure = 22 * 60  # 10:00PM
+linda_meeting_time = 90  # 90 minutes
+
+# Initialize the variables
+for i in range(start_time, end_time):
+    s.add(0 <= time_slots[i])
+    s.add(time_slots[i] <= 23 * 60)
+
+# Meet Karen
+for i in range(karen_arrival, karen_departure):
+    s.add(If(time_slots[i] >= karen_meeting_time, time_slots[i] - karen_meeting_time, 0) == 0)
+
+# Meet Jessica
+for i in range(jessica_arrival, jessica_departure):
+    s.add(If(time_slots[i] >= jessica_meeting_time, time_slots[i] - jessica_meeting_time, 0) == 0)
+
+# Meet Matthew
+for i in range(matthew_arrival, matthew_departure):
+    s.add(If(time_slots[i] >= matthew_meeting_time, time_slots[i] - matthew_meeting_time, 0) == 0)
+
+# Meet Michelle
+for i in range(michelle_arrival, michelle_departure):
+    s.add(If(time_slots[i] >= michelle_meeting_time, time_slots[i] - michelle_meeting_time, 0) == 0)
+
+# Meet Carol
+for i in range(carol_arrival, carol_departure):
+    s.add(If(time_slots[i] >= carol_meeting_time, time_slots[i] - carol_meeting_time, 0) == 0)
+
+# Meet Stephanie
+for i in range(stephanie_arrival, stephanie_departure):
+    s.add(If(time_slots[i] >= stephanie_meeting_time, time_slots[i] - stephanie_meeting_time, 0) == 0)
+
+# Meet Linda
+for i in range(linda_arrival, linda_departure):
+    s.add(If(time_slots[i] >= linda_meeting_time, time_slots[i] - linda_meeting_time, 0) == 0)
+
+# Travel times
+for location1, location2 in travel_times.items():
+    for location3, time in location2.items():
+        if location1!= location3:
+            s.add(If(time_slots[9 * 60] == 1, time_slots[9 * 60 + time] == 1, 0) == 0)
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    print('SOLUTION:')
-    for i in locations:
-        print(f'Visit {locations[i]} at {model[visit_times[i]].as_long()} minutes')
-    for i in range(len(meetings)):
-        print(f'Meet {meetings[i]["name"]} at {model[meet_times[i]].as_long()} minutes')
+if s.check() == sat:
+    m = s.model()
+    print("SOLUTION:")
+    for i in range(start_time, end_time):
+        print(f"time_slots[{i}] = {m.evaluate(time_slots[i])}")
 else:
-    print('No solution found')
+    print("NO SOLUTION")

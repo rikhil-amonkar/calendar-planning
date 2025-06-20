@@ -1,87 +1,136 @@
 from z3 import *
 
-def schedule_meeting(nancy_schedule, jose_schedule, duration):
-    # Define the days of the week
-    days = ['Monday', 'Tuesday', 'Wednesday']
+def schedule_meeting(nancy_schedule, jose_schedule, meeting_duration):
+    # Create Z3 variables
+    days = [Int(f'day') for _ in range(3)]
+    start_times = [Int(f'start_time') for _ in range(3)]
+    end_times = [Int(f'end_time') for _ in range(3)]
 
-    # Define the start and end times
-    start_times = [9] * 3
-    end_times = [17] * 3
+    # Create Z3 constraints
+    for i in range(3):
+        days[i].sort(IntSort())
+        days[i].declare_kind(IntSort())
+        days[i].get_sort().assert_and_track(days[i] >= 0, "days_positive")
+        days[i].get_sort().assert_and_track(days[i] <= 2, "days_in_range")
 
-    # Create a Z3 solver
-    s = Solver()
+    for i in range(3):
+        start_times[i].sort(IntSort())
+        start_times[i].declare_kind(IntSort())
+        start_times[i].get_sort().assert_and_track(start_times[i] >= 0, "start_time_positive")
+        start_times[i].get_sort().assert_and_track(start_times[i] <= 16, "start_time_in_range")
 
-    # Define the meeting day, start time, and end time
-    meeting_day = Int('meeting_day')
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+    for i in range(3):
+        end_times[i].sort(IntSort())
+        end_times[i].declare_kind(IntSort())
+        end_times[i].get_sort().assert_and_track(end_times[i] >= 0, "end_time_positive")
+        end_times[i].get_sort().assert_and_track(end_times[i] <= 16, "end_time_in_range")
 
-    # Add constraints for the meeting day
-    s.add(meeting_day >= 0)
-    s.add(meeting_day < 3)
+    # Constraints for meeting duration
+    for i in range(3):
+        end_times[i] = start_times[i] + meeting_duration
 
-    # Add constraints for the meeting start and end times
-    s.add(meeting_start >= start_times[meeting_day])
-    s.add(meeting_start < end_times[meeting_day])
-    s.add(meeting_end >= meeting_start)
-    s.add(meeting_end <= end_times[meeting_day])
-
-    # Add constraints for Nancy's schedule
-    nancy_conflicts = []
+    # Constraints for nancy's schedule
     for day in range(3):
-        for start in range(9, 17):
-            for end in range(start, 17):
-                if (day == 0 and (start == 10 and end == 10 or start == 11 and end == 12 or start == 13 and end == 14 or start == 14 and end == 15 or start == 16 and end == 17)) or \
-                   (day == 1 and (start == 9 and end == 10 or start == 11 and end == 11 or start == 12 and end == 12 or start == 13 and end == 13 or start == 15 and end == 16)) or \
-                   (day == 2 and (start == 10 and end == 11 or start == 13 and end == 16)):
-                    nancy_conflicts.append(And(meeting_day == day, meeting_start == start, meeting_end == end))
+        for start, end in nancy_schedule[day]:
+            constraints = [start_times[day] > start, end_times[day] < end]
+            if day == 0:
+                constraints.append(days[day] == 0)
+            elif day == 1:
+                constraints.append(days[day] == 1)
+            else:
+                constraints.append(days[day] == 2)
+            solver = Solver()
+            solver.add(And(constraints))
+            if not solver.check():
+                continue
+            model = solver.model()
+            start_time = model[start_times[day]].as_long()
+            end_time = model[end_times[day]].as_long()
+            if start_time == end_time:
+                continue
+            print(f"Nancy is busy on day {day} from {start}:{start_time % 60:02d} to {end}:{end_time % 60:02d}")
+            return None
 
-    # Add constraints for Jose's schedule
-    jose_conflicts = []
+    # Constraints for jose's schedule
     for day in range(3):
-        for start in range(9, 17):
-            for end in range(start, 17):
-                if (day == 0 and (start == 9 and end == 17)) or \
-                   (day == 1 and (start == 9 and end == 17)) or \
-                   (day == 2 and (start == 9 and end == 9 or start == 10 and end == 12 or start == 13 and end == 14 or start == 15 and end == 17)):
-                    jose_conflicts.append(And(meeting_day == day, meeting_start == start, meeting_end == end))
+        for start, end in jose_schedule[day]:
+            constraints = [start_times[day] > start, end_times[day] < end]
+            if day == 0:
+                constraints.append(days[day] == 0)
+            elif day == 1:
+                constraints.append(days[day] == 1)
+            else:
+                constraints.append(days[day] == 2)
+            solver = Solver()
+            solver.add(And(constraints))
+            if not solver.check():
+                continue
+            model = solver.model()
+            start_time = model[start_times[day]].as_long()
+            end_time = model[end_times[day]].as_long()
+            if start_time == end_time:
+                continue
+            print(f"Jose is busy on day {day} from {start}:{start_time % 60:02d} to {end}:{end_time % 60:02d}")
+            return None
 
-    # Add constraints to the solver
-    s.add(Or(nancy_conflicts))
-    s.add(Or(jose_conflicts))
+    # Solve the system of constraints
+    solver = Solver()
+    solver.add(And([days[0]!= 1, days[0]!= 2, days[1]!= 0, days[1]!= 2, days[2]!= 0, days[2]!= 1]))
+    solver.add(And([start_times[0] >= 9, start_times[0] <= 16, start_times[1] >= 9, start_times[1] <= 16, start_times[2] >= 9, start_times[2] <= 16]))
+    solver.add(And([end_times[0] >= 9, end_times[0] <= 16, end_times[1] >= 9, end_times[1] <= 16, end_times[2] >= 9, end_times[2] <= 16]))
+    solver.add(And([days[0] == 0, start_times[0] >= 9, start_times[0] <= 16, end_times[0] >= 9, end_times[0] <= 16]))
+    solver.add(And([days[1] == 1, start_times[1] >= 9, start_times[1] <= 16, end_times[1] >= 9, end_times[1] <= 16]))
+    solver.add(And([days[2] == 2, start_times[2] >= 9, start_times[2] <= 16, end_times[2] >= 9, end_times[2] <= 16]))
 
-    # Add a constraint to ensure the meeting duration
-    s.add(meeting_end - meeting_start == duration)
+    # Add constraints for meeting duration
+    for i in range(3):
+        solver.add(end_times[i] == start_times[i] + 30)
 
-    # Solve the solver
-    if s.check() == sat:
-        # Get the model
-        m = s.model()
+    # Add constraints for nancy's schedule
+    for day in range(3):
+        for start, end in nancy_schedule[day]:
+            constraints = [start_times[day] > start, end_times[day] < end]
+            if day == 0:
+                constraints.append(days[day] == 0)
+            elif day == 1:
+                constraints.append(days[day] == 1)
+            else:
+                constraints.append(days[day] == 2)
+            solver.add(Or([Not(constraint) for constraint in constraints]))
 
-        # Extract the meeting day, start time, and end time
-        meeting_day_val = m[meeting_day].as_long()
-        meeting_start_val = m[meeting_start].as_long()
-        meeting_end_val = m[meeting_end].as_long()
+    # Add constraints for jose's schedule
+    for day in range(3):
+        for start, end in jose_schedule[day]:
+            constraints = [start_times[day] > start, end_times[day] < end]
+            if day == 0:
+                constraints.append(days[day] == 0)
+            elif day == 1:
+                constraints.append(days[day] == 1)
+            else:
+                constraints.append(days[day] == 2)
+            solver.add(Or([Not(constraint) for constraint in constraints]))
 
-        # Print the solution
-        print(f"SOLUTION:")
-        print(f"Day: {days[meeting_day_val]}")
-        print(f"Start Time: {meeting_start_val:02d}:00")
-        print(f"End Time: {meeting_end_val:02d}:00")
+    # Check if a solution exists
+    if solver.check() == sat:
+        model = solver.model()
+        day = model[days[0]].as_long()
+        start_time = model[start_times[0]].as_long()
+        end_time = model[end_times[0]].as_long()
+        return f"SOLUTION:\nDay: {['Monday', 'Tuesday', 'Wednesday'][day]}\nStart Time: {start_time:02d}:00\nEnd Time: {end_time:02d}:00"
     else:
-        print("No solution found.")
+        return "No solution exists"
 
-# Test the function
-nancy_schedule = {
-    'Monday': [(10, 10), (11, 12), (13, 14), (14, 15), (16, 17)],
-    'Tuesday': [(9, 10), (11, 11), (12, 12), (13, 13), (15, 16)],
-    'Wednesday': [(10, 11), (13, 16)]
-}
-jose_schedule = {
-    'Monday': [(9, 17)],
-    'Tuesday': [(9, 17)],
-    'Wednesday': [(9, 9), (10, 12), (13, 14), (15, 17)]
-}
-duration = 30
+# Define nancy's schedule
+nancy_schedule = [[[10, 10], [11, 11], [13, 14], [14, 15], [16, 17]],
+                  [[9, 10], [11, 11], [12, 12], [13, 13], [15, 16]],
+                  [[10, 11], [13, 16]]]
 
-schedule_meeting(nancy_schedule, jose_schedule, duration)
+# Define jose's schedule
+jose_schedule = [[[9, 17]],
+                  [[9, 17]],
+                  [[9, 9], [10, 12], [13, 14], [15, 17]]]
+
+# Define meeting duration
+meeting_duration = 30
+
+print(schedule_meeting(nancy_schedule, jose_schedule, meeting_duration))

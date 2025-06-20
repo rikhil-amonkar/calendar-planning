@@ -1,130 +1,86 @@
 from z3 import *
 
-# Define the locations
-locations = ['Golden Gate Park', 'Haight-Ashbury', 'Fisherman\'s Wharf', 'The Castro', 'Chinatown', 'Alamo Square', 'North Beach', 'Russian Hill']
-
-# Define the people and their locations
-people = ['Carol', 'Laura', 'Karen', 'Elizabeth', 'Deborah', 'Jason', 'Steven']
-locations_people = {
-    'Carol': 'Haight-Ashbury',
-    'Laura': 'Fisherman\'s Wharf',
-    'Karen': 'The Castro',
-    'Elizabeth': 'Chinatown',
-    'Deborah': 'Alamo Square',
-    'Jason': 'North Beach',
-    'Steven': 'Russian Hill'
+# Define the variables
+start_time = 0
+end_time = 540  # 9 hours in minutes
+num_friends = 8
+friend_times = [[9*60, 10*60], [11*60+45, 21*60], [7*60+15, 14*60], [12*60+15, 21*60], [12*60, 18*60], [14*60+45, 21*60], [14*60+45, 18*60], [7*60, 18*60]]
+friend_durations = [60, 60, 75, 75, 105, 90, 120, 0]
+distances = {
+    'Golden Gate Park': {'Haight-Ashbury': 7, 'Fisherman\'s Wharf': 24, 'The Castro': 13, 'Chinatown': 23, 'Alamo Square': 10, 'North Beach': 24, 'Russian Hill': 19},
+    'Haight-Ashbury': {'Golden Gate Park': 7, 'Fisherman\'s Wharf': 23, 'The Castro': 6, 'Chinatown': 19, 'Alamo Square': 5, 'North Beach': 19, 'Russian Hill': 17},
+    'Fisherman\'s Wharf': {'Golden Gate Park': 25, 'Haight-Ashbury': 22, 'The Castro': 26, 'Chinatown': 12, 'Alamo Square': 20, 'North Beach': 6, 'Russian Hill': 7},
+    'The Castro': {'Golden Gate Park': 11, 'Haight-Ashbury': 6, 'Fisherman\'s Wharf': 24, 'Chinatown': 20, 'Alamo Square': 8, 'North Beach': 20, 'Russian Hill': 18},
+    'Chinatown': {'Golden Gate Park': 23, 'Haight-Ashbury': 19, 'Fisherman\'s Wharf': 8, 'The Castro': 22, 'Alamo Square': 17, 'North Beach': 3, 'Russian Hill': 7},
+    'Alamo Square': {'Golden Gate Park': 9, 'Haight-Ashbury': 5, 'Fisherman\'s Wharf': 19, 'The Castro': 8, 'Chinatown': 16, 'North Beach': 15, 'Russian Hill': 13},
+    'North Beach': {'Golden Gate Park': 22, 'Haight-Ashbury': 18, 'Fisherman\'s Wharf': 5, 'The Castro': 22, 'Chinatown': 6, 'Alamo Square': 16, 'Russian Hill': 4},
+    'Russian Hill': {'Golden Gate Park': 21, 'Haight-Ashbury': 17, 'Fisherman\'s Wharf': 7, 'The Castro': 21, 'Chinatown': 9, 'Alamo Square': 15, 'North Beach': 5}
 }
 
-# Define the travel distances
-travel_distances = {
-    ('Golden Gate Park', 'Haight-Ashbury'): 7,
-    ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
-    ('Golden Gate Park', 'The Castro'): 13,
-    ('Golden Gate Park', 'Chinatown'): 23,
-    ('Golden Gate Park', 'Alamo Square'): 10,
-    ('Golden Gate Park', 'North Beach'): 24,
-    ('Golden Gate Park', 'Russian Hill'): 19,
-    ('Haight-Ashbury', 'Golden Gate Park'): 7,
-    ('Haight-Ashbury', 'Fisherman\'s Wharf'): 23,
-    ('Haight-Ashbury', 'The Castro'): 6,
-    ('Haight-Ashbury', 'Chinatown'): 19,
-    ('Haight-Ashbury', 'Alamo Square'): 5,
-    ('Haight-Ashbury', 'North Beach'): 19,
-    ('Haight-Ashbury', 'Russian Hill'): 17,
-    ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
-    ('Fisherman\'s Wharf', 'Haight-Ashbury'): 22,
-    ('Fisherman\'s Wharf', 'The Castro'): 26,
-    ('Fisherman\'s Wharf', 'Chinatown'): 12,
-    ('Fisherman\'s Wharf', 'Alamo Square'): 20,
-    ('Fisherman\'s Wharf', 'North Beach'): 6,
-    ('Fisherman\'s Wharf', 'Russian Hill'): 7,
-    ('The Castro', 'Golden Gate Park'): 11,
-    ('The Castro', 'Haight-Ashbury'): 6,
-    ('The Castro', 'Fisherman\'s Wharf'): 24,
-    ('The Castro', 'Chinatown'): 20,
-    ('The Castro', 'Alamo Square'): 8,
-    ('The Castro', 'North Beach'): 20,
-    ('The Castro', 'Russian Hill'): 18,
-    ('Chinatown', 'Golden Gate Park'): 23,
-    ('Chinatown', 'Haight-Ashbury'): 19,
-    ('Chinatown', 'Fisherman\'s Wharf'): 8,
-    ('Chinatown', 'The Castro'): 22,
-    ('Chinatown', 'Alamo Square'): 17,
-    ('Chinatown', 'North Beach'): 3,
-    ('Chinatown', 'Russian Hill'): 7,
-    ('Alamo Square', 'Golden Gate Park'): 9,
-    ('Alamo Square', 'Haight-Ashbury'): 5,
-    ('Alamo Square', 'Fisherman\'s Wharf'): 19,
-    ('Alamo Square', 'The Castro'): 8,
-    ('Alamo Square', 'Chinatown'): 16,
-    ('Alamo Square', 'North Beach'): 15,
-    ('Alamo Square', 'Russian Hill'): 13,
-    ('North Beach', 'Golden Gate Park'): 22,
-    ('North Beach', 'Haight-Ashbury'): 18,
-    ('North Beach', 'Fisherman\'s Wharf'): 5,
-    ('North Beach', 'The Castro'): 22,
-    ('North Beach', 'Chinatown'): 6,
-    ('North Beach', 'Alamo Square'): 16,
-    ('North Beach', 'Russian Hill'): 4,
-    ('Russian Hill', 'Golden Gate Park'): 21,
-    ('Russian Hill', 'Haight-Ashbury'): 17,
-    ('Russian Hill', 'Fisherman\'s Wharf'): 7,
-    ('Russian Hill', 'The Castro'): 21,
-    ('Russian Hill', 'Chinatown'): 9,
-    ('Russian Hill', 'Alamo Square'): 15,
-    ('Russian Hill', 'North Beach'): 5
-}
-
-# Define the constraints
-s = Optimize()
+# Create the solver
+solver = Solver()
 
 # Define the variables
-time = [Int(f'time_{i}') for i in range(len(locations))]
-meet_carol = [Bool(f'meet_carol_{i}') for i in range(len(locations))]
-meet_laura = [Bool(f'meet_laura_{i}') for i in range(len(locations))]
-meet_karen = [Bool(f'meet_karen_{i}') for i in range(len(locations))]
-meet_elizabeth = [Bool(f'meet_elizabeth_{i}') for i in range(len(locations))]
-meet_deborah = [Bool(f'meet_deborah_{i}') for i in range(len(locations))]
-meet_jason = [Bool(f'meet_jason_{i}') for i in range(len(locations))]
-meet_steven = [Bool(f'meet_steven_{i}') for i in range(len(locations))]
+friend_meetings = [Bool('m_%d' % i) for i in range(num_friends)]
+friend_durations_var = [Int('d_%d' % i) for i in range(num_friends)]
+friend_meeting_times = [Int('t_%d' % i) for i in range(num_friends)]
 
-# Define the constraints
-for i in range(len(locations)):
-    s.add(And(time[i] >= 0, time[i] <= 12*60))  # time should be between 0 and 12 hours
-    s.add(Or(meet_carol[i], time[i] < 9*60 + 30))  # meet Carol if possible, otherwise meet at 9:30
-    s.add(Or(meet_laura[i], time[i] < 11*60 + 45))  # meet Laura if possible, otherwise meet at 11:45
-    s.add(Or(meet_karen[i], time[i] < 7*60 + 15))  # meet Karen if possible, otherwise meet at 7:15
-    s.add(Or(meet_elizabeth[i], time[i] < 12*60 + 15))  # meet Elizabeth if possible, otherwise meet at 12:15
-    s.add(Or(meet_deborah[i], time[i] < 12*60 + 0))  # meet Deborah if possible, otherwise meet at 12:00
-    s.add(Or(meet_jason[i], time[i] < 14*60 + 45))  # meet Jason if possible, otherwise meet at 2:45
-    s.add(Or(meet_steven[i], time[i] < 14*60 + 45))  # meet Steven if possible, otherwise meet at 2:45
+# Add constraints
+for i in range(num_friends):
+    solver.add(friend_meetings[i] == 1)
+    solver.add(friend_durations_var[i] >= friend_durations[i])
+    solver.add(friend_meetings[i] * friend_durations_var[i] >= friend_durations[i])
 
-# Define the objective function
-s.add(If(meet_carol[0], 60, 0) + 
-      If(meet_laura[0], 60, 0) + 
-      If(meet_karen[0], 75, 0) + 
-      If(meet_elizabeth[0], 75, 0) + 
-      If(meet_deborah[0], 105, 0) + 
-      If(meet_jason[0], 90, 0) + 
-      If(meet_steven[0], 120, 0))
+# Add constraints for meeting Carol
+solver.add(friend_meeting_times[0] >= friend_times[0][0])
+solver.add(friend_meeting_times[0] <= friend_times[0][1])
+solver.add(friend_meetings[0] * (friend_meeting_times[0] - friend_times[0][0]) >= friend_durations[0])
 
-# Solve the optimization problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    time_values = [model.evaluate(time[i]).as_long() for i in range(len(locations))]
-    print("Time values:")
-    for i in range(len(locations)):
-        print(f"Location {locations[i]}: {time_values[i]} minutes")
-    meet_carol_values = [model.evaluate(meet_carol[i]).as_bool() for i in range(len(locations))]
-    meet_laura_values = [model.evaluate(meet_laura[i]).as_bool() for i in range(len(locations))]
-    meet_karen_values = [model.evaluate(meet_karen[i]).as_bool() for i in range(len(locations))]
-    meet_elizabeth_values = [model.evaluate(meet_elizabeth[i]).as_bool() for i in range(len(locations))]
-    meet_deborah_values = [model.evaluate(meet_deborah[i]).as_bool() for i in range(len(locations))]
-    meet_jason_values = [model.evaluate(meet_jason[i]).as_bool() for i in range(len(locations))]
-    meet_steven_values = [model.evaluate(meet_steven[i]).as_bool() for i in range(len(locations))]
-    print("\nMeet values:")
-    for i in range(len(locations)):
-        print(f"Location {locations[i]}: meet {people[0]}: {meet_carol_values[i]}, meet {people[1]}: {meet_laura_values[i]}, meet {people[2]}: {meet_karen_values[i]}, meet {people[3]}: {meet_elizabeth_values[i]}, meet {people[4]}: {meet_deborah_values[i]}, meet {people[5]}: {meet_jason_values[i]}, meet {people[6]}: {meet_steven_values[i]}")
+# Add constraints for meeting Laura
+solver.add(friend_meeting_times[1] >= friend_times[1][0])
+solver.add(friend_meeting_times[1] <= friend_times[1][1])
+solver.add(friend_meetings[1] * (friend_meeting_times[1] - friend_times[1][0]) >= friend_durations[1])
+
+# Add constraints for meeting Karen
+solver.add(friend_meeting_times[2] >= friend_times[2][0])
+solver.add(friend_meeting_times[2] <= friend_times[2][1])
+solver.add(friend_meetings[2] * (friend_meeting_times[2] - friend_times[2][0]) >= friend_durations[2])
+
+# Add constraints for meeting Elizabeth
+solver.add(friend_meeting_times[3] >= friend_times[3][0])
+solver.add(friend_meeting_times[3] <= friend_times[3][1])
+solver.add(friend_meetings[3] * (friend_meeting_times[3] - friend_times[3][0]) >= friend_durations[3])
+
+# Add constraints for meeting Deborah
+solver.add(friend_meeting_times[4] >= friend_times[4][0])
+solver.add(friend_meeting_times[4] <= friend_times[4][1])
+solver.add(friend_meetings[4] * (friend_meeting_times[4] - friend_times[4][0]) >= friend_durations[4])
+
+# Add constraints for meeting Jason
+solver.add(friend_meeting_times[5] >= friend_times[5][0])
+solver.add(friend_meeting_times[5] <= friend_times[5][1])
+solver.add(friend_meetings[5] * (friend_meeting_times[5] - friend_times[5][0]) >= friend_durations[5])
+
+# Add constraints for meeting Steven
+solver.add(friend_meeting_times[6] >= friend_times[6][0])
+solver.add(friend_meeting_times[6] <= friend_times[6][1])
+solver.add(friend_meetings[6] * (friend_meeting_times[6] - friend_times[6][0]) >= friend_durations[6])
+
+# Add constraint to minimize the total travel time
+travel_times = []
+for i in range(num_friends):
+    for j in range(i+1, num_friends):
+        if friend_meetings[i] == 1 and friend_meetings[j] == 1:
+            travel_time = distances[friend_times[i][0] // 60][friend_times[j][0] // 60] + distances[friend_times[j][0] // 60][friend_times[j][1] // 60]
+            travel_times.append(friend_meetings[i] * friend_meetings[j] * (friend_meeting_times[i] - friend_times[i][0]) * (friend_meeting_times[j] - friend_times[j][0]) * travel_time)
+
+solver.add(Or(*travel_times))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("SOLUTION:")
+    for i in range(num_friends):
+        print("Meet friend %d at time %d for %d minutes" % (i+1, model[friend_meeting_times[i]].as_long(), model[friend_durations_var[i]].as_long()))
 else:
     print("No solution found")

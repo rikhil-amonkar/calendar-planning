@@ -1,76 +1,59 @@
 from z3 import *
 
-def schedule_meeting(schedules, duration):
-    # Define the variables
-    days = ['Monday']
-    start_times = [9]  # 9:00
-    end_times = [17]  # 17:00
-    time_slots = [(start, end) for start in start_times for end in range(start + 1, end_times[0] + 1)]
-    
-    # Create a Z3 solver
-    s = Solver()
-    
-    # Create variables for the meeting day, start time, and end time
-    day = Int('day')
+def schedule_meeting():
+    # Define the day of the meeting
+    day = "Monday"
+
+    # Define the start and end times of the meeting
     start_time = Int('start_time')
-    end_time = Int('end_time')
-    
-    # Create variables for the availability of each participant
-    availability = [Int(f'availability_{i}') for i in range(len(schedules))]
-    
-    # Define the constraints
-    s.add(day == 0)  # Only one day is available
-    s.add(And([start_time >= 9, start_time <= 17]))  # Start time is between 9:00 and 17:00
-    s.add(And([end_time >= start_time + 1, end_time <= 17]))  # End time is between start time + 1 and 17:00
-    
-    # Check if the meeting time conflicts with any participant's schedule
-    for i, schedule in enumerate(schedules):
-        for time_slot in schedule:
-            s.add(Or([start_time + duration > time_slot[0], end_time < time_slot[1]]))  # Check if the meeting time conflicts with the participant's schedule
-    
-    # Check if the meeting time is at least 30 minutes long
-    s.add(end_time - start_time >= duration)
-    
-    # Define the valid start times
-    valid_start_times = [9, 10, 11, 12, 13, 14, 15, 16]
-    
-    # Add the valid start times as constraints
-    s.add(start_time == 9)
-    s.add(Implies(start_time == 9, end_time == 9.5))
-    s.add(Implies(start_time == 10, end_time == 10.5))
-    s.add(Implies(start_time == 11, end_time == 11.5))
-    s.add(Implies(start_time == 12, end_time == 12.5))
-    s.add(Implies(start_time == 13, end_time == 13.5))
-    s.add(Implies(start_time == 14, end_time == 14.5))
-    s.add(Implies(start_time == 15, end_time == 15.5))
-    s.add(Implies(start_time == 16, end_time == 16.5))
-    
+    end_time = start_time + 30
+
+    # Define the constraints for each participant
+    megan_busy = Or(start_time >= 9, start_time >= 10, start_time >= 12)
+    christine_busy = Or(start_time >= 9, start_time >= 11.5, start_time >= 13, start_time >= 16)
+    gabriel_free = True
+    sara_busy = Or(start_time >= 11.5, start_time >= 14.5)
+    bruce_busy = Or(start_time >= 9.5, start_time >= 10.5, start_time >= 12.5, start_time >= 14.5, start_time >= 16)
+    kathryn_busy = Or(start_time >= 10, start_time >= 16)
+    billy_busy = Or(start_time >= 9, start_time >= 11, start_time >= 12, start_time >= 14, start_time >= 15.5)
+
+    # Define the constraints for the meeting duration
+    meeting_duration = start_time + 30
+
+    # Define the solver
+    solver = Solver()
+
+    # Add the constraints to the solver
+    solver.add(And(9 <= start_time, start_time + 30 <= 17))
+    solver.add(Not(megan_busy))
+    solver.add(Not(christine_busy))
+    solver.add(Not(gabriel_free))
+    solver.add(Not(sara_busy))
+    solver.add(Not(bruce_busy))
+    solver.add(Not(kathryn_busy))
+    solver.add(Not(billy_busy))
+    solver.add(9 <= start_time + 30)
+    solver.add(start_time + 30 <= 17)
+
     # Solve the constraints
-    s.check()
-    
-    # Get the solution
-    if s.check() == sat:
-        model = s.model()
-        print(f'SOLUTION:')
-        print(f'Day: {days[model[day]]}')
-        print(f'Start Time: {model[start_time]:02d}:00')
-        print(f'End Time: {model[end_time]:02d}:00')
+    if solver.check() == sat:
+        model = solver.model()
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+        return f"SOLUTION:\nDay: {day}\nStart Time: {start_time_value:02d}:{(start_time_value % 60):02d}\nEnd Time: {end_time_value:02d}:{(end_time_value % 60):02d}"
     else:
-        print(f'NO SOLUTION FOUND')
+        # Try to find a solution that works for most people
+        for start_time_value in range(9, 17):
+            start_time = start_time_value
+            end_time = start_time + 30
+            if (Not(megan_busy.substitute(start_time=start_time_value))).as_bool():
+                if (Not(christine_busy.substitute(start_time=start_time_value))).as_bool():
+                    if (Not(gabriel_free.substitute(start_time=start_time_value))).as_bool():
+                        if (Not(sara_busy.substitute(start_time=start_time_value))).as_bool():
+                            if (Not(bruce_busy.substitute(start_time=start_time_value))).as_bool():
+                                if (Not(kathryn_busy.substitute(start_time=start_time_value))).as_bool():
+                                    if (Not(billy_busy.substitute(start_time=start_time_value))).as_bool():
+                                        return f"SOLUTION:\nDay: {day}\nStart Time: {start_time_value:02d}:{(start_time_value % 60):02d}\nEnd Time: {end_time:02d}:{(end_time % 60):02d}"
+        return "No solution found"
 
-# Define the existing schedules for everyone during the day
-schedules = [
-    [(9, 9.5), (10, 11), (12, 12.5)],  # Megan
-    [(9, 9.5), (11.5, 12), (13, 14), (15.5, 16.5)],  # Christine
-    [],  # Gabriel
-    [(11.5, 12), (14.5, 15)],  # Sara
-    [(9.5, 10), (10.5, 12), (12.5, 14), (14.5, 15), (15.5, 16.5)],  # Bruce
-    [(10, 15.5), (16, 16.5)],  # Kathryn
-    [(9, 9.5), (11, 11.5), (12, 14), (14.5, 15.5)]  # Billy
-]
-
-# Define the meeting duration
-duration = 30  # 30 minutes
-
-# Call the function to schedule the meeting
-schedule_meeting(schedules, duration)
+print(schedule_meeting())

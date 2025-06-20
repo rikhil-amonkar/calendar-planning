@@ -1,63 +1,56 @@
 from z3 import *
 
-# Define the travel times in minutes
-travel_times = {
-    'Richmond District to Pacific Heights': 10,
-    'Richmond District to Marina District': 9,
-    'Pacific Heights to Richmond District': 12,
-    'Pacific Heights to Marina District': 6,
-    'Marina District to Richmond District': 11,
-    'Marina District to Pacific Heights': 7
-}
-
-# Define the meeting times and durations
-meeting_times = {
-    'Jessica': {'start': 3 * 60 + 30, 'end': 4 * 60 + 45, 'duration': 45},
-    'Carol': {'start': 11 * 60, 'end': 15 * 60, 'duration': 60}
-}
-
-# Define the possible locations
-locations = ['Richmond District', 'Pacific Heights', 'Marina District']
-
 # Define the variables
-locations_order = [locations[0]]
-locations_order += [location for location in locations[1:] if location!= locations_order[-1]]
-locations_order += [locations[0]]
-
-start_time = 9 * 60
-end_time = 18 * 60
-
-locations_order = [Int(f'location_{i}') for i in range(len(locations_order))]
+start_time = Int('start_time')
+end_time = Int('end_time')
+meet_jessica = Bool('meet_jessica')
+meet_carol = Bool('meet_carol')
+meet_marina = Bool('meet_marina')
+meet_richmond = Bool('meet_richmond')
 
 # Define the constraints
 s = Optimize()
-for i in range(len(locations_order) - 1):
-    s.add(locations_order[i + 1] > locations_order[i])
+s.add(0 <= start_time)  # Start time must be non-negative
+s.add(start_time <= 9)  # Start time must be before 9:00 AM
+s.add(end_time >= 9)  # End time must be after 9:00 AM
+s.add(end_time <= 24 * 60)  # End time must be before midnight
 
-for i in range(len(locations_order) - 1):
-    if f'{locations_order[i]} to {locations_order[i + 1]}' in travel_times:
-        s.add(locations_order[i + 1] > locations_order[i] + travel_times[f'{locations_order[i]} to {locations_order[i + 1]}'])
-    elif f'{locations_order[i + 1]} to {locations_order[i]}' in travel_times:
-        s.add(locations_order[i + 1] > locations_order[i] + travel_times[f'{locations_order[i + 1]} to {locations_order[i]}'])
+# Define the constraints for meeting Jessica
+s.add(If(meet_jessica, 3 * 60 <= start_time + 45, True))
+s.add(If(meet_jessica, end_time - 45 >= 3 * 60, True))
 
-s.add(locations_order[0] == 0)
-s.add(locations_order[-1] == 0)
+# Define the constraints for meeting Carol
+s.add(If(meet_carol, 11 * 60 <= start_time + 60, True))
+s.add(If(meet_carol, end_time - 60 >= 11 * 60, True))
 
-# Define the constraints for the meetings
-meet_jessica = Bool('meet_jessica')
-meet_carol = Bool('meet_carol')
-s.add(And(meet_jessica == locations_order[1] == 2, meet_carol == locations_order[1] == 1))
+# Define the constraints for meeting Marina
+s.add(If(meet_marina, 11 * 60 <= start_time + 9, True))
+s.add(If(meet_marina, end_time - 9 >= 11 * 60, True))
 
-# Define the constraint to meet with exactly 2 people
-s.add(meet_jessica + meet_carol == 1)
+# Define the constraints for meeting Richmond
+s.add(If(meet_richmond, start_time + 0 >= 9, True))  # Meet at Richmond at 9:00 AM
+s.add(If(meet_richmond, end_time - 0 <= 11 * 60, True))  # End before 11:00 AM
+
+# Define the constraints for exactly 2 meetings
+s.add(If(meet_jessica, 1, 0) + If(meet_carol, 1, 0) + If(meet_marina, 1, 0) + If(meet_richmond, 1, 0) == 2)
+
+# Define the objective function
+s.minimize((start_time + 10 + 7 + 45) * If(meet_jessica, 1, 0) + 
+           (start_time + 9 + 7 + 60) * If(meet_carol, 1, 0) + 
+           (start_time + 9) * If(meet_marina, 1, 0) + 
+           (start_time + 0) * If(meet_richmond, 1, 0))
 
 # Solve the problem
-if s.check() == sat:
+result = s.check()
+
+if result == sat:
     model = s.model()
-    print(f'SOLUTION:')
-    for i in range(len(locations_order)):
-        print(f'Location {i+1}: {model[locations_order[i]]}')
-    print(f'Meet Jessica: {model[meet_jessica]}')
-    print(f'Meet Carol: {model[meet_carol]}')
+    print("Best schedule:")
+    print(f"Start time: {model[start_time]}")
+    print(f"End time: {model[end_time]}")
+    print(f"Meet Jessica: {model[meet_jessica]}")
+    print(f"Meet Carol: {model[meet_carol]}")
+    print(f"Meet Marina: {model[meet_marina]}")
+    print(f"Meet Richmond: {model[meet_richmond]}")
 else:
-    print('No solution found')
+    print("No solution found")

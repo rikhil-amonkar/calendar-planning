@@ -1,25 +1,47 @@
 from z3 import *
 
-# Define the variables
-meet_kenneth = Bool('meet_kenneth')
-time_at_nob_hill = Int('time_at_nob_hill')
-time_at_fishermans_wharf = Int('time_at_fishermans_wharf')
+# Define the travel times
+travel_times = {
+    'Fisherman\'s Wharf to Nob Hill': 11,
+    'Nob Hill to Fisherman\'s Wharf': 11
+}
 
 # Define the constraints
-s = Solver()
-s.add(meet_kenneth == (time_at_nob_hill >= 215) & (time_at_nob_hill <= 745) & (time_at_fishermans_wharf - time_at_nob_hill >= 90))
-s.add(time_at_nob_hill >= 215)  # Kenneth is available from 2:15PM
-s.add(time_at_nob_hill <= 745)  # Kenneth is available until 7:45PM
-s.add(time_at_fishermans_wharf >= 900)  # We arrive at Fisherman's Wharf at 9:00AM
-s.add(time_at_nob_hill >= 900)  # We arrive at Nob Hill after 9:00AM
-s.add(time_at_fishermans_wharf - time_at_nob_hill <= 720)  # We arrive back at Fisherman's Wharf within 12 hours
+start_time = 9 * 60  # 9:00 AM in minutes
+kenneth_start = 2 * 60 + 15  # 2:15 PM in minutes
+kenneth_end = 7 * 60 + 45  # 7:45 PM in minutes
+min_meeting_time = 90  # 90 minutes
 
-# Define the objective function
-s.add(meet_kenneth == True)  # We want to meet Kenneth for a minimum of 90 minutes
+# Define the variables
+x = Int('x')  # Time to leave Fisherman's Wharf
+y = Int('y')  # Time to meet Kenneth at Nob Hill
+
+# Define the solver
+solver = Solver()
+
+# Add constraints
+solver.add(x >= start_time)  # Leave Fisherman's Wharf after 9:00 AM
+solver.add(y >= x + travel_times['Fisherman\'s Wharf to Nob Hill'])  # Travel to Nob Hill
+solver.add(y <= kenneth_end - min_meeting_time)  # Meet Kenneth before 7:45 PM
+solver.add(kenneth_start <= y + min_meeting_time)  # Meet Kenneth after 2:15 PM
 
 # Solve the problem
-if s.check() == sat:
-    model = s.model()
-    print("We meet Kenneth at Nob Hill at", model[time_at_nob_hill].as_long(), "and arrive back at Fisherman's Wharf at", model[time_at_fishermans_wharf].as_long())
+if solver.check() == sat:
+    model = solver.model()
+    print(f"Optimal schedule: Leave Fisherman's Wharf at {model[x] // 60}:{model[x] % 60} AM, meet Kenneth at Nob Hill at {model[y] // 60}:{model[y] % 60} PM")
 else:
     print("No solution found")
+
+# Check for optimal schedule
+optimal_schedule = None
+optimal_time = float('inf')
+for x_val in range(start_time, kenneth_start):
+    for y_val in range(x_val + travel_times['Fisherman\'s Wharf to Nob Hill'], kenneth_end - min_meeting_time):
+        if kenneth_start <= y_val + min_meeting_time <= kenneth_end:
+            travel_time = x_val + travel_times['Fisherman\'s Wharf to Nob Hill'] + (y_val - x_val - travel_times['Fisherman\'s Wharf to Nob Hill']) + travel_times['Nob Hill to Fisherman\'s Wharf']
+            if travel_time < optimal_time:
+                optimal_time = travel_time
+                optimal_schedule = (x_val, y_val)
+
+if optimal_schedule:
+    print(f"Optimal schedule: Leave Fisherman's Wharf at {optimal_schedule[0] // 60}:{optimal_schedule[0] % 60} AM, meet Kenneth at Nob Hill at {optimal_schedule[1] // 60}:{optimal_schedule[1] % 60} PM")

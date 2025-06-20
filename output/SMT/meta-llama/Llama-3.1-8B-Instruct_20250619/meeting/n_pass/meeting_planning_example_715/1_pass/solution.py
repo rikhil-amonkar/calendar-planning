@@ -1,32 +1,12 @@
 from z3 import *
 
 # Define the variables
-time_slots = [
-    '9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00', '5:00-6:00', '6:00-7:00', '7:00-8:00', '8:00-9:00'
-]
-friends = {
-    'Amanda': {'location': 'Marina District','start': 2*60+45, 'end': 7*60+30,'min_time': 105},
-    'Melissa': {'location': 'The Castro','start': 9*60, 'end': 5*60,'min_time': 30},
-    'Jeffrey': {'location': 'Fisherman\'s Wharf','start': 12*60+45, 'end': 18*60+45,'min_time': 120},
-    'Matthew': {'location': 'Bayview','start': 10*60+15, 'end': 13*60+15,'min_time': 30},
-    'Nancy': {'location': 'Pacific Heights','start': 17*60, 'end': 21*60+30,'min_time': 105},
-    'Karen': {'location': 'Mission District','start': 17*60+30, 'end': 20*60+30,'min_time': 105},
-    'Robert': {'location': 'Alamo Square','start': 11*60+15, 'end': 17*60+30,'min_time': 120},
-    'Joseph': {'location': 'Golden Gate Park','start': 8*60+30, 'end': 21*60+15,'min_time': 105}
-}
+start_time = 9 * 60  # 9:00 AM in minutes
+end_time = 21 * 60 + 30  # 9:30 PM in minutes
+time_slots = [i for i in range(start_time, end_time + 1)]
+num_time_slots = len(time_slots)
 
-locations = {
-    'Presidio': 0,
-    'Marina District': 1,
-    'The Castro': 2,
-    'Fisherman\'s Wharf': 3,
-    'Bayview': 4,
-    'Pacific Heights': 5,
-    'Mission District': 6,
-    'Alamo Square': 7,
-    'Golden Gate Park': 8
-}
-
+# Define the constraints
 travel_times = {
     ('Presidio', 'Marina District'): 11,
     ('Presidio', 'The Castro'): 21,
@@ -102,545 +82,168 @@ travel_times = {
     ('Golden Gate Park', 'Alamo Square'): 9
 }
 
-# Create a Z3 solver
+# Define the friends' schedules
+friends_schedules = {
+    'Amanda': (time_slots.index(2 * 60 + 45), time_slots.index(7 * 60 + 30)),
+    'Melissa': (time_slots.index(9 * 60), time_slots.index(5 * 60)),
+    'Jeffrey': (time_slots.index(12 * 60 + 45), time_slots.index(18 * 60 + 45)),
+    'Matthew': (time_slots.index(10 * 60 + 15), time_slots.index(13 * 60 + 15)),
+    'Nancy': (time_slots.index(17 * 60), time_slots.index(21 * 60 + 30)),
+    'Karen': (time_slots.index(17 * 60 + 30), time_slots.index(20 * 60 + 30)),
+    'Robert': (time_slots.index(11 * 60 + 15), time_slots.index(17 * 60 + 30)),
+    'Joseph': (time_slots.index(8 * 60 + 30), time_slots.index(21 * 60 + 15))
+}
+
+# Define the minimum meeting times
+min_meeting_times = {
+    'Amanda': 105,
+    'Melissa': 30,
+    'Jeffrey': 120,
+    'Matthew': 30,
+    'Nancy': 105,
+    'Karen': 105,
+    'Robert': 120,
+    'Joseph': 105
+}
+
+# Define the variables for the solver
+x = [Bool(f'x_{i}_{j}') for i in range(num_time_slots) for j in friends_schedules]
+
+# Define the constraints for the solver
 solver = Solver()
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        solver.add(x[i * len(friends_schedules) + friends_schedules[j][0]] == False)
+        solver.add(x[i * len(friends_schedules) + friends_schedules[j][1]] == False)
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        for k in friends_schedules:
+            if j!= k:
+                start_j, end_j = friends_schedules[j]
+                start_k, end_k = friends_schedules[k]
+                if start_j <= i < end_j and start_k <= i < end_k:
+                    solver.add(Or(x[i * len(friends_schedules) + start_j] == False, x[i * len(friends_schedules) + start_k] == False))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            solver.add(Or(x[i * len(friends_schedules) + start_j] == False, x[i * len(friends_schedules) + end_j] == False))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Presidio' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Presidio' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Marina District' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Marina District' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'The Castro' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'The Castro' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Fisherman\'s Wharf' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Fisherman\'s Wharf' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Bayview' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Bayview' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Pacific Heights' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Pacific Heights' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Mission District' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Mission District' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Alamo Square' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Alamo Square' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in travel_times:
+                if k[0] == 'Golden Gate Park' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i + travel_times[k]) * len(friends_schedules) + start_j]))
+                elif k[1] == 'Golden Gate Park' and start_j <= i < end_j:
+                    solver.add(Implies(x[i * len(friends_schedules) + start_j], x[(i - travel_times[k]) * len(friends_schedules) + start_j]))
 
-# Declare the variables
-locations = [Bool(f'location_{i}') for i in range(len(locations))]
-times = [Bool(f'time_{i}') for i in range(len(time_slots))]
-meetings = [[Bool(f'meeting_{i}_{j}') for j in range(len(locations))] for i in range(len(locations))]
+# Define the constraints for the minimum meeting times
+for i in range(num_time_slots):
+    for j in friends_schedules:
+        start_j, end_j = friends_schedules[j]
+        if start_j <= i < end_j:
+            for k in min_meeting_times:
+                if k == 'Amanda' and i >= 2 * 60 + 45 and i <= 7 * 60 + 30:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
+                elif k == 'Melissa' and i >= 9 * 60 and i <= 5 * 60:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
+                elif k == 'Jeffrey' and i >= 12 * 60 + 45 and i <= 18 * 60 + 45:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
+                elif k == 'Matthew' and i >= 10 * 60 + 15 and i <= 13 * 60 + 15:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
+                elif k == 'Nancy' and i >= 17 * 60 and i <= 21 * 60 + 30:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
+                elif k == 'Karen' and i >= 17 * 60 + 30 and i <= 20 * 60 + 30:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
+                elif k == 'Robert' and i >= 11 * 60 + 15 and i <= 17 * 60 + 30:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
+                elif k == 'Joseph' and i >= 8 * 60 + 30 and i <= 21 * 60 + 15:
+                    solver.add(x[i * len(friends_schedules) + start_j] == True)
 
-# Add constraints
-for i in range(len(locations)):
-    solver.add(Or(locations[i]))
-
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            solver.add(Implies(locations[i], Or(meetings[i][j])))
-
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            solver.add(Implies(locations[j], Or(meetings[i][j])))
-
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            start_time = 9*60
-            end_time = 21*60+30
-            travel_time = travel_times[(i, j)]
-            if i == 0 and j == 1:
-                start_time = 10*60
-            elif i == 0 and j == 2:
-                start_time = 9*60
-            elif i == 0 and j == 3:
-                start_time = 10*60
-            elif i == 0 and j == 4:
-                start_time = 9*60
-            elif i == 0 and j == 5:
-                start_time = 10*60
-            elif i == 0 and j == 6:
-                start_time = 11*60
-            elif i == 0 and j == 7:
-                start_time = 10*60
-            elif i == 0 and j == 8:
-                start_time = 9*60
-            elif i == 1 and j == 0:
-                start_time = 9*60
-            elif i == 1 and j == 2:
-                start_time = 10*60+22
-            elif i == 1 and j == 3:
-                start_time = 10*60
-            elif i == 1 and j == 4:
-                start_time = 10*60+27
-            elif i == 1 and j == 5:
-                start_time = 10*60+7
-            elif i == 1 and j == 6:
-                start_time = 10*60+20
-            elif i == 1 and j == 7:
-                start_time = 10*60+15
-            elif i == 1 and j == 8:
-                start_time = 10*60+18
-            elif i == 2 and j == 0:
-                start_time = 9*60
-            elif i == 2 and j == 1:
-                start_time = 10*60+21
-            elif i == 2 and j == 3:
-                start_time = 10*60+24
-            elif i == 2 and j == 4:
-                start_time = 10*60+19
-            elif i == 2 and j == 5:
-                start_time = 10*60+16
-            elif i == 2 and j == 6:
-                start_time = 9*60+7
-            elif i == 2 and j == 7:
-                start_time = 9*60+8
-            elif i == 2 and j == 8:
-                start_time = 9*60+11
-            elif i == 3 and j == 0:
-                start_time = 10*60
-            elif i == 3 and j == 1:
-                start_time = 10*60
-            elif i == 3 and j == 2:
-                start_time = 10*60+27
-            elif i == 3 and j == 4:
-                start_time = 10*60+25
-            elif i == 3 and j == 5:
-                start_time = 10*60+12
-            elif i == 3 and j == 6:
-                start_time = 10*60+22
-            elif i == 3 and j == 7:
-                start_time = 10*60+21
-            elif i == 3 and j == 8:
-                start_time = 10*60+25
-            elif i == 4 and j == 0:
-                start_time = 9*60
-            elif i == 4 and j == 1:
-                start_time = 10*60+27
-            elif i == 4 and j == 2:
-                start_time = 9*60+19
-            elif i == 4 and j == 3:
-                start_time = 10*60+25
-            elif i == 4 and j == 5:
-                start_time = 10*60+23
-            elif i == 4 and j == 6:
-                start_time = 9*60+14
-            elif i == 4 and j == 7:
-                start_time = 9*60+16
-            elif i == 4 and j == 8:
-                start_time = 9*60+22
-            elif i == 5 and j == 0:
-                start_time = 10*60
-            elif i == 5 and j == 1:
-                start_time = 10*60+7
-            elif i == 5 and j == 2:
-                start_time = 10*60+16
-            elif i == 5 and j == 3:
-                start_time = 10*60+13
-            elif i == 5 and j == 4:
-                start_time = 10*60+22
-            elif i == 5 and j == 6:
-                start_time = 10*60+16
-            elif i == 5 and j == 7:
-                start_time = 10*60+10
-            elif i == 5 and j == 8:
-                start_time = 10*60+15
-            elif i == 6 and j == 0:
-                start_time = 11*60
-            elif i == 6 and j == 1:
-                start_time = 10*60+19
-            elif i == 6 and j == 2:
-                start_time = 9*60+7
-            elif i == 6 and j == 3:
-                start_time = 10*60+22
-            elif i == 6 and j == 4:
-                start_time = 9*60+14
-            elif i == 6 and j == 5:
-                start_time = 10*60+16
-            elif i == 6 and j == 7:
-                start_time = 9*60+11
-            elif i == 6 and j == 8:
-                start_time = 9*60+17
-            elif i == 7 and j == 0:
-                start_time = 10*60
-            elif i == 7 and j == 1:
-                start_time = 10*60+15
-            elif i == 7 and j == 2:
-                start_time = 9*60+8
-            elif i == 7 and j == 3:
-                start_time = 10*60+21
-            elif i == 7 and j == 4:
-                start_time = 9*60+16
-            elif i == 7 and j == 5:
-                start_time = 10*60+10
-            elif i == 7 and j == 6:
-                start_time = 9*60+10
-            elif i == 7 and j == 8:
-                start_time = 9*60+9
-            elif i == 8 and j == 0:
-                start_time = 9*60
-            elif i == 8 and j == 1:
-                start_time = 10*60+18
-            elif i == 8 and j == 2:
-                start_time = 9*60+11
-            elif i == 8 and j == 3:
-                start_time = 10*60+24
-            elif i == 8 and j == 4:
-                start_time = 9*60+22
-            elif i == 8 and j == 5:
-                start_time = 10*60+15
-            elif i == 8 and j == 6:
-                start_time = 9*60+17
-            elif i == 8 and j == 7:
-                start_time = 9*60+9
-
-            end_time = start_time + travel_time
-
-            # Check if the meeting is within the friend's availability
-            if i == 0 and j == 1:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 0 and j == 2:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 0 and j == 3:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 0 and j == 4:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 0 and j == 5:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 0 and j == 6:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 0 and j == 7:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 0 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 2:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 3:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 4:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 5:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 6:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 7:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 1 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 1:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 3:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 4:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 5:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 6:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 7:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 2 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 1:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 2:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 4:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 5:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 6:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 7:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 3 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 1:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 2:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 3:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 5:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 6:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 7:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 4 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 1:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 2:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 3:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 4:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 6:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 7:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 5 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 1:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 2:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 3:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 4:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 5:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 7:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 6 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 1:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 2:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 3:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 4:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 5:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 6:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 7 and j == 8:
-                if friends['Joseph']['start'] < end_time and end_time < friends['Joseph']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Joseph']['start'], end_time <= friends['Joseph']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 8 and j == 0:
-                if friends['Amanda']['start'] < end_time and end_time < friends['Amanda']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Amanda']['start'], end_time <= friends['Amanda']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 8 and j == 1:
-                if friends['Melissa']['start'] < end_time and end_time < friends['Melissa']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Melissa']['start'], end_time <= friends['Melissa']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 8 and j == 2:
-                if friends['Jeffrey']['start'] < end_time and end_time < friends['Jeffrey']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Jeffrey']['start'], end_time <= friends['Jeffrey']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 8 and j == 3:
-                if friends['Matthew']['start'] < end_time and end_time < friends['Matthew']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Matthew']['start'], end_time <= friends['Matthew']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 8 and j == 4:
-                if friends['Nancy']['start'] < end_time and end_time < friends['Nancy']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Nancy']['start'], end_time <= friends['Nancy']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 8 and j == 5:
-                if friends['Karen']['start'] < end_time and end_time < friends['Karen']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Karen']['start'], end_time <= friends['Karen']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-            elif i == 8 and j == 6:
-                if friends['Robert']['start'] < end_time and end_time < friends['Robert']['end']:
-                    solver.add(And(meetings[i][j], And(start_time >= friends['Robert']['start'], end_time <= friends['Robert']['end'])))
-                else:
-                    solver.add(Not(meetings[i][j]))
-
-# Check if the solver has a solution
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    print('Solution:')
-    for i in range(len(locations)):
-        for j in range(len(locations)):
-            if model.evaluate(meetings[i][j]).as_bool():
-                print(f'Meet at {time_slots[i % len(time_slots)]} at {locations[j]} for {friends[list(locations.keys())[j]]["min_time"]} minutes')
+    schedule = []
+    for i in range(num_time_slots):
+        for j in friends_schedules:
+            start_j, end_j = friends_schedules[j]
+            if start_j <= i < end_j:
+                if model[x[i * len(friends_schedules) + start_j]]:
+                    schedule.append((friends_schedules.keys()[j], i))
+    print('SOLUTION:')
+    print(schedule)
 else:
     print('No solution found')

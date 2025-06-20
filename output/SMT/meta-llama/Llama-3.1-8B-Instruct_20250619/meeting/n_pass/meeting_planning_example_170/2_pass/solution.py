@@ -1,14 +1,21 @@
 from z3 import *
 
 # Define the variables
-arrive_north_beach = Int('arrive_north_beach')
-leave_north_beach = Int('leave_north_beach')
-travel_to_union_square = Int('travel_to_union_square')
-travel_to_russian_hill = Int('travel_to_russian_hill')
+start_time = Int('start_time')
+end_time = Int('end_time')
 meet_emily = Int('meet_emily')
 meet_margaret = Int('meet_margaret')
 
-# Define the distances in minutes
+# Define the constraints
+s = Optimize()
+s.add(start_time >= 0)
+s.add(end_time >= start_time)
+s.add(meet_emily >= 0)
+s.add(meet_emily <= 60)
+s.add(meet_margaret >= 0)
+s.add(meet_margaret <= 120)
+
+# Define the distance constraints
 distances = {
     'North Beach to Union Square': 7,
     'North Beach to Russian Hill': 4,
@@ -18,49 +25,20 @@ distances = {
     'Russian Hill to Union Square': 11
 }
 
-# Define the constraints
-s = Optimize()
+# Define the time constraints for Emily and Margaret
+s.add(4 * 60 + 45 <= start_time + meet_emily)
+s.add(start_time + meet_emily <= 5 * 60)
+s.add(7 * 60 <= start_time + meet_margaret)
+s.add(start_time + meet_margaret <= 9 * 60)
 
-# You arrive at North Beach at 9:00AM
-s.add(arrive_north_beach == 9 * 60)
+# Define the objective function to minimize the total time
+s.minimize(start_time + meet_emily + meet_margaret)
 
-# You want to meet Emily for a minimum of 45 minutes
-s.add(4 * 60 + 15 <= meet_emily)
-s.add(meet_emily <= 5 * 60 + 15)
-
-# You want to meet Margaret for a minimum of 120 minutes
-s.add(7 * 60 + 0 <= meet_margaret)
-s.add(meet_margaret <= 9 * 60 + 0)
-
-# You can travel to Union Square from North Beach
-s.add(leave_north_beach + distances['North Beach to Union Square'] <= meet_emily)
-
-# You can travel to Russian Hill from North Beach
-s.add(leave_north_beach + distances['North Beach to Russian Hill'] <= meet_margaret)
-
-# You can travel to North Beach from Union Square
-s.add(meet_emily + distances['Union Square to North Beach'] <= leave_north_beach)
-
-# You can travel to North Beach from Russian Hill
-s.add(meet_margaret + distances['Russian Hill to North Beach'] <= leave_north_beach)
-
-# You can travel to Russian Hill from Union Square
-s.add(meet_emily + distances['Union Square to Russian Hill'] <= leave_north_beach)
-
-# You can travel to Union Square from Russian Hill
-s.add(meet_margaret + distances['Russian Hill to Union Square'] <= leave_north_beach)
-
-# Objective: minimize the total travel time
-s.minimize(leave_north_beach - arrive_north_beach)
-
-# Solve the problem
-result = s.check()
-if result == sat:
+# Solve the optimization problem
+solution = s.check()
+if solution == sat:
     model = s.model()
-    print("Best schedule:")
-    print(f"Arrive at North Beach: {model[arrive_north_beach] / 60} hours")
-    print(f"Leave North Beach: {model[leave_north_beach] / 60} hours")
-    print(f"Meet Emily: {model[meet_emily] / 60} hours")
-    print(f"Meet Margaret: {model[meet_margaret] / 60} hours")
+    print(f"Best schedule: Meet Emily at {(model[meet_emily].as_long())} minutes after 9:00AM and meet Margaret at {(model[meet_margaret].as_long())} minutes after 9:00AM.")
+    print(f"Total time: {(model[start_time].as_long() + model[meet_emily].as_long() + model[meet_margaret].as_long())} minutes")
 else:
-    print("No solution found.")
+    print("No solution found")

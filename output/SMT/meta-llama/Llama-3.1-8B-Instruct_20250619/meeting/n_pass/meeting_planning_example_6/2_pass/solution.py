@@ -1,49 +1,50 @@
 from z3 import *
 
-# Define the variables
-meet_kenneth = Bool('meet_kenneth')
-meet_friend2 = Bool('meet_friend2')
-meet_friend3 = Bool('meet_friend3')
-time_at_nob_hill = Int('time_at_nob_hill')
-time_at_fishermans_wharf = Int('time_at_fishermans_wharf')
-time_at_friend2_location = Int('time_at_friend2_location')
-time_at_friend3_location = Int('time_at_friend3_location')
-
 # Define the travel times
-travel_time_fisherman_to_nob_hill = 11
-travel_time_nob_hill_to_fisherman = 11
-travel_time_fisherman_to_friend2 = 22
-travel_time_friend2_to_fisherman = 22
-travel_time_fisherman_to_friend3 = 33
-travel_time_friend3_to_fisherman = 33
+travel_times = {
+    'Fisherman\'s Wharf to Nob Hill': 11,
+    'Nob Hill to Fisherman\'s Wharf': 11
+}
 
 # Define the constraints
-s = Solver()
-s.add(meet_kenneth == (time_at_nob_hill >= 215) & (time_at_nob_hill <= 745) & (time_at_fishermans_wharf - time_at_nob_hill >= 90))
-s.add(meet_friend2 == (time_at_friend2_location >= 900) & (time_at_friend2_location + travel_time_friend2_to_fisherman <= time_at_fishermans_wharf))
-s.add(meet_friend3 == (time_at_friend3_location >= 900) & (time_at_friend3_location + travel_time_friend3_to_fisherman <= time_at_fishermans_wharf))
-s.add(Or(meet_kenneth, meet_friend2, meet_friend3))  # We meet exactly one person
-s.add(Not(And(meet_kenneth, meet_friend2)))
-s.add(Not(And(meet_kenneth, meet_friend3)))
-s.add(Not(And(meet_friend2, meet_friend3)))
-s.add(time_at_nob_hill >= 900)  # We arrive at Nob Hill after 9:00AM
-s.add(time_at_friend2_location >= 900)  # We arrive at friend 2's location after 9:00AM
-s.add(time_at_friend3_location >= 900)  # We arrive at friend 3's location after 9:00AM
-s.add(time_at_fishermans_wharf - time_at_nob_hill <= 720)  # We arrive back at Fisherman's Wharf within 12 hours
-s.add(time_at_fishermans_wharf - time_at_friend2_location <= 720)  # We arrive back at Fisherman's Wharf within 12 hours
-s.add(time_at_fishermans_wharf - time_at_friend3_location <= 720)  # We arrive back at Fisherman's Wharf within 12 hours
+start_time = 9 * 60  # 9:00 AM in minutes
+kenneth_start = 2 * 60 + 15  # 2:15 PM in minutes
+kenneth_end = 7 * 60 + 45  # 7:45 PM in minutes
+min_meeting_time = 90  # 90 minutes
 
-# Define the objective function
-s.add(Or(meet_kenneth, meet_friend2, meet_friend3))  # We want to meet at least one person
+# Define the variables
+x = Int('x')  # Time to leave Fisherman's Wharf
+y = Int('y')  # Time to meet Kenneth at Nob Hill
+
+# Define the solver
+solver = Solver()
+
+# Add constraints
+solver.add(x >= start_time)  # Leave Fisherman's Wharf after 9:00 AM
+solver.add(y >= x + travel_times['Fisherman\'s Wharf to Nob Hill'])  # Travel to Nob Hill
+solver.add(y <= kenneth_end - min_meeting_time)  # Meet Kenneth before 7:45 PM
+solver.add(kenneth_start <= y + min_meeting_time)  # Meet Kenneth after 2:15 PM
+
+# Add constraint to meet Kenneth for at least 90 minutes
+solver.add(y - x >= min_meeting_time)
 
 # Solve the problem
-if s.check() == sat:
-    model = s.model()
-    if model[meet_kenneth]:
-        print("We meet Kenneth at Nob Hill at", model[time_at_nob_hill].as_long(), "and arrive back at Fisherman's Wharf at", model[time_at_fishermans_wharf].as_long())
-    elif model[meet_friend2]:
-        print("We meet friend 2 at their location at", model[time_at_friend2_location].as_long(), "and arrive back at Fisherman's Wharf at", model[time_at_fishermans_wharf].as_long())
-    elif model[meet_friend3]:
-        print("We meet friend 3 at their location at", model[time_at_friend3_location].as_long(), "and arrive back at Fisherman's Wharf at", model[time_at_fishermans_wharf].as_long())
+if solver.check() == sat:
+    model = solver.model()
+    print(f"Optimal schedule: Leave Fisherman's Wharf at {model[x] // 60}:{model[x] % 60} AM, meet Kenneth at Nob Hill at {model[y] // 60}:{model[y] % 60} PM")
 else:
     print("No solution found")
+
+# Check for optimal schedule
+optimal_schedule = None
+optimal_time = float('inf')
+for x_val in range(start_time, kenneth_start):
+    for y_val in range(x_val + travel_times['Fisherman\'s Wharf to Nob Hill'], kenneth_end - min_meeting_time):
+        if kenneth_start <= y_val + min_meeting_time <= kenneth_end:
+            travel_time = x_val + travel_times['Fisherman\'s Wharf to Nob Hill'] + (y_val - x_val - travel_times['Fisherman\'s Wharf to Nob Hill']) + travel_times['Nob Hill to Fisherman\'s Wharf']
+            if travel_time < optimal_time:
+                optimal_time = travel_time
+                optimal_schedule = (x_val, y_val)
+
+if optimal_schedule:
+    print(f"Optimal schedule: Leave Fisherman's Wharf at {optimal_schedule[0] // 60}:{optimal_schedule[0] % 60} AM, meet Kenneth at Nob Hill at {optimal_schedule[1] // 60}:{optimal_schedule[1] % 60} PM")

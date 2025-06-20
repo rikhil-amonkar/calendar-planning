@@ -1,8 +1,6 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 720  # 12 hours in minutes
+# Define the travel times as a dictionary
 travel_times = {
     ('Embarcadero', 'Richmond District'): 21,
     ('Embarcadero', 'Union Square'): 10,
@@ -48,69 +46,138 @@ travel_times = {
     ('Bayview', 'Nob Hill'): 20
 }
 
-locations = ['Embarcadero', 'Richmond District', 'Union Square', 'Financial District', 'Pacific Heights', 'Nob Hill', 'Bayview']
-
 # Define the constraints
 s = Optimize()
 
-# Time variables
-meet_kenneth = [Bool('meet_kenneth_%s' % i) for i in range(len(locations))]
-meet_lisa = [Bool('meet_lisa_%s' % i) for i in range(len(locations))]
-meet_joshua = [Bool('meet_joshua_%s' % i) for i in range(len(locations))]
-meet_nancy = [Bool('meet_nancy_%s' % i) for i in range(len(locations))]
-meet_andrew = [Bool('meet_andrew_%s' % i) for i in range(len(locations))]
-meet_john = [Bool('meet_john_%s' % i) for i in range(len(locations))]
+# Define the variables
+x = [Bool(f'x_{i}') for i in range(6)]
+y = [Bool(f'y_{i}') for i in range(6)]
 
-# Constraints
-for i, loc in enumerate(locations):
-    s.add(Or(meet_kenneth[i], meet_lisa[i], meet_joshua[i], meet_nancy[i], meet_andrew[i], meet_john[i]))
+# Define the objective function
+objective = 0
+for i in range(6):
+    objective += If(x[i], 1, 0)
 
-for i, loc in enumerate(locations):
-    if loc == 'Richmond District':
-        s.add(If(meet_kenneth[i], And(start_time + travel_times[('Embarcadero', 'Richmond District')] <= 900, 900 + 45 <= end_time), True))
-    elif loc == 'Union Square':
-        s.add(If(meet_lisa[i], And(start_time <= 450, 450 + 90 <= end_time), True))
-    elif loc == 'Financial District':
-        s.add(If(meet_joshua[i], And(start_time + 60 <= 450, 450 + 15 <= end_time), True))
-    elif loc == 'Pacific Heights':
-        s.add(If(meet_nancy[i], And(start_time + travel_times[('Embarcadero', 'Pacific Heights')] <= 570, 570 + 180 <= end_time), True))
-    elif loc == 'Nob Hill':
-        s.add(If(meet_andrew[i], And(start_time + travel_times[('Embarcadero', 'Nob Hill')] <= 630, 630 + 180 <= end_time), True))
-    elif loc == 'Bayview':
-        s.add(If(meet_john[i], And(start_time + travel_times[('Embarcadero', 'Bayview')] <= 630, 630 + 225 <= end_time), True))
+# Define the constraints
+s.add(x[0])  # We start at Embarcadero
+s.add(y[0])  # We start at Embarcadero
 
-s.add(If(meet_kenneth[0], start_time + 45 <= 900, True))
-s.add(If(meet_lisa[0], start_time <= 450, True))
-s.add(If(meet_joshua[0], start_time + 60 <= 450, True))
-s.add(If(meet_nancy[0], start_time + travel_times[('Embarcadero', 'Pacific Heights')] <= 570, True))
-s.add(If(meet_andrew[0], start_time + travel_times[('Embarcadero', 'Nob Hill')] <= 630, True))
-s.add(If(meet_john[0], start_time + travel_times[('Embarcadero', 'Bayview')] <= 630, True))
+# Constraints for Kenneth
+s.add(And(x[0], Implies(x[0], x[1] == True)))  # If we meet Kenneth, we must be at Richmond District
+s.add(And(x[1], Implies(x[1], y[1] == True)))  # If we meet Kenneth, we must be at Richmond District
+s.add(Implies(x[1], y[1]))  # If we meet Kenneth, we must be at Richmond District
+s.add(And(x[1], Implies(x[1], y[2] == False)))  # If we meet Kenneth, we cannot be at Union Square
+s.add(And(x[1], Implies(x[1], y[3] == False)))  # If we meet Kenneth, we cannot be at Financial District
+s.add(And(x[1], Implies(x[1], y[4] == False)))  # If we meet Kenneth, we cannot be at Pacific Heights
+s.add(And(x[1], Implies(x[1], y[5] == False)))  # If we meet Kenneth, we cannot be at Bayview
+s.add(Implies(x[1], And(And(And(And(y[0] == False, y[1] == False), y[2] == False), y[3] == False), y[4] == False)))  # If we meet Kenneth, we cannot be at Embarcadero
+s.add(Implies(x[1], And(And(And(And(y[0] == False, y[1] == False), y[2] == False), y[3] == False), y[4] == False)))  # If we meet Kenneth, we cannot be at Richmond District
+s.add(Implies(x[1], And(And(And(And(y[0] == False, y[1] == False), y[2] == False), y[3] == False), y[4] == False)))  # If we meet Kenneth, we cannot be at Union Square
+s.add(Implies(x[1], And(And(And(And(y[0] == False, y[1] == False), y[2] == False), y[3] == False), y[4] == False)))  # If we meet Kenneth, we cannot be at Financial District
+s.add(Implies(x[1], And(And(And(And(y[0] == False, y[1] == False), y[2] == False), y[3] == False), y[4] == False)))  # If we meet Kenneth, we cannot be at Pacific Heights
+s.add(Implies(x[1], And(And(And(And(y[0] == False, y[1] == False), y[2] == False), y[3] == False), y[4] == False)))  # If we meet Kenneth, we cannot be at Bayview
 
-# Objective function
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_kenneth[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_kenneth[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_lisa[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_lisa[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_joshua[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_joshua[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_nancy[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_nancy[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_andrew[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_andrew[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_john[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_john[k]]))
+# Constraints for Lisa
+s.add(And(x[0], Implies(x[0], y[2] == True)))  # If we meet Lisa, we must be at Union Square
+s.add(And(y[2], Implies(y[2], x[0] == True)))  # If we meet Lisa, we must be at Union Square
+s.add(Implies(y[2], x[0]))  # If we meet Lisa, we must be at Union Square
+s.add(And(y[2], Implies(y[2], x[1] == False)))  # If we meet Lisa, we cannot be at Richmond District
+s.add(And(y[2], Implies(y[2], x[3] == False)))  # If we meet Lisa, we cannot be at Financial District
+s.add(And(y[2], Implies(y[2], x[4] == False)))  # If we meet Lisa, we cannot be at Pacific Heights
+s.add(And(y[2], Implies(y[2], x[5] == False)))  # If we meet Lisa, we cannot be at Bayview
+s.add(Implies(y[2], And(And(And(And(x[0] == False, x[1] == False), x[3] == False), x[4] == False), x[5] == False)))  # If we meet Lisa, we cannot be at Embarcadero
+s.add(Implies(y[2], And(And(And(And(x[0] == False, x[1] == False), x[3] == False), x[4] == False), x[5] == False)))  # If we meet Lisa, we cannot be at Richmond District
+s.add(Implies(y[2], And(And(And(And(x[0] == False, x[1] == False), x[3] == False), x[4] == False), x[5] == False)))  # If we meet Lisa, we cannot be at Union Square
+s.add(Implies(y[2], And(And(And(And(x[0] == False, x[1] == False), x[3] == False), x[4] == False), x[5] == False)))  # If we meet Lisa, we cannot be at Financial District
+s.add(Implies(y[2], And(And(And(And(x[0] == False, x[1] == False), x[3] == False), x[4] == False), x[5] == False)))  # If we meet Lisa, we cannot be at Pacific Heights
+s.add(Implies(y[2], And(And(And(And(x[0] == False, x[1] == False), x[3] == False), x[4] == False), x[5] == False)))  # If we meet Lisa, we cannot be at Bayview
 
-# Solve the problem
+# Constraints for Joshua
+s.add(And(x[0], Implies(x[0], y[3] == True)))  # If we meet Joshua, we must be at Financial District
+s.add(And(y[3], Implies(y[3], x[0] == True)))  # If we meet Joshua, we must be at Financial District
+s.add(Implies(y[3], x[0]))  # If we meet Joshua, we must be at Financial District
+s.add(And(y[3], Implies(y[3], x[1] == False)))  # If we meet Joshua, we cannot be at Richmond District
+s.add(And(y[3], Implies(y[3], x[2] == False)))  # If we meet Joshua, we cannot be at Union Square
+s.add(And(y[3], Implies(y[3], x[4] == False)))  # If we meet Joshua, we cannot be at Pacific Heights
+s.add(And(y[3], Implies(y[3], x[5] == False)))  # If we meet Joshua, we cannot be at Bayview
+s.add(Implies(y[3], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[4] == False), x[5] == False)))  # If we meet Joshua, we cannot be at Embarcadero
+s.add(Implies(y[3], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[4] == False), x[5] == False)))  # If we meet Joshua, we cannot be at Richmond District
+s.add(Implies(y[3], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[4] == False), x[5] == False)))  # If we meet Joshua, we cannot be at Union Square
+s.add(Implies(y[3], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[4] == False), x[5] == False)))  # If we meet Joshua, we cannot be at Financial District
+s.add(Implies(y[3], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[4] == False), x[5] == False)))  # If we meet Joshua, we cannot be at Pacific Heights
+s.add(Implies(y[3], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[4] == False), x[5] == False)))  # If we meet Joshua, we cannot be at Bayview
+
+# Constraints for Nancy
+s.add(And(x[0], Implies(x[0], y[4] == True)))  # If we meet Nancy, we must be at Pacific Heights
+s.add(And(y[4], Implies(y[4], x[0] == True)))  # If we meet Nancy, we must be at Pacific Heights
+s.add(Implies(y[4], x[0]))  # If we meet Nancy, we must be at Pacific Heights
+s.add(And(y[4], Implies(y[4], x[1] == False)))  # If we meet Nancy, we cannot be at Richmond District
+s.add(And(y[4], Implies(y[4], x[2] == False)))  # If we meet Nancy, we cannot be at Union Square
+s.add(And(y[4], Implies(y[4], x[3] == False)))  # If we meet Nancy, we cannot be at Financial District
+s.add(And(y[4], Implies(y[4], x[5] == False)))  # If we meet Nancy, we cannot be at Bayview
+s.add(Implies(y[4], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[5] == False)))  # If we meet Nancy, we cannot be at Embarcadero
+s.add(Implies(y[4], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[5] == False)))  # If we meet Nancy, we cannot be at Richmond District
+s.add(Implies(y[4], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[5] == False)))  # If we meet Nancy, we cannot be at Union Square
+s.add(Implies(y[4], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[5] == False)))  # If we meet Nancy, we cannot be at Financial District
+s.add(Implies(y[4], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[5] == False)))  # If we meet Nancy, we cannot be at Pacific Heights
+s.add(Implies(y[4], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[5] == False)))  # If we meet Nancy, we cannot be at Bayview
+
+# Constraints for Andrew
+s.add(And(x[0], Implies(x[0], y[5] == True)))  # If we meet Andrew, we must be at Bayview
+s.add(And(y[5], Implies(y[5], x[0] == True)))  # If we meet Andrew, we must be at Bayview
+s.add(Implies(y[5], x[0]))  # If we meet Andrew, we must be at Bayview
+s.add(And(y[5], Implies(y[5], x[1] == False)))  # If we meet Andrew, we cannot be at Richmond District
+s.add(And(y[5], Implies(y[5], x[2] == False)))  # If we meet Andrew, we cannot be at Union Square
+s.add(And(y[5], Implies(y[5], x[3] == False)))  # If we meet Andrew, we cannot be at Financial District
+s.add(And(y[5], Implies(y[5], x[4] == False)))  # If we meet Andrew, we cannot be at Pacific Heights
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet Andrew, we cannot be at Embarcadero
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet Andrew, we cannot be at Richmond District
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet Andrew, we cannot be at Union Square
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet Andrew, we cannot be at Financial District
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet Andrew, we cannot be at Pacific Heights
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet Andrew, we cannot be at Bayview
+
+# Constraints for John
+s.add(And(x[0], Implies(x[0], y[5] == False)))  # If we meet John, we cannot be at Bayview
+s.add(And(y[5], Implies(y[5], x[0] == False)))  # If we meet John, we cannot be at Bayview
+s.add(Implies(y[5], x[0] == False))  # If we meet John, we cannot be at Bayview
+s.add(And(y[5], Implies(y[5], x[1] == False)))  # If we meet John, we cannot be at Richmond District
+s.add(And(y[5], Implies(y[5], x[2] == False)))  # If we meet John, we cannot be at Union Square
+s.add(And(y[5], Implies(y[5], x[3] == False)))  # If we meet John, we cannot be at Financial District
+s.add(And(y[5], Implies(y[5], x[4] == False)))  # If we meet John, we cannot be at Pacific Heights
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet John, we cannot be at Embarcadero
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet John, we cannot be at Richmond District
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet John, we cannot be at Union Square
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet John, we cannot be at Financial District
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet John, we cannot be at Pacific Heights
+s.add(Implies(y[5], And(And(And(And(x[0] == False, x[1] == False), x[2] == False), x[3] == False), x[4] == False)))  # If we meet John, we cannot be at Bayview
+
+# Constraints for travel times
+s.add(If(x[0], y[0] == True))  # If we start at Embarcadero, we must be at Embarcadero
+s.add(If(x[1], y[1] == True))  # If we meet Kenneth, we must be at Richmond District
+s.add(If(x[2], y[2] == True))  # If we meet Lisa, we must be at Union Square
+s.add(If(x[3], y[3] == True))  # If we meet Joshua, we must be at Financial District
+s.add(If(x[4], y[4] == True))  # If we meet Nancy, we must be at Pacific Heights
+s.add(If(x[5], y[5] == True))  # If we meet Andrew, we must be at Bayview
+
+# Add the objective function
+s.maximize(objective)
+
+# Solve the optimization problem
 result = s.check()
 if result == sat:
     model = s.model()
-    print("Locations to visit:")
-    for i, loc in enumerate(locations):
-        if model.evaluate(meet_kenneth[i]):
-            print("Kenneth at %s" % loc)
-        if model.evaluate(meet_lisa[i]):
-            print("Lisa at %s" % loc)
-        if model.evaluate(meet_joshua[i]):
-            print("Joshua at %s" % loc)
-        if model.evaluate(meet_nancy[i]):
-            print("Nancy at %s" % loc)
-        if model.evaluate(meet_andrew[i]):
-            print("Andrew at %s" % loc)
-        if model.evaluate(meet_john[i]):
-            print("John at %s" % loc)
+    print("Solution found:")
+    for i in range(6):
+        print(f"x_{i} = {model[x[i]].as_bool()}")
+        print(f"y_{i} = {model[y[i]].as_bool()}")
 else:
     print("No solution found")
+
+# Print the final answer
+print("The final answer is")
+for i in range(6):
+    if model[x[i]].as_bool():
+        print(f"We meet {['Kenneth', 'Lisa', 'Joshua', 'Nancy', 'Andrew', 'John'][i]} at {['Richmond District', 'Union Square', 'Financial District', 'Pacific Heights', 'Bayview', 'Bayview'][i]}")
+    else:
+        print(f"We do not meet {['Kenneth', 'Lisa', 'Joshua', 'Nancy', 'Andrew', 'John'][i]}")

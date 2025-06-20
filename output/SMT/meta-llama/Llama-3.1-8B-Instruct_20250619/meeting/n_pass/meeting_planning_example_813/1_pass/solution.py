@@ -1,166 +1,226 @@
 from z3 import *
 
-# Define the time slots
-start_time = 9 * 60  # 9:00 AM
-end_time = 21 * 60  # 9:45 PM
+# Define the variables
+start_time = 9 * 60  # 9:00 AM in minutes
+end_time = 20 * 60  # 8:00 PM in minutes
+time_slots = [i for i in range(start_time, end_time)]
+num_time_slots = len(time_slots)
 
-# Define the locations
-locations = [
-    "Marina District",
-    "Embarcadero",
-    "Bayview",
-    "Union Square",
-    "Chinatown",
-    "Sunset District",
-    "Golden Gate Park",
-    "Financial District",
-    "Haight-Ashbury",
-    "Mission District"
+meetings = [
+    {'name': 'Joshua', 'location': 'Embarcadero','start_time': 9 * 60 + 45, 'end_time': 6 * 60, 'duration': 105},
+    {'name': 'Jeffrey', 'location': 'Bayview','start_time': 9 * 60 + 45, 'end_time': 8 * 60 * 15, 'duration': 75},
+    {'name': 'Charles', 'location': 'Union Square','start_time': 10 * 60 + 45, 'end_time': 8 * 60 * 15, 'duration': 120},
+    {'name': 'Joseph', 'location': 'Chinatown','start_time': 7 * 60, 'end_time': 3 * 60 * 30, 'duration': 60},
+    {'name': 'Elizabeth', 'location': 'Sunset District','start_time': 9 * 60, 'end_time': 9 * 60 + 45, 'duration': 45},
+    {'name': 'Matthew', 'location': 'Golden Gate Park','start_time': 11 * 60, 'end_time': 7 * 60 * 30, 'duration': 45},
+    {'name': 'Carol', 'location': 'Financial District','start_time': 10 * 60 + 45, 'end_time': 11 * 60 + 15, 'duration': 15},
+    {'name': 'Paul', 'location': 'Haight-Ashbury','start_time': 19 * 60 + 15, 'end_time': 20 * 60 + 30, 'duration': 15},
+    {'name': 'Rebecca', 'location': 'Mission District','start_time': 17 * 60, 'end_time': 20 * 60 + 45, 'duration': 45}
 ]
 
-# Define the travel times
 travel_times = {
-    ("Marina District", "Embarcadero"): 12,
-    ("Marina District", "Bayview"): 27,
-    ("Marina District", "Union Square"): 16,
-    ("Marina District", "Chinatown"): 15,
-    ("Marina District", "Sunset District"): 19,
-    ("Marina District", "Golden Gate Park"): 18,
-    ("Marina District", "Financial District"): 17,
-    ("Marina District", "Haight-Ashbury"): 16,
-    ("Marina District", "Mission District"): 20,
-    ("Embarcadero", "Marina District"): 12,
-    ("Embarcadero", "Bayview"): 21,
-    ("Embarcadero", "Union Square"): 10,
-    ("Embarcadero", "Chinatown"): 7,
-    ("Embarcadero", "Sunset District"): 30,
-    ("Embarcadero", "Golden Gate Park"): 25,
-    ("Embarcadero", "Financial District"): 5,
-    ("Embarcadero", "Haight-Ashbury"): 21,
-    ("Embarcadero", "Mission District"): 20,
-    ("Bayview", "Marina District"): 27,
-    ("Bayview", "Embarcadero"): 19,
-    ("Bayview", "Union Square"): 18,
-    ("Bayview", "Chinatown"): 19,
-    ("Bayview", "Sunset District"): 23,
-    ("Bayview", "Golden Gate Park"): 22,
-    ("Bayview", "Financial District"): 19,
-    ("Bayview", "Haight-Ashbury"): 19,
-    ("Bayview", "Mission District"): 13,
-    ("Union Square", "Marina District"): 18,
-    ("Union Square", "Embarcadero"): 11,
-    ("Union Square", "Bayview"): 15,
-    ("Union Square", "Chinatown"): 7,
-    ("Union Square", "Sunset District"): 27,
-    ("Union Square", "Golden Gate Park"): 22,
-    ("Union Square", "Financial District"): 9,
-    ("Union Square", "Haight-Ashbury"): 18,
-    ("Union Square", "Mission District"): 14,
-    ("Chinatown", "Marina District"): 12,
-    ("Chinatown", "Embarcadero"): 5,
-    ("Chinatown", "Bayview"): 20,
-    ("Chinatown", "Union Square"): 7,
-    ("Chinatown", "Sunset District"): 29,
-    ("Chinatown", "Golden Gate Park"): 23,
-    ("Chinatown", "Financial District"): 5,
-    ("Chinatown", "Haight-Ashbury"): 19,
-    ("Chinatown", "Mission District"): 17,
-    ("Sunset District", "Marina District"): 21,
-    ("Sunset District", "Embarcadero"): 30,
-    ("Sunset District", "Bayview"): 22,
-    ("Sunset District", "Union Square"): 30,
-    ("Sunset District", "Chinatown"): 30,
-    ("Sunset District", "Golden Gate Park"): 11,
-    ("Sunset District", "Financial District"): 30,
-    ("Sunset District", "Haight-Ashbury"): 15,
-    ("Sunset District", "Mission District"): 25,
-    ("Golden Gate Park", "Marina District"): 16,
-    ("Golden Gate Park", "Embarcadero"): 25,
-    ("Golden Gate Park", "Bayview"): 23,
-    ("Golden Gate Park", "Union Square"): 22,
-    ("Golden Gate Park", "Chinatown"): 23,
-    ("Golden Gate Park", "Sunset District"): 10,
-    ("Golden Gate Park", "Financial District"): 26,
-    ("Golden Gate Park", "Haight-Ashbury"): 7,
-    ("Golden Gate Park", "Mission District"): 17,
-    ("Financial District", "Marina District"): 15,
-    ("Financial District", "Embarcadero"): 4,
-    ("Financial District", "Bayview"): 19,
-    ("Financial District", "Union Square"): 9,
-    ("Financial District", "Chinatown"): 5,
-    ("Financial District", "Sunset District"): 30,
-    ("Financial District", "Golden Gate Park"): 23,
-    ("Financial District", "Haight-Ashbury"): 19,
-    ("Financial District", "Mission District"): 17,
-    ("Haight-Ashbury", "Marina District"): 17,
-    ("Haight-Ashbury", "Embarcadero"): 20,
-    ("Haight-Ashbury", "Bayview"): 18,
-    ("Haight-Ashbury", "Union Square"): 19,
-    ("Haight-Ashbury", "Chinatown"): 19,
-    ("Haight-Ashbury", "Sunset District"): 15,
-    ("Haight-Ashbury", "Golden Gate Park"): 7,
-    ("Haight-Ashbury", "Financial District"): 21,
-    ("Haight-Ashbury", "Mission District"): 11,
-    ("Mission District", "Marina District"): 19,
-    ("Mission District", "Embarcadero"): 19,
-    ("Mission District", "Bayview"): 14,
-    ("Mission District", "Union Square"): 15,
-    ("Mission District", "Chinatown"): 16,
-    ("Mission District", "Sunset District"): 24,
-    ("Mission District", "Golden Gate Park"): 17,
-    ("Mission District", "Financial District"): 15,
-    ("Mission District", "Haight-Ashbury"): 12
+    'Marina District': {
+        'Embarcadero': 14,
+        'Bayview': 27,
+        'Union Square': 16,
+        'Chinatown': 15,
+        'Sunset District': 19,
+        'Golden Gate Park': 18,
+        'Financial District': 17,
+        'Haight-Ashbury': 16,
+        'Mission District': 20
+    },
+    'Embarcadero': {
+        'Marina District': 12,
+        'Bayview': 21,
+        'Union Square': 10,
+        'Chinatown': 7,
+        'Sunset District': 30,
+        'Golden Gate Park': 25,
+        'Financial District': 5,
+        'Haight-Ashbury': 21,
+        'Mission District': 20
+    },
+    'Bayview': {
+        'Marina District': 27,
+        'Embarcadero': 19,
+        'Union Square': 18,
+        'Chinatown': 19,
+        'Sunset District': 23,
+        'Golden Gate Park': 22,
+        'Financial District': 19,
+        'Haight-Ashbury': 19,
+        'Mission District': 13
+    },
+    'Union Square': {
+        'Marina District': 18,
+        'Embarcadero': 11,
+        'Bayview': 15,
+        'Chinatown': 7,
+        'Sunset District': 27,
+        'Golden Gate Park': 22,
+        'Financial District': 9,
+        'Haight-Ashbury': 18,
+        'Mission District': 14
+    },
+    'Chinatown': {
+        'Marina District': 12,
+        'Embarcadero': 5,
+        'Bayview': 20,
+        'Union Square': 7,
+        'Sunset District': 29,
+        'Golden Gate Park': 23,
+        'Financial District': 5,
+        'Haight-Ashbury': 19,
+        'Mission District': 17
+    },
+    'Sunset District': {
+        'Marina District': 21,
+        'Embarcadero': 30,
+        'Bayview': 22,
+        'Union Square': 30,
+        'Chinatown': 30,
+        'Golden Gate Park': 11,
+        'Financial District': 30,
+        'Haight-Ashbury': 15,
+        'Mission District': 25
+    },
+    'Golden Gate Park': {
+        'Marina District': 16,
+        'Embarcadero': 25,
+        'Bayview': 23,
+        'Union Square': 22,
+        'Chinatown': 23,
+        'Sunset District': 10,
+        'Financial District': 26,
+        'Haight-Ashbury': 7,
+        'Mission District': 17
+    },
+    'Financial District': {
+        'Marina District': 15,
+        'Embarcadero': 4,
+        'Bayview': 19,
+        'Union Square': 9,
+        'Chinatown': 5,
+        'Sunset District': 30,
+        'Golden Gate Park': 23,
+        'Haight-Ashbury': 19,
+        'Mission District': 17
+    },
+    'Haight-Ashbury': {
+        'Marina District': 17,
+        'Embarcadero': 20,
+        'Bayview': 18,
+        'Union Square': 19,
+        'Chinatown': 19,
+        'Sunset District': 15,
+        'Golden Gate Park': 7,
+        'Financial District': 21,
+        'Mission District': 11
+    },
+    'Mission District': {
+        'Marina District': 19,
+        'Embarcadero': 19,
+        'Bayview': 14,
+        'Union Square': 15,
+        'Chinatown': 16,
+        'Sunset District': 24,
+        'Golden Gate Park': 17,
+        'Financial District': 15,
+        'Haight-Ashbury': 12
+    }
 }
 
-# Define the constraints
-friends = [
-    {"name": "Joshua", "location": "Embarcadero", "start_time": 9 * 60 + 45, "end_time": 18 * 60, "required_time": 105},
-    {"name": "Jeffrey", "location": "Bayview", "start_time": 9 * 60 + 45, "end_time": 19 * 60 + 15, "required_time": 75},
-    {"name": "Charles", "location": "Union Square", "start_time": 10 * 60 + 45, "end_time": 19 * 60 + 15, "required_time": 120},
-    {"name": "Joseph", "location": "Chinatown", "start_time": 7 * 60, "end_time": 15 * 60 + 30, "required_time": 60},
-    {"name": "Elizabeth", "location": "Sunset District", "start_time": 9 * 60, "end_time": 9 * 60 + 45, "required_time": 45},
-    {"name": "Matthew", "location": "Golden Gate Park", "start_time": 11 * 60, "end_time": 19 * 60 + 30, "required_time": 45},
-    {"name": "Carol", "location": "Financial District", "start_time": 10 * 60 + 45, "end_time": 11 * 60 + 15, "required_time": 15},
-    {"name": "Paul", "location": "Haight-Ashbury", "start_time": 19 * 60 + 15, "end_time": 20 * 60 + 30, "required_time": 15},
-    {"name": "Rebecca", "location": "Mission District", "start_time": 17 * 60, "end_time": 21 * 60 + 45, "required_time": 45}
-]
-
 # Create the solver
-solver = Solver()
+s = Solver()
 
 # Create the variables
-times = {}
-for friend in friends:
-    times[friend["name"]] = [Bool(f"{friend['name']}_{i}") for i in range(friend["required_time"] + 1)]
+x = [Bool(f'x_{i}') for i in range(num_time_slots)]
+y = [Bool(f'y_{i}') for i in range(num_time_slots)]
+z = [Bool(f'z_{i}') for i in range(num_time_slots)]
 
 # Add the constraints
-for friend in friends:
-    for i in range(friend["required_time"] + 1):
-        solver.add(times[friend["name"]][i] == 0)
-    solver.add(Or([times[friend["name"]][i] for i in range(friend["required_time"] + 1)]))
-    solver.add(Implies(friend["start_time"] <= start_time + i * 60, times[friend["name"]][i]))
-    solver.add(Implies(start_time + i * 60 < friend["end_time"], times[friend["name"]][i]))
-    solver.add(Implies(And([times[friend["name"]][j] for j in range(i)]), times[friend["name"]][i]))
+for i in range(num_time_slots):
+    s.add(x[i] == y[i] == z[i] == False)
 
-# Add the travel time constraints
-for friend in friends:
-    for i in range(friend["required_time"] + 1):
-        for j in range(i + 1):
-            solver.add(times[friend["name"]][i] <= times[friend["name"]][j] + travel_times[(locations[0], friend["location"])])
+for i in range(num_time_slots):
+    for j in range(num_time_slots):
+        if i == j:
+            continue
+        s.add(Implies(x[i], y[j] == False))
+        s.add(Implies(y[i], z[j] == False))
 
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    print("SOLUTION:")
-    for friend in friends:
-        max_time = 0
-        for i in range(friend["required_time"] + 1):
-            if model.evaluate(times[friend["name"]][i]).as_bool():
-                max_time = i
-        print(f"Meet {friend['name']} at {locations[0]} for {max_time} minutes")
-        if friend["name"] == "Joshua":
-            print(f"Travel to {friend['location']} at {start_time + max_time * 60} minutes")
-        else:
-            print(f"Travel to {friend['location']} at {start_time + (max_time + travel_times[(locations[0], friend['location'])]) * 60} minutes")
+for meeting in meetings:
+    location = meeting['location']
+    start_time = meeting['start_time']
+    end_time = meeting['end_time']
+    duration = meeting['duration']
+
+    s.add(And(
+        Or([x[i] for i in range(start_time, end_time)]),
+        Or([y[i] for i in range(start_time, end_time)]),
+        Or([z[i] for i in range(start_time, end_time)]),
+        duration <= Sum([If(x[i], 1, 0) + If(y[i], 1, 0) + If(z[i], 1, 0) for i in range(start_time, end_time)])
+    ))
+
+    s.add(And(
+        Or([x[i] for i in range(start_time, end_time)]),
+        Or([y[i] for i in range(start_time, end_time)]),
+        Or([z[i] for i in range(start_time, end_time)]),
+        Sum([If(x[i], 1, 0) + If(y[i], 1, 0) + If(z[i], 1, 0) for i in range(start_time, end_time)]) <= duration
+    ))
+
+for location in travel_times:
+    for destination in travel_times[location]:
+        travel_time = travel_times[location][destination]
+        for i in range(num_time_slots):
+            for j in range(num_time_slots):
+                if i == j:
+                    continue
+                s.add(Implies(x[i], y[j] == False))
+                s.add(Implies(y[i], z[j] == False))
+
+                if i < j:
+                    s.add(Implies(x[i], y[j] == Or([x[k] for k in range(i + 1, j)])))
+                    s.add(Implies(y[i], z[j] == Or([y[k] for k in range(i + 1, j)])))
+                else:
+                    s.add(Implies(x[i], y[j] == Or([x[k] for k in range(j, i)])))
+                    s.add(Implies(y[i], z[j] == Or([y[k] for k in range(j, i)])))
+
+                if travel_time <= j - i:
+                    s.add(Implies(x[i], y[j]))
+
+# Check the solution
+if s.check() == sat:
+    model = s.model()
+    print('SOLUTION:')
+    for i in range(num_time_slots):
+        if model.evaluate(x[i]):
+            print(f'Visit {i + 9:02d}:00 AM - {i + 9 + 1:02d}:00 AM')
+            for meeting in meetings:
+                location = meeting['location']
+                start_time = meeting['start_time']
+                end_time = meeting['end_time']
+                duration = meeting['duration']
+                if start_time <= i < end_time:
+                    print(f'Meet {meeting["name"]} at {location} for {duration} minutes')
+        elif model.evaluate(y[i]):
+            print(f'Visit {i + 9:02d}:00 AM - {i + 9 + 1:02d}:00 AM')
+            for meeting in meetings:
+                location = meeting['location']
+                start_time = meeting['start_time']
+                end_time = meeting['end_time']
+                duration = meeting['duration']
+                if start_time <= i < end_time:
+                    print(f'Meet {meeting["name"]} at {location} for {duration} minutes')
+        elif model.evaluate(z[i]):
+            print(f'Visit {i + 9:02d}:00 AM - {i + 9 + 1:02d}:00 AM')
+            for meeting in meetings:
+                location = meeting['location']
+                start_time = meeting['start_time']
+                end_time = meeting['end_time']
+                duration = meeting['duration']
+                if start_time <= i < end_time:
+                    print(f'Meet {meeting["name"]} at {location} for {duration} minutes')
 else:
-    print("No solution found")
+    print('No solution found')

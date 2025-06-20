@@ -1,82 +1,102 @@
 from z3 import *
 
-# Define the variables
-start_time = 9 * 60  # 9:00 AM
-end_time = 24 * 60  # 24:00 PM
-time_step = 15  # 15 minutes
-num_locations = 13
-num_people = 10
-
-# Define the locations and people
-locations = [BitVec(f'location_{i}', 32) for i in range(num_locations)]
-people = [BitVec(f'person_{i}', 32) for i in range(num_people)]
+# Define the locations
+locations = ['Marina District', 'Bayview', 'Sunset District', 'Richmond District', 'Nob Hill', 'Chinatown', 'Haight-Ashbury', 'North Beach', 'Russian Hill', 'Embarcadero']
 
 # Define the travel times
-travel_times = [
-    [27, 19, 11, 12, 15, 16, 11, 8, 14, 27, 23, 25, 20, 19, 19, 22, 23, 19, 19, 19],
-    [27, 23, 25, 20, 19, 19, 22, 23, 19, 27, 22, 27, 19, 20, 19, 19, 23, 19, 19, 19],
-    [21, 22, 12, 24, 30, 15, 28, 24, 30, 21, 22, 11, 24, 27, 15, 17, 14, 24, 24, 30],
-    [9, 27, 11, 14, 20, 10, 17, 13, 19, 9, 27, 11, 14, 17, 15, 17, 13, 17, 13, 19],
-    [11, 19, 24, 14, 9, 13, 8, 5, 9, 11, 19, 24, 14, 14, 15, 7, 5, 10, 5, 9],
-    [12, 20, 29, 20, 9, 19, 3, 7, 5, 12, 20, 29, 20, 20, 19, 6, 9, 19, 7, 5],
-    [17, 18, 15, 10, 19, 19, 18, 17, 20, 17, 18, 15, 10, 15, 15, 10, 15, 17, 17, 20],
-    [9, 25, 27, 18, 6, 18, 4, 5, 6, 9, 25, 27, 18, 7, 19, 6, 5, 8, 5, 6],
-    [7, 23, 23, 14, 9, 17, 5, 5, 8, 7, 23, 23, 14, 13, 17, 4, 5, 8, 8, 8]
-]
+travel_times = {
+    'Marina District': {'Bayview': 27, 'Sunset District': 19, 'Richmond District': 11, 'Nob Hill': 12, 'Chinatown': 15, 'Haight-Ashbury': 16, 'North Beach': 11, 'Russian Hill': 8, 'Embarcadero': 14},
+    'Bayview': {'Marina District': 27, 'Sunset District': 23, 'Richmond District': 25, 'Nob Hill': 20, 'Chinatown': 19, 'Haight-Ashbury': 19, 'North Beach': 22, 'Russian Hill': 23, 'Embarcadero': 19},
+    'Sunset District': {'Marina District': 21, 'Bayview': 22, 'Richmond District': 12, 'Nob Hill': 27, 'Chinatown': 30, 'Haight-Ashbury': 15, 'North Beach': 28, 'Russian Hill': 24, 'Embarcadero': 30},
+    'Richmond District': {'Marina District': 9, 'Bayview': 27, 'Sunset District': 11, 'Nob Hill': 17, 'Chinatown': 20, 'Haight-Ashbury': 10, 'North Beach': 17, 'Russian Hill': 13, 'Embarcadero': 19},
+    'Nob Hill': {'Marina District': 11, 'Bayview': 19, 'Sunset District': 24, 'Richmond District': 14, 'Chinatown': 6, 'Haight-Ashbury': 13, 'North Beach': 8, 'Russian Hill': 5, 'Embarcadero': 9},
+    'Chinatown': {'Marina District': 12, 'Bayview': 20, 'Sunset District': 29, 'Richmond District': 20, 'Nob Hill': 9, 'Haight-Ashbury': 19, 'North Beach': 3, 'Russian Hill': 7, 'Embarcadero': 5},
+    'Haight-Ashbury': {'Marina District': 17, 'Bayview': 18, 'Sunset District': 15, 'Richmond District': 10, 'Nob Hill': 15, 'Chinatown': 19, 'North Beach': 19, 'Russian Hill': 17, 'Embarcadero': 20},
+    'North Beach': {'Marina District': 9, 'Bayview': 25, 'Sunset District': 27, 'Richmond District': 18, 'Nob Hill': 7, 'Chinatown': 6, 'Haight-Ashbury': 18, 'Russian Hill': 4, 'Embarcadero': 6},
+    'Russian Hill': {'Marina District': 7, 'Bayview': 23, 'Sunset District': 23, 'Richmond District': 14, 'Nob Hill': 5, 'Chinatown': 9, 'Haight-Ashbury': 17, 'North Beach': 5, 'Embarcadero': 8},
+    'Embarcadero': {'Marina District': 12, 'Bayview': 21, 'Sunset District': 30, 'Richmond District': 21, 'Nob Hill': 10, 'Chinatown': 7, 'Haight-Ashbury': 21, 'North Beach': 5, 'Russian Hill': 8}
+}
 
 # Define the constraints
-constraints = [
-    locations[0] == 0,  # Marina District is the starting location
-    locations[0] == start_time  # Start at 9:00 AM
-]
+s = Optimize()
 
-for i in range(num_locations):
-    for j in range(num_locations):
-        if i!= j:
-            constraints.append(locations[i] + travel_times[i][j] * time_step >= locations[j])
+# Define the variables
+meet_charles = Bool('meet_charles')
+meet_robert = Bool('meet_robert')
+meet_karen = Bool('meet_karen')
+meet_rebecca = Bool('meet_rebecca')
+meet_margaret = Bool('meet_margaret')
+meet_patricia = Bool('meet_patricia')
+meet_mark = Bool('meet_mark')
+meet_melissa = Bool('meet_melissa')
+meet_laura = Bool('meet_laura')
 
-for person in people:
-    constraints.append(person >= start_time)
+# Define the time variables
+start_time = 0
+end_time = 15 * 60  # 15 hours in minutes
 
-# Define the meeting constraints
-meeting_constraints = [
-    [people[0], 1.5 * 60, 2.5 * 60, 27, 0],
-    [people[1], 4.75 * 60, 9 * 60, 19, 1],
-    [people[2], 7.25 * 60, 9.5 * 60, 25, 2],
-    [people[3], 4.25 * 60, 8.5 * 60, 20, 3],
-    [people[4], 2.25 * 60, 7.75 * 60, 19, 4],
-    [people[5], 2.5 * 60, 8.5 * 60, 19, 5],
-    [people[6], 2 * 60, 6.5 * 60, 25, 6],
-    [people[7], 1 * 60, 7.75 * 60, 23, 7],
-    [people[8], 7.75 * 60, 9 * 60, 19, 8],
-    [people[9], 7.75 * 60, 9 * 60, 21, 9]
-]
+# Define the constraints
+s.add(Or(meet_charles, meet_robert, meet_karen, meet_rebecca, meet_margaret, meet_patricia, meet_mark, meet_melissa, meet_laura))
+s.add(And(meet_charles, And(start_time + 30 <= 90, start_time + 90 >= 11 * 60)))
+s.add(And(meet_robert, And(start_time + 30 <= 10 * 60, start_time + 10 * 60 >= 4 * 60 * 60)))
+s.add(And(meet_karen, And(start_time + 60 <= 10 * 60, start_time + 10 * 60 >= 7 * 60 * 60)))
+s.add(And(meet_rebecca, And(start_time + 90 <= 9 * 60, start_time + 9 * 60 >= 4 * 60 * 60)))
+s.add(And(meet_margaret, And(start_time + 120 <= 11 * 60, start_time + 11 * 60 >= 2 * 60 * 60)))
+s.add(And(meet_patricia, And(start_time + 45 <= 10 * 60, start_time + 10 * 60 >= 2 * 60 * 60)))
+s.add(And(meet_mark, And(start_time + 105 <= 10 * 60, start_time + 10 * 60 >= 2 * 60 * 60)))
+s.add(And(meet_melissa, And(start_time + 30 <= 9 * 60, start_time + 9 * 60 >= 1 * 60 * 60)))
+s.add(And(meet_laura, And(start_time + 105 <= 10 * 60, start_time + 10 * 60 >= 7 * 60)))
 
-for person, start_time, end_time, travel_time, location in meeting_constraints:
-    constraints.append(locations[location] + travel_time * time_step >= person)
-    constraints.append(person + 1.5 * 60 >= end_time)
+# Define the variables for each location
+location_vars = {}
+for location in locations:
+    location_vars[location] = [Bool(f'{location}_start_{i}') for i in range(10)]
 
-# Create the solver
-solver = Solver()
+# Define the constraints for each location
+for location in locations:
+    for i in range(10):
+        s.add(Or(location_vars[location][i], Not(location_vars[location][i])))
+        if i > 0:
+            s.add(If(location_vars[location][i], location_vars[location][i-1], True))
+        if location!= 'Marina District':
+            s.add(If(location_vars[location][i], location_vars['Marina District'][i], True))
+        if location!= 'Embarcadero':
+            s.add(If(location_vars[location][i], location_vars['Embarcadero'][i], True))
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Define the constraints for meeting each person
+for person in ['Charles', 'Robert', 'Karen', 'Rebecca', 'Margaret', 'Patricia', 'Mark', 'Melissa', 'Laura']:
+    if person == 'Charles':
+        s.add(If(meet_charles, Or(location_vars['Bayview'][0], location_vars['Bayview'][1], location_vars['Bayview'][2], location_vars['Bayview'][3], location_vars['Bayview'][4], location_vars['Bayview'][5], location_vars['Bayview'][6], location_vars['Bayview'][7], location_vars['Bayview'][8], location_vars['Bayview'][9])))
+    elif person == 'Robert':
+        s.add(If(meet_robert, Or(location_vars['Sunset District'][0], location_vars['Sunset District'][1], location_vars['Sunset District'][2], location_vars['Sunset District'][3], location_vars['Sunset District'][4], location_vars['Sunset District'][5], location_vars['Sunset District'][6], location_vars['Sunset District'][7], location_vars['Sunset District'][8], location_vars['Sunset District'][9])))
+    elif person == 'Karen':
+        s.add(If(meet_karen, Or(location_vars['Richmond District'][0], location_vars['Richmond District'][1], location_vars['Richmond District'][2], location_vars['Richmond District'][3], location_vars['Richmond District'][4], location_vars['Richmond District'][5], location_vars['Richmond District'][6], location_vars['Richmond District'][7], location_vars['Richmond District'][8], location_vars['Richmond District'][9])))
+    elif person == 'Rebecca':
+        s.add(If(meet_rebecca, Or(location_vars['Nob Hill'][0], location_vars['Nob Hill'][1], location_vars['Nob Hill'][2], location_vars['Nob Hill'][3], location_vars['Nob Hill'][4], location_vars['Nob Hill'][5], location_vars['Nob Hill'][6], location_vars['Nob Hill'][7], location_vars['Nob Hill'][8], location_vars['Nob Hill'][9])))
+    elif person == 'Margaret':
+        s.add(If(meet_margaret, Or(location_vars['Chinatown'][0], location_vars['Chinatown'][1], location_vars['Chinatown'][2], location_vars['Chinatown'][3], location_vars['Chinatown'][4], location_vars['Chinatown'][5], location_vars['Chinatown'][6], location_vars['Chinatown'][7], location_vars['Chinatown'][8], location_vars['Chinatown'][9])))
+    elif person == 'Patricia':
+        s.add(If(meet_patricia, Or(location_vars['Haight-Ashbury'][0], location_vars['Haight-Ashbury'][1], location_vars['Haight-Ashbury'][2], location_vars['Haight-Ashbury'][3], location_vars['Haight-Ashbury'][4], location_vars['Haight-Ashbury'][5], location_vars['Haight-Ashbury'][6], location_vars['Haight-Ashbury'][7], location_vars['Haight-Ashbury'][8], location_vars['Haight-Ashbury'][9])))
+    elif person == 'Mark':
+        s.add(If(meet_mark, Or(location_vars['North Beach'][0], location_vars['North Beach'][1], location_vars['North Beach'][2], location_vars['North Beach'][3], location_vars['North Beach'][4], location_vars['North Beach'][5], location_vars['North Beach'][6], location_vars['North Beach'][7], location_vars['North Beach'][8], location_vars['North Beach'][9])))
+    elif person == 'Melissa':
+        s.add(If(meet_melissa, Or(location_vars['Russian Hill'][0], location_vars['Russian Hill'][1], location_vars['Russian Hill'][2], location_vars['Russian Hill'][3], location_vars['Russian Hill'][4], location_vars['Russian Hill'][5], location_vars['Russian Hill'][6], location_vars['Russian Hill'][7], location_vars['Russian Hill'][8], location_vars['Russian Hill'][9])))
+    elif person == 'Laura':
+        s.add(If(meet_laura, Or(location_vars['Embarcadero'][0], location_vars['Embarcadero'][1], location_vars['Embarcadero'][2], location_vars['Embarcadero'][3], location_vars['Embarcadero'][4], location_vars['Embarcadero'][5], location_vars['Embarcadero'][6], location_vars['Embarcadero'][7], location_vars['Embarcadero'][8], location_vars['Embarcadero'][9])))
 
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    print("Solution:")
-    for i in range(num_locations):
-        print(f"Location {i+1}: {model[locations[i]] / time_step}")
+# Solve the optimization problem
+solution = s.check()
+
+# Print the solution
+if solution == sat:
+    m = s.model()
+    print('SOLUTION:')
+    for person in ['Charles', 'Robert', 'Karen', 'Rebecca', 'Margaret', 'Patricia', 'Mark', 'Melissa', 'Laura']:
+        if m[eval(f'meet_{person}')].as_bool():
+            print(f'Meet {person} at the location that is closest to the meeting location.')
+    for location in locations:
+        for i in range(10):
+            if m[eval(f'{location}_start_{i}')].as_bool():
+                print(f'Visit {location} at {i+9}:00 AM')
 else:
-    print("No solution exists")
-
-# Print the optimal schedule
-optimal_schedule = []
-for i in range(num_locations):
-    optimal_schedule.append(model[locations[i]] / time_step)
-
-print("Optimal schedule:")
-for i in range(num_locations):
-    print(f"Location {i+1}: {optimal_schedule[i]}")
+    print('No solution found')

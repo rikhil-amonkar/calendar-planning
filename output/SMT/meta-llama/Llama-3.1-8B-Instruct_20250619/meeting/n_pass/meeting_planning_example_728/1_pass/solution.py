@@ -1,14 +1,8 @@
 from z3 import *
 
-# Define the locations
-locations = ['Marina District', 'Mission District', 'Fisherman\'s Wharf', 'Presidio', 'Union Square', 'Sunset District', 'Financial District', 'Haight-Ashbury', 'Russian Hill']
-
-# Define the times
-times = ['9:00AM', '10:00AM', '11:30AM', '11:45AM', '2:15PM', '2:30PM', '2:45PM', '9:45PM', '10:00PM', '10:45PM']
-
-# Define the travel times
-travel_times = {
-    ('Marina District', 'Mission District'): 19,
+# Define the travel distances
+distances = {
+    ('Marina District', 'Mission District'): 20,
     ('Marina District', 'Fisherman\'s Wharf'): 10,
     ('Marina District', 'Presidio'): 10,
     ('Marina District', 'Union Square'): 16,
@@ -86,76 +80,41 @@ travel_times = {
 s = Solver()
 
 # Define the variables
-start_time = 0
-end_time = 24 * 60  # 24 hours in minutes
-location = [None] * len(times)
-time_spent = [None] * len(times)
-location[0] = 'Marina District'  # Start at Marina District
-time_spent[0] = 0
+start_time = 9 * 60  # 9:00 AM
+end_time = 24 * 60  # 24:00 PM
+locations = ['Marina District', 'Mission District', 'Fisherman\'s Wharf', 'Presidio', 'Union Square', 'Sunset District', 'Financial District', 'Haight-Ashbury', 'Russian Hill']
+time_slots = [(2 * 60, 10 * 60), (2 * 60, 10 * 60), (9 * 60, 10 * 60), (11 * 60, 12 * 60), (2 * 60, 8 * 60), (10 * 60, 12 * 60), (10 * 60, 12 * 60), (2 * 60, 5 * 60), (11 * 60, 9 * 60)]
+meeting_times = {'Karen': (2 * 60 + 15, 10 * 60), 'Richard': (2 * 60 + 30, 5 * 60), 'Robert': (9 * 60 + 45, 10 * 60 + 45), 'Joseph': (11 * 60 + 45, 2 * 60 + 45), 'Helen': (2 * 60 + 45, 8 * 60 + 45), 'Elizabeth': (10 * 60, 12 * 60), 'Kimberly': (2 * 60 + 15, 5 * 60), 'Ashley': (11 * 60 + 30, 9 * 60)}
+min_meeting_times = {'Karen': 30, 'Richard': 30, 'Robert': 60, 'Joseph': 120, 'Helen': 105, 'Elizabeth': 75, 'Kimberly': 105, 'Ashley': 45}
 
-# Add constraints for each person
-for i, time in enumerate(times):
-    if time == '9:00AM':
-        location[i] = 'Marina District'
-        time_spent[i] = 0
-    elif time == '10:00AM':
-        location[i] = 'Marina District'
-        time_spent[i] = 0
-    elif time == '11:30AM':
-        location[i] = 'Russian Hill'
-        time_spent[i] = 0
-    elif time == '11:45AM':
-        location[i] = 'Union Square'
-        time_spent[i] = 120
-    elif time == '2:15PM':
-        location[i] = 'Mission District'
-        time_spent[i] = 0
-    elif time == '2:30PM':
-        location[i] = 'Fisherman\'s Wharf'
-        time_spent[i] = 0
-    elif time == '2:45PM':
-        location[i] = 'Sunset District'
-        time_spent[i] = 0
-    elif time == '9:45PM':
-        location[i] = 'Presidio'
-        time_spent[i] = 60
-    elif time == '10:00PM':
-        location[i] = 'Mission District'
-        time_spent[i] = 0
-    elif time == '10:45PM':
-        location[i] = 'Presidio'
-        time_spent[i] = 0
+# Define the variables for the solver
+x = [Int(f"x_{i}") for i in range(len(locations) + 1)]
+x[0] = start_time
+x[-1] = end_time
+for i in range(len(locations)):
+    s.add(x[i] <= x[i + 1])
+for i in range(len(locations)):
+    s.add(x[i] >= start_time)
+for i in range(len(locations)):
+    s.add(x[i] <= end_time)
 
-# Add constraints for travel times
-for i in range(1, len(times)):
-    location[i] = Int('location_%d' % i)
-    time_spent[i] = Int('time_spent_%d' % i)
-    s.add(Or([location[i] == loc for loc in locations]))
-    s.add(And([time_spent[i] >= 0, time_spent[i] <= 24 * 60]))
-    s.add(If(location[i] == location[i-1], time_spent[i] == time_spent[i-1] + travel_times[(location[i-1], location[i])], time_spent[i] == travel_times[(location[i-1], location[i])]))
+# Define the constraints for the locations
+for i in range(len(locations)):
+    s.add(x[i] + distances[(locations[i], locations[i + 1])] >= x[i + 1])
 
-# Add constraints for meeting each person
-for i, time in enumerate(times):
-    if time == '11:45AM':
-        s.add(And([location[i] == 'Union Square', time_spent[i] >= 120]))
-    elif time == '2:15PM':
-        s.add(And([location[i] == 'Mission District', time_spent[i] >= 30]))
-    elif time == '2:30PM':
-        s.add(And([location[i] == 'Fisherman\'s Wharf', time_spent[i] >= 30]))
-    elif time == '2:45PM':
-        s.add(And([location[i] == 'Sunset District', time_spent[i] >= 105]))
-    elif time == '9:45PM':
-        s.add(And([location[i] == 'Presidio', time_spent[i] >= 60]))
-    elif time == '10:00PM':
-        s.add(And([location[i] == 'Mission District', time_spent[i] >= 0]))
-    elif time == '10:45PM':
-        s.add(And([location[i] == 'Presidio', time_spent[i] >= 0]))
+# Define the constraints for the meetings
+for person, (start, end) in meeting_times.items():
+    for i in range(len(locations)):
+        s.add(x[i] + min_meeting_times[person] >= start)
+        s.add(x[i] + min_meeting_times[person] <= end)
 
-# Check if the solution is feasible
-if s.check() == sat:
-    m = s.model()
-    print("Solution:")
-    for i in range(len(times)):
-        print("%s: %s, %d" % (times[i], m[location[i]].as_string(), m[time_spent[i]].as_long()))
-else:
-    print("No solution exists")
+# Solve the problem
+s.check()
+model = s.model()
+
+# Print the solution
+print("SOLUTION:")
+for i in range(len(locations)):
+    print(f"Location {i + 1}: {locations[i]}")
+    print(f"Time: {model[x[i]].as_long() // 60}:{model[x[i]].as_long() % 60}")
+    print()

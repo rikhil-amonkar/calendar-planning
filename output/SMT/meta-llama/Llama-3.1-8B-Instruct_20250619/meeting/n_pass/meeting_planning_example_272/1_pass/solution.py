@@ -1,79 +1,80 @@
 from z3 import *
 
 # Define the variables
-start_time = 0  # Start time in minutes after 9:00 AM
-end_time = 720  # End time in minutes after 9:00 AM (12 hours)
-meet_timothy = Bool('meet_timothy')
-meet_patricia = Bool('meet_patricia')
-meet_ashley = Bool('meet_ashley')
+start_time = [9*60]  # in minutes
+end_time = [15*60]  # in minutes
+meet_timed = [0]  # 0: no meeting, 1: meeting
+meet_time = [0]  # in minutes
+meet_location = [0]  # 0: Russian Hill, 1: Nob Hill, 2: Mission District, 3: Embarcadero
 
 # Define the constraints
 s = Optimize()
-s.add(start_time >= 0)
-s.add(start_time <= end_time)
 
-# Meet Timothy for at least 120 minutes
-s.add(If(meet_timothy, start_time + 120 <= end_time, True))
+# Patricia
+patricia_start = 6*60 + 30
+patricia_end = 9*60 + 45
+patricia_meet_time = 90
+patricia_location = [1]  # Nob Hill
 
-# Meet Patricia for at least 90 minutes
-s.add(If(meet_patricia, start_time + 90 <= end_time, True))
+# Ashley
+ashley_start = 8*60 + 30
+ashley_end = 9*60 + 15
+ashley_meet_time = 45
+ashley_location = [2]  # Mission District
 
-# Meet Ashley for at least 45 minutes
-s.add(If(meet_ashley, start_time + 45 <= end_time, True))
+# Timothy
+timothy_start = 9*60
+timothy_end = 17*60
+timothy_meet_time = 120
+timothy_location = [3]  # Embarcadero
 
-# Patricia is at Nob Hill from 6:30PM to 9:45PM
-patricia_start_time = 390
-patricia_end_time = 585
-s.add(If(meet_patricia, patricia_start_time <= start_time + 90 <= patricia_end_time, True))
+# Define the constraints
+for i in range(4):
+    s.add(start_time[i] >= 9*60)
+    s.add(end_time[i] <= 23*60)
+    s.add(meet_timed[i] == 0)  # No meeting by default
 
-# Ashley is at Mission District from 8:30PM to 9:15PM
-ashley_start_time = 510
-ashley_end_time = 555
-s.add(If(meet_ashley, ashley_start_time <= start_time + 45 <= ashley_end_time, True))
+# Patricia constraints
+for i in range(4):
+    if meet_timed[i] == 1:
+        s.add(start_time[i] >= patricia_start - patricia_meet_time)
+        s.add(end_time[i] <= patricia_end + patricia_meet_time)
+        s.add(meet_location[i] == patricia_location[0])
+        s.add(start_time[i] >= end_time[i-1])  # No overlap with previous meeting
 
-# Meet Timothy, Patricia, and Ashley
-s.add(If(meet_timothy, start_time >= 0, True))
-s.add(If(meet_patricia, start_time >= 0, True))
-s.add(If(meet_ashley, start_time >= 0, True))
+# Ashley constraints
+for i in range(4):
+    if meet_timed[i] == 1:
+        s.add(start_time[i] >= ashley_start - ashley_meet_time)
+        s.add(end_time[i] <= ashley_end + ashley_meet_time)
+        s.add(meet_location[i] == ashley_location[0])
+        s.add(start_time[i] >= end_time[i-1])  # No overlap with previous meeting
+
+# Timothy constraints
+for i in range(4):
+    if meet_timed[i] == 1:
+        s.add(start_time[i] >= timothy_start - timothy_meet_time)
+        s.add(end_time[i] <= timothy_end + timothy_meet_time)
+        s.add(meet_location[i] == timothy_location[0])
+        s.add(start_time[i] >= end_time[i-1])  # No overlap with previous meeting
+
+# Meeting constraints
+for i in range(4):
+    if meet_timed[i] == 1:
+        s.add(start_time[i] <= end_time[i])
+        s.add(end_time[i] >= start_time[i])
 
 # Objective function
-s.minimize(start_time)
+s.minimize(Sum([start_time[i] for i in range(4)]))
 
 # Solve the problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    print("Meet Timothy:", model[meet_timothy])
-    print("Meet Patricia:", model[meet_patricia])
-    print("Meet Ashley:", model[meet_ashley])
-    print("Start time:", model[start_time])
+solutions = s.solve()
+
+# Print the solution
+if solutions:
+    print("SOLUTION:")
+    for i in range(4):
+        if meet_timed[i] == 1:
+            print(f"Meeting at {['Russian Hill', 'Nob Hill', 'Mission District', 'Embarcadero'][meet_location[i]]} from {start_time[i]//60}:{start_time[i]%60} to {end_time[i]//60}:{end_time[i]%60}")
 else:
     print("No solution found")
-
-# Print the optimal schedule
-if model[meet_timothy]:
-    print("Meet Timothy from 9:00 AM to 11:00 AM")
-if model[meet_patricia]:
-    print("Meet Patricia from 6:30 PM to 7:45 PM")
-if model[meet_ashley]:
-    print("Meet Ashley from 8:30 PM to 9:15 PM")
-
-# Print the optimal order
-if model[meet_timothy] and model[meet_patricia]:
-    print("Optimal order: Meet Timothy, then Patricia")
-elif model[meet_timothy] and model[meet_ashley]:
-    print("Optimal order: Meet Timothy, then Ashley")
-elif model[meet_patricia] and model[meet_ashley]:
-    print("Optimal order: Meet Patricia, then Ashley")
-else:
-    print("Optimal order: Meet Timothy, Patricia, and Ashley in any order")
-
-# Print the total travel distance
-if model[meet_timothy]:
-    print("Travel to Embarcadero from Russian Hill (8 minutes)")
-if model[meet_patricia]:
-    print("Travel to Nob Hill from Russian Hill (5 minutes)")
-if model[meet_ashley]:
-    print("Travel to Mission District from Russian Hill (16 minutes)")
-
-print("Total travel distance:", 8 + 5 + 16, "minutes")

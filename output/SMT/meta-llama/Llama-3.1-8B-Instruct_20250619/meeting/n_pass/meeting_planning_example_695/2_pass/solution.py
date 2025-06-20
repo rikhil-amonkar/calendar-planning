@@ -1,6 +1,6 @@
 from z3 import *
 
-# Define the travel times
+# Define the travel times between locations
 travel_times = {
     'Bayview': {'Nob Hill': 20, 'Union Square': 17, 'Chinatown': 18, 'The Castro': 20, 'Presidio': 31, 'Pacific Heights': 23, 'Russian Hill': 23},
     'Nob Hill': {'Bayview': 19, 'Union Square': 7, 'Chinatown': 6, 'The Castro': 17, 'Presidio': 17, 'Pacific Heights': 8, 'Russian Hill': 5},
@@ -13,75 +13,52 @@ travel_times = {
 }
 
 # Define the constraints
-start_time = 9 * 60  # 9:00 AM
-end_time = 23 * 60  # 11:00 PM
-
-# Define the people and their availability
-people = {
-    'Paul': (4 * 60 + 15, 9 * 60 + 15),  # 4:15 PM to 9:15 PM
-    'Carol': (6 * 60, 8 * 60 + 15),  # 6:00 PM to 8:15 PM
-    'Patricia': (20 * 60, 21 * 60 + 30),  # 8:00 PM to 9:30 PM
-    'Karen': (5 * 60, 7 * 60),  # 5:00 PM to 7:00 PM
-    'Nancy': (11 * 60 + 45, 22 * 60),  # 11:45 AM to 10:00 PM
-    'Jeffrey': (20 * 60, 20 * 60 + 45),  # 8:00 PM to 8:45 PM
-    'Matthew': (3 * 60 + 45, 21 * 60 + 45)  # 3:45 PM to 9:45 PM
-}
-
-# Define the minimum meeting times
-min_meeting_times = {
-    'Paul': 60,
-    'Carol': 120,
-    'Patricia': 75,
-    'Karen': 45,
-    'Nancy': 30,
-    'Jeffrey': 45,
-    'Matthew': 75
-}
+s = Solver()
 
 # Define the variables
-locations = list(travel_times.keys())
-s = Optimize()
-x = [Bool(f'meet_{person}') for person in people]
-y = [Int(f'time_{person}') for person in people]
-z = [Int(f'distance_{person}') for person in people]
+time = Int('time')
+start_time = 9 * 60  # 9:00 AM in minutes
+end_time = 12 * 60 + 15 * 60  # 9:15 PM in minutes
+locations = ['Bayview', 'Nob Hill', 'Union Square', 'Chinatown', 'The Castro', 'Presidio', 'Pacific Heights', 'Russian Hill']
+people = ['Paul', 'Carol', 'Patricia', 'Karen', 'Nancy', 'Jeffrey', 'Matthew']
+meeting_times = {'Paul': [4 * 60 + 15, 9 * 60], 'Carol': [6 * 60, 8 * 60 + 15], 'Patricia': [8 * 60, 9 * 60 + 30], 'Karen': [5 * 60, 7 * 60], 'Nancy': [11 * 60 + 45, 10 * 60], 'Jeffrey': [8 * 60, 8 * 60 + 45], 'Matthew': [3 * 60 + 45, 9 * 60 + 45]}
+min_meeting_times = {'Paul': 60, 'Carol': 120, 'Patricia': 75, 'Karen': 45, 'Nancy': 30, 'Jeffrey': 45, 'Matthew': 75}
+num_meetings = 5
 
-# Sort the people based on their availability
-sorted_people = sorted(people.items(), key=lambda x: x[1][0])
+# Define the binary variables for each person
+binary_vars = [Bool(f'meet_{person}') for person in people]
 
 # Define the constraints
-for i, (person, availability) in enumerate(sorted_people):
-    s.add(y[i] >= availability[0])
-    s.add(y[i] <= availability[1])
-    s.add(x[i] == 1)
-    s.add(y[i] >= start_time)
-    s.add(y[i] <= end_time)
-    s.add(z[i] >= 0)
-    s.add(z[i] <= 2 * 60)  # maximum distance is 2 hours
+for person in people:
+    start, end = meeting_times[person]
+    min_meeting = min_meeting_times[person]
+    s.add(Implies(binary_vars[people.index(person)], And(start <= time, time <= end, time >= start + min_meeting, time <= end - min_meeting)))
 
-for i, (person1, availability1) in enumerate(sorted_people):
-    for j, (person2, availability2) in enumerate(sorted_people):
-        if person1!= person2:
-            s.add(z[i] + travel_times[locations[locations.index(person1)]][locations[locations.index(person2)]] >= y[i])
-            s.add(z[i] + travel_times[locations[locations.index(person1)]][locations[locations.index(person2)]] >= y[j])
+# Define the total number of meetings
+total_meetings = Sum([If(binary_var, 1, 0) for binary_var in binary_vars])
+s.add(total_meetings == num_meetings)
 
-for i, (person, availability) in enumerate(sorted_people):
-    if person in min_meeting_times:
-        s.add(y[i] + min_meeting_times[person] >= y[i+1] if i < len(sorted_people) - 1 else y[i])
+# Define the travel time constraints
+for location in locations:
+    for other_location in locations:
+        if other_location!= location:
+            travel_time = travel_times[location][other_location]
+            for person in people:
+                start, end = meeting_times[person]
+                if start <= end:
+                    s.add(Or(time >= start + travel_time, time <= start - travel_time, time >= end - travel_time, time <= end + travel_time))
 
-# Define the objective function
-s.add(x[sorted_people.index(('Paul', people['Paul']))] * 60 + x[sorted_people.index(('Carol', people['Carol']))] * 120 + x[sorted_people.index(('Patricia', people['Patricia']))] * 75 + x[sorted_people.index(('Karen', people['Karen']))] * 45 + x[sorted_people.index(('Nancy', people['Nancy']))] * 30 + x[sorted_people.index(('Jeffrey', people['Jeffrey']))] * 45 + x[sorted_people.index(('Matthew', people['Matthew']))] * 75)
-
-# Solve the optimization problem
-s.check()
-model = s.model()
-
-# Print the solution
-print('SOLUTION:')
-for i, (person, availability) in enumerate(sorted_people):
-    if model[x[i]].as_bool():
-        print(f'Meet {person} at {model[y[i]]} minutes after 9:00 AM')
-        print(f'Travel time: {model[z[i]]} minutes')
-        print()
-
-# Print the total score
-print('Total score:', model[x[sorted_people.index(('Paul', people['Paul']))]].as_bool() * 60 + model[x[sorted_people.index(('Carol', people['Carol']))]].as_bool() * 120 + model[x[sorted_people.index(('Patricia', people['Patricia']))]].as_bool() * 75 + model[x[sorted_people.index(('Karen', people['Karen']))]].as_bool() * 45 + model[x[sorted_people.index(('Nancy', people['Nancy']))]].as_bool() * 30 + model[x[sorted_people.index(('Jeffrey', people['Jeffrey']))]].as_bool() * 45 + model[x[sorted_people.index(('Matthew', people['Matthew']))]].as_bool() * 75)
+# Solve the problem
+s.add(And(time >= start_time, time <= end_time))
+if s.check() == sat:
+    m = s.model()
+    time_val = m[time].as_long()
+    print(f"The best schedule is to arrive at {locations[0]} at {time_val // 60}:{time_val % 60} and meet:")
+    for i, person in enumerate(people):
+        if m[binary_vars[i]]:
+            start, end = meeting_times[person]
+            min_meeting = min_meeting_times[person]
+            if start <= time_val <= end:
+                print(f"- {person} for at least {min_meeting} minutes")
+else:
+    print("No solution exists")

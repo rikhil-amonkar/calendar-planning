@@ -1,43 +1,41 @@
 from z3 import *
 
-# Define the variables
-nob_hill_start = Int('nob_hill_start')
-presidio_start = Int('presidio_start')
-nob_hill_end = Int('nob_hill_end')
-presidio_end = Int('presidio_end')
+# Define the travel times
+travel_times = {
+    'Nob Hill to Presidio': 17,
+    'Presidio to Nob Hill': 18
+}
 
 # Define the constraints
-s = Optimize()
+start_time = 9 * 60  # 9:00 AM in minutes
+robert_available = [11 * 60 + 15, 12 * 60 + 45, 13 * 60 + 15, 14 * 60 + 45, 15 * 60 + 15, 16 * 60 + 45, 5 * 60 + 45]
+min_meeting_time = 120
 
-# We arrive at Nob Hill at 9:00AM
-s.add(nob_hill_start == 9 * 60)
+# Define the variables
+meeting_times = [Bool(f'meeting_at_{i}') for i in range(len(robert_available))]
 
-# We want to meet Robert for at least 120 minutes
-s.add(presidio_end - presidio_start >= 120)
+# Create the Z3 solver
+solver = Solver()
 
-# Travel time from Nob Hill to Presidio
-s.add(presidio_start >= nob_hill_end + 17)
+# Add the constraints
+for i, meeting_time in enumerate(meeting_times):
+    solver.add(meeting_time == False)  # Initially, assume no meeting
+    if i == 0:
+        solver.add(And(meeting_time, start_time + travel_times['Nob Hill to Presidio'] <= robert_available[i]))
+    else:
+        solver.add(And(meeting_time, (robert_available[i-1] + travel_times['Presidio to Nob Hill']) + travel_times['Nob Hill to Presidio'] <= robert_available[i]))
 
-# Travel time from Presidio to Nob Hill
-s.add(nob_hill_end >= presidio_end + 18)
+# Add the objective function
+solver.add(If(Or(*meeting_times), Sum([If(meeting_time, robert_available[i] - (start_time + travel_times['Nob Hill to Presidio']), 0) for i, meeting_time in enumerate(meeting_times)]), 0) >= min_meeting_time)
 
-# Robert is at Presidio from 11:15AM to 5:45PM
-s.add(presidio_start >= 11 * 60 + 15)
-s.add(presidio_end <= 17 * 60 + 45)
+# Solve the problem
+solver.check()
 
-# Ensure that we don't spend more than 24 hours at each location
-s.add(nob_hill_end - nob_hill_start <= 24 * 60)
-s.add(presidio_end - presidio_start <= 24 * 60)
+# Get the model
+model = solver.model()
 
-# Objective: minimize the total time spent at both locations
-s.minimize((nob_hill_end - nob_hill_start) + (presidio_end - presidio_start))
-
-# Solve the optimization problem
-if s.check() == sat:
-    model = s.model()
-    print("Nob Hill start time:", model[nob_hill_start].as_long())
-    print("Presidio start time:", model[presidio_start].as_long())
-    print("Nob Hill end time:", model[nob_hill_end].as_long())
-    print("Presidio end time:", model[presidio_end].as_long())
-else:
-    print("No solution found")
+# Print the solution
+print("Optimal Schedule:")
+for i, meeting_time in enumerate(meeting_times):
+    if model.evaluate(meeting_time):
+        print(f"Meet Robert at {robert_available[i]}")

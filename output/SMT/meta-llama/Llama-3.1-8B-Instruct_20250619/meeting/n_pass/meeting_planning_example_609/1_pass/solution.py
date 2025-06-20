@@ -1,70 +1,106 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 24 * 60  # 24 hours in minutes
-friends = ['David', 'Kenneth', 'John', 'Charles', 'Deborah', 'Karen', 'Carol']
-locations = ['Chinatown', 'Mission District', 'Alamo Square', 'Pacific Heights', 'Union Square', 'Golden Gate Park', 'Sunset District', 'Presidio']
-
-# Define the travel times
+# Define the travel times between locations
 travel_times = {
-    'Chinatown': {'Mission District': 16, 'Alamo Square': 16, 'Pacific Heights': 11, 'Union Square': 7, 'Golden Gate Park': 23, 'Sunset District': 29, 'Presidio': 19},
-    'Mission District': {'Chinatown': 18, 'Alamo Square': 11, 'Pacific Heights': 16, 'Union Square': 15, 'Golden Gate Park': 17, 'Sunset District': 24, 'Presidio': 25},
-    'Alamo Square': {'Chinatown': 17, 'Mission District': 10, 'Pacific Heights': 10, 'Union Square': 14, 'Golden Gate Park': 9, 'Sunset District': 16, 'Presidio': 18},
-    'Pacific Heights': {'Chinatown': 10, 'Mission District': 15, 'Alamo Square': 10, 'Union Square': 12, 'Golden Gate Park': 15, 'Sunset District': 21, 'Presidio': 11},
-    'Union Square': {'Chinatown': 7, 'Mission District': 14, 'Alamo Square': 15, 'Pacific Heights': 12, 'Golden Gate Park': 22, 'Sunset District': 26, 'Presidio': 24},
-    'Golden Gate Park': {'Chinatown': 23, 'Mission District': 17, 'Alamo Square': 10, 'Pacific Heights': 16, 'Union Square': 22, 'Sunset District': 10, 'Presidio': 11},
-    'Sunset District': {'Chinatown': 29, 'Mission District': 24, 'Alamo Square': 17, 'Pacific Heights': 21, 'Union Square': 30, 'Golden Gate Park': 11, 'Presidio': 16},
-    'Presidio': {'Chinatown': 19, 'Mission District': 25, 'Alamo Square': 18, 'Pacific Heights': 11, 'Union Square': 22, 'Golden Gate Park': 12, 'Sunset District': 15}
+    ('Chinatown', 'Mission District'): 16,
+    ('Chinatown', 'Alamo Square'): 16,
+    ('Chinatown', 'Pacific Heights'): 11,
+    ('Chinatown', 'Union Square'): 7,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Chinatown', 'Sunset District'): 29,
+    ('Chinatown', 'Presidio'): 19,
+    ('Mission District', 'Chinatown'): 16,
+    ('Mission District', 'Alamo Square'): 10,
+    ('Mission District', 'Pacific Heights'): 15,
+    ('Mission District', 'Union Square'): 15,
+    ('Mission District', 'Golden Gate Park'): 17,
+    ('Mission District', 'Sunset District'): 24,
+    ('Mission District', 'Presidio'): 25,
+    ('Alamo Square', 'Chinatown'): 16,
+    ('Alamo Square', 'Mission District'): 10,
+    ('Alamo Square', 'Pacific Heights'): 10,
+    ('Alamo Square', 'Union Square'): 14,
+    ('Alamo Square', 'Golden Gate Park'): 9,
+    ('Alamo Square', 'Sunset District'): 16,
+    ('Alamo Square', 'Presidio'): 18,
+    ('Pacific Heights', 'Chinatown'): 11,
+    ('Pacific Heights', 'Mission District'): 15,
+    ('Pacific Heights', 'Alamo Square'): 10,
+    ('Pacific Heights', 'Union Square'): 12,
+    ('Pacific Heights', 'Golden Gate Park'): 15,
+    ('Pacific Heights', 'Sunset District'): 21,
+    ('Pacific Heights', 'Presidio'): 11,
+    ('Union Square', 'Chinatown'): 7,
+    ('Union Square', 'Mission District'): 14,
+    ('Union Square', 'Alamo Square'): 15,
+    ('Union Square', 'Pacific Heights'): 12,
+    ('Union Square', 'Golden Gate Park'): 22,
+    ('Union Square', 'Sunset District'): 26,
+    ('Union Square', 'Presidio'): 24,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'Mission District'): 17,
+    ('Golden Gate Park', 'Alamo Square'): 10,
+    ('Golden Gate Park', 'Pacific Heights'): 16,
+    ('Golden Gate Park', 'Union Square'): 22,
+    ('Golden Gate Park', 'Sunset District'): 10,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Sunset District', 'Chinatown'): 30,
+    ('Sunset District', 'Mission District'): 24,
+    ('Sunset District', 'Alamo Square'): 17,
+    ('Sunset District', 'Pacific Heights'): 21,
+    ('Sunset District', 'Union Square'): 30,
+    ('Sunset District', 'Golden Gate Park'): 11,
+    ('Sunset District', 'Presidio'): 16,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'Mission District'): 26,
+    ('Presidio', 'Alamo Square'): 18,
+    ('Presidio', 'Pacific Heights'): 11,
+    ('Presidio', 'Union Square'): 22,
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Presidio', 'Sunset District'): 15
 }
 
 # Define the constraints
 s = Solver()
 
-# Variables to keep track of the meeting times
-meetings = {}
-for friend in friends:
-    meetings[friend] = [Bool(friend + '_' + location) for location in locations]
+# Define the variables
+locations = ['Chinatown', 'Mission District', 'Alamo Square', 'Pacific Heights', 'Union Square', 'Golden Gate Park', 'Sunset District', 'Presidio']
+times = [9]  # initial time
+visits = [Bool('v_' + location) for location in locations]
+durations = [Int('d_' + location) for location in locations]
 
-# Add constraints for each friend
-for friend in friends:
-    # Add constraint for minimum meeting time
-    if friend == 'David':
-        s.add(Or([meetings[friend][locations.index('Mission District')] for locations in locations]))
-        s.add(And([meetings[friend][locations.index('Mission District')], (start_time + 16 <= 945) & (945 <= start_time + 16 + 45)]))
-    elif friend == 'Kenneth':
-        s.add(Or([meetings[friend][locations.index('Alamo Square')] for locations in locations]))
-        s.add(And([meetings[friend][locations.index('Alamo Square')], (start_time + 10 <= 1745) & (1745 <= start_time + 10 + 120)]))
-    elif friend == 'John':
-        s.add(Or([meetings[friend][locations.index('Pacific Heights')] for locations in locations]))
-        s.add(And([meetings[friend][locations.index('Pacific Heights')], (start_time + 16 <= 800) & (800 <= start_time + 16 + 15)]))
-    elif friend == 'Charles':
-        s.add(Or([meetings[friend][locations.index('Union Square')] for locations in locations]))
-        s.add(And([meetings[friend][locations.index('Union Square')], (start_time + 15 <= 2145) & (2145 <= start_time + 15 + 60)]))
-    elif friend == 'Deborah':
-        s.add(Or([meetings[friend][locations.index('Golden Gate Park')] for locations in locations]))
-        s.add(And([meetings[friend][locations.index('Golden Gate Park')], (start_time + 23 <= 615) & (615 <= start_time + 23 + 90)]))
-    elif friend == 'Karen':
-        s.add(Or([meetings[friend][locations.index('Sunset District')] for locations in locations]))
-        s.add(And([meetings[friend][locations.index('Sunset District')], (start_time + 21 <= 915) & (915 <= start_time + 21 + 15)]))
-    elif friend == 'Carol':
-        s.add(Or([meetings[friend][locations.index('Presidio')] for locations in locations]))
-        s.add(And([meetings[friend][locations.index('Presidio')], (start_time + 19 <= 915) & (915 <= start_time + 19 + 30)]))
+# Add constraints for each person
+s.add(Or(visits['Mission District'], And(visits['Mission District'], And(times[-1] >= 8, times[-1] <= 7.75, durations['Mission District'] >= 45))))
+s.add(Or(visits['Alamo Square'], And(visits['Alamo Square'], And(times[-1] >= 2, times[-1] <= 7.75, durations['Alamo Square'] >= 120))))
+s.add(Or(visits['Pacific Heights'], And(visits['Pacific Heights'], And(times[-1] >= 5, times[-1] <= 8, durations['Pacific Heights'] >= 15))))
+s.add(Or(visits['Union Square'], And(visits['Union Square'], And(times[-1] >= 9.75, times[-1] <= 10.75, durations['Union Square'] >= 60))))
+s.add(Or(visits['Golden Gate Park'], And(visits['Golden Gate Park'], And(times[-1] >= 7, times[-1] <= 6.25, durations['Golden Gate Park'] >= 90))))
+s.add(Or(visits['Sunset District'], And(visits['Sunset District'], And(times[-1] >= 5.75, times[-1] <= 9.25, durations['Sunset District'] >= 15))))
+s.add(Or(visits['Presidio'], And(visits['Presidio'], And(times[-1] >= 8.25, times[-1] <= 9.25, durations['Presidio'] >= 30))))
 
-# Add constraint for travel time
-for location1 in locations:
-    for location2 in locations:
-        if location1!= location2:
-            s.add(ForAll([location1, location2], (If(meetings[friend][locations.index(location1)], meetings[friend][locations.index(location2)], True) == False) | (If(meetings[friend][locations.index(location2)], meetings[friend][locations.index(location1)], True) == False) | (Or([meetings[friend][locations.index(location1)], meetings[friend][locations.index(location2)]])) for friend in friends))
+# Add constraints for travel times
+for i in range(len(locations)):
+    for j in range(i+1, len(locations)):
+        s.add(Implies(visits[locations[i]], And(visits[locations[j]], times[-1] + travel_times[(locations[i], locations[j])] >= times[i+1])))
 
-# Check the solution
-if s.check() == sat:
-    model = s.model()
-    print('SOLUTION:')
-    for friend in friends:
-        print(friend + ':')
-        for location in locations:
-            if model.evaluate(meetings[friend][locations.index(location)]).as_bool():
-                print(location)
-else:
-    print('No solution found')
+# Add constraints for time ordering
+for i in range(len(locations) - 1):
+    s.add(times[i+1] >= times[i] + durations[locations[i]])
+
+# Add constraints for initial time
+s.add(times[0] == 9)
+
+# Solve the problem
+s.check()
+model = s.model()
+
+# Print the solution
+print("SOLUTION:")
+for location in locations:
+    if model.evaluate(visits[location]):
+        print(f"Visit {location} for {model.evaluate(durations[location])} minutes at {model.evaluate(times[locations.index(location)])} hours")
+
+# Print the order of visits
+print("\nOrder of visits:")
+for i in range(len(locations)):
+    print(f"{locations[i]}: {model.evaluate(times[i])} hours")

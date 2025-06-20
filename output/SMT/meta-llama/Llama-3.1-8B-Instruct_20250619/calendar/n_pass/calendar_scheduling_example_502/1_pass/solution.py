@@ -1,59 +1,55 @@
 from z3 import *
 
-def schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, day, preference=None):
-    # Create Z3 variables for the start time
-    start_time = Int('start_time')
-
-    # Define the constraints
-    constraints = [
-        # Ensure the start time is within the work hours
-        And(9 * 60 <= start_time, start_time < 17 * 60),
-        # Ensure the meeting does not conflict with Jack's schedule
-        Or([start_time + meeting_duration > j for j in jack_schedule]),
-        # Ensure the meeting does not conflict with Charlotte's schedule
-        Or([start_time + meeting_duration > c for c in charlotte_schedule]),
-    ]
-
-    # If a preference is given, add it as a constraint
-    if preference:
-        constraints.append(start_time >= preference)
-
-    # Define the objective function (not used in this case, as we're not optimizing)
-    objective = start_time
-
-    # Solve the constraints
+def schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, preferences=None):
+    # Create a Z3 solver
     solver = Solver()
-    solver.add(constraints)
-    solver.check()
 
-    # Get the solution
-    model = solver.model()
-    start_time_value = model[start_time].as_long()
+    # Define the day
+    day = 'Monday'
 
-    # Convert the start time to a string
-    start_time_str = f'{start_time_value // 60:02d}:{start_time_value % 60:02d}'
+    # Define the start and end times
+    start_time = Int('start_time')
+    end_time = Int('end_time')
 
-    # Calculate the end time
-    end_time_str = f'{(start_time_value // 60 + meeting_duration // 60):02d}:{(start_time_value % 60 + meeting_duration % 60):02d}'
+    # Add constraints for the start time
+    solver.add(9 <= start_time)
+    solver.add(start_time <= 17)
 
-    # Print the solution
-    print(f'SOLUTION:')
-    print(f'Day: {day}')
-    print(f'Start Time: {start_time_str}')
-    print(f'End Time: {end_time_str}')
+    # Add constraints for the end time
+    solver.add(end_time <= 17)
+    solver.add(end_time >= 9)
 
-# Define the existing schedules for Jack and Charlotte
-jack_schedule = [9 * 60 + 30, 10 * 60 + 30, 11 * 60, 11 * 60 + 30, 12 * 60 + 30, 14 * 60, 14 * 60 + 30, 16 * 60]
-charlotte_schedule = [9 * 60 + 30, 10 * 60, 10 * 60 + 30, 12 * 60, 12 * 60 + 30, 13 * 60 + 30, 14 * 60, 16 * 60]
+    # Add constraints for the meeting duration
+    solver.add(end_time - start_time == meeting_duration)
 
-# Define the meeting duration
-meeting_duration = 30 * 60
+    # Add constraints for Jack's schedule
+    for start, end in jack_schedule:
+        solver.add(And(start <= start_time, end >= start_time))
 
-# Define the day
-day = 'Monday'
+    # Add constraints for Charlotte's schedule
+    for start, end in charlotte_schedule:
+        solver.add(And(start <= start_time, end >= start_time))
 
-# Define the preference (optional)
-preference = 12 * 60 + 30
+    # Add preferences for Jack
+    if preferences and 'avoid_after' in preferences and preferences['avoid_after']:
+        solver.add(start_time <= 12)
 
-# Schedule the meeting
-schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, day, preference)
+    # Check if a solution exists
+    if solver.check() == sat:
+        # Get the solution
+        model = solver.model()
+        # Extract the start and end times
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+        # Return the solution as a string
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_value:02d}:{(start_time_value % 100):02d}\nEnd Time: {end_time_value:02d}:{(end_time_value % 100):02d}'
+    else:
+        return 'No solution found'
+
+# Example usage
+jack_schedule = [(9*60+30, 9*60+60), (10*60+0, 10*60+30), (11*60+0, 11*60+30), (12*60+30, 12*60+60), (16*60+0, 16*60+30)]
+charlotte_schedule = [(9*60+30, 9*60+60), (10*60+30, 12*60+0), (12*60+30, 13*60+30), (14*60+0, 16*60+0)]
+meeting_duration = 30
+preferences = {'avoid_after': True}
+
+print(schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, preferences))

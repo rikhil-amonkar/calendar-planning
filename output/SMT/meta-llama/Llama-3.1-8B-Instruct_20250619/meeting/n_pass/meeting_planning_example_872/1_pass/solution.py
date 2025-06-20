@@ -1,146 +1,56 @@
 from z3 import *
 
-# Define the variables
-presidio = 0
-haight_ashbury = 15
-nob_hill = 18
-russian_hill = 14
-north_beach = 18
-chinatown = 21
-union_square = 22
-embarcadero = 20
-financial_district = 23
-marina_district = 11
-
-karen_start = 540  # 9:00 PM in minutes
-karen_end = 585  # 9:45 PM in minutes
-
-jessica_start = 105  # 1:45 PM in minutes
-jessica_end = 540  # 9:00 PM in minutes
-
-brian_start = 195  # 3:30 PM in minutes
-brian_end = 585  # 9:45 PM in minutes
-
-kenneth_start = 0  # 9:45 AM in minutes
-kenneth_end = 540  # 9:00 PM in minutes
-
-jason_start = 0  # 8:15 AM in minutes
-jason_end = 345  # 11:45 AM in minutes
-
-stephanie_start = 165  # 2:45 PM in minutes
-stephanie_end = 405  # 6:45 PM in minutes
-
-kimberly_start = 0  # 9:45 AM in minutes
-kimberly_end = 450  # 7:30 PM in minutes
-
-steven_start = 0  # 7:15 AM in minutes
-steven_end = 555  # 9:15 PM in minutes
-
-mark_start = 75  # 10:15 AM in minutes
-mark_end = 300  # 1:00 PM in minutes
-
-# Define the solver
-s = Solver()
+# Define the travel times
+travel_times = {
+    'Presidio': {'Haight-Ashbury': 15, 'Nob Hill': 18, 'Russian Hill': 14, 'North Beach': 18, 'Chinatown': 21, 'Union Square': 22, 'Embarcadero': 20, 'Financial District': 23, 'Marina District': 11},
+    'Haight-Ashbury': {'Presidio': 15, 'Nob Hill': 15, 'Russian Hill': 17, 'North Beach': 19, 'Chinatown': 19, 'Union Square': 19, 'Embarcadero': 20, 'Financial District': 21, 'Marina District': 17},
+    'Nob Hill': {'Presidio': 18, 'Haight-Ashbury': 13, 'Russian Hill': 5, 'North Beach': 8, 'Chinatown': 6, 'Union Square': 7, 'Embarcadero': 9, 'Financial District': 9, 'Marina District': 11},
+    'Russian Hill': {'Presidio': 14, 'Haight-Ashbury': 17, 'Nob Hill': 5, 'North Beach': 5, 'Chinatown': 9, 'Union Square': 10, 'Embarcadero': 8, 'Financial District': 11, 'Marina District': 7},
+    'North Beach': {'Presidio': 18, 'Haight-Ashbury': 18, 'Nob Hill': 7, 'Russian Hill': 4, 'Chinatown': 3, 'Union Square': 7, 'Embarcadero': 6, 'Financial District': 8, 'Marina District': 9},
+    'Chinatown': {'Presidio': 21, 'Haight-Ashbury': 19, 'Nob Hill': 9, 'Russian Hill': 7, 'North Beach': 3, 'Union Square': 7, 'Embarcadero': 5, 'Financial District': 5, 'Marina District': 12},
+    'Union Square': {'Presidio': 22, 'Haight-Ashbury': 18, 'Nob Hill': 9, 'Russian Hill': 13, 'North Beach': 10, 'Chinatown': 7, 'Embarcadero': 11, 'Financial District': 9, 'Marina District': 18},
+    'Embarcadero': {'Presidio': 20, 'Haight-Ashbury': 21, 'Nob Hill': 10, 'Russian Hill': 8, 'North Beach': 5, 'Chinatown': 7, 'Union Square': 10, 'Financial District': 5, 'Marina District': 12},
+    'Financial District': {'Presidio': 23, 'Haight-Ashbury': 19, 'Nob Hill': 8, 'Russian Hill': 11, 'North Beach': 7, 'Chinatown': 5, 'Union Square': 9, 'Embarcadero': 4, 'Marina District': 15},
+    'Marina District': {'Presidio': 11, 'Haight-Ashbury': 16, 'Nob Hill': 12, 'Russian Hill': 8, 'North Beach': 11, 'Chinatown': 15, 'Union Square': 16, 'Embarcadero': 14, 'Financial District': 17}
+}
 
 # Define the constraints
-s.add(And(presidio == 0, presidio >= 0))
-s.add(And(haight_ashbury >= 0, haight_ashbury <= 540))
-s.add(And(nob_hill >= 0, nob_hill <= 540))
-s.add(And(russian_hill >= 0, russian_hill <= 540))
-s.add(And(north_beach >= 0, north_beach <= 540))
-s.add(And(chinatown >= 0, chinatown <= 540))
-s.add(And(union_square >= 0, union_square <= 540))
-s.add(And(embarcadero >= 0, embarcadero <= 540))
-s.add(And(financial_district >= 0, financial_district <= 540))
-s.add(And(marina_district >= 0, marina_district <= 540))
+s = Optimize()
 
-s.add(karen_start - haight_ashbury >= 45)
-s.add(haight_ashbury - karen_end >= 45)
-s.add(jessica_start - nob_hill >= 90)
-s.add(nob_hill - jessica_end >= 90)
-s.add(brian_start - russian_hill >= 60)
-s.add(russian_hill - brian_end >= 60)
-s.add(kenneth_start - north_beach >= 30)
-s.add(north_beach - kenneth_end >= 30)
-s.add(jason_start - chinatown >= 75)
-s.add(chinatown - jason_end >= 75)
-s.add(stephanie_start - union_square >= 105)
-s.add(union_square - stephanie_end >= 105)
-s.add(kimberly_start - embarcadero >= 75)
-s.add(embarcadero - kimberly_end >= 75)
-s.add(steven_start - financial_district >= 60)
-s.add(financial_district - steven_end >= 60)
-s.add(mark_start - marina_district >= 75)
-s.add(marina_district - mark_end >= 75)
+# Define the variables
+x = [Bool(f'x_{i}') for i in range(10)]
+y = [Bool(f'y_{i}') for i in range(10)]
 
-# Add the travel time constraints
-s.add(presidio + haight_ashbury >= karen_start)
-s.add(presidio + nob_hill >= jessica_start)
-s.add(presidio + russian_hill >= brian_start)
-s.add(presidio + north_beach >= kenneth_start)
-s.add(presidio + chinatown >= jason_start)
-s.add(presidio + union_square >= stephanie_start)
-s.add(presidio + embarcadero >= kimberly_start)
-s.add(presidio + financial_district >= steven_start)
-s.add(presidio + marina_district >= mark_start)
+# Define the objective function
+obj = [x[i] * travel_times['Presidio'][location] for i, location in enumerate(['Haight-Ashbury', 'Nob Hill', 'Russian Hill', 'North Beach', 'Chinatown', 'Union Square', 'Embarcadero', 'Financial District', 'Marina District'])]
 
-s.add(haight_ashbury + nob_hill >= jessica_start)
-s.add(haight_ashbury + russian_hill >= brian_start)
-s.add(haight_ashbury + north_beach >= kenneth_start)
-s.add(haight_ashbury + chinatown >= jason_start)
-s.add(haight_ashbury + union_square >= stephanie_start)
-s.add(haight_ashbury + embarcadero >= kimberly_start)
-s.add(haight_ashbury + financial_district >= steven_start)
-s.add(haight_ashbury + marina_district >= mark_start)
-
-s.add(nob_hill + russian_hill >= brian_start)
-s.add(nob_hill + north_beach >= kenneth_start)
-s.add(nob_hill + chinatown >= jason_start)
-s.add(nob_hill + union_square >= stephanie_start)
-s.add(nob_hill + embarcadero >= kimberly_start)
-s.add(nob_hill + financial_district >= steven_start)
-s.add(nob_hill + marina_district >= mark_start)
-
-s.add(russian_hill + north_beach >= kenneth_start)
-s.add(russian_hill + chinatown >= jason_start)
-s.add(russian_hill + union_square >= stephanie_start)
-s.add(russian_hill + embarcadero >= kimberly_start)
-s.add(russian_hill + financial_district >= steven_start)
-s.add(russian_hill + marina_district >= mark_start)
-
-s.add(north_beach + chinatown >= jason_start)
-s.add(north_beach + union_square >= stephanie_start)
-s.add(north_beach + embarcadero >= kimberly_start)
-s.add(north_beach + financial_district >= steven_start)
-s.add(north_beach + marina_district >= mark_start)
-
-s.add(chinatown + union_square >= stephanie_start)
-s.add(chinatown + embarcadero >= kimberly_start)
-s.add(chinatown + financial_district >= steven_start)
-s.add(chinatown + marina_district >= mark_start)
-
-s.add(union_square + embarcadero >= kimberly_start)
-s.add(union_square + financial_district >= steven_start)
-s.add(union_square + marina_district >= mark_start)
-
-s.add(embarcadero + financial_district >= steven_start)
-s.add(embarcadero + marina_district >= mark_start)
-
-s.add(financial_district + marina_district >= mark_start)
+# Add the constraints
+s.add([x[i] + x[j] >= 1 for i in range(9) for j in range(i+1, 9)])
+s.add([y[i] + y[j] >= 1 for i in range(9) for j in range(i+1, 9)])
+s.add([x[i] + y[j] >= 1 for i in range(9) for j in range(9)])
+s.add([Sum([x[i] * travel_times['Presidio'][location] for i, location in enumerate(['Haight-Ashbury', 'Nob Hill', 'Russian Hill', 'North Beach', 'Chinatown', 'Union Square', 'Embarcadero', 'Financial District', 'Marina District'])]) >= 450])
+s.add([Sum([y[i] * travel_times['Presidio'][location] for i, location in enumerate(['Haight-Ashbury', 'Nob Hill', 'Russian Hill', 'North Beach', 'Chinatown', 'Union Square', 'Embarcadero', 'Financial District', 'Marina District'])]) >= 900])
+s.add([Sum([y[i] * travel_times['Presidio'][location] for i, location in enumerate(['Haight-Ashbury', 'Nob Hill', 'Russian Hill', 'North Beach', 'Chinatown', 'Union Square', 'Embarcadero', 'Financial District', 'Marina District'])]) >= 600])
+s.add([Sum([x[i] * travel_times['Presidio'][location] for i, location in enumerate(['North Beach', 'Chinatown', 'Union Square', 'Embarcadero', 'Financial District', 'Marina District'])]) >= 30])
+s.add([Sum([x[i] * travel_times['Presidio'][location] for i, location in enumerate(['Chinatown'])]) >= 75])
+s.add([Sum([x[i] * travel_times['Presidio'][location] for i, location in enumerate(['Union Square', 'Embarcadero', 'Financial District', 'Marina District'])]) >= 75])
+s.add([Sum([x[i] * travel_times['Presidio'][location] for i, location in enumerate(['Embarcadero', 'Financial District', 'Marina District'])]) >= 60]))
+s.add([Sum([x[i] * travel_times['Presidio'][location] for i, location in enumerate(['Marina District'])]) >= 75]))
+s.add([Sum([y[i] * travel_times['Presidio'][location] for i, location in enumerate(['Marina District'])]) >= 105]))
+s.add([Sum([y[i] * travel_times['Presidio'][location] for i, location in enumerate(['Embarcadero', 'Financial District'])]) >= 60]))
+s.add([Sum([y[i] * travel_times['Presidio'][location] for i, location in enumerate(['Financial District'])]) >= 75]))
+s.add([Sum([x[i] * travel_times['Presidio'][location] for i, location in enumerate(['Marina District'])]) >= 75]))
+s.add([x[0] + x[1] + x[2] + x[3] + x[4] + x[5] + x[6] + x[7] + x[8] == 1])
+s.add([y[0] + y[1] + y[2] + y[3] + y[4] + y[5] + y[6] + y[7] + y[8] == 1])
 
 # Solve the problem
-if s.check() == sat:
-    model = s.model()
+s.maximize(obj)
+solution = s.check()
+if solution == sat:
+    m = s.model()
     print("SOLUTION:")
-    print(f"Presidio: {model[presidio]}")
-    print(f"Haight-Ashbury: {model[haight_ashbury]}")
-    print(f"Nob Hill: {model[nob_hill]}")
-    print(f"Russian Hill: {model[russian_hill]}")
-    print(f"North Beach: {model[north_beach]}")
-    print(f"Chinatown: {model[chinatown]}")
-    print(f"Union Square: {model[union_square]}")
-    print(f"Embarcadero: {model[embarcadero]}")
-    print(f"Financial District: {model[financial_district]}")
-    print(f"Marina District: {model[marina_district]}")
+    for i in range(9):
+        print(f"x_{i} = {m[x[i]]}")
+        print(f"y_{i} = {m[y[i]]}")
 else:
     print("No solution found")

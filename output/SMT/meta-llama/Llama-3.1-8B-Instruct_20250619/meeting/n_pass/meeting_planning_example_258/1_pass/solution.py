@@ -1,56 +1,55 @@
 from z3 import *
 
-# Define the variables
-start_time = 9 * 60  # 9:00 AM in minutes
-betty_arrival, betty_departure = 10 * 60 + 15, 21 * 60  # Betty's arrival and departure times in minutes
-david_arrival, david_departure = 1 * 60, 8 * 60 + 15  # David's arrival and departure times in minutes
-barbara_arrival, barbara_departure = 9 * 60 + 15, 8 * 60 + 15  # Barbara's arrival and departure times in minutes
-
-# Define the meeting durations
-min_meeting_duration_betty = 45  # Minimum meeting duration with Betty in minutes
-min_meeting_duration_david = 90  # Minimum meeting duration with David in minutes
-min_meeting_duration_barbara = 120  # Minimum meeting duration with Barbara in minutes
-
-# Define the travel times
-travel_times = {
+# Define the travel distances
+distances = {
     'Embarcadero': {'Presidio': 20, 'Richmond District': 21, 'Fisherman\'s Wharf': 6},
     'Presidio': {'Embarcadero': 20, 'Richmond District': 7, 'Fisherman\'s Wharf': 19},
     'Richmond District': {'Embarcadero': 19, 'Presidio': 7, 'Fisherman\'s Wharf': 18},
     'Fisherman\'s Wharf': {'Embarcadero': 8, 'Presidio': 17, 'Richmond District': 18}
 }
 
-# Define the solver
+# Define the meeting constraints
+betty_start, betty_end = 10 * 60, 9 * 60 * 16  # 10:15AM to 9:30PM
+betty_duration = 45 * 60
+
+david_start, david_end = 1 * 60, 8 * 60 * 16  # 1:00PM to 8:15PM
+david_duration = 90 * 60
+
+barbara_start, barbara_end = 9 * 60, 8 * 60 * 16  # 9:15AM to 8:15PM
+barbara_duration = 120 * 60
+
+# Define the variables
 s = Solver()
 
-# Define the variables for the meeting times
-betty_meeting_time = Int('betty_meeting_time')
-david_meeting_time = Int('david_meeting_time')
-barbara_meeting_time = Int('barbara_meeting_time')
+locations = ['Embarcadero', 'Presidio', 'Richmond District', 'Fisherman\'s Wharf']
+times = []
+for location in locations:
+    for time in range(betty_start, betty_end + 1):
+        times.append((location, time))
+
+meeting_times = [Int(f'meeting_time_{i}') for i in range(len(times))]
 
 # Define the constraints
-s.add(betty_meeting_time >= betty_arrival)
-s.add(betty_meeting_time + min_meeting_duration_betty <= betty_departure)
-s.add(david_meeting_time >= david_arrival)
-s.add(david_meeting_time + min_meeting_duration_david <= david_departure)
-s.add(barbara_meeting_time >= barbara_arrival)
-s.add(barbara_meeting_time + min_meeting_duration_barbara <= barbara_departure)
-
-# Define the constraints for the travel times
-s.add(betty_meeting_time >= start_time + travel_times['Embarcadero']['Presidio'])
-s.add(david_meeting_time >= start_time + travel_times['Embarcadero']['Richmond District'])
-s.add(barbara_meeting_time >= start_time + travel_times['Embarcadero']['Fisherman\'s Wharf'])
-
-# Define the constraints for the meeting times
-s.add(betty_meeting_time <= david_meeting_time - min_meeting_duration_david)
-s.add(betty_meeting_time <= barbara_meeting_time - min_meeting_duration_barbara)
-s.add(david_meeting_time <= barbara_meeting_time - min_meeting_duration_barbara)
+for i, (location, time) in enumerate(times):
+    s.add(meeting_times[i] >= time)
+    s.add(meeting_times[i] <= betty_end if location == 'Presidio' else david_end if location == 'Richmond District' else barbara_end)
+    s.add(meeting_times[i] >= betty_start if location == 'Presidio' else david_start if location == 'Richmond District' else barbara_start)
+    s.add(meeting_times[i] + barbara_duration <= barbara_end if location == 'Fisherman\'s Wharf' else meeting_times[i] + david_duration <= david_end if location == 'Richmond District' else meeting_times[i] + betty_duration <= betty_end)
+    s.add(meeting_times[i] + distances[location]['Embarcadero'] <= time + 60 if location == 'Presidio' else meeting_times[i] + distances[location]['Embarcadero'] <= time + 60 if location == 'Richmond District' else meeting_times[i] + distances[location]['Embarcadero'] <= time + 60)
 
 # Solve the problem
 s.check()
+
 model = s.model()
 
-# Print the solution
-print("SOLUTION:")
-print(f"Meet Betty at {model[betty_meeting_time].as_long() / 60} hours")
-print(f"Meet David at {model[david_meeting_time].as_long() / 60} hours")
-print(f"Meet Barbara at {model[barbara_meeting_time].as_long() / 60} hours")
+# Print the optimal schedule
+optimal_schedule = []
+for i, (location, time) in enumerate(times):
+    if model[meeting_times[i]].as_long() >= time and model[meeting_times[i]].as_long() <= betty_end if location == 'Presidio' else model[meeting_times[i]].as_long() >= david_start and model[meeting_times[i]].as_long() <= david_end if location == 'Richmond District' else model[meeting_times[i]].as_long() >= barbara_start and model[meeting_times[i]].as_long() <= barbara_end:
+        optimal_schedule.append((location, model[meeting_times[i]].as_long()))
+
+optimal_schedule.sort(key=lambda x: x[1])
+for location, time in optimal_schedule:
+    print(f'Visit {location} at {time // 60}:{(time % 60):02d}')
+
+print(f'\nTotal duration: {(max(optimal_schedule, key=lambda x: x[1])[1] - 9 * 60) // 60}:{((max(optimal_schedule, key=lambda x: x[1])[1] - 9 * 60) % 60):02d}')

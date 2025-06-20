@@ -2,167 +2,142 @@ from z3 import *
 
 # Define the variables
 start_time = 0
-end_time = 720  # 720 minutes in a day (12 hours * 60 minutes)
-friend_times = {
-    'Lisa': [315, 540],  # 7:15PM to 9:15PM
-    'Daniel': [0, 330],  # 8:15AM to 11:00AM
-    'Elizabeth': [540, 570],  # 9:15PM to 10:15PM
-    'Steven': [270, 453],  # 4:30PM to 8:45PM
-    'Timothy': [120, 360],  # 12:00PM to 6:00PM
-    'Ashley': [528, 549],  # 8:45PM to 9:45PM
-    'Kevin': [120, 420],  # 12:00PM to 7:00PM
-    'Betty': [165, 315]  # 1:15PM to 3:45PM
-}
+end_time = 24 * 60  # 24 hours in minutes
+friends = ['Lisa', 'Daniel', 'Elizabeth', 'Steven', 'Timothy', 'Ashley', 'Kevin', 'Betty']
+locations = ['Mission District', 'The Castro', 'Nob Hill', 'Presidio', 'Marina District', 'Pacific Heights', 'Golden Gate Park', 'Chinatown', 'Richmond District']
 
-meeting_times = {
-    'Lisa': 120,
-    'Daniel': 15,
-    'Elizabeth': 45,
-    'Steven': 90,
-    'Timothy': 90,
-    'Ashley': 60,
-    'Kevin': 30,
-    'Betty': 30
-}
-
+# Define the travel times
 travel_times = {
-    'Mission District': {
-        'The Castro': 7,
-        'Nob Hill': 12,
-        'Presidio': 25,
-        'Marina District': 19,
-        'Pacific Heights': 16,
-        'Golden Gate Park': 17,
-        'Chinatown': 16,
-        'Richmond District': 20
-    },
-    'The Castro': {
-        'Mission District': 7,
-        'Nob Hill': 16,
-        'Presidio': 20,
-        'Marina District': 21,
-        'Pacific Heights': 16,
-        'Golden Gate Park': 11,
-        'Chinatown': 22,
-        'Richmond District': 16
-    },
-    'Nob Hill': {
-        'Mission District': 13,
-        'The Castro': 17,
-        'Presidio': 17,
-        'Marina District': 11,
-        'Pacific Heights': 8,
-        'Golden Gate Park': 17,
-        'Chinatown': 6,
-        'Richmond District': 14
-    },
-    'Presidio': {
-        'Mission District': 26,
-        'The Castro': 21,
-        'Nob Hill': 18,
-        'Marina District': 11,
-        'Pacific Heights': 11,
-        'Golden Gate Park': 12,
-        'Chinatown': 21,
-        'Richmond District': 7
-    },
-    'Marina District': {
-        'Mission District': 20,
-        'The Castro': 22,
-        'Nob Hill': 12,
-        'Presidio': 10,
-        'Pacific Heights': 7,
-        'Golden Gate Park': 18,
-        'Chinatown': 15,
-        'Richmond District': 11
-    },
-    'Pacific Heights': {
-        'Mission District': 15,
-        'The Castro': 16,
-        'Nob Hill': 8,
-        'Presidio': 11,
-        'Marina District': 6,
-        'Golden Gate Park': 15,
-        'Chinatown': 11,
-        'Richmond District': 12
-    },
-    'Golden Gate Park': {
-        'Mission District': 17,
-        'The Castro': 13,
-        'Nob Hill': 20,
-        'Presidio': 11,
-        'Marina District': 16,
-        'Pacific Heights': 16,
-        'Chinatown': 23,
-        'Richmond District': 7
-    },
-    'Chinatown': {
-        'Mission District': 17,
-        'The Castro': 22,
-        'Nob Hill': 9,
-        'Presidio': 19,
-        'Marina District': 12,
-        'Pacific Heights': 10,
-        'Golden Gate Park': 23,
-        'Richmond District': 20
-    },
-    'Richmond District': {
-        'Mission District': 20,
-        'The Castro': 16,
-        'Nob Hill': 17,
-        'Presidio': 7,
-        'Marina District': 9,
-        'Pacific Heights': 10,
-        'Golden Gate Park': 9,
-        'Chinatown': 20
-    }
+    ('Mission District', 'The Castro'): 7,
+    ('Mission District', 'Nob Hill'): 12,
+    ('Mission District', 'Presidio'): 25,
+    ('Mission District', 'Marina District'): 19,
+    ('Mission District', 'Pacific Heights'): 16,
+    ('Mission District', 'Golden Gate Park'): 17,
+    ('Mission District', 'Chinatown'): 16,
+    ('Mission District', 'Richmond District'): 20,
+    ('The Castro', 'Mission District'): 7,
+    ('The Castro', 'Nob Hill'): 16,
+    ('The Castro', 'Presidio'): 20,
+    ('The Castro', 'Marina District'): 21,
+    ('The Castro', 'Pacific Heights'): 16,
+    ('The Castro', 'Golden Gate Park'): 11,
+    ('The Castro', 'Chinatown'): 22,
+    ('The Castro', 'Richmond District'): 16,
+    ('Nob Hill', 'Mission District'): 13,
+    ('Nob Hill', 'The Castro'): 17,
+    ('Nob Hill', 'Presidio'): 17,
+    ('Nob Hill', 'Marina District'): 11,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Golden Gate Park'): 17,
+    ('Nob Hill', 'Chinatown'): 6,
+    ('Nob Hill', 'Richmond District'): 14,
+    ('Presidio', 'Mission District'): 26,
+    ('Presidio', 'The Castro'): 21,
+    ('Presidio', 'Nob Hill'): 18,
+    ('Presidio', 'Marina District'): 11,
+    ('Presidio', 'Pacific Heights'): 11,
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'Richmond District'): 7,
+    ('Marina District', 'Mission District'): 20,
+    ('Marina District', 'The Castro'): 22,
+    ('Marina District', 'Nob Hill'): 12,
+    ('Marina District', 'Presidio'): 10,
+    ('Marina District', 'Pacific Heights'): 7,
+    ('Marina District', 'Golden Gate Park'): 18,
+    ('Marina District', 'Chinatown'): 15,
+    ('Marina District', 'Richmond District'): 11,
+    ('Pacific Heights', 'Mission District'): 15,
+    ('Pacific Heights', 'The Castro'): 16,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Presidio'): 11,
+    ('Pacific Heights', 'Marina District'): 6,
+    ('Pacific Heights', 'Golden Gate Park'): 15,
+    ('Pacific Heights', 'Chinatown'): 11,
+    ('Pacific Heights', 'Richmond District'): 12,
+    ('Golden Gate Park', 'Mission District'): 17,
+    ('Golden Gate Park', 'The Castro'): 13,
+    ('Golden Gate Park', 'Nob Hill'): 20,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Marina District'): 16,
+    ('Golden Gate Park', 'Pacific Heights'): 16,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'Richmond District'): 7,
+    ('Chinatown', 'Mission District'): 17,
+    ('Chinatown', 'The Castro'): 22,
+    ('Chinatown', 'Nob Hill'): 9,
+    ('Chinatown', 'Presidio'): 19,
+    ('Chinatown', 'Marina District'): 12,
+    ('Chinatown', 'Pacific Heights'): 10,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Chinatown', 'Richmond District'): 20,
+    ('Richmond District', 'Mission District'): 20,
+    ('Richmond District', 'The Castro'): 16,
+    ('Richmond District', 'Nob Hill'): 17,
+    ('Richmond District', 'Presidio'): 7,
+    ('Richmond District', 'Marina District'): 9,
+    ('Richmond District', 'Pacific Heights'): 10,
+    ('Richmond District', 'Golden Gate Park'): 9,
+    ('Richmond District', 'Chinatown'): 20
 }
 
-# Define the solver
+# Define the constraints
 s = Solver()
 
 # Define the variables
-x = [Bool(f'x_{i}') for i in range(len(friend_times['Lisa']))]
+times = [Int('t_' + friend) for friend in friends]
+locations_times = [[Int('l_' + friend + '_' + location) for location in locations] for friend in friends]
 
-# Define the constraints
-for i in range(len(friend_times['Lisa'])):
-    s.add(And(x[i], start_time <= i * 60))
-    s.add(And(x[i], i * 60 + meeting_times['Lisa'] <= end_time))
-    s.add(And(x[i], i * 60 + meeting_times['Lisa'] <= friend_times['Lisa'][1]))
-    s.add(And(x[i], i * 60 + meeting_times['Lisa'] >= friend_times['Lisa'][0]))
+# Add constraints for arrival time
+for i, time in enumerate(times):
+    s.add(time >= 0)
+    s.add(time <= end_time)
 
-    for friend, time in friend_times.items():
-        if friend!= 'Lisa':
-            s.add(Or([Not(x[i]) for i in range(len(friend_times['Lisa']))]))
-            s.add(And(x[i], i * 60 + travel_times['Mission District'][friend] <= end_time))
-            s.add(And(x[i], i * 60 + travel_times['Mission District'][friend] >= start_time))
-            s.add(And(x[i], i * 60 + meeting_times[friend] <= end_time))
-            s.add(And(x[i], i * 60 + meeting_times[friend] >= time[0]))
-            s.add(And(x[i], i * 60 + meeting_times[friend] <= time[1]))
+# Add constraints for meeting times
+for i, friend in enumerate(friends):
+    s.add(locations_times[i][0] == 9 * 60)  # Arrival at Mission District
+    s.add(locations_times[i][1] >= 7 * 60 + 15)  # Lisa at The Castro
+    s.add(locations_times[i][1] >= 8 * 60 + 15)  # Daniel at Nob Hill
+    s.add(locations_times[i][1] >= 9 * 60 + 15)  # Elizabeth at Presidio
+    s.add(locations_times[i][1] >= 16 * 60)  # Steven at Marina District
+    s.add(locations_times[i][1] >= 12 * 60)  # Timothy at Pacific Heights
+    s.add(locations_times[i][1] >= 20 * 60 + 45)  # Ashley at Golden Gate Park
+    s.add(locations_times[i][1] >= 12 * 60 + 30)  # Kevin at Chinatown
+    s.add(locations_times[i][1] >= 13 * 60 + 30)  # Betty at Richmond District
+
+# Add constraints for travel times
+for i, friend in enumerate(friends):
+    for j, location in enumerate(locations):
+        s.add(locations_times[i][j + 1] >= locations_times[i][j] + travel_times[(locations_times[i][j], location)])
+
+# Add constraints for minimum meeting times
+for i, friend in enumerate(friends):
+    for j, location in enumerate(locations):
+        if friend == 'Lisa' and location == 'The Castro':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 120)
+        elif friend == 'Daniel' and location == 'Nob Hill':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 15)
+        elif friend == 'Elizabeth' and location == 'Presidio':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 45)
+        elif friend == 'Steven' and location == 'Marina District':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 90)
+        elif friend == 'Timothy' and location == 'Pacific Heights':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 90)
+        elif friend == 'Ashley' and location == 'Golden Gate Park':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 60)
+        elif friend == 'Kevin' and location == 'Chinatown':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 30)
+        elif friend == 'Betty' and location == 'Richmond District':
+            s.add(locations_times[i][j + 1] >= locations_times[i][j] + 30)
 
 # Solve the problem
-s.check()
-model = s.model()
-
-# Print the solution
-for i in range(len(friend_times['Lisa'])):
-    if model[x[i]]:
-        print(f'Visit {i+1} at {i * 60} minutes')
-        for friend, time in friend_times.items():
-            if friend!= 'Lisa':
-                if model[x[i]]:
-                    print(f'Meet {friend} at {i * 60 + travel_times["Mission District"][friend]} minutes')
-                    print(f'Meet {friend} at {i * 60 + travel_times["Mission District"][friend] + meeting_times[friend]} minutes')
-                    print()
-
-print('SOLUTION:')
-print(f'Best schedule: ')
-for i in range(len(friend_times['Lisa'])):
-    if model[x[i]]:
-        print(f'Visit {i+1} at {i * 60} minutes')
-        for friend, time in friend_times.items():
-            if friend!= 'Lisa':
-                if model[x[i]]:
-                    print(f'Meet {friend} at {i * 60 + travel_times["Mission District"][friend]} minutes')
-                    print(f'Meet {friend} at {i * 60 + travel_times["Mission District"][friend] + meeting_times[friend]} minutes')
-                    print()
+if s.check() == sat:
+    model = s.model()
+    print('SOLUTION:')
+    for i, friend in enumerate(friends):
+        print(friend + ':')
+        for j, location in enumerate(locations):
+            print(f'  {location}: {model[locations_times[i][j]].as_long()}')
+else:
+    print('No solution found')

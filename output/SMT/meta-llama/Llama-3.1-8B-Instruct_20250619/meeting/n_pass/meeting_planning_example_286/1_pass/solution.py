@@ -1,127 +1,82 @@
 from z3 import *
 
-# Define the travel distances
-distances = {
-    ('Union Square', 'Mission District'): 14,
-    ('Union Square', 'Bayview'): 15,
-    ('Union Square', 'Sunset District'): 26,
-    ('Mission District', 'Union Square'): 15,
-    ('Mission District', 'Bayview'): 15,
-    ('Mission District', 'Sunset District'): 24,
-    ('Bayview', 'Union Square'): 17,
-    ('Bayview', 'Mission District'): 13,
-    ('Bayview', 'Sunset District'): 23,
-    ('Sunset District', 'Union Square'): 30,
-    ('Sunset District', 'Mission District'): 24,
-    ('Sunset District', 'Bayview'): 22
+# Define the variables
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+travel_times = {
+    'Union Square to Mission District': 14,
+    'Union Square to Bayview': 15,
+    'Union Square to Sunset District': 26,
+    'Mission District to Union Square': 15,
+    'Mission District to Bayview': 13,
+    'Mission District to Sunset District': 24,
+    'Bayview to Union Square': 17,
+    'Bayview to Mission District': 13,
+    'Bayview to Sunset District': 23,
+    'Sunset District to Union Square': 30,
+    'Sunset District to Mission District': 24,
+    'Sunset District to Bayview': 22
+}
+locations = ['Union Square', 'Mission District', 'Bayview', 'Sunset District']
+friends = ['Rebecca', 'Karen', 'Carol']
+meeting_times = {
+    'Rebecca': 120,
+    'Karen': 120,
+    'Carol': 30
+}
+friend_schedules = {
+    'Rebecca': [(11 * 60, 8 * 60)],  # 11:30AM to 8:15PM
+    'Karen': [(12 * 60 + 45, 15 * 60)],  # 12:45PM to 3:00PM
+    'Carol': [(10 * 60 + 15, 11 * 60 + 45)]  # 10:15AM to 11:45AM
 }
 
-# Define the constraints
-start_time = 0
-rebecca_start_time = 11 * 60
-rebecca_end_time = 8 * 60 + 15
-karen_start_time = 12 * 60 + 45
-karen_end_time = 3 * 60
-carol_start_time = 10 * 60 + 15
-carol_end_time = 11 * 60 + 45
-min_meeting_time = 120
-min_carol_meeting_time = 30
+# Create the Z3 solver
+solver = Solver()
 
-# Create the solver
-s = Optimize()
+# Define the variables
+x = [Bool(f'x_{i}') for i in range(len(locations) * len(locations))]
+y = [Bool(f'y_{i}') for i in range(len(locations) * len(locations))]
+t = [Int(f't_{i}') for i in range(len(locations) * len(locations))]
 
-# Create the variables
-x_us_md = Int('x_us_md')
-x_us_bv = Int('x_us_bv')
-x_us_sd = Int('x_us_sd')
-x_md_us = Int('x_md_us')
-x_md_bv = Int('x_md_bv')
-x_md_sd = Int('x_md_sd')
-x_bv_us = Int('x_bv_us')
-x_bv_md = Int('x_bv_md')
-x_bv_sd = Int('x_bv_sd')
-x_sd_us = Int('x_sd_us')
-x_sd_md = Int('x_sd_md')
-x_sd_bv = Int('x_sd_bv')
-t_rebecca = Int('t_rebecca')
-t_karen = Int('t_karen')
-t_carol = Int('t_carol')
+# Add the domain constraints
+for i in range(len(locations) * len(locations)):
+    solver.add(0 <= t[i], t[i] <= end_time)
 
-# Add the constraints
-s.add(x_us_md >= 0)
-s.add(x_us_md <= 1)
-s.add(x_us_bv >= 0)
-s.add(x_us_bv <= 1)
-s.add(x_us_sd >= 0)
-s.add(x_us_sd <= 1)
-s.add(x_md_us >= 0)
-s.add(x_md_us <= 1)
-s.add(x_md_bv >= 0)
-s.add(x_md_bv <= 1)
-s.add(x_md_sd >= 0)
-s.add(x_md_sd <= 1)
-s.add(x_bv_us >= 0)
-s.add(x_bv_us <= 1)
-s.add(x_bv_md >= 0)
-s.add(x_bv_md <= 1)
-s.add(x_bv_sd >= 0)
-s.add(x_bv_sd <= 1)
-s.add(x_sd_us >= 0)
-s.add(x_sd_us <= 1)
-s.add(x_sd_md >= 0)
-s.add(x_sd_md <= 1)
-s.add(x_sd_bv >= 0)
-s.add(x_sd_bv <= 1)
-s.add(t_rebecca >= rebecca_start_time)
-s.add(t_rebecca <= rebecca_end_time)
-s.add(t_karen >= karen_start_time)
-s.add(t_karen <= karen_end_time)
-s.add(t_carol >= carol_start_time)
-s.add(t_carol <= carol_end_time)
-s.add(t_rebecca - start_time >= min_meeting_time)
-s.add(t_karen - start_time >= min_meeting_time)
-s.add(t_carol - start_time >= min_carol_meeting_time)
-s.add(t_rebecca - start_time <= (t_rebecca - start_time) + 120)
-s.add(t_karen - start_time <= (t_karen - start_time) + 120)
-s.add(t_carol - start_time <= (t_carol - start_time) + 30)
-s.add((t_rebecca - start_time) + distances[('Union Square', 'Mission District')] * x_us_md + distances[('Mission District', 'Union Square')] * x_md_us <= t_rebecca)
-s.add((t_rebecca - start_time) + distances[('Union Square', 'Mission District')] * x_us_md + distances[('Mission District', 'Bayview')] * x_md_bv <= t_rebecca)
-s.add((t_rebecca - start_time) + distances[('Union Square', 'Mission District')] * x_us_md + distances[('Mission District', 'Sunset District')] * x_md_sd <= t_rebecca)
-s.add((t_rebecca - start_time) + distances[('Union Square', 'Bayview')] * x_us_bv + distances[('Bayview', 'Mission District')] * x_bv_md <= t_rebecca)
-s.add((t_rebecca - start_time) + distances[('Union Square', 'Bayview')] * x_us_bv + distances[('Bayview', 'Sunset District')] * x_bv_sd <= t_rebecca)
-s.add((t_rebecca - start_time) + distances[('Union Square', 'Sunset District')] * x_us_sd + distances[('Sunset District', 'Mission District')] * x_sd_md <= t_rebecca)
-s.add((t_rebecca - start_time) + distances[('Union Square', 'Sunset District')] * x_us_sd + distances[('Sunset District', 'Bayview')] * x_sd_bv <= t_rebecca)
-s.add((t_karen - start_time) + distances[('Union Square', 'Bayview')] * x_us_bv + distances[('Bayview', 'Mission District')] * x_bv_md <= t_karen)
-s.add((t_karen - start_time) + distances[('Union Square', 'Bayview')] * x_us_bv + distances[('Bayview', 'Sunset District')] * x_bv_sd <= t_karen)
-s.add((t_karen - start_time) + distances[('Union Square', 'Mission District')] * x_us_md + distances[('Mission District', 'Bayview')] * x_md_bv <= t_karen)
-s.add((t_karen - start_time) + distances[('Union Square', 'Mission District')] * x_us_md + distances[('Mission District', 'Sunset District')] * x_md_sd <= t_karen)
-s.add((t_karen - start_time) + distances[('Union Square', 'Sunset District')] * x_us_sd + distances[('Sunset District', 'Bayview')] * x_sd_bv <= t_karen)
-s.add((t_karen - start_time) + distances[('Union Square', 'Sunset District')] * x_us_sd + distances[('Sunset District', 'Mission District')] * x_sd_md <= t_karen)
-s.add((t_carol - start_time) + distances[('Union Square', 'Sunset District')] * x_us_sd <= t_carol)
-s.add((t_carol - start_time) + distances[('Union Square', 'Mission District')] * x_us_md <= t_carol)
-s.add((t_carol - start_time) + distances[('Union Square', 'Bayview')] * x_us_bv <= t_carol)
+# Add the constraints for each location
+for i in range(len(locations)):
+    for j in range(len(locations)):
+        if i!= j:
+            solver.add(If(x[i * len(locations) + j], t[i * len(locations) + j] >= t[i * len(locations) + i] + travel_times[f'{locations[i]} to {locations[j]}'], True))
+            solver.add(If(x[i * len(locations) + j], t[i * len(locations) + j] <= t[i * len(locations) + i] + travel_times[f'{locations[i]} to {locations[j]}'], True))
 
-# Define the objective function
-s.minimize(t_rebecca + t_karen + t_carol)
+# Add the constraints for meeting each friend
+for friend in friends:
+    for i in range(len(locations)):
+        for j in range(len(locations)):
+            if i!= j:
+                start_time_friend = friend_schedules[friend][0][0]
+                end_time_friend = friend_schedules[friend][0][1]
+                solver.add(If(x[i * len(locations) + j] and t[i * len(locations) + j] >= start_time_friend and t[i * len(locations) + j] <= end_time_friend, True, False) == meeting_times[friend])
+
+# Add the constraint for visiting Union Square at 9:00AM
+solver.add(x[0] == True)
+
+# Add the constraint for visiting all locations
+for i in range(1, len(locations)):
+    for j in range(len(locations)):
+        solver.add(Or([x[i * len(locations) + j] for j in range(len(locations))]))
+
+# Add the constraint for visiting each location at most once
+for i in range(len(locations)):
+    solver.add(Distinct([x[i * len(locations) + j] for j in range(len(locations))]))
 
 # Solve the problem
-if s.check() == sat:
-    model = s.model()
-    print(f"Total time: {model[t_rebecca].as_long() + model[t_karen].as_long() + model[t_carol].as_long()}")
-    print(f"Rebecca: {model[t_rebecca].as_long()}")
-    print(f"Karen: {model[t_karen].as_long()}")
-    print(f"Carol: {model[t_carol].as_long()}")
-    print(f"Union Square to Mission District: {model[x_us_md].as_long()}")
-    print(f"Union Square to Bayview: {model[x_us_bv].as_long()}")
-    print(f"Union Square to Sunset District: {model[x_us_sd].as_long()}")
-    print(f"Mission District to Union Square: {model[x_md_us].as_long()}")
-    print(f"Mission District to Bayview: {model[x_md_bv].as_long()}")
-    print(f"Mission District to Sunset District: {model[x_md_sd].as_long()}")
-    print(f"Bayview to Union Square: {model[x_bv_us].as_long()}")
-    print(f"Bayview to Mission District: {model[x_bv_md].as_long()}")
-    print(f"Bayview to Sunset District: {model[x_bv_sd].as_long()}")
-    print(f"Sunset District to Union Square: {model[x_sd_us].as_long()}")
-    print(f"Sunset District to Mission District: {model[x_sd_md].as_long()}")
-    print(f"Sunset District to Bayview: {model[x_sd_bv].as_long()}")
+if solver.check() == sat:
+    model = solver.model()
+    print('SOLUTION:')
+    for i in range(len(locations)):
+        for j in range(len(locations)):
+            if model.evaluate(x[i * len(locations) + j]).as_bool():
+                print(f'Visit {locations[j]} from {model.evaluate(t[i * len(locations) + i]).as_long()} to {model.evaluate(t[i * len(locations) + j]).as_long()}')
 else:
-    print("No solution found")
+    print('No solution found')

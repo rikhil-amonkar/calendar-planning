@@ -1,85 +1,253 @@
 from z3 import *
 
-# Define the locations
-locations = ['Haight-Ashbury', 'Russian Hill', 'Fisherman\'s Wharf', 'Nob Hill', 'Golden Gate Park', 'Alamo Square', 'Pacific Heights']
-
-# Define the travel times
-travel_times = {
-    'Haight-Ashbury': {'Russian Hill': 17, 'Fisherman\'s Wharf': 23, 'Nob Hill': 15, 'Golden Gate Park': 7, 'Alamo Square': 5, 'Pacific Heights': 12},
-    'Russian Hill': {'Haight-Ashbury': 17, 'Fisherman\'s Wharf': 7, 'Nob Hill': 5, 'Golden Gate Park': 21, 'Alamo Square': 15, 'Pacific Heights': 7},
-    'Fisherman\'s Wharf': {'Haight-Ashbury': 22, 'Russian Hill': 7, 'Nob Hill': 11, 'Golden Gate Park': 25, 'Alamo Square': 20, 'Pacific Heights': 12},
-    'Nob Hill': {'Haight-Ashbury': 13, 'Russian Hill': 5, 'Fisherman\'s Wharf': 11, 'Golden Gate Park': 17, 'Alamo Square': 11, 'Pacific Heights': 8},
-    'Golden Gate Park': {'Haight-Ashbury': 7, 'Russian Hill': 19, 'Fisherman\'s Wharf': 24, 'Nob Hill': 20, 'Alamo Square': 10, 'Pacific Heights': 16},
-    'Alamo Square': {'Haight-Ashbury': 5, 'Russian Hill': 13, 'Fisherman\'s Wharf': 19, 'Nob Hill': 11, 'Golden Gate Park': 9, 'Pacific Heights': 10},
-    'Pacific Heights': {'Haight-Ashbury': 11, 'Russian Hill': 7, 'Fisherman\'s Wharf': 13, 'Nob Hill': 8, 'Golden Gate Park': 15, 'Alamo Square': 10}
-}
-
-# Define the constraints
-start_time = 0
-stephanie_arrival = 8 * 60
-stephanie_departure = 8 * 60 + 45
-kevin_arrival = 7 * 60 + 15
-kevin_departure = 9 * 45
-robert_arrival = start_time
-robert_departure = 10 * 30
-steven_arrival = start_time
-steven_departure = 17 * 60
-anthony_arrival = start_time
-anthony_departure = 19 * 60
-sandra_arrival = 14 * 60 + 45
-sandra_departure = 21 * 60 + 45
-
-# Define the meeting times
-meeting_times = {
-    'Stephanie': (stephanie_arrival, stephanie_departure, 15),
-    'Kevin': (kevin_arrival, kevin_departure, 75),
-    'Robert': (robert_arrival, robert_departure, 90),
-    'Steven': (steven_arrival, steven_departure, 75),
-    'Anthony': (anthony_arrival, anthony_departure, 15),
-    'Sandra': (sandra_arrival, sandra_departure, 45)
-}
-
-# Define the solver
-solver = Optimize()
-
 # Define the variables
-x = [Bool(f'meet_{loc}') for loc in locations]
-y = [Int(f'time_{loc}') for loc in locations]
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+locations = ['Haight-Ashbury', 'Russian Hill', 'Fisherman\'s Wharf', 'Nob Hill', 'Golden Gate Park', 'Alamo Square', 'Pacific Heights']
+people = ['Stephanie', 'Kevin', 'Robert', 'Steven', 'Anthony', 'Sandra']
+times = []
+for person in people:
+    times.append([0, 0])  # Initialize with start and end times
 
 # Define the constraints
-for loc in locations:
-    solver.add(y[loc] >= start_time)
-    solver.add(y[loc] <= 24 * 60)  # assume you will leave by 10 PM
+s = Optimize()
+for person in people:
+    if person == 'Stephanie':
+        s.add(times[people.index(person)][0] >= 9 * 60 + 17 + 15)
+        s.add(times[people.index(person)][1] <= 20 * 60)
+        s.add(times[people.index(person)][0] <= times[people.index(person)][1])
+        s.add(times[people.index(person)][0] >= 20 * 60)
+    elif person == 'Kevin':
+        s.add(times[people.index(person)][0] >= 19 * 60 + 23 + 75)
+        s.add(times[people.index(person)][1] <= 23 * 60 + 45)
+        s.add(times[people.index(person)][0] <= times[people.index(person)][1])
+    elif person == 'Robert':
+        s.add(times[people.index(person)][0] >= 7 * 60)
+        s.add(times[people.index(person)][1] <= 10 * 60 + 90)
+        s.add(times[people.index(person)][0] <= times[people.index(person)][1])
+    elif person == 'Steven':
+        s.add(times[people.index(person)][0] >= 8 * 60 + 7)
+        s.add(times[people.index(person)][1] <= 17 * 60 + 75)
+        s.add(times[people.index(person)][0] <= times[people.index(person)][1])
+    elif person == 'Anthony':
+        s.add(times[people.index(person)][0] >= 7 * 60)
+        s.add(times[people.index(person)][1] <= 19 * 60 + 15)
+        s.add(times[people.index(person)][0] <= times[people.index(person)][1])
+    elif person == 'Sandra':
+        s.add(times[people.index(person)][0] >= 14 * 60 + 45)
+        s.add(times[people.index(person)][1] <= 23 * 60 + 45)
+        s.add(times[people.index(person)][0] <= times[people.index(person)][1])
 
-for loc in locations:
-    for other_loc in locations:
-        if loc!= other_loc:
-            solver.add(y[loc] + travel_times[loc][other_loc] <= y[other_loc])
+# Define the scheduling problem
+locations_to_people = {
+    'Haight-Ashbury': [0, 1, 2, 3, 4, 5],
+    'Russian Hill': [0, 1, 2, 3, 4, 5],
+    'Fisherman\'s Wharf': [0, 1, 2, 3, 4, 5],
+    'Nob Hill': [0, 1, 2, 3, 4, 5],
+    'Golden Gate Park': [0, 1, 2, 3, 4, 5],
+    'Alamo Square': [0, 1, 2, 3, 4, 5],
+    'Pacific Heights': [0, 1, 2, 3, 4, 5]
+}
 
-for loc in locations:
-    solver.add(y[loc] >= start_time + travel_times['Haight-Ashbury'][loc])
+scheduling_problem = []
+for location in locations:
+    for person in people:
+        if location == 'Haight-Ashbury':
+            s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60)
+            s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60)
+            s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+        elif location == 'Russian Hill':
+            s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60 + 17)
+            s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60)
+            s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+        elif location == 'Fisherman\'s Wharf':
+            s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60 + 23)
+            s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60)
+            s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+        elif location == 'Nob Hill':
+            s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60 + 15)
+            s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+            s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+        elif location == 'Golden Gate Park':
+            s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60 + 7)
+            s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+            s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+        elif location == 'Alamo Square':
+            s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60 + 5)
+            s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+            s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+        elif location == 'Pacific Heights':
+            s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60 + 12)
+            s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+            s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
 
-for person, (arrival, departure, min_time) in meeting_times.items():
-    for loc in locations:
-        if loc!= 'Haight-Ashbury':
-            solver.add(y[loc] >= arrival - min_time)
-            solver.add(y[loc] <= departure + min_time)
+        # Add the scheduling problem constraints
+        if person == 'Stephanie':
+            s.add(times[locations_to_people[location].index(person)][0] >= 20 * 60)
+            s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60 + 15)
+        elif person == 'Kevin':
+            s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+            s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+        elif person == 'Robert':
+            s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+            s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+        elif person == 'Steven':
+            s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+            s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+        elif person == 'Anthony':
+            s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+            s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+        elif person == 'Sandra':
+            s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+            s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
 
-for loc in locations:
-    solver.add(x[loc] == 1)  # assume you will meet everyone
+        # Add the distance constraints
+        if location == 'Haight-Ashbury':
+            if person == 'Stephanie':
+                s.add(times[locations_to_people[location].index(person)][0] >= 9 * 60 + 17 + 15)
+                s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60)
+                s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+            elif person == 'Kevin':
+                s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+            elif person == 'Robert':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+                s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+            elif person == 'Steven':
+                s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+                s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+                s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+            elif person == 'Anthony':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+                s.add(times[locations_to_people[location].index(person)][0] <= times[locations_to_people[location].index(person)][1])
+            elif person == 'Sandra':
+                s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+        elif location == 'Russian Hill':
+            if person == 'Stephanie':
+                s.add(times[locations_to_people[location].index(person)][0] >= 20 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60 + 15)
+            elif person == 'Kevin':
+                s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+            elif person == 'Robert':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+            elif person == 'Steven':
+                s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+                s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+            elif person == 'Anthony':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+            elif person == 'Sandra':
+                s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+        elif location == 'Fisherman\'s Wharf':
+            if person == 'Stephanie':
+                s.add(times[locations_to_people[location].index(person)][0] >= 20 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60 + 15)
+            elif person == 'Kevin':
+                s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+            elif person == 'Robert':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+            elif person == 'Steven':
+                s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+                s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+            elif person == 'Anthony':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+            elif person == 'Sandra':
+                s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+        elif location == 'Nob Hill':
+            if person == 'Stephanie':
+                s.add(times[locations_to_people[location].index(person)][0] >= 20 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60 + 15)
+            elif person == 'Kevin':
+                s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+            elif person == 'Robert':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+            elif person == 'Steven':
+                s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+                s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+            elif person == 'Anthony':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+            elif person == 'Sandra':
+                s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+        elif location == 'Golden Gate Park':
+            if person == 'Stephanie':
+                s.add(times[locations_to_people[location].index(person)][0] >= 20 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60 + 15)
+            elif person == 'Kevin':
+                s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+            elif person == 'Robert':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+            elif person == 'Steven':
+                s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+                s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+            elif person == 'Anthony':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+            elif person == 'Sandra':
+                s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+        elif location == 'Alamo Square':
+            if person == 'Stephanie':
+                s.add(times[locations_to_people[location].index(person)][0] >= 20 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60 + 15)
+            elif person == 'Kevin':
+                s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+            elif person == 'Robert':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+            elif person == 'Steven':
+                s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+                s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+            elif person == 'Anthony':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+            elif person == 'Sandra':
+                s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+        elif location == 'Pacific Heights':
+            if person == 'Stephanie':
+                s.add(times[locations_to_people[location].index(person)][0] >= 20 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 20 * 60 + 15)
+            elif person == 'Kevin':
+                s.add(times[locations_to_people[location].index(person)][0] >= 19 * 60 + 23 + 75)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
+            elif person == 'Robert':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 10 * 60 + 90)
+            elif person == 'Steven':
+                s.add(times[locations_to_people[location].index(person)][0] >= 8 * 60 + 7)
+                s.add(times[locations_to_people[location].index(person)][1] <= 17 * 60 + 75)
+            elif person == 'Anthony':
+                s.add(times[locations_to_people[location].index(person)][0] >= 7 * 60)
+                s.add(times[locations_to_people[location].index(person)][1] <= 19 * 60 + 15)
+            elif person == 'Sandra':
+                s.add(times[locations_to_people[location].index(person)][0] >= 14 * 60 + 45)
+                s.add(times[locations_to_people[location].index(person)][1] <= 23 * 60 + 45)
 
-# Define the objective function
-solver.minimize(sum(y[loc] for loc in locations))
-
-# Solve the problem
-result = solver.check()
+# Solve the scheduling problem
+s.maximize(end_time - start_time)
+result = s.check()
 if result == sat:
-    model = solver.model()
-    schedule = {}
-    for loc in locations:
-        schedule[loc] = model[y[loc]].as_long()
-    print('SCHEDULE:')
-    for loc, time in schedule.items():
-        print(f'{loc}: {time // 60}:{time % 60}')
+    m = s.model()
+    print("Solution found:")
+    for i in range(len(people)):
+        print(f"{people[i]}: {m[times[i][0]]} - {m[times[i][1]]}")
 else:
-    print('No solution found')
+    print("No solution found")

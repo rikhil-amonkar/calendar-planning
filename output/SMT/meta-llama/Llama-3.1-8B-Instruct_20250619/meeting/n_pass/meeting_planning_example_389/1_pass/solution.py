@@ -1,48 +1,56 @@
 from z3 import *
 
-# Define the travel distances
+# Define the variables
+start_time = 0
+end_time = 1440  # 1440 minutes in a day
+sarah_start = 2 * 60 + 45  # 2:45 PM
+sarah_end = 5 * 60 + 30  # 5:30 PM
+mary_start = 1 * 60  # 1:00 PM
+mary_end = 7 * 60 + 15  # 7:15 PM
+helen_start = 21 * 60 + 45  # 9:45 PM
+helen_end = 22 * 60 + 30  # 10:30 PM
+thomas_start = 3 * 60 + 15  # 3:15 PM
+thomas_end = 6 * 60 + 45  # 6:45 PM
+
+# Define the distances
 distances = {
-    'HA': {'FA': 23, 'RD': 10, 'MD': 11, 'BV': 18},
-    'FA': {'HA': 22, 'RD': 18, 'MD': 22, 'BV': 26},
-    'RD': {'HA': 10, 'FA': 18, 'MD': 20, 'BV': 26},
-    'MD': {'HA': 11, 'FA': 22, 'RD': 20, 'BV': 15},
-    'BV': {'HA': 18, 'FA': 25, 'RD': 25, 'MD': 13}
+    'Haight-Ashbury': {'Fisherman\'s Wharf': 23, 'Richmond District': 10, 'Mission District': 11, 'Bayview': 18},
+    'Fisherman\'s Wharf': {'Haight-Ashbury': 22, 'Richmond District': 18, 'Mission District': 22, 'Bayview': 26},
+    'Richmond District': {'Haight-Ashbury': 10, 'Fisherman\'s Wharf': 18, 'Mission District': 20, 'Bayview': 26},
+    'Mission District': {'Haight-Ashbury': 12, 'Fisherman\'s Wharf': 22, 'Richmond District': 20, 'Bayview': 15},
+    'Bayview': {'Haight-Ashbury': 19, 'Fisherman\'s Wharf': 25, 'Richmond District': 25, 'Mission District': 13}
 }
 
 # Define the constraints
-s = Solver()
+x = [Int(f'x_{i}') for i in range(6)]  # x_i represents the time spent at location i
+y = [Bool(f'y_{i}') for i in range(6)]  # y_i represents whether location i is visited
 
-# Define the variables
-t_ha = Int('t_ha')
-t_fa = Int('t_fa')
-t_rd = Int('t_rd')
-t_md = Int('t_md')
-t_bv = Int('t_bv')
-
-# Sarah's availability
-s_add = s.add(And(2*45 + 105 <= t_fa, t_fa <= 5*30))
-s.add(t_fa >= t_ha + distances['HA']['FA'])
-
-# Mary's availability
-m_add = s.add(And(1*60 + 75 <= t_rd, t_rd <= 7*15))
-s.add(t_rd >= t_ha + distances['HA']['RD'])
-
-# Thomas' availability
-th_add = s.add(And(3*15 + 120 <= t_bv, t_bv <= 6*45))
-s.add(t_bv >= t_ha + distances['HA']['BV'])
-
-# Helen's availability is not relevant since it's outside of our time frame
-
-# Total time constraint
-s.add(t_ha + t_fa + t_rd + t_bv >= 9*60)
+# Constraints
+constraints = [
+    And([start_time <= x[0], x[0] <= end_time]),  # x_0 is the time spent at Haight-Ashbury
+    And([x[0] <= x[1] + distances['Haight-Ashbury']['Fisherman\'s Wharf'], x[1] <= x[0] + distances['Fisherman\'s Wharf']['Haight-Ashbury']]) if y[1] else And([start_time <= x[1], x[1] <= end_time]),  # x_1 is the time spent at Fisherman's Wharf
+    And([x[0] <= x[2] + distances['Haight-Ashbury']['Richmond District'], x[2] <= x[0] + distances['Richmond District']['Haight-Ashbury']]) if y[2] else And([start_time <= x[2], x[2] <= end_time]),  # x_2 is the time spent at Richmond District
+    And([x[0] <= x[3] + distances['Haight-Ashbury']['Mission District'], x[3] <= x[0] + distances['Mission District']['Haight-Ashbury']]) if y[3] else And([start_time <= x[3], x[3] <= end_time]),  # x_3 is the time spent at Mission District
+    And([x[0] <= x[4] + distances['Haight-Ashbury']['Bayview'], x[4] <= x[0] + distances['Bayview']['Haight-Ashbury']]) if y[4] else And([start_time <= x[4], x[4] <= end_time]),  # x_4 is the time spent at Bayview
+    And([y[1], x[1] >= sarah_start, x[1] <= sarah_end, x[1] - x[0] >= 105]) if y[1] else True,  # Meet Sarah for at least 105 minutes
+    And([y[2], x[2] >= mary_start, x[2] <= mary_end, x[2] - x[0] >= 75]) if y[2] else True,  # Meet Mary for at least 75 minutes
+    And([y[3], x[3] >= helen_start, x[3] <= helen_end, x[3] - x[0] >= 30]) if y[3] else True,  # Meet Helen for at least 30 minutes
+    And([y[4], x[4] >= thomas_start, x[4] <= thomas_end, x[4] - x[0] >= 120]) if y[4] else True  # Meet Thomas for at least 120 minutes
+]
 
 # Solve the problem
-s.check()
-m = s.model()
-
-# Print the solution
-print("SOLUTION:")
-print(f"Travel to Fisherman's Wharf: {m[t_fa] - m[t_ha]} minutes")
-print(f"Travel to Richmond District: {m[t_rd] - m[t_ha]} minutes")
-print(f"Travel to Bayview: {m[t_bv] - m[t_ha]} minutes")
-print(f"Total time: {m[t_ha] + m[t_fa] + m[t_rd] + m[t_bv]} minutes")
+solver = Solver()
+for i in range(6):
+    solver.add(Or([x[i] == 0, y[i]]))  # x_i is either 0 or the time spent at location i
+for constraint in constraints:
+    solver.add(constraint)
+solution = solver.check()
+if solution == sat:
+    model = solver.model()
+    print('SOLUTION:')
+    for i in range(6):
+        if model.evaluate(y[i]):
+            print(f'Visit location {i+1} ({"Fisherman\'s Wharf" if i == 1 else "Richmond District" if i == 2 else "Mission District" if i == 3 else "Bayview" if i == 4 else "Haight-Ashbury"}).')
+        print(f'Time spent at location {i+1}: {model.evaluate(x[i])} minutes.')
+else:
+    print('No solution found.')

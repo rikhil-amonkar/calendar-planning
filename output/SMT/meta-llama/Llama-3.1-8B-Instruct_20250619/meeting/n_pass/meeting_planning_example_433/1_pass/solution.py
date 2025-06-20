@@ -1,98 +1,75 @@
 from z3 import *
 
-# Define the travel times
-travel_times = {
-    ('Nob Hill', 'Richmond District'): 14,
-    ('Nob Hill', 'Financial District'): 9,
-    ('Nob Hill', 'North Beach'): 8,
-    ('Nob Hill', 'The Castro'): 17,
-    ('Nob Hill', 'Golden Gate Park'): 17,
-    ('Richmond District', 'Nob Hill'): 17,
-    ('Richmond District', 'Financial District'): 22,
-    ('Richmond District', 'North Beach'): 17,
-    ('Richmond District', 'The Castro'): 16,
-    ('Richmond District', 'Golden Gate Park'): 9,
-    ('Financial District', 'Nob Hill'): 8,
-    ('Financial District', 'Richmond District'): 21,
-    ('Financial District', 'North Beach'): 7,
-    ('Financial District', 'The Castro'): 23,
-    ('Financial District', 'Golden Gate Park'): 23,
-    ('North Beach', 'Nob Hill'): 7,
-    ('North Beach', 'Richmond District'): 18,
-    ('North Beach', 'Financial District'): 8,
-    ('North Beach', 'The Castro'): 22,
-    ('North Beach', 'Golden Gate Park'): 22,
-    ('The Castro', 'Nob Hill'): 16,
-    ('The Castro', 'Richmond District'): 16,
-    ('The Castro', 'Financial District'): 20,
-    ('The Castro', 'North Beach'): 20,
-    ('The Castro', 'Golden Gate Park'): 11,
-    ('Golden Gate Park', 'Nob Hill'): 20,
-    ('Golden Gate Park', 'Richmond District'): 7,
-    ('Golden Gate Park', 'Financial District'): 26,
-    ('Golden Gate Park', 'North Beach'): 24,
-    ('Golden Gate Park', 'The Castro'): 13
+# Define the travel distances in minutes
+distances = {
+    'Nob_Hill': {'Richmond_District': 14, 'Financial_District': 9, 'North_Beach': 8, 'The_Castro': 17, 'Golden_Gate_Park': 17},
+    'Richmond_District': {'Nob_Hill': 17, 'Financial_District': 22, 'North_Beach': 17, 'The_Castro': 16, 'Golden_Gate_Park': 9},
+    'Financial_District': {'Nob_Hill': 8, 'Richmond_District': 21, 'North_Beach': 7, 'The_Castro': 23, 'Golden_Gate_Park': 23},
+    'North_Beach': {'Nob_Hill': 7, 'Richmond_District': 18, 'Financial_District': 8, 'The_Castro': 22, 'Golden_Gate_Park': 22},
+    'The_Castro': {'Nob_Hill': 16, 'Richmond_District': 16, 'Financial_District': 20, 'North_Beach': 20, 'Golden_Gate_Park': 11},
+    'Golden_Gate_Park': {'Nob_Hill': 20, 'Richmond_District': 7, 'Financial_District': 26, 'North_Beach': 24, 'The_Castro': 13}
 }
 
-# Define the constraints
-s = Optimize()
+# Define the arrival and departure times for each person
+people = {
+    'Emily': {'arrival': 7*60, 'departure': 9*60, 'duration': 15},
+    'Margaret': {'arrival': 4*60 + 30, 'departure': 8*60 + 15, 'duration': 75},
+    'Ronald': {'arrival': 6*60 + 30, 'departure': 7*60 + 30, 'duration': 45},
+    'Deborah': {'arrival': 1*60 + 45, 'departure': 9*60 + 15, 'duration': 90},
+    'Jeffrey': {'arrival': 11*60 + 15, 'departure': 14*60 + 30, 'duration': 120}
+}
+
+# Define the solver
+s = Solver()
 
 # Define the variables
-x = [Bool(f'visit_{i}') for i in range(6)]  # visit each location
-y = [Int(f'meet_{i}') for i in range(6)]  # meet each friend
-t = Int('time')  # time
+times = [Int('t_{}'.format(i)) for i in range(24*60)]
+locations = [Int('l_{}'.format(i)) for i in range(24*60)]
+meetings = [Int('m_{}'.format(i)) for i in range(24*60)]
 
 # Define the constraints
-s.add(Or(x))  # visit at least one location
-s.add(t >= 0)  # time is non-negative
-s.add(t >= 9)  # start at 9:00 AM
-s.add(t <= 21)  # end at 9:00 PM
+for i in range(24*60):
+    s.add(0 <= times[i])
+    s.add(times[i] <= 24*60)
+    s.add(0 <= locations[i])
+    s.add(locations[i] <= 5)
+    s.add(0 <= meetings[i])
+    s.add(meetings[i] <= 5)
 
-# Meet Emily
-s.add(y[0] >= 15)  # meet Emily for at least 15 minutes
-s.add(Or([(x[0] == False) | (x[1] == True) | (x[4] == True)], [t < 19]))  # visit Richmond District before 7:00 PM
+s.add(times[0] == 9*60)  # Start at 9:00 AM
+s.add(locations[0] == 0)  # Start at Nob Hill
 
-# Meet Margaret
-s.add(y[1] >= 75)  # meet Margaret for at least 75 minutes
-s.add(Or([(x[0] == False) | (x[1] == False) | (x[2] == True) | (x[3] == True) | (x[4] == False) | (x[5] == True)], [t < 18]))  # visit Financial District before 4:30 PM
+for i in range(1, 24*60):
+    s.add(times[i] >= times[i-1] + distances[locations[i-1]][locations[i]])
+    s.add(locations[i] >= 0)
+    s.add(locations[i] <= 5)
 
-# Meet Ronald
-s.add(y[2] >= 45)  # meet Ronald for at least 45 minutes
-s.add(Or([(x[0] == False) | (x[1] == False) | (x[2] == False) | (x[3] == False) | (x[4] == False) | (x[5] == True)], [t < 20]))  # visit North Beach before 6:30 PM
+for person, arrival, departure, duration in people.items():
+    start = arrival
+    end = departure - duration
+    while start < end:
+        s.add(meetings[start] == locations[start])
+        s.add(times[start] >= arrival)
+        s.add(times[start] <= departure)
+        start += 1
 
-# Meet Deborah
-s.add(y[3] >= 90)  # meet Deborah for at least 90 minutes
-s.add(Or([(x[0] == False) | (x[1] == False) | (x[2] == False) | (x[3] == True) | (x[4] == False) | (x[5] == False)], [t < 19]))  # visit The Castro before 1:45 PM
+# Define the objective function
+objective = [0] * 24*60
+for i in range(24*60):
+    for person, arrival, departure, duration in people.items():
+        if arrival <= times[i] <= departure:
+            objective[i] += 1
 
-# Meet Jeffrey
-s.add(y[4] >= 120)  # meet Jeffrey for at least 120 minutes
-s.add(Or([(x[0] == True) | (x[1] == False) | (x[2] == False) | (x[3] == False) | (x[4] == False) | (x[5] == False)], [t >= 11]))  # visit Golden Gate Park after 11:15 AM
+# Define the constraint to maximize the number of meetings
+max_meetings = Int('max_meetings')
+s.add(max_meetings >= Sum(objective))
+s.maximize(max_meetings)
 
-# Meet Emily at Richmond District
-s.add(If(x[1], y[0] <= (travel_times[('Nob Hill', 'Richmond District')] + travel_times[('Richmond District', 'Nob Hill')] + 15), True))
-
-# Meet Margaret at Financial District
-s.add(If(x[2], y[1] <= (travel_times[('Nob Hill', 'Financial District')] + travel_times[('Financial District', 'Nob Hill')] + 75), True))
-
-# Meet Ronald at North Beach
-s.add(If(x[3], y[2] <= (travel_times[('Nob Hill', 'North Beach')] + travel_times[('North Beach', 'Nob Hill')] + 45), True))
-
-# Meet Deborah at The Castro
-s.add(If(x[4], y[3] <= (travel_times[('Nob Hill', 'The Castro')] + travel_times[('The Castro', 'Nob Hill')] + 90), True))
-
-# Meet Jeffrey at Golden Gate Park
-s.add(If(x[5], y[4] <= (travel_times[('Nob Hill', 'Golden Gate Park')] + travel_times[('Golden Gate Park', 'Nob Hill')] + 120), True))
-
-# Solve the optimization problem
-s.minimize(t)
-result = s.check()
-if result == sat:
-    m = s.model()
-    print("Optimal schedule:")
-    for i in range(6):
-        if m[x[i]]:
-            print(f"Visit location {i+1} at time {m[t]}.")
-        else:
-            print(f"Do not visit location {i+1} at time {m[t]}.")
+# Solve the problem
+if s.check() == sat:
+    model = s.model()
+    print('SOLUTION:')
+    for i in range(24*60):
+        print('Time {}: Location {}, Meeting {}'.format(model[times[i]].as_long(), model[locations[i]].as_long(), model[meetings[i]].as_long()))
 else:
-    print("No solution found.")
+    print('No solution found')

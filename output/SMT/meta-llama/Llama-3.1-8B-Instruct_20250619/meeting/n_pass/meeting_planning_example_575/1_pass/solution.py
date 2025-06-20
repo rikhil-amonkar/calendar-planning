@@ -1,7 +1,7 @@
 from z3 import *
 
-# Define the travel distances
-distances = {
+# Define the travel times between locations
+travel_times = {
     'The Castro': {'Presidio': 20, 'Sunset District': 17, 'Haight-Ashbury': 6, 'Mission District': 7, 'Golden Gate Park': 11, 'Russian Hill': 18},
     'Presidio': {'The Castro': 21, 'Sunset District': 15, 'Haight-Ashbury': 15, 'Mission District': 26, 'Golden Gate Park': 12, 'Russian Hill': 14},
     'Sunset District': {'The Castro': 17, 'Presidio': 16, 'Haight-Ashbury': 15, 'Mission District': 24, 'Golden Gate Park': 11, 'Russian Hill': 24},
@@ -11,51 +11,48 @@ distances = {
     'Russian Hill': {'The Castro': 18, 'Presidio': 14, 'Sunset District': 23, 'Haight-Ashbury': 17, 'Mission District': 16, 'Golden Gate Park': 21}
 }
 
-# Define the friends and their availability
-friends = {
-    'Rebecca': {'location': 'Presidio','start': 6*60, 'end': 8*60,'min_time': 60},
-    'Linda': {'location': 'Sunset District','start': 3*60, 'end': 7*60,'min_time': 30},
-    'Elizabeth': {'location': 'Haight-Ashbury','start': 5*60, 'end': 7*60,'min_time': 105},
-    'William': {'location': 'Mission District','start': 1*60, 'end': 7*60,'min_time': 30},
-    'Robert': {'location': 'Golden Gate Park','start': 2*60, 'end': 9*60,'min_time': 45},
-    'Mark': {'location': 'Russian Hill','start': 0, 'end': 9*60,'min_time': 75}
-}
-
-# Define the solver
-solver = Solver()
+# Define the constraints
+s = Solver()
 
 # Define the variables
-locations = list(distances.keys())
-times = [9*60]  # start time
-variables = [Bool(f'meet_{location}') for location in locations]
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+friends = ['Rebecca', 'Linda', 'Elizabeth', 'William', 'Robert', 'Mark']
+locations = ['The Castro', 'Presidio', 'Sunset District', 'Haight-Ashbury', 'Mission District', 'Golden Gate Park', 'Russian Hill']
+friend_times = {'Rebecca': [6 * 60 + 15, 8 * 60 + 45], 'Linda': [3 * 60 + 30, 7 * 60 + 45], 'Elizabeth': [5 * 60 + 15, 7 * 60 + 30], 'William': [1 * 60 + 15, 7 * 60 + 30], 'Robert': [2 * 60 + 15, 9 * 60 + 30], 'Mark': [10 * 60, 21 * 60 + 15]}
+min_meeting_times = {'Rebecca': 60, 'Linda': 30, 'Elizabeth': 105, 'William': 30, 'Robert': 45, 'Mark': 75}
 
-# Add constraints
-for location in locations:
-    solver.add(Or([variables[i] for i, loc in enumerate(locations) if loc == location]))
+# Define the variables
+x = [Bool(f'x_{i}_{j}') for i in range(len(friends)) for j in range(len(locations))]
 
-# Add constraints for each friend
-for friend, info in friends.items():
-    location = info['location']
-    start = info['start']
-    end = info['end']
-    min_time = info['min_time']
-    solver.add(And([variables[locations.index(location)], 
-                    Or([start <= time + min_time for time in times], 
-                       [time + min_time <= end for time in times]))]))
+# Define the constraints
+for i in range(len(friends)):
+    for j in range(len(locations)):
+        s.add(Or([x[i * len(locations) + j], Not(x[i * len(locations) + j])]))
 
-# Add constraint for total time
-solver.add(And([time + 60 <= 9*60 + 60 for time in times]))
+# Define the constraints
+for i in range(len(friends)):
+    s.add(Implies(x[i * len(locations) + locations.index(friend_times[friends[i]][0])], And([start_time <= friend_times[friends[i]][0], friend_times[friends[i]][0] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][0])]], friend_times[friends[i]][1] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][0])]] + min_meeting_times[friends[i]]])))
+
+# Define the constraints
+for i in range(len(friends)):
+    s.add(Implies(x[i * len(locations) + locations.index(friend_times[friends[i]][1])], And([friend_times[friends[i]][0] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][1])]], start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][1])]] <= friend_times[friends[i]][1], friend_times[friends[i]][1] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][1])]] + min_meeting_times[friends[i]]])))
+
+# Define the constraints
+for i in range(len(friends)):
+    s.add(Implies(x[i * len(locations) + locations.index(friend_times[friends[i]][0])], Not(And([friend_times[friends[i]][0] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][1])]], start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][1])]] <= friend_times[friends[i]][1], friend_times[friends[i]][1] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][1])]] + min_meeting_times[friends[i]]]))))
+
+# Define the constraints
+for i in range(len(friends)):
+    s.add(Implies(x[i * len(locations) + locations.index(friend_times[friends[i]][1])], Not(And([friend_times[friends[i]][0] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][0])]], start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][0])]] <= friend_times[friends[i]][1], friend_times[friends[i]][1] <= start_time + travel_times[locations[i]][locations[locations.index(friend_times[friends[i]][0])]] + min_meeting_times[friends[i]]]))))
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    schedule = []
-    for i, location in enumerate(locations):
-        if model.evaluate(variables[i]).as_bool():
-            schedule.append((location, model.evaluate(times[-1]).as_long() - 60))
-    schedule.sort(key=lambda x: x[1])
+if s.check() == sat:
+    m = s.model()
     print('SOLUTION:')
-    for location, time in schedule:
-        print(f'Meet at {location} at {time//60}:{(time%60):02d}')
+    for i in range(len(friends)):
+        for j in range(len(locations)):
+            if m[x[i * len(locations) + j]]:
+                print(f'Meet {friends[i]} at {locations[j]} at {m[start_time + travel_times[locations[i]][locations[j]]].as_long() - travel_times[locations[i]][locations[j]]} and stay for {min_meeting_times[friends[i]]} minutes')
 else:
     print('No solution found')

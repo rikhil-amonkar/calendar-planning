@@ -1,11 +1,7 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 720  # 12 hours in minutes
-friends = ['Stephanie', 'Sandra', 'Richard', 'Brian', 'Jason']
-locations = ['Haight-Ashbury', 'Mission District', 'Bayview', 'Pacific Heights', 'Russian Hill', 'Fisherman\'s Wharf']
-travel_times = {
+# Define the travel distances
+travel_distances = {
     'Haight-Ashbury': {'Mission District': 11, 'Bayview': 18, 'Pacific Heights': 12, 'Russian Hill': 17, 'Fisherman\'s Wharf': 23},
     'Mission District': {'Haight-Ashbury': 12, 'Bayview': 15, 'Pacific Heights': 16, 'Russian Hill': 15, 'Fisherman\'s Wharf': 22},
     'Bayview': {'Haight-Ashbury': 19, 'Mission District': 13, 'Pacific Heights': 23, 'Russian Hill': 23, 'Fisherman\'s Wharf': 25},
@@ -15,59 +11,46 @@ travel_times = {
 }
 
 # Define the constraints
-s = Optimize()
+constraints = [
+    ('Haight-Ashbury', 9, 90),  # Stephanie
+    ('Bayview', 13, 15),  # Sandra
+    ('Pacific Heights', 7, 75),  # Richard
+    ('Russian Hill', 12, 120),  # Brian
+    ('Fisherman\'s Wharf', 8, 60)  # Jason
+]
 
-# Variables to represent the time spent at each location
-time_spent = {}
-for friend in friends:
-    time_spent[friend] = [Int(friend + '_' + location) for location in locations]
+# Define the Z3 solver
+s = Solver()
 
-# Constraints for each friend
-for friend in friends:
-    if friend == 'Stephanie':
-        s.add(And(Or(time_spent[friend][1] >= 90, time_spent[friend][1] == 0), 
-                  time_spent[friend][1] <= 105))  # Meet Stephanie for at least 90 minutes
-    elif friend == 'Sandra':
-        s.add(And(Or(time_spent[friend][2] >= 15, time_spent[friend][2] == 0), 
-                  time_spent[friend][2] <= 30))  # Meet Sandra for at least 15 minutes
-    elif friend == 'Richard':
-        s.add(And(Or(time_spent[friend][3] >= 75, time_spent[friend][3] == 0), 
-                  time_spent[friend][3] <= 105))  # Meet Richard for at least 75 minutes
-    elif friend == 'Brian':
-        s.add(And(Or(time_spent[friend][4] >= 120, time_spent[friend][4] == 0), 
-                  time_spent[friend][4] <= 165))  # Meet Brian for at least 120 minutes
-    elif friend == 'Jason':
-        s.add(And(Or(time_spent[friend][5] >= 60, time_spent[friend][5] == 0), 
-                  time_spent[friend][5] <= 75))  # Meet Jason for at least 60 minutes
+# Define the variables
+x = {}
+for location, start, duration in constraints:
+    x[location] = [Bool(f'{location}_{i}') for i in range(start, start + duration)]
 
-# Constraints for travel times
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            s.add(Or([time_spent[friend][i] == 0 for friend in friends], 
-                     [time_spent[friend][j] == 0 for friend in friends], 
-                     [time_spent[friend][i] + travel_times[locations[i]][locations[j]] + time_spent[friend][j] <= 720 for friend in friends]))
+# Add the constraints
+for location, start, duration in constraints:
+    s.add(Or([x[location][i] for i in range(start, start + duration)]))
+    for i in range(start + 1, start + duration):
+        s.add(Not(x[location][i-1] & x[location][i]))
 
-# Objective function
-s.minimize(Sum([time_spent[friend][i] for friend in friends for i in range(len(locations))]))
+# Add the travel constraints
+for location1, location2 in travel_distances.items():
+    for location3, distance in location2.items():
+        if location1!= location3:
+            s.add(Implies(x[location1][0], x[location3][distance]))
+
+# Add the time constraints
+for location, start, duration in constraints:
+    s.add(Implies(x[location][0], [x[location][i] for i in range(start, start + duration)]))
 
 # Solve the problem
-s.check()
-model = s.model()
-
-# Print the solution
-print('SOLUTION:')
-for friend in friends:
-    print(friend + ':')
-    for i in range(len(locations)):
-        print(f'  {locations[i]}: {model[time_spent[friend][i]].as_long()} minutes')
-    print()
-
-# Print the total time spent at each location
-total_time = {location: 0 for location in locations}
-for friend in friends:
-    for i in range(len(locations)):
-        total_time[locations[i]] += model[time_spent[friend][i]].as_long()
-print('Total time spent at each location:')
-for location in locations:
-    print(f'  {location}: {total_time[location]} minutes')
+if s.check() == sat:
+    model = s.model()
+    schedule = {}
+    for location, start, duration in constraints:
+        schedule[location] = [model[x[location][i]] for i in range(start, start + duration)]
+    print('SOLUTION:')
+    for location, times in schedule.items():
+        print(f'{location}: {", ".join(str(t) for t in times)}')
+else:
+    print('No solution found.')

@@ -1,44 +1,54 @@
 from z3 import *
 
 # Define the variables
-sunset_arrival = 0  # Time you arrive at Sunset District
-sunset_leave = 0    # Time you leave Sunset District
-park_arrival = 0    # Time you arrive at Golden Gate Park
-park_leave = 0      # Time you leave Golden Gate Park
-park_time = 0       # Time you spend at Golden Gate Park
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+travel_time_sd_ggp = 11
+travel_time_ggp_sd = 10
+min_meeting_time = 15
+joshua_start_time = 8 * 60 + 45  # 8:45 PM in minutes
+joshua_end_time = 9 * 60 + 45  # 9:45 PM in minutes
 
-# Define the constraints
-s = Solver()
+# Create the solver
+s = Optimize()
 
-# You arrive at Sunset District at 9:00AM
-s.add(sunset_arrival == 540)  # 540 minutes after midnight (9:00AM)
+# Define the decision variables
+x = [Bool(f'x_{i}') for i in range(end_time)]
+y = [Bool(f'y_{i}') for i in range(end_time)]
 
-# You spend at least 15 minutes with Joshua
-s.add(park_time >= 15)
+# Objective function: minimize the total travel time
+total_travel_time = 0
+for i in range(end_time):
+    total_travel_time += If(x[i], travel_time_sd_ggp + (travel_time_ggp_sd if y[i] else 0), 0)
+s.add(total_travel_time)
 
-# You can't arrive at Golden Gate Park before Joshua starts
-s.add(park_arrival >= 513)  # 513 minutes after midnight (8:45PM)
+# Constraints
+for i in range(end_time):
+    s.add(Implies(x[i], i >= start_time))
+    s.add(Implies(x[i], i < end_time))
+    s.add(Implies(y[i], i >= start_time))
+    s.add(Implies(y[i], i < end_time))
 
-# You can't leave Golden Gate Park after Joshua finishes
-s.add(park_leave <= 549)    # 549 minutes after midnight (9:45PM)
+# Joshua's meeting time constraint
+for i in range(joshua_start_time, joshua_end_time):
+    s.add(Implies(x[i] and y[i], i >= joshua_start_time + min_meeting_time))
 
-# Travel times
-s.add(sunset_leave == sunset_arrival + 11)  # Travel from Sunset District to Golden Gate Park
-s.add(park_arrival == sunset_leave + 10)    # Travel from Golden Gate Park to Sunset District
-s.add(park_leave == park_arrival + park_time)  # You spend park_time minutes at Golden Gate Park
-s.add(sunset_arrival + (sunset_leave - sunset_arrival) + (park_arrival - sunset_leave) + (park_leave - park_arrival) <= 1440)  # You can't exceed 24 hours
+# Optimize the objective function
+s.maximize(total_travel_time)
 
-# Solve the constraints
-s.check()
+# Solve the problem
+result = s.check()
 
-# Print the solution
-if s.check() == sat:
-    m = s.model()
-    print("Optimal schedule:")
-    print(f"Arrive at Sunset District: {m[sunset_arrival].as_long()} minutes after midnight")
-    print(f"Leave Sunset District: {m[sunset_leave].as_long()} minutes after midnight")
-    print(f"Arrive at Golden Gate Park: {m[park_arrival].as_long()} minutes after midnight")
-    print(f"Leave Golden Gate Park: {m[park_leave].as_long()} minutes after midnight")
-    print(f"Time spent at Golden Gate Park: {m[park_time].as_long()} minutes")
+if result == sat:
+    model = s.model()
+    optimal_schedule = []
+    for i in range(end_time):
+        if model.evaluate(x[i]):
+            optimal_schedule.append(f'Sunset District to Golden Gate Park ({i})')
+        if model.evaluate(y[i]):
+            optimal_schedule.append(f'Golden Gate Park to Sunset District ({i})')
+    print('Optimal Schedule:')
+    for i, event in enumerate(optimal_schedule):
+        print(f'{i+1}. {event}')
 else:
-    print("No solution found")
+    print('No solution found')

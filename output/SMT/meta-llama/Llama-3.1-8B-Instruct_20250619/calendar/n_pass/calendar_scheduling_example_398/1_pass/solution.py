@@ -1,50 +1,96 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the day
-    day = "Monday"
+# Define the day of the week (Monday is 0)
+day = Int('day')
+day_val = If(day == 0, 1, 0)  # 1 for Monday, 0 for other days
 
-    # Define the start and end time of work hours
-    start_time = 9 * 60
-    end_time = 17 * 60
+# Define the start and end time of the meeting
+start_time = Int('start_time')
+end_time = Int('end_time')
 
-    # Define the meeting duration
-    meeting_duration = 30
+# Define the duration of the meeting (30 minutes)
+duration = 30
 
-    # Define the existing schedules for each participant
-    doris_schedule = [9 * 60, 11 * 60, 13 * 60 + 30, 16 * 60]
-    theresa_schedule = [10 * 60, 12 * 60]
-    christian_schedule = []
-    terry_schedule = [9 * 60 + 30, 10 * 60, 11 * 60 + 30, 12 * 60, 13 * 60, 14 * 60 + 30, 15 * 60 + 30, 16 * 60]
-    carolyn_schedule = [9 * 60, 10 * 60 + 30, 11 * 60, 12 * 60, 13 * 60 + 30, 14 * 60 + 30, 15 * 60]
-    kyle_schedule = [9 * 60, 9 * 60 + 30, 11 * 60 + 30, 12 * 60, 13 * 60, 14 * 60 + 30, 16 * 60]
+# Define the constraints for each person
+doris_blocks = [
+    (start_time >= 9 * 60 + 0) & (start_time <= 11 * 60 + 0),
+    (start_time >= 13 * 60 + 30) & (start_time <= 14 * 60 + 0),
+    (start_time >= 16 * 60 + 0) & (start_time <= 16 * 60 + 30),
+    (end_time >= 9 * 60 + 0) & (end_time <= 11 * 60 + 0),
+    (end_time >= 13 * 60 + 30) & (end_time <= 14 * 60 + 0),
+    (end_time >= 16 * 60 + 0) & (end_time <= 16 * 60 + 30)
+]
 
-    # Create a Z3 solver
-    solver = Solver()
+theresa_blocks = [
+    (start_time >= 10 * 60 + 0) & (start_time <= 12 * 60 + 0),
+    (end_time >= 10 * 60 + 0) & (end_time <= 12 * 60 + 0)
+]
 
-    # Define the variables for the start time of the meeting
-    start_time_var = [Bool(f'start_time_{i}') for i in range(7)]
+christian_blocks = []
 
-    # Add constraints for each participant's schedule
-    for i in range(7):
-        solver.add(Or([start_time_var[i] == False, (start_time + i * 30) >= doris_schedule[j] and (start_time + i * 30 + meeting_duration) <= doris_schedule[j + 1] for j in range(len(doris_schedule) - 1)]))
-        solver.add(Or([start_time_var[i] == False, (start_time + i * 30) >= theresa_schedule[j] and (start_time + i * 30 + meeting_duration) <= theresa_schedule[j + 1] for j in range(len(theresa_schedule) - 1)]))
-        solver.add(Or([start_time_var[i] == False, (start_time + i * 30) >= terry_schedule[j] and (start_time + i * 30 + meeting_duration) <= terry_schedule[j + 1] for j in range(len(terry_schedule) - 1)]))
-        solver.add(Or([start_time_var[i] == False, (start_time + i * 30) >= carolyn_schedule[j] and (start_time + i * 30 + meeting_duration) <= carolyn_schedule[j + 1] for j in range(len(carolyn_schedule) - 1)]))
-        solver.add(Or([start_time_var[i] == False, (start_time + i * 30) >= kyle_schedule[j] and (start_time + i * 30 + meeting_duration) <= kyle_schedule[j + 1] for j in range(len(kyle_schedule) - 1)]))
+terry_blocks = [
+    (start_time >= 9 * 60 + 30) & (start_time <= 10 * 60 + 0),
+    (start_time >= 11 * 60 + 30) & (start_time <= 12 * 60 + 0),
+    (start_time >= 12 * 60 + 30) & (start_time <= 13 * 60 + 0),
+    (start_time >= 13 * 60 + 30) & (start_time <= 14 * 60 + 0),
+    (start_time >= 14 * 60 + 30) & (start_time <= 15 * 60 + 0),
+    (start_time >= 15 * 60 + 30) & (start_time <= 17 * 60 + 0),
+    (end_time >= 9 * 60 + 30) & (end_time <= 10 * 60 + 0),
+    (end_time >= 11 * 60 + 30) & (end_time <= 12 * 60 + 0),
+    (end_time >= 12 * 60 + 30) & (end_time <= 13 * 60 + 0),
+    (end_time >= 13 * 60 + 30) & (end_time <= 14 * 60 + 0),
+    (end_time >= 14 * 60 + 30) & (end_time <= 15 * 60 + 0),
+    (end_time >= 15 * 60 + 30) & (end_time <= 17 * 60 + 0)
+]
 
-    # Add constraints for the start and end time of the meeting
-    for i in range(6):
-        solver.add(Implies(start_time_var[i], start_time_var[i + 1]))
-    solver.add(And([start_time_var[0], (start_time + 30 * 6) <= end_time]))
+carolyn_blocks = [
+    (start_time >= 9 * 60 + 0) & (start_time <= 10 * 60 + 30),
+    (start_time >= 11 * 60 + 0) & (start_time <= 11 * 60 + 30),
+    (start_time >= 12 * 60 + 0) & (start_time <= 13 * 60 + 0),
+    (start_time >= 13 * 60 + 30) & (start_time <= 14 * 60 + 30),
+    (start_time >= 15 * 60 + 0) & (start_time <= 17 * 60 + 0),
+    (end_time >= 9 * 60 + 0) & (end_time <= 10 * 60 + 30),
+    (end_time >= 11 * 60 + 0) & (end_time <= 11 * 60 + 30),
+    (end_time >= 12 * 60 + 0) & (end_time <= 13 * 60 + 0),
+    (end_time >= 13 * 60 + 30) & (end_time <= 14 * 60 + 30),
+    (end_time >= 15 * 60 + 0) & (end_time <= 17 * 60 + 0)
+]
 
-    # Solve the constraints
-    if solver.check() == sat:
-        model = solver.model()
-        start_time_value = model[start_time_var[0]].as_long() // 60
-        end_time_value = (model[start_time_var[0]].as_long() // 60 + meeting_duration) % 24
-        print(f'SOLUTION:\nDay: {day}\nStart Time: {start_time_value:02d}:{(start_time_value * 60) % 60:02d}\nEnd Time: {end_time_value:02d}:{(end_time_value * 60) % 60:02d}')
-    else:
-        print('No solution found')
+kyle_blocks = [
+    (start_time >= 9 * 60 + 0) & (start_time <= 9 * 60 + 30),
+    (start_time >= 11 * 60 + 30) & (start_time <= 12 * 60 + 0),
+    (start_time >= 12 * 60 + 30) & (start_time <= 13 * 60 + 0),
+    (start_time >= 14 * 60 + 30) & (start_time <= 17 * 60 + 0),
+    (end_time >= 9 * 60 + 0) & (end_time <= 9 * 60 + 30),
+    (end_time >= 11 * 60 + 30) & (end_time <= 12 * 60 + 0),
+    (end_time >= 12 * 60 + 30) & (end_time <= 13 * 60 + 0),
+    (end_time >= 14 * 60 + 30) & (end_time <= 17 * 60 + 0)
+]
 
-schedule_meeting()
+# Define the solver
+solver = Solver()
+
+# Add the constraints to the solver
+solver.add(day == 0)  # Monday
+solver.add(start_time >= 9 * 60)
+solver.add(start_time <= 17 * 60 - duration)
+solver.add(end_time >= start_time + duration)
+solver.add(doris_blocks)
+solver.add(theresa_blocks)
+solver.add(christian_blocks)
+solver.add(terry_blocks)
+solver.add(carolyn_blocks)
+solver.add(kyle_blocks)
+
+# Check if the solver has a solution
+if solver.check() == sat:
+    # Get the model
+    model = solver.model()
+
+    # Print the solution
+    print("SOLUTION:")
+    print(f"Day: Monday")
+    print(f"Start Time: {model[start_time].as_string().zfill(2)}:{model[start_time].as_string()[2:4].zfill(2)}")
+    print(f"End Time: {model[end_time].as_string().zfill(2)}:{model[end_time].as_string()[2:4].zfill(2)}")
+else:
+    print("No solution found.")

@@ -1,94 +1,70 @@
 from z3 import *
 
-# Define the variables
-start_time = 9 * 60  # Start time in minutes
-emily_arrival = 4 * 60 + 15  # Emily's arrival time in minutes
-emily_departure = 9 * 60  # Emily's departure time in minutes
-joseph_arrival = 5 * 60 + 15  # Joseph's arrival time in minutes
-joseph_departure = 10 * 60  # Joseph's departure time in minutes
-melissa_arrival = 3 * 60 + 45  # Melissa's arrival time in minutes
-melissa_departure = 9 * 60 + 45  # Melissa's departure time in minutes
-meet_emily = Bool('meet_emily')  # Meet Emily flag
-meet_joseph = Bool('meet_joseph')  # Meet Joseph flag
-meet_melissa = Bool('meet_melissa')  # Meet Melissa flag
-emily_meeting_time = Int('emily_meeting_time')  # Time to meet Emily
-joseph_meeting_time = Int('joseph_meeting_time')  # Time to meet Joseph
-melissa_meeting_time = Int('melissa_meeting_time')  # Time to meet Melissa
-
-# Define the constraints
-s = Solver()
-
-# Meet Emily for at least 105 minutes
-s.add(And(meet_emily, emily_meeting_time >= 105))
-
-# Meet Joseph for at least 120 minutes
-s.add(And(meet_joseph, joseph_meeting_time >= 120))
-
-# Meet Melissa for at least 75 minutes
-s.add(And(meet_melissa, melissa_meeting_time >= 75))
-
-# Time to meet Emily
-s.add(If(meet_emily, emily_meeting_time >= emily_arrival - start_time, emily_meeting_time == 0))
-s.add(If(meet_emily, emily_meeting_time <= emily_departure - start_time, emily_meeting_time == 0))
-
-# Time to meet Joseph
-s.add(If(meet_joseph, joseph_meeting_time >= joseph_arrival - start_time, joseph_meeting_time == 0))
-s.add(If(meet_joseph, joseph_meeting_time <= joseph_departure - start_time, joseph_meeting_time == 0))
-
-# Time to meet Melissa
-s.add(If(meet_melissa, melissa_meeting_time >= melissa_arrival - start_time, melissa_meeting_time == 0))
-s.add(If(meet_melissa, melissa_meeting_time <= melissa_departure - start_time, melissa_meeting_time == 0))
-
-# Travel distances
+# Define the travel distances in minutes
 travel_distances = {
-    'Fisherman\'s Wharf to Presidio': 17,
-    'Fisherman\'s Wharf to Richmond District': 18,
-    'Fisherman\'s Wharf to Financial District': 11,
-    'Presidio to Fisherman\'s Wharf': 19,
-    'Presidio to Richmond District': 7,
-    'Presidio to Financial District': 23,
-    'Richmond District to Fisherman\'s Wharf': 18,
-    'Richmond District to Presidio': 7,
-    'Richmond District to Financial District': 22,
-    'Financial District to Fisherman\'s Wharf': 10,
-    'Financial District to Presidio': 22,
-    'Financial District to Richmond District': 21
+    'Fisherman\'s Wharf': {'Presidio': 17, 'Richmond District': 18, 'Financial District': 11},
+    'Presidio': {'Fisherman\'s Wharf': 19, 'Richmond District': 7, 'Financial District': 23},
+    'Richmond District': {'Fisherman\'s Wharf': 18, 'Presidio': 7, 'Financial District': 22},
+    'Financial District': {'Fisherman\'s Wharf': 10, 'Presidio': 22, 'Richmond District': 21}
 }
 
-# Add the travel distances as constraints
-for location1 in travel_distances:
-    for location2 in travel_distances:
-        if location1!= location2:
-            s.add(If(And(meet_emily, meet_joseph, meet_melissa),
-                      Or(emily_meeting_time + travel_distances[location1 +'to'+ location2] >= joseph_meeting_time,
-                         emily_meeting_time + travel_distances[location1 +'to'+ location2] >= melissa_meeting_time,
-                         joseph_meeting_time + travel_distances[location2 +'to'+ location1] >= emily_meeting_time,
-                         joseph_meeting_time + travel_distances[location2 +'to'+ location1] >= melissa_meeting_time,
-                         melissa_meeting_time + travel_distances[location1 +'to'+ location2] >= emily_meeting_time,
-                         melissa_meeting_time + travel_distances[location1 +'to'+ location2] >= joseph_meeting_time),
-                      True))
+# Define the constraints
+s = Optimize()
+
+# Define the variables
+meet_emily = Bool('meet_emily')
+meet_joseph = Bool('meet_joseph')
+meet_melissa = Bool('meet_melissa')
+time_with_emily = Int('time_with_emily')
+time_with_joseph = Int('time_with_joseph')
+time_with_melissa = Int('time_with_melissa')
+
+# Define the objective function
+obj = Optimize()
+
+# Add the constraints
+s.add(meet_emily >= 105)
+s.add(meet_joseph >= 120)
+s.add(meet_melissa >= 75)
+
+s.add(And(meet_emily, time_with_emily >= 105))
+s.add(And(meet_joseph, time_with_joseph >= 120))
+s.add(And(meet_melissa, time_with_melissa >= 75))
+
+# Add the objective function
+obj.add( meet_emily * 10 + meet_joseph * 15 + meet_melissa * 5 )
+
+# Define the possible locations and times
+locations = ['Fisherman\'s Wharf', 'Presidio', 'Richmond District', 'Financial District']
+times = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+
+# Define the variables for the locations and times
+location_emily = [location for location in locations if location!= 'Fisherman\'s Wharf']
+time_emily = [time for time in times if time >= 4]
+
+location_joseph = [location for location in locations if location!= 'Fisherman\'s Wharf']
+time_joseph = [time for time in times if time >= 5]
+
+location_melissa = [location for location in locations if location!= 'Fisherman\'s Wharf']
+time_melissa = [time for time in times if time >= 3]
+
+# Add the constraints for the locations and times
+s.add( meet_emily == Or([And(Bool(f'meet_emily_{location}_{time}') for location in location_emily for time in time_emily if location == 'Presidio' and time == 15 + (4 + (travel_distances['Fisherman\'s Wharf']['Presidio'] - 11) // 60))]))
+s.add( meet_joseph == Or([And(Bool(f'meet_joseph_{location}_{time}') for location in location_joseph for time in time_joseph if location == 'Richmond District' and time == 15 + (5 + (travel_distances['Fisherman\'s Wharf']['Richmond District'] - 11) // 60))]))
+s.add( meet_melissa == Or([And(Bool(f'meet_melissa_{location}_{time}') for location in location_melissa for time in time_melissa if location == 'Financial District' and time == 3 + (3 + (travel_distances['Fisherman\'s Wharf']['Financial District'] - 11) // 60))]))
 
 # Solve the problem
-s.add(Or(meet_emily, meet_joseph, meet_melissa))
-s.add(Not(And(Not(meet_emily), Not(Or(meet_joseph, meet_melissa)))))
-s.add(Not(And(Not(meet_joseph), Not(Or(meet_emily, meet_melissa)))))
-s.add(Not(And(Not(meet_melissa), Not(Or(meet_joseph, meet_emily)))))
-s.add(If(meet_emily, emily_meeting_time >= 0, emily_meeting_time == 0))
-s.add(If(meet_joseph, joseph_meeting_time >= 0, joseph_meeting_time == 0))
-s.add(If(meet_melissa, melissa_meeting_time >= 0, melissa_meeting_time == 0))
-
-s.add(If(meet_emily, emily_meeting_time <= 8*60, emily_meeting_time == 0))
-s.add(If(meet_joseph, joseph_meeting_time <= 8*60, joseph_meeting_time == 0))
-s.add(If(meet_melissa, melissa_meeting_time <= 8*60, melissa_meeting_time == 0))
-
-if s.check() == sat:
+s.add(obj)
+result = s.check()
+if result == sat:
     model = s.model()
-    print('SOLUTION:')
-    print(f"Meet Emily at {model[emily_meeting_time].as_long()} minutes after 9:00 AM.")
-    print(f"Meet Joseph at {model[joseph_meeting_time].as_long()} minutes after 9:00 AM.")
-    print(f"Meet Melissa at {model[melissa_meeting_time].as_long()} minutes after 9:00 AM.")
-    print(f"Meet Emily: {model[meet_emily].as_bool()}")
-    print(f"Meet Joseph: {model[meet_joseph].as_bool()}")
-    print(f"Meet Melissa: {model[meet_melissa].as_bool()}")
+    print("Locations:")
+    print("Emily:", model[f'meet_emily_Presidio_{15 + (4 + (travel_distances["Fisherman's Wharf"]["Presidio"] - 11) // 60)}'])
+    print("Joseph:", model[f'meet_joseph_Richmond District_{15 + (5 + (travel_distances["Fisherman's Wharf"]["Richmond District"] - 11) // 60)}'])
+    print("Melissa:", model[f'meet_melissa_Financial District_{3 + (3 + (travel_distances["Fisherman's Wharf"]["Financial District"] - 11) // 60)}'])
+    print("Time:")
+    print("Emily:", 15 + (4 + (travel_distances["Fisherman's Wharf"]["Presidio"] - 11) // 60))
+    print("Joseph:", 15 + (5 + (travel_distances["Fisherman's Wharf"]["Richmond District"] - 11) // 60))
+    print("Melissa:", 3 + (3 + (travel_distances["Fisherman's Wharf"]["Financial District"] - 11) // 60))
 else:
-    print("No solution exists.")
+    print("No solution found")

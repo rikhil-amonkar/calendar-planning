@@ -1,67 +1,72 @@
 from z3 import *
 
-def schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, day, preference=None):
-    # Define the meeting duration in minutes
-    meeting_duration_minutes = meeting_duration * 60
-
-    # Create Z3 variables for the start time
-    start_time = Int('start_time')
-
-    # Define the constraints
-    constraints = [
-        # Ensure the start time is within the work hours
-        And(9 * 60 <= start_time, start_time < 17 * 60),
-        # Ensure the meeting does not conflict with Jack's schedule
-        Or([start_time + meeting_duration_minutes < j for j in jack_schedule]),
-        # Ensure the meeting does not conflict with Charlotte's schedule
-        Or([start_time + meeting_duration_minutes < c for c in charlotte_schedule]),
-        # Ensure the meeting duration is exactly 0.5 hours
-        start_time + meeting_duration_minutes < 17 * 60,
-        start_time + meeting_duration_minutes >= 9 * 60,
-        start_time + meeting_duration_minutes >= 9 * 60 + 30,  # Jack's first available time
-        start_time + meeting_duration_minutes >= 10 * 60,  # Charlotte's first available time
-    ]
-
-    # If a preference is given, add it as a constraint
-    if preference:
-        constraints.append(start_time >= preference)
-
-    # Define the objective function (not used in this case, as we're not optimizing)
-    objective = start_time
-
-    # Solve the constraints
+def schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, preferences=None):
+    # Create a Z3 solver
     solver = Solver()
-    solver.add(constraints)
-    solver.check()
 
-    # Get the solution
-    model = solver.model()
-    start_time_value = model[start_time].as_long()
+    # Define the day
+    day = 'Monday'
 
-    # Convert the start time to a string
-    start_time_str = f'{start_time_value // 60:02d}:{start_time_value % 60:02d}'
+    # Define the start and end times
+    start_time = Int('start_time')
+    end_time = Int('end_time')
 
-    # Calculate the end time
-    end_time_str = f'{(start_time_value // 60 + meeting_duration_minutes // 60):02d}:{(start_time_value % 60 + meeting_duration_minutes % 60):02d}'
+    # Add constraints for the start time
+    solver.add(9 <= start_time)
+    solver.add(start_time <= 17)
 
-    # Print the solution
-    print(f'SOLUTION:')
-    print(f'Day: {day}')
-    print(f'Start Time: {start_time_str}')
-    print(f'End Time: {end_time_str}')
+    # Add constraints for the end time
+    solver.add(end_time <= 17)
+    solver.add(end_time >= 9)
 
-# Define the existing schedules for Jack and Charlotte
-jack_schedule = [9 * 60 + 30, 10 * 60 + 30, 11 * 60, 11 * 60 + 30, 12 * 60 + 30, 14 * 60, 14 * 60 + 30, 16 * 60]
-charlotte_schedule = [9 * 60 + 30, 10 * 60, 10 * 60 + 30, 12 * 60, 12 * 60 + 30, 13 * 60 + 30, 14 * 60, 16 * 60]
+    # Add constraints for the meeting duration
+    solver.add(end_time - start_time == meeting_duration)
 
-# Define the meeting duration
+    # Add constraints for Jack's schedule
+    for start, end in jack_schedule:
+        solver.add(And(start <= start_time, end >= start_time))
+
+    # Add constraints for Charlotte's schedule
+    for start, end in charlotte_schedule:
+        solver.add(And(start <= start_time, end >= start_time))
+
+    # Add preferences for Jack
+    if preferences and 'avoid_after' in preferences and preferences['avoid_after']:
+        solver.add(start_time <= 12)
+
+    # Check if a solution exists
+    if solver.check() == sat:
+        # Get the solution
+        model = solver.model()
+        # Extract the start and end times
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+        # Return the solution as a string
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_value:02d}:{(start_time_value % 60):02d}\nEnd Time: {end_time_value:02d}:{(end_time_value % 60):02d}'
+    else:
+        # Try to find a solution that works for both Jack and Charlotte
+        for hour in range(9, 17):
+            for minute in range(0, 60, 30):
+                start_time_value = hour * 60 + minute
+                end_time_value = start_time_value + meeting_duration
+                works_for_jack = True
+                works_for_charlotte = True
+                for start, end in jack_schedule:
+                    if start <= start_time_value and end >= start_time_value:
+                        works_for_jack = False
+                        break
+                for start, end in charlotte_schedule:
+                    if start <= start_time_value and end >= start_time_value:
+                        works_for_charlotte = False
+                        break
+                if works_for_jack and works_for_charlotte:
+                    return f'SOLUTION:\nDay: {day}\nStart Time: {hour:02d}:{minute:02d}\nEnd Time: {hour:02d}:{(minute + meeting_duration) % 60:02d}'
+        return 'No solution found'
+
+# Example usage
+jack_schedule = [(9*60+30, 9*60+60), (10*60+0, 10*60+30), (11*60+0, 11*60+30), (12*60+30, 12*60+60), (16*60+0, 16*60+30)]
+charlotte_schedule = [(9*60+30, 9*60+60), (10*60+30, 12*60+0), (12*60+30, 13*60+30), (14*60+0, 16*60+0)]
 meeting_duration = 30
+preferences = {'avoid_after': True}
 
-# Define the day
-day = 'Monday'
-
-# Define the preference (optional)
-preference = 12 * 60 + 30
-
-# Schedule the meeting
-schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, day, preference)
+print(schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, preferences))

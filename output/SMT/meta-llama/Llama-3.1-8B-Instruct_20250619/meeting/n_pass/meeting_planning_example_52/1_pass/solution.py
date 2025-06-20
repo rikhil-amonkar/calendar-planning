@@ -1,35 +1,36 @@
 from z3 import *
 
 # Define the variables
-start_time = Int('start_time')  # Start time of the day (in minutes)
-barbara_meeting = Int('barbara_meeting')  # Time spent meeting Barbara (in minutes)
-richmond_district = Int('richmond_district')  # Time spent at Richmond District (in minutes)
-russian_hill = Int('russian_hill')  # Time spent at Russian Hill (in minutes)
+time_start = 9 * 60  # 9:00 AM in minutes
+barbara_start = 1 * 60 + 15  # 1:15 PM in minutes
+barbara_end = 6 * 60 + 15  # 6:15 PM in minutes
+min_meeting_time = 45  # minimum meeting time in minutes
+distance_russian_hill_richmond = 14  # travel time from Russian Hill to Richmond District in minutes
+distance_richmond_russian_hill = 13  # travel time from Richmond District to Russian Hill in minutes
+
+# Define the solver
+s = Optimize()
+
+# Define the variables for the meeting times
+meeting_time_russian_hill = Int('meeting_time_russian_hill')
+meeting_time_richmond = Int('meeting_time_richmond')
 
 # Define the constraints
-s = Optimize()
-s.add(0 <= start_time)  # Start time must be non-negative
-s.add(start_time <= 480)  # Start time must be before 8:00 PM
-s.add(0 <= barbara_meeting)  # Time spent meeting Barbara must be non-negative
-s.add(barbara_meeting <= 45)  # Time spent meeting Barbara must be at most 45 minutes
-s.add(0 <= richmond_district)  # Time spent at Richmond District must be non-negative
-s.add(richmond_district <= 480)  # Time spent at Richmond District must be before 8:00 PM
-s.add(0 <= russian_hill)  # Time spent at Russian Hill must be non-negative
-s.add(russian_hill <= 480)  # Time spent at Russian Hill must be before 8:00 PM
-s.add(start_time + richmond_district + russian_hill == 480)  # Total time must be 8 hours
-s.add(start_time + barbara_meeting >= 585)  # Meet Barbara for at least 45 minutes
-s.add(start_time + 14 <= 615)  # Arrive at Richmond District before Barbara starts
-s.add(start_time + 13 >= 615)  # Arrive at Russian Hill after Barbara starts
-s.add(615 + 13 <= start_time + barbara_meeting + 13)  # Leave Russian Hill after Barbara finishes
-s.add(615 + 14 <= start_time + barbara_meeting + 14)  # Leave Richmond District after Barbara finishes
+s.add(meeting_time_russian_hill >= time_start)
+s.add(meeting_time_russian_hill <= barbara_start - min_meeting_time)
+s.add(meeting_time_richmond >= barbara_end + min_meeting_time)
+s.add(meeting_time_richmond <= 24 * 60 - distance_russian_hill_richmond - distance_richmond_russian_hill)
 
-# Define the objective function
-s.minimize(russian_hill + richmond_district + barbara_meeting)
+# Objective function: maximize the meeting time
+s.add(Obj('objective', meeting_time_russian_hill + meeting_time_richmond))
 
-# Solve the optimization problem
-solution = s.check()
-if solution == sat:
+# Solve the problem
+result = s.check()
+
+# Print the result
+if result == sat:
     model = s.model()
-    print(f"Best schedule: Start at {model[start_time].as_long()} minutes, meet Barbara for {model[barbara_meeting].as_long()} minutes, spend {model[russian_hill].as_long()} minutes at Russian Hill, and spend {model[richmond_district].as_long()} minutes at Richmond District.")
+    print(f"Best meeting time at Russian Hill: {model[meeting_time_russian_hill] / 60:.0f}:{(model[meeting_time_russian_hill] % 60):02d}")
+    print(f"Best meeting time at Richmond District: {model[meeting_time_richmond] / 60:.0f}:{(model[meeting_time_richmond] % 60):02d}")
 else:
-    print("No solution found.")
+    print("No solution found")

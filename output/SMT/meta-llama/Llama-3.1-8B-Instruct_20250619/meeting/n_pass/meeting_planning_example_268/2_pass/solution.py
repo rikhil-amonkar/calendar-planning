@@ -1,79 +1,132 @@
 from z3 import *
 
-# Define the travel distances in minutes
+# Define the travel distances
 distances = {
-    ('Golden Gate Park', 'Alamo Square'): 10,
-    ('Golden Gate Park', 'Presidio'): 11,
-    ('Golden Gate Park', 'Russian Hill'): 19,
-    ('Alamo Square', 'Golden Gate Park'): 9,
-    ('Alamo Square', 'Presidio'): 18,
-    ('Alamo Square', 'Russian Hill'): 13,
-    ('Presidio', 'Golden Gate Park'): 12,
-    ('Presidio', 'Alamo Square'): 18,
-    ('Presidio', 'Russian Hill'): 14,
-    ('Russian Hill', 'Golden Gate Park'): 21,
-    ('Russian Hill', 'Alamo Square'): 15,
-    ('Russian Hill', 'Presidio'): 14
+    'GGP': {'AMS': 10, 'PRD': 11, 'RSH': 19},
+    'AMS': {'GGP': 9, 'PRD': 18, 'RSH': 13},
+    'PRD': {'GGP': 12, 'AMS': 18, 'RSH': 14},
+    'RSH': {'GGP': 21, 'AMS': 15, 'PRD': 14}
 }
 
 # Define the constraints
-start_time = 0
-timothy_arrives = 12
-timothy_leaves = 4*60 + 15
-mark_arrives = 6*60 + 45
-mark_leaves = 9*60
-joseph_arrives = 4*60 + 45
-joseph_leaves = 9*60 + 30
+start_time = 9 * 60  # 9:00 AM
+timothy_start = 12 * 60  # 12:00 PM
+timothy_end = 4 * 60 + 15 * 60  # 4:15 PM
 min_timothy_time = 105
+mark_start = 6 * 60 + 45 * 60  # 6:45 PM
+mark_end = 9 * 60  # 9:00 PM
 min_mark_time = 60
+joseph_start = 4 * 60 + 45 * 60  # 4:45 PM
+joseph_end = 9 * 60 + 30 * 60  # 9:30 PM
 min_joseph_time = 60
-min_meetings = 3
 
 # Define the variables
-x = Int('x')
-y = Int('y')
-z = Int('z')
-t = Int('t')
-m = Int('m')
-j = Int('j')
-meet_timothy = Bool('meet_timothy')
-meet_mark = Bool('meet_mark')
-meet_joseph = Bool('meet_joseph')
+x_ggp_ams = Int('x_ggp_ams')
+x_ggp_prd = Int('x_ggp_prd')
+x_ggp_rsh = Int('x_ggp_rsh')
+x_ams_ggp = Int('x_ams_ggp')
+x_ams_prd = Int('x_ams_prd')
+x_ams_rsh = Int('x_ams_prd')
+x_prd_ggp = Int('x_prd_ggp')
+x_prd_ams = Int('x_prd_ams')
+x_prd_rsh = Int('x_prd_rsh')
+x_rsh_ggp = Int('x_rsh_ggp')
+x_rsh_ams = Int('x_rsh_ams')
+x_rsh_prd = Int('x_rsh_prd')
+t1 = Int('t1')
+t2 = Int('t2')
+t3 = Int('t3')
 
-# Define the constraints
-constraints = [
-    x >= start_time,
-    y >= start_time,
-    z >= start_time,
-    t >= start_time,
-    m >= start_time,
-    j >= start_time,
-    meet_timothy == (x + distances[('Golden Gate Park', 'Alamo Square')] + min_timothy_time <= timothy_arrives),
-    meet_mark == (y + distances[('Alamo Square', 'Presidio')] + min_mark_time <= mark_arrives),
-    meet_joseph == (z + distances[('Presidio', 'Russian Hill')] + min_joseph_time <= joseph_arrives),
-    meet_timothy + meet_mark + meet_joseph >= min_meetings
-]
+# Define the solver
+solver = Solver()
 
-# Solve the constraints
-s = Optimize()
-s.add(constraints)
-s.add(x + distances[('Golden Gate Park', 'Alamo Square')] + min_timothy_time <= timothy_leaves)
-s.add(y + distances[('Alamo Square', 'Presidio')] + min_mark_time <= mark_leaves)
-s.add(z + distances[('Presidio', 'Russian Hill')] + min_joseph_time <= joseph_leaves)
-s.add(t + distances[('Golden Gate Park', 'Alamo Square')] + distances[('Alamo Square', 'Presidio')] + distances[('Presidio', 'Russian Hill')] <= 24*60)
-s.add(m + distances[('Golden Gate Park', 'Alamo Square')] + distances[('Alamo Square', 'Presidio')] + distances[('Presidio', 'Russian Hill')] <= 24*60)
-s.add(j + distances[('Golden Gate Park', 'Alamo Square')] + distances[('Alamo Square', 'Presidio')] + distances[('Presidio', 'Russian Hill')] <= 24*60)
-s.add(x + y + z + t + m + j >= start_time)
-s.minimize(x + y + z + t + m + j)
+# Add constraints
+solver.add(x_ggp_ams >= 0)
+solver.add(x_ggp_prd >= 0)
+solver.add(x_ggp_rsh >= 0)
+solver.add(x_ams_ggp >= 0)
+solver.add(x_ams_prd >= 0)
+solver.add(x_ams_rsh >= 0)
+solver.add(x_prd_ggp >= 0)
+solver.add(x_prd_ams >= 0)
+solver.add(x_prd_rsh >= 0)
+solver.add(x_rsh_ggp >= 0)
+solver.add(x_rsh_ams >= 0)
+solver.add(x_rsh_prd >= 0)
+solver.add(t1 >= 0)
+solver.add(t2 >= 0)
+solver.add(t3 >= 0)
 
-# Check if an optimal solution exists
-if s.check() == sat:
-    model = s.model()
-    print(f"Optimal schedule: {model[x]}:00AM - {model[x] + distances[('Golden Gate Park', 'Alamo Square')]}:00AM (Timothy) {'if meet_timothy is True' if model[meet_timothy] else 'else'}")
-    print(f"{model[y]}:00AM - {model[y] + distances[('Alamo Square', 'Presidio')]}:00AM (Mark) {'if meet_mark is True' if model[meet_mark] else 'else'}")
-    print(f"{model[z]}:00AM - {model[z] + distances[('Presidio', 'Russian Hill')]}:00AM (Joseph) {'if meet_joseph is True' if model[meet_joseph] else 'else'}")
-    print(f"{'Meet Timothy' if model[meet_timothy] else 'Do not meet Timothy'}")
-    print(f"{'Meet Mark' if model[meet_mark] else 'Do not meet Mark'}")
-    print(f"{'Meet Joseph' if model[meet_joseph] else 'Do not meet Joseph'}")
+# Add constraints for meeting Timothy
+solver.add(start_time + distances['GGP']['AMS'] * x_ggp_ams + distances['AMS']['GGP'] * x_ams_ggp >= timothy_start)
+solver.add(start_time + distances['GGP']['AMS'] * x_ggp_ams + distances['AMS']['GGP'] * x_ams_ggp + distances['AMS']['PRD'] * x_ams_prd >= timothy_start + min_timothy_time)
+
+# Add constraints for meeting Mark
+solver.add(start_time + distances['GGP']['PRD'] * x_ggp_prd + distances['PRD']['GGP'] * x_prd_ggp >= mark_start)
+solver.add(start_time + distances['GGP']['PRD'] * x_ggp_prd + distances['PRD']['GGP'] * x_prd_ggp + distances['PRD']['RSH'] * x_prd_rsh >= mark_start + min_mark_time)
+
+# Add constraints for meeting Joseph
+solver.add(start_time + distances['GGP']['RSH'] * x_ggp_rsh + distances['RSH']['GGP'] * x_rsh_ggp >= joseph_start)
+solver.add(start_time + distances['GGP']['RSH'] * x_ggp_rsh + distances['RSH']['GGP'] * x_rsh_ggp + distances['RSH']['PRD'] * x_rsh_prd >= joseph_start + min_joseph_time)
+
+# Add constraints for visiting multiple locations
+solver.add(x_ggp_ams + x_ggp_prd + x_ggp_rsh <= 1)
+solver.add(x_ams_ggp + x_ams_prd + x_ams_rsh <= 1)
+solver.add(x_prd_ggp + x_prd_ams + x_prd_rsh <= 1)
+solver.add(x_rsh_ggp + x_rsh_ams + x_rsh_prd <= 1)
+
+# Add constraints for visiting exactly 3 locations
+solver.add(And(x_ggp_ams + x_ggp_prd + x_ggp_rsh + x_ams_ggp + x_ams_prd + x_ams_rsh + x_prd_ggp + x_prd_ams + x_prd_rsh + x_rsh_ggp + x_rsh_ams + x_rsh_prd == 3, 
+              Or(x_ggp_ams, x_ggp_prd, x_ggp_rsh, x_ams_ggp, x_ams_prd, x_ams_rsh, x_prd_ggp, x_prd_ams, x_prd_rsh, x_rsh_ggp, x_rsh_ams, x_rsh_prd)))
+
+# Add constraints for visiting locations in order
+solver.add(Implies(x_ggp_ams, t1 == distances['GGP']['AMS']))
+solver.add(Implies(x_ggp_prd, t1 == distances['GGP']['PRD']))
+solver.add(Implies(x_ggp_rsh, t1 == distances['GGP']['RSH']))
+solver.add(Implies(x_ams_ggp, t2 == distances['AMS']['GGP']))
+solver.add(Implies(x_ams_prd, t2 == distances['AMS']['PRD']))
+solver.add(Implies(x_ams_rsh, t2 == distances['AMS']['RSH']))
+solver.add(Implies(x_prd_ggp, t3 == distances['PRD']['GGP']))
+solver.add(Implies(x_prd_ams, t3 == distances['PRD']['AMS']))
+solver.add(Implies(x_prd_rsh, t3 == distances['PRD']['RSH']))
+solver.add(Implies(x_rsh_ggp, t1 == distances['RSH']['GGP']))
+solver.add(Implies(x_rsh_ams, t2 == distances['RSH']['AMS']))
+solver.add(Implies(x_rsh_prd, t3 == distances['RSH']['PRD']))
+
+# Add constraints for visiting locations in order
+solver.add(Implies(x_ggp_ams, t2 >= start_time + distances['GGP']['AMS'] * x_ggp_ams))
+solver.add(Implies(x_ggp_prd, t2 >= start_time + distances['GGP']['PRD'] * x_ggp_prd))
+solver.add(Implies(x_ggp_rsh, t2 >= start_time + distances['GGP']['RSH'] * x_ggp_rsh))
+solver.add(Implies(x_ams_ggp, t3 >= start_time + distances['AMS']['GGP'] * x_ams_ggp + distances['GGP']['AMS'] * x_ggp_ams))
+solver.add(Implies(x_ams_prd, t3 >= start_time + distances['AMS']['PRD'] * x_ams_prd + distances['GGP']['PRD'] * x_ggp_prd))
+solver.add(Implies(x_ams_rsh, t3 >= start_time + distances['AMS']['RSH'] * x_ams_rsh + distances['GGP']['RSH'] * x_ggp_rsh))
+solver.add(Implies(x_prd_ggp, t3 >= start_time + distances['PRD']['GGP'] * x_prd_ggp + distances['GGP']['PRD'] * x_ggp_prd))
+solver.add(Implies(x_prd_ams, t3 >= start_time + distances['PRD']['AMS'] * x_prd_ams + distances['GGP']['AMS'] * x_ggp_ams))
+solver.add(Implies(x_prd_rsh, t3 >= start_time + distances['PRD']['RSH'] * x_prd_rsh + distances['GGP']['RSH'] * x_ggp_rsh))
+solver.add(Implies(x_rsh_ggp, t2 >= start_time + distances['RSH']['GGP'] * x_rsh_ggp + distances['GGP']['RSH'] * x_ggp_rsh))
+solver.add(Implies(x_rsh_ams, t2 >= start_time + distances['RSH']['AMS'] * x_rsh_ams + distances['GGP']['AMS'] * x_ggp_ams))
+solver.add(Implies(x_rsh_prd, t2 >= start_time + distances['RSH']['PRD'] * x_rsh_prd + distances['GGP']['PRD'] * x_ggp_prd))
+
+# Add constraints for meeting people for a minimum time
+solver.add(t1 >= min_timothy_time)
+solver.add(t2 >= min_mark_time)
+solver.add(t3 >= min_joseph_time)
+
+# Add constraints for meeting people within their availability
+solver.add(t1 <= timothy_end - timothy_start)
+solver.add(t2 <= mark_end - mark_start)
+solver.add(t3 <= joseph_end - joseph_start)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    print("Best schedule:")
+    print(f"Visit {['Alamo Square', 'Presidio', 'Russian Hill'][[x_ggp_ams, x_ggp_prd, x_ggp_rsh][model[x_ggp_ams]]]} from Golden Gate Park at {start_time / 60} hours")
+    print(f"Visit {['Golden Gate Park', 'Alamo Square', 'Presidio'][[x_ams_ggp, x_ams_prd, x_ams_rsh][model[x_ams_ggp]]]} from {['Alamo Square', 'Presidio', 'Russian Hill'][[x_ggp_ams, x_ggp_prd, x_ggp_rsh][model[x_ggp_ams]]]} at {(start_time + distances['GGP']['AMS'] * model[x_ggp_ams] + distances['AMS']['GGP'] * model[x_ams_ggp]) / 60} hours")
+    print(f"Visit {['Golden Gate Park', 'Alamo Square', 'Presidio'][[x_prd_ggp, x_prd_ams, x_prd_rsh][model[x_prd_ggp]]]} from {['Presidio', 'Alamo Square', 'Russian Hill'][[x_ggp_prd, x_prd_ams, x_prd_rsh][model[x_ggp_prd]]]} at {(start_time + distances['GGP']['PRD'] * model[x_ggp_prd] + distances['PRD']['GGP'] * model[x_prd_ggp]) / 60} hours")
+    print(f"Visit {['Golden Gate Park', 'Alamo Square', 'Presidio'][[x_rsh_ggp, x_rsh_ams, x_rsh_prd][model[x_rsh_ggp]]]} from {['Russian Hill', 'Alamo Square', 'Presidio'][[x_ggp_rsh, x_rsh_ams, x_rsh_prd][model[x_ggp_rsh]]]} at {(start_time + distances['GGP']['RSH'] * model[x_ggp_rsh] + distances['RSH']['GGP'] * model[x_rsh_ggp]) / 60} hours")
+    print(f"Meet with Timothy at {timothy_start / 60} hours for {model[t1]} minutes")
+    print(f"Meet with Mark at {mark_start / 60} hours for {model[t2]} minutes")
+    print(f"Meet with Joseph at {joseph_start / 60} hours for {model[t3]} minutes")
 else:
-    print("No optimal solution exists.")
+    print("No solution found")

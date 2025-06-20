@@ -1,121 +1,65 @@
 from z3 import *
 
-# Define the variables
-bayview = 0
-pacific_heights = 1
-mission_district = 2
-haight_ashbury = 3
-financial_district = 4
-
-# Define the times
-bayview_time = 0
-pacific_heights_time = 1
-mission_district_time = 2
-haight_ashbury_time = 3
-financial_district_time = 4
-
-# Define the time slots for each person
-mary_time_slot = [pacific_heights_time] * 9
-lisa_time_slot = [mission_district_time] * 1.75
-betty_time_slot = [haight_ashbury_time] * 10
-charles_time_slot = [financial_district_time] * 3.25
-
-# Define the minimum meeting times
-min_meeting_times = {bayview: 0, pacific_heights: 45, mission_district: 75, haight_ashbury: 90, financial_district: 120}
-
 # Define the travel times
 travel_times = {
-    (bayview, pacific_heights): 23,
-    (bayview, mission_district): 13,
-    (bayview, haight_ashbury): 19,
-    (bayview, financial_district): 19,
-    (pacific_heights, bayview): 22,
-    (pacific_heights, mission_district): 15,
-    (pacific_heights, haight_ashbury): 11,
-    (pacific_heights, financial_district): 13,
-    (mission_district, bayview): 15,
-    (mission_district, pacific_heights): 16,
-    (mission_district, haight_ashbury): 12,
-    (mission_district, financial_district): 17,
-    (haight_ashbury, bayview): 18,
-    (haight_ashbury, pacific_heights): 12,
-    (haight_ashbury, mission_district): 11,
-    (haight_ashbury, financial_district): 21,
-    (financial_district, bayview): 19,
-    (financial_district, pacific_heights): 13,
-    (financial_district, mission_district): 17,
-    (financial_district, haight_ashbury): 19
+    ('Bayview', 'Pacific Heights'): 23,
+    ('Bayview', 'Mission District'): 13,
+    ('Bayview', 'Haight-Ashbury'): 19,
+    ('Bayview', 'Financial District'): 19,
+    ('Pacific Heights', 'Bayview'): 22,
+    ('Pacific Heights', 'Mission District'): 15,
+    ('Pacific Heights', 'Haight-Ashbury'): 11,
+    ('Pacific Heights', 'Financial District'): 13,
+    ('Mission District', 'Bayview'): 15,
+    ('Mission District', 'Pacific Heights'): 16,
+    ('Mission District', 'Haight-Ashbury'): 12,
+    ('Mission District', 'Financial District'): 17,
+    ('Haight-Ashbury', 'Bayview'): 18,
+    ('Haight-Ashbury', 'Pacific Heights'): 12,
+    ('Haight-Ashbury', 'Mission District'): 11,
+    ('Haight-Ashbury', 'Financial District'): 21,
+    ('Financial District', 'Bayview'): 19,
+    ('Financial District', 'Pacific Heights'): 13,
+    ('Financial District', 'Mission District'): 17,
+    ('Financial District', 'Haight-Ashbury'): 19,
 }
 
-# Create the Z3 solver
-solver = Solver()
+# Define the constraints
+s = Optimize()
 
 # Define the variables
-x = [Bool(f'x_{i}') for i in range(5)]
-y = [Bool(f'y_{i}') for i in range(5)]
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+x = [Bool(f"visit_{location}") for location in travel_times.keys()]
+y = [Int(f"stay_{location}") for location in travel_times.keys()]
 
-# Add the constraints
-solver.add(x[bayview])
-solver.add(y[bayview])
+# Define the objective function
+obj = [x[i] * (travel_times[tuple(sorted(list(k.split(" to ")[0], list(k.split(" to ")[1]))))] + y[i]) for i, k in enumerate(travel_times.keys())]
+s.add(Maximize(Sum(obj)))
 
-for i in range(5):
-    for j in range(5):
-        if i!= j:
-            solver.add(x[i]!= y[j])
-
-for i in range(5):
-    for j in range(5):
-        if i!= j:
-            solver.add(And(x[i], y[j]) == Implies(x[i] == y[j], travel_times[(i, j)]))
-
-for i in range(5):
-    solver.add(And(x[i], y[i]) == Implies(x[i] == y[i], min_meeting_times[i]))
-
-for i in range(5):
-    if i!= bayview:
-        solver.add(And(x[i], y[i]) == Implies(x[i] == y[i], x[bayview] == y[bayview]))
-
-# Add the constraints for each person
-for i in range(5):
-    if i!= bayview:
-        solver.add(And(x[i], y[i]) == Implies(x[i] == y[i], Or([And(x[i], y[i]) == Implies(x[i] == y[i], t >= 9) for t in range(540)])))
-
-for i in range(5):
-    if i!= bayview:
-        solver.add(And(x[i], y[i]) == Implies(x[i] == y[i], Or([And(x[i], y[i]) == Implies(x[i] == y[i], t <= 540) for t in range(540)])))
-
-for i in range(5):
-    if i!= bayview:
-        solver.add(And(x[i], y[i]) == Implies(x[i] == y[i], Or([And(x[i], y[i]) == Implies(x[i] == y[i], t >= 540) for t in range(540)])))
-
-# Add the constraints for Mary
-for i in range(9):
-    if mary_time_slot[i]!= bayview:
-        solver.add(And(x[mary_time_slot[i]], y[mary_time_slot[i]]) == Implies(x[mary_time_slot[i]] == y[mary_time_slot[i]], Or([And(x[mary_time_slot[i]], y[mary_time_slot[i]]) == Implies(x[mary_time_slot[i]] == y[mary_time_slot[i]], t >= 540 + i) for t in range(540 + i, 540 + i + 9)])))
-
-# Add the constraints for Lisa
-for i in range(1.75 * 60):
-    if lisa_time_slot[int(i / 60)]!= bayview:
-        solver.add(And(x[lisa_time_slot[int(i / 60)]], y[lisa_time_slot[int(i / 60)]]) == Implies(x[lisa_time_slot[int(i / 60)]], y[lisa_time_slot[int(i / 60)]] == Or([And(x[lisa_time_slot[int(i / 60)]], y[lisa_time_slot[int(i / 60)]]) == Implies(x[lisa_time_slot[int(i / 60)]], y[lisa_time_slot[int(i / 60)]] == t >= 540 + 8.5 + i) for t in range(int(540 + 8.5 + i), int(540 + 8.5 + i + 1.75 * 60))]))
-
-
-# Add the constraints for Betty
-for i in range(10):
-    if betty_time_slot[i]!= bayview:
-        solver.add(And(x[betty_time_slot[i]], y[betty_time_slot[i]]) == Implies(x[betty_time_slot[i]], y[betty_time_slot[i]]) == Or([And(x[betty_time_slot[i]], y[betty_time_slot[i]]) == Implies(x[betty_time_slot[i]], y[betty_time_slot[i]]) == t >= 9 + i for t in range(9 + i, 9 + i + 10)]))
-
-# Add the constraints for Charles
-for i in range(3.25 * 60):
-    if charles_time_slot[int(i / 60)]!= bayview:
-        solver.add(And(x[charles_time_slot[int(i / 60)]], y[charles_time_slot[int(i / 60)]]) == Implies(x[charles_time_slot[int(i / 60)]], y[charles_time_slot[int(i / 60)]] == Or([And(x[charles_time_slot[int(i / 60)]], y[charles_time_slot[int(i / 60)]]) == Implies(x[charles_time_slot[int(i / 60)]], y[charles_time_slot[int(i / 60)]] == t >= 540 + 11.25 + i) for t in range(int(540 + 11.25 + i), int(540 + 11.25 + i + 3.25 * 60))]))
-
+# Define the constraints
+s.add(And([start_time + travel_times[tuple(sorted(list(k.split(" to ")[0], list(k.split(" to ")[1]))))]*x[i] <= start_time + y[i] + travel_times[tuple(sorted(list(k.split(" to ")[0], list(k.split(" to ")[1]))))]*x[i+1] for i, k in enumerate(travel_times.keys()) if i < len(travel_times.keys())-1]))
+s.add(And([start_time + travel_times[tuple(sorted(list(k.split(" to ")[0], list(k.split(" to ")[1]))))]*x[i] >= start_time + y[i] for i, k in enumerate(travel_times.keys())]))
+s.add(And([start_time + y[i] + travel_times[tuple(sorted(list(k.split(" to ")[0], list(k.split(" to ")[1]))))]*x[i+1] <= end_time for i, k in enumerate(travel_times.keys()) if i < len(travel_times.keys())-1]))
+s.add(Or([x[i] for i, k in enumerate(travel_times.keys())]))
+s.add(And([x[i] == 0 for i, k in enumerate(travel_times.keys()) if k.split(" to ")[0] == "Bayview" and i < 4]))
+s.add(And([x[i] == 0 for i, k in enumerate(travel_times.keys()) if k.split(" to ")[1] == "Bayview" and i > 3]))
+s.add(And([y[i] >= 45 for i, k in enumerate(travel_times.keys()) if "Pacific Heights" in k]))
+s.add(And([y[i] >= 75 for i, k in enumerate(travel_times.keys()) if "Mission District" in k]))
+s.add(And([y[i] >= 90 for i, k in enumerate(travel_times.keys()) if "Haight-Ashbury" in k]))
+s.add(And([y[i] >= 120 for i, k in enumerate(travel_times.keys()) if "Financial District" in k]))
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
+result = s.check()
+if result == sat:
+    m = s.model()
+    schedule = []
+    for i, k in enumerate(travel_times.keys()):
+        if m.evaluate(x[i]).as_bool():
+            schedule.append(k)
     print("SOLUTION:")
-    for i in range(5):
-        if model[x[i]]:
-            print(f"Meet at {['Bayview', 'Pacific Heights', 'Mission District', 'Haight-Ashbury', 'Financial District'][i]} at {model[x[i]].as_long()}")
+    for location in schedule:
+        print(f"Visit {location}")
+    print(f"Total time: {m.evaluate(s.objective()).as_long()} minutes")
 else:
     print("No solution found")

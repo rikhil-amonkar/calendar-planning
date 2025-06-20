@@ -1,10 +1,9 @@
 from z3 import *
 
-# Define the variables
-time_slots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-places = ['Nob Hill', 'Embarcadero', 'The Castro', 'Haight-Ashbury', 'Union Square', 'North Beach', 'Pacific Heights', 'Chinatown', 'Golden Gate Park', 'Marina District', 'Russian Hill']
-people = ['Mary', 'Kenneth', 'Joseph', 'Sarah', 'Thomas', 'Daniel', 'Richard', 'Mark', 'David', 'Karen']
-time_constraints = {'Mary': (8*60, 9*60+75), 'Kenneth': (9*60, 7*60+30), 'Joseph': (8*60, 10*60), 'Sarah': (9*60+45, 12*60+90), 'Thomas': (19*60, 19*60+15), 'Daniel': (9*60+45, 8*60+15), 'Richard': (0, 6*60+30), 'Mark': (5*60+30, 9*60), 'David': (20*60, 21*60), 'Karen': (9*60+15, 6*60+120)}
+# Define the locations
+locations = ['Nob Hill', 'Embarcadero', 'The Castro', 'Haight-Ashbury', 'Union Square', 'North Beach', 'Pacific Heights', 'Chinatown', 'Golden Gate Park', 'Marina District', 'Russian Hill']
+
+# Define the travel times
 travel_times = {
     'Nob Hill': {'Embarcadero': 9, 'The Castro': 17, 'Haight-Ashbury': 13, 'Union Square': 7, 'North Beach': 8, 'Pacific Heights': 8, 'Chinatown': 6, 'Golden Gate Park': 17, 'Marina District': 11, 'Russian Hill': 5},
     'Embarcadero': {'Nob Hill': 10, 'The Castro': 25, 'Haight-Ashbury': 21, 'Union Square': 10, 'North Beach': 5, 'Pacific Heights': 11, 'Chinatown': 7, 'Golden Gate Park': 25, 'Marina District': 12, 'Russian Hill': 8},
@@ -19,69 +18,58 @@ travel_times = {
     'Russian Hill': {'Nob Hill': 5, 'Embarcadero': 8, 'The Castro': 21, 'Haight-Ashbury': 17, 'Union Square': 10, 'North Beach': 5, 'Pacific Heights': 7, 'Chinatown': 9, 'Golden Gate Park': 21, 'Marina District': 7}
 }
 
-# Create the solver
-solver = Solver()
+# Define the constraints
+constraints = [
+    And(Implies(X['Nob Hill'], X['Embarcadero'] >= 8*60 + 9*60 - 75*60), Implies(X['Embarcadero'], X['Nob Hill'] >= 8*60 + 9*60 - 75*60)),
+    And(Implies(X['Nob Hill'], X['The Castro'] >= 11*60 + 15*60 - 30*60), Implies(X['The Castro'], X['Nob Hill'] >= 11*60 + 15*60 - 30*60)),
+    And(Implies(X['Nob Hill'], X['Haight-Ashbury'] >= 8*60 + 17*60 - 120*60), Implies(X['Haight-Ashbury'], X['Nob Hill'] >= 8*60 + 17*60 - 120*60)),
+    And(Implies(X['Nob Hill'], X['Union Square'] >= 11*60 + 45*60 - 90*60), Implies(X['Union Square'], X['Nob Hill'] >= 11*60 + 45*60 - 90*60)),
+    And(Implies(X['Nob Hill'], X['North Beach'] >= 7*60 + 15*60 - 15*60), Implies(X['North Beach'], X['Nob Hill'] >= 7*60 + 15*60 - 15*60)),
+    And(Implies(X['Nob Hill'], X['Pacific Heights'] >= 1*60 + 45*60 - 15*60), Implies(X['Pacific Heights'], X['Nob Hill'] >= 1*60 + 45*60 - 15*60)),
+    And(Implies(X['Nob Hill'], X['Chinatown'] >= 8*60 + 30*60 - 30*60), Implies(X['Chinatown'], X['Nob Hill'] >= 8*60 + 30*60 - 30*60)),
+    And(Implies(X['Nob Hill'], X['Golden Gate Park'] >= 5*60 + 30*60 - 120*60), Implies(X['Golden Gate Park'], X['Nob Hill'] >= 5*60 + 30*60 - 120*60)),
+    And(Implies(X['Nob Hill'], X['Marina District'] >= 8*60 + 60*60 - 60*60), Implies(X['Marina District'], X['Nob Hill'] >= 8*60 + 60*60 - 60*60)),
+    And(Implies(X['Nob Hill'], X['Russian Hill'] >= 1*60 + 15*60 - 120*60), Implies(X['Russian Hill'], X['Nob Hill'] >= 1*60 + 15*60 - 120*60))
+]
 
-# Define the decision variables
-x = {}
-for i in time_slots:
-    for p in people:
-        x[(i, p)] = Bool('x_%s_%s' % (i, p))
+# Define the variables
+X = {location: Int(location) for location in locations}
 
-# Add constraints for each person
-for p in people:
-    start, end = time_constraints[p]
-    for i in time_slots:
-        solver.assert(Or(x[(i, p)], Not(x[(i, p)])))
-    for i in range(start, end+1):
-        solver.assert(x[(i, p)])
-    for i in range(end+1, max(time_slots)+1):
-        solver.assert(Not(x[(i, p)]))
-
-# Add constraints for each place
-for p1 in places:
-    for p2 in places:
-        if p1!= p2:
-            for i in time_slots:
-                if p1 == 'Nob Hill' and p2 == 'Embarcadero':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)]))
-                elif p1 == 'Embarcadero' and p2 == 'The Castro':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')]))
-                elif p1 == 'The Castro' and p2 == 'Haight-Ashbury':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')]))
-                elif p1 == 'Haight-Ashbury' and p2 == 'Union Square':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')]))
-                elif p1 == 'Union Square' and p2 == 'North Beach':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')]))
-                elif p1 == 'North Beach' and p2 == 'Pacific Heights':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')]))
-                elif p1 == 'Pacific Heights' and p2 == 'Chinatown':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')]))
-                elif p1 == 'Chinatown' and p2 == 'Golden Gate Park':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')], x[(i, p1)]!= x[(i, 'Mark')]))
-                elif p1 == 'Golden Gate Park' and p2 == 'Marina District':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')], x[(i, p1)]!= x[(i, 'Mark')], x[(i, p1)]!= x[(i, 'David')]))
-                elif p1 == 'Marina District' and p2 == 'Russian Hill':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')], x[(i, p1)]!= x[(i, 'Mark')], x[(i, p1)]!= x[(i, 'David')], x[(i, p1)]!= x[(i, 'Karen')]))
-                else:
-                    solver.assert(x[(i, p1)] == x[(i, p2)])
+# Add constraints for each location
+for location in locations:
+    constraints.append(X[location] >= 0)
+    constraints.append(X[location] <= 24*60)
 
 # Add constraints for travel times
-for i in time_slots:
-    for p1 in places:
-        for p2 in places:
-            if p1!= p2:
-                travel_time = travel_times[p1][p2]
-                solver.assert(Implies(x[(i, p1)], x[(i, p2)] == (x[(i, p1)])))
-                solver.assert(Implies(x[(i, p2)], x[(i, p1)] == (x[(i, p2)] + travel_time)))
+for location1 in locations:
+    for location2 in locations:
+        constraints.append(If(X[location1] < X[location2], X[location2] >= X[location1] + travel_times[location1][location2], True))
 
-# Check if the solver can find a solution
+# Add constraints for meeting friends
+friends = {
+    'Mary': {'location': 'Embarcadero', 'time': 8*60 + 9*60},
+    'Kenneth': {'location': 'The Castro', 'time': 11*60 + 15*60},
+    'Joseph': {'location': 'Haight-Ashbury', 'time': 20*60},
+    'Sarah': {'location': 'Union Square', 'time': 11*60 + 45*60},
+    'Thomas': {'location': 'North Beach', 'time': 19*60 + 15*60},
+    'Daniel': {'location': 'Pacific Heights', 'time': 1*60 + 45*60},
+    'Richard': {'location': 'Chinatown', 'time': 8*60 + 30*60},
+    'Mark': {'location': 'Golden Gate Park', 'time': 17*60 + 30*60},
+    'David': {'location': 'Marina District', 'time': 20*60},
+    'Karen': {'location': 'Russian Hill', 'time': 1*60 + 15*60}
+}
+for friend in friends:
+    constraints.append(If(X[friends[friend]['location']] >= friends[friend]['time'], X[friends[friend]['location']] <= friends[friend]['time'] + 75, True))
+
+# Solve the constraints
+solver = Solver()
+for constraint in constraints:
+    solver.add(constraint)
+
 if solver.check() == sat:
     model = solver.model()
     print("Solution:")
-    for i in time_slots:
-        for p in people:
-            if model.evaluate(x[(i, p)]).as_bool():
-                print(f"At {i}:00, meet {p}")
+    for location in locations:
+        print(f"{location}: {model[location].as_long()} minutes")
 else:
     print("No solution found")

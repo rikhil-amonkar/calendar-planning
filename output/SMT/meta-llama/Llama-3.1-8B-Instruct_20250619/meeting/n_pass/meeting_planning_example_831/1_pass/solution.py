@@ -1,10 +1,7 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 1440  # 1440 minutes in a day
-locations = ['Presidio', 'Fisherman\'s Wharf', 'Alamo Square', 'Financial District', 'Union Square', 'Sunset District', 'Embarcadero', 'Golden Gate Park', 'Chinatown', 'Richmond District']
-travel_times = {
+# Define the travel distances
+travel_distances = {
     'Presidio': {'Fisherman\'s Wharf': 19, 'Alamo Square': 19, 'Financial District': 23, 'Union Square': 22, 'Sunset District': 15, 'Embarcadero': 20, 'Golden Gate Park': 12, 'Chinatown': 21, 'Richmond District': 7},
     'Fisherman\'s Wharf': {'Presidio': 17, 'Alamo Square': 21, 'Financial District': 11, 'Union Square': 13, 'Sunset District': 27, 'Embarcadero': 8, 'Golden Gate Park': 25, 'Chinatown': 12, 'Richmond District': 18},
     'Alamo Square': {'Presidio': 17, 'Fisherman\'s Wharf': 19, 'Financial District': 17, 'Union Square': 14, 'Sunset District': 16, 'Embarcadero': 16, 'Golden Gate Park': 9, 'Chinatown': 15, 'Richmond District': 11},
@@ -18,102 +15,65 @@ travel_times = {
 }
 
 # Define the constraints
-s = Optimize()
+constraints = [
+    # Arrival time at Presidio
+    And([Implies(When('Presidio', 'Fisherman\'s Wharf'), 0 <= 17), Implies(When('Presidio', 'Alamo Square'), 0 <= 17), Implies(When('Presidio', 'Financial District'), 0 <= 22), Implies(When('Presidio', 'Union Square'), 0 <= 24), Implies(When('Presidio', 'Sunset District'), 0 <= 16), Implies(When('Presidio', 'Embarcadero'), 0 <= 20), Implies(When('Presidio', 'Golden Gate Park'), 0 <= 11), Implies(When('Presidio', 'Chinatown'), 0 <= 19), Implies(When('Presidio', 'Richmond District'), 0 <= 7)]),
+    
+    # Jeffrey's availability
+    And([Implies(And(When('Fisherman\'s Wharf', 'Presidio'), 10.25 <= 17), 90 <= 17), Implies(And(When('Fisherman\'s Wharf', 'Presidio'), 10.25 <= 17), 17 <= 12.75)]),
+    
+    # Ronald's availability
+    And([Implies(And(When('Alamo Square', 'Presidio'), 7.75 <= 17), 120 <= 17), Implies(And(When('Alamo Square', 'Presidio'), 7.75 <= 17), 17 <= 2.25)]),
+    
+    # Jason's availability
+    And([Implies(And(When('Financial District', 'Presidio'), 10.75 <= 22), 105 <= 22), Implies(And(When('Financial District', 'Presidio'), 10.75 <= 22), 22 <= 3.25)]),
+    
+    # Melissa's availability
+    And([Implies(And(When('Union Square', 'Presidio'), 5.75 <= 24), 15 <= 24), Implies(And(When('Union Square', 'Presidio'), 5.75 <= 24), 24 <= 6.25)]),
+    
+    # Elizabeth's availability
+    And([Implies(And(When('Sunset District', 'Presidio'), 2.75 <= 16), 105 <= 16), Implies(And(When('Sunset District', 'Presidio'), 2.75 <= 16), 16 <= 5.25)]),
+    
+    # Margaret's availability
+    And([Implies(And(When('Embarcadero', 'Presidio'), 1.25 <= 20), 90 <= 20), Implies(And(When('Embarcadero', 'Presidio'), 1.25 <= 20), 20 <= 6.75)]),
+    
+    # George's availability
+    And([Implies(And(When('Golden Gate Park', 'Presidio'), 7 <= 11), 75 <= 11), Implies(And(When('Golden Gate Park', 'Presidio'), 7 <= 11), 11 <= 10)]),
+    
+    # Richard's availability
+    And([Implies(And(When('Chinatown', 'Presidio'), 9.5 <= 19), 15 <= 19), Implies(And(When('Chinatown', 'Presidio'), 9.5 <= 19), 19 <= 0)]),
+    
+    # Laura's availability
+    And([Implies(And(When('Richmond District', 'Presidio'), 9.75 <= 7), 60 <= 7), Implies(And(When('Richmond District', 'Presidio'), 9.75 <= 7), 7 <= 8.25)])
+]
 
-# Variables for meeting times
-jeffrey_meeting = Int('jeffrey_meeting')
-ronald_meeting = Int('ronald_meeting')
-jason_meeting = Int('jason_meeting')
-melissa_meeting = Int('melissa_meeting')
-elizabeth_meeting = Int('elizabeth_meeting')
-margaret_meeting = Int('margaret_meeting')
-george_meeting = Int('george_meeting')
-richard_meeting = Int('richard_meeting')
-laura_meeting = Int('laura_meeting')
+# Define the solver
+solver = Solver()
 
-# Variables for location
-jeffrey_location = Int('jeffrey_location')
-ronald_location = Int('ronald_location')
-jason_location = Int('jason_location')
-melissa_location = Int('melissa_location')
-elizabeth_location = Int('elizabeth_location')
-margaret_location = Int('margaret_location')
-george_location = Int('george_location')
-richard_location = Int('richard_location')
-laura_location = Int('laura_location')
+# Define the variables
+locations = ['Presidio', 'Fisherman\'s Wharf', 'Alamo Square', 'Financial District', 'Union Square', 'Sunset District', 'Embarcadero', 'Golden Gate Park', 'Chinatown', 'Richmond District']
+times = [0]
+for location in locations:
+    for other_location in locations:
+        if location!= other_location:
+            solver.add(Implies(When(location, other_location), And([0 <= travel_distances[location][other_location], travel_distances[location][other_location] <= 480])))
+        else:
+            solver.add(Implies(When(location, other_location), 0 <= 480))
 
-# Variables for travel time
-jeffrey_travel = Int('jeffrey_travel')
-ronald_travel = Int('ronald_travel')
-jason_travel = Int('jason_travel')
-melissa_travel = Int('melissa_travel')
-elizabeth_travel = Int('elizabeth_travel')
-margaret_travel = Int('margaret_travel')
-george_travel = Int('george_travel')
-richard_travel = Int('richard_travel')
-laura_travel = Int('laura_travel')
+# Add the constraints to the solver
+for constraint in constraints:
+    solver.add(constraint)
 
-# Define the constraints
-s.add(And(
-    And(jeffrey_meeting >= 90, jeffrey_meeting <= 180),
-    And(ronald_meeting >= 120, ronald_meeting <= 240),
-    And(jason_meeting >= 105, jason_meeting <= 210),
-    And(melissa_meeting >= 15, melissa_meeting <= 30),
-    And(elizabeth_meeting >= 105, elizabeth_meeting <= 210),
-    And(margaret_meeting >= 90, margaret_meeting <= 210),
-    And(george_meeting >= 75, george_meeting <= 180),
-    And(richard_meeting >= 15, richard_meeting <= 30),
-    And(laura_meeting >= 60, laura_meeting <= 120)
-))
-
-s.add(And(
-    And(jeffrey_meeting + travel_times['Presidio'][locations[jeffrey_location]] >= 315,
-        jeffrey_meeting + travel_times['Presidio'][locations[jeffrey_location]] <= 450),
-    And(ronald_meeting + travel_times['Presidio'][locations[ronald_location]] >= 285,
-        ronald_meeting + travel_times['Presidio'][locations[ronald_location]] <= 450),
-    And(jason_meeting + travel_times['Presidio'][locations[jason_location]] >= 345,
-        jason_meeting + travel_times['Presidio'][locations[jason_location]] <= 450),
-    And(melissa_meeting + travel_times['Presidio'][locations[melissa_location]] >= 585,
-        melissa_meeting + travel_times['Presidio'][locations[melissa_location]] <= 600),
-    And(elizabeth_meeting + travel_times['Presidio'][locations[elizabeth_location]] >= 345,
-        elizabeth_meeting + travel_times['Presidio'][locations[elizabeth_location]] <= 450),
-    And(margaret_meeting + travel_times['Presidio'][locations[margaret_location]] >= 315,
-        margaret_meeting + travel_times['Presidio'][locations[margaret_location]] <= 450),
-    And(george_meeting + travel_times['Presidio'][locations[george_location]] >= 420,
-        george_meeting + travel_times['Presidio'][locations[george_location]] <= 600),
-    And(richard_meeting + travel_times['Presidio'][locations[richard_location]] >= 285,
-        richard_meeting + travel_times['Presidio'][locations[richard_location]] <= 450),
-    And(laura_meeting + travel_times['Presidio'][locations[laura_location]] >= 285,
-        laura_meeting + travel_times['Presidio'][locations[laura_location]] <= 450)
-))
-
-# Define the objective function
-s.add(jeffrey_meeting + ronald_meeting + jason_meeting + melissa_meeting + elizabeth_meeting + margaret_meeting + george_meeting + richard_meeting + laura_meeting)
-
-# Solve the problem
-s.check()
-
-# Print the solution
-if s.check() == sat:
-    m = s.model()
-    print('SOLUTION:')
-    print('Jeffrey meeting time:', m[jeffrey_meeting].as_long())
-    print('Ronald meeting time:', m[ronald_meeting].as_long())
-    print('Jason meeting time:', m[jason_meeting].as_long())
-    print('Melissa meeting time:', m[melissa_meeting].as_long())
-    print('Elizabeth meeting time:', m[elizabeth_meeting].as_long())
-    print('Margaret meeting time:', m[margaret_meeting].as_long())
-    print('George meeting time:', m[george_meeting].as_long())
-    print('Richard meeting time:', m[richard_meeting].as_long())
-    print('Laura meeting time:', m[laura_meeting].as_long())
-    print('Jeffrey location:', locations[m[jeffrey_location].as_long()])
-    print('Ronald location:', locations[m[ronald_location].as_long()])
-    print('Jason location:', locations[m[jason_location].as_long()])
-    print('Melissa location:', locations[m[melissa_location].as_long()])
-    print('Elizabeth location:', locations[m[elizabeth_location].as_long()])
-    print('Margaret location:', locations[m[margaret_location].as_long()])
-    print('George location:', locations[m[george_location].as_long()])
-    print('Richard location:', locations[m[richard_location].as_long()])
-    print('Laura location:', locations[m[laura_location].as_long()])
+# Check if the solver has a solution
+if solver.check() == sat:
+    # Get the model from the solver
+    model = solver.model()
+    
+    # Print the schedule
+    print("SCHEDULE:")
+    for location in locations:
+        for other_location in locations:
+            if model.evaluate(When(location, other_location)).as_bool():
+                print(f"{location} to {other_location}: {model.evaluate(When(location, other_location)).as_int()}")
 else:
-    print('No solution found')
+    print("No solution found")

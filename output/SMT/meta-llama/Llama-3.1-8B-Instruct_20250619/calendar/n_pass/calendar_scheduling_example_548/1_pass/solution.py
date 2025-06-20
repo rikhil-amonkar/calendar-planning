@@ -1,67 +1,218 @@
 from z3 import *
 
-def schedule_meeting(day, start_time, end_time, constraints, preferences):
-    # Create a Z3 solver
+def schedule_meeting(judy_schedule, nicole_schedule, nicole_preferences, meeting_duration):
+    # Define the day to meet
+    day = [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+    day_to_meet = Int('day_to_meet')
+    day_to_meet.domain(day)
+
+    # Define the start time
+    start_time = Int('start_time')
+    start_time.domain(Range(9, 17))
+
+    # Define the end time
+    end_time = start_time + meeting_duration
+
+    # Define the constraints
+    constraints = [
+        And(nicole_preferences, 
+            Or(start_time > 16, And(start_time >= 9, start_time < 10), 
+               And(start_time >= 10, start_time < 10.5), 
+               And(start_time >= 10.5, start_time < 10.75), 
+               And(start_time >= 10.75, start_time < 11), 
+               And(start_time >= 11, start_time < 11.25), 
+               And(start_time >= 11.25, start_time < 11.5), 
+               And(start_time >= 11.5, start_time < 11.75), 
+               And(start_time >= 11.75, start_time < 12), 
+               And(start_time >= 12, start_time < 12.25), 
+               And(start_time >= 12.25, start_time < 12.5), 
+               And(start_time >= 12.5, start_time < 12.75), 
+               And(start_time >= 12.75, start_time < 13), 
+               And(start_time >= 13, start_time < 13.25), 
+               And(start_time >= 13.25, start_time < 13.5), 
+               And(start_time >= 13.5, start_time < 13.75), 
+               And(start_time >= 13.75, start_time < 14), 
+               And(start_time >= 14, start_time < 14.25), 
+               And(start_time >= 14.25, start_time < 14.5), 
+               And(start_time >= 14.5, start_time < 14.75), 
+               And(start_time >= 14.75, start_time < 15), 
+               And(start_time >= 15, start_time < 15.25), 
+               And(start_time >= 15.25, start_time < 15.5), 
+               And(start_time >= 15.5, start_time < 15.75), 
+               And(start_time >= 15.75, start_time < 16), 
+               And(start_time >= 16, start_time < 16.25), 
+               And(start_time >= 16.25, start_time < 16.5), 
+               And(start_time >= 16.5, start_time < 16.75), 
+               And(start_time >= 16.75, start_time < 17)), 
+            Or(start_time > 16, 
+               And(start_time >= 9, start_time < 10), 
+               And(start_time >= 10, start_time < 10.5), 
+               And(start_time >= 10.5, start_time < 10.75), 
+               And(start_time >= 10.75, start_time < 11), 
+               And(start_time >= 11, start_time < 11.25), 
+               And(start_time >= 11.25, start_time < 11.5), 
+               And(start_time >= 11.5, start_time < 11.75), 
+               And(start_time >= 11.75, start_time < 12), 
+               And(start_time >= 12, start_time < 12.25), 
+               And(start_time >= 12.25, start_time < 12.5), 
+               And(start_time >= 12.5, start_time < 12.75), 
+               And(start_time >= 12.75, start_time < 13), 
+               And(start_time >= 13, start_time < 13.25), 
+               And(start_time >= 13.25, start_time < 13.5), 
+               And(start_time >= 13.5, start_time < 13.75), 
+               And(start_time >= 13.75, start_time < 14), 
+               And(start_time >= 14, start_time < 14.25), 
+               And(start_time >= 14.25, start_time < 14.5), 
+               And(start_time >= 14.5, start_time < 14.75), 
+               And(start_time >= 14.75, start_time < 15), 
+               And(start_time >= 15, start_time < 15.25), 
+               And(start_time >= 15.25, start_time < 15.5), 
+               And(start_time >= 15.5, start_time < 15.75), 
+               And(start_time >= 15.75, start_time < 16), 
+               And(start_time >= 16, start_time < 16.25), 
+               And(start_time >= 16.25, start_time < 16.5), 
+               And(start_time >= 16.5, start_time < 16.75), 
+               And(start_time >= 16.75, start_time < 17))), 
+        start_time + meeting_duration <= 17, 
+        And(judy_schedule, 
+            Or(start_time > 9, 
+               And(start_time >= 9, start_time < 10), 
+               And(start_time >= 10, start_time < 10.5), 
+               And(start_time >= 10.5, start_time < 10.75), 
+               And(start_time >= 10.75, start_time < 11), 
+               And(start_time >= 11, start_time < 11.25), 
+               And(start_time >= 11.25, start_time < 11.5), 
+               And(start_time >= 11.5, start_time < 11.75), 
+               And(start_time >= 11.75, start_time < 12), 
+               And(start_time >= 12, start_time < 12.25), 
+               And(start_time >= 12.25, start_time < 12.5), 
+               And(start_time >= 12.5, start_time < 12.75), 
+               And(start_time >= 12.75, start_time < 13), 
+               And(start_time >= 13, start_time < 13.25), 
+               And(start_time >= 13.25, start_time < 13.5), 
+               And(start_time >= 13.5, start_time < 13.75), 
+               And(start_time >= 13.75, start_time < 14), 
+               And(start_time >= 14, start_time < 14.25), 
+               And(start_time >= 14.25, start_time < 14.5), 
+               And(start_time >= 14.5, start_time < 14.75), 
+               And(start_time >= 14.75, start_time < 15), 
+               And(start_time >= 15, start_time < 15.25), 
+               And(start_time >= 15.25, start_time < 15.5), 
+               And(start_time >= 15.5, start_time < 15.75), 
+               And(start_time >= 15.75, start_time < 16), 
+               And(start_time >= 16, start_time < 16.25), 
+               And(start_time >= 16.25, start_time < 16.5), 
+               And(start_time >= 16.5, start_time < 16.75), 
+               And(start_time >= 16.75, start_time < 17)), 
+            Or(start_time > 9, 
+               And(start_time >= 9, start_time < 10), 
+               And(start_time >= 10, start_time < 10.5), 
+               And(start_time >= 10.5, start_time < 10.75), 
+               And(start_time >= 10.75, start_time < 11), 
+               And(start_time >= 11, start_time < 11.25), 
+               And(start_time >= 11.25, start_time < 11.5), 
+               And(start_time >= 11.5, start_time < 11.75), 
+               And(start_time >= 11.75, start_time < 12), 
+               And(start_time >= 12, start_time < 12.25), 
+               And(start_time >= 12.25, start_time < 12.5), 
+               And(start_time >= 12.5, start_time < 12.75), 
+               And(start_time >= 12.75, start_time < 13), 
+               And(start_time >= 13, start_time < 13.25), 
+               And(start_time >= 13.25, start_time < 13.5), 
+               And(start_time >= 13.5, start_time < 13.75), 
+               And(start_time >= 13.75, start_time < 14), 
+               And(start_time >= 14, start_time < 14.25), 
+               And(start_time >= 14.25, start_time < 14.5), 
+               And(start_time >= 14.5, start_time < 14.75), 
+               And(start_time >= 14.75, start_time < 15), 
+               And(start_time >= 15, start_time < 15.25), 
+               And(start_time >= 15.25, start_time < 15.5), 
+               And(start_time >= 15.5, start_time < 15.75), 
+               And(start_time >= 15.75, start_time < 16), 
+               And(start_time >= 16, start_time < 16.25), 
+               And(start_time >= 16.25, start_time < 16.5), 
+               And(start_time >= 16.5, start_time < 16.75), 
+               And(start_time >= 16.75, start_time < 17))), 
+        end_time <= 17, 
+        And(nicole_schedule, 
+            Or(start_time > 10, 
+               And(start_time >= 9, start_time < 10), 
+               And(start_time >= 10, start_time < 10.5), 
+               And(start_time >= 10.5, start_time < 10.75), 
+               And(start_time >= 10.75, start_time < 11), 
+               And(start_time >= 11, start_time < 11.25), 
+               And(start_time >= 11.25, start_time < 11.5), 
+               And(start_time >= 11.5, start_time < 11.75), 
+               And(start_time >= 11.75, start_time < 12), 
+               And(start_time >= 12, start_time < 12.25), 
+               And(start_time >= 12.25, start_time < 12.5), 
+               And(start_time >= 12.5, start_time < 12.75), 
+               And(start_time >= 12.75, start_time < 13), 
+               And(start_time >= 13, start_time < 13.25), 
+               And(start_time >= 13.25, start_time < 13.5), 
+               And(start_time >= 13.5, start_time < 13.75), 
+               And(start_time >= 13.75, start_time < 14), 
+               And(start_time >= 14, start_time < 14.25), 
+               And(start_time >= 14.25, start_time < 14.5), 
+               And(start_time >= 14.5, start_time < 14.75), 
+               And(start_time >= 14.75, start_time < 15), 
+               And(start_time >= 15, start_time < 15.25), 
+               And(start_time >= 15.25, start_time < 15.5), 
+               And(start_time >= 15.5, start_time < 15.75), 
+               And(start_time >= 15.75, start_time < 16), 
+               And(start_time >= 16, start_time < 16.25), 
+               And(start_time >= 16.25, start_time < 16.5), 
+               And(start_time >= 16.5, start_time < 16.75), 
+               And(start_time >= 16.75, start_time < 17)), 
+            Or(start_time > 10, 
+               And(start_time >= 9, start_time < 10), 
+               And(start_time >= 10, start_time < 10.5), 
+               And(start_time >= 10.5, start_time < 10.75), 
+               And(start_time >= 10.75, start_time < 11), 
+               And(start_time >= 11, start_time < 11.25), 
+               And(start_time >= 11.25, start_time < 11.5), 
+               And(start_time >= 11.5, start_time < 11.75), 
+               And(start_time >= 11.75, start_time < 12), 
+               And(start_time >= 12, start_time < 12.25), 
+               And(start_time >= 12.25, start_time < 12.5), 
+               And(start_time >= 12.5, start_time < 12.75), 
+               And(start_time >= 12.75, start_time < 13), 
+               And(start_time >= 13, start_time < 13.25), 
+               And(start_time >= 13.25, start_time < 13.5), 
+               And(start_time >= 13.5, start_time < 13.75), 
+               And(start_time >= 13.75, start_time < 14), 
+               And(start_time >= 14, start_time < 14.25), 
+               And(start_time >= 14.25, start_time < 14.5), 
+               And(start_time >= 14.5, start_time < 14.75), 
+               And(start_time >= 14.75, start_time < 15), 
+               And(start_time >= 15, start_time < 15.25), 
+               And(start_time >= 15.25, start_time < 15.5), 
+               And(start_time >= 15.5, start_time < 15.75), 
+               And(start_time >= 15.75, start_time < 16), 
+               And(start_time >= 16, start_time < 16.25), 
+               And(start_time >= 16.25, start_time < 16.5), 
+               And(start_time >= 16.5, start_time < 16.75), 
+               And(start_time >= 16.75, start_time < 17)))),
+    ]
+
+    # Solve the constraints
     solver = Solver()
+    solver.add(constraints)
+    solver.check()
 
-    # Define the variables
-    time_slots = [BitVec(f'time_slot_{i}', 16) for i in range(24*60)]
-    day_var = BitVec('day', 8)
-    start_var = BitVec('start', 16)
-    end_var = BitVec('end', 16)
-
-    # Add constraints for day
-    solver.add(day_var == day)
-
-    # Add constraints for start and end time
-    solver.add(start_var == start_time)
-    solver.add(end_var == end_time)
-
-    # Add constraints for time slots
-    for i in range(len(time_slots)):
-        solver.add(Or(time_slots[i] == 0, time_slots[i] == 1))
-
-    # Add constraints for existing schedules
-    for participant, schedule in constraints.items():
-        for time_slot in schedule:
-            start_hour, start_min = divmod(time_slot[0], 60)
-            end_hour, end_min = divmod(time_slot[1], 60)
-            start_time_slot = start_hour * 60 + start_min
-            end_time_slot = end_hour * 60 + end_min
-            solver.add(And(start_time_slot <= i, i < end_time_slot))
-
-    # Add constraints for preferences
-    for participant, pref in preferences.items():
-        if pref and day == 1:  # Monday
-            start_hour, start_min = divmod(pref[0], 60)
-            end_hour, end_min = divmod(pref[1], 60)
-            start_time_slot = start_hour * 60 + start_min
-            end_time_slot = end_hour * 60 + end_min
-            solver.add(And(start_time_slot <= i, i < end_time_slot))
-
-    # Add constraints for meeting duration
-    meeting_duration = 30
-    start_time_slot = start_var // 60
-    end_time_slot = end_var // 60
-    solver.add(end_time_slot - start_time_slot == meeting_duration)
-
-    # Check if a solution exists
-    if solver.check() == sat:
-        model = solver.model()
-        start_hour, start_min = divmod(model[start_var] // 60, 60)
-        end_hour, end_min = divmod(model[end_var] // 60, 60)
-        return f'SOLUTION:\nDay: {day}\nStart Time: {start_hour:02d}:{start_min:02d}\nEnd Time: {end_hour:02d}:{end_min:02d}'
+    # Get the solution
+    if solver.model():
+        day_to_meet_val = solver.model()[day_to_meet].as_long()
+        start_time_val = solver.model()[start_time].as_long()
+        end_time_val = solver.model()[end_time].as_long()
+        return f'SOLUTION:\nDay: {day[day_to_meet_val - 1]}\nStart Time: {start_time_val:02d}:{int((start_time_val - int(start_time_val)) * 60):02d}\nEnd Time: {end_time_val:02d}:{int((end_time_val - int(end_time_val)) * 60):02d}'
     else:
-        return 'No solution exists'
+        return 'No solution found'
 
-# Define the constraints and preferences
-constraints = {
-    'Judy': [],
-    'Nicole': [(9, 10), (10, 30), (16, 30)]
-}
-preferences = {
-    'Nicole': (16, 17)
-}
+# Example usage
+judy_schedule = True  # Judy is free the entire day
+nicole_schedule = And(Not(And(start_time >= 9, start_time < 10)), Not(And(start_time >= 10.3, start_time < 16.3)))  # Nicole has meetings on Monday during 9:00 to 10:00, 10:30 to 16:30
+nicole_preferences = Not(And(start_time >= 9, start_time < 16))  # Nicole would rather not meet on Monday before 16:00
+meeting_duration = 0.5  # Meeting duration is half an hour
 
-# Call the function
-print(schedule_meeting(1, 9, 17, constraints, preferences))
+print(schedule_meeting(judy_schedule, nicole_schedule, nicole_preferences, meeting_duration))

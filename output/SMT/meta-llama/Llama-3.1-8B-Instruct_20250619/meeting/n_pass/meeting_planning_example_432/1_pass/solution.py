@@ -1,93 +1,73 @@
 from z3 import *
 
-# Define the travel times
+# Define the variables
+start_time = 0
+end_time = 720  # 720 minutes in a day
+time_slots = [Int(f"time_{i}") for i in range(1, 13)]  # 12 time slots from 9:00AM to 9:00PM
 travel_times = {
-    ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
-    ('Golden Gate Park', 'Bayview'): 23,
-    ('Golden Gate Park', 'Mission District'): 17,
-    ('Golden Gate Park', 'Embarcadero'): 25,
-    ('Golden Gate Park', 'Financial District'): 26,
-    ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
-    ('Fisherman\'s Wharf', 'Bayview'): 26,
-    ('Fisherman\'s Wharf', 'Mission District'): 22,
-    ('Fisherman\'s Wharf', 'Embarcadero'): 8,
-    ('Fisherman\'s Wharf', 'Financial District'): 11,
-    ('Bayview', 'Golden Gate Park'): 22,
-    ('Bayview', 'Fisherman\'s Wharf'): 25,
-    ('Bayview', 'Mission District'): 13,
-    ('Bayview', 'Embarcadero'): 19,
-    ('Bayview', 'Financial District'): 19,
-    ('Mission District', 'Golden Gate Park'): 17,
-    ('Mission District', 'Fisherman\'s Wharf'): 22,
-    ('Mission District', 'Bayview'): 15,
-    ('Mission District', 'Embarcadero'): 19,
-    ('Mission District', 'Financial District'): 17,
-    ('Embarcadero', 'Golden Gate Park'): 25,
-    ('Embarcadero', 'Fisherman\'s Wharf'): 6,
-    ('Embarcadero', 'Bayview'): 21,
-    ('Embarcadero', 'Mission District'): 20,
-    ('Embarcadero', 'Financial District'): 5,
-    ('Financial District', 'Golden Gate Park'): 23,
-    ('Financial District', 'Fisherman\'s Wharf'): 10,
-    ('Financial District', 'Bayview'): 19,
-    ('Financial District', 'Mission District'): 17,
-    ('Financial District', 'Embarcadero'): 4
+    "GGP": {"FW": 24, "BV": 23, "MD": 17, "ED": 25, "FD": 26},
+    "FW": {"GGP": 25, "BV": 26, "MD": 22, "ED": 8, "FD": 11},
+    "BV": {"GGP": 22, "FW": 25, "MD": 13, "ED": 19, "FD": 19},
+    "MD": {"GGP": 17, "FW": 22, "BV": 15, "ED": 19, "FD": 17},
+    "ED": {"GGP": 25, "FW": 6, "BV": 21, "MD": 20, "FD": 5},
+    "FD": {"GGP": 26, "FW": 10, "BV": 19, "MD": 17, "ED": 4}
 }
 
 # Define the constraints
 s = Optimize()
 
-# Define the variables
-x = [Bool(f'x_{i}') for i in range(6)]
-y = [Bool(f'y_{i}') for i in range(6)]
-z = [Bool(f'z_{i}') for i in range(6)]
+# Initialize time slots
+for t in time_slots:
+    s.add(t >= start_time)
+    s.add(t <= end_time)
 
-# Define the objective function
-obj = [x[0] * 90 + x[1] * 90 + x[2] * 30 + x[3] * 30 + x[4] * 15 + x[5] * 15]
+# Joseph constraint
+joseph_start = start_time + 480  # 8:00AM
+joseph_end = joseph_start + 270  # 5:30PM
+s.add(time_slots[0] >= joseph_start)
+s.add(time_slots[0] + 90 <= joseph_end)
 
-# Add constraints
-s.add(x[0] + x[1] + x[2] + x[3] + x[4] + x[5] == 1)  # Only one meeting
-s.add(And(x[0], 90 <= 25 + 25))  # Meet Joseph
-s.add(And(x[1], 60 <= 23 + 25))  # Meet Jeffrey
-s.add(And(x[2], 30 <= 17))  # Meet Kevin
-s.add(And(x[3], 30 <= 25))  # Meet David
-s.add(And(x[4], 15 <= 26))  # Meet Barbara
-s.add(And(x[5], 15 <= 26))  # Meet Barbara
+# Jeffrey constraint
+jeffrey_start = end_time - 480  # 5:30PM
+jeffrey_end = end_time  # 9:30PM
+s.add(time_slots[11] >= jeffrey_start)
+s.add(time_slots[11] + 60 <= jeffrey_end)
 
-# Add constraints for the objective function
-s.add(y[0] + y[1] + y[2] + y[3] + y[4] + y[5] == 1)  # Only one meeting
-s.add(And(y[0], 90 <= 25 + 25 + 25))  # Meet Joseph
-s.add(And(y[1], 60 <= 23 + 25 + 25))  # Meet Jeffrey
-s.add(And(y[2], 30 <= 17 + 17))  # Meet Kevin
-s.add(And(y[3], 30 <= 25 + 25))  # Meet David
-s.add(And(y[4], 15 <= 26 + 26))  # Meet Barbara
-s.add(And(y[5], 15 <= 26 + 26))  # Meet Barbara
+# Kevin constraint
+kevin_start = start_time + 675  # 11:15AM
+kevin_end = kevin_start + 144  # 3:15PM
+s.add(time_slots[4] >= kevin_start)
+s.add(time_slots[4] + 30 <= kevin_end)
 
-# Add constraints for the second objective function
-s.add(z[0] + z[1] + z[2] + z[3] + z[4] + z[5] == 1)  # Only one meeting
-s.add(And(z[0], 90 <= 25 + 25 + 25 + 25))  # Meet Joseph
-s.add(And(z[1], 60 <= 23 + 25 + 25 + 25))  # Meet Jeffrey
-s.add(And(z[2], 30 <= 17 + 17 + 17))  # Meet Kevin
-s.add(And(z[3], 30 <= 25 + 25 + 25))  # Meet David
-s.add(And(z[4], 15 <= 26 + 26 + 26))  # Meet Barbara
-s.add(And(z[5], 15 <= 26 + 26 + 26))  # Meet Barbara
+# David constraint
+david_start = start_time + 15  # 8:15AM
+david_end = start_time + 60  # 9:00AM
+s.add(time_slots[0] >= david_start)
+s.add(time_slots[0] + 30 <= david_end)
 
-# Add the objective functions
-s.maximize(obj[0])
-s.maximize(y[0] * 90 + y[1] * 90 + y[2] * 30 + y[3] * 30 + y[4] * 15 + y[5] * 15)
-s.maximize(z[0] * 90 + z[1] * 90 + z[2] * 30 + z[3] * 30 + z[4] * 15 + z[5] * 15)
+# Barbara constraint
+barbara_start = start_time + 630  # 10:30AM
+barbara_end = barbara_start + 420  # 4:30PM
+s.add(time_slots[5] >= barbara_start)
+s.add(time_slots[5] + 15 <= barbara_end)
 
-# Solve the problem
-result = s.check()
-if result == sat:
-    m = s.model()
-    print("SOLUTION:")
-    for i in range(6):
-        if m.evaluate(x[i]):
-            print(f"Meet {['Joseph', 'Jeffrey', 'Kevin', 'David', 'Barbara', 'Barbara'][i]} at Fisherman's Wharf, Bayview, Mission District, Embarcadero, Financial District, Financial District respectively")
-        if m.evaluate(y[i]):
-            print(f"Meet {['Joseph', 'Jeffrey', 'Kevin', 'David', 'Barbara', 'Barbara'][i]} at Fisherman's Wharf, Bayview, Mission District, Embarcadero, Financial District, Financial District respectively")
-        if m.evaluate(z[i]):
-            print(f"Meet {['Joseph', 'Jeffrey', 'Kevin', 'David', 'Barbara', 'Barbara'][i]} at Fisherman's Wharf, Bayview, Mission District, Embarcadero, Financial District, Financial District respectively")
-else:
-    print("No solution found")
+# Travel time constraints
+for i in range(len(time_slots)):
+    for j in range(len(time_slots)):
+        if i!= j:
+            s.add(time_slots[i] + travel_times[list(travel_times.keys())[i]][list(travel_times.keys())[j]] <= time_slots[j])
+
+# Objective function
+s.maximize(Sum([time_slots[i] for i in range(len(time_slots))]))
+
+# Solve the optimization problem
+s.check()
+print(s.model())
+
+# Print the schedule
+schedule = []
+for i in range(len(time_slots)):
+    schedule.append((list(travel_times.keys())[i], list(travel_times.keys())[i+1], s.model()[time_slots[i]].as_long()))
+print("Schedule:")
+for i in range(len(schedule)):
+    print(f"{schedule[i][0]} -> {schedule[i][1]}: {schedule[i][2]} minutes")

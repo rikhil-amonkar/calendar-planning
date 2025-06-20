@@ -1,9 +1,5 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 24 * 60  # 24 hours in minutes
-
 # Define the locations
 locations = ['Chinatown', 'Embarcadero', 'Pacific Heights', 'Russian Hill', 'Haight-Ashbury', 'Golden Gate Park', 'Fisherman\'s Wharf', 'Sunset District', 'The Castro']
 
@@ -20,78 +16,63 @@ travel_times = {
     'The Castro': {'Chinatown': 22, 'Embarcadero': 22, 'Pacific Heights': 16, 'Russian Hill': 18, 'Haight-Ashbury': 6, 'Golden Gate Park': 11, 'Fisherman\'s Wharf': 24, 'Sunset District': 17}
 }
 
-# Define the constraints
-constraints = [
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['Embarcadero'] + 90 * 60 for loc in locations if loc!= 'Embarcadero']),
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['Pacific Heights'] + 45 * 60 for loc in locations if loc!= 'Pacific Heights']),
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['Russian Hill'] + 90 * 60 for loc in locations if loc!= 'Russian Hill']),
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['Haight-Ashbury'] + 60 * 60 for loc in locations if loc!= 'Haight-Ashbury']),
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['Golden Gate Park'] + 90 * 60 for loc in locations if loc!= 'Golden Gate Park']),
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['Fisherman\'s Wharf'] + 15 * 60 for loc in locations if loc!= 'Fisherman\'s Wharf']),
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['Sunset District'] + 45 * 60 for loc in locations if loc!= 'Sunset District']),
-    And([start_time + travel_times['Chinatown'][loc] <= start_time + travel_times['Chinatown']['The Castro'] + 75 * 60 for loc in locations if loc!= 'The Castro']),
-    start_time + 90 * 60 <= start_time + travel_times['Chinatown']['Embarcadero'] + 90 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Chinatown']['Pacific Heights'] + 45 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Chinatown']['Russian Hill'] + 90 * 60,
-    start_time + 60 * 60 <= start_time + travel_times['Chinatown']['Haight-Ashbury'] + 60 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Chinatown']['Golden Gate Park'] + 90 * 60,
-    start_time + 15 * 60 <= start_time + travel_times['Chinatown']['Fisherman\'s Wharf'] + 15 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Chinatown']['Sunset District'] + 45 * 60,
-    start_time + 75 * 60 <= start_time + travel_times['Chinatown']['The Castro'] + 75 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Embarcadero']['Chinatown'] + 90 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Pacific Heights']['Chinatown'] + 45 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Russian Hill']['Chinatown'] + 90 * 60,
-    start_time + 60 * 60 <= start_time + travel_times['Haight-Ashbury']['Chinatown'] + 60 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Golden Gate Park']['Chinatown'] + 90 * 60,
-    start_time + 15 * 60 <= start_time + travel_times['Fisherman\'s Wharf']['Chinatown'] + 15 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Sunset District']['Chinatown'] + 45 * 60,
-    start_time + 75 * 60 <= start_time + travel_times['The Castro']['Chinatown'] + 75 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Chinatown']['Embarcadero'] + 90 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Chinatown']['Pacific Heights'] + 45 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Chinatown']['Russian Hill'] + 90 * 60,
-    start_time + 60 * 60 <= start_time + travel_times['Chinatown']['Haight-Ashbury'] + 60 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Chinatown']['Golden Gate Park'] + 90 * 60,
-    start_time + 15 * 60 <= start_time + travel_times['Chinatown']['Fisherman\'s Wharf'] + 15 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Chinatown']['Sunset District'] + 45 * 60,
-    start_time + 75 * 60 <= start_time + travel_times['Chinatown']['The Castro'] + 75 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Embarcadero']['Chinatown'] + 90 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Pacific Heights']['Chinatown'] + 45 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Russian Hill']['Chinatown'] + 90 * 60,
-    start_time + 60 * 60 <= start_time + travel_times['Haight-Ashbury']['Chinatown'] + 60 * 60,
-    start_time + 90 * 60 <= start_time + travel_times['Golden Gate Park']['Chinatown'] + 90 * 60,
-    start_time + 15 * 60 <= start_time + travel_times['Fisherman\'s Wharf']['Chinatown'] + 15 * 60,
-    start_time + 45 * 60 <= start_time + travel_times['Sunset District']['Chinatown'] + 45 * 60,
-    start_time + 75 * 60 <= start_time + travel_times['The Castro']['Chinatown'] + 75 * 60,
-    3 * 60 + 15 * 60 <= start_time + travel_times['Chinatown']['Embarcadero'] + 90 * 60,
-    3 * 60 <= start_time + travel_times['Chinatown']['Pacific Heights'] + 45 * 60,
-    5 * 60 <= start_time + travel_times['Chinatown']['Russian Hill'] + 90 * 60,
-    2 * 60 + 45 * 60 <= start_time + travel_times['Chinatown']['Haight-Ashbury'] + 60 * 60,
-    1 * 60 + 90 * 60 <= start_time + travel_times['Chinatown']['Golden Gate Park'] + 90 * 60,
-    2 * 60 + 15 * 60 <= start_time + travel_times['Chinatown']['Fisherman\'s Wharf'] + 15 * 60,
-    3 * 60 + 45 * 60 <= start_time + travel_times['Chinatown']['Sunset District'] + 45 * 60,
-    2 * 60 + 75 * 60 <= start_time + travel_times['Chinatown']['The Castro'] + 75 * 60,
-    3 * 60 + 15 * 60 <= start_time + travel_times['Embarcadero']['Chinatown'] + 90 * 60,
-    3 * 60 <= start_time + travel_times['Pacific Heights']['Chinatown'] + 45 * 60,
-    5 * 60 <= start_time + travel_times['Russian Hill']['Chinatown'] + 90 * 60,
-    2 * 60 + 45 * 60 <= start_time + travel_times['Haight-Ashbury']['Chinatown'] + 60 * 60,
-    1 * 60 + 90 * 60 <= start_time + travel_times['Golden Gate Park']['Chinatown'] + 90 * 60,
-    2 * 60 + 15 * 60 <= start_time + travel_times['Fisherman\'s Wharf']['Chinatown'] + 15 * 60,
-    3 * 60 + 45 * 60 <= start_time + travel_times['Sunset District']['Chinatown'] + 45 * 60,
-    2 * 60 + 75 * 60 <= start_time + travel_times['The Castro']['Chinatown'] + 75 * 60
-]
+# Define the meeting times
+meeting_times = {
+    'Richard': (3*60, 6*60),
+    'Mark': (3*60, 5*60),
+    'Matthew': (5*60, 9*60),
+    'Rebecca': (2*60 + 45, 6*60),
+    'Melissa': (1*60 + 45, 5*60),
+    'Margaret': (2*60 + 45, 8*60),
+    'Emily': (3*60 + 45, 5*60),
+    'George': (2*60, 4*60)
+}
 
-# Define the solver
-solver = Solver()
+# Define the meeting durations
+meeting_durations = {
+    'Richard': 90,
+    'Mark': 45,
+    'Matthew': 90,
+    'Rebecca': 60,
+    'Melissa': 90,
+    'Margaret': 15,
+    'Emily': 45,
+    'George': 75
+}
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Create the solver
+s = Solver()
+
+# Create the variables
+x = [Int(f'x_{i}') for i in range(len(locations))]
+
+# Add the constraints
+for i in range(len(locations)):
+    s.add(x[i] >= 0)
+
+s.add(x[0] == 0)  # You arrive at Chinatown at 9:00AM
+
+for i in range(1, len(locations)):
+    s.add(x[i] >= x[i-1] + travel_times[locations[i-1]][locations[i]])
+
+for person in meeting_times:
+    start, end = meeting_times[person]
+    duration = meeting_durations[person]
+    location = locations[0]
+    for i in range(1, len(locations)):
+        if start <= x[i] + duration and x[i] + duration <= end:
+            s.add(x[i] == location)
+            break
+        elif x[i] + duration < start:
+            location = locations[i]
+    else:
+        s.add(Not(x[i] == location))
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    print("SOLUTION:")
-    for loc in locations:
-        print(f"Visit {loc} at {model[start_time + travel_times['Chinatown'][loc]].as_long()}")
-else:
-    print("No solution found")
+s.check()
+m = s.model()
+
+# Print the solution
+print('SOLUTION:')
+for i in range(len(locations)):
+    print(f'Visit {locations[i]} at {m[x[i]].as_long()} minutes')

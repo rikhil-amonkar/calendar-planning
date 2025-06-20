@@ -10,48 +10,54 @@ distances = {
 }
 
 # Define the constraints
-constraints = {
-    'Jeffrey': {'start': 8, 'end': 10, 'location': 'Presidio','min_time': 105},
-    'Steven': {'start': 13.5, 'end': 22, 'location': 'North Beach','min_time': 45},
-    'Barbara': {'start': 18, 'end': 21.5, 'location': 'Fisherman\'s Wharf','min_time': 30},
-    'John': {'start': 9, 'end': 13.5, 'location': 'Pacific Heights','min_time': 15}
-}
+s = Solver()
+friends = ['Jeffrey', 'Steven', 'Barbara', 'John']
+times = ['9:00AM', '8:00AM-10:00AM', '1:30PM-10:00PM', '6:00PM-9:30PM', '9:00AM-1:30PM']
 
 # Define the variables
-locations = ['Nob Hill', 'Presidio', 'North Beach', 'Fisherman\'s Wharf', 'Pacific Heights']
-times = []
-for loc in locations:
-    for time in range(9, 23):
-        times.append((loc, time))
+x = {}
+for friend in friends:
+    x[friend] = [Bool(f'{friend}_{i}') for i in range(len(times))]
 
-s = Solver()
+# Define the constraints
+for friend in friends:
+    if friend == 'Jeffrey':
+        s.add(Or([x[friend][0], x[friend][1]]))
+        s.add(If(x[friend][0], x[friend][1], False))
+        s.add(If(x[friend][1], x[friend][0], False))
+        s.add(Implies(x[friend][0], x[friend][0] * 105))
+        s.add(Implies(x[friend][1], x[friend][1] * 105))
+    elif friend == 'Steven':
+        s.add(x[friend][2])
+        s.add(Implies(x[friend][2], x[friend][2] * 45))
+    elif friend == 'Barbara':
+        s.add(Implies(x[friend][3], x[friend][3] * 30))
+    elif friend == 'John':
+        s.add(x[friend][0])
+        s.add(Implies(x[friend][0], x[friend][0] * 15))
 
-# Define the Z3 variables
-meet_times = [Bool(f'meet_{loc}_{time}') for loc, time in times]
+# Add constraints for travel times
+for i in range(len(friends)):
+    for j in range(len(friends)):
+        if i!= j:
+            for time in range(len(times)):
+                if times[i] == times[j]:
+                    s.add(Not(And(x[friends[i]][time], x[friends[j]][time])))
 
-# Add constraints for meeting each person
-for person, info in constraints.items():
-    start = int(info['start'])
-    end = int(info['end'])
-    min_time = info['min_time']
-    location = info['location']
-    for loc, time in times:
-        if time >= start and time <= end and loc == location:
-            s.add(Or([meet_times[(loc, time)], meet_times[(loc, time + 1)], meet_times[(loc, time + 2)], meet_times[(loc, time + 3)], meet_times[(loc, time + 4)], meet_times[(loc, time + 5)], meet_times[(loc, time + 6)], meet_times[(loc, time + 7)], meet_times[(loc, time + 8)], meet_times[(loc, time + 9)], meet_times[(loc, time + 10)], meet_times[(loc, time + 11)], meet_times[(loc, time + 12)], meet_times[(loc, time + 13)], meet_times[(loc, time + 14)], meet_times[(loc, time + 15)], meet_times[(loc, time + 16)], meet_times[(loc, time + 17)], meet_times[(loc, time + 18)], meet_times[(loc, time + 19)], meet_times[(loc, time + 20)], meet_times[(loc, time + 21)], meet_times[(loc, time + 22)], meet_times[(loc, time + 23)]]))
-        s.add(If(meet_times[(loc, time)], And(time - start >= min_time, time - end <= -min_time), True))
-
-# Add constraints for travel time
-for loc1, time1 in times:
-    for loc2, time2 in times:
-        if loc1!= loc2:
-            s.add(If(And(meet_times[(loc1, time1)], meet_times[(loc2, time2)]), time1 + distances[loc1][loc2] <= time2, True))
+# Add constraints for meeting times
+for friend in friends:
+    for time in range(len(times)):
+        if times[0] == times[time]:
+            s.add(Not(And(x[friend][time], x[friend][time] * 60)))
 
 # Solve the problem
+s.add(Or([x[friend][time] for friend in friends for time in range(len(times))]))
 s.check()
-model = s.model()
+m = s.model()
 
-# Print the optimal schedule
-print("SOLUTION:")
-for loc, time in times:
-    if model.evaluate(meet_times[(loc, time)]).as_bool():
-        print(f"Meet at {loc} at {time}:00")
+# Print the solution
+print('SOLUTION:')
+for friend in friends:
+    for time in range(len(times)):
+        if m[x[friend][time]]:
+            print(f'Meet {friend} at {times[time]} for {distances["Nob Hill"][friend] if times[time] == "9:00AM" else (distances[times[time].split('-')[0].split(" ")[0]]["Nob Hill"] if times[time].split('-')[0].split(" ")[1] == "AM" else distances[times[time].split('-')[0].split(" ")[0]]["Nob Hill"])} minutes')

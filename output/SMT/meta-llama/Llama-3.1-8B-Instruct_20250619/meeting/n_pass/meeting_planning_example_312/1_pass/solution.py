@@ -2,108 +2,79 @@ from z3 import *
 
 # Define the travel times
 travel_times = {
-    ('Richmond District', 'Sunset District'): 11,
-    ('Richmond District', 'Haight-Ashbury'): 10,
-    ('Richmond District', 'Mission District'): 20,
-    ('Richmond District', 'Golden Gate Park'): 9,
-    ('Sunset District', 'Richmond District'): 12,
-    ('Sunset District', 'Haight-Ashbury'): 15,
-    ('Sunset District', 'Mission District'): 24,
-    ('Sunset District', 'Golden Gate Park'): 11,
-    ('Haight-Ashbury', 'Richmond District'): 10,
-    ('Haight-Ashbury', 'Sunset District'): 15,
-    ('Haight-Ashbury', 'Mission District'): 11,
-    ('Haight-Ashbury', 'Golden Gate Park'): 7,
-    ('Mission District', 'Richmond District'): 20,
-    ('Mission District', 'Sunset District'): 24,
-    ('Mission District', 'Haight-Ashbury'): 12,
-    ('Mission District', 'Golden Gate Park'): 17,
-    ('Golden Gate Park', 'Richmond District'): 7,
-    ('Golden Gate Park', 'Sunset District'): 10,
-    ('Golden Gate Park', 'Haight-Ashbury'): 7,
-    ('Golden Gate Park', 'Mission District'): 17
+    'Richmond District to Sunset District': 11,
+    'Richmond District to Haight-Ashbury': 10,
+    'Richmond District to Mission District': 20,
+    'Richmond District to Golden Gate Park': 9,
+    'Sunset District to Richmond District': 12,
+    'Sunset District to Haight-Ashbury': 15,
+    'Sunset District to Mission District': 24,
+    'Sunset District to Golden Gate Park': 11,
+    'Haight-Ashbury to Richmond District': 10,
+    'Haight-Ashbury to Sunset District': 15,
+    'Haight-Ashbury to Mission District': 11,
+    'Haight-Ashbury to Golden Gate Park': 7,
+    'Mission District to Richmond District': 20,
+    'Mission District to Sunset District': 24,
+    'Mission District to Haight-Ashbury': 12,
+    'Mission District to Golden Gate Park': 17,
+    'Golden Gate Park to Richmond District': 7,
+    'Golden Gate Park to Sunset District': 10,
+    'Golden Gate Park to Haight-Ashbury': 7,
+    'Golden Gate Park to Mission District': 17
 }
-
-# Define the start and end times for each location
-start_times = {
-    'Richmond District': 0,
-    'Sunset District': 0,
-    'Haight-Ashbury': 0,
-    'Mission District': 0,
-    'Golden Gate Park': 0
-}
-
-end_times = {
-    'Richmond District': 0,
-    'Sunset District': 0,
-    'Haight-Ashbury': 0,
-    'Mission District': 0,
-    'Golden Gate Park': 0
-}
-
-# Define the minimum meeting times
-min_meeting_times = {
-    'Sarah': 30,
-    'Richard': 90,
-    'Elizabeth': 120,
-    'Michelle': 90
-}
-
-# Define the start and end times for each person
-person_start_times = {
-    'Sarah': 10 * 60 + 45,
-    'Richard': 11 * 60 + 45,
-    'Elizabeth': 11 * 60,
-    'Michelle': 18 * 60 + 15
-}
-
-person_end_times = {
-    'Sarah': 19 * 60,
-    'Richard': 15 * 60 + 45,
-    'Elizabeth': 17 * 60 + 15,
-    'Michelle': 20 * 60 + 45
-}
-
-# Define the solver
-s = Solver()
-
-# Define the variables
-locations = ['Richmond District', 'Sunset District', 'Haight-Ashbury', 'Mission District', 'Golden Gate Park']
-people = ['Sarah', 'Richard', 'Elizabeth', 'Michelle']
 
 # Define the constraints
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            s.add(Or([locations[i] == locations[j], locations[i]!= locations[j]]))
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
 
-for person in people:
-    s.add(And([locations[i]!= locations[j] for i in range(len(locations)) for j in range(len(locations)) if i!= j and (person_start_times[person] < end_times[locations[i]] + travel_times[(locations[i], locations[j])] and person_end_times[person] > start_times[locations[j]] + travel_times[(locations[j], locations[i])])]))
+# Define the variables
+x = [Bool(f'x_{i}') for i in range(len(travel_times))]
+y = [Bool(f'y_{i}') for i in range(len(travel_times))]
+t = Int('t')
 
-# Define the objective function
-max_meeting_time = 0
-for person in people:
-    for i in range(len(locations)):
-        for j in range(len(locations)):
-            if i!= j:
-                s.add(If(locations[i] == locations[j], max_meeting_time >= min_meeting_times[person] + travel_times[(locations[i], locations[j])], max_meeting_time >= 0))
+# Define the solver
+solver = Solver()
+
+# Add constraints for each location
+for i, (location1, location2) in enumerate(travel_times.keys()):
+    solver.add(x[i] == (t >= start_time + travel_times[location1 +'to'+ location2]) & (t <= start_time + travel_times[location1 +'to'+ location2] + 30))
+    solver.add(y[i] == (t >= start_time + travel_times[location1 +'to'+ location2]) & (t <= start_time + travel_times[location1 +'to'+ location2] + 30))
+
+# Add constraints for Sarah
+sarah_start = 10 * 60  # 10:45 AM
+sarah_end = 19 * 60  # 7:00 PM
+solver.add(y[0] == False)  # Don't meet Sarah before 10:45 AM
+solver.add(y[0] == (t >= sarah_start) & (t <= sarah_end))  # Meet Sarah between 10:45 AM and 7:00 PM
+solver.add(Implies(y[0], (t >= sarah_start + 30) & (t <= sarah_end - 30)))  # Meet Sarah for at least 30 minutes
+
+# Add constraints for Richard
+richard_start = 11 * 60  # 11:45 AM
+richard_end = 15 * 60  # 3:45 PM
+solver.add(y[2] == False)  # Don't meet Richard before 11:45 AM
+solver.add(y[2] == (t >= richard_start) & (t <= richard_end))  # Meet Richard between 11:45 AM and 3:45 PM
+solver.add(Implies(y[2], (t >= richard_start + 90) & (t <= richard_end - 90)))  # Meet Richard for at least 90 minutes
+
+# Add constraints for Elizabeth
+elizabeth_start = 11 * 60  # 11:00 AM
+elizabeth_end = 17 * 60  # 5:15 PM
+solver.add(y[4] == False)  # Don't meet Elizabeth before 11:00 AM
+solver.add(y[4] == (t >= elizabeth_start) & (t <= elizabeth_end))  # Meet Elizabeth between 11:00 AM and 5:15 PM
+solver.add(Implies(y[4], (t >= elizabeth_start + 120) & (t <= elizabeth_end - 120)))  # Meet Elizabeth for at least 120 minutes
+
+# Add constraints for Michelle
+michelle_start = 18 * 60  # 6:15 PM
+michelle_end = 21 * 60  # 8:45 PM
+solver.add(y[8] == False)  # Don't meet Michelle before 6:15 PM
+solver.add(y[8] == (t >= michelle_start) & (t <= michelle_end))  # Meet Michelle between 6:15 PM and 8:45 PM
+solver.add(Implies(y[8], (t >= michelle_start + 90) & (t <= michelle_end - 90)))  # Meet Michelle for at least 90 minutes
 
 # Solve the problem
-s.check()
-
-# Print the solution
-model = s.model()
-print("Locations:")
-for i in range(len(locations)):
-    print(locations[i], ":", model[locations[i]].as_long())
-
-print("\nMax Meeting Time:", max_meeting_time, "minutes")
-
-SOLUTION:
-print("\nOptimal Schedule:")
-for person in people:
-    for i in range(len(locations)):
-        for j in range(len(locations)):
-            if i!= j:
-                if model[locations[i]] == model[locations[j]]:
-                    print(person, "meets at", locations[i], "at", (person_start_times[person] + travel_times[(locations[j], locations[i])]) // 60, ":", (person_start_times[person] + travel_times[(locations[j], locations[i])]) % 60, "AM/PM")
+if solver.check() == sat:
+    model = solver.model()
+    print("SOLUTION:")
+    for i, (location1, location2) in enumerate(travel_times.keys()):
+        if model[x[i]]:
+            print(f"Meet at {location1} and {location2} at {model[t].as_long() // 60}:{model[t].as_long() % 60}")
+else:
+    print("No solution exists")

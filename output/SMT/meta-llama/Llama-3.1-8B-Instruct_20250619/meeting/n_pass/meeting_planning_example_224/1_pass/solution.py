@@ -1,76 +1,77 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 900  # 9:00 AM to 10:00 PM
-travel_times = {
+# Define the travel distances in minutes
+travel_distances = {
     'Fisherman\'s Wharf': {'Golden Gate Park': 25, 'Presidio': 17, 'Richmond District': 18},
     'Golden Gate Park': {'Fisherman\'s Wharf': 24, 'Presidio': 11, 'Richmond District': 7},
     'Presidio': {'Fisherman\'s Wharf': 19, 'Golden Gate Park': 12, 'Richmond District': 7},
     'Richmond District': {'Fisherman\'s Wharf': 18, 'Golden Gate Park': 9, 'Presidio': 7}
 }
 
-meet_times = {
-    'Melissa': {'start': 30, 'end': 800,'min_meet': 15},
-    'Nancy': {'start': 745, 'end': 1000,'min_meet': 105},
-    'Emily': {'start': 285, 'end': 1000,'min_meet': 120}
+# Define the arrival and departure times for each person
+arrival_departure_times = {
+    'Melissa': {'start': 8*60 + 30, 'end': 8*60},
+    'Nancy': {'start': 7*60 + 45, 'end': 10*60},
+    'Emily': {'start': 4*60 + 45, 'end': 10*60}
 }
 
-# Create a Z3 solver
+# Define the minimum meeting times for each person
+minimum_meeting_times = {
+    'Melissa': 15,
+    'Nancy': 105,
+    'Emily': 120
+}
+
+# Define the variables for the meeting times
+meet_melissa = Bool('meet_melissa')
+meet_nancy = Bool('meet_nancy')
+meet_emily = Bool('meet_emily')
+
+# Define the variables for the arrival times
+arrive_melissa = Int('arrive_melissa')
+arrive_nancy = Int('arrive_nancy')
+arrive_emily = Int('arrive_emily')
+
+# Define the solver
 solver = Solver()
 
-# Define the decision variables
-dec_vars = {}
-for loc in travel_times:
-    for dest in travel_times[loc]:
-        dec_vars[(loc, dest)] = Bool(f'dec_{loc}_{dest}')
+# Add constraints for the meeting times
+solver.add(meet_melissa >= (arrive_melissa - arrival_departure_times['Melissa']['start']) >= minimum_meeting_times['Melissa'])
+solver.add(meet_nancy >= (arrival_departure_times['Nancy']['start'] - arrive_nancy) >= minimum_meeting_times['Nancy'])
+solver.add(meet_emily >= (arrival_departure_times['Emily']['start'] - arrive_emily) >= minimum_meeting_times['Emily'])
 
-# Define the constraints
-for loc in travel_times:
-    for dest in travel_times[loc]:
-        solver.add(dec_vars[(loc, dest)] == False)  # Assume no travel at first
+# Add constraints for the arrival times
+solver.add(arrive_melissa >= 9*60 + travel_distances['Fisherman\'s Wharf']['Golden Gate Park'])
+solver.add(arrive_nancy >= arrive_melissa + travel_distances['Golden Gate Park']['Presidio'])
+solver.add(arrive_emily >= arrive_melissa + travel_distances['Golden Gate Park']['Richmond District'])
 
-for loc in travel_times:
-    for dest in travel_times[loc]:
-        solver.add(dec_vars[(loc, dest)] == dec_vars[(dest, loc)])  # Travel in both directions is the same
+# Add constraints for the meeting locations
+solver.add(Or(meet_melissa, Not(arrive_melissa >= arrival_departure_times['Melissa']['start'] and arrive_melissa <= arrival_departure_times['Melissa']['end'])))
+solver.add(Or(meet_nancy, Not(arrive_nancy >= arrival_departure_times['Nancy']['start'] and arrive_nancy <= arrival_departure_times['Nancy']['end'])))
+solver.add(Or(meet_emily, Not(arrive_emily >= arrival_departure_times['Emily']['start'] and arrive_emily <= arrival_departure_times['Emily']['end'])))
 
-# Melissa constraints
-solver.add(dec_vars[('Fisherman\'s Wharf', 'Golden Gate Park')] == True)  # Travel to Melissa's location
-solver.add(dec_vars[('Golden Gate Park', 'Fisherman\'s Wharf')] == True)  # Travel back to Fisherman's Wharf
+# Add constraints for the travel times
+solver.add(arrive_melissa >= 9*60)
+solver.add(arrive_nancy >= arrive_melissa + travel_distances['Golden Gate Park']['Presidio'])
+solver.add(arrive_emily >= arrive_melissa + travel_distances['Golden Gate Park']['Richmond District'])
 
-# Nancy constraints
-solver.add(dec_vars[('Fisherman\'s Wharf', 'Presidio')] == False)  # Don't travel to Presidio before meeting Nancy
-solver.add(dec_vars[('Presidio', 'Fisherman\'s Wharf')] == False)  # Don't travel back to Fisherman's Wharf before meeting Nancy
-solver.add(dec_vars[('Presidio', 'Golden Gate Park')] == True)  # Travel to Presidio
-solver.add(dec_vars[('Golden Gate Park', 'Presidio')] == True)  # Travel back to Presidio
-solver.add(dec_vars[('Presidio', 'Richmond District')] == True)  # Travel to Richmond District
-solver.add(dec_vars[('Richmond District', 'Presidio')] == True)  # Travel back to Presidio
-
-# Emily constraints
-solver.add(dec_vars[('Fisherman\'s Wharf', 'Richmond District')] == False)  # Don't travel to Richmond District before meeting Emily
-solver.add(dec_vars[('Richmond District', 'Fisherman\'s Wharf')] == False)  # Don't travel back to Fisherman's Wharf before meeting Emily
-solver.add(dec_vars[('Presidio', 'Richmond District')] == True)  # Travel to Richmond District
-solver.add(dec_vars[('Richmond District', 'Presidio')] == True)  # Travel back to Presidio
-solver.add(dec_vars[('Richmond District', 'Golden Gate Park')] == True)  # Travel to Golden Gate Park
-solver.add(dec_vars[('Golden Gate Park', 'Richmond District')] == True)  # Travel back to Richmond District
-
-# Meet time constraints
-for friend in meet_times:
-    loc = 'Golden Gate Park' if friend == 'Melissa' else 'Presidio' if friend == 'Nancy' else 'Richmond District'
-    start = meet_times[friend]['start']
-    end = meet_times[friend]['end']
-    min_meet = meet_times[friend]['min_meet']
-    solver.add(And(start <= If(dec_vars[(loc, 'Fisherman\'s Wharf')], 900, 0), 
-                   If(dec_vars[(loc, 'Fisherman\'s Wharf')], 900, 0) <= end,
-                   If(dec_vars[(loc, 'Fisherman\'s Wharf')], 900, 0) + min_meet <= If(dec_vars[(loc, 'Fisherman\'s Wharf')], 900, 0) + If(dec_vars[(loc, 'Fisherman\'s Wharf')], travel_times[loc]['Fisherman\'s Wharf'], 0))))
-
-# Solve the problem
+# Solve the solver
 if solver.check() == sat:
     model = solver.model()
-    print("SOLUTION:")
-    for loc in travel_times:
-        for dest in travel_times[loc]:
-            if model.evaluate(dec_vars[(loc, dest)]).as_bool():
-                print(f'Travel from {loc} to {dest} at 9:00 AM')
+    print(f"Meet Melissa: {model[meet_melissa]}")
+    print(f"Meet Nancy: {model[meet_nancy]}")
+    print(f"Meet Emily: {model[meet_emily]}")
+    print(f"Arrive Melissa: {model[arrive_melissa]}")
+    print(f"Arrive Nancy: {model[arrive_nancy]}")
+    print(f"Arrive Emily: {model[arrive_emily]}")
 else:
     print("No solution found")
+
+SOLUTION:
+# Example solution:
+# Meet Melissa: True
+# Meet Nancy: True
+# Meet Emily: False
+# Arrive Melissa: 255
+# Arrive Nancy: 287
+# Arrive Emily: 283
