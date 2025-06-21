@@ -251,6 +251,15 @@ async def process_single_example(
     args
 ):
     """Process a single example with rate limiting and semaphore"""
+    # Initialize variables that might be referenced in error handling
+    gold_formatted = {}
+    pred_formatted = {}
+    violated_constraints = {}
+    is_exact_match = False
+    constraints_satisfied = False
+    execution_output = ""
+    pass_num = 0
+    
     async with semaphore:
         try:
             # Get task prefix for output directory
