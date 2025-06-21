@@ -1,53 +1,67 @@
 from z3 import *
 
-def schedule_meeting(day, start_time, end_time, participants, schedules):
-    # Create a Z3 solver
-    solver = Solver()
+def schedule_meeting(participants, duration):
+    # Define the day
+    day = 'Monday'
 
-    # Define the meeting duration
-    meeting_duration = 30
+    # Define the start and end time
+    start_time = 9 * 60  # 9:00 in minutes
+    end_time = 17 * 60  # 17:00 in minutes
+    duration_minutes = duration * 60  # Convert duration to minutes
 
-    # Add constraints for each participant
-    for participant, schedule in schedules.items():
+    # Create a boolean variable for each time slot
+    time_slots = [Bool(f'time_slot_{i}') for i in range((end_time - start_time) // 60 + 1)]
+
+    # Create a constraint for each participant
+    constraints = []
+    for participant, schedule in participants.items():
         for time in schedule:
-            start, end = time
-            # Check if the meeting time conflicts with the participant's schedule
-            if And(start < end_time, end > start_time):
-                # Add a constraint to the solver
-                solver.assert(Not(And(start_time < end_time, start_time + meeting_duration > start, end < end_time + meeting_duration)))
+            start = time[0] * 60
+            end = time[1] * 60
+            for i in range(start + 1, end + 1):
+                constraints.append(Not(time_slots[i]))
 
-    # Check if the solver has found a solution
+    # Add the constraint that the meeting must last for at least the given duration
+    for i in range(duration_minutes, len(time_slots)):
+        constraints.append(Or([time_slots[j] for j in range(i - duration_minutes + 1, i)]))
+
+    # Add the constraint that the meeting must start before the end time
+    for i in range(len(time_slots) - duration_minutes):
+        constraints.append(And(time_slots[i], Not(time_slots[i + duration_minutes])))
+
+    # Add the constraint that the meeting must start after the start time
+    for i in range(duration_minutes):
+        constraints.append(Not(time_slots[i]))
+
+    # Solve the constraints
+    solver = Solver()
+    for constraint in constraints:
+        solver.add(constraint)
     if solver.check() == sat:
-        # Extract the solution
         model = solver.model()
-        # Get the start and end times
-        start_time_value = model[start_time].as_long()
-        end_time_value = model[end_time].as_long()
-        # Print the solution
-        print(f"Day: {day}")
-        print(f"Start Time: {start_time_value:02d}:{(start_time_value % 60):02d}")
-        print(f"End Time: {end_time_value:02d}:{(end_time_value % 60):02d}")
+        start_time_index = model.evaluate(time_slots).index(True)
+        end_time_index = start_time_index + duration_minutes
+        start_time_minutes = start_time_index
+        end_time_minutes = end_time_index
+        start_time_hours = start_time_minutes // 60
+        start_time_minutes %= 60
+        end_time_hours = end_time_minutes // 60
+        end_time_minutes %= 60
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_hours:02d}:{start_time_minutes:02d}\nEnd Time: {end_time_hours:02d}:{end_time_minutes:02d}'
     else:
-        print("No solution found")
+        return 'No solution found'
 
-# Define the day, participants, and schedules
-day = "Monday"
-participants = ["Ronald", "Stephen", "Brittany", "Dorothy", "Rebecca", "Jordan"]
-schedules = {
-    "Ronald": [],
-    "Stephen": [(10, 11), (12, 13)],
-    "Brittany": [(11, 12), (13.5, 14.5), (15.5, 16.5), (16.5, 17)],
-    "Dorothy": [(9, 10), (10, 11), (11, 13), (13, 15), (15.5, 17)],
-    "Rebecca": [(9.5, 10.5), (11, 12), (12, 13), (13, 17)],
-    "Jordan": [(9, 10), (10, 11.5), (11.5, 12.5), (13, 15), (15.5, 16.5)]
+# Define the participants and their schedules
+participants = {
+    'Ronald': [],
+    'Stephen': [(10 * 60, 10 * 60 + 30), (12 * 60, 12 * 60 + 30)],
+    'Brittany': [(11 * 60, 11 * 60 + 30), (13 * 60 + 30, 14 * 60), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],
+    'Dorothy': [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (11 * 60, 12 * 60 + 30), (13 * 60, 15 * 60), (15 * 60 + 30, 17 * 60)],
+    'Rebecca': [(9 * 60 + 30, 10 * 60 + 30), (11 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (13 * 60, 17 * 60)],
+    'Jordan': [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60), (11 * 60 + 30, 12 * 60), (13 * 60, 15 * 60), (15 * 60 + 30, 16 * 60 + 30)]
 }
 
 # Define the meeting duration
-meeting_duration = 30
+duration = 0.5
 
-# Define the start and end times
-start_time = Int("start_time")
-end_time = Int("end_time")
-
-# Schedule the meeting
-schedule_meeting(day, start_time, end_time, participants, schedules)
+print(schedule_meeting(participants, duration))

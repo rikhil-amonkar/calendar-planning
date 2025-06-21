@@ -1,65 +1,44 @@
 from z3 import *
 
-def schedule_meeting(schedules, duration):
-    # Create a Z3 solver
+def schedule_meeting(diane_blocked, jack_blocked, eugene_blocked, patricia_blocked, meeting_duration):
+    # Define the day of the meeting
+    day = 'Monday'
+
+    # Define the start and end times of the meeting
+    start_time = Int('start_time')
+    end_time = Int('end_time')
+
+    # Define the constraints for the start and end times
+    constraints = [
+        And(9 * 60 <= start_time, start_time <= 17 * 60),  # Meeting time is between 9:00 and 17:00
+        And(start_time + meeting_duration <= 17 * 60),  # Meeting duration is less than or equal to 17:00
+        start_time % 60 == 0  # Start time is on the hour
+    ]
+
+    # Define the constraints for each participant's blocked times
+    for blocked in [diane_blocked, jack_blocked, eugene_blocked, patricia_blocked]:
+        for i in range(0, len(blocked), 2):
+            constraints.append(Or(start_time + meeting_duration > blocked[i] + blocked[i+1], 
+                                  start_time + meeting_duration < blocked[i]))
+
+    # Solve the constraints
     solver = Solver()
-
-    # Define the variables
-    days = ['Monday']
-    start_times = [9] * 24
-    end_times = [9 + 1] * 24
-    for i in range(1, 24):
-        start_times[i] = start_times[i - 1] + 1
-        end_times[i] = end_times[i - 1] + 1
-
-    # Create a boolean array to represent the availability of each participant
-    availability = [[Bool(f'{day}_{i}_{j}') for j in range(24)] for i in range(len(schedules)) for day in days]
-
-    # Add constraints for each participant's schedule
-    for i, schedule in enumerate(schedules):
-        for day in days:
-            for time in schedule[day]:
-                for j in range(time[0], time[1]):
-                    solver.assert_not(availability[i][day.index(day)][j])
-
-    # Add constraints for the meeting duration
-    for day in days:
-        for start_time in range(9, 17):
-            for end_time in range(start_time + 1, 17 + 1):
-                if end_time - start_time >= duration:
-                    for i in range(len(schedules)):
-                        solver.assert(availability[i][day.index(day)][start_time] == True)
-                        solver.assert(availability[i][day.index(day)][end_time - 1] == True)
-                        for j in range(start_time + 1, end_time):
-                            solver.assert_not(availability[i][day.index(day)][j])
-
-    # Check if a solution exists
+    solver.add(constraints)
     if solver.check() == sat:
         model = solver.model()
-        day = days[0]
-        start_time = model[day + '_0_9'].as_long()
-        end_time = start_time + duration
-        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time:02d}:00\nEnd Time: {end_time:02d}:00'
+        start_time_val = model[start_time].as_long()
+        end_time_val = (model[start_time].as_long() + meeting_duration).as_long()
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_val // 60:02d}:{start_time_val % 60:02d}\nEnd Time: {end_time_val // 60:02d}:{end_time_val % 60:02d}'
     else:
-        return 'No solution exists'
+        return 'No solution found'
 
-# Define the schedules
-schedules = {
-    'Diane': {
-        'Monday': [(9*60+30, 10*60), (14*60+30, 15*60)]
-    },
-    'Jack': {
-        'Monday': [(13*60+30, 14*60), (14*60+30, 15*60)]
-    },
-    'Eugene': {
-        'Monday': [(9*60, 10*60), (10*60+30, 11*60+30), (12*60, 14*60+30), (15*60, 16*60+30)]
-    },
-    'Patricia': {
-        'Monday': [(9*60+30, 10*60+30), (11*60, 12*60), (12*60+30, 14*60), (15*60, 16*60+30)]
-    }
-}
+# Define the blocked times for each participant
+diane_blocked = [9 * 60 + 30, 10 * 60, 14 * 60 + 30, 15 * 60]
+jack_blocked = [13 * 60 + 30, 14 * 60, 14 * 60 + 30, 15 * 60]
+eugene_blocked = [9 * 60, 10 * 60, 10 * 60 + 30, 11 * 60 + 30, 12 * 60, 14 * 60 + 30, 15 * 60, 16 * 60 + 30]
+patricia_blocked = [9 * 60 + 30, 10 * 60 + 30, 11 * 60, 12 * 60, 12 * 60 + 30, 14 * 60, 15 * 60, 16 * 60 + 30]
 
 # Define the meeting duration
-duration = 30
+meeting_duration = 30
 
-print(schedule_meeting(schedules, duration))
+print(schedule_meeting(diane_blocked, jack_blocked, eugene_blocked, patricia_blocked, meeting_duration))

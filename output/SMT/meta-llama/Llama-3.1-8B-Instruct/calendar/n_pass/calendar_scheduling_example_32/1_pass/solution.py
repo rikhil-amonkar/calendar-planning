@@ -1,76 +1,66 @@
 from z3 import *
 
-# Define the variables
-day = [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
-start_time = [9 * 60 + i for i in range(60)]
-end_time = [(9 * 60 + i) + 30 for i in range(60)]
+def schedule_meeting(available_time, meeting_duration, constraints):
+    # Create a Z3 solver
+    s = Solver()
 
-# Define the constraints
-emily_schedules = [10 * 60, 11 * 60 + 30, 14 * 60, 16 * 60 + 30]
-melissa_schedules = [9 * 60 + 30, 14 * 60]
-frank_schedules = [10 * 60, 11 * 60, 12 * 60 + 30, 13 * 60 + 30, 14 * 60 + 30, 16 * 60 + 30]
-frank_constraint = [9 * 60 + 30]
+    # Declare variables
+    day = [Bool(f'day_{i}') for i in range(len(available_time))]
+    start_time = [Int(f'start_time_{i}') for i in range(len(available_time))]
+    end_time = [Int(f'end_time_{i}') for i in range(len(available_time))]
 
-# Create the solver
-solver = Solver()
+    # Add constraints
+    for i in range(len(available_time)):
+        s.add(day[i])  # Ensure a day is chosen
+        s.add(And(start_time[i] >= available_time[i][0], start_time[i] <= available_time[i][1]))
+        s.add(end_time[i] == start_time[i] + meeting_duration)
 
-# Declare the variables
-day_var = Int('day')
-start_time_var = Int('start_time')
-end_time_var = Int('end_time')
+    # Add constraints based on meeting duration
+    for i in range(len(available_time)):
+        s.add(And(start_time[i] + meeting_duration <= available_time[i][1], 
+                  start_time[i] + meeting_duration >= available_time[i][0]))
 
-# Add the constraints
-solver.add(day_var >= 0)
-solver.add(day_var <= 6)
-solver.add(start_time_var >= 9 * 60)
-solver.add(start_time_var <= 16 * 60)
-solver.add(end_time_var >= 9 * 60)
-solver.add(end_time_var <= 16 * 60 + 30)
-solver.add(And(start_time_var < 10 * 60, day_var == 0))
-solver.add(And(start_time_var < 11 * 60 + 30, day_var == 0))
-solver.add(And(start_time_var < 14 * 60, day_var == 0))
-solver.add(And(start_time_var < 16 * 60 + 30, day_var == 0))
-solver.add(And(start_time_var < 9 * 60 + 30, day_var == 0))
-solver.add(And(start_time_var < 14 * 60 + 30, day_var == 0))
-solver.add(And(start_time_var < 10 * 60, day_var == 0))
-solver.add(And(start_time_var < 11 * 60, day_var == 0))
-solver.add(And(start_time_var < 12 * 60 + 30, day_var == 0))
-solver.add(And(start_time_var < 13 * 60 + 30, day_var == 0))
-solver.add(And(start_time_var < 14 * 60 + 30, day_var == 0))
-solver.add(And(start_time_var < 15 * 60, day_var == 0))
-solver.add(And(start_time_var < 16 * 60, day_var == 0))
-solver.add(And(start_time_var < 16 * 60 + 30, day_var == 0))
-solver.add(start_time_var + 30 == end_time_var)
-solver.add(Or(day_var == 0, Not(And(start_time_var > 9 * 60 + 30, day_var == 0))))
-solver.add(Not(And(start_time_var >= 10 * 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= 11 * 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= 12 * 60 + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= 13 * 60 + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= 14 * 60 + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= 15 * 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= 16 * 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= 16 * 60 + 30, day_var == 0)))
+    # Add constraints based on other participants' schedules
+    for i in range(len(available_time)):
+        for j in range(len(available_time)):
+            if i!= j:
+                s.add(Or(Not(day[i]), Or(start_time[i] >= available_time[j][1], end_time[i] <= available_time[j][0])))
 
-# Add the schedules
-solver.add(Not(And(start_time_var >= emily_schedules[0], start_time_var < emily_schedules[0] + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= emily_schedules[1], start_time_var < emily_schedules[1] + 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= emily_schedules[2], start_time_var < emily_schedules[2] + 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= emily_schedules[3], start_time_var < emily_schedules[3] + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= melissa_schedules[0], start_time_var < melissa_schedules[0] + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= melissa_schedules[1], start_time_var < melissa_schedules[1] + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= frank_schedules[0], start_time_var < frank_schedules[0] + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= frank_schedules[1], start_time_var < frank_schedules[1] + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= frank_schedules[2], start_time_var < frank_schedules[2] + 30, day_var == 0)))
-solver.add(Not(And(start_time_var >= frank_schedules[3], start_time_var < frank_schedules[3] + 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= frank_schedules[4], start_time_var < frank_schedules[4] + 60, day_var == 0)))
-solver.add(Not(And(start_time_var >= frank_schedules[5], start_time_var < frank_schedules[5] + 30, day_var == 0)))
+    # Add constraints based on Frank's preferences
+    for i in range(len(available_time)):
+        if day[i]:
+            s.add(Or(Not(day[i]), start_time[i] <= 9*60 + 30))
 
-# Check if there is a solution
-if solver.check() == sat:
-    model = solver.model()
-    day_value = model[day_var].as_long()
-    start_time_value = model[start_time_var].as_long()
-    end_time_value = model[end_time_var].as_long()
-    print(f'SOLUTION:\nDay: {day_value}\nStart Time: {start_time_value // 60:02d}:{start_time_value % 60:02d}\nEnd Time: {end_time_value // 60:02d}:{end_time_value % 60:02d}')
-else:
-    print('No solution found')
+    # Check if a solution exists
+    if s.check() == sat:
+        model = s.model()
+        day_index = 0
+        for i in range(len(available_time)):
+            if model.evaluate(day[i]).as_bool():
+                day_index = i
+                break
+
+        print(f'DAY: {day[day_index]}')
+        print(f'START TIME: {model.evaluate(start_time[day_index]).as_int()/60}:{model.evaluate(start_time[day_index]).as_int()%60:02}')
+        print(f'END TIME: {model.evaluate(end_time[day_index]).as_int()/60}:{model.evaluate(end_time[day_index]).as_int()%60:02}')
+    else:
+        print("No solution exists")
+
+# Define the available time for each participant
+available_time = [
+    (9*60, 17*60),  # Monday
+    (9*60, 17*60),  # Monday
+    (9*60, 17*60),  # Monday
+]
+
+# Define the meeting duration
+meeting_duration = 30
+
+# Define the constraints for each participant
+constraints = [
+    [(10*60, 10*60+30), (11*60+30, 12*60+30), (14*60, 15*60), (16*60, 16*60+30)],  # Emily
+    [(9*60+30, 10*60), (14*60+30, 15*60)],  # Melissa
+    [(10*60, 10*60+30), (11*60, 11*60+30), (12*60+30, 13*60), (13*60+30, 14*60+30), (15*60, 16*60), (16*60+30, 17*60)],  # Frank
+]
+
+schedule_meeting(available_time, meeting_duration, constraints)

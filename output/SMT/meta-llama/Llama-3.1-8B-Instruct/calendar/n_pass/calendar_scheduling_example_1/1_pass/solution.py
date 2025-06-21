@@ -1,67 +1,75 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the day of the meeting
-    day = 'Monday'
+# Define the variables
+day = 'Monday'
+duration = 30  # in minutes
 
-    # Define the start and end times of the meeting
-    meeting_duration = 30  # in minutes
+# Existing schedules for each participant
+raymond_schedule = [
+    (9, 30),
+    (11, 30, 12),
+    (13, 30),
+    (15, 30)
+]
+billy_schedule = [
+    (10, 30),
+    (12, 13),
+    (16, 30, 17)
+]
+donald_schedule = [
+    (9, 30),
+    (10, 11),
+    (12, 13),
+    (14, 14, 30),
+    (16, 17)
+]
 
-    # Define the existing schedules for each participant
-    raymond_schedule = [
-        (9, 30),
-        (11, 30, 12),
-        (13, 30),
-        (15, 30)
-    ]
+# Billy's preference to avoid meetings after 15:00
+billy_preference = (15, 0)
 
-    billy_schedule = [
-        (10, 30),
-        (12, 13),
-        (16, 30, 17)
-    ]
+# Define the solver
+s = Solver()
 
-    donald_schedule = [
-        (9, 30),
-        (10, 11),
-        (12, 13),
-        (14, 30),
-        (16, 17)
-    ]
+# Define the variables for the meeting time
+start_time = Int('start_time')
+end_time = start_time + duration
 
-    # Define the constraints for each participant
-    raymond_constraints = [And(Start > raymond[0], Start < raymond[1]) for raymond in raymond_schedule]
-    billy_constraints = [And(Start > billy[0], Start < billy[1]) for billy in billy_schedule]
-    donald_constraints = [And(Start > donald[0], Start < donald[1]) for donald in donald_schedule]
+# Ensure the meeting is within work hours
+s.add(9 <= start_time, end_time <= 17)
 
-    # Add the constraint that Billy does not have any meetings after 15:00
-    billy_constraints.append(Start < 15 * 60)
+# Ensure the meeting does not conflict with anyone's schedule
+for i in range(len(raymond_schedule)):
+    if i % 2 == 0:  # start time
+        s.add(Or(start_time >= raymond_schedule[i][1], start_time + duration <= raymond_schedule[i][0]))
+    else:  # end time
+        s.add(Or(end_time >= raymond_schedule[i][1], end_time <= raymond_schedule[i][0]))
 
-    # Define the variables for the start time of the meeting
-    Start = Int('Start')
+for i in range(len(billy_schedule)):
+    if i % 2 == 0:  # start time
+        s.add(Or(start_time >= billy_schedule[i][1], start_time + duration <= billy_schedule[i][0]))
+    else:  # end time
+        s.add(Or(end_time >= billy_schedule[i][1], end_time <= billy_schedule[i][0]))
 
-    # Define the solver
-    solver = Solver()
+for i in range(len(donald_schedule)):
+    if i % 2 == 0:  # start time
+        s.add(Or(start_time >= donald_schedule[i][1], start_time + duration <= donald_schedule[i][0]))
+    else:  # end time
+        s.add(Or(end_time >= donald_schedule[i][1], end_time <= donald_schedule[i][0]))
 
-    # Add the constraints to the solver
-    for constraint in raymond_constraints + billy_constraints + donald_constraints:
-        solver.add(constraint)
+# Ensure Billy does not have meetings after 15:00
+s.add(Or(start_time >= billy_preference[1], end_time <= billy_preference[0]))
 
-    # Add the constraint that the meeting duration is 30 minutes
-    solver.add(Start + meeting_duration < 17 * 60)
-
-    # Solve the constraints
-    if solver.check() == sat:
-        model = solver.model()
-        start_time = model[Start].as_long()
-        end_time = start_time + meeting_duration
-
-        # Print the solution
-        print('SOLUTION:')
-        print(f'Day: {day}')
-        print(f'Start Time: {start_time // 60:02d}:{start_time % 60:02d}')
-        print(f'End Time: {end_time // 60:02d}:{end_time % 60:02d}')
-    else:
-        print('No solution found.')
-
-schedule_meeting()
+# Check if a solution exists
+if s.check() == sat:
+    # Get the solution
+    model = s.model()
+    start_time_value = model[start_time].as_long()
+    end_time_value = model[end_time].as_long()
+    
+    # Print the solution
+    print(f'SOLUTION:')
+    print(f'Day: {day}')
+    print(f'Start Time: {start_time_value:02d}:{(start_time_value % 60):02d}')
+    print(f'End Time: {end_time_value:02d}:{(end_time_value % 60):02d}')
+else:
+    print('No solution exists')

@@ -1,151 +1,91 @@
 from z3 import *
 
-def schedule_meeting(brian_schedule, julia_schedule, meeting_duration, brian_preferences):
-    # Define the days of the week
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+# Define the days of the week
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-    # Define the start and end times
-    start_times = [9*60 + i for i in range(10, 17*60, 60)]
-    end_times = [10*60 + i for i in range(10, 17*60, 60)]
+# Define the start and end times
+times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
 
-    # Create Z3 variables for the day, start time, and end time
-    day = Int('day')
-    start_time = Int('start_time')
-    end_time = Int('end_time')
-
-    # Create Z3 variables for the meeting duration
-    meeting_duration_var = Int('meeting_duration')
-    meeting_duration_var.value = meeting_duration * 60
-
-    # Create Z3 variables for the Brian and Julia schedules
-    brian_schedule_vars = {}
-    julia_schedule_vars = {}
-
-    for i, day in enumerate(days):
-        for j, start_time in enumerate(start_times):
-            for k, end_time in enumerate(end_times):
-                if day not in brian_schedule or (day, start_time, end_time) not in brian_schedule[day]:
-                    brian_schedule_vars[(day, start_time, end_time)] = Bool(f'brian_{day}_{start_time}_{end_time}')
-                    brian_schedule_vars[(day, start_time, end_time)].value = True
-                else:
-                    brian_schedule_vars[(day, start_time, end_time)] = Bool(f'brian_{day}_{start_time}_{end_time}')
-                    brian_schedule_vars[(day, start_time, end_time)].value = (start_time >= brian_schedule[day][(day, start_time, end_time)][0] and
-                                                                            start_time < brian_schedule[day][(day, start_time, end_time)][1])
-
-    for i, day in enumerate(days):
-        for j, start_time in enumerate(start_times):
-            for k, end_time in enumerate(end_times):
-                if day not in julia_schedule or (day, start_time, end_time) not in julia_schedule[day]:
-                    julia_schedule_vars[(day, start_time, end_time)] = Bool(f'julia_{day}_{start_time}_{end_time}')
-                    julia_schedule_vars[(day, start_time, end_time)].value = True
-                else:
-                    julia_schedule_vars[(day, start_time, end_time)] = Bool(f'julia_{day}_{start_time}_{end_time}')
-                    julia_schedule_vars[(day, start_time, end_time)].value = (start_time >= julia_schedule[day][(day, start_time, end_time)][0] and
-                                                                            start_time < julia_schedule[day][(day, start_time, end_time)][1])
-
-    # Create a Z3 solver
-    solver = Solver()
-
-    # Add constraints to the solver
-    for day in days:
-        for start_time in start_times:
-            for end_time in end_times:
-                if day not in brian_schedule or (day, start_time, end_time) not in brian_schedule[day]:
-                    solver.assert(brian_schedule_vars[(day, start_time, end_time)])
-                elif (day, start_time, end_time) in brian_schedule[day]:
-                    solver.assert(Implies(brian_schedule_vars[(day, start_time, end_time)], (start_time >= brian_schedule[day][(day, start_time, end_time)][0] and
-                                                                                      start_time < brian_schedule[day][(day, start_time, end_time)][1])))
-
-    for day in days:
-        for start_time in start_times:
-            for end_time in end_times:
-                if day not in julia_schedule or (day, start_time, end_time) not in julia_schedule[day]:
-                    solver.assert(julia_schedule_vars[(day, start_time, end_time)])
-                elif (day, start_time, end_time) in julia_schedule[day]:
-                    solver.assert(Implies(julia_schedule_vars[(day, start_time, end_time)], (start_time >= julia_schedule[day][(day, start_time, end_time)][0] and
-                                                                                      start_time < julia_schedule[day][(day, start_time, end_time)][1])))
-
-    # Brian prefers to avoid more meetings on Monday
-    if 'Monday' in brian_preferences:
-        for start_time in start_times:
-            for end_time in end_times:
-                solver.assert(Not(brian_schedule_vars[('Monday', start_time, end_time)]))
-
-    # The meeting duration is 1 hour
-    solver.assert(start_time + meeting_duration_var == end_time)
-
-    # Check if a solution exists
-    if solver.check() == sat:
-        model = solver.model()
-        day = days[model[day].as_long()]
-        start_time = model[start_time].as_long()
-        end_time = model[end_time].as_long()
-        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time // 60:02d}:{start_time % 60:02d}\nEnd Time: {end_time // 60:02d}:{end_time % 60:02d}'
-    else:
-        return 'No solution exists'
-
-# Existing schedules for Brian and Julia
-brian_schedule = {
-    'Monday': {
-        (9*60 + 30, 10*60): (9*60 + 30, 10*60),
-        (12*60 + 30, 14*60 + 30): (12*60 + 30, 14*60 + 30),
-        (15*60 + 30, 16*60): (15*60 + 30, 16*60)
-    },
-    'Tuesday': {
-        (9*60, 9*60 + 30): (9*60, 9*60 + 30)
-    },
-    'Wednesday': {
-        (12*60 + 30, 14*60): (12*60 + 30, 14*60)
-    },
-    'Thursday': {
-        (11*60, 11*60 + 30): (11*60, 11*60 + 30),
-        (13*60, 13*60 + 30): (13*60, 13*60 + 30),
-        (16*60 + 30, 17*60): (16*60 + 30, 17*60)
-    },
-    'Friday': {
-        (9*60 + 30, 10*60): (9*60 + 30, 10*60),
-        (10*60 + 30, 11*60): (10*60 + 30, 11*60),
-        (13*60, 13*60 + 30): (13*60, 13*60 + 30),
-        (15*60, 16*60): (15*60, 16*60),
-        (16*60 + 30, 17*60): (16*60 + 30, 17*60)
-    }
-}
-
-julia_schedule = {
-    'Monday': {
-        (9*60, 10*60): (9*60, 10*60),
-        (11*60, 11*60 + 30): (11*60, 11*60 + 30),
-        (12*60 + 30, 13*60): (12*60 + 30, 13*60),
-        (15*60 + 30, 16*60): (15*60 + 30, 16*60)
-    },
-    'Tuesday': {
-        (13*60, 14*60): (13*60, 14*60),
-        (16*60, 16*60 + 30): (16*60, 16*60 + 30)
-    },
-    'Wednesday': {
-        (9*60, 11*60 + 30): (9*60, 11*60 + 30),
-        (12*60, 12*60 + 30): (12*60, 12*60 + 30),
-        (13*60, 17*60): (13*60, 17*60)
-    },
-    'Thursday': {
-        (9*60, 10*60 + 30): (9*60, 10*60 + 30),
-        (11*60, 17*60): (11*60, 17*60)
-    },
-    'Friday': {
-        (9*60, 10*60): (9*60, 10*60),
-        (10*60 + 30, 11*60 + 30): (10*60 + 30, 11*60 + 30),
-        (12*60 + 30, 14*60): (12*60 + 30, 14*60),
-        (14*60 + 30, 15*60): (14*60 + 30, 15*60),
-        (15*60 + 30, 16*60): (15*60 + 30, 16*60)
-    }
-}
-
-# Meeting duration
+# Define the meeting duration
 meeting_duration = 1
 
-# Brian's preferences
-brian_preferences = {
-    'Monday': True
-}
+# Define the constraints for Brian's schedule
+brian_constraints = [
+    ('Monday', '09:30', '10:00'), ('Monday', '12:30', '14:30'), ('Monday', '15:30', '16:00'),
+    ('Tuesday', '09:00', '09:30'), ('Wednesday', '12:30', '14:00'), ('Wednesday', '16:30', '17:00'),
+    ('Thursday', '11:00', '11:30'), ('Thursday', '13:00', '13:30'), ('Thursday', '16:30', '17:00'),
+    ('Friday', '09:30', '10:00'), ('Friday', '10:30', '11:00'), ('Friday', '13:00', '13:30'), ('Friday', '15:00', '16:00'), ('Friday', '16:30', '17:00')
+]
 
-print(schedule_meeting(brian_schedule, julia_schedule, meeting_duration, brian_preferences))
+# Define the constraints for Julia's schedule
+julia_constraints = [
+    ('Monday', '09:00', '10:00'), ('Monday', '11:00', '11:30'), ('Monday', '12:30', '13:00'), ('Monday', '15:30', '16:00'),
+    ('Tuesday', '13:00', '14:00'), ('Tuesday', '16:00', '16:30'),
+    ('Wednesday', '09:00', '11:30'), ('Wednesday', '12:00', '12:30'), ('Wednesday', '13:00', '17:00'),
+    ('Thursday', '09:00', '10:30'), ('Thursday', '11:00', '17:00'),
+    ('Friday', '09:00', '10:00'), ('Friday', '10:30', '11:30'), ('Friday', '12:30', '14:00'), ('Friday', '14:30', '15:00'), ('Friday', '15:30', '16:00')
+]
+
+# Define the preferences for Brian
+brian_preferences = []
+
+# Convert constraints and preferences to Z3 format
+brian_constraints_z3 = []
+julia_constraints_z3 = []
+for day, start, end in brian_constraints + julia_constraints:
+    start_hour = int(start[:2])
+    start_minute = int(start[3:])
+    end_hour = int(end[:2])
+    end_minute = int(end[3:])
+    for i in range(len(days)):
+        if days[i] == day:
+            day_index = i
+            break
+    brian_constraints_z3.append((day_index, start_hour, start_minute, end_hour, end_minute))
+
+# Create Z3 solver
+s = Solver()
+
+# Define the variables
+day = Int('day')
+start_hour = Int('start_hour')
+start_minute = Int('start_minute')
+end_hour = Int('end_hour')
+end_minute = Int('end_minute')
+
+# Add constraints
+for day_index, start_hour, start_minute, end_hour, end_minute in brian_constraints_z3 + julia_constraints_z3:
+    s.add(And(day!= day_index, start_hour > start_hour, start_hour < end_hour, start_minute > start_minute, start_minute < end_minute))
+    s.add(Or(day!= day_index, start_hour > start_hour, start_hour < end_hour, start_minute > start_minute, start_minute < end_minute))
+
+# Add preferences for Brian
+for preference in brian_preferences:
+    day_index = days.index(preference[0])
+    start_hour = int(preference[1][:2])
+    start_minute = int(preference[1][3:])
+    end_hour = int(preference[2][:2])
+    end_minute = int(preference[2][3:])
+    s.add(And(day == day_index, start_hour > start_hour, start_hour < end_hour, start_minute > start_minute, start_minute < end_minute))
+
+# Add the meeting duration constraint
+s.add(And(start_hour > 8, start_hour < 17, end_hour > start_hour, end_hour < 17, end_hour - start_hour == meeting_duration))
+
+# Check the solver
+if s.check() == sat:
+    # Get the model
+    model = s.model()
+
+    # Get the values of the variables
+    day_value = model[day].as_long()
+    start_hour_value = model[start_hour].as_long()
+    start_minute_value = model[start_minute].as_long()
+    end_hour_value = model[end_hour].as_long()
+    end_minute_value = model[end_minute].as_long()
+
+    # Print the solution
+    print('SOLUTION:')
+    print(f'Day: {days[day_value]}')
+    print(f'Start Time: {str(start_hour_value).zfill(2)}:{str(start_minute_value).zfill(2)}')
+    print(f'End Time: {str(end_hour_value).zfill(2)}:{str(end_minute_value).zfill(2)}')
+else:
+    print('No solution found')

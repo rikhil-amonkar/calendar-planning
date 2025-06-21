@@ -1,103 +1,62 @@
 from z3 import *
 
-def schedule_meeting(bobby_schedule, michael_schedule, duration):
-    # Create Z3 variables for the meeting day and time
-    day = Int('day')
-    start_time = Int('start_time')
-    end_time = Int('end_time')
+def schedule_meeting(bobby_schedule, michael_schedule, meeting_duration):
+    # Create a Z3 solver
+    s = Solver()
 
-    # Define the domain of the variables
-    day_domain = [0, 1]  # 0 for Monday, 1 for Tuesday
-    start_time_domain = [9*60, 17*60]  # in minutes
-    end_time_domain = [9*60 + duration, 17*60]
+    # Define the day and time variables
+    day = [Bool('day_%s' % i) for i in range(2)]
+    start_time = [Int('start_time_%s' % i) for i in range(2)]
+    end_time = [Int('end_time_%s' % i) for i in range(2)]
 
-    # Define the constraints for the day
-    day_constraints = [day >= 0, day <= 1]
+    # Add constraints for the day
+    s.add(Or(day[0], day[1]))
 
-    # Define the constraints for the start time
-    start_time_constraints = [
-        start_time >= 9*60,
-        start_time <= 17*60,
-        start_time + duration <= 17*60
-    ]
+    # Add constraints for the start and end times
+    s.add(And(start_time[0] >= 9, start_time[0] <= 17))
+    s.add(And(start_time[1] >= 9, start_time[1] <= 17))
+    s.add(And(end_time[0] >= 9, end_time[0] <= 17))
+    s.add(And(end_time[1] >= 9, end_time[1] <= 17))
 
-    # Define the constraints for the end time
-    end_time_constraints = [
-        end_time >= 9*60 + duration,
-        end_time <= 17*60
-    ]
+    # Add constraints for the meeting duration
+    s.add(And(start_time[0] + meeting_duration <= 17, start_time[1] + meeting_duration <= 17))
 
-    # Define the constraints for Bobby's schedule
-    bobby_constraints = []
-    for start, end in bobby_schedule:
-        start_minutes = start.hour * 60 + start.minute
-        end_minutes = end.hour * 60 + end.minute
-        bobby_constraints.extend([
-            Or(start_time + duration > start_minutes, end_time < start_minutes),
-            Or(start_time + duration > end_minutes, end_time < end_minutes)
-        ])
+    # Add constraints for the busy times
+    for i in range(2):
+        for start, end in bobby_schedule:
+            s.add(Or(Not(day[i]), start > end_time[i] or end < start_time[i]))
+        for start, end in michael_schedule:
+            s.add(Or(Not(day[i]), start > end_time[i] or end < start_time[i]))
 
-    # Define the constraints for Michael's schedule
-    michael_constraints = []
-    for start, end in michael_schedule:
-        start_minutes = start.hour * 60 + start.minute
-        end_minutes = end.hour * 60 + end.minute
-        michael_constraints.extend([
-            Or(start_time + duration > start_minutes, end_time < start_minutes),
-            Or(start_time + duration > end_minutes, end_time < end_minutes)
-        ])
+    # Add constraints for the start and end times
+    s.add(And(start_time[0] <= end_time[0], start_time[1] <= end_time[1]))
 
-    # Define the solver and add the constraints
-    solver = Solver()
-    solver.add(day_constraints)
-    solver.add(start_time_constraints)
-    solver.add(end_time_constraints)
-    solver.add(bobby_constraints)
-    solver.add(michael_constraints)
+    # Add constraints for the meeting duration
+    s.add(And(end_time[0] - start_time[0] == meeting_duration, end_time[1] - start_time[1] == meeting_duration))
 
-    # Solve the solver
-    if solver.check() == sat:
+    # Check if there's a solution
+    if s.check() == sat:
         # Get the model
-        model = solver.model()
-        # Extract the values from the model
-        day_value = model[day].as_long()
-        start_time_value = model[start_time].as_long()
-        end_time_value = model[end_time].as_long()
-        # Convert the values to hours and minutes
-        start_hour = start_time_value // 60
-        start_minute = start_time_value % 60
-        end_hour = end_time_value // 60
-        end_minute = end_time_value % 60
-        # Print the solution
-        print(f"SOLUTION:")
-        print(f"Day: {'Monday' if day_value == 0 else 'Tuesday'}")
-        print(f"Start Time: {start_hour:02d}:{start_minute:02d}")
-        print(f"End Time: {end_hour:02d}:{end_minute:02d}")
-    else:
-        print("No solution found")
+        m = s.model()
 
-# Define the schedules for Bobby and Michael
-bobby_schedule = [
-    (Time(14, 30), Time(15, 0)),
-    (Time(9, 0), Time(11, 30)),
-    (Time(12, 0), Time(12, 30)),
-    (Time(13, 0), Time(15, 0)),
-    (Time(15, 30), Time(17, 0))
-]
-michael_schedule = [
-    (Time(9, 0), Time(10, 0)),
-    (Time(10, 30), Time(13, 30)),
-    (Time(14, 0), Time(15, 0)),
-    (Time(15, 30), Time(17, 0)),
-    (Time(9, 0), Time(10, 30)),
-    (Time(11, 0), Time(11, 30)),
-    (Time(12, 0), Time(14, 0)),
-    (Time(15, 0), Time(16, 0)),
-    (Time(16, 30), Time(17, 0))
-]
+        # Print the solution
+        day_to_meet = 'Monday' if m.evaluate(day[0]).as_bool() else 'Tuesday'
+        start_time_to_meet = m.evaluate(start_time[0]).as_int()
+        end_time_to_meet = m.evaluate(end_time[0]).as_int()
+
+        print('SOLUTION:')
+        print('Day: %s' % day_to_meet)
+        print('Start Time: %02d:%02d' % (start_time_to_meet // 60, start_time_to_meet % 60))
+        print('End Time: %02d:%02d' % (end_time_to_meet // 60, end_time_to_meet % 60))
+    else:
+        print('No solution found.')
+
+# Define the existing schedules
+bobby_schedule = [(14:30, 15:00), (9:00, 11:30), (12:00, 12:30), (13:00, 15:00), (15:30, 17:00)]
+michael_schedule = [(9:00, 10:00), (10:30, 13:30), (14:00, 15:00), (15:30, 17:00), (9:00, 10:30), (11:00, 11:30), (12:00, 14:00), (15:00, 16:00), (16:30, 17:00)]
 
 # Define the meeting duration
-duration = 30
+meeting_duration = 30
 
 # Schedule the meeting
-schedule_meeting(bobby_schedule, michael_schedule, duration)
+schedule_meeting(bobby_schedule, michael_schedule, meeting_duration)

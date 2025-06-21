@@ -1,69 +1,85 @@
 from z3 import *
 
-# Define the days of the week
-days = ['Monday', 'Tuesday', 'Wednesday']
+def solve_scheduling_problem():
+    # Define the days of the week
+    days = ['Monday', 'Tuesday', 'Wednesday']
 
-# Define the time slots for each day
-time_slots = [Int(f'time_{i}') for i in range(96)]  # 96 time slots in a day (from 00:00 to 23:59)
+    # Define the start and end times
+    start_times = [9, 10, 11, 12, 13, 14, 15, 16]
+    end_times = [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5]
 
-# Define the constraints for Cheryl's schedule
-cheryl_busy = [
-    And(9 <= time_slots[0], time_slots[0] <= 9.5),
-    And(11.5 <= time_slots[30], time_slots[30] <= 13),
-    And(15.5 <= time_slots[60], time_slots[60] <= 16),
-    And(15 <= time_slots[45], time_slots[45] <= 15.5),
-]
+    # Define the meeting duration
+    meeting_duration = 0.5
 
-# Define the constraints for Kyle's schedule
-kyle_busy = [
-    And(9 <= time_slots[0], time_slots[0] <= 17),
-    And(9.5 <= time_slots[30], time_slots[30] <= 17),
-    And(9 <= time_slots[60], time_slots[60] <= 9.5),
-    And(10 <= time_slots[72], time_slots[72] <= 13),
-    And(13.5 <= time_slots[90], time_slots[90] <= 14),
-    And(14.5 <= time_slots[108], time_slots[108] <= 17),
-]
+    # Define the variables
+    day = Int('day')
+    start_time = Real('start_time')
+    end_time = Real('end_time')
 
-# Define the meeting duration (half an hour)
-meeting_duration = 0.5
+    # Define the constraints
+    constraints = [
+        day >= 0,
+        day < len(days),
+        start_time >= 9,
+        start_time <= 17,
+        end_time >= start_time,
+        end_time <= 17,
+        end_time - start_time == meeting_duration,
+    ]
 
-# Define the solver
-s = Solver()
+    # Define the busy times for Cheryl and Kyle
+    cheryl_busy_times = [
+        (0, 9.5, 11.5, 13, 13.5),
+        (1, 15, 15.5),
+        (2, 9, 9.5, 10.5, 13, 13.5, 14.5, 17),
+    ]
 
-# Define the variables
-day = Int('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
+    kyle_busy_times = [
+        (0, 9, 17),
+        (1, 9.5, 17),
+        (2, 9, 9.5, 10.5, 13, 13.5, 14, 14.5, 17),
+    ]
 
-# Add the constraints
-s.add(Or([day == i for i in range(3)]))  # day can be any of the three days
-s.add(And(start_time >= 9, start_time <= 16.5))  # start time must be between 9:00 and 16:30
-s.add(And(end_time >= 9.5, end_time <= 17))  # end time must be between 9:30 and 17:00
-s.add(And(end_time - start_time == meeting_duration))  # end time must be start time + meeting duration
-s.add(Not(And(9 <= start_time, start_time <= 9.5, day == 0)))  # Cheryl is busy on Monday from 9:00 to 9:30
-s.add(Not(And(11.5 <= start_time, start_time <= 13, day == 0)))  # Cheryl is busy on Monday from 11:30 to 13:00
-s.add(Not(And(15.5 <= start_time, start_time <= 16, day == 0)))  # Cheryl is busy on Monday from 15:30 to 16:00
-s.add(Not(And(15 <= start_time, start_time <= 15.5, day == 1)))  # Cheryl is busy on Tuesday from 15:00 to 15:30
-s.add(Not(And(9 <= start_time, start_time <= 17, day == 0)))  # Kyle is busy on Monday from 9:00 to 17:00
-s.add(Not(And(9.5 <= start_time, start_time <= 17, day == 1)))  # Kyle is busy on Tuesday from 9:30 to 17:00
-s.add(Not(And(9 <= start_time, start_time <= 9.5, day == 2)))  # Kyle is busy on Wednesday from 9:00 to 9:30
-s.add(Not(And(10 <= start_time, start_time <= 13, day == 2)))  # Kyle is busy on Wednesday from 10:00 to 13:00
-s.add(Not(And(13.5 <= start_time, start_time <= 14, day == 2)))  # Kyle is busy on Wednesday from 13:30 to 14:00
-s.add(Not(And(14.5 <= start_time, start_time <= 17, day == 2)))  # Kyle is busy on Wednesday from 14:30 to 17:00
-s.add(Not(day == 2))  # Cheryl can't meet on Wednesday
+    # Add constraints for Cheryl's busy times
+    for i, (day, start, end) in enumerate(cheryl_busy_times):
+        constraints.append(Or(
+            day!= i,
+            start > 17,
+            end < 9,
+        ))
 
-# Check if the solver has a solution
-if s.check() == sat:
-    # Get the solution
-    model = s.model()
-    day_val = int(model[day].as_long())
-    start_time_val = model[start_time].as_real().as_decimal(2)
-    end_time_val = model[end_time].as_real().as_decimal(2)
-    
-    # Print the solution
-    print(f"SOLUTION:")
-    print(f"Day: {days[day_val]}")
-    print(f"Start Time: {start_time_val.strftime('%H:%M')}")
-    print(f"End Time: {end_time_val.strftime('%H:%M')}")
-else:
-    print("No solution exists.")
+    # Add constraints for Kyle's busy times
+    for i, (day, start, end) in enumerate(kyle_busy_times):
+        constraints.append(Or(
+            day!= i,
+            start > 17,
+            end < 9,
+        ))
+
+    # Add a constraint for Cheryl not meeting on Wednesday
+    constraints.append(day!= 2)
+
+    # Solve the problem
+    solver = Solver()
+    solver.add(constraints)
+    solver.add(And(
+        start_time >= 9,
+        start_time <= 17,
+        end_time >= 9,
+        end_time <= 17,
+    ))
+    if solver.check() == sat:
+        model = solver.model()
+        day_val = model[day].as_long()
+        start_time_val = model[start_time].numerator() / model[start_time].denominator()
+        end_time_val = model[end_time].numerator() / model[end_time].denominator()
+
+        # Print the solution
+        print('SOLUTION:')
+        print(f'Day: {days[day_val]}')
+        print(f'Start Time: {int(start_time_val):02d}:{int((start_time_val - int(start_time_val)) * 60):02d}')
+        print(f'End Time: {int(end_time_val):02d}:{int((end_time_val - int(end_time_val)) * 60):02d}')
+    else:
+        print('No solution found.')
+
+solve_scheduling_problem()

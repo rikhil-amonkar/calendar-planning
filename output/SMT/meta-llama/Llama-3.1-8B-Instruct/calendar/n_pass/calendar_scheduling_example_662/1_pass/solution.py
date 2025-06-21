@@ -1,45 +1,63 @@
 from z3 import *
 
-# Define the variables
-days = ['Monday', 'Tuesday']
-times = ['09:00', '09:30', '10:00', '10:30', '11:00', '12:00', '13:00', '14:00', '14:30', '15:00', '16:00', '16:30', '17:00']
-time_map = {'09:00': 0, '09:30': 1, '10:00': 2, '10:30': 3, '11:00': 4, '12:00': 5, '13:00': 6, '14:00': 7, '14:30': 8, '15:00': 9, '16:00': 10, '16:30': 11, '17:00': 12}
-gary_schedules = [[0, 1, 2, 6, 7, 8, 11, 12], [1, 3, 7, 8, 9, 10, 11]]
-david_schedules = [[0, 1, 2, 6, 7, 8, 11, 12], [1, 2, 3, 5, 6, 7, 8, 9, 10, 11]]
-meeting_duration = 1
+def schedule_meeting(gary_schedule, david_schedule, meeting_duration):
+    # Create Z3 variables for day and time
+    day = Int('day')
+    start_time = Int('start_time')
+    end_time = Int('end_time')
 
-# Create the solver
-s = Solver()
+    # Define the day variable
+    day_domain = If(day == 0, 9, 10)  # 0 for Monday, 1 for Tuesday
+    day_range = [0, 1]
 
-# Define the variables for the meeting time
-day = Int('day')
-start_time = Int('start_time')
-end_time = start_time + meeting_duration
+    # Define the start and end time variables
+    start_time_domain = If(day == 0, 9, 9) + If(start_time >= 9, 0, 1)
+    end_time_domain = If(day == 0, 17, 17) - meeting_duration
 
-# Define the constraints for the meeting time
-for day_index, day_name in enumerate(days):
-    s.add(day == day_index)
-    for time_index in range(len(times) - meeting_duration):
-        s.add(ForAll([start_time], Implies(day == day_index, start_time >= time_index and start_time < time_index + meeting_duration)))
+    # Create Z3 constraints
+    constraints = [
+        And(day_domain >= 0, day_domain < 2),  # day is either 0 (Monday) or 1 (Tuesday)
+        And(start_time_domain >= 9, start_time_domain < 17),  # start time is between 9:00 and 16:59
+        And(end_time_domain >= 9, end_time_domain < 17),  # end time is between 9:00 and 16:59
+        Implies(day == 0, start_time!= 9.5),  # if day is Monday, start time cannot be 9:30
+        Implies(day == 0, start_time!= 11, end_time!= 13),  # if day is Monday, start time cannot be 11:00 and end time cannot be 13:00
+        Implies(day == 0, start_time!= 14, end_time!= 14.5),  # if day is Monday, start time cannot be 14:00 and end time cannot be 14:30
+        Implies(day == 0, start_time!= 16.5, end_time!= 17),  # if day is Monday, start time cannot be 16:30 and end time cannot be 17:00
+        Implies(day == 1, start_time!= 9, end_time!= 9.5),  # if day is Tuesday, start time cannot be 9:00 and end time cannot be 9:30
+        Implies(day == 1, start_time!= 10.5, end_time!= 11),  # if day is Tuesday, start time cannot be 10:30 and end time cannot be 11:00
+        Implies(day == 1, start_time!= 14.5, end_time!= 16),  # if day is Tuesday, start time cannot be 14:30 and end time cannot be 16:00
+        start_time + meeting_duration == end_time,  # meeting duration is 1 hour
+    ]
 
-# Define the constraints for Gary's schedule
-for day_index, day_name in enumerate(days):
-    for time_index in gary_schedules[day_index]:
-        s.add(Not(Implies(day == day_index, start_time == time_map[times[time_index]])))
+    # Add Gary's schedule constraints
+    for i in range(len(gary_schedule)):
+        constraints.append(Or(
+            day!= 0 or (day == 0 and start_time < gary_schedule[i][0]),
+            day!= 0 or (day == 0 and start_time + meeting_duration >= gary_schedule[i][1])
+        ))
 
-# Define the constraints for David's schedule
-for day_index, day_name in enumerate(days):
-    for time_index in david_schedules[day_index]:
-        s.add(Not(Implies(day == day_index, start_time == time_map[times[time_index]])))
+    # Add David's schedule constraints
+    for i in range(len(david_schedule)):
+        constraints.append(Or(
+            day!= 1 or (day == 1 and start_time < david_schedule[i][0]),
+            day!= 1 or (day == 1 and start_time + meeting_duration >= david_schedule[i][1])
+        ))
 
-# Solve the problem
-s.check()
+    # Solve the Z3 constraints
+    solver = Solver()
+    solver.add(constraints)
+    if solver.check() == sat:
+        model = solver.model()
+        day_value = int(model[day])
+        start_time_value = model[start_time]
+        end_time_value = model[end_time]
+        print(f'Day: {["Monday", "Tuesday"][day_value]}')
+        print(f'Start Time: {start_time_value:.1f}:00')
+        print(f'End Time: {(start_time_value + 1):.1f}:00')
+    else:
+        print('No solution found')
 
-# Get the solution
-model = s.model()
-
-# Print the solution
-print('SOLUTION:')
-print(f'Day: {days[model[day].as_long()]}')
-print(f'Start Time: {times[model[start_time].as_long()]}')
-print(f'End Time: {times[model[end_time].as_long()]}')
+# Example usage
+gary_schedule = [(9.5, 10), (11, 13), (14, 14.5), (16.5, 17), (9, 9.5), (10.5, 11), (14.5, 16)]
+david_schedule = [(9, 9.5), (10, 10.5), (11, 12.5), (13, 14.5), (15, 16), (16.5, 17), (9, 9.5), (10, 10.5), (11, 12.5), (13, 14.5), (15, 16), (16.5, 17)]
+schedule_meeting(gary_schedule, david_schedule, 1)

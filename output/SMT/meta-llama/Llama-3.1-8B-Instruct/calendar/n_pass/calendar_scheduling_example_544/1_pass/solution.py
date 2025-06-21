@@ -1,72 +1,42 @@
 from z3 import *
 
-def schedule_meeting(deborah_free, albert_blocked, albert_meeting_end, meeting_duration, start_time, end_time):
-    # Create a Z3 solver
-    s = Solver()
+# Define the variables
+day = Int('day')
+start_time = Int('start_time')
+end_time = Int('end_time')
 
-    # Define the variables
-    day = [Bool('day_{}'.format(i)) for i in range(1, 8)]  # Monday is day 1
-    time = [Bool('time_{}'.format(i)) for i in range(1, 96)]  # 96 time slots in a day (15 minutes each)
+# Define the constraints
+# Deborah is free the entire day
+deborah_free = True
 
-    # Add constraints
-    for i in range(96):
-        if i < 24 * 4:  # Before 16:00
-            s.add(Or(day[1], time[i]))  # Monday
-        else:
-            s.add(Not(Or(day[1], time[i])))  # Monday
+# Albert has blocked their calendar on Monday during 9:00 to 10:00, 10:30 to 12:00, 15:00 to 16:30
+albert_blocked = Or(
+    And(start_time >= 9, start_time < 10),
+    And(start_time >= 10.5, start_time < 12),
+    And(start_time >= 15, start_time < 16.5)
+)
 
-    for i in range(96):
-        if i in albert_blocked:
-            s.add(Not(Or(day[1], time[i])))  # Albert blocked
+# Albert can not meet on Monday after 11:00
+albert_after_11 = start_time < 11.5
 
-    for i in range(96):
-        if i >= 24 * 4:  # After 16:00
-            s.add(Not(Or(day[1], time[i])))  # Albert can't meet after 11:00
+# Meeting duration is half an hour
+meeting_duration = 0.5
 
-    for i in range(96):
-        if i >= 24 * 4 - 24 * 3:  # Between 10:00 and 11:00
-            s.add(Not(Or(day[1], time[i])))  # Deborah is free
+# Meeting time should be between 9:00 to 17:00
+meeting_time = And(start_time >= 9, start_time < 17)
 
-    for i in range(96):
-        if i >= 24 * 4 - 24 * 3 and i < 24 * 4 - 24 * 2:  # Between 10:30 and 11:00
-            s.add(Not(Or(day[1], time[i])))  # Albert blocked
+# Solve the constraints
+solver = Solver()
+solver.add([deborah_free, albert_blocked, albert_after_11, meeting_time, 
+            start_time + meeting_duration == end_time, 
+            day == 1])  # 1 represents Monday
 
-    for i in range(96):
-        if i >= 24 * 4 - 24 * 2:  # After 11:00
-            s.add(Not(Or(day[1], time[i])))  # Albert blocked
-
-    for i in range(96):
-        if i >= 24 * 4 - 24 * 3 and i < 24 * 4 - 24 * 2:  # Between 10:30 and 11:00
-            s.add(Not(Or(day[1], time[i])))  # Albert blocked
-
-    for i in range(96):
-        if i >= 24 * 4 - 24 * 2 and i < 24 * 4 - 24:  # Between 15:00 and 16:00
-            s.add(Not(Or(day[1], time[i])))  # Albert blocked
-
-    for i in range(96):
-        if i >= 24 * 4 - 24 and i < 24 * 4 - 24 * 3:  # Between 16:00 and 17:00
-            s.add(Not(Or(day[1], time[i])))  # Albert blocked
-
-    for i in range(96):
-        for j in range(i + 1, 96):
-            if i % 4 == 0 and j % 4 == 0 and (j - i) % 30 == 0 and (j - i) // 30 == meeting_duration:  # 30 minutes apart
-                s.add(Not(And(Or(day[1], time[i]), Or(day[1], time[j]))))
-
-    # Find a solution
-    if s.check() == sat:
-        model = s.model()
-        for i in range(96):
-            if model.evaluate(Or(day[1], time[i])).as_bool():
-                start_time = i // 4 * 60 + i % 4 * 15
-                end_time = start_time + 30
-                return "SOLUTION:\nDay: Monday\nStart Time: {:02d}:{:02d}\nEnd Time: {:02d}:{:02d}".format(start_time // 60, start_time % 60, end_time // 60, end_time % 60)
-    return "No solution found"
-
-# Example usage
-deborah_free = []
-albert_blocked = [0, 30, 90, 150, 210, 270]
-albert_meeting_end = 330
-meeting_duration = 30
-start_time = 0
-end_time = 0
-print(schedule_meeting(deborah_free, albert_blocked, albert_meeting_end, meeting_duration, start_time, end_time))
+# Check if there is a solution
+if solver.check() == sat:
+    model = solver.model()
+    print(f"SOLUTION:")
+    print(f"Day: {model[day].as_long()}")
+    print(f"Start Time: {model[start_time].as_real().as_decimal(2)}")
+    print(f"End Time: {model[end_time].as_real().as_decimal(2)}")
+else:
+    print("No solution exists")

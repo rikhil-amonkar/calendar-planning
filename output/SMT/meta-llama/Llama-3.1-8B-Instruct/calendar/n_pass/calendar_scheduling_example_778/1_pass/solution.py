@@ -3,90 +3,71 @@ from z3 import *
 # Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday']
 
-# Define the hours of the day
-hours = range(9, 17)
-
-# Define the participants and their schedules
+# Define the time slots for Susan and Sandra
 susan_schedule = {
-    'Monday': [Time(12, 30), Time(13, 0), Time(13, 30), Time(14, 0)],
-    'Tuesday': [Time(11, 30), Time(12, 0)],
-    'Wednesday': [Time(9, 30), Time(10, 30), Time(14, 0), Time(14, 30), Time(15, 30), Time(16, 30)]
+    'Monday': [(12, 30), (13, 30), (14, 30)],
+    'Tuesday': [(11, 30), (12, 0)],
+    'Wednesday': [(9, 30), (14, 0), (15, 30)]
 }
 
 sandra_schedule = {
-    'Monday': [Time(9, 0), Time(13, 0), Time(14, 0), Time(15, 0), Time(16, 0), Time(16, 30)],
-    'Tuesday': [Time(9, 0), Time(9, 30), Time(10, 30), Time(12, 30), Time(13, 30), Time(14, 0), Time(14, 30), Time(16, 0), Time(17, 0)],
-    'Wednesday': [Time(9, 0), Time(11, 30), Time(12, 0), Time(12, 30), Time(13, 0), Time(17, 0)]
+    'Monday': [(9, 0), (14, 0), (16, 0), (16, 30)],
+    'Tuesday': [(9, 0), (10, 30), (12, 30), (14, 0), (16, 0)],
+    'Wednesday': [(9, 0), (12, 0), (13, 0), (17, 0)]
 }
 
 # Define the meeting duration
-meeting_duration = Time(0, 30)
+meeting_duration = 30
 
-# Define the preferences
-susan_preference = 'Tuesday'
-sandra_preference = 'Monday'
-
-# Create a Z3 solver
+# Define the solver
 solver = Solver()
 
 # Define the variables
-day = Int('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
+day = [Bool(f'day_{i}') for i in range(len(days))]
+start_time = [Int(f'start_time_{i}') for i in range(len(days))]
+end_time = [Int(f'end_time_{i}') for i in range(len(days))]
 
 # Define the constraints
-for day_name in days:
-    for start_hour in hours:
-        for end_hour in hours:
-            if end_hour < start_hour:
-                continue
-            if day_name == 'Monday':
-                susan_block = susan_schedule['Monday']
-                sandra_block = sandra_schedule['Monday']
-            elif day_name == 'Tuesday':
-                susan_block = susan_schedule['Tuesday']
-                sandra_block = sandra_schedule['Tuesday']
-            else:
-                susan_block = susan_schedule['Wednesday']
-                sandra_block = sandra_schedule['Wednesday']
+for i in range(len(days)):
+    solver.add(day[i] == 1)  # Initially, all days are possible
 
-            # Check if Susan is free
-            susan_free = True
-            for block in susan_block:
-                if start_time >= block - Time(0, 30) and end_time <= block:
-                    susan_free = False
-                    break
+# Susan's constraints
+for i in range(len(days)):
+    for j in range(len(susan_schedule[days[i]])):
+        start, end = susan_schedule[days[i]][j]
+        solver.add(ForAll([x], Implies(day[i] == 1, start_time[i] >= start) == False))
+        solver.add(ForAll([x], Implies(day[i] == 1, end_time[i] <= end) == False))
 
-            # Check if Sandra is free
-            sandra_free = True
-            for block in sandra_block:
-                if start_time >= block - Time(0, 30) and end_time <= block:
-                    sandra_free = False
-                    break
+# Sandra's constraints
+for i in range(len(days)):
+    for j in range(len(sandra_schedule[days[i]])):
+        start, end = sandra_schedule[days[i]][j]
+        solver.add(ForAll([x], Implies(day[i] == 1, start_time[i] >= start) == False))
+        solver.add(ForAll([x], Implies(day[i] == 1, end_time[i] <= end) == False)))
 
-            # Check if the meeting duration fits
-            if susan_free and sandra_free and end_time - start_time == meeting_duration:
-                # Check if the day is preferred
-                if day_name == susan_preference or day_name == sandra_preference:
-                    solver.add(day == day_name)
-                    solver.add(start_time == start_hour)
-                    solver.add(end_time == end_hour)
-                    break
-                else:
-                    solver.add(day == day_name)
-                    solver.add(start_time == start_hour)
-                    solver.add(end_time == end_hour)
-                    break
+# Meeting duration constraint
+for i in range(len(days)):
+    solver.add(end_time[i] - start_time[i] == meeting_duration)
 
-# Check if a solution exists
-if solver.check() == sat:
-    model = solver.model()
-    day_value = model[day].as_string()
-    start_time_value = model[start_time].as_string().split(':')[0]
-    end_time_value = model[end_time].as_string().split(':')[0]
-    print(f'SOLUTION:')
-    print(f'Day: {day_value}')
-    print(f'Start Time: {start_time_value}:30')
-    print(f'End Time: {end_time_value}:30')
-else:
-    print('No solution exists')
+# Susan's preference constraint
+solver.add(Implies(day[1] == 1, day[1] == 0))
+
+# Sandra's constraint
+solver.add(Implies(day[0] == 1, start_time[0] >= 16))
+
+# Solve the problem
+solver.check()
+
+# Get the solution
+model = solver.model()
+
+# Print the solution
+for i in range(len(days)):
+    if model.eval(day[i]) == 1:
+        day_str = days[i]
+        start_time_str = str(model.eval(start_time[i])).split('.')[0]
+        end_time_str = str(model.eval(end_time[i])).split('.')[0]
+        print(f'DAY: {day_str}')
+        print(f'START TIME: {start_time_str}')
+        print(f'END TIME: {end_time_str}')
+        break

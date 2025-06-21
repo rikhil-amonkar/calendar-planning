@@ -2,104 +2,72 @@ from z3 import *
 
 # Define the variables
 days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
-laura_busy = [Bool(f'laura_busy_{day}_{time}') for day in days for time in times]
-philip_busy = [Bool(f'philip_busy_{day}_{time}') for day in days for time in times]
+start_times = [9, 10, 11, 12, 13, 14, 15, 16]
+end_times = [10, 11, 12, 13, 14, 15, 16, 17]
+meeting_duration = 1
 
-# Define the constraints
-laura_constraints = [
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '10:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '12:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '14:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '16:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '17:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '14:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '16:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '17:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '09:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '14:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '16:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '17:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '10:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '12:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:30']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '15:00']),
-    Or([laura_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '16:30']),
-]
-philip_constraints = [
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '09:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '17:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '09:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '14:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '14:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '15:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '16:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '09:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '10:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '12:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '17:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '09:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '12:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '17:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '09:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '10:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '11:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '12:30']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '13:00']),
-    Or([philip_busy[day_idx * len(times) + time_idx] for time_idx in range(len(times)) if times[time_idx] == '17:00']),
-]
-# Wednesday is not a valid day for Philip
-philip_constraints[10] = Or([Not(And(philip_busy[2 * len(times) + time_idx] for time_idx in range(len(times)))) for time_idx in range(len(times))])
+# Laura's schedule
+laura_schedule = {
+    'Monday': [(10, 11), (12, 13), (14, 15), (16, 17)],
+    'Tuesday': [(9, 10), (11, 12), (13, 14), (16, 17)],
+    'Wednesday': [(11, 12), (12, 13), (15, 16)],
+    'Thursday': [(10, 11), (12, 14), (15, 16)]
+}
 
-# Define the solver
+# Philip's schedule
+philip_schedule = {
+    'Monday': [(9, 17)],
+    'Tuesday': [(9, 11), (11, 12), (13, 14), (15, 16), (14, 15)],
+    'Wednesday': [(9, 10), (11, 12), (12, 16), (16, 17)],
+    'Thursday': [(9, 10), (11, 13), (13, 17)]
+}
+
+# Philip cannot meet on Wednesday
+philip_cannot_meet = 'Wednesday'
+
+# Create the solver
 solver = Solver()
 
-# Add the constraints to the solver
-for day_idx in range(len(days)):
-    for time_idx in range(len(times)):
-        solver.add(laura_busy[day_idx * len(times) + time_idx] == Not(Or(laura_constraints[day_idx * len(times) + time_idx])))
-        solver.add(philip_busy[day_idx * len(times) + time_idx] == Not(Or(philip_constraints[day_idx * len(times) + time_idx])))
+# Define the variables for the meeting day, start time, and end time
+day = Int('day')
+start_time = Int('start_time')
+end_time = Int('end_time')
 
-# Define the variables for the meeting
-meeting_day = Int('meeting_day')
-meeting_start_time = Int('meeting_start_time')
-meeting_end_time = Int('meeting_end_time')
-
-# Add the constraints for the meeting
-solver.add(meeting_day >= 0)
-solver.add(meeting_day < len(days))
-solver.add(meeting_start_time >= 0)
-solver.add(meeting_start_time < len(times))
-solver.add(meeting_end_time >= 0)
-solver.add(meeting_end_time < len(times))
-solver.add(meeting_start_time + 1 == meeting_end_time)  # Meeting duration is 1 hour
-solver.add(meeting_day * len(times) + meeting_start_time >= 0)
-solver.add(meeting_day * len(times) + meeting_start_time < len(days) * len(times))
-
-# Define the preferences for the meeting
-solver.add(meeting_day == 0)  # Monday is the preferred day
-solver.add(meeting_start_time == 10)  # 10:00 is the preferred start time
+# Add the constraints
+for day_name in days:
+    if day_name!= philip_cannot_meet:
+        for start_hour in start_times:
+            for end_hour in end_times:
+                if start_hour < end_hour - meeting_duration:
+                    # Check if the meeting time conflicts with Laura's schedule
+                    conflict = False
+                    for time in laura_schedule[day_name]:
+                        if start_hour <= time[0] and time[1] <= end_hour:
+                            conflict = True
+                            break
+                    if not conflict:
+                        # Check if the meeting time conflicts with Philip's schedule
+                        conflict = False
+                        for time in philip_schedule[day_name]:
+                            if start_hour <= time[0] and time[1] <= end_hour:
+                                conflict = True
+                                break
+                        if not conflict:
+                            # Add the constraint
+                            solver.add(And(day == day_name, start_time == start_hour, end_time == end_hour))
 
 # Solve the problem
 if solver.check() == sat:
+    # Get the solution
     model = solver.model()
-    day = days[model[meeting_day].as_long()]
-    start_time = times[model[meeting_start_time].as_long()]
-    end_time = times[model[meeting_end_time].as_long()]
-    print(f'SOLUTION:\nDay: {day}\nStart Time: {start_time}\nEnd Time: {end_time}')
+    day_name = days[model[day].as_long()]
+    start_hour = model[start_time].as_long()
+    end_hour = model[end_time].as_long()
+
+    # Print the solution
+    print('SOLUTION:')
+    print(f'Day: {day_name}')
+    print(f'Start Time: {start_hour:02d}:00')
+    print(f'End Time: {end_hour:02d}:00')
 else:
-    print('No solution found')
+    print('No solution found.')

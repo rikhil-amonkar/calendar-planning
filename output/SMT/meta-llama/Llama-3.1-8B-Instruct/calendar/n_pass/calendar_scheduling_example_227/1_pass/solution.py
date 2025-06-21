@@ -1,63 +1,46 @@
 from z3 import *
 
 def schedule_meeting():
-    # Define the day of the week (Monday)
-    day = 0
-    
-    # Define the start and end times of the work hours (9:00 to 17:00)
-    start_time = 9 * 60
-    end_time = 17 * 60
-    
-    # Define the meeting duration (half an hour)
-    meeting_duration = 30
-    
-    # Define the existing schedules for each participant
-    natalie_schedule = [0] * 24 * 60
-    david_schedule = [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    douglas_schedule = [1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    ralph_schedule = [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
-    jordan_schedule = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
-    
-    # Define the preferences for David
-    david_preferences = [0] * 24 * 60
-    for i in range(14 * 60, end_time):
-        david_preferences[i] = 1
-    
-    # Create a Z3 solver
-    s = Solver()
-    
-    # Define the variables for the start and end times of the meeting
-    start_time_var = Int('start_time')
-    end_time_var = Int('end_time')
-    
-    # Define the constraints for the meeting time
-    s.add(start_time_var >= start_time)
-    s.add(start_time_var + meeting_duration <= end_time)
-    s.add(end_time_var <= end_time)
-    
-    # Define the constraints for the existing schedules
-    for i in range(start_time, end_time - meeting_duration + 1):
-        s.add(Or(natalie_schedule[i] == 0, natalie_schedule[i + meeting_duration] == 0))
-        s.add(Or(david_schedule[i] == 0, david_schedule[i + meeting_duration] == 0))
-        s.add(Or(douglas_schedule[i] == 0, douglas_schedule[i + meeting_duration] == 0))
-        s.add(Or(ralph_schedule[i] == 0, ralph_schedule[i + meeting_duration] == 0))
-        s.add(Or(jordan_schedule[i] == 0, jordan_schedule[i + meeting_duration] == 0))
-    
-    # Define the constraints for David's preferences
-    for i in range(14 * 60, end_time):
-        s.add(Implies(david_preferences[i] == 1, Or(start_time_var < i, end_time_var <= i)))
-    
-    # Solve the constraints
-    if s.check() == sat:
-        # Get the model
-        m = s.model()
-        
-        # Print the solution
-        print('SOLUTION:')
-        print(f'Day: {day}')
-        print(f'Start Time: {m[start_time_var].as_long() // 60:02d}:{m[start_time_var].as_long() % 60:02d}')
-        print(f'End Time: {(m[start_time_var].as_long() // 60 + m[start_time_var].as_long() % 60 + meeting_duration) // 60:02d}:{((m[start_time_var].as_long() // 60 + m[start_time_var].as_long() % 60 + meeting_duration) % 60):02d}')
-    else:
-        print('No solution found')
+    # Define the variables
+    day = 'Monday'
+    start_time = Int('start_time')
+    end_time = Int('end_time')
+    duration = 30  # Meeting duration in minutes
+    start_time_bounds = [9 * 60, 17 * 60]  # 9:00 to 17:00 in minutes
 
-schedule_meeting()
+    # Define the constraints
+    constraints = [
+        And(start_time >= start_time_bounds[0], start_time <= start_time_bounds[1]),  # Start time within work hours
+        start_time + duration <= 17 * 60,  # End time within work hours
+        Or(start_time >= 14 * 60, start_time <= 11 * 60 + 30),  # David does not want to meet before 14:00
+    ]
+
+    # Define the existing schedules
+    natalie_schedule = [0, 24 * 60]  # Natalie's schedule is wide open the entire day
+    david_schedule = [11 * 60, 11 * 60 + 30], [14 * 60, 14 * 60 + 30]  # David's schedule
+    douglas_schedule = [9 * 60 + 30, 10 * 60], [11 * 60, 11 * 60 + 30], [13 * 60, 13 * 60 + 30], [14 * 60, 14 * 60 + 30]  # Douglas' schedule
+    ralph_schedule = [9 * 60, 9 * 60 + 30], [10 * 60, 11 * 60], [11 * 60 + 30, 12 * 60 + 30], [13 * 60 + 30, 15 * 60], [15 * 60 + 30, 16 * 60], [16 * 60 + 30, 17 * 60]  # Ralph's schedule
+    jordan_schedule = [9 * 60, 10 * 60], [12 * 60, 12 * 60 + 30], [13 * 60, 13 * 60 + 30], [14 * 60, 14 * 60 + 30], [15 * 60 + 30, 17 * 60]  # Jordan's schedule
+
+    # Add constraints for each participant's schedule
+    for schedule in [natalie_schedule, david_schedule, douglas_schedule, ralph_schedule, jordan_schedule]:
+        for start, end in schedule:
+            constraints.append(Or(start > end_time + duration, start > start_time, end_time > end))
+
+    # Solve the constraints
+    solver = Solver()
+    solver.add(constraints)
+    solver.add(start_time + duration == end_time)
+    if solver.check() == sat:
+        model = solver.model()
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+        hours_start = start_time_value // 60
+        minutes_start = start_time_value % 60
+        hours_end = end_time_value // 60
+        minutes_end = end_time_value % 60
+        return f'SOLUTION:\nDay: {day}\nStart Time: {hours_start:02d}:{minutes_start:02d}\nEnd Time: {hours_end:02d}:{minutes_end:02d}'
+    else:
+        return 'No solution found'
+
+print(schedule_meeting())

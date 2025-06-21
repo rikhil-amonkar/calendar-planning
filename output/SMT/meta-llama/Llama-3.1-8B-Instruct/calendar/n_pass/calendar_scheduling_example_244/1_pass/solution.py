@@ -1,46 +1,55 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the variables
-    day = [Bool('day') for _ in range(2)]  # Monday and Tuesday
-    start_time = [Int('start_time') for _ in range(2)]
-    end_time = [Int('end_time') for _ in range(2)]
+# Define the day of the week (Monday = 0, Tuesday = 1,..., Sunday = 6)
+day_of_week = [0]
 
-    # Define the constraints
-    constraints = [
-        day[0] == True,  # Meeting is on Monday
-        start_time[0] >= 9,  # Start time is after 9:00
-        start_time[0] <= 17,  # Start time is before 17:00
-        end_time[0] >= 9,  # End time is after 9:00
-        end_time[0] <= 17,  # End time is before 17:00
-        start_time[0] + 30 <= 17,  # Meeting duration is 30 minutes
-        start_time[0] % 30 == 0,  # Start time is a multiple of 30 minutes
-    ]
+# Define the start and end times (9:00 = 9, 17:00 = 17)
+start_time = [9]
+end_time = [17]
 
-    # Define the participant constraints
-    participants = [
-        ['Walter', [9, 9, 10, 10, 13, 30, 14, 30, 15, 0, 16, 0]],
-        ['Cynthia', [9, 0, 9, 30, 10, 0, 10, 30, 13, 30, 14, 30, 15, 0, 16, 0]],
-        ['Ann', [10, 0, 11, 0, 13, 0, 13, 30, 14, 0, 15, 0, 16, 0, 16, 30]],
-        ['Catherine', [9, 0, 11, 30, 12, 30, 13, 0, 13, 30, 14, 30, 17, 0]],
-        ['Kyle', [9, 0, 9, 30, 10, 0, 11, 30, 12, 0, 12, 30, 13, 0, 14, 30, 15, 0, 16, 0]],
-    ]
+# Define the meeting duration (30 minutes)
+meeting_duration = 30
 
-    for participant, schedule in participants:
-        for i in range(1, len(schedule), 2):
-            constraints.append(start_time[0] + 30 > schedule[i])
-            constraints.append(end_time[0] < schedule[i + 1])
+# Define the existing schedules for each participant
+schedules = {
+    'Walter': [],
+    'Cynthia': [(9, 9.5), (10, 10.5), (13.5, 14.5), (15, 16)],
+    'Ann': [(10, 11), (13, 13.5), (14, 15), (16, 16.5)],
+    'Catherine': [(9, 11.5), (12.5, 13.5), (14.5, 17)],
+    'Kyle': [(9, 9.5), (10, 11.5), (12, 12.5), (13, 14.5), (15, 16)]
+}
 
-    # Solve the constraints
-    solver = Solver()
-    solver.add(constraints)
-    solver.check()
-    model = solver.model()
+# Define the solver
+s = Solver()
 
-    # Print the solution
+# Define the variables
+day = Int('day')
+start = Int('start')
+end = Int('end')
+
+# Add the constraints
+s.add(day == 0)  # Monday
+s.add(start >= 9)  # Start time must be at least 9:00
+s.add(end <= 17)  # End time must be at most 17:00
+s.add(end - start >= meeting_duration)  # Meeting duration must be at least 30 minutes
+
+# Check if the meeting time conflicts with anyone's schedule
+for participant, schedule in schedules.items():
+    for start_time_slot, end_time_slot in schedule:
+        s.add(Or(start + meeting_duration < start_time_slot, end < start_time_slot))
+
+# Check if the meeting time is within the work hours
+s.add(And(start >= 9, end <= 17))
+
+# Check if the meeting time is a multiple of 30 minutes
+s.add(And(start % 0.5 == 0, end % 0.5 == 0))
+
+# Solve the constraints
+if s.check() == sat:
+    model = s.model()
     print('SOLUTION:')
-    print(f'Day: Monday')
-    print(f'Start Time: {model[start_time[0]].as_long():02d}:00')
-    print(f'End Time: {(model[start_time[0]].as_long() + 30):02d}:00')
-
-schedule_meeting()
+    print(f'Day: {model[day]}')
+    print(f'Start Time: {model[start]:.2f}')
+    print(f'End Time: {model[end]:.2f}')
+else:
+    print('No solution found.')

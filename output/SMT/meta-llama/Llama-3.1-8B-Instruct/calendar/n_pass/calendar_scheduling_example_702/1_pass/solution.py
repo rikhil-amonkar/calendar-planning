@@ -1,96 +1,83 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the days and hours
-    days = ['Monday', 'Tuesday', 'Wednesday']
-    hours = [9] + [i for i in range(10, 18)]  # 9:00 to 17:00
+# Define the days of the week
+days = ['Monday', 'Tuesday', 'Wednesday']
 
-    # Define the existing schedules for Robert and Ralph
-    robert_schedules = {
-        'Monday': [(11, 30), (14, 30), (15, 30)],
-        'Tuesday': [(10, 30), (15, 30)],
-        'Wednesday': [(10, 0), (11, 30), (12, 30), (13, 30), (15, 30), (16, 0)]
-    }
+# Define the start and end times of the work hours
+start_time = 9
+end_time = 17
 
-    ralph_schedules = {
-        'Monday': [(10, 0), (14, 30), (15, 0)],
-        'Tuesday': [(9, 0), (10, 0), (11, 0), (12, 0), (14, 0), (16, 0)],
-        'Wednesday': [(10, 30), (11, 30), (13, 0), (16, 30)]
-    }
+# Define the duration of the meeting
+meeting_duration = 30
 
-    # Define the preferences
-    robert_preferences = ['Monday', 'Tuesday', 'Wednesday']
+# Define the existing schedules for Robert and Ralph
+robert_schedule = {
+    'Monday': [(11, 30), (14, 30), (15, 30, 16)],
+    'Tuesday': [(10, 30), (15, 0, 15, 30)],
+    'Wednesday': [(10, 0, 11), (11, 30, 12), (12, 30, 13), (13, 30, 14), (15, 0, 15, 30), (16, 0, 16, 30)]
+}
 
-    # Create Z3 variables
-    day = Int('day')
-    start_hour = Int('start_hour')
-    start_minute = Int('start_minute')
-    end_hour = Int('end_hour')
-    end_minute = Int('end_minute')
+ralph_schedule = {
+    'Monday': [(10, 0, 13, 30), (14, 0, 14, 30), (15, 0, 17)],
+    'Tuesday': [(9, 0, 9, 30), (10, 0, 10, 30), (11, 0, 11, 30), (12, 0, 13), (14, 0, 15, 30), (16, 0, 17)],
+    'Wednesday': [(10, 30, 11), (11, 30, 12), (13, 0, 14, 30), (16, 30, 17)]
+}
 
-    # Create Z3 constraints
-    day_val = [day == i for i in range(len(days))]
-    start_hour_val = [start_hour == i for i in hours]
-    start_minute_val = [start_minute == 0]
-    end_hour_val = [end_hour == start_hour + 0.5]
-    end_minute_val = [end_minute == 30]
+# Define the preferences of Robert
+robert_preferences = {
+    'Monday': False
+}
 
-    # Constraints for Robert's schedule
-    robert_constraints = []
-    for d, s in robert_schedules.items():
-        for st, et in s:
-            robert_constraints.append(If(day_val[days.index(d)], And(start_hour_val[hours.index(st)], start_minute_val, end_hour_val[hours.index(et)], end_minute_val), True))
+# Define the solver
+solver = Solver()
 
-    # Constraints for Ralph's schedule
-    ralph_constraints = []
-    for d, s in ralph_schedules.items():
-        for st, et in s:
-            ralph_constraints.append(If(day_val[days.index(d)], And(start_hour_val[hours.index(st)], start_minute_val, end_hour_val[hours.index(et)], end_minute_val), True))
+# Define the variables
+day = [Bool('day_' + str(i)) for i in range(len(days))]
+start_time_var = [Int('start_time_' + str(i)) for i in range(len(days))]
+end_time_var = [Int('end_time_' + str(i)) for i in range(len(days))]
 
-    # Constraint to avoid more meetings on Monday
-    mon_day = day_val[0]
-    mon_start_hour = start_hour_val[hours.index(9)]
-    mon_start_minute = start_minute_val
-    mon_end_hour = end_hour_val[hours.index(17)]
-    mon_end_minute = end_minute_val
-    mon_constraints = [mon_day, mon_start_hour, mon_start_minute, mon_end_hour, mon_end_minute]
-    for st, et in robert_schedules['Monday']:
-        mon_constraints.append(Not(And(mon_day, And(start_hour_val[hours.index(st)], start_minute_val, end_hour_val[hours.index(et)], end_minute_val))))
+# Add constraints
+for i in range(len(days)):
+    solver.add(Or([day[i]]))
+    solver.add(Implies(day[i], start_time_var[i] >= start_time))
+    solver.add(Implies(day[i], start_time_var[i] <= end_time))
+    solver.add(Implies(day[i], end_time_var[i] >= start_time_var[i]))
+    solver.add(Implies(day[i], end_time_var[i] <= end_time))
 
-    # Constraint to choose the earliest available time
-    earliest_start_hour = If(day == 0, start_hour == 9, If(day == 1, start_hour == 9, start_hour == 9))
-    earliest_start_minute = start_minute_val
-    earliest_end_hour = If(day == 0, end_hour == 9.5, If(day == 1, end_hour == 9.5, end_hour == 9.5))
-    earliest_end_minute = end_minute_val
-    earliest_constraints = [earliest_start_hour, earliest_start_minute, earliest_end_hour, earliest_end_minute]
+# Add constraints for Robert's schedule
+for i in range(len(days)):
+    for time in robert_schedule[days[i]]:
+        if isinstance(time, tuple):
+            start, end = time
+        else:
+            start, end = time, time + meeting_duration
+        solver.add(Implies(day[i], start_time_var[i] > end))
+        solver.add(Implies(day[i], end_time_var[i] < start))
 
-    # Create the Z3 solver
-    s = Solver()
+# Add constraints for Ralph's schedule
+for i in range(len(days)):
+    for time in ralph_schedule[days[i]]:
+        if isinstance(time, tuple):
+            start, end = time
+        else:
+            start, end = time, time + meeting_duration
+        solver.add(Implies(day[i], start_time_var[i] > end))
+        solver.add(Implies(day[i], end_time_var[i] < start))
 
-    # Add the constraints to the solver
-    s.add(robert_constraints)
-    s.add(ralph_constraints)
-    s.add(mon_constraints)
-    s.add(earliest_constraints)
+# Add constraints for Robert's preferences
+for i in range(len(days)):
+    solver.add(Implies(robert_preferences[days[i]], Not(day[i])))
 
-    # Solve the constraints
-    if s.check() == sat:
-        # Get the model
-        m = s.model()
+# Add constraints for meeting duration
+for i in range(len(days)):
+    solver.add(Implies(day[i], end_time_var[i] - start_time_var[i] == meeting_duration))
 
-        # Extract the values from the model
-        day_val = m[day].as_long()
-        start_hour_val = m[start_hour].as_long()
-        start_minute_val = m[start_minute].as_long()
-        end_hour_val = m[end_hour].as_long()
-        end_minute_val = m[end_minute].as_long()
-
-        # Print the solution
-        print(f"SOLUTION:")
-        print(f"Day: {days[day_val]}")
-        print(f"Start Time: {hours[start_hour_val]}:{start_minute_val:02d}")
-        print(f"End Time: {hours[end_hour_val]}:{end_minute_val:02d}")
-    else:
-        print("No solution found.")
-
-schedule_meeting()
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    day_to_meet = [days[i] for i in range(len(days)) if model.evaluate(day[i]).as_bool() == True][0]
+    start_time_to_meet = model.evaluate(start_time_var[days.index(day_to_meet)]).as_long()
+    end_time_to_meet = model.evaluate(end_time_var[days.index(day_to_meet)]).as_long()
+    print(f'SOLUTION:\nDay: {day_to_meet}\nStart Time: {str(start_time_to_meet).zfill(2)}:{str((start_time_to_meet % 60)).zfill(2)}\nEnd Time: {str(end_time_to_meet).zfill(2)}:{str((end_time_to_meet % 60)).zfill(2)}')
+else:
+    print('No solution found')

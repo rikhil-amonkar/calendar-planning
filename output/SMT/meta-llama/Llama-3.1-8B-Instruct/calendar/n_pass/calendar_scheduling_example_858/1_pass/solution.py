@@ -1,80 +1,115 @@
 from z3 import *
 
-def solve_meeting_schedule(carl_schedule, margaret_schedule, preferred_day, meeting_duration):
-    # Define the days of the week
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-
-    # Define the start and end times
-    start_time = 9
-    end_time = 17
-    time_slots = [Int(f"slot_{i}") for i in range(4 * (end_time - start_time))]
-
-    # Define the constraints for Carl's schedule
-    carl_constraints = []
-    for i in range(len(carl_schedule)):
-        day = days.index(carl_schedule[i][0])
-        start = carl_schedule[i][1]
-        end = carl_schedule[i][2]
-        for j in range(start * 4, end * 4):
-            carl_constraints.append(Not(time_slots[j]))
-
-    # Define the constraints for Margaret's schedule
-    margaret_constraints = []
-    for i in range(len(margaret_schedule)):
-        day = days.index(margaret_schedule[i][0])
-        start = margaret_schedule[i][1]
-        end = margaret_schedule[i][2]
-        for j in range(start * 4, end * 4):
-            margaret_constraints.append(Not(time_slots[j]))
-
-    # Define the constraint to avoid more meetings on Thursday for Carl
-    if preferred_day == 'Thursday':
-        carl_constraints.append(Not(time_slots[16]))
-
-    # Define the constraint for the meeting duration
-    for i in range(len(time_slots) - 1):
-        time_slots[i] = time_slots[i] + 1
-        time_slots[i] = If(time_slots[i] > 16, 0, time_slots[i])
-        time_slots[i+1] = time_slots[i+1] + 1
-        time_slots[i+1] = If(time_slots[i+1] > 16, 0, time_slots[i+1])
-        time_slots[i] = time_slots[i] * 30 + time_slots[i+1]
-        time_slots[i+1] = 0
-    for i in range(len(time_slots) - 1):
-        time_slots[i] = If(time_slots[i] > 480, 0, time_slots[i])
-    time_slots = [Bool(f"time_{i}") for i in range(len(time_slots))]
-
-    # Define the constraints for the meeting time
-    for i in range(len(time_slots) - meeting_duration + 1):
-        time_slots[i] = time_slots[i] + meeting_duration
-        time_slots[i] = If(time_slots[i] > len(time_slots) - 1, 0, time_slots[i])
-
-    # Define the solver
+def schedule_meeting(carl_schedules, margaret_schedules, day, duration, preference):
+    # Create a Z3 solver
     solver = Solver()
 
-    # Add the constraints to the solver
-    for constraint in carl_constraints:
-        solver.add(constraint)
-    for constraint in margaret_constraints:
-        solver.add(constraint)
+    # Define variables
+    day_var = [Bool(f'day_{i}') for i in range(4)]
+    time_var = [Bool(f'time_{i}') for i in range(8)]
+    start_time_var = [Int(f'start_time_{i}') for i in range(8)]
+    end_time_var = [Int(f'end_time_{i}') for i in range(8)]
 
-    # Add the constraints for the meeting time
-    for i in range(len(time_slots) - meeting_duration + 1):
-        solver.add(Or([time_slots[i], time_slots[i+1], time_slots[i+2], time_slots[i+3]]))
+    # Add constraints for day
+    for i in range(4):
+        solver.add(Or([day_var[i], day_var[i].not()]))
+    solver.add(Implies(day_var[0], day == 'Monday'))
+    solver.add(Implies(day_var[1], day == 'Tuesday'))
+    solver.add(Implies(day_var[2], day == 'Wednesday'))
+    solver.add(Implies(day_var[3], day == 'Thursday'))
 
-    # Solve the problem
+    # Add constraints for time
+    for i in range(8):
+        solver.add(Or([time_var[i], time_var[i].not()]))
+    solver.add(Implies(time_var[0], start_time_var[0] == 9))
+    solver.add(Implies(time_var[0], end_time_var[0] == 10))
+    solver.add(Implies(time_var[1], start_time_var[1] == 10))
+    solver.add(Implies(time_var[1], end_time_var[1] == 11))
+    solver.add(Implies(time_var[2], start_time_var[2] == 11))
+    solver.add(Implies(time_var[2], end_time_var[2] == 12))
+    solver.add(Implies(time_var[3], start_time_var[3] == 12))
+    solver.add(Implies(time_var[3], end_time_var[3] == 13))
+    solver.add(Implies(time_var[4], start_time_var[4] == 13))
+    solver.add(Implies(time_var[4], end_time_var[4] == 14))
+    solver.add(Implies(time_var[5], start_time_var[5] == 14))
+    solver.add(Implies(time_var[5], end_time_var[5] == 15))
+    solver.add(Implies(time_var[6], start_time_var[6] == 15))
+    solver.add(Implies(time_var[6], end_time_var[6] == 16))
+    solver.add(Implies(time_var[7], start_time_var[7] == 16))
+    solver.add(Implies(time_var[7], end_time_var[7] == 17))
+
+    # Add constraints for duration
+    for i in range(8):
+        solver.add(start_time_var[i] + duration <= end_time_var[i])
+
+    # Add constraints for Carl's schedule
+    for i in range(4):
+        for j in range(8):
+            if (day == 'Monday' and 9 <= start_time_var[j] <= 17 and (11 <= start_time_var[j] <= 11.5 or 11.5 <= start_time_var[j] <= 11.5)):
+                solver.add(Not(day_var[i]))
+            elif (day == 'Tuesday' and 9 <= start_time_var[j] <= 17 and (14.5 <= start_time_var[j] <= 15 or 14.5 <= start_time_var[j] <= 15)):
+                solver.add(Not(day_var[i]))
+            elif (day == 'Wednesday' and 9 <= start_time_var[j] <= 17 and (10 <= start_time_var[j] <= 11.5 or 13 <= start_time_var[j] <= 13.5)):
+                solver.add(Not(day_var[i]))
+            elif (day == 'Thursday' and 9 <= start_time_var[j] <= 17 and (13.5 <= start_time_var[j] <= 14 or 16 <= start_time_var[j] <= 16.5)):
+                solver.add(Not(day_var[i]))
+
+    # Add constraints for Margaret's schedule
+    for i in range(4):
+        for j in range(8):
+            if (day == 'Monday' and 9 <= start_time_var[j] <= 17 and (9 <= start_time_var[j] <= 10.5 or 11 <= start_time_var[j] <= 17)):
+                solver.add(Not(day_var[i]))
+            elif (day == 'Tuesday' and 9 <= start_time_var[j] <= 17 and (9.5 <= start_time_var[j] <= 12 or 13.5 <= start_time_var[j] <= 14 or 15.5 <= start_time_var[j] <= 17)):
+                solver.add(Not(day_var[i]))
+            elif (day == 'Wednesday' and 9 <= start_time_var[j] <= 17 and (9.5 <= start_time_var[j] <= 12 or 12.5 <= start_time_var[j] <= 13 or 13.5 <= start_time_var[j] <= 14.5 or 15 <= start_time_var[j] <= 17)):
+                solver.add(Not(day_var[i]))
+            elif (day == 'Thursday' and 9 <= start_time_var[j] <= 17 and (10 <= start_time_var[j] <= 12 or 12.5 <= start_time_var[j] <= 14 or 14.5 <= start_time_var[j] <= 17)):
+                solver.add(Not(day_var[i]))
+
+    # Add preference constraint
+    if preference == 'Thursday':
+        for i in range(8):
+            if start_time_var[i] >= 13.5 and day_var[3]:
+                solver.add(Not(time_var[i]))
+
+    # Check if there's a solution
     if solver.check() == sat:
         model = solver.model()
-        day = days[model[time_slots[0]].as_long() // 4]
-        start_time = model[time_slots[0]].as_long() % 4
-        end_time = model[time_slots[1]].as_long() % 4
-        return f"SOLUTION:\nDay: {day}\nStart Time: {start_time:02d}:00\nEnd Time: {end_time:02d}:00"
+        day = [str(day) for day in day_var]
+        day = [day[i] for i in range(4) if model.eval(day_var[i])]
+        time = [str(time) for time in time_var]
+        time = [time[i] for i in range(8) if model.eval(time_var[i])]
+        start_time = [str(start_time) for start_time in start_time_var]
+        start_time = [start_time[i] for i in range(8) if model.eval(time_var[i])]
+        end_time = [str(end_time) for end_time in end_time_var]
+        end_time = [end_time[i] for i in range(8) if model.eval(time_var[i])]
+        print(f'SOLUTION:')
+        print(f'Day: {day[0]}')
+        print(f'Start Time: {start_time[0]}')
+        print(f'End Time: {end_time[0]}')
     else:
-        return "No solution found"
+        print('NO SOLUTION')
 
-# Example usage
-carl_schedule = [('Monday', 11, 11), ('Tuesday', 14, 15), ('Wednesday', 10, 11), ('Wednesday', 13, 13), ('Thursday', 13, 14), ('Thursday', 16, 16)]
-margaret_schedule = [('Monday', 9, 10), ('Monday', 11, 17), ('Tuesday', 9, 12), ('Tuesday', 13, 14), ('Tuesday', 15, 17), ('Wednesday', 9, 12), ('Wednesday', 12, 13), ('Wednesday', 13, 14), ('Wednesday', 15, 17), ('Thursday', 10, 12), ('Thursday', 12, 14), ('Thursday', 14, 17)]
-preferred_day = 'Wednesday'
-meeting_duration = 60
+# Define existing schedules for Carl and Margaret
+carl_schedules = {
+    'Monday': [(11, 11.5), (17, 17)],
+    'Tuesday': [(14.5, 15), (17, 17)],
+    'Wednesday': [(10, 11.5), (13, 13.5), (17, 17)],
+    'Thursday': [(13.5, 14), (16, 16.5), (17, 17)]
+}
 
-print(solve_meeting_schedule(carl_schedule, margaret_schedule, preferred_day, meeting_duration))
+margaret_schedules = {
+    'Monday': [(9, 10.5), (11, 17), (17, 17)],
+    'Tuesday': [(9.5, 12), (13.5, 14), (15.5, 17), (17, 17)],
+    'Wednesday': [(9.5, 12), (12.5, 13), (13.5, 14.5), (15, 17), (17, 17)],
+    'Thursday': [(10, 12), (12.5, 14), (14.5, 17), (17, 17)]
+}
+
+# Define the meeting duration
+duration = 1
+
+# Define the preference
+preference = 'Thursday'
+
+# Schedule the meeting
+schedule_meeting(carl_schedules, margaret_schedules, 'Monday', duration, preference)

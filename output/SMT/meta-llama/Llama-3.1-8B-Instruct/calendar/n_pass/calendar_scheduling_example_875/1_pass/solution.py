@@ -3,86 +3,72 @@ from z3 import *
 # Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
 
-# Define the start and end times
-start_times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
-end_times = ['09:30', '11:00', '12:00', '10:30', '11:30', '12:30', '13:00', '14:00', '14:30', '16:00', '12:00', '14:30', '16:30', '17:00', '13:00', '16:30', '17:00']
+# Define the start and end times of the work hours
+start_time = 9
+end_time = 17
 
-# Define the duration of the meeting
+# Define the meeting duration
 meeting_duration = 1
 
 # Define the existing schedules for Natalie and William
 natalie_schedule = {
-    'Monday': ['09:00-09:30', '10:00-12:00', '12:30-13:00', '14:00-14:30', '15:00-16:30'],
-    'Tuesday': ['09:00-09:30', '10:00-10:30', '12:30-14:00', '16:00-17:00'],
-    'Wednesday': ['11:00-11:30', '16:00-16:30'],
-    'Thursday': ['10:00-11:00', '11:30-15:00', '15:30-16:00', '16:30-17:00']
+    'Monday': [(9, 30), (10, 12), (12, 30), (14, 30), (15, 30), (16, 30)],
+    'Tuesday': [(9, 30), (10, 30), (12, 30, 14), (16, 17)],
+    'Wednesday': [(11, 30), (16, 30)],
+    'Thursday': [(10, 11), (11, 30, 15), (15, 30, 16), (16, 30, 17)]
 }
 
 william_schedule = {
-    'Monday': ['09:30-11:00', '11:30-17:00'],
-    'Tuesday': ['09:00-13:00', '13:30-16:00'],
-    'Wednesday': ['09:00-12:30', '13:00-14:30', '15:30-16:00', '16:30-17:00'],
-    'Thursday': ['09:00-10:30', '11:00-11:30', '12:00-12:30', '13:00-14:00', '15:00-17:00']
+    'Monday': [(9, 30), (11, 30, 17)],
+    'Tuesday': [(9, 13), (13, 30, 16)],
+    'Wednesday': [(9, 12, 30), (13, 30, 14, 30), (15, 30, 16), (16, 30, 17)],
+    'Thursday': [(9, 10, 30), (11, 11, 30), (12, 12, 30), (13, 14), (15, 17)]
 }
-
-# Convert the schedules to a format that can be used by the Z3 solver
-natalie_schedule_z3 = {}
-for day, times in natalie_schedule.items():
-    natalie_schedule_z3[day] = []
-    for time in times:
-        start, end = time.split('-')
-        start_hour, start_minute = map(int, start.split(':'))
-        end_hour, end_minute = map(int, end.split(':'))
-        natalie_schedule_z3[day].append((start_hour, start_minute, end_hour, end_minute))
-
-william_schedule_z3 = {}
-for day, times in william_schedule.items():
-    william_schedule_z3[day] = []
-    for time in times:
-        start, end = time.split('-')
-        start_hour, start_minute = map(int, start.split(':'))
-        end_hour, end_minute = map(int, end.split(':'))
-        william_schedule_z3[day].append((start_hour, start_minute, end_hour, end_minute))
 
 # Define the Z3 solver
 solver = Solver()
 
-# Define the variables
-day = Int('day')
-start_hour = Int('start_hour')
-start_minute = Int('start_minute')
-end_hour = Int('end_hour')
-end_minute = Int('end_minute')
+# Define the variables for the day, start time, and end time
+day = [Bool(f'day_{i}') for i in range(4)]
+start_time_var = [Int(f'start_time_{i}') for i in range(4)]
+end_time_var = [Int(f'end_time_{i}') for i in range(4)]
 
-# Define the constraints
-solver.add(day >= 0)
-solver.add(day < len(days))
-solver.add(start_hour >= 9)
-solver.add(start_hour < 17)
-solver.add(start_minute >= 0)
-solver.add(start_minute < 60)
-solver.add(end_hour >= 9)
-solver.add(end_hour < 17)
-solver.add(end_minute >= 0)
-solver.add(end_minute < 60)
-solver.add(start_hour < end_hour or (start_hour == end_hour and start_minute <= end_minute))
-solver.add(end_hour - start_hour >= meeting_duration)
-solver.add(And([start_hour + start_minute >= natalie_schedule_z3[days[day]][i][0] + natalie_schedule_z3[days[day]][i][1] for i in range(len(natalie_schedule_z3[days[day]]))]))
-solver.add(And([end_hour + end_minute <= natalie_schedule_z3[days[day]][i][2] + natalie_schedule_z3[days[day]][i][3] for i in range(len(natalie_schedule_z3[days[day]]))]))
-solver.add(And([start_hour + start_minute >= william_schedule_z3[days[day]][i][0] + william_schedule_z3[days[day]][i][1] for i in range(len(william_schedule_z3[days[day]]))]))
-solver.add(And([end_hour + end_minute <= william_schedule_z3[days[day]][i][2] + william_schedule_z3[days[day]][i][3] for i in range(len(william_schedule_z3[days[day]]))]))
+# Add constraints for the day
+for i in range(4):
+    solver.add(day[i] == day[i])
 
-# Check if there is a solution
+# Add constraints for the start and end times
+for i in range(4):
+    solver.add(start_time_var[i] >= start_time)
+    solver.add(start_time_var[i] <= end_time)
+    solver.add(end_time_var[i] >= start_time)
+    solver.add(end_time_var[i] <= end_time)
+    solver.add(end_time_var[i] > start_time_var[i])
+
+# Add constraints for the meeting duration
+for i in range(4):
+    solver.add(end_time_var[i] - start_time_var[i] == meeting_duration * 60)
+
+# Add constraints for the existing schedules
+for day_name, schedule in natalie_schedule.items():
+    for time in schedule:
+        solver.add(Or([start_time_var[i] > time[0]*60 + time[1] for i in range(4)]))
+    for time in schedule:
+        solver.add(Or([end_time_var[i] < time[0]*60 + time[1] for i in range(4)]))
+
+for day_name, schedule in william_schedule.items():
+    for time in schedule:
+        solver.add(Or([start_time_var[i] > time[0]*60 + time[1] for i in range(4)]))
+    for time in schedule:
+        solver.add(Or([end_time_var[i] < time[0]*60 + time[1] for i in range(4)]))
+
+# Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    day_value = days[model[day].as_long()]
-    start_hour_value = model[start_hour].as_long()
-    start_minute_value = model[start_minute].as_long()
-    end_hour_value = model[end_hour].as_long()
-    end_minute_value = model[end_minute].as_long()
-    print(f"SOLUTION:")
-    print(f"Day: {day_value}")
-    print(f"Start Time: {str(start_hour_value).zfill(2)}:{str(start_minute_value).zfill(2)}")
-    print(f"End Time: {str(end_hour_value).zfill(2)}:{str(end_minute_value).zfill(2)}")
+    day_value = [model.evaluate(day[i]).as_string() for i in range(4)]
+    start_time_value = [model.evaluate(start_time_var[i]).as_int() for i in range(4)]
+    end_time_value = [model.evaluate(end_time_var[i]).as_int() for i in range(4)]
+    day_index = day_value.index('True')
+    print(f"SOLUTION:\nDay: {day_value[day_index]}\nStart Time: {str(start_time_value[day_index]).zfill(2) + ':' + str((start_time_value[day_index] % 60) // 10).zfill(1) + str(start_time_value[day_index] % 10).zfill(1)}\nEnd Time: {str(end_time_value[day_index]).zfill(2) + ':' + str((end_time_value[day_index] % 60) // 10).zfill(1) + str(end_time_value[day_index] % 10).zfill(1)}")
 else:
-    print("No solution found")
+    print("No solution found.")

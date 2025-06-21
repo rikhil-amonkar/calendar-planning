@@ -1,77 +1,42 @@
 from z3 import *
 
-def schedule_meeting(ryan_schedule, ruth_schedule, denise_schedule, meeting_duration, preferences=None):
+def schedule_meeting():
     # Define the variables
-    day = 'Monday'
-    start_time = [9, 0]  # 9:00
-    end_time = [17, 0]   # 17:00
-    meeting_start = [0] * 2
-    meeting_end = [0] * 2
+    day = Int('day')
+    start_time = Int('start_time')
+    end_time = Int('end_time')
 
-    # Convert the schedules to Z3 time intervals
-    ryan_intervals = []
-    for i in range(len(ryan_schedule)):
-        ryan_intervals.append(Int(f"ryan_{i}")[0] >= ryan_schedule[i][0] * 60 + ryan_schedule[i][1])
-        ryan_intervals.append(Int(f"ryan_{i}")[0] <= ryan_schedule[i][1] * 60 + ryan_schedule[i][2])
+    # Define the constraints for each participant
+    ryan_busy = [9, 30, 12, 30]  # Start and end time in minutes for Ryan's busy periods
+    ruth_busy = []  # Ruth has no meetings
+    denise_busy = [9, 30, 10, 30, 12, 0, 13, 0, 14, 30, 16, 30]  # Start and end time in minutes for Denise's busy periods
+    denise_no_late = 12, 30  # Denise does not want to meet after this time
 
-    ruth_intervals = []
-    for i in range(len(ruth_schedule)):
-        ruth_intervals.append(Int(f"ruth_{i}")[0] >= ruth_schedule[i][0] * 60 + ruth_schedule[i][1])
-        ruth_intervals.append(Int(f"ruth_{i}")[0] <= ruth_schedule[i][1] * 60 + ruth_schedule[i][2])
-
-    denise_intervals = []
-    for i in range(len(denise_schedule)):
-        denise_intervals.append(Int(f"denise_{i}")[0] >= denise_schedule[i][0] * 60 + denise_schedule[i][1])
-        denise_intervals.append(Int(f"denise_{i}")[0] <= denise_schedule[i][1] * 60 + denise_schedule[i][2])
-
-    # Define the meeting time constraints
-    meeting_start[0] = Int('meeting_start')[0]
-    meeting_end[0] = meeting_start[0] + meeting_duration * 60
-    meeting_constraints = [
-        meeting_start[0] >= start_time[0] * 60 + start_time[1],
-        meeting_start[0] <= end_time[0] * 60 + end_time[1],
-        meeting_end[0] >= meeting_start[0],
-        meeting_end[0] <= end_time[0] * 60 + end_time[1]
+    # Define the constraints
+    constraints = [
+        And(day == 1),  # Day is Monday
+        And(9 * 60 <= start_time),  # Start time is after 9:00
+        And(start_time < 17 * 60),  # Start time is before 17:00
+        And(start_time + 60 <= 17 * 60),  # End time is within the day
+        Or(start_time + 60 > ryan_busy[0], And(start_time + 60 <= ryan_busy[1], start_time > ryan_busy[0])),  # Ryan is not busy during the meeting
+        Or(start_time + 60 > ruth_busy[0], And(start_time + 60 <= ruth_busy[1], start_time > ruth_busy[0])),  # Ruth is not busy during the meeting
+        Or(start_time + 60 > denise_busy[0], And(start_time + 60 <= denise_busy[1], start_time > denise_busy[0])),  # Denise is not busy during the meeting
+        Or(start_time + 60 > denise_no_late[0], And(start_time + 60 <= denise_no_late[1], start_time > denise_no_late[0]))  # Denise does not meet after 12:30
     ]
 
-    # Add constraints for each participant
-    for i in range(len(ryan_schedule)):
-        meeting_constraints.append(Not(And(meeting_start[0] >= ryan_schedule[i][0] * 60 + ryan_schedule[i][1],
-                                          meeting_end[0] <= ryan_schedule[i][1] * 60 + ryan_schedule[i][2])))
-
-    for i in range(len(ruth_schedule)):
-        meeting_constraints.append(Not(And(meeting_start[0] >= ruth_schedule[i][0] * 60 + ruth_schedule[i][1],
-                                          meeting_end[0] <= ruth_schedule[i][1] * 60 + ruth_schedule[i][2])))
-
-    for i in range(len(denise_schedule)):
-        meeting_constraints.append(Not(And(meeting_start[0] >= denise_schedule[i][0] * 60 + denise_schedule[i][1],
-                                          meeting_end[0] <= denise_schedule[i][1] * 60 + denise_schedule[i][2])))
-
-    # Add preference constraints
-    if preferences is not None:
-        for i in range(len(preferences)):
-            meeting_constraints.append(Not(And(meeting_start[0] >= preferences[i][0] * 60 + preferences[i][1],
-                                               meeting_end[0] <= preferences[i][1] * 60 + preferences[i][2])))
-
     # Solve the constraints
-    s = Solver()
-    for c in meeting_constraints:
-        s.add(c)
-
-    if s.check() == sat:
-        m = s.model()
-        start_hour = m[meeting_start[0]].as_long() // 60
-        start_minute = m[meeting_start[0]].as_long() % 60
-        end_hour = m[meeting_end[0]].as_long() // 60
-        end_minute = m[meeting_end[0]].as_long() % 60
-        return f"SOLUTION:\nDay: {day}\nStart Time: {start_hour:02d}:{start_minute:02d}\nEnd Time: {end_hour:02d}:{end_minute:02d}"
+    solver = Solver()
+    solver.add(constraints)
+    if solver.check() == sat:
+        model = solver.model()
+        day_value = model[day].as_long()
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+        day_str = {1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday'}.get(day_value)
+        start_time_str = str(timedelta(minutes=start_time_value)).split('.')[0]
+        end_time_str = str(timedelta(minutes=end_time_value)).split('.')[0]
+        return f'SOLUTION:\nDay: {day_str}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}'
     else:
-        return "No solution found"
+        return 'No solution found'
 
-# Test the function
-ryan_schedule = [[9, 0, 30], [12, 30, 60]]
-ruth_schedule = []
-denise_schedule = [[9, 30, 60], [12, 0, 60], [14, 30, 60 * 2 + 30]]
-meeting_duration = 1
-preferences = [[12, 30, 60 * 2 + 30]]  # Denise does not want to meet after 12:30
-print(schedule_meeting(ryan_schedule, ruth_schedule, denise_schedule, meeting_duration, preferences))
+print(schedule_meeting())

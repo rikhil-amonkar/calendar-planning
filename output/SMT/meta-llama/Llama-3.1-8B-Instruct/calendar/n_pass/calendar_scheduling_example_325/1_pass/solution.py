@@ -1,51 +1,64 @@
 from z3 import *
 
-# Define the day
-day = 'Monday'
+def schedule_meeting(participants, meeting_duration, preferences=None):
+    # Create a Z3 solver
+    solver = Solver()
 
-# Define the start and end times
-start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60  # 17:00 in minutes
-meeting_duration = 30  # 30 minutes
+    # Define the day and time variables
+    day = [Bool(f'day_{i}') for i in range(1)]
+    time = [Int(f'time_{i}') for i in range(1)]
+    for i in range(1):
+        time[i] = If(day[i], Int('time'), 0)
 
-# Define the existing schedules
-schedules = {
-    'Jose': [(11 * 60, 11 * 60 + 30), (12 * 60 + 30, 13 * 60)],
-    'Keith': [(14 * 60, 14 * 60 + 30), (15 * 60, 15 * 60 + 30)],
-    'Logan': [(9 * 60, 10 * 60), (12 * 60, 12 * 60 + 30), (15 * 60, 15 * 60 + 30)],
-    'Megan': [(9 * 60, 10 * 60 + 30), (11 * 60, 12 * 60), (13 * 60, 13 * 60 + 30), (14 * 60 + 30, 16 * 60 + 30)],
-    'Gary': [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (11 * 60 + 30, 13 * 60), (13 * 60 + 30, 14 * 60), (14 * 60 + 30, 16 * 60 + 30)],
-    'Bobby': [(11 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (13 * 60, 16 * 60)]
+    # Define the constraints for the day
+    solver.add(Or(day[0]))
+
+    # Define the constraints for the time
+    for i in range(1):
+        solver.add(And(9 * 60 <= time[i], time[i] <= 17 * 60))
+
+    # Define the constraints for the participants
+    for participant, schedule in participants.items():
+        for time_slot in schedule:
+            start, end = time_slot
+            for i in range(1):
+                solver.add(If(day[i], And(start * 60 <= time[i], time[i] <= end * 60), True))
+
+    # Define the constraints for the meeting duration
+    start_time = Int('start_time')
+    end_time = start_time + meeting_duration * 60
+    solver.add(And(9 * 60 <= start_time, start_time <= 17 * 60))
+    solver.add(And(start_time <= end_time, end_time <= 17 * 60))
+
+    # Define the constraints for the preferences
+    if preferences:
+        for participant, time in preferences.items():
+            solver.add(If(participant in participants and day[0], Not(time * 60 <= time[0]), True))
+
+    # Solve the constraints
+    if solver.check() == sat:
+        model = solver.model()
+        day = model.evaluate(day[0]).as_long()
+        time = model.evaluate(time[0]).as_long()
+        return f'SOLUTION:\nDay: {["Monday"][0]}\nStart Time: {time // 60:02d}:{time % 60:02d}\nEnd Time: {(time // 60 + meeting_duration) % 24:02d}:{(time // 60 + meeting_duration) % 60:02d}'
+    else:
+        return 'No solution found'
+
+# Define the participants and their schedules
+participants = {
+    'Jose': [(11, 11.5), (12.5, 13)],
+    'Keith': [(14, 14.5), (15, 15.5)],
+    'Logan': [(9, 10), (12, 12.5), (15, 15.5)],
+    'Megan': [(9, 10.5), (11, 12), (13, 13.5), (14.5, 16.5)],
+    'Gary': [(9, 9.5), (10, 10.5), (11.5, 13), (13.5, 14), (14.5, 16.5)],
+    'Bobby': [(11, 11.5), (12, 12.5), (13, 16)]
 }
 
-# Define Jose's preference
-jose_preference = lambda x: x < 15 * 60
+# Define the meeting duration and preferences
+meeting_duration = 0.5
+preferences = {
+    'Jose': 15.5
+}
 
-# Create a Z3 solver
-solver = Solver()
-
-# Define the meeting time
-meeting_time = Int('meeting_time')
-
-# Add constraints for each person
-for person in schedules:
-    for start, end in schedules[person]:
-        if start <= meeting_time + meeting_duration <= end:
-            solver.assert_and_track(meeting_time + meeting_duration > end, f'{person}_1')
-            solver.assert_and_track(meeting_time < start, f'{person}_2')
-
-# Add constraint for Jose's preference
-solver.assert_and_track(jose_preference(meeting_time), 'jose_preference')
-
-# Add constraints for the day and meeting duration
-solver.assert_and_track(meeting_time >= start_time,'start_time')
-solver.assert_and_track(meeting_time + meeting_duration <= end_time, 'end_time')
-
-# Check the solution
-if solver.check() == sat:
-    model = solver.model()
-    start_time = model[meeting_time].as_long()
-    end_time = start_time + meeting_duration
-    print(f'SOLUTION:\nDay: {day}\nStart Time: {start_time // 60:02d}:{start_time % 60:02d}\nEnd Time: {end_time // 60:02d}:{end_time % 60:02d}')
-else:
-    print('No solution found')
+# Print the solution
+print(schedule_meeting(participants, meeting_duration, preferences))

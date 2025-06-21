@@ -1,86 +1,49 @@
 from z3 import *
 
-def schedule_meeting(day, busy_schedules, duration):
-    # Create a time grid
-    time_grid = [Bool(f't_{i}_{j}') for i in range(9, 17) for j in range(60)]
+def schedule_meeting(day, start_time, end_time, schedules):
+    # Create Z3 variables for each participant's availability
+    participants = ['Patrick', 'Kayla', 'Carl', 'Christian']
+    variables = [Bool(participant + '_available') for participant in participants]
 
-    # Create a day variable
-    day_var = Bool(day)
+    # Create Z3 constraints for each participant's schedule
+    constraints = []
+    for participant, schedule in schedules.items():
+        for time in schedule:
+            start, end = time
+            constraints.append(Not(And(start_time <= start, end <= end_time, variables[participants.index(participant)])))
 
-    # Create a start time variable
-    start_time = Int('start_time')
+    # Add constraints for the meeting duration
+    constraints.append(start_time + 0.5 <= end_time)
 
-    # Create an end time variable
-    end_time = Int('end_time')
+    # Add constraints for the meeting time
+    constraints.append(start_time >= 9)
+    constraints.append(end_time <= 17)
 
-    # Add constraints for the day variable
-    day_var = day_var
+    # Add constraints for the meeting day
+    constraints.append(start_time >= 9 + day * 24)
+    constraints.append(end_time <= 17 + day * 24)
 
-    # Add constraints for the time grid
-    for i in range(9, 17):
-        for j in range(60):
-            # If the time is busy, then the meeting cannot be at that time
-            if (i, j) in busy_schedules.values():
-                time_grid[60*(i-9) + j] = Not(day_var)
-
-    # Add constraints for the start and end times
-    start_time = If(day_var, 9*60, 0)
-    end_time = start_time + duration * 60
-
-    # Add constraints for the time grid
-    for i in range(9, 17):
-        for j in range(60):
-            if (i, j) in busy_schedules.values():
-                time_grid[60*(i-9) + j] = Not(day_var)
-
-    # Add constraints for the start and end times
-    for i in range(9, 17):
-        for j in range(60):
-            if i == 9 and j >= 30:
-                time_grid[60*(i-9) + j] = Not(day_var)
-            elif i == 17 and j > 0:
-                time_grid[60*(i-9) + j] = Not(day_var)
-            elif i > 9 and i < 17:
-                if j == 0:
-                    time_grid[60*(i-9) + j] = Not(day_var)
-                elif j == 60:
-                    time_grid[60*(i-9) + j] = Not(day_var)
-
-    # Find a solution
+    # Solve the constraints
     solver = Solver()
-    solver.add(And([time_grid[i] for i in range(len(time_grid))]))
-    solver.add(day_var)
-    solver.add(And([time_grid[60*(9-9) + j] for j in range(60)]))
-    solver.add(And([time_grid[60*(17-9) + j] for j in range(60)]))
-    solver.add(And([time_grid[60*i + 0] for i in range(9, 17)]))
-    solver.add(And([time_grid[60*i + 60] for i in range(9, 17)]))
+    for variable in variables:
+        solver.add(variable)
+    solver.add(And(constraints))
 
+    # Check if a solution exists
     if solver.check() == sat:
         model = solver.model()
-        start_time_val = model[start_time].as_long()
-        end_time_val = model[end_time].as_long()
-        day_val = model[day_var].as_bool()
-
-        # Convert the start and end times to 24-hour format
-        start_hour = start_time_val // 60
-        start_minute = start_time_val % 60
-        end_hour = end_time_val // 60
-        end_minute = end_time_val % 60
-
-        # Return the solution
-        return f'SOLUTION:\nDay: {day}\nStart Time: {start_hour:02d}:{start_minute:02d}\nEnd Time: {end_hour:02d}:{end_minute:02d}'
+        start_time_val = int(model[start_time].as_real().numerator / 60)
+        end_time_val = int(model[end_time].as_real().numerator / 60)
+        return f"SOLUTION:\nDay: {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'][day]}\nStart Time: {start_time_val:02d}:00\nEnd Time: {end_time_val:02d}:30"
     else:
-        return 'No solution found'
+        return "No solution found"
 
-# Define the busy schedules
-busy_schedules = {
-    'Patrick': [(9, 30), (10, 30), (13, 30), (16, 30)],
-    'Kayla': [(12, 30), (15, 30), (16, 30)],
-    'Carl': [(10, 30), (12, 30), (13, 30), (14, 30, 17)],
-    'Christian': [(9, 30), (13, 0), (14, 0, 17)]
+# Example usage
+schedules = {
+    'Patrick': [(9, 9.5), (10, 10.5), (13.5, 14), (16, 16.5)],
+    'Kayla': [(12.5, 13.5), (15, 15.5), (16, 16.5)],
+    'Carl': [(10.5, 11), (12, 12.5), (13, 13.5), (14.5, 17)],
+    'Christian': [(9, 12.5), (13, 14), (14.5, 17)]
 }
 
-# Schedule the meeting
-day = 'Monday'
-duration = 30
-print(schedule_meeting(day, busy_schedules, duration))
+print(schedule_meeting(0, 0, 0, schedules))

@@ -1,66 +1,58 @@
 from z3 import *
 
 def schedule_meeting():
-    # Define the days and hours
+    # Define the days of the week
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-    hours = [9, 10, 11, 11, 12, 13, 14, 15, 16, 17]
 
-    # Define the constraints for Ruth's schedule
-    ruth_monday = [9, 10, 11, 12, 13, 14, 15, 16, 17]
-    ruth_tuesday = [9, 10, 11, 12, 13, 14, 15, 16, 17]
-    ruth_wednesday = [9, 10, 11, 12, 13, 14, 15, 16, 17]
-    ruth_thursday = [9, 10, 11, 11, 30, 12, 13, 14, 14, 30, 15, 15, 16, 16, 17]
+    # Define the start and end times
+    start_times = [9, 10, 11, 11.5, 12, 13, 14, 14.5, 15, 15.5, 16, 16.5, 17]
+    end_times = [9.5, 10.5, 11.5, 12, 12.5, 13.5, 14.5, 15, 15.5, 16, 16.5, 17, 17.5]
 
-    # Define the variables
+    # Create Z3 variables for the meeting day, start time, and end time
     day = Int('day')
-    start_hour = Int('start_hour')
-    end_hour = Int('end_hour')
+    start_time = Real('start_time')
+    end_time = Real('end_time')
 
-    # Define the constraints
-    constraints = [
-        day >= 0,
-        day < 4,
-        start_hour >= 9,
-        start_hour < 18,
-        end_hour >= start_hour,
-        end_hour < 18,
-        Or(
-            And(start_hour == 9, end_hour == 9),
-            And(start_hour == 9, end_hour == 10),
-            And(start_hour == 10, end_hour == 10),
-            And(start_hour == 10, end_hour == 11),
-            And(start_hour == 11, end_hour == 11),
-            And(start_hour == 11, end_hour == 11, 30),
-            And(start_hour == 11, end_hour == 12),
-            And(start_hour == 12, end_hour == 13),
-            And(start_hour == 13, end_hour == 14),
-            And(start_hour == 14, end_hour == 14, 30),
-            And(start_hour == 14, end_hour == 15),
-            And(start_hour == 15, end_hour == 15),
-            And(start_hour == 15, end_hour == 16),
-            And(start_hour == 16, end_hour == 16),
-            And(start_hour == 16, end_hour == 17)
-        )
-    ]
+    # Create Z3 constraints for the meeting day
+    day_domain = [If(day == 0, True, And(day!= 0, day!= 1, day!= 2, day!= 3))
+                  for day in range(4)]
 
-    if day == 3:
-        constraints.append(And(start_hour >= 11, 30, end_hour <= 14, 30))
+    # Create Z3 constraints for the start and end times
+    start_time_domain = [start_time >= 9 and start_time <= 17
+                         for _ in range(4)]
+    end_time_domain = [end_time >= start_time and end_time <= 17.5
+                       for _ in range(4)]
 
-    # Define the solver and solve
+    # Create Z3 constraints for the meeting duration
+    duration = [end_time - start_time == 0.5
+                for _ in range(4)]
+
+    # Create Z3 constraints for Ruth's schedule
+    ruth_schedule = [Or(start_time < 9, start_time >= 17),
+                     Or(start_time < 9, start_time >= 17),
+                     Or(start_time < 9, start_time >= 17),
+                     Or(start_time < 9, start_time >= 11, start_time >= 11.5, start_time >= 15, start_time >= 15.5, start_time >= 17)]
+    ruth_schedule = [ruth_schedule[day] for day in range(4)]
+
+    # Create Z3 constraints for Julie's preference
+    julie_preference = [start_time >= 11.5
+                        for _ in range(4)]
+
+    # Create the Z3 solver and add the constraints
     solver = Solver()
-    solver.add(constraints)
+    solver.add(And(day_domain, start_time_domain, end_time_domain, duration, ruth_schedule, julie_preference))
+
+    # Solve the Z3 constraints
     if solver.check() == sat:
         model = solver.model()
         day_value = model[day].as_long()
-        start_hour_value = model[start_hour].as_long()
-        end_hour_value = model[end_hour].as_long()
-
-        # Print the solution
-        print(f"SOLUTION:")
-        print(f"Day: {days[day_value]}")
-        print(f"Start Time: {start_hour_value:02d}:00")
-        print(f"End Time: {end_hour_value:02d}:00")
+        start_time_value = model[start_time].numeral().as_real()
+        end_time_value = model[end_time].numeral().as_real()
+        day_name = days[day_value]
+        start_time = str(int(start_time_value * 2)) + ':00'
+        end_time = str(int(end_time_value * 2)) + ':00'
+        return f"SOLUTION:\nDay: {day_name}\nStart Time: {start_time}\nEnd Time: {end_time}"
     else:
-        print("No solution exists")
+        return "No solution found"
 
-schedule_meeting()
+print(schedule_meeting())

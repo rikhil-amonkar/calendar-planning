@@ -1,43 +1,49 @@
 from z3 import *
 
-def schedule_meeting(schedules, duration):
-    # Define the variables
-    day = [Bool('day_' + str(i)) for i in range(1, 8)]  # Monday to Sunday
-    start_time = [Int('start_time_' + str(i)) for i in range(1, 7)]  # 9:00 to 16:00
-    end_time = [start_time[i] + duration for i in range(7)]
+# Define the variables
+day = 'Monday'
+start_time = 9 * 60  # 9:00 in minutes
+end_time = 17 * 60  # 17:00 in minutes
+meeting_duration = 30  # 30 minutes
+meeting_start = Int('meeting_start')
+meeting_end = Int('meeting_end')
 
-    # Add constraints
-    constraints = []
-    for i in range(7):
-        constraints.append(And(day[i], start_time[i] >= 9, start_time[i] <= 16))
-        constraints.append(And(day[i], end_time[i] >= 9, end_time[i] <= 16))
+# Define the constraints for Christine
+christine_meetings = [11 * 60, 15 * 60]  # 11:00 and 15:00 in minutes
+christine_constraints = [And(meeting_start >= 9 * 60, meeting_start <= 11 * 60),
+                         And(meeting_start >= 15 * 60, meeting_start <= 17 * 60),
+                         meeting_end <= 11 * 60 + 30, meeting_end <= 15 * 60 + 30]
 
-    for person, schedule in schedules.items():
-        for time in schedule:
-            start, end = time
-            constraints.append(Not(And(day[0], And(start_time[0] >= start, start_time[0] <= end))))
-            constraints.append(Not(And(day[0], And(end_time[0] >= start, end_time[0] <= end))))
+# Define the constraints for Helen
+helen_blocked = [9.5 * 60, 10.5 * 60, 11 * 60, 12 * 60, 13.5 * 60, 16 * 60, 16.5 * 60]  # 9:30, 10:30, 11:00, 12:00, 13:30, 16:00, 16:30 in minutes
+helen_constraints = [And(meeting_start >= 9 * 60, meeting_start < 9.5 * 60),
+                     And(meeting_start >= 10.5 * 60, meeting_start < 11 * 60),
+                     And(meeting_start >= 12 * 60, meeting_start < 12.5 * 60),
+                     And(meeting_start >= 13.5 * 60, meeting_start < 17 * 60),
+                     meeting_end >= 16 * 60,
+                     meeting_start >= 16.5 * 60,
+                     meeting_start <= 16.5 * 60 + 30)]
 
-    # Solve the constraints
-    solver = Solver()
-    for constraint in constraints:
-        solver.add(constraint)
-    solver.add(Or(day))
+# Define the constraints for the meeting duration
+duration_constraints = [meeting_end - meeting_start == meeting_duration]
 
-    if solver.check() == sat:
-        model = solver.model()
-        day_to_meet = [i for i, b in enumerate(model[day]) if b][0]
-        start_time_to_meet = model[start_time[day_to_meet]].as_long()
-        end_time_to_meet = model[end_time[day_to_meet]].as_long()
+# Define the solver
+solver = Solver()
 
-        return f"SOLUTION:\nDay: Monday\nStart Time: {start_time_to_meet:02d}:00\nEnd Time: {end_time_to_meet:02d}:00"
-    else:
-        return "No solution found"
+# Add the constraints to the solver
+solver.add(And(christine_constraints, helen_constraints, duration_constraints))
 
-schedules = {
-    'Christine': [(11, 11.5), (15, 15.5)],
-    'Helen': [(9.5, 10.5), (11, 11.5), (12, 12.5), (13.5, 15.5), (16.5, 17)]
-}
-duration = 0.5
+# Check if a solution exists
+if solver.check() == sat:
+    # Get the solution
+    model = solver.model()
+    meeting_start_value = model[meeting_start].as_long()
+    meeting_end_value = model[meeting_end].as_long()
 
-print(schedule_meeting(schedules, duration))
+    # Print the solution
+    print(f"SOLUTION:")
+    print(f"Day: {day}")
+    print(f"Start Time: {meeting_start_value // 60:02d}:{meeting_start_value % 60:02d}")
+    print(f"End Time: {meeting_end_value // 60:02d}:{meeting_end_value % 60:02d}")
+else:
+    print("No solution exists.")

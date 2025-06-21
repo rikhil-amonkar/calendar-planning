@@ -1,63 +1,62 @@
 from z3 import *
 
-# Define the variables
-day = 'Monday'
-start_time = 9
-end_time = 17
-duration = 30
+def solve_meeting_schedule():
+    # Define the variables
+    day = 'Monday'
+    meeting_duration = 30  # in minutes
+    start_time = 9 * 60  # 9:00 in minutes
+    end_time = 17 * 60  # 17:00 in minutes
+    meeting_start = Int('meeting_start')
+    meeting_end = Int('meeting_end')
 
-# Define the existing schedules
-jacqueline = [IntVectorSort(2)(f'jacqueline_{i}') for i in range(5)]
-harold = [IntVectorSort(2)(f'harold_{i}') for i in range(3)]
-arthur = [IntVectorSort(2)(f'arthur_{i}') for i in range(5)]
-kelly = [IntVectorSort(2)(f'kelly_{i}') for i in range(6)]
+    # Define the constraints for each participant
+    jacqueline_busy = [9 * 60, 9 * 60 + 30, 11 * 60, 11 * 60 + 30, 12 * 60 + 30, 12 * 60 + 60, 15 * 60 + 30, 15 * 60 + 60]
+    harold_busy = [10 * 60, 10 * 60 + 30, 13 * 60, 13 * 60 + 30, 15 * 60, 17 * 60]
+    arthur_busy = [9 * 60, 9 * 60 + 30, 10 * 60, 12 * 60 + 30, 14 * 60 + 30, 15 * 60 + 30, 17 * 60]
+    kelly_busy = [9 * 60, 9 * 60 + 30, 10 * 60, 11 * 60, 11 * 60 + 30, 12 * 60 + 30, 14 * 60, 15 * 60, 15 * 60 + 30, 17 * 60]
 
-# Define the constraints
-s = Solver()
-for i, (name, schedule) in enumerate([(f'Jacqueline', jacqueline), (f'Harold', harold), (f'Arthur', arthur), (f'Kelly', kelly)]):
-    for j, (start, end) in enumerate(schedule):
-        s.add(And(start >= start_time, start <= end_time))
-        s.add(And(end >= start_time, end <= end_time))
-        s.add(Implies(start!= start_time, start >= duration))
-        s.add(Implies(end!= end_time, end <= end_time - duration))
-        s.add(Or(start!= end_time, end!= end_time))
+    # Harold does not want to meet after 13:00
+    harold_constraint = meeting_start + meeting_duration > 13 * 60
 
-# Define the preferences
-s.add(Implies(And(And(Harold[1][0] == 13, Harold[1][1] == 14), Harold[2][0] == 15, Harold[2][1] == 17), Harold[2][1] == 17))
+    # Define the constraints for the meeting schedule
+    constraints = [
+        meeting_start >= start_time,
+        meeting_start <= end_time - meeting_duration,
+        meeting_end >= meeting_start,
+        meeting_end <= end_time,
+        meeting_start + meeting_duration == meeting_end,
+        meeting_start + meeting_duration <= end_time,
+        meeting_start >= 9 * 60,  # Meeting starts after 9:00
+        meeting_start <= 16 * 60,  # Meeting starts before 16:00
+        meeting_end <= 17 * 60,  # Meeting ends before 17:00
+        meeting_start + meeting_duration >= 9 * 60,  # Meeting starts after 9:00
+        meeting_start + meeting_duration <= 17 * 60,  # Meeting starts before 17:00
+        meeting_end >= 9 * 60,  # Meeting ends after 9:00
+        meeting_end <= 17 * 60,  # Meeting ends before 17:00
+        # Constraints for each participant
+        meeting_start + meeting_duration > max(jacqueline_busy),
+        meeting_start + meeting_duration > max(harold_busy),
+        meeting_start + meeting_duration > max(arthur_busy),
+        meeting_start + meeting_duration > max(kelly_busy),
+        meeting_start > max(jacqueline_busy),
+        meeting_start > max(harold_busy),
+        meeting_start > max(arthur_busy),
+        meeting_start > max(kelly_busy),
+        # Harold constraint
+        harold_constraint,
+    ]
 
-# Define the meeting duration
-meeting_start = Int(f'meeting_start')
-meeting_end = meeting_start + duration
-s.add(And(meeting_start >= start_time, meeting_end <= end_time))
+    # Solve the constraints
+    solver = Solver()
+    solver.add(constraints)
+    if solver.check() == sat:
+        model = solver.model()
+        meeting_start_value = model[meeting_start].as_long()
+        meeting_end_value = model[meeting_end].as_long()
+        print(f'Day: {day}')
+        print(f'Start Time: {meeting_start_value // 60:02d}:{meeting_start_value % 60:02d}')
+        print(f'End Time: {meeting_end_value // 60:02d}:{meeting_end_value % 60:02d}')
+    else:
+        print('No solution found.')
 
-# Define the constraints for each participant
-s.add(Or(And(meeting_start >= jacqueline[0][1], meeting_end <= jacqueline[0][1]), 
-         And(meeting_start >= jacqueline[1][1], meeting_end <= jacqueline[1][1]), 
-         And(meeting_start >= jacqueline[2][1], meeting_end <= jacqueline[2][1]), 
-         And(meeting_start >= jacqueline[3][1], meeting_end <= jacqueline[3][1])))
-s.add(Or(And(meeting_start >= harold[0][1], meeting_end <= harold[0][1]), 
-         And(meeting_start >= harold[1][1], meeting_end <= harold[1][1])))
-s.add(Or(And(meeting_start >= arthur[0][1], meeting_end <= arthur[0][1]), 
-         And(meeting_start >= arthur[1][1], meeting_end <= arthur[1][1]), 
-         And(meeting_start >= arthur[2][1], meeting_end <= arthur[2][1]), 
-         And(meeting_start >= arthur[3][1], meeting_end <= arthur[3][1]), 
-         And(meeting_start >= arthur[4][1], meeting_end <= arthur[4][1])))
-s.add(Or(And(meeting_start >= kelly[0][1], meeting_end <= kelly[0][1]), 
-         And(meeting_start >= kelly[1][1], meeting_end <= kelly[1][1]), 
-         And(meeting_start >= kelly[2][1], meeting_end <= kelly[2][1]), 
-         And(meeting_start >= kelly[3][1], meeting_end <= kelly[3][1]), 
-         And(meeting_start >= kelly[4][1], meeting_end <= kelly[4][1]), 
-         And(meeting_start >= kelly[5][1], meeting_end <= kelly[5][1])))
-
-# Check if there is a solution
-if s.check() == sat:
-    # Get the solution
-    model = s.model()
-    meeting_start_val = model[meeting_start].as_long()
-    # Print the solution
-    print(f'SOLUTION:')
-    print(f'Day: {day}')
-    print(f'Start Time: {meeting_start_val:02d}:{(meeting_start_val % 60):02d}')
-    print(f'End Time: {(meeting_start_val + duration):02d}:{(((meeting_start_val + duration) % 60)):02d}')
-else:
-    print('No solution found')
+solve_meeting_schedule()

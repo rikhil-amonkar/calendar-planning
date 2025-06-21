@@ -1,50 +1,53 @@
 from z3 import *
 
-def schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, preferred_time=None, constraints=None):
-    # Define the day of the meeting
-    day = 'Monday'
+def schedule_meeting(jack_schedule, charlotte_schedule, duration, preferences):
+    # Create Z3 solver
+    s = Solver()
 
-    # Define the start and end time of the work hours
-    start_time = 9 * 60
-    end_time = 17 * 60
+    # Define variables
+    day = [Bool('day_' + str(i)) for i in range(1, 8)]  # Monday to Sunday
+    start_time = [Int('start_time_' + str(i)) for i in range(1, 8)]
+    end_time = [start_time[i] + duration for i in range(7)]
 
-    # Define the meeting duration in minutes
-    meeting_duration_minutes = meeting_duration * 60
+    # Add constraints
+    for i in range(7):
+        s.add(day[i] == False)  # Initially, all days are False
+        s.add(start_time[i] >= 9, start_time[i] <= 17)  # Start time must be between 9:00 and 17:00
+        s.add(end_time[i] >= 9, end_time[i] <= 17)  # End time must be between 9:00 and 17:00
 
-    # Create a list of time slots
-    time_slots = [i for i in range(start_time, end_time) if i not in jack_schedule and i not in charlotte_schedule]
+    # Add constraints based on existing schedules
+    for i in range(7):
+        for start, end in jack_schedule:
+            s.add(day[i] == False)  # Jack is busy on this day
+            s.add(start <= start_time[i], end_time[i] <= end)
+        for start, end in charlotte_schedule:
+            s.add(day[i] == False)  # Charlotte is busy on this day
+            s.add(start <= start_time[i], end_time[i] <= end)
 
-    # If a preferred time is given, try to schedule the meeting at that time
-    if preferred_time:
-        preferred_time_minutes = preferred_time * 60
-        if preferred_time_minutes in time_slots:
-            start_time_minutes = preferred_time_minutes
-            end_time_minutes = start_time_minutes + meeting_duration_minutes
-        else:
-            # If the preferred time is not available, try to schedule the meeting as close to the preferred time as possible
-            closest_time = min(time_slots, key=lambda x:abs(x-preferred_time_minutes))
-            start_time_minutes = closest_time
-            end_time_minutes = start_time_minutes + meeting_duration_minutes
+    # Add constraints based on preferences
+    for i in range(7):
+        s.add(day[i] == False)  # Initially, all days are False
+        if i > 7:  # Jack wants to avoid meetings after 12:30 on Monday
+            s.add(day[0] == False)
+
+    # Find a solution
+    s.add(day[0])  # Monday is the only day we care about
+    s.add(start_time[0] >= 9, start_time[0] <= 17)  # Start time must be between 9:00 and 17:00
+    s.add(end_time[0] >= 9, end_time[0] <= 17)  # End time must be between 9:00 and 17:00
+    s.add(start_time[0] + duration == end_time[0])  # Duration must be 30 minutes
+
+    if s.check() == sat:
+        model = s.model()
+        day = model[day[0]].as_bool()
+        start_time = model[start_time[0]].as_int()
+        end_time = model[end_time[0]].as_int()
+        return f"SOLUTION:\nDay: {'Monday' if day else 'Tuesday'}\nStart Time: {str(start_time).zfill(2)}:00\nEnd Time: {str(end_time).zfill(2)}:00"
     else:
-        # If no preferred time is given, try to schedule the meeting at the earliest available time
-        start_time_minutes = min(time_slots)
-        end_time_minutes = start_time_minutes + meeting_duration_minutes
+        return "No solution found"
 
-    # Ensure that Jack doesn't have any meetings after 12:30
-    if 12 * 60 + 30 in jack_schedule:
-        jack_schedule_after_12_30 = [i for i in jack_schedule if i > 12 * 60 + 30]
-        if start_time_minutes > max(jack_schedule_after_12_30):
-            return 'No solution found'
+# Example usage
+jack_schedule = [(9.5, 10.5), (10.5, 11.5), (12.5, 13.5), (14.5, 15.5), (15.5, 16.5)]
+charlotte_schedule = [(9.5, 10.5), (10.5, 12.5), (12.5, 13.5), (14.5, 16.5)]
+duration = 0.5  # 30 minutes
 
-    # Ensure that the meeting duration is not too long
-    if end_time_minutes - start_time_minutes > meeting_duration_minutes:
-        return 'No solution found'
-
-    return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_minutes // 60}:{start_time_minutes % 60:02d}\nEnd Time: {end_time_minutes // 60}:{end_time_minutes % 60:02d}'
-
-# Example usage:
-jack_schedule = [9 * 60 + 30, 10 * 60 + 30, 11 * 60, 11 * 60 + 30, 12 * 60 + 30, 14 * 60, 14 * 60 + 30, 16 * 60, 16 * 60 + 30]
-charlotte_schedule = [9 * 60 + 30, 10 * 60, 10 * 60 + 30, 12 * 60, 12 * 60 + 30, 14 * 60, 14 * 60 + 30, 16 * 60]
-meeting_duration = 0.5
-preferred_time = 12
-print(schedule_meeting(jack_schedule, charlotte_schedule, meeting_duration, preferred_time))
+print(schedule_meeting(jack_schedule, charlotte_schedule, duration, {}))

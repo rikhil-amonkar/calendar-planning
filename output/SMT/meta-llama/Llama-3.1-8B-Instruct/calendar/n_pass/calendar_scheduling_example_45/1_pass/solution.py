@@ -1,69 +1,50 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the day and time slots
-    days = ['Monday']
-    start_time = 9 * 60  # 9:00 in minutes
-    end_time = 17 * 60  # 17:00 in minutes
-    time_slots = [i for i in range(start_time, end_time)]
-
-    # Define the variables
-    meeting_day = Int('meeting_day')
-    meeting_start_time = Int('meeting_start_time')
-    meeting_end_time = Int('meeting_end_time')
-
-    # Define the constraints
-    meeting_day = meeting_day + 1  # Convert day to index
-    meeting_start_time = meeting_start_time + start_time
-    meeting_end_time = meeting_end_time + start_time
-
-    # Andrew's constraints
-    andrew_constraints = [meeting_start_time >= 9 * 60,
-                          meeting_start_time <= 10 * 60,
-                          meeting_start_time >= 10 * 60 + 30,
-                          meeting_start_time <= 17 * 60 - 30]
-
-    # Grace's constraints
-    grace_constraints = [meeting_start_time >= 9 * 60,
-                         meeting_start_time <= 17 * 60]
-
-    # Samuel's constraints
-    samuel_constraints = [meeting_start_time >= 10 * 60 + 30,
-                          meeting_start_time <= 11 * 60,
-                          meeting_start_time >= 11 * 60 + 30,
-                          meeting_start_time <= 12 * 60,
-                          meeting_start_time >= 13 * 60,
-                          meeting_start_time <= 13 * 60 + 30,
-                          meeting_start_time >= 14 * 60,
-                          meeting_start_time <= 16 * 60,
-                          meeting_start_time >= 16 * 60 + 30,
-                          meeting_start_time <= 17 * 60]
-
-    # Meeting duration constraint
-    meeting_duration = 30 * 60
-    meeting_constraints = [meeting_end_time - meeting_start_time == meeting_duration]
-
-    # Combine the constraints
-    constraints = [And(AndrewConstraints == True,
-                       GraceConstraints == True,
-                       SamuelConstraints == True,
-                       MeetingConstraints == True) for AndrewConstraints, GraceConstraints, SamuelConstraints, MeetingConstraints in
-                   zip(andrew_constraints, grace_constraints, samuel_constraints, meeting_constraints)]
-
-    # Solve the constraints
+def schedule_meeting(day, start_time, end_time, schedules):
+    # Create a Z3 solver
     solver = Solver()
-    for constraint in constraints:
-        solver.add(constraint)
-    result = solver.check()
 
-    # Print the result
-    if result == sat:
+    # Define the variables for the meeting time
+    meeting_start = Int('meeting_start')
+    meeting_end = Int('meeting_end')
+
+    # Add constraints for the meeting time
+    solver.add(meeting_start >= start_time)
+    solver.add(meeting_end <= end_time)
+    solver.add(meeting_end - meeting_start == 30)  # Meeting duration is 30 minutes
+
+    # Add constraints for each participant's schedule
+    for participant, schedule in schedules.items():
+        # Check if the meeting time conflicts with the participant's schedule
+        for time in schedule:
+            solver.add(meeting_start + 30 > time[0] or meeting_start < time[1])
+
+    # Check if a solution exists
+    if solver.check() == sat:
+        # Get the solution
         model = solver.model()
-        print('SOLUTION:')
-        print(f'Day: {days[model[meeting_day].as_long() - 1]}')
-        print(f'Start Time: {model[meeting_start_time].as_long() // 60:02d}:{model[meeting_start_time].as_long() % 60:02d}')
-        print(f'End Time: {model[meeting_end_time].as_long() // 60:02d}:{model[meeting_end_time].as_long() % 60:02d}')
+        # Extract the meeting time from the solution
+        meeting_start_value = model[meeting_start].as_long()
+        meeting_end_value = model[meeting_end].as_long()
+        # Format the output
+        output = f'SOLUTION:\nDay: {day}\nStart Time: {meeting_start_value:02d}:00\nEnd Time: {meeting_end_value:02d}:30'
     else:
-        print('No solution found.')
+        output = 'No solution exists'
 
-schedule_meeting()
+    return output
+
+
+# Define the schedules for each participant
+schedules = {
+    'Andrew': [],
+    'Grace': [],
+    'Samuel': [(9, 10.5), (10.5, 11), (11, 11.5), (11.5, 12), (12, 13), (13, 13.5), (13.5, 14), (14, 16), (16, 16.5), (16.5, 17)]
+}
+
+# Define the day and time range
+day = 'Monday'
+start_time = 9
+end_time = 17
+
+# Call the function to schedule the meeting
+print(schedule_meeting(day, start_time, end_time, schedules))

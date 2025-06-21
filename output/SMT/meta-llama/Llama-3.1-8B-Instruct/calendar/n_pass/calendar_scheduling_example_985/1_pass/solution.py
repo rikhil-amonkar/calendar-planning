@@ -1,71 +1,63 @@
 from z3 import *
 
-# Define the existing schedules for Diane and Matthew
-diane_schedule = {
-    'Monday': [(9, 12), (12, 12.5), (15, 15.5), (17, 17)],
-    'Tuesday': [(10, 11), (11.5, 12), (12.5, 13), (16, 17)],
-    'Wednesday': [(9, 9.5), (14.5, 15), (16.5, 17)],
-    'Thursday': [(15.5, 16.5)],
-    'Friday': [(9.5, 11.5), (14.5, 15), (16, 17)]
-}
+def schedule_meeting():
+    # Define the days of the week
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-matthew_schedule = {
-    'Monday': [(9, 10), (10.5, 17)],
-    'Tuesday': [(9, 17)],
-    'Wednesday': [(9, 11), (12, 14.5), (16, 17)],
-    'Thursday': [(9, 16)],
-    'Friday': [(9, 17)]
-}
+    # Define the participants
+    participants = ['Diane', 'Matthew']
 
-matthew_preference = {'Wednesday': (12.5, 17)}
+    # Define the start and end times of the workday
+    start_time = 9 * 60  # 9:00
+    end_time = 17 * 60   # 17:00
+    meeting_duration = 60  # 1 hour
 
-# Define the possible meeting days and duration
-meeting_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-meeting_duration = 1
+    # Define the existing schedules
+    diane_schedules = {
+        'Monday': [12 * 60 + 0, 12 * 60 + 30, 15 * 60, 15 * 60 + 30],
+        'Tuesday': [10 * 60, 11 * 60, 11 * 60 + 30, 12 * 60, 12 * 60 + 30, 16 * 60],
+        'Wednesday': [9 * 60, 9 * 60 + 30, 14 * 60 + 30, 15 * 60, 16 * 60 + 30],
+        'Thursday': [15 * 60 + 30, 16 * 60 + 30],
+        'Friday': [9 * 60 + 30, 11 * 60 + 30, 14 * 60 + 30, 16 * 60]
+    }
+    matthew_schedules = {
+        'Monday': [9 * 60, 10 * 60, 10 * 60 + 30, 17 * 60],
+        'Tuesday': [9 * 60, 17 * 60],
+        'Wednesday': [9 * 60, 11 * 60, 12 * 60, 14 * 60 + 30, 16 * 60 + 30],
+        'Thursday': [9 * 60, 16 * 60],
+        'Friday': [9 * 60, 17 * 60]
+    }
 
-# Create Z3 solver
-solver = Solver()
+    # Define the preferences
+    matthew_preferences = {'Wednesday': 12 * 60}
 
-# Define variables for the meeting day, start time, and end time
-day = [Bool(f'day_{i}') for i in range(len(meeting_days))]
-start_time = [Real(f'start_time_{i}') for i in range(len(meeting_days))]
-end_time = [start_time[i] + meeting_duration for i in range(len(meeting_days))]
+    # Create a Z3 solver
+    s = Solver()
 
-# Define constraints for the meeting day
-for i in range(len(meeting_days)):
-    solver.add(day[i] == Or([meeting_days[i] == day[i]]))
+    # Define the variables
+    day = [Bool(f'day_{i}') for i in range(len(days))]
+    start_time_var = [Int(f'start_time_{i}') for i in range(len(days))]
+    end_time_var = [Int(f'end_time_{i}') for i in range(len(days))]
 
-# Define constraints for the start and end times
-for i in range(len(meeting_days)):
-    solver.add(And([start_time[i] >= 9, start_time[i] <= 17]))
-    solver.add(And([end_time[i] >= 9, end_time[i] <= 17]))
+    # Define the constraints
+    for i in range(len(days)):
+        s.add(And(day[i], start_time <= start_time_var[i], start_time_var[i] + meeting_duration <= end_time_var[i], end_time_var[i] <= 17 * 60))
+        for participant in participants:
+            schedules = diane_schedules if participant == 'Diane' else matthew_schedules
+            s.add(Not(Or([start_time_var[i] >= schedule and end_time_var[i] <= schedule for schedule in schedules[days[i]]])))
+        if days[i] == 'Wednesday' and participant == 'Matthew':
+            s.add(start_time_var[i] >= matthew_preferences[days[i]])
 
-# Define constraints for Diane's schedule
-for day, schedule in diane_schedule.items():
-    for start, end in schedule:
-        for i in range(len(meeting_days)):
-            if day == meeting_days[i]:
-                solver.add(Or([start > end_time[i], end < start_time[i]]))
+    # Solve the constraints
+    s.check()
 
-# Define constraints for Matthew's schedule
-for day, schedule in matthew_schedule.items():
-    for start, end in schedule:
-        for i in range(len(meeting_days)):
-            if day == meeting_days[i]:
-                solver.add(Or([start > end_time[i], end < start_time[i]]))
+    # Print the solution
+    m = s.model()
+    for i in range(len(days)):
+        if m.evaluate(day[i]).as_bool():
+            print(f'Day: {days[i]}')
+            print(f'Start Time: {m.evaluate(start_time_var[i]).as_int() // 60}:{m.evaluate(start_time_var[i]).as_int() % 60:02d}')
+            print(f'End Time: {m.evaluate(end_time_var[i]).as_int() // 60}:{m.evaluate(end_time_var[i]).as_int() % 60:02d}')
+            print()
 
-# Define constraint for Matthew's preference
-for day, preference in matthew_preference.items():
-    for i in range(len(meeting_days)):
-        if day == meeting_days[i]:
-            solver.add(preference[0] > end_time[i])
-
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    day_index = [i for i, day in enumerate(day) if model.evaluate(day[i]).as_bool().value()][0]
-    print(f'DAY: {meeting_days[day_index]}')
-    print(f'START TIME: {model.evaluate(start_time[day_index]).as_real().numeral().decode("ascii")}')
-    print(f'END TIME: {model.evaluate(end_time[day_index]).as_real().numeral().decode("ascii")}')
-else:
-    print('No solution found')
+schedule_meeting()

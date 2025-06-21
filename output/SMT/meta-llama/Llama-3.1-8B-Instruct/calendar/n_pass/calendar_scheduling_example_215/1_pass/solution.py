@@ -1,77 +1,59 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the variables
-    day = 'Monday'
-    start_time = 9
-    end_time = 17
-    duration = 30
-
-    # Define the existing schedules
-    steven_free = [True] * 8
-    roy_free = [True] * 8
-    cynthia_busy = [False, False, True, True, False, False, False, False, True, True, True, True, False, False, True, False, False, False]
-    lauren_busy = [True, False, False, True, True, True, True, True, True, False, False, True, True, True, True, True, True, True]
-    robert_busy = [False, False, True, True, True, False, False, False, False, True, True, True, False, True, True, False, False, False]
-
+def schedule_meeting(day, start_time, end_time, schedules):
     # Create a Z3 solver
-    s = Solver()
+    solver = Solver()
 
-    # Create variables for the meeting start time
-    meeting_start = [Bool(f'meeting_start_{i}') for i in range(8)]
+    # Define the meeting duration
+    meeting_duration = 30
 
-    # Create variables for the meeting end time
-    meeting_end = [Bool(f'meeting_end_{i}') for i in range(8)]
-
-    # Add constraints for each participant
-    for i in range(8):
-        s.add(Implies(meeting_start[i], meeting_end[i]))
-        s.add(Implies(meeting_end[i], meeting_start[i]))
-        s.add(meeting_start[i] == meeting_end[i])
-        s.add(Implies(meeting_start[i], (i + duration) <= 8))
-        s.add(Implies(meeting_end[i], i < 8 - duration))
-
-    for i in range(8):
-        s.add(Implies(meeting_start[i], cynthia_busy[i] == False))
-        s.add(Implies(meeting_end[i], cynthia_busy[i + duration] == False))
-        s.add(Implies(meeting_start[i], lauren_busy[i] == False))
-        s.add(Implies(meeting_end[i], lauren_busy[i + duration] == False))
-        s.add(Implies(meeting_start[i], robert_busy[i] == False))
-        s.add(Implies(meeting_end[i], robert_busy[i + duration] == False))
+    # Define the time slots for each participant
+    for i, (name, schedule) in enumerate(schedules.items()):
+        for time in schedule:
+            start, end = time
+            # Create a Z3 variable for each time slot
+            var = Bool(f'{name}_{start}-{end}')
+            # Add the variable to the solver
+            solver.add(var)
+            # Add constraints for the meeting time
+            solver.add(Implies(var, And(start_time >= start, end_time <= end)))
 
     # Add constraints for the meeting duration
-    for i in range(8):
-        s.add(Implies(meeting_start[i], (i + duration) <= 8))
-        s.add(Implies(meeting_end[i], i < 8 - duration))
+    solver.add(Implies(start_time!= end_time, end_time - start_time >= meeting_duration))
 
-    # Add constraints for the meeting start time
-    for i in range(8):
-        s.add(Implies(meeting_start[i], start_time <= i))
-        s.add(Implies(meeting_end[i], i + duration <= end_time))
+    # Add a constraint for the meeting time to be within work hours
+    solver.add(And(start_time >= 9, end_time <= 17))
 
-    # Add constraints for the meeting end time
-    for i in range(8):
-        s.add(Implies(meeting_end[i], i + duration <= end_time))
+    # Check if a solution exists
+    if solver.check() == sat:
+        # Get the model
+        model = solver.model()
+        # Extract the start and end times from the model
+        start_time_val = int(model[start_time].as_long())
+        end_time_val = int(model[end_time].as_long())
+        # Return the solution as a string
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_val:02d}:{start_time_val % 60:02d}\nEnd Time: {end_time_val:02d}:{end_time_val % 60:02d}'
+    else:
+        return 'No solution exists'
 
-    # Solve the problem
-    s.check()
+# Define the schedules for each participant
+schedules = {
+    'Steven': [(9, 17)],
+    'Roy': [(9, 17)],
+    'Cynthia': [(9.5, 10), (11, 12), (13, 13.5), (15, 16)],
+    'Lauren': [(9, 9.5), (10.5, 11), (11, 12), (13, 13.5), (14, 14.5), (15, 15.5), (16, 17)],
+    'Robert': [(10.5, 11), (11, 12), (12.5, 13.5), (14, 16)]
+}
 
-    # Get the solution
-    m = s.model()
+# Define the meeting duration
+meeting_duration = 30
 
-    # Find the first available time slot
-    for i in range(8):
-        if m[meeting_start[i]].as_bool():
-            start_time = i
-            break
+# Define the day to meet
+day = 'Monday'
 
-    # Calculate the end time
-    end_time = start_time + duration
+# Define the start and end time variables
+start_time = Int('start_time')
+end_time = Int('end_time')
 
-    # Print the solution
-    print(f'SOLUTION:')
-    print(f'Day: {day}')
-    print(f'Start Time: {str(start_time).zfill(2)}:00')
-    print(f'End Time: {str(end_time).zfill(2)}:00')
-
-schedule_meeting()
+# Solve the scheduling problem
+print(schedule_meeting(day, start_time, end_time, schedules))

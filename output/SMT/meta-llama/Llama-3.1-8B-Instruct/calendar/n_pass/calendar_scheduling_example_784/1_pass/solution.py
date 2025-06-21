@@ -1,66 +1,85 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the days of the week
-    days = ['Monday', 'Tuesday', 'Wednesday']
+# Define the variables
+days = ['Monday', 'Tuesday', 'Wednesday']
+times = [(9, 60), (10, 60), (11, 60), (12, 30), (13, 60), (14, 30), (15, 30), (16, 60), (17, 0)]
 
-    # Define the start and end times of the work hours
-    start_time = 9 * 60
-    end_time = 17 * 60
+# Define the constraints
+judith_blocked = [Int(f'judith_blocked_{i}') for i in range(len(days) * len(times))]
+timothy_blocked = [Int(f'timothy_blocked_{i}') for i in range(len(days) * len(times))]
 
-    # Define the meeting duration
-    meeting_duration = 60
+# Define the meeting duration
+meeting_duration = 60
 
-    # Define the existing schedules for Judith and Timothy
-    judith_schedule = {
-        'Monday': [9 * 60, 12 * 60, 12 * 60 + 30],
-        'Tuesday': [],
-        'Wednesday': [11 * 60, 12 * 60]
-    }
-    timothy_schedule = {
-        'Monday': [9 * 60, 10 * 60, 10 * 60 + 30, 12 * 60, 12 * 60 + 30, 14 * 60, 15 * 60 + 30, 17 * 60],
-        'Tuesday': [9 * 60, 10 * 60, 13 * 60, 14 * 60, 14 * 60 + 30, 17 * 60],
-        'Wednesday': [9 * 60, 10 * 60, 13 * 60, 14 * 60, 15 * 60, 15 * 60 + 30, 16 * 60, 16 * 60 + 30]
-    }
+# Define the constraints
+for i, day in enumerate(days):
+    for j, time in enumerate(times):
+        judith_blocked[i * len(times) + j] = Bool(f'judith_blocked_{i}_{j}')
+        timothy_blocked[i * len(times) + j] = Bool(f'timothy_blocked_{i}_{j}')
 
-    # Define the preferences of Judith
-    judith_preferences = {
-        'Monday': False,
-        'Tuesday': True,
-        'Wednesday': False
-    }
+# Judith's constraints
+judith_monday_1200_1230 = judith_blocked[1]
+judith_wednesday_1130_1200 = judith_blocked[7]
+judith_monday_avoid = [judith_blocked[0], judith_blocked[1], judith_blocked[2], judith_blocked[3]]
+judith_wednesday_before_1200 = [judith_blocked[0], judith_blocked[1], judith_blocked[2], judith_blocked[3]]
 
-    # Create a Z3 solver
-    solver = Solver()
+# Timothy's constraints
+timothy_monday_0930_1000 = timothy_blocked[0]
+timothy_monday_1030_1130 = timothy_blocked[2]
+timothy_monday_1230_1400 = timothy_blocked[4]
+timothy_monday_1530_1700 = timothy_blocked[8]
+timothy_tuesday_0930_1300 = timothy_blocked[9]
+timothy_tuesday_1330_1400 = timothy_blocked[10]
+timothy_tuesday_1430_1700 = timothy_blocked[11]
+timothy_wednesday_0900_0930 = timothy_blocked[0]
+timothy_wednesday_1030_1100 = timothy_blocked[2]
+timothy_wednesday_1330_1430 = timothy_blocked[6]
+timothy_wednesday_1500_1530 = timothy_blocked[7]
+timothy_wednesday_1600_1630 = timothy_blocked[8]
 
-    # Define the variables
-    day = [Bool(f'day_{i}') for i in range(len(days))]
-    start_time_var = [Int(f'start_time_{i}') for i in range(len(days))]
-    end_time_var = [Int(f'end_time_{i}') for i in range(len(days))]
+# Meeting constraints
+day = [Int('day') for _ in range(len(days))]
+start_time = [Int('start_time') for _ in range(len(times))]
+end_time = [Int('end_time') for _ in range(len(times))]
 
-    # Add the constraints
-    for i in range(len(days)):
-        solver.add(Or([day[i]]))
-        solver.add(Implies(day[i], And(start_time_var[i] >= start_time, start_time_var[i] <= end_time)))
-        solver.add(Implies(day[i], And(end_time_var[i] >= start_time_var[i], end_time_var[i] <= end_time)))
-        solver.add(Implies(day[i], And(end_time_var[i] - start_time_var[i] == meeting_duration)))
-        for time in judith_schedule[days[i]]:
-            solver.add(Not(And(day[i], start_time_var[i] >= time, start_time_var[i] < time + 30)))
-        for time in timothy_schedule[days[i]]:
-            solver.add(Not(And(day[i], start_time_var[i] >= time, start_time_var[i] < time + 30)))
-        if days[i] == 'Monday':
-            solver.add(Not(judith_preferences[days[i]]))
-        if days[i] == 'Wednesday':
-            solver.add(Not(And(day[i], start_time_var[i] < 12 * 60)))
+for i, day_var in enumerate(day):
+    day_var.domain = IntRange(0, len(days) - 1)
+    day_var.value = i
 
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        day_index = [i for i, x in enumerate(model[day]) if x == True][0]
-        start_time_index = [i for i, x in enumerate(model[start_time_var]) if x == model[start_time_var[day_index]]][0]
-        end_time_index = [i for i, x in enumerate(model[end_time_var]) if x == model[end_time_var[day_index]]][0]
-        return f'SOLUTION:\nDay: {days[day_index]}\nStart Time: {model[start_time_var[day_index]].as_long() // 60:02d}:{model[start_time_var[day_index]].as_long() % 60:02d}\nEnd Time: {model[end_time_var[day_index]].as_long() // 60:02d}:{model[end_time_var[day_index]].as_long() % 60:02d}'
-    else:
-        return 'No solution exists'
+for i, start_time_var in enumerate(start_time):
+    start_time_var.domain = IntRange(0, 23)
+    start_time_var.value = times[i][0]
 
-print(schedule_meeting())
+for i, end_time_var in enumerate(end_time):
+    end_time_var.domain = IntRange(0, 23)
+    end_time_var.value = times[i][0] + meeting_duration
+
+# Meeting constraints
+meeting_day = day[day_var.value]
+meeting_start_time = start_time[start_time_var.value]
+meeting_end_time = end_time[end_time_var.value]
+
+# Constraints
+s = Optimize()
+s.add(Or([meeting_day == day[i] for i in range(len(days))]))
+s.add(And([meeting_start_time >= times[i][0] for i in range(len(times))]))
+s.add(And([meeting_end_time <= times[i][1] for i in range(len(times))]))
+s.add(And([meeting_start_time < meeting_end_time]))
+s.add(And([meeting_day!= 'Monday' if meeting_start_time == 12 else meeting_day!= 'Wednesday' if meeting_start_time == 11 else True]))
+s.add(And([meeting_start_time!= 12 if meeting_day == 'Monday' else meeting_start_time!= 11 if meeting_day == 'Wednesday' else True]))
+s.add(Or([timothy_blocked[i * len(times) + j] for i in range(len(days)) for j in range(len(times))]))
+s.add(Or([judith_blocked[i * len(times) + j] for i in range(len(days)) for j in range(len(times))]))
+
+# Solve
+solution = s.check()
+if solution == sat:
+    m = s.model()
+    meeting_day = m[day[0]].as_long()
+    meeting_start_time = m[start_time[0]].as_long()
+    meeting_end_time = m[end_time[0]].as_long()
+    print(f'SOLUTION:')
+    print(f'Day: {days[meeting_day]}')
+    print(f'Start Time: {meeting_start_time:02d}:00')
+    print(f'End Time: {meeting_start_time + meeting_duration:02d}:00')
+else:
+    print('No solution found')
