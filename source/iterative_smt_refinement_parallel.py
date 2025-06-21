@@ -412,7 +412,7 @@ async def process_single_example(
                         "has_execution_error": True,
                         "execution_output": "No code found in model response",
                         "pred": {},
-                        "gold": {},
+                        "gold": gold_formatted,
                         "status": "No code extracted",
                         "violated_constraint": {},
                         "is_exact_match": False,
@@ -421,7 +421,9 @@ async def process_single_example(
                     }
                     with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                         json.dump(error_eval_result, f, indent=4)
-                    return
+                    # Prepare feedback for next iteration instead of returning
+                    current_prompt = f"Code extraction from the previous response failed. Please provide a complete Python solution using the Z3 solver. Make sure to surround your final code with ```python\nYOUR_CODE\n```.\n\nOriginal problem:\n{example['prompt_0shot']}"
+                    continue
                     
                 code_path = f"{pass_output_dir}/solution.py"
                 with open(code_path, "w") as f:
