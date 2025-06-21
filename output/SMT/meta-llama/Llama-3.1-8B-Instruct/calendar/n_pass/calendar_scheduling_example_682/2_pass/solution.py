@@ -1,0 +1,50 @@
+from z3 import *
+
+def schedule_meeting():
+    # Define the variables
+    Monday_start = Int('Monday_start')
+    Monday_end = Int('Monday_end')
+    Tuesday_start = Int('Tuesday_start')
+    Tuesday_end = Int('Tuesday_end')
+
+    # Define the constraints
+    constraints = [
+        And(Monday_start >= 9, Monday_start <= 17),
+        And(Monday_end >= 9, Monday_end <= 17),
+        And(Tuesday_start >= 9, Tuesday_start <= 17),
+        And(Tuesday_end >= 9, Tuesday_end <= 17),
+        Monday_end - Monday_start >= 30,
+        Tuesday_end - Tuesday_start >= 30,
+        Or(Monday_start > 10, Monday_start > 11, Monday_start > 13, Monday_start > 16),
+        Or(Monday_end > 10, Monday_end > 11, Monday_end > 13, Monday_end > 16),
+        Or(Tuesday_start > 9, Tuesday_start > 10, Tuesday_start > 11, Tuesday_start > 13, Tuesday_start > 14, Tuesday_start > 15, Tuesday_start > 16),
+        Or(Tuesday_end > 9, Tuesday_end > 10, Tuesday_end > 11, Tuesday_end > 13, Tuesday_end > 14, Tuesday_end > 15, Tuesday_end > 16),
+        Or(Not(Tuesday_start < 11), Monday_start < 10, Tuesday_start < 10),
+    ]
+
+    # Define the solver
+    solver = Solver()
+
+    # Add the constraints to the solver
+    for constraint in constraints:
+        solver.add(constraint)
+
+    # Check if a solution exists
+    if solver.check() == sat:
+        # Get the model
+        model = solver.model()
+
+        # Extract the values from the model
+        day = 'Monday' if model.evaluate(Monday_start)!= model.evaluate(Tuesday_start) else 'Tuesday'
+        start_time = model.evaluate(Monday_start).as_long() if day == 'Monday' else model.evaluate(Tuesday_start).as_long()
+        end_time = model.evaluate(Monday_end).as_long() if day == 'Monday' else model.evaluate(Tuesday_end).as_long()
+
+        # Print the solution
+        print('SOLUTION:')
+        print(f'Day: {day}')
+        print(f'Start Time: {start_time:02d}:{(start_time % 60):02d}')
+        print(f'End Time: {end_time:02d}:{(end_time % 60):02d}')
+    else:
+        print('No solution found.')
+
+schedule_meeting()
