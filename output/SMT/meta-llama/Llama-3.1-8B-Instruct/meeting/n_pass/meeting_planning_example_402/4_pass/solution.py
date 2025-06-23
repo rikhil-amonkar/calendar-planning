@@ -1,0 +1,5 @@
+s.add(Max(Max(objective_sarah_sum)) >= 105)
+s.add(Max(Max(objective_patricia_sum)) >= 45)
+s.add(Max(Max(objective_matthew_sum)) >= 15)
+s.add(Max(Max(objective_joseph_sum)) >= 30)
+s.add(Max(Max(objective_robert_sum)) >= 15)

@@ -1,0 +1,2 @@
+s = Solver()
+s.simplify()
