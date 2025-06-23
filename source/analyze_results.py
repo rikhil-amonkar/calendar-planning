@@ -5,13 +5,13 @@ This script analyzes the results of SMT/Python/Plan task execution and generates
 
 Usage Examples:
     # Analyze calendar task results
-    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct_20250619/calendar/n_pass
+    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct/calendar/n_pass
     
     # Analyze trip task results  
-    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct_20250619/trip/n_pass
+    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct/trip/n_pass
     
     # Analyze meeting task results
-    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct_20250619/meeting/n_pass
+    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct/meeting/n_pass
     
     # Analyze results from different model (DeepSeek-R1)
     python3 analyze_results.py --task_dir ../output/SMT/DeepSeek-R1/calendar/n_pass
