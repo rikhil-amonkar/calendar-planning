@@ -51,8 +51,10 @@ for i in range(len(locations)):
                          x[i] + y[i] <= kenneth_time[1] + distances[locations[i]][location])))
 
 for i in range(len(locations)):
-    s.add(z[i] == Or(x[i] + y[i] >= jason_time[0] - distances[locations[i]]['Presidio'],
-                     x[i] + y[i] >= kenneth_time[0] - distances[locations[i]]['Marina District']))
+    s.add(z[i] == Or(And(x[i] + y[i] >= jason_time[0] - distances[locations[i]]['Presidio'],
+                         x[i] + y[i] <= jason_time[1] + distances[locations[i]]['Presidio']),
+                     And(x[i] + y[i] >= kenneth_time[0] - distances[locations[i]]['Marina District'],
+                         x[i] + y[i] <= kenneth_time[1] + distances[locations[i]]['Marina District'])))
 
 for i in range(len(locations)):
     s.add(z[i] == Implies(x[i] + y[i] >= jason_time[0] - distances[locations[i]]['Presidio'],
