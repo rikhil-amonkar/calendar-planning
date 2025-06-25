@@ -3,114 +3,108 @@ import json
 
 def main():
     cities = ["Brussels", "Bucharest", "Stuttgart", "Mykonos", "Helsinki", "Split", "London"]
-    days_map = {
-        "Brussels": 4,
-        "Bucharest": 3,
-        "Stuttgart": 4,
-        "Mykonos": 2,
-        "Helsinki": 5,
-        "Split": 3,
-        "London": 5
-    }
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    int_to_city = {idx: city for idx, city in enumerate(cities)}
     
-    direct_flights = [
-        ("Helsinki", "London"),
-        ("Split", "Madrid"),
-        ("Helsinki", "Madrid"),
-        ("London", "Madrid"),
-        ("Brussels", "London"),
-        ("Bucharest", "London"),
-        ("Brussels", "Bucharest"),
-        ("Bucharest", "Madrid"),
-        ("Split", "Helsinki"),
-        ("Mykonos", "Madrid"),
-        ("Stuttgart", "London"),
-        ("Helsinki", "Brussels"),
-        ("Brussels", "Madrid"),
-        ("Split", "London"),
-        ("Stuttgart", "Split"),
-        ("London", "Mykonos")
+    durations_list = [4, 3, 4, 2, 5, 3, 5]
+    
+    edges_list = [
+        (4, 6),  # Helsinki and London
+        (0, 6),  # Brussels and London
+        (1, 6),  # Bucharest and London
+        (0, 1),  # Brussels and Bucharest
+        (5, 4),  # Split and Helsinki
+        (2, 6),  # Stuttgart and London
+        (4, 0),  # Helsinki and Brussels
+        (5, 6),  # Split and London
+        (2, 5),  # Stuttgart and Split
+        (6, 3)   # London and Mykonos
     ]
+    non_madrid_edges = set()
+    for a, b in edges_list:
+        non_madrid_edges.add((min(a, b), max(a, b)))
     
-    pos = [String(f"pos{i}") for i in range(7)]
+    madrid_connected = {0, 1, 3, 4, 5, 6}  # All cities except Stuttgart (2)
+
+    order = [Int(f'order_{i}') for i in range(7)]
     s = Solver()
     
     for i in range(7):
-        s.add(Or([pos[i] == StringVal(city) for city in cities]))
-    s.add(Distinct(pos))
+        s.add(order[i] >= 0, order[i] < 7)
+    s.add(Distinct(order))
     
-    def day(city_expr):
-        return If(city_expr == StringVal("Brussels"), 4,
-               If(city_expr == StringVal("Bucharest"), 3,
-               If(city_expr == StringVal("Stuttgart"), 4,
-               If(city_expr == StringVal("Mykonos"), 2,
-               If(city_expr == StringVal("Helsinki"), 5,
-               If(city_expr == StringVal("Split"), 3,
-               If(city_expr == StringVal("London"), 5, 0)))))))
+    start = [Int(f'start_{i}') for i in range(7)]
+    s.add(start[0] == 1)
+    for i in range(1, 7):
+        d_prev = Int(f'd_prev_{i}')
+        d_prev_expr = Sum([If(order[i-1] == j, durations_list[j], 0) for j in range(7)])
+        s.add(d_prev == d_prev_expr)
+        s.add(start[i] == start[i-1] + d_prev - 1)
     
-    P = [0] * 8
-    P[0] = 0
-    for i in range(1, 8):
-        P[i] = P[i-1] + day(pos[i-1])
+    stuttgart_start = Sum([If(order[i] == 2, start[i], 0) for i in range(7)])
+    s.add(stuttgart_start <= 4)
     
     for i in range(6):
-        c1 = pos[i]
-        c2 = pos[i+1]
-        valid = False
-        for flight in direct_flights:
-            a, b = flight
-            a_str = StringVal(a)
-            b_str = StringVal(b)
-            valid = Or(valid, And(c1 == a_str, c2 == b_str), And(c1 == b_str, c2 == a_str))
-        s.add(valid)
+        a = order[i]
+        b = order[i+1]
+        constraints = []
+        for edge in non_madrid_edges:
+            u, v = edge
+            constraints.append(And(a == u, b == v))
+            constraints.append(And(a == v, b == u))
+        s.add(Or(constraints))
     
-    valid_last = False
-    madrid_val = StringVal("Madrid")
-    for flight in direct_flights:
-        a, b = flight
-        a_str = StringVal(a)
-        b_str = StringVal(b)
-        valid_last = Or(valid_last, And(pos[6] == a_str, madrid_val == b_str), And(pos[6] == b_str, madrid_val == a_str))
-    s.add(valid_last)
-    
-    for i in range(1, 7):
-        s.add(Implies(pos[i] == StringVal("Stuttgart"), P[i] - (i-1) <= 4))
+    s.add(Or([order[6] == idx for idx in madrid_connected]))
     
     if s.check() == sat:
         m = s.model()
-        city_seq = []
-        for i in range(7):
-            city_expr = m.evaluate(pos[i])
-            city_name = city_expr.as_string()
-            city_name = city_name.strip('"')
-            city_seq.append(city_name)
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(7)]
+        city_names = [int_to_city[idx] for idx in order_vals]
         
-        P_actual = [0] * 8
-        P_actual[0] = 0
-        for i in range(7):
-            city = city_seq[i]
-            P_actual[i+1] = P_actual[i] + days_map[city]
-        
-        records = []
-        start0 = 1
-        end0 = P_actual[1]
-        records.append({"day_range": f"Day {start0}-{end0}", "place": city_seq[0]})
-        records.append({"day_range": f"Day {end0}", "place": city_seq[0]})
-        
+        starts = [1]
         for i in range(1, 7):
-            start_i = P_actual[i] - (i-1)
-            end_i = P_actual[i+1] - i
-            records.append({"day_range": f"Day {start_i}", "place": city_seq[i]})
-            records.append({"day_range": f"Day {start_i}-{end_i}", "place": city_seq[i]})
-            records.append({"day_range": f"Day {end_i}", "place": city_seq[i]})
+            prev_city = order_vals[i-1]
+            prev_duration = durations_list[prev_city]
+            starts.append(starts[i-1] + prev_duration - 1)
+        ends = [starts[i] + durations_list[order_vals[i]] - 1 for i in range(7)]
         
-        records.append({"day_range": "Day 20", "place": "Madrid"})
-        records.append({"day_range": "Day 20-21", "place": "Madrid"})
+        def format_day_range(start_day, end_day):
+            if start_day == end_day:
+                return f"Day {start_day}"
+            else:
+                return f"Day {start_day}-{end_day}"
         
-        result = {"itinerary": records}
+        itinerary = []
+        for i in range(7):
+            city_name = int_to_city[order_vals[i]]
+            start_day = starts[i]
+            end_day = ends[i]
+            itinerary.append({
+                "day_range": format_day_range(start_day, end_day),
+                "place": city_name
+            })
+            itinerary.append({
+                "day_range": f"Day {end_day}",
+                "place": city_name
+            })
+            if i < 6:
+                next_city_name = int_to_city[order_vals[i+1]]
+            else:
+                next_city_name = "Madrid"
+            itinerary.append({
+                "day_range": f"Day {end_day}",
+                "place": next_city_name
+            })
+        
+        itinerary.append({
+            "day_range": "Day 20-21",
+            "place": "Madrid"
+        })
+        
+        result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

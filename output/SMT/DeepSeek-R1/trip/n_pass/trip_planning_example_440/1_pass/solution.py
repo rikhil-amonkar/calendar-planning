@@ -1,108 +1,124 @@
 from z3 import *
 
 def main():
-    # City mapping: 0:Split, 1:Helsinki, 2:Reykjavik, 3:Vilnius, 4:Geneva
-    dur_dict = {0:2, 1:2, 2:3, 3:3, 4:6}
-    city_names = {0:'Split', 1:'Helsinki', 2:'Reykjavik', 3:'Vilnius', 4:'Geneva'}
-    
-    # Graph: adjacency list
-    graph = {
-        0: [1, 3, 4],
-        1: [0, 2, 3, 4],
-        2: [1],
-        3: [0, 1],
-        4: [0, 1]
-    }
-    allowed_pairs = set()
-    for u, neighbors in graph.items():
-        for v in neighbors:
-            allowed_pairs.add((u, v))
-    
-    # Create Z3 variables for the order
-    order = [Int(f'order_{i}') for i in range(5)]
     s = Solver()
+    days = 12
+    cities = ['Geneva', 'Split', 'Helsinki', 'Vilnius', 'Reykjavik']
+    required_days = {
+        'Geneva': 6,
+        'Split': 2,
+        'Helsinki': 2,
+        'Vilnius': 3,
+        'Reykjavik': 3
+    }
     
-    # Constraints: each order[i] between 0 and 4 and distinct
-    for i in range(5):
-        s.add(And(order[i] >= 0, order[i] <= 4))
-    s.add(Distinct(order))
+    in_city = {}
+    for d in range(1, days+1):
+        for c in cities:
+            in_city[(d, c)] = Bool(f"in_{d}_{c}")
     
-    # Constraints for consecutive cities being connected
-    for i in range(4):
-        s.add(Or([And(order[i] == u, order[i+1] == v) for (u, v) in allowed_pairs]))
+    flight_days = [Bool(f"flight_{d}") for d in range(1, days+1)]
     
-    # Define durations for each position in the order
-    d = [If(order[i] == 0, dur_dict[0],
-          If(order[i] == 1, dur_dict[1],
-          If(order[i] == 2, dur_dict[2],
-          If(order[i] == 3, dur_dict[3], dur_dict[4])))) for i in range(5)]
+    for d in range(1, days+1):
+        in_cities_today = [in_city[(d, c)] for c in cities]
+        count = Sum([If(v, 1, 0) for v in in_cities_today])
+        s.add(flight_days[d-1] == (count == 2))
+        s.add(Or(count == 1, count == 2))
     
-    # Precomputed sums for the first j durations
-    pre = [0] * 5
-    pre[0] = 0
-    pre[1] = d[0]
-    pre[2] = d[0] + d[1]
-    pre[3] = d[0] + d[1] + d[2]
-    pre[4] = d[0] + d[1] + d[2] + d[3]
+    s.add(Sum([If(flight_days[d-1], 1, 0) for d in range(1, days+1)]) == 4)
     
-    # Start and end days for each city in the order
-    start_days = [pre[j] - j + 1 for j in range(5)]
-    end_days = [pre[j] + d[j] - j for j in range(5)]
+    for c in cities:
+        total = Sum([If(in_city[(d, c)], 1, 0) for d in range(1, days+1)])
+        s.add(total == required_days[c])
     
-    # Find positions of Reykjavik (2) and Vilnius (3)
-    reykjavik_pos = -1
-    vilnius_pos = -1
-    for j in range(5):
-        reykjavik_pos = If(order[j] == 2, j, reykjavik_pos)
-        vilnius_pos = If(order[j] == 3, j, vilnius_pos)
+    s.add(in_city[(7, 'Vilnius')] == True)
+    s.add(in_city[(8, 'Vilnius')] == True)
+    s.add(in_city[(9, 'Vilnius')] == True)
+    s.add(in_city[(10, 'Reykjavik')] == True)
+    s.add(in_city[(11, 'Reykjavik')] == True)
+    s.add(in_city[(12, 'Reykjavik')] == True)
     
-    # Constraints for Reykjavik and Vilnius
-    reyk_start = If(reykjavik_pos == 0, start_days[0],
-                   If(reykjavik_pos == 1, start_days[1],
-                   If(reykjavik_pos == 2, start_days[2],
-                   If(reykjavik_pos == 3, start_days[3], start_days[4]))))
-    reyk_end = If(reykjavik_pos == 0, end_days[0],
-                 If(reykjavik_pos == 1, end_days[1],
-                 If(reykjavik_pos == 2, end_days[2],
-                 If(reykjavik_pos == 3, end_days[3], end_days[4]))))
-    s.add(reyk_start <= 12, reyk_end >= 10)
+    direct_flights = [
+        ('Split', 'Helsinki'),
+        ('Geneva', 'Split'),
+        ('Geneva', 'Helsinki'),
+        ('Helsinki', 'Reykjavik'),
+        ('Vilnius', 'Helsinki'),
+        ('Split', 'Vilnius')
+    ]
+    flight_pairs = set()
+    for (a, b) in direct_flights:
+        flight_pairs.add((a, b))
+        flight_pairs.add((b, a))
     
-    vilnius_start = If(vilnius_pos == 0, start_days[0],
-                      If(vilnius_pos == 1, start_days[1],
-                      If(vilnius_pos == 2, start_days[2],
-                      If(vilnius_pos == 3, start_days[3], start_days[4]))))
-    vilnius_end = If(vilnius_pos == 0, end_days[0],
-                    If(vilnius_pos == 1, end_days[1],
-                    If(vilnius_pos == 2, end_days[2],
-                    If(vilnius_pos == 3, end_days[3], end_days[4]))))
-    s.add(vilnius_start <= 9, vilnius_end >= 7)
+    for d in range(1, days+1):
+        for i in range(len(cities)):
+            for j in range(i+1, len(cities)):
+                c1 = cities[i]
+                c2 = cities[j]
+                if (c1, c2) not in flight_pairs:
+                    s.add(Not(And(in_city[(d, c1)], in_city[(d, c2)])))
     
-    # Check and get model
+    for d in range(1, days):
+        for c in cities:
+            s.add(Implies(
+                And(in_city[(d+1, c)], Not(in_city[(d, c)])),
+                And(in_city[(d, c)], flight_days[d-1])
+            ))
+    
     if s.check() == sat:
         model = s.model()
-        order_val = [model.evaluate(order[i]).as_long() for i in range(5)]
-        d_val = [dur_dict[city] for city in order_val]
-        pre_val = [0] * 5
-        pre_val[0] = 0
-        for j in range(1, 5):
-            pre_val[j] = pre_val[j-1] + d_val[j-1]
-        start_val = [pre_val[j] - j + 1 for j in range(5)]
-        end_val = [pre_val[j] + d_val[j] - j for j in range(5)]
+        blocks = {}
+        for city in cities:
+            days_present = []
+            for d in range(1, days+1):
+                if is_true(model[in_city[(d, city)]]):
+                    days_present.append(d)
+            if not days_present:
+                continue
+            days_present.sort()
+            cont_blocks = []
+            start = days_present[0]
+            end = days_present[0]
+            for i in range(1, len(days_present)):
+                if days_present[i] == end + 1:
+                    end = days_present[i]
+                else:
+                    cont_blocks.append((start, end))
+                    start = days_present[i]
+                    end = days_present[i]
+            cont_blocks.append((start, end))
+            blocks[city] = cont_blocks
         
         itinerary = []
-        for j in range(5):
-            city = order_val[j]
-            start = start_val[j]
-            end = end_val[j]
-            if j > 0:
-                itinerary.append({"day_range": f"Day {start}", "place": city_names[city]})
-            if start < end:
-                itinerary.append({"day_range": f"Day {start}-{end}", "place": city_names[city]})
-            if j < 4:
-                itinerary.append({"day_range": f"Day {end}", "place": city_names[city]})
+        for city in cities:
+            if city in blocks:
+                for (start, end) in blocks[city]:
+                    if start == end:
+                        dr_str = f"Day {start}"
+                    else:
+                        dr_str = f"Day {start}-{end}"
+                    itinerary.append({"day_range": dr_str, "place": city})
         
-        result = {"itinerary": itinerary}
-        print(result)
+        for d in range(1, days+1):
+            cities_today = []
+            for city in cities:
+                if is_true(model[in_city[(d, city)]]):
+                    cities_today.append(city)
+            if len(cities_today) == 2:
+                for city in cities_today:
+                    itinerary.append({"day_range": f"Day {d}", "place": city})
+        
+        def get_first_day(record):
+            dr = record["day_range"]
+            if '-' in dr:
+                return int(dr.split('-')[0].split()[1])
+            else:
+                return int(dr.split()[1])
+        
+        itinerary_sorted = sorted(itinerary, key=get_first_day)
+        output = {"itinerary": itinerary_sorted}
+        print(output)
     else:
         print("No solution found")
 

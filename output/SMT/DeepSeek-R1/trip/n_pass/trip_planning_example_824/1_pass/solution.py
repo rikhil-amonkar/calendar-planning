@@ -1,44 +1,89 @@
-import json
+from z3 import *
 
-# Create the itinerary as per the hand-crafted plan
-itinerary = []
+def main():
+    cities = ["Berlin", "Split", "Lyon", "Lisbon", "Bucharest", "Riga", "Tallinn"]
+    days_req = {
+        "Berlin": 5,
+        "Split": 3,
+        "Lyon": 5,
+        "Lisbon": 3,
+        "Bucharest": 3,
+        "Riga": 5,
+        "Tallinn": 4
+    }
+    start = {}
+    end = {}
+    for city in cities:
+        start[city] = Int(f'start_{city}')
+        end[city] = Int(f'end_{city}')
 
-# Berlin: Days 1-5 (first city)
-itinerary.append({"day_range": "Day 1-5", "place": "Berlin"})
-itinerary.append({"day_range": "Day 5", "place": "Berlin"})  # departure flight day
+    s = Solver()
 
-# Split: Days 5-7
-itinerary.append({"day_range": "Day 5", "place": "Split"})    # arrival flight day
-itinerary.append({"day_range": "Day 5-7", "place": "Split"})
-itinerary.append({"day_range": "Day 7", "place": "Split"})    # departure flight day
+    # Fixed constraints
+    s.add(start["Berlin"] == 1)
+    s.add(end["Berlin"] == 5)
+    s.add(start["Lyon"] == 7)
+    s.add(end["Lyon"] == 11)
+    s.add(start["Bucharest"] == 13)
+    s.add(end["Bucharest"] == 15)
 
-# Lyon: Days 7-11
-itinerary.append({"day_range": "Day 7", "place": "Lyon"})     # arrival flight day
-itinerary.append({"day_range": "Day 7-11", "place": "Lyon"})
-itinerary.append({"day_range": "Day 11", "place": "Lyon"})    # departure flight day
+    # Duration constraints
+    for city in cities:
+        s.add(end[city] == start[city] + days_req[city] - 1)
 
-# Lisbon: Days 11-13
-itinerary.append({"day_range": "Day 11", "place": "Lisbon"})  # arrival flight day
-itinerary.append({"day_range": "Day 11-13", "place": "Lisbon"})
-itinerary.append({"day_range": "Day 13", "place": "Lisbon"})  # departure flight day
+    # Define the sequence of cities
+    sequence = ["Berlin", "Split", "Lyon", "Lisbon", "Bucharest", "Riga", "Tallinn"]
+    for i in range(len(sequence) - 1):
+        s.add(end[sequence[i]] == start[sequence[i+1]])
 
-# Bucharest: Days 13-15
-itinerary.append({"day_range": "Day 13", "place": "Bucharest"})  # arrival flight day
-itinerary.append({"day_range": "Day 13-15", "place": "Bucharest"})
-itinerary.append({"day_range": "Day 15", "place": "Bucharest"})  # departure flight day
+    # Flight constraints (allowed pairs)
+    bidirectional_edges = [
+        ("Lisbon", "Bucharest"),
+        ("Berlin", "Lisbon"),
+        ("Bucharest", "Riga"),
+        ("Berlin", "Riga"),
+        ("Split", "Lyon"),
+        ("Lisbon", "Riga"),
+        ("Berlin", "Split"),
+        ("Lyon", "Lisbon"),
+        ("Berlin", "Tallinn"),
+        ("Lyon", "Bucharest")
+    ]
+    directed_edges = [("Riga", "Tallinn")]
+    allowed_pairs = set()
+    for a, b in bidirectional_edges:
+        allowed_pairs.add((a, b))
+        allowed_pairs.add((b, a))
+    for a, b in directed_edges:
+        allowed_pairs.add((a, b))
 
-# Riga: Days 15-19
-itinerary.append({"day_range": "Day 15", "place": "Riga"})    # arrival flight day
-itinerary.append({"day_range": "Day 15-19", "place": "Riga"})
-itinerary.append({"day_range": "Day 19", "place": "Riga"})    # departure flight day
+    for i in range(len(sequence) - 1):
+        a, b = sequence[i], sequence[i+1]
+        s.add(Or(*[And(a == pair[0], b == pair[1]) for pair in allowed_pairs if pair[0] == a and pair[1] == b))
 
-# Tallinn: Days 19-22 (last city)
-itinerary.append({"day_range": "Day 19", "place": "Tallinn"}) # arrival flight day
-itinerary.append({"day_range": "Day 19-22", "place": "Tallinn"})
+    # Bounds for start and end days
+    for city in cities:
+        s.add(start[city] >= 1)
+        s.add(start[city] <= 22)
+        s.add(end[city] >= 1)
+        s.add(end[city] <= 22)
 
-# Create the output dictionary
-output = {"itinerary": itinerary}
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i, city in enumerate(sequence):
+            s_val = m.eval(start[city]).as_long()
+            e_val = m.eval(end[city]).as_long()
+            itinerary.append({"day_range": f"Day {s_val}-{e_val}", "place": city})
+            if i < len(sequence) - 1:
+                flight_day = e_val
+                itinerary.append({"day_range": f"Day {flight_day}", "place": city})
+                next_city = sequence[i+1]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": next_city})
+        result = {"itinerary": itinerary}
+        print(result)
+    else:
+        print("No solution found")
 
-# Convert to JSON
-json_output = json.dumps(output, indent=2)
-print(json_output)
+if __name__ == "__main__":
+    main()

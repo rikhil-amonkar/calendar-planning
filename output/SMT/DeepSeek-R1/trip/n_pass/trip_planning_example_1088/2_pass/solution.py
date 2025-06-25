@@ -1,28 +1,41 @@
-import random
+def plan_trip(events_data):
+    events = events_data
+    total_days = 21
+    from itertools import permutations
+    for perm in permutations(events):
+        current_day = 1
+        valid = True
+        itinerary = []
+        for event in perm:
+            con = event['consecutive_days']
+            start = current_day
+            end = current_day + con - 1
+            if start < event['earliest_start'] or end > event['latest_end']:
+                valid = False
+                break
+            itinerary.append((event['city'], start, end))
+            current_day = end + 1
+        if valid and current_day == total_days + 1:
+            result = []
+            for (city, start, end) in itinerary:
+                if start == end:
+                    day_range_str = f"Day {start}"
+                else:
+                    day_range_str = f"Day {start}-{end}"
+                result.append({'day_range': day_range_str, 'place': city})
+            return {'itinerary': result}
+    return "Impossible"
 
-def generate_itinerary():
-    activities = [
-        'Amusement Park', 'Museum', 'Art Gallery', 'Historical Landmark', 
-        'Aquarium', 'Zoo', 'Botanical Garden', 'Park', 'Beach', 'Shopping District'
-    ]
-    itinerary = []
-    
-    # Generate the first day
-    num_activities = random.choice([2, 3, 4])
-    day_activities = random.sample(activities, num_activities)
-    itinerary.append(day_activities)
-    
-    # Generate the remaining 20 days
-    for _ in range(1, 21):
-        # Activities available: those not used in the previous day
-        available_activities = [act for act in activities if act not in itinerary[-1]]
-        num_activities = random.choice([2, 3, 4])
-        day_activities = random.sample(available_activities, num_activities)
-        itinerary.append(day_activities)
-    
-    return itinerary
+events = [
+    {"city": "Reykjavik", "consecutive_days": 2, "earliest_start": 1, "latest_end": 21},
+    {"city": "Tallinn", "consecutive_days": 4, "earliest_start": 2, "latest_end": 6},
+    {"city": "Oslo", "consecutive_days": 4, "earliest_start": 6, "latest_end": 10},
+    {"city": "Split", "consecutive_days": 2, "earliest_start": 10, "latest_end": 12},
+    {"city": "Stuttgart", "consecutive_days": 4, "earliest_start": 12, "latest_end": 16},
+    {"city": "Stockholm", "consecutive_days": 2, "earliest_start": 2, "latest_end": 4},
+    {"city": "Geneva", "consecutive_days": 1, "earliest_start": 18, "latest_end": 19},
+    {"city": "Porto", "consecutive_days": 2, "earliest_start": 19, "latest_end": 21}
+]
 
-# Generate and print the itinerary
-itinerary = generate_itinerary()
-for day_activities in itinerary:
-    print(day_activities)
+result = plan_trip(events)
+print(result)

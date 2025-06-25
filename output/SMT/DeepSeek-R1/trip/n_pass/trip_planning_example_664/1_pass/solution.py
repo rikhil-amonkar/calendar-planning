@@ -1,63 +1,63 @@
 from z3 import *
-import json
 
 def main():
-    # Initialize the solver
     s = Solver()
-    
-    # Define the cities and their durations
-    cities = ["Bucharest", "Munich", "Seville", "Milan", "Stockholm", "Tallinn"]
+
+    cities = ['Bucharest', 'Munich', 'Seville', 'Milan', 'Stockholm', 'Tallinn']
+    start = {city: Int(f'start_{city}') for city in cities}
+    end = {city: Int(f'end_{city}') for city in cities}
+
     durations = {
-        "Bucharest": 4,
-        "Munich": 5,
-        "Seville": 5,
-        "Milan": 2,
-        "Stockholm": 5,
-        "Tallinn": 2
+        'Bucharest': 4,
+        'Munich': 5,
+        'Seville': 5,
+        'Milan': 2,
+        'Stockholm': 5,
+        'Tallinn': 2
     }
-    
-    # Create start day variables for each city
-    starts = {city: Int(f'start_{city}') for city in cities}
-    
-    # Compute end days: end = start + duration - 1
-    ends = {city: starts[city] + durations[city] - 1 for city in cities}
-    
-    # Fixed constraints for Bucharest, Munich, Seville
-    s.add(starts["Bucharest"] == 1)
-    s.add(starts["Munich"] == 4)
-    s.add(starts["Seville"] == 8)
-    
-    # Flight connection constraints: end of current city == start of next city
-    route = ["Bucharest", "Munich", "Seville", "Milan", "Stockholm", "Tallinn"]
-    for i in range(len(route) - 1):
-        s.add(ends[route[i]] == starts[route[i+1]])
-    
-    # All start days >= 1 and end days <= 18
+
     for city in cities:
-        s.add(starts[city] >= 1)
-        s.add(ends[city] <= 18)
-    
-    # Check if a solution exists
+        s.add(end[city] - start[city] + 1 == durations[city])
+
+    s.add(start['Bucharest'] >= 1, end['Bucharest'] <= 4)
+    s.add(start['Munich'] >= 4, end['Munich'] <= 8)
+    s.add(start['Seville'] >= 8, end['Seville'] <= 12)
+
+    flight_connections = [
+        ('Bucharest', 'Munich'),
+        ('Munich', 'Seville'),
+        ('Seville', 'Milan'),
+        ('Milan', 'Stockholm'),
+        ('Stockholm', 'Tallinn')
+    ]
+
+    s.add(start['Bucharest'] == 1)
+    s.add(start['Munich'] == end['Bucharest'])
+    s.add(start['Seville'] == end['Munich'])
+    s.add(start['Milan'] == end['Seville'])
+    s.add(start['Stockholm'] == end['Milan'])
+    s.add(start['Tallinn'] == end['Stockholm'])
+    s.add(end['Tallinn'] == 18)
+
     if s.check() == sat:
-        m = s.model()
-        start_vals = {city: m.evaluate(starts[city]).as_long() for city in cities}
-        end_vals = {city: start_vals[city] + durations[city] - 1 for city in cities}
-        
-        # Build the itinerary
-        itinerary_list = []
-        for i, city in enumerate(route):
-            start = start_vals[city]
-            end = end_vals[city]
-            itinerary_list.append({"day_range": f"Day {start}-{end}", "place": city})
-            if i < len(route) - 1:
-                itinerary_list.append({"day_range": f"Day {end}", "place": city})
-                next_city = route[i+1]
-                itinerary_list.append({"day_range": f"Day {end}", "place": next_city})
-        
-        result = {"itinerary": itinerary_list}
-        print(json.dumps(result))
+        model = s.model()
+        start_vals = {city: model.eval(start[city]).as_long() for city in cities}
+        end_vals = {city: model.eval(end[city]).as_long() for city in cities}
+
+        itinerary = []
+        for i, city in enumerate(cities):
+            if i > 0:
+                prev_city = cities[i-1]
+                flight_day = end_vals[prev_city]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": prev_city})
+                itinerary.append({"day_range": f"Day {flight_day}", "place": city})
+            itinerary.append({"day_range": f"Day {start_vals[city]}-{end_vals[city]}", "place": city})
+        itinerary.append({"day_range": f"Day {end_vals['Tallinn']}", "place": "Tallinn"})
+
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

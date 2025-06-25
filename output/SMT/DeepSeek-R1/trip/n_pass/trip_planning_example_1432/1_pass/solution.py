@@ -1,171 +1,144 @@
 from z3 import *
+import json
 
 def main():
-    # Required days for each city: Frankfurt, Salzburg, Athens, Reykjavik, Bucharest, Valencia, Vienna, Amsterdam, Stockholm, Riga
-    required_days = [4, 5, 5, 5, 3, 2, 5, 3, 3, 3]
-    city_names = [
-        "Frankfurt",
-        "Salzburg",
-        "Athens",
-        "Reykjavik",
-        "Bucharest",
-        "Valencia",
-        "Vienna",
-        "Amsterdam",
-        "Stockholm",
-        "Riga"
+    cities = ['Frankfurt', 'Salzburg', 'Athens', 'Reykjavik', 'Bucharest', 'Valencia', 'Vienna', 'Amsterdam', 'Stockholm', 'Riga']
+    required_days = {
+        'Frankfurt': 4,
+        'Salzburg': 5,
+        'Athens': 5,
+        'Reykjavik': 5,
+        'Bucharest': 3,
+        'Valencia': 2,
+        'Vienna': 5,
+        'Amsterdam': 3,
+        'Stockholm': 3,
+        'Riga': 3
+    }
+    
+    flight_data = [
+        "Valencia and Frankfurt", 
+        "Vienna and Bucharest", 
+        "from Valencia to Athens", 
+        "Athens and Bucharest", 
+        "Riga and Frankfurt", 
+        "Stockholm and Athens", 
+        "Amsterdam and Bucharest", 
+        "from Athens to Riga", 
+        "Amsterdam and Frankfurt", 
+        "Stockholm and Vienna", 
+        "Vienna and Riga", 
+        "Amsterdam and Reykjavik", 
+        "Reykjavik and Frankfurt", 
+        "Stockholm and Amsterdam", 
+        "Amsterdam and Valencia", 
+        "Vienna and Frankfurt", 
+        "Valencia and Bucharest", 
+        "Bucharest and Frankfurt", 
+        "Stockholm and Frankfurt", 
+        "Valencia and Vienna", 
+        "from Reykjavik to Athens", 
+        "Frankfurt and Salzburg", 
+        "Amsterdam and Vienna", 
+        "Stockholm and Reykjavik", 
+        "Amsterdam and Riga", 
+        "Stockholm and Riga", 
+        "Vienna and Reykjavik", 
+        "Amsterdam and Athens", 
+        "Athens and Frankfurt", 
+        "Vienna and Athens", 
+        "Riga and Bucharest"
     ]
     
-    # Define the allowed flights (both bidirectional and directed)
-    bidirectional_pairs = [
-        (0,5), (5,0),
-        (6,4), (4,6),
-        (2,4), (4,2),
-        (0,9), (9,0),
-        (2,8), (8,2),
-        (4,7), (7,4),
-        (0,7), (7,0),
-        (6,8), (8,6),
-        (3,7), (7,3),
-        (0,3), (3,0),
-        (7,8), (8,7),
-        (5,7), (7,5),
-        (0,6), (6,0),
-        (4,5), (5,4),
-        (0,4), (4,0),
-        (0,8), (8,0),
-        (5,6), (6,5),
-        (0,1), (1,0),
-        (7,6), (6,7),
-        (8,3), (3,8),
-        (7,9), (9,7),
-        (8,9), (9,8),
-        (6,3), (3,6),
-        (2,7), (7,2),
-        (0,2), (2,0),
-        (6,2), (2,6),
-        (4,9), (9,4)
-    ]
-    directed_pairs = [
-        (5,2),  # Valencia to Athens
-        (2,9),  # Athens to Riga
-        (3,2)   # Reykjavik to Athens
-    ]
-    allowed_flights = set(bidirectional_pairs) | set(directed_pairs)
-    
-    s = Solver()
-    
-    # End day variables for the first 10 stays: e1, e2, ..., e10
-    e = [Int('e%d' % i) for i in range(1, 11)]
-    # City assignment for the 11 stays
-    city_vars = [Int('city%d' % i) for i in range(11)]
-    
-    # Constraints: 1 <= e1 <= e2 <= ... <= e10 <= 29
-    for i in range(10):
-        s.add(e[i] >= 1)
-        s.add(e[i] <= 29)
-    for i in range(9):
-        s.add(e[i] <= e[i+1])
-    
-    # The entire list of end points: [1, e1, e2, ..., e10, 29]
-    ends = [1] + e + [29]
-    
-    # Durations for each stay: duration[i] = (ends[i+1] - ends[i]) + 1
-    durations = []
-    for i in range(11):
-        durations.append(ends[i+1] - ends[i] + 1)
-    
-    # Constraint: each city must be visited at least once
-    for c in range(10):
-        count_c = Sum([If(city_vars[i] == c, 1, 0) for i in range(11)])
-        s.add(count_c >= 1)
-    
-    # Constraint: total days in each city must equal required_days
-    for c in range(10):
-        total_dur = 0
-        for i in range(11):
-            total_dur += If(city_vars[i] == c, durations[i], 0)
-        s.add(total_dur == required_days[c])
-    
-    # Event constraints
-    
-    # Valencia (city5) must cover days 5 and 6
-    for d in [5, 6]:
-        in_city = False
-        for i in range(11):
-            # Check if stay i is in Valencia and covers day d
-            cond = And(city_vars[i] == 5, ends[i] <= d, d <= ends[i+1])
-            in_city = Or(in_city, cond)
-        s.add(in_city)
-    
-    # Riga (city9) must cover days 18,19,20
-    for d in [18,19,20]:
-        in_city = False
-        for i in range(11):
-            cond = And(city_vars[i] == 9, ends[i] <= d, d <= ends[i+1])
-            in_city = Or(in_city, cond)
-        s.add(in_city)
-    
-    # Athens (city2) must cover days 14,15,16,17,18
-    for d in [14,15,16,17,18]:
-        in_city = False
-        for i in range(11):
-            cond = And(city_vars[i] == 2, ends[i] <= d, d <= ends[i+1])
-            in_city = Or(in_city, cond)
-        s.add(in_city)
-    
-    # Vienna (city6) must cover at least one day in [6,10]
-    in_vienna = False
-    for d in range(6, 11):  # d from 6 to 10 inclusive
-        for i in range(11):
-            cond = And(city_vars[i] == 6, ends[i] <= d, d <= ends[i+1])
-            in_vienna = Or(in_vienna, cond)
-    s.add(in_vienna)
-    
-    # Stockholm (city8) must cover at least one day in [1,3]
-    in_stockholm = False
-    for d in range(1, 4):  # d from 1 to 3 inclusive
-        for i in range(11):
-            cond = And(city_vars[i] == 8, ends[i] <= d, d <= ends[i+1])
-            in_stockholm = Or(in_stockholm, cond)
-    s.add(in_stockholm)
-    
-    # Flight constraints between consecutive stays
-    for i in range(10):
-        c1 = city_vars[i]
-        c2 = city_vars[i+1]
-        # The pair (c1, c2) must be in allowed_flights
-        conds = []
-        for flight in allowed_flights:
-            conds.append(And(c1 == flight[0], c2 == flight[1]))
-        s.add(Or(conds))
-    
-    if s.check() == sat:
-        m = s.model()
-        # Extract the end values
-        e_vals = [m[var].as_long() for var in e]
-        # The entire ends list: [1, e1, e2, ..., e10, 29]
-        ends_vals = [1] + e_vals + [29]
-        # Extract the city assignments
-        city_vals = [m[var].as_long() for var in city_vars]
-        
-        # Build the itinerary
-        itinerary = []
-        for i in range(11):
-            s_val = ends_vals[i]
-            e_val = ends_vals[i+1]
-            if s_val == e_val:
-                day_range_str = "Day %d" % s_val
+    directed_edges = set()
+    for item in flight_data:
+        if item.startswith("from "):
+            parts = item.split()
+            A = parts[1]
+            B = parts[3]
+            directed_edges.add((A, B))
+        else:
+            parts = item.split(" and ")
+            if len(parts) < 2:
+                parts = item.split()
+                if len(parts) == 3 and parts[1] == 'and':
+                    A = parts[0]
+                    B = parts[2]
+                else:
+                    continue
             else:
-                day_range_str = "Day %d-%d" % (s_val, e_val)
-            itinerary.append({"day_range": day_range_str, "place": city_names[city_vals[i]]})
-            if i < 10:
-                # Flight day: the last day of this stay (e_val) is the flight day
-                itinerary.append({"day_range": "Day %d" % e_val, "place": city_names[city_vals[i]]})
-                itinerary.append({"day_range": "Day %d" % e_val, "place": city_names[city_vals[i+1]]})
+                A = parts[0]
+                B = parts[1]
+            directed_edges.add((A, B))
+            directed_edges.add((B, A))
+    
+    s = {city: Int(f's_{city}') for city in cities}
+    e = {city: Int(f'e_{city}') for city in cities}
+    n = len(cities)
+    p = [[Bool(f'p_{i}_{j}') for j in range(n)] for i in range(n)]
+    
+    solver = Solver()
+    
+    for i in range(n):
+        solver.add(AtLeast(*p[i], 1))
+        solver.add(AtMost(*p[i], 1))
+    for j in range(n):
+        col = [p[i][j] for i in range(n)]
+        solver.add(AtLeast(*col, 1))
+        solver.add(AtMost(*col, 1))
+    
+    for j in range(n):
+        solver.add(Implies(p[0][j], s[cities[j]] == 1))
+    for j in range(n):
+        solver.add(Implies(p[n-1][j], e[cities[j]] == 29))
+    
+    for i in range(n-1):
+        for j in range(n):
+            for k in range(n):
+                edge_exists = (cities[j], cities[k]) in directed_edges
+                solver.add(Implies(And(p[i][j], p[i+1][k]), And(e[cities[j]] == s[cities[k]], edge_exists)))
+    
+    for city in cities:
+        solver.add(e[city] - s[city] + 1 == required_days[city])
+        solver.add(s[city] >= 1)
+        solver.add(e[city] <= 29)
+        solver.add(e[city] >= s[city])
+    
+    solver.add(s['Valencia'] == 5)
+    solver.add(e['Valencia'] == 6)
+    solver.add(s['Vienna'] <= 10)
+    solver.add(e['Vienna'] >= 6)
+    solver.add(s['Athens'] <= 18)
+    solver.add(e['Athens'] >= 14)
+    solver.add(s['Riga'] <= 20)
+    solver.add(e['Riga'] >= 18)
+    solver.add(s['Stockholm'] <= 3)
+    
+    if solver.check() == sat:
+        model = solver.model()
+        order = []
+        for i in range(n):
+            for j in range(n):
+                if is_true(model[p[i][j]]):
+                    order.append(cities[j])
+        s_val = {}
+        e_val = {}
+        for city in cities:
+            s_val[city] = model.evaluate(s[city]).as_long()
+            e_val[city] = model.evaluate(e[city]).as_long()
         
-        result = {"itinerary": itinerary}
-        print(result)
+        itinerary = []
+        for idx, city in enumerate(order):
+            start = s_val[city]
+            end = e_val[city]
+            itinerary.append({'day_range': f'Day {start}-{end}', 'place': city})
+            if idx < n - 1:
+                itinerary.append({'day_range': f'Day {end}', 'place': city})
+                next_city = order[idx+1]
+                itinerary.append({'day_range': f'Day {end}', 'place': next_city})
+        
+        result = {'itinerary': itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

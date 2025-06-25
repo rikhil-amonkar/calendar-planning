@@ -1,59 +1,58 @@
-graph = {
-    0: [1, 2],
-    1: [0, 2, 3, 4],
-    2: [0, 1, 3],
-    3: [1, 2, 4],
-    4: [1, 3, 5],
-    5: [4]
-}
+import json
+import sys
+from z3 import *
 
 def main():
-    memo = set()
-    stack = []
-    starts = [1, 2]  # B and C
-    mapping = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F'}
-    for start in starts:
-        freqs = [0] * 5
-        idx = start - 1
-        freqs[idx] = 1
-        state = (start, 1, tuple(freqs))
-        memo.add(state)
-        stack.append((start, 1, tuple(freqs), [start]))
+    input_str = sys.stdin.read()
+    data = json.loads(input_str)
     
-    found_path = None
-    while stack:
-        current, length, freqs, path = stack.pop()
-        if length == 19:
-            if current in [1, 2]:
-                valid = True
-                for count in freqs:
-                    if count == 1:
-                        valid = False
-                        break
-                if valid:
-                    found_path = path
-                    break
-        else:
-            for neighbor in graph[current]:
-                if neighbor == 0:
-                    new_freqs = freqs
-                else:
-                    lst = list(freqs)
-                    idx = neighbor - 1
-                    lst[idx] += 1
-                    new_freqs = tuple(lst)
-                new_state = (neighbor, length + 1, new_freqs)
-                if new_state not in memo:
-                    memo.add(new_state)
-                    new_path = path + [neighbor]
-                    stack.append((neighbor, length + 1, new_freqs, new_path))
+    requests = data['requests']
+    passes = data['passes']
     
-    if found_path is not None:
-        full_path = [0] + found_path + [0]
-        result = [mapping[x] for x in full_path]
-        print(result)
+    req_days_dict = {}
+    all_locations = set()
+    for req in requests:
+        place_clean = req['place'].strip('"')
+        req_days_dict[place_clean] = req['days']
+        all_locations.add(place_clean)
+    
+    total_days = sum(req_days_dict.values())
+    
+    sequence = passes[0]['sequence']
+    sequence_clean = [s.strip('"') for s in sequence]
+    
+    starts = {loc: Int(f'start_{loc}') for loc in all_locations}
+    s = Solver()
+    
+    for loc in all_locations:
+        s.add(starts[loc] >= 1)
+        s.add(starts[loc] <= total_days - req_days_dict[loc] + 1)
+    
+    for loc in all_locations:
+        for other in all_locations:
+            if loc != other:
+                s.add(Or(
+                    starts[loc] + req_days_dict[loc] <= starts[other],
+                    starts[other] + req_days_dict[other] <= starts[loc]
+                ))
+    
+    for i in range(len(sequence_clean) - 1):
+        loc1 = sequence_clean[i]
+        loc2 = sequence_clean[i+1]
+        s.add(starts[loc1] + req_days_dict[loc1] == starts[loc2])
+    
+    if s.check() == sat:
+        model = s.model()
+        result = []
+        for loc in all_locations:
+            start_val = model[starts[loc]].as_long()
+            end_val = start_val + req_days_dict[loc] - 1
+            result.append((loc, start_val, end_val))
+        result.sort(key=lambda x: x[1])
+        for loc, start, end in result:
+            print(f"{loc} {start} {end}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

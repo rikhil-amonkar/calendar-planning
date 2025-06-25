@@ -1,91 +1,156 @@
 from z3 import *
 
 def main():
-    cities = ["Brussels", "Helsinki", "Split", "Dubrovnik", "Milan"]
-    days_req = [3, 3, 4, 2, 4]
-    graph = {
-        0: [1, 4],
-        1: [0, 2, 3, 4],
-        2: [1, 4],
-        3: [1],
-        4: [0, 1, 2]
-    }
-    allowed_set = set()
+    # Cities in the middle segment
+    cities = ['Brussels', 'Helsinki', 'Split', 'Dubrovnik', 'Milan']
+    reqs = [3, 3, 4, 2, 4]  # Corresponding required days
+
+    # Direct flights (undirected)
+    flight_list = [
+        ('Milan', 'Frankfurt'),
+        ('Split', 'Frankfurt'),
+        ('Milan', 'Split'),
+        ('Brussels', 'Vilnius'),
+        ('Brussels', 'Helsinki'),
+        ('Istanbul', 'Brussels'),
+        ('Milan', 'Vilnius'),
+        ('Brussels', 'Milan'),
+        ('Istanbul', 'Helsinki'),
+        ('Helsinki', 'Vilnius'),
+        ('Helsinki', 'Dubrovnik'),
+        ('Split', 'Vilnius'),
+        ('Dubrovnik', 'Istanbul'),
+        ('Istanbul', 'Milan'),
+        ('Helsinki', 'Frankfurt'),
+        ('Istanbul', 'Vilnius'),
+        ('Split', 'Helsinki'),
+        ('Milan', 'Helsinki'),
+        ('Istanbul', 'Frankfurt'),
+        ('Brussels', 'Frankfurt'),
+        ('Dubrovnik', 'Frankfurt'),
+        ('Frankfurt', 'Vilnius')
+    ]
+    
+    flight_set = set()
+    for edge in flight_list:
+        flight_set.add(frozenset(edge))
+    
+    # Precompute connectivity for the middle cities to Istanbul and Frankfurt
+    connected_to_Istanbul = [frozenset([city, 'Istanbul']) in flight_set for city in cities]
+    connected_to_Frankfurt = [frozenset([city, 'Frankfurt']) in flight_set for city in cities]
+    
+    # Adjacency matrix for the 5 cities
+    adj_matrix_5 = [[False]*5 for _ in range(5)]
     for i in range(5):
-        for j in graph[i]:
-            allowed_set.add((i, j))
+        for j in range(5):
+            if i != j:
+                edge = frozenset([cities[i], cities[j]])
+                adj_matrix_5[i][j] = (edge in flight_set)
     
-    c0, c1, c2, c3, c4 = Ints('c0 c1 c2 c3 c4')
+    # Z3 variables
+    d1 = Int('d1')
+    d2 = Int('d2')
+    d3 = Int('d3')
+    d4 = Int('d4')
+    assign = [Int(f'assign_{i}') for i in range(5)]
+    
     s = Solver()
-    s.add(c0 >= 0, c0 < 5, c1 >= 0, c1 < 5, c2 >= 0, c2 < 5, c3 >= 0, c3 < 5, c4 >= 0, c4 < 5)
-    s.add(Distinct(c0, c1, c2, c3, c4))
-    s.add(Or(c0 == 0, c0 == 1, c0 == 4))
     
-    # Constraints for consecutive edges
-    s.add(Or([And(c0 == i, c1 == j) for (i, j) in allowed_set]))
-    s.add(Or([And(c1 == i, c2 == j) for (i, j) in allowed_set]))
-    s.add(Or([And(c2 == i, c3 == j) for (i, j) in allowed_set]))
-    s.add(Or([And(c3 == i, c4 == j) for (i, j) in allowed_set]))
+    # Flight day constraints
+    s.add(d1 >= 5, d1 <= 16)
+    s.add(d2 >= d1, d2 <= 16)
+    s.add(d3 >= d2, d3 <= 16)
+    s.add(d4 >= d3, d4 <= 16)
     
+    # Durations
+    duration_A = d1 - 4
+    duration_B = d2 - d1 + 1
+    duration_C = d3 - d2 + 1
+    duration_D = d4 - d3 + 1
+    duration_E = 17 - d4
+    
+    # Assignment constraints
+    s.add([And(a >= 0, a < 5) for a in assign])
+    s.add(Distinct(assign))
+    
+    # First city connected to Istanbul
+    for i in range(5):
+        if not connected_to_Istanbul[i]:
+            s.add(assign[0] != i)
+    
+    # Last city connected to Frankfurt
+    for i in range(5):
+        if not connected_to_Frankfurt[i]:
+            s.add(assign[4] != i)
+    
+    # Consecutive cities connected
+    for k in range(4):
+        for i in range(5):
+            for j in range(5):
+                if not adj_matrix_5[i][j]:
+                    s.add(Or(assign[k] != i, assign[k+1] != j))
+    
+    # Duration constraints
+    s.add(duration_A == reqs[assign[0]])
+    s.add(duration_B == reqs[assign[1]])
+    s.add(duration_C == reqs[assign[2]])
+    s.add(duration_D == reqs[assign[3]])
+    s.add(duration_E == reqs[assign[4]])
+    
+    # Check and get model
     if s.check() == sat:
         m = s.model()
-        c0_val = m[c0].as_long()
-        c1_val = m[c1].as_long()
-        c2_val = m[c2].as_long()
-        c3_val = m[c3].as_long()
-        c4_val = m[c4].as_long()
+        assign_val = [m.evaluate(a).as_long() for a in assign]
+        d1_val = m.evaluate(d1).as_long()
+        d2_val = m.evaluate(d2).as_long()
+        d3_val = m.evaluate(d3).as_long()
+        d4_val = m.evaluate(d4).as_long()
         
-        d0 = days_req[c0_val]
-        d1 = days_req[c1_val]
-        d2 = days_req[c2_val]
-        d3 = days_req[c3_val]
-        d4 = days_req[c4_val]
-        
-        a0 = d0 + 4
-        a1 = d0 + d1 + 3
-        a2 = d0 + d1 + d2 + 2
-        a3 = d0 + d1 + d2 + d3 + 1
+        city_names = [cities[i] for i in assign_val]
+        city_A, city_B, city_C, city_D, city_E = city_names
         
         itinerary = []
+        
+        # Istanbul segment
         itinerary.append({"day_range": "Day 1-5", "place": "Istanbul"})
         itinerary.append({"day_range": "Day 5", "place": "Istanbul"})
+        itinerary.append({"day_range": "Day 5", "place": city_A})
+        itinerary.append({"day_range": f"Day 5-{d1_val}", "place": city_A})
         
-        city0 = cities[c0_val]
-        itinerary.append({"day_range": "Day 5", "place": city0})
-        itinerary.append({"day_range": f"Day 5-{a0}", "place": city0})
-        itinerary.append({"day_range": f"Day {a0}", "place": city0})
+        # Flight to B
+        itinerary.append({"day_range": f"Day {d1_val}", "place": city_A})
+        itinerary.append({"day_range": f"Day {d1_val}", "place": city_B})
+        itinerary.append({"day_range": f"Day {d1_val}-{d2_val}", "place": city_B})
         
-        city1 = cities[c1_val]
-        itinerary.append({"day_range": f"Day {a0}", "place": city1})
-        itinerary.append({"day_range": f"Day {a0}-{a1}", "place": city1})
-        itinerary.append({"day_range": f"Day {a1}", "place": city1})
+        # Flight to C
+        itinerary.append({"day_range": f"Day {d2_val}", "place": city_B})
+        itinerary.append({"day_range": f"Day {d2_val}", "place": city_C})
+        itinerary.append({"day_range": f"Day {d2_val}-{d3_val}", "place": city_C})
         
-        city2 = cities[c2_val]
-        itinerary.append({"day_range": f"Day {a1}", "place": city2})
-        itinerary.append({"day_range": f"Day {a1}-{a2}", "place": city2})
-        itinerary.append({"day_range": f"Day {a2}", "place": city2})
+        # Flight to D
+        itinerary.append({"day_range": f"Day {d3_val}", "place": city_C})
+        itinerary.append({"day_range": f"Day {d3_val}", "place": city_D})
+        itinerary.append({"day_range": f"Day {d3_val}-{d4_val}", "place": city_D})
         
-        city3 = cities[c3_val]
-        itinerary.append({"day_range": f"Day {a2}", "place": city3})
-        itinerary.append({"day_range": f"Day {a2}-{a3}", "place": city3})
-        itinerary.append({"day_range": f"Day {a3}", "place": city3})
+        # Flight to E
+        itinerary.append({"day_range": f"Day {d4_val}", "place": city_D})
+        itinerary.append({"day_range": f"Day {d4_val}", "place": city_E})
+        itinerary.append({"day_range": f"Day {d4_val}-16", "place": city_E})
         
-        city4 = cities[c4_val]
-        itinerary.append({"day_range": f"Day {a3}", "place": city4})
-        itinerary.append({"day_range": f"Day {a3}-16", "place": city4})
-        itinerary.append({"day_range": "Day 16", "place": city4})
-        
+        # Flight to Frankfurt
+        itinerary.append({"day_range": "Day 16", "place": city_E})
         itinerary.append({"day_range": "Day 16", "place": "Frankfurt"})
         itinerary.append({"day_range": "Day 16-18", "place": "Frankfurt"})
-        itinerary.append({"day_range": "Day 18", "place": "Frankfurt"})
         
+        # Flight to Vilnius
+        itinerary.append({"day_range": "Day 18", "place": "Frankfurt"})
         itinerary.append({"day_range": "Day 18", "place": "Vilnius"})
         itinerary.append({"day_range": "Day 18-22", "place": "Vilnius"})
         
         result = {"itinerary": itinerary}
         print(result)
     else:
-        print("No solution found")
+        print({"itinerary": []})
 
 if __name__ == "__main__":
     main()

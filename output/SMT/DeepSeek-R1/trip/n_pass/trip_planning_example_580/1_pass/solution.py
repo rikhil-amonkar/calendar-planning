@@ -1,111 +1,85 @@
 from z3 import *
 
 def main():
+    # Define city indices and names
+    cities = ["Geneva", "Paris", "Porto", "Reykjavik", "Oslo"]
+    req = [7, 6, 7, 2, 5]  # Required days per city
+
+    # Direct flights as tuples (from_index, to-index)
+    direct_flights = [
+        (0, 1), (1, 0),
+        (0, 2), (2, 0),
+        (0, 4), (4, 0),
+        (1, 2), (2, 1),
+        (1, 3), (3, 1),
+        (1, 4), (4, 1),
+        (2, 4), (4, 2),
+        (3, 4), (4, 3)
+    ]
+
     # Create solver
     s = Solver()
 
-    # City indices: Geneva=0, Paris=1, Oslo=2, Porto=3, Reykjavik=4
-    # Define variables for intermediate cities and travel days
-    cityA = Int('cityA')
-    cityB = Int('cityB')
-    cityC = Int('cityC')
-    x = Int('x')  # day we leave cityA (and arrive in cityB)
-    y = Int('y')  # day we leave cityB (and arrive in cityC)
+    # Sequence of cities: 5 elements, first is Geneva (0), last is Oslo (4)
+    seq = [Int(f'seq_{i}') for i in range(5)]
+    s.add(seq[0] == 0)  # Start with Geneva
+    s.add(seq[4] == 4)  # End with Oslo
 
-    # Constraints for cityA, cityB, cityC: must be Paris(1), Porto(3), or Reykjavik(4)
-    s.add(cityA >= 1, cityA <= 4, cityA != 2)  # not Oslo(2) or Geneva(0)
-    s.add(cityB >= 1, cityB <= 4, cityB != 2)
-    s.add(cityC >= 1, cityC <= 4, cityC != 2)
-    s.add(Distinct(cityA, cityB, cityC))
+    # Middle three cities are distinct and in {1,2,3}
+    for i in range(1, 4):
+        s.add(seq[i] >= 1, seq[i] <= 3)
+    s.add(Distinct(seq[1], seq[2], seq[3]))
 
-    # Flight constraints
-    # From Geneva(0) to cityA: only Paris(1) or Porto(3)
-    s.add(Or(cityA == 1, cityA == 3))
+    # Start and end days for each city
+    start = [Int(f'start_{i}') for i in range(5)]
+    end = [Int(f'end_{i}') for i in range(5)]
 
-    # From cityA to cityB
-    s.add(
-        Or(
-            And(cityA == 1, Or(cityB == 3, cityB == 4)),
-            And(cityA == 3, cityB == 1)
-        )
-    )
+    # Fixed start and end for Geneva and Oslo
+    s.add(start[0] == 1)   # Geneva starts on day 1
+    s.add(end[0] == 7)     # Geneva ends on day 7
+    s.add(start[4] == 19)  # Oslo starts on day 19
+    s.add(end[4] == 23)    # Oslo ends on day 23
 
-    # From cityB to cityC: avoid (Porto to Reykjavik) and (Reykjavik to Porto)
-    s.add(
-        Or(
-            And(cityB == 1, Or(cityC == 3, cityC == 4)),
-            And(cityB == 3, cityC == 1),
-            And(cityB == 4, cityC == 1)
-        )
-    )
+    # Consecutive city constraints: end of current city = start of next
+    for i in range(4):
+        s.add(end[seq[i]] == start[seq[i+1]])
 
-    # Stay constraints
-    stayA = x - 6  # because stay in cityA is from day7 to day x (inclusive): (x - 7 + 1) = x - 6
-    s.add(
-        If(cityA == 1, stayA == 6,
-           If(cityA == 3, stayA == 7,
-              stayA == 2  # if cityA==4
-           )
-        )
-    )
+    # Direct flight constraints between consecutive cities
+    for i in range(4):
+        s.add(Or([And(seq[i] == u, seq[i+1] == v) for (u, v) in direct_flights]))
 
-    stayB = y - x + 1  # from day x to day y (inclusive)
-    s.add(
-        If(cityB == 1, stayB == 6,
-           If(cityB == 3, stayB == 7,
-              stayB == 2  # if cityB==4
-           )
-        )
-    )
+    # Stay duration constraints
+    for i in range(5):
+        length = end[i] - start[i] + 1
+        s.add(length == req[i])
+        s.add(start[i] >= 1, end[i] <= 23, start[i] <= end[i])
 
-    stayC = 20 - y  # from day y to day 19 (inclusive): 19 - y + 1 = 20 - y
-    s.add(
-        If(cityC == 1, stayC == 6,
-           If(cityC == 3, stayC == 7,
-              stayC == 2  # if cityC==4
-           )
-        )
-    )
-
-    # Constraints on x and y
-    s.add(x >= 7, x <= 18)
-    s.add(y >= x, y <= 19)
-
-    # Check and get model
+    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        cityA_val = m[cityA].as_long()
-        cityB_val = m[cityB].as_long()
-        cityC_val = m[cityC].as_long()
-        x_val = m[x].as_long()
-        y_val = m[y].as_long()
-
-        # Map city indices to names
-        mapping = {1: "Paris", 3: "Porto", 4: "Reykjavik"}
-
-        # Build itinerary
-        itinerary = [
-            {"day_range": "Day 1-7", "place": "Geneva"},
-            {"day_range": "Day 7", "place": "Geneva"},
-            {"day_range": "Day 7", "place": mapping[cityA_val]},
-            {"day_range": f"Day 7-{x_val}", "place": mapping[cityA_val]},
-            {"day_range": f"Day {x_val}", "place": mapping[cityA_val]},
-            {"day_range": f"Day {x_val}", "place": mapping[cityB_val]},
-            {"day_range": f"Day {x_val}-{y_val}", "place": mapping[cityB_val]},
-            {"day_range": f"Day {y_val}", "place": mapping[cityB_val]},
-            {"day_range": f"Day {y_val}", "place": mapping[cityC_val]},
-            {"day_range": f"Day {y_val}-19", "place": mapping[cityC_val]},
-            {"day_range": "Day 19", "place": mapping[cityC_val]},
-            {"day_range": "Day 19", "place": "Oslo"},
-            {"day_range": "Day 19-23", "place": "Oslo"}
-        ]
-
-        # Output as JSON
-        import json
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        seq_order = [m.evaluate(seq[i]).as_long() for i in range(5)]
+        start_vals = [m.evaluate(start[i]).as_long() for i in range(5)]
+        end_vals = [m.evaluate(end[i]).as_long() for i in range(5)]
+        
+        itinerary = []
+        for i in range(5):
+            city_index = seq_order[i]
+            city_name = cities[city_index]
+            s_val = start_vals[city_index]
+            e_val = end_vals[city_index]
+            
+            if i > 0:
+                itinerary.append({'day_range': f"Day {s_val}", 'place': city_name})
+            
+            itinerary.append({'day_range': f"Day {s_val}-{e_val}", 'place': city_name})
+            
+            if i < 4:
+                itinerary.append({'day_range': f"Day {e_val}", 'place': city_name})
+        
+        result = {'itinerary': itinerary}
+        print(f"{result}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

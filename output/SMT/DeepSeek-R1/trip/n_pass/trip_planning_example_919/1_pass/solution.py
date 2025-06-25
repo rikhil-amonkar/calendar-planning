@@ -1,78 +1,111 @@
 from z3 import *
-import json
 
 def main():
-    # City indices and lengths
-    city_index = {
-        "Vienna": 0,
-        "Milan": 1,
-        "Rome": 2,
-        "Riga": 3,
-        "Lisbon": 4,
-        "Vilnius": 5,
-        "Oslo": 6
-    }
-    index_to_city = {v: k for k, v in city_index.items()}
-    length_dict = {
-        0: 4,  # Vienna
-        1: 2,  # Milan
-        2: 3,  # Rome
-        3: 2,  # Riga
-        4: 3,  # Lisbon
-        5: 4,  # Vilnius
-        6: 3   # Oslo
-    }
+    city_names = ["Vienna", "Milan", "Rome", "Riga", "Lisbon", "Vilnius", "Oslo"]
+    city_index = {name: idx for idx, name in enumerate(city_names)}
+    days_arr = [4, 2, 3, 2, 3, 4, 3]  # days required for each city
+
+    bidirectional_pairs = [
+        ("Riga", "Oslo"),
+        ("Rome", "Oslo"),
+        ("Vienna", "Milan"),
+        ("Vienna", "Vilnius"),
+        ("Vienna", "Lisbon"),
+        ("Riga", "Milan"),
+        ("Lisbon", "Oslo"),
+        ("Rome", "Lisbon"),
+        ("Vienna", "Riga"),
+        ("Vienna", "Rome"),
+        ("Milan", "Oslo"),
+        ("Vienna", "Oslo"),
+        ("Vilnius", "Oslo"),
+        ("Vilnius", "Milan"),
+        ("Riga", "Lisbon")
+    ]
+    unidirectional_pairs = [
+        ("Rome", "Riga"),
+        ("Riga", "Vilnius")
+    ]
     
-    # Middle stay variables
-    s1, s2, s3, s4 = Ints('s1 s2 s3 s4')
-    solver = Solver()
+    directed_edges = set()
+    for a, b in bidirectional_pairs:
+        i = city_index[a]
+        j = city_index[b]
+        directed_edges.add((i, j))
+        directed_edges.add((j, i))
+    for a, b in unidirectional_pairs:
+        i = city_index[a]
+        j = city_index[b]
+        directed_edges.add((i, j))
     
-    # Domain constraints: middle cities are Milan, Rome, Riga, Vilnius (indices 1,2,3,5)
-    domain = [1, 2, 3, 5]
-    solver.add(Distinct(s1, s2, s3, s4))
-    for var in [s1, s2, s3, s4]:
-        solver.add(Or([var == d for d in domain]))
+    p = [Int(f'p_{i}') for i in range(7)]
+    s = Solver()
     
-    # Allowed directed flights between middle cities
-    allowed_middle = [(1,3), (1,5), (2,3), (3,1), (3,5), (5,1)]
+    for i in range(7):
+        s.add(p[i] >= 0, p[i] < 7)
+    s.add(Distinct(p))
+    s.add(p[0] == city_index["Vienna"])
     
-    # Flight constraints
-    solver.add(Or([And(s1 == u, s2 == v) for (u, v) in allowed_middle]))
-    solver.add(Or([And(s2 == u, s3 == v) for (u, v) in allowed_middle]))
-    solver.add(Or([And(s3 == u, s4 == v) for (u, v) in allowed_middle]))
-    solver.add(Or(s4 == 1, s4 == 2, s4 == 3))  # Flight from last middle city to Lisbon must be allowed
+    starts = [Int(f'start_{i}') for i in range(7)]
+    s.add(starts[0] == 1)
+    for i in range(1, 7):
+        prev_city_days = days_arr[p[i-1]]
+        s.add(starts[i] == starts[i-1] + (prev_city_days - 1))
     
-    if solver.check() == sat:
-        model = solver.model()
-        s1_val = model[s1].as_long()
-        s2_val = model[s2].as_long()
-        s3_val = model[s3].as_long()
-        s4_val = model[s4].as_long()
-        
-        # Full stay sequence: Vienna, middle cities, Lisbon, Oslo
-        stay_city = [0, s1_val, s2_val, s3_val, s4_val, 4, 6]
-        start_days = [1]  # Start day of first stay (Vienna) is 1
-        for i in range(6):
-            current_city = stay_city[i]
-            start_days.append(start_days[i] + length_dict[current_city] - 1)
+    lisbon_start = Int('lisbon_start')
+    s.add(lisbon_start == If(p[0] == city_index["Lisbon"], starts[0],
+                      If(p[1] == city_index["Lisbon"], starts[1],
+                      If(p[2] == city_index["Lisbon"], starts[2],
+                      If(p[3] == city_index["Lisbon"], starts[3],
+                      If(p[4] == city_index["Lisbon"], starts[4],
+                      If(p[5] == city_index["Lisbon"], starts[5],
+                      starts[6]))))))
+    s.add(lisbon_start >= 9, lisbon_start <= 13)
+    
+    oslo_start = Int('oslo_start')
+    s.add(oslo_start == If(p[0] == city_index["Oslo"], starts[0],
+                   If(p[1] == city_index["Oslo"], starts[1],
+                   If(p[2] == city_index["Oslo"], starts[2],
+                   If(p[3] == city_index["Oslo"], starts[3],
+                   If(p[4] == city_index["Oslo"], starts[4],
+                   If(p[5] == city_index["Oslo"], starts[5],
+                   starts[6]))))))
+    s.add(oslo_start >= 11, oslo_start <= 13)
+    
+    for i in range(6):
+        constraints = []
+        for edge in directed_edges:
+            a, b = edge
+            constraints.append(And(p[i] == a, p[i+1] == b))
+        s.add(Or(constraints))
+    
+    last_city_end = starts[6] + (days_arr[p[6]] - 1)
+    s.add(last_city_end == 15)
+    
+    if s.check() == sat:
+        m = s.model()
+        perm = [m.evaluate(p[i]).as_long() for i in range(7)]
+        start_days = [1]
+        for i in range(1, 7):
+            prev_city_days = days_arr[perm[i-1]]
+            start_days.append(start_days[i-1] + (prev_city_days - 1))
         
         itinerary = []
         for i in range(7):
-            city = index_to_city[stay_city[i]]
+            city_idx = perm[i]
             start = start_days[i]
-            end = start + length_dict[stay_city[i]] - 1
-            day_range = f"Day {start}-{end}" if start != end else f"Day {start}"
-            itinerary.append({"day_range": day_range, "place": city})
-            
+            duration = days_arr[city_idx]
+            end = start + duration - 1
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_names[city_idx]})
             if i < 6:
-                next_city = index_to_city[stay_city[i+1]]
-                itinerary.append({"day_range": f"Day {end}", "place": city})
-                itinerary.append({"day_range": f"Day {end}", "place": next_city})
+                itinerary.append({"day_range": f"Day {end}", "place": city_names[city_idx]})
+                next_city_idx = perm[i+1]
+                itinerary.append({"day_range": f"Day {end}", "place": city_names[next_city_idx]})
         
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(result)
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

@@ -1,116 +1,116 @@
 from z3 import *
 
 def main():
-    cities = ["Mykonos", "Nice", "London", "Copenhagen", "Oslo", "Tallinn"]
-    city_map = {name: idx for idx, name in enumerate(cities)}
-    n_cities = len(cities)
-    n_days = 16
-
-    flight_list = [
-        ("London", "Copenhagen"),
-        ("Copenhagen", "Tallinn"),
-        ("Tallinn", "Oslo"),
-        ("Mykonos", "London"),
-        ("Oslo", "Nice"),
-        ("London", "Nice"),
-        ("Mykonos", "Nice"),
-        ("London", "Oslo"),
-        ("Copenhagen", "Nice"),
-        ("Copenhagen", "Oslo")
+    # City mapping: 0=Mykonos, 1=London, 2=Copenhagen, 3=Oslo, 4=Tallinn, 5=Nice
+    city_map = {
+        0: "Mykonos",
+        1: "London",
+        2: "Copenhagen",
+        3: "Oslo",
+        4: "Tallinn",
+        5: "Nice"
+    }
+    
+    # Required days for cities 0 to 4 (Mykonos, London, Copenhagen, Oslo, Tallinn)
+    req_array = [4, 2, 3, 5, 4]
+    
+    # Flight connections (undirected graph represented as directed edges both ways)
+    flights = [
+        (0, 1), (1, 0),  # Mykonos <-> London
+        (0, 5), (5, 0),  # Mykonos <-> Nice
+        (1, 2), (2, 1),  # London <-> Copenhagen
+        (1, 3), (3, 1),  # London <-> Oslo
+        (1, 5), (5, 1),  # London <-> Nice
+        (2, 4), (4, 2),  # Copenhagen <-> Tallinn
+        (2, 3), (3, 2),  # Copenhagen <-> Oslo
+        (2, 5), (5, 2),  # Copenhagen <-> Nice
+        (3, 4), (4, 3),  # Oslo <-> Tallinn
+        (3, 5), (5, 3)   # Oslo <-> Nice
     ]
-    flight_pairs = set()
-    for a, b in flight_list:
-        flight_pairs.add((city_map[a], city_map[b]))
-        flight_pairs.add((city_map[b], city_map[a]))
-
-    s = Int('s')
-    c = [Int('c_%d' % i) for i in range(n_days)]
-
-    solver = Solver()
-
-    solver.add(s >= 0, s < n_cities)
-    for i in range(n_days):
-        solver.add(c[i] >= 0, c[i] < n_cities)
-
-    constraints = []
-
-    def connected(a, b):
-        return Or([And(a == pair[0], b == pair[1]) for pair in flight_pairs])
+    allowed_pairs = set(flights)
     
-    constraints.append(If(s != c[0], connected(s, c[0]), True))
-    for i in range(1, n_days):
-        constraints.append(If(c[i-1] != c[i], connected(c[i-1], c[i]), True))
-
-    def day_count(X, i):
-        if i == 1:
-            morning = s
-            evening = c[0]
-        else:
-            morning = c[i-2]
-            evening = c[i-1]
-        return If(morning == evening,
-                If(morning == X, 1, 0),
-                If(morning == X, 1, 0) + If(evening == X, 1, 0))
-
-    total_days = [0] * n_cities
-    for X in range(n_cities):
-        total_days[X] = Sum([day_count(X, i) for i in range(1, n_days+1)])
+    # Create solver and variables for the first five stays (0 to 4)
+    s = Solver()
+    stay_city = [Int(f'c{i}') for i in range(5)]
     
-    constraints.append(total_days[0] == 4)
-    constraints.append(total_days[1] == 3)
-    constraints.append(total_days[2] == 2)
-    constraints.append(total_days[3] == 3)
-    constraints.append(total_days[4] == 5)
-    constraints.append(total_days[5] == 4)
-
-    constraints.append(Or(c[12] == 1, c[13] == 1))
-    constraints.append(Or(c[14] == 1, c[15] == 1))
-
-    meeting_constraint = Or(
-        Or(c[8] == 4, c[9] == 4),
-        Or(c[9] == 4, c[10] == 4),
-        Or(c[10] == 4, c[11] == 4),
-        Or(c[11] == 4, c[12] == 4),
-        Or(c[12] == 4, c[13] == 4)
-    )
-    constraints.append(meeting_constraint)
-
-    solver.add(constraints)
-
-    if solver.check() == sat:
-        model = solver.model()
-        s_val = model[s].as_long()
-        c_vals = [model[c[i]].as_long() for i in range(n_days)]
+    # Each stay_city must be between 0 and 4 (inclusive)
+    for i in range(5):
+        s.add(stay_city[i] >= 0, stay_city[i] <= 4)
+    
+    # All cities in the first five stays are distinct
+    s.add(Distinct(stay_city))
+    
+    # Flight constraints between consecutive stays
+    for i in range(4):
+        s.add(Or([And(stay_city[i] == a, stay_city[i+1] == b) for (a, b) in allowed_pairs]))
+    
+    # Flight constraint from the last stay (stay5) to Nice (city5)
+    s.add(Or([And(stay_city[4] == a, 5 == b) for (a, b) in allowed_pairs if b == 5]))
+    
+    # Oslo cannot be in stay1 or stay2 (because it would not meet the day 10-14 constraint)
+    s.add(stay_city[0] != 3)
+    s.add(stay_city[1] != 3)
+    
+    # Helper function to get required days for a city
+    def get_req(city_var):
+        return If(city_var == 0, 4,
+                If(city_var == 1, 2,
+                If(city_var == 2, 3,
+                If(city_var == 3, 5, 4))))
+    
+    # If Oslo is in stay3, the first three cities must have at least 12 total days
+    req0 = get_req(stay_city[0])
+    req1 = get_req(stay_city[1])
+    req2 = get_req(stay_city[2])
+    total_req_first_three = req0 + req1 + req2
+    s.add(If(stay_city[2] == 3, total_req_first_three >= 12, True))
+    
+    # Check and get model
+    if s.check() == sat:
+        m = s.model()
+        # Get the city assignments
+        assigned_cities = [m.evaluate(stay_city[i]).as_long() for i in range(5)]
+        # Compute the required days for each assigned city
+        reqs = [req_array[assigned_cities[i]] for i in range(5)]
         
-        b = [0] * n_days
-        e = [0] * n_days
-        b[0] = s_val
-        e[0] = c_vals[0]
-        for i in range(1, n_days):
-            b[i] = e[i-1]
-            e[i] = c_vals[i]
+        # Calculate start and end days for the first five stays
+        s_days = [1]  # start day for stay0
+        e_days = []    # end days for each stay
+        for i in range(5):
+            end = s_days[i] + reqs[i] - 1
+            e_days.append(end)
+            if i < 4:
+                s_days.append(end)  # next stay starts on the same day as the current stay ends
         
-        records = []
-        start_index = 0
-        current_city = b[0]
+        # Stay5 (Nice) starts at 14 and ends at 16
+        s_days.append(14)
+        e_days.append(16)
         
-        for d in range(n_days):
-            if b[d] != e[d]:
-                start_day = start_index + 1
-                end_day = d + 1
-                records.append({"day_range": f"Day {start_day}-{end_day}", "place": cities[current_city]})
-                records.append({"day_range": f"Day {end_day}", "place": cities[current_city]})
-                records.append({"day_range": f"Day {end_day}", "place": cities[e[d]]})
-                start_index = d
-                current_city = e[d]
+        # Build itinerary
+        itinerary = []
+        # For each stay
+        for i in range(6):
+            place = city_map[assigned_cities[i]] if i < 5 else "Nice"
+            # Add the continuous block for the stay
+            if s_days[i] == e_days[i]:
+                day_range_str = f"Day {s_days[i]}"
+            else:
+                day_range_str = f"Day {s_days[i]}-{e_days[i]}"
+            itinerary.append({"day_range": day_range_str, "place": place})
+            
+            # If not the last stay, add flight records
+            if i < 5:
+                # Departure from current city
+                itinerary.append({"day_range": f"Day {e_days[i]}", "place": place})
+                # Arrival at next city
+                next_place = city_map[assigned_cities[i+1]] if (i+1) < 5 else "Nice"
+                itinerary.append({"day_range": f"Day {e_days[i]}", "place": next_place})
         
-        start_day = start_index + 1
-        records.append({"day_range": f"Day {start_day}-{n_days}", "place": cities[current_city]})
-        
-        result = {"itinerary": records}
+        # Output as JSON
+        result = {"itinerary": itinerary}
         print(result)
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

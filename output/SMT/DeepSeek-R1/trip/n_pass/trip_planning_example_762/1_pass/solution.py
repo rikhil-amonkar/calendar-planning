@@ -1,84 +1,96 @@
 from z3 import *
+import json
 
 def main():
-    # City indices
-    dublin = 0
-    madrid = 1
-    oslo = 2
-    london = 3
-    vilnius = 4
-    berlin = 5
-
     cities = ["Dublin", "Madrid", "Oslo", "London", "Vilnius", "Berlin"]
-    dur = [3, 2, 3, 2, 3, 5]
-
-    edges_undirected = [
-        (dublin, madrid), (dublin, oslo), (dublin, london), (dublin, berlin),
-        (madrid, oslo), (madrid, london), (madrid, berlin),
-        (oslo, london), (oslo, vilnius), (oslo, berlin),
-        (london, berlin),
-        (vilnius, berlin)
+    city_to_index = {city: idx for idx, city in enumerate(cities)}
+    days_req = [3, 2, 3, 2, 3, 5]
+    events = {
+        city_to_index["Dublin"]: (7, 9),
+        city_to_index["Madrid"]: (2, 3),
+        city_to_index["Berlin"]: (3, 7)
+    }
+    flights_list = [
+        (city_to_index["London"], city_to_index["Madrid"]),
+        (city_to_index["Oslo"], city_to_index["Vilnius"]),
+        (city_to_index["Berlin"], city_to_index["Vilnius"]),
+        (city_to_index["Madrid"], city_to_index["Oslo"]),
+        (city_to_index["Madrid"], city_to_index["Dublin"]),
+        (city_to_index["London"], city_to_index["Oslo"]),
+        (city_to_index["Madrid"], city_to_index["Berlin"]),
+        (city_to_index["Berlin"], city_to_index["Oslo"]),
+        (city_to_index["Dublin"], city_to_index["Oslo"]),
+        (city_to_index["London"], city_to_index["Dublin"]),
+        (city_to_index["London"], city_to_index["Berlin"]),
+        (city_to_index["Berlin"], city_to_index["Dublin"])
     ]
-
-    edges_list = []
-    for (i, j) in edges_undirected:
-        edges_list.append((i, j))
-        edges_list.append((j, i))
-
+    directed_edges = []
+    for a, b in flights_list:
+        directed_edges.append((a, b))
+        directed_edges.append((b, a))
+    
+    C = [Int(f'C_{i}') for i in range(6)]
     s = Solver()
-
-    pos = [Int(f'pos_{i}') for i in range(6)]
+    
     for i in range(6):
-        s.add(pos[i] >= 0, pos[i] < 6)
-    s.add(Distinct(pos))
-
-    for k in range(5):
-        cons_expr = []
-        for (i, j) in edges_list:
-            cons_expr.append(And(pos[i] == k, pos[j] == k+1))
-        s.add(Or(cons_expr))
-
-    start_days = [Int(f'start_{i}') for i in range(6)]
-    for i in range(6):
-        sum_expr = Sum([If(pos[j] < pos[i], dur[j], 0) for j in range(6)])
-        s.add(start_days[i] == 1 - pos[i] + sum_expr)
-
-    s.add(start_days[dublin] >= 5)
-    s.add(start_days[dublin] <= 9)
-    s.add(start_days[madrid] >= 1)
-    s.add(start_days[madrid] <= 3)
-    s.add(start_days[berlin] >= 1)
-    s.add(start_days[berlin] <= 7)
-
+        s.add(And(C[i] >= 0, C[i] < 6))
+    s.add(Distinct(C))
+    
+    cumul_expr = [days_req[C[0]]]
+    for i in range(1, 6):
+        cumul_expr.append(cumul_expr[i-1] + days_req[C[i]])
+    
+    for city_idx, (event_start, event_end) in events.items():
+        constraints = []
+        for pos in range(6):
+            cond = (C[pos] == city_idx)
+            if pos == 0:
+                s0 = 1
+                e0 = cumul_expr[0]
+                c1 = (s0 <= event_end)
+                c2 = (e0 >= event_start)
+                constraints.append(And(cond, c1, c2))
+            else:
+                s_i = 1 + cumul_expr[pos-1] - pos
+                e_i = cumul_expr[pos] - pos
+                c1 = (s_i <= event_end)
+                c2 = (e_i >= event_start)
+                constraints.append(And(cond, c1, c2))
+        s.add(Or(constraints))
+    
+    for i in range(5):
+        cons_list = []
+        for a, b in directed_edges:
+            cons_list.append(And(C[i] == a, C[i+1] == b))
+        s.add(Or(cons_list))
+    
     if s.check() == sat:
-        model = s.model()
-        pos_vals = [model.evaluate(pos[i]).as_long() for i in range(6)]
-        start_vals = [model.evaluate(start_days[i]).as_long() for i in range(6)]
-
-        order = sorted(range(6), key=lambda i: pos_vals[i])
+        m = s.model()
+        perm = [m.evaluate(C[i]).as_long() for i in range(6)]
+        city_sequence = [cities[idx] for idx in perm]
+        cumul_vals = []
+        total = 0
+        for idx in perm:
+            total += days_req[idx]
+            cumul_vals.append(total)
+        
         itinerary = []
-        for idx, city_idx in enumerate(order):
-            start = start_vals[city_idx]
-            d = dur[city_idx]
-            end = start + d - 1
-            itinerary.append({
-                "day_range": f"Day {start}-{end}",
-                "place": cities[city_idx]
-            })
-            if idx < 5:
-                next_city_idx = order[idx+1]
-                itinerary.append({
-                    "day_range": f"Day {end}",
-                    "place": cities[city_idx]
-                })
-                itinerary.append({
-                    "day_range": f"Day {end}",
-                    "place": cities[next_city_idx]
-                })
+        for i in range(6):
+            if i == 0:
+                start = 1
+            else:
+                start = cumul_vals[i-1] - (i-1)
+            end = cumul_vals[i] - i
+            day_range = f"Day {start}-{end}" if start != end else f"Day {start}"
+            itinerary.append({"day_range": day_range, "place": city_sequence[i]})
+            if i < 5:
+                itinerary.append({"day_range": f"Day {end}", "place": city_sequence[i]})
+                itinerary.append({"day_range": f"Day {end}", "place": city_sequence[i+1]})
+        
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result, indent=2))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

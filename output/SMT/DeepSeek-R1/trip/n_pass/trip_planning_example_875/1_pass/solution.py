@@ -12,7 +12,7 @@ def main():
         'Mykonos': 4
     }
     
-    edges_list = [
+    edges = [
         ('Krakow', 'Split'),
         ('Split', 'Athens'),
         ('Edinburgh', 'Krakow'),
@@ -27,93 +27,80 @@ def main():
         ('Edinburgh', 'Athens')
     ]
     
-    edges_set = set()
-    for a, b in edges_list:
-        edges_set.add(frozenset([a, b]))
+    edge_set = set()
+    for u, v in edges:
+        key = tuple(sorted([u, v]))
+        edge_set.add(key)
     
     s = Solver()
     
-    pos_vars = {city: Int(f'pos_{city}') for city in cities}
+    pos = {city: Int(f'pos_{city}') for city in cities}
     
-    s.add(Distinct([pos_vars[city] for city in cities]))
     for city in cities:
-        s.add(pos_vars[city] >= 0)
-        s.add(pos_vars[city] < 7)
+        s.add(pos[city] >= 0)
+        s.add(pos[city] < 7)
+    s.add(Distinct([pos[city] for city in cities]))
+    
+    for i in range(len(cities)):
+        for j in range(i+1, len(cities)):
+            c1 = cities[i]
+            c2 = cities[j]
+            key = tuple(sorted([c1, c2]))
+            if key not in edge_set:
+                diff = pos[c1] - pos[c2]
+                s.add(Or(diff >= 2, diff <= -2))
     
     starts = {}
     ends = {}
     for city in cities:
-        sum_expr = 0
-        for other in cities:
-            if other == city:
-                continue
-            term = If(pos_vars[other] < pos_vars[city], durations[other] - 1, 0)
-            sum_expr += term
-        starts[city] = 1 + sum_expr
-        ends[city] = starts[city] + durations[city] - 1
+        sum_before = Sum([If(pos[other] < pos[city], durations[other], 0) for other in cities])
+        count_before = Sum([If(pos[other] < pos[city], 1, 0) for other in cities])
+        start_city = 1 + sum_before - count_before
+        end_city = start_city + durations[city] - 1
+        starts[city] = start_city
+        ends[city] = end_city
     
+    stuttgart = cities[0]
+    split = cities[3]
+    krakow = cities[4]
     s.add(starts['Stuttgart'] <= 13)
     s.add(ends['Stuttgart'] >= 11)
-    
     s.add(starts['Split'] <= 14)
     s.add(ends['Split'] >= 13)
-    
     s.add(starts['Krakow'] <= 11)
     s.add(ends['Krakow'] >= 8)
     
-    for i in range(len(cities)):
-        for j in range(i + 1, len(cities)):
-            city1 = cities[i]
-            city2 = cities[j]
-            if frozenset([city1, city2]) not in edges_set:
-                s.add(Or(
-                    pos_vars[city1] - pos_vars[city2] >= 2,
-                    pos_vars[city2] - pos_vars[city1] >= 2
-                ))
-    
     if s.check() == sat:
-        m = s.model()
-        pos_vals = {}
-        for city in cities:
-            pos_vals[city] = m.evaluate(pos_vars[city]).as_long()
+        model = s.model()
+        order = sorted(cities, key=lambda c: model.eval(pos[c]).as_long())
+        itinerary_list = []
+        city_stays = []
+        for idx, city in enumerate(order):
+            start_val = 1
+            if idx > 0:
+                sum_prev = sum(durations[c] for c in order[:idx])
+                start_val = 1 + sum_prev - idx
+            end_val = start_val + durations[city] - 1
+            city_stays.append((city, start_val, end_val))
         
-        sequence = sorted(cities, key=lambda c: pos_vals[c])
-        
-        starts_seq = []
-        ends_seq = []
-        start0 = 1
-        end0 = start0 + durations[sequence[0]] - 1
-        starts_seq.append(start0)
-        ends_seq.append(end0)
-        
-        for i in range(1, len(sequence)):
-            start_i = ends_seq[i - 1]
-            end_i = start_i + durations[sequence[i]] - 1
-            starts_seq.append(start_i)
-            ends_seq.append(end_i)
-        
-        itinerary = []
-        for i in range(len(sequence)):
-            city = sequence[i]
-            s_day = starts_seq[i]
-            e_day = ends_seq[i]
-            itinerary.append({
-                "day_range": f"Day {s_day}-{e_day}",
+        for idx, (city, start, end) in enumerate(city_stays):
+            itinerary_list.append({
+                "day_range": f"Day {start}-{end}",
                 "place": city
             })
-            if i < len(sequence) - 1:
-                itinerary.append({
-                    "day_range": f"Day {e_day}",
+            if idx < len(city_stays) - 1:
+                itinerary_list.append({
+                    "day_range": f"Day {end}",
                     "place": city
                 })
-                itinerary.append({
-                    "day_range": f"Day {e_day}",
-                    "place": sequence[i + 1]
+                next_city = city_stays[idx+1][0]
+                itinerary_list.append({
+                    "day_range": f"Day {end}",
+                    "place": next_city
                 })
         
-        result = {"itinerary": itinerary}
-        import json
-        print(json.dumps(result, indent=2))
+        result = {"itinerary": itinerary_list}
+        print(result)
     else:
         print("No solution found")
 

@@ -1,108 +1,71 @@
 from z3 import *
 
 def main():
-    # Define the city indices
-    cities = ["Athens", "Naples", "Valencia", "Zurich"]
+    # Define the cities and their indices
+    cities = {0: "Valencia", 1: "Athens", 2: "Naples", 3: "Zurich"}
+    n_cities = 4
     
-    # Define the directed flight edges
-    edges = [
-        (0, 1), (1, 0),  # Athens <-> Naples
-        (0, 3), (3, 0),  # Athens <-> Zurich
-        (1, 2), (2, 1),  # Naples <-> Valencia
-        (1, 3), (3, 1),  # Naples <-> Zurich
-        (2, 0),           # Valencia to Athens
-        (2, 3), (3, 2)    # Valencia <-> Zurich
+    # Directed flight graph: [from][to]
+    graph = [
+        [False, True, True, True],    # From Valencia (0)
+        [False, False, True, True],   # From Athens (1)
+        [True, True, False, True],   # From Naples (2)
+        [True, True, True, False]     # From Zurich (3)
     ]
     
     # Create solver
     s = Solver()
     
-    # City order variables (c0, c1, c2, c3 represent the segments)
-    c0, c1, c2, c3 = Ints('c0 c1 c2 c3')
-    s.add([c0 >= 0, c0 <= 3, c1 >= 0, c1 <= 3, c2 >= 0, c2 <= 3, c3 >= 0, c3 <= 3])
-    s.add(Distinct(c0, c1, c2, c3))
+    # Segment city variables: c1, c2, c3 for segments 1,2,3; segment4 is fixed to Naples (2)
+    c1 = Int('c1')
+    c2 = Int('c2')
+    c3 = Int('c3')
     
-    # End day variables for segments
-    e1, e2, e3 = Ints('e1 e2 e3')
-    s.add(e1 >= 1, e1 <= 20, e2 >= e1, e2 <= 20, e3 >= e2, e3 <= 20)
+    # Constraints: c1, c2, c3 must be in {0,1,3} (since Naples (2) is in segment4)
+    valid_cities = [0, 1, 3]
+    s.add(Or([c1 == v for v in valid_cities]))
+    s.add(Or([c2 == v for v in valid_cities]))
+    s.add(Or([c3 == v for v in valid_cities]))
     
-    # Flight constraints
-    def flight_ok(x, y):
-        return Or([And(x == a, y == b) for (a, b) in edges])
+    # Distinct cities for segments 1,2,3 and segment4 is 2
+    s.add(Distinct(c1, c2, c3, 2))
     
-    s.add(flight_ok(c0, c1))
-    s.add(flight_ok(c1, c2))
-    s.add(flight_ok(c2, c3))
+    # Athens (city1) must be in segment1 or segment2
+    s.add(Or(c1 == 1, c2 == 1))
     
-    # Segment lengths
-    L0 = e1
-    L1 = e2 - e1 + 1
-    L2 = e3 - e2 + 1
-    L3 = 20 - e3 + 1
+    # Flight connections: segment1->segment2, segment2->segment3, segment3->segment4 (Naples,2)
+    s.add(graph[c1][c2])
+    s.add(graph[c2][c3])
+    s.add(graph[c3][2])
     
-    # Constraints for each segment
-    # Segment 0
-    s.add(If(c0 == 0, L0 == 6, True))  # Athens
-    s.add(If(c0 == 1, L0 == 5, True))  # Naples
-    s.add(If(c0 == 2, L0 == 6, True))  # Valencia
-    s.add(If(c0 == 3, L0 == 6, True))  # Zurich
-    s.add(If(c0 == 1, e1 >= 16, True)) # Naples constraint: end day >=16
-    
-    # Segment 1
-    s.add(If(c1 == 0, L1 == 6, True))
-    s.add(If(c1 == 1, L1 == 5, True))
-    s.add(If(c1 == 2, L1 == 6, True))
-    s.add(If(c1 == 3, L1 == 6, True))
-    s.add(If(c1 == 0, e1 <= 6, True))  # Athens constraint: start day <=6
-    s.add(If(c1 == 1, e2 >= 16, True)) # Naples constraint: end day >=16
-    
-    # Segment 2
-    s.add(If(c2 == 0, L2 == 6, True))
-    s.add(If(c2 == 1, L2 == 5, True))
-    s.add(If(c2 == 2, L2 == 6, True))
-    s.add(If(c2 == 3, L2 == 6, True))
-    s.add(If(c2 == 0, e2 <= 6, True))  # Athens constraint: start day <=6
-    s.add(If(c2 == 1, e3 >= 16, True)) # Naples constraint: end day >=16
-    
-    # Segment 3
-    s.add(If(c3 == 0, L3 == 6, True))
-    s.add(If(c3 == 1, L3 == 5, True))
-    s.add(If(c3 == 2, L3 == 6, True))
-    s.add(If(c3 == 3, L3 == 6, True))
-    s.add(If(c3 == 0, e3 <= 6, True))  # Athens constraint: start day <=6
-    
-    # Check for a solution
+    # Check and get the model
     if s.check() == sat:
-        model = s.model()
-        c0_val = model[c0].as_long()
-        c1_val = model[c1].as_long()
-        c2_val = model[c2].as_long()
-        c3_val = model[c3].as_long()
-        e1_val = model[e1].as_long()
-        e2_val = model[e2].as_long()
-        e3_val = model[e3].as_long()
-        
-        # Map city indices to names
-        seg0_city = cities[c0_val]
-        seg1_city = cities[c1_val]
-        seg2_city = cities[c2_val]
-        seg3_city = cities[c3_val]
+        m = s.model()
+        c1_val = m.eval(c1).as_long()
+        c2_val = m.eval(c2).as_long()
+        c3_val = m.eval(c3).as_long()
         
         # Build itinerary
-        itinerary = [
-            {"day_range": f"Day 1-{e1_val}", "place": seg0_city},
-            {"day_range": f"Day {e1_val}", "place": seg0_city},
-            {"day_range": f"Day {e1_val}", "place": seg1_city},
-            {"day_range": f"Day {e1_val}-{e2_val}", "place": seg1_city},
-            {"day_range": f"Day {e2_val}", "place": seg1_city},
-            {"day_range": f"Day {e2_val}", "place": seg2_city},
-            {"day_range": f"Day {e2_val}-{e3_val}", "place": seg2_city},
-            {"day_range": f"Day {e3_val}", "place": seg2_city},
-            {"day_range": f"Day {e3_val}", "place": seg3_city},
-            {"day_range": f"Day {e3_val}-20", "place": seg3_city}
-        ]
+        itinerary = []
+        # Segment1: day1 to day6
+        itinerary.append({"day_range": "Day 1-6", "place": cities[c1_val]})
+        # Flight from c1 to c2 on day6
+        itinerary.append({"day_range": "Day 6", "place": cities[c1_val]})
+        itinerary.append({"day_range": "Day 6", "place": cities[c2_val]})
+        # Segment2: day6 to day11
+        itinerary.append({"day_range": "Day 6-11", "place": cities[c2_val]})
+        # Flight from c2 to c3 on day11
+        itinerary.append({"day_range": "Day 11", "place": cities[c2_val]})
+        itinerary.append({"day_range": "Day 11", "place": cities[c3_val]})
+        # Segment3: day11 to day16
+        itinerary.append({"day_range": "Day 11-16", "place": cities[c3_val]})
+        # Flight from c3 to Naples on day16
+        itinerary.append({"day_range": "Day 16", "place": cities[c3_val]})
+        itinerary.append({"day_range": "Day 16", "place": "Naples"})
+        # Segment4: day16 to day20 (Naples)
+        itinerary.append({"day_range": "Day 16-20", "place": "Naples"})
         
-        # Output as JSON-like dictionary
+        # Output as JSON
         result = {"itinerary": itinerary}
         print(result)
     else:

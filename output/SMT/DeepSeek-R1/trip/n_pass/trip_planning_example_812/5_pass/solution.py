@@ -1,79 +1,79 @@
-from collections import deque
-
-graph = {
-    0: [1, 2],
-    1: [0, 2, 3, 4],
-    2: [0, 1, 3],
-    3: [1, 2, 4],
-    4: [1, 3, 5],
-    5: [4]
-}
+import json
+import sys
+from z3 import *
 
 def main():
-    mapping = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F'}
-    visited = set()
-    queue = deque()
-    start_freqs = (0, 0, 0, 0, 0)
-    start_state = (0, 0, 1, start_freqs, False)
-    visited.add(start_state)
-    queue.append((0, 0, 1, start_freqs, False, [0]))
+    input_str = sys.stdin.read()
+    data = json.loads(input_str)
     
-    solution_path = None
-    while queue:
-        d, city, seg_len, freqs, fsd, path = queue.popleft()
-        
-        if d == 19:
-            if city == 0 and freqs == (2, 2, 2, 2, 2):
-                solution_path = [mapping[i] for i in path]
-                break
-            continue
-        
-        new_d = d + 1
-        
-        new_freqs_stay = freqs
-        if city != 0:
-            idx = city - 1
-            count_val = freqs[idx]
-            if count_val < 2:
-                lst_freqs = list(freqs)
-                lst_freqs[idx] = count_val + 1
-                new_freqs_stay = tuple(lst_freqs)
-        
-        new_seg_len_stay = seg_len + 1
-        new_fsd_stay = fsd
-        new_state_stay = (new_d, city, new_seg_len_stay, new_freqs_stay, new_fsd_stay)
-        if new_state_stay not in visited:
-            visited.add(new_state_stay)
-            new_path_stay = path + [city]
-            queue.append((new_d, city, new_seg_len_stay, new_freqs_stay, new_fsd_stay, new_path_stay))
-        
-        if (city == 0 and not fsd) or (seg_len >= 2):
-            for neighbor in graph[city]:
-                if neighbor == city:
-                    continue
-                new_city = neighbor
-                new_seg_len_move = 1
-                new_freqs_move = freqs
-                if neighbor != 0:
-                    idx = neighbor - 1
-                    count_val = freqs[idx]
-                    if count_val < 2:
-                        lst_freqs = list(freqs)
-                        lst_freqs[idx] = count_val + 1
-                        new_freqs_move = tuple(lst_freqs)
-                new_fsd_move = fsd
-                if city == 0 and not fsd:
-                    new_fsd_move = True
-                new_state_move = (new_d, new_city, new_seg_len_move, new_freqs_move, new_fsd_move)
-                if new_state_move not in visited:
-                    visited.add(new_state_move)
-                    new_path_move = path + [neighbor]
-                    queue.append((new_d, new_city, new_seg_len_move, new_freqs_move, new_fsd_move, new_path_move))
+    requests = data['requests']
+    passes = data['passes']
     
-    if solution_path:
-        print(solution_path)
+    req_days_dict = {}
+    all_locations = set()
+    for req in requests:
+        place_clean = req['place'].strip('"')
+        req_days_dict[place_clean] = req['days']
+        all_locations.add(place_clean)
+    
+    total_days = sum(req_days_dict.values())
+    
+    sequence = passes[0]['sequence']
+    sequence_clean = [s.strip('"') for s in sequence]
+    
+    starts = {loc: Int(f'start_{loc}') for loc in all_locations}
+    s = Solver()
+    
+    # Set bounds for each location's start day
+    for loc in all_locations:
+        s.add(starts[loc] >= 1)
+        s.add(starts[loc] <= total_days - req_days_dict[loc] + 1)
+    
+    # Ensure the pass sequence is contiguous
+    for i in range(len(sequence_clean) - 1):
+        loc1 = sequence_clean[i]
+        loc2 = sequence_clean[i+1]
+        s.add(starts[loc2] == starts[loc1] + req_days_dict[loc1])
+    
+    # Calculate pass sequence start and end
+    pass_start = starts[sequence_clean[0]]
+    pass_days = sum(req_days_dict[loc] for loc in sequence_clean)
+    pass_end = pass_start + pass_days - 1
+    
+    # Separate non-pass locations
+    non_pass = list(all_locations - set(sequence_clean))
+    
+    # Constrain non-pass locations to be entirely before or after pass sequence
+    for loc in non_pass:
+        s.add(Or(
+            starts[loc] + req_days_dict[loc] <= pass_start,
+            starts[loc] >= pass_end + 1
+        ))
+    
+    # Non-overlap constraints for all pairs of locations
+    locations = list(all_locations)
+    for i in range(len(locations)):
+        for j in range(i + 1, len(locations)):
+            loc1 = locations[i]
+            loc2 = locations[j]
+            s.add(Or(
+                starts[loc1] + req_days_dict[loc1] <= starts[loc2],
+                starts[loc2] + req_days_dict[loc2] <= starts[loc1]
+            ))
+    
+    # Check for a solution and output
+    if s.check() == sat:
+        model = s.model()
+        result = []
+        for loc in all_locations:
+            start_val = model[starts[loc]].as_long()
+            end_val = start_val + req_days_dict[loc] - 1
+            result.append((loc, start_val, end_val))
+        result.sort(key=lambda x: x[1])
+        for loc, start, end in result:
+            print(f"{loc} {start} {end}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

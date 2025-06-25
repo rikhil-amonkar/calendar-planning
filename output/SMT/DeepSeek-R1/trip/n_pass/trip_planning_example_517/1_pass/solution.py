@@ -1,155 +1,145 @@
 from z3 import *
-import json
 
-def main():
-    # Create the solver
-    s = Solver()
-    
-    # Base for days 1 to 19: base[0] is day1, base[1] is day2, ... base[18] is day19.
-    base = [Int('base_%d' % i) for i in range(1, 20)]
-    
-    # Flight for days 1 to 18: flight[0] is day1, flight[1] is day2, ... flight[17] is day18.
-    flight = [Bool('flight_%d' % i) for i in range(1, 19)]
-    
-    # Allowed city indices: 0=Bucharest, 1=Warsaw, 2=Stuttgart, 3=Copenhagen, 4=Dubrovnik.
-    for i in range(19):
-        s.add(base[i] >= 0, base[i] <= 4)
-    
-    # Allowed flight pairs (bidirectional)
-    allowed_pairs = set()
-    allowed_pairs.add((1, 3)); allowed_pairs.add((3, 1))  # Warsaw and Copenhagen
-    allowed_pairs.add((2, 3)); allowed_pairs.add((3, 2))  # Stuttgart and Copenhagen
-    allowed_pairs.add((1, 2)); allowed_pairs.add((2, 1))  # Warsaw and Stuttgart
-    allowed_pairs.add((0, 3)); allowed_pairs.add((3, 0))  # Bucharest and Copenhagen
-    allowed_pairs.add((0, 1)); allowed_pairs.add((1, 0))  # Bucharest and Warsaw
-    allowed_pairs.add((3, 4)); allowed_pairs.add((4, 3))  # Copenhagen and Dubrovnik
-    
-    # Flight constraints for days 1 to 18
-    for i in range(18):
-        # If flight on day i+1 (flight[i]), then base[i] and base[i+1] must be in allowed_pairs and different.
-        # Otherwise, base[i] must equal base[i+1].
-        s.add(If(flight[i],
-                 And(base[i] != base[i+1],
-                     Or([And(base[i] == a, base[i+1] == b) for (a, b) in allowed_pairs])),
-                 base[i] == base[i+1]))
-    
-    # Fixed days: must be in Stuttgart (2) on day7 (base[6]) and day13 (base[12])
-    s.add(base[6] == 2)  # base[6] is day7
-    s.add(base[12] == 2) # base[12] is day13
-    
-    # Bucharest constraint: must be in Bucharest (0) on at least one day from 1 to 6.
-    # We consider days 1 to 5 (since on day6, if we are in Bucharest, we cannot fly to Stuttgart directly for day7)
-    conditions = []
-    for i in range(5):  # i from 0 to 4: representing days 1 to 5 (base indices 0 to 4)
-        # Either base[i] is Bucharest (0) or we have a flight on day i+1 (flight[i]) landing in Bucharest (base[i+1]==0)
-        conditions.append(Or(base[i] == 0, And(flight[i], base[i+1] == 0)))
-    s.add(Or(conditions))
-    
-    # Total flights must be 4
-    s.add(Sum([If(flight[i], 1, 0) for i in range(18)]) == 4)
-    
-    # Total days per city: base_count + flight_land_count (arrival flights)
-    city_totals = [6, 2, 7, 3, 5]  # Bucharest, Warsaw, Stuttgart, Copenhagen, Dubrovnik
+# Define city names and their integer mappings
+city_names = ["Bucharest", "Warsaw", "Stuttgart", "Copenhagen", "Dubrovnik"]
+city_map = {name: idx for idx, name in enumerate(city_names)}
+
+# Direct flights as tuples of city indices
+direct_flights_list = [
+    (city_map["Warsaw"], city_map["Copenhagen"]),
+    (city_map["Stuttgart"], city_map["Copenhagen"]),
+    (city_map["Warsaw"], city_map["Stuttgart"]),
+    (city_map["Bucharest"], city_map["Copenhagen"]),
+    (city_map["Bucharest"], city_map["Warsaw"]),
+    (city_map["Copenhagen"], city_map["Dubrovnik"])
+]
+
+# Create Z3 variables for days 1 to 19
+days = list(range(1, 20))
+L = [Int('L_%d' % d) for d in days]
+Fly = [Bool('Fly_%d' % d) for d in days]
+Dest = [Int('Dest_%d' % d) for d in days]
+
+solver = Solver()
+
+# Constraints for L: each L[d] must be between 0 and 4 (inclusive)
+for d in days:
+    solver.add(L[d-1] >= 0, L[d-1] <= 4)
+    solver.add(Dest[d-1] >= 0, Dest[d-1] <= 4)
+
+# Flight validity constraint: if Fly[d] is True, then (L[d], Dest[d]) must be in direct_flights_list (in any order)
+for d in days:
+    idx = d-1
+    flight_cond = Or([Or(And(L[idx] == c1, Dest[idx] == c2), And(L[idx] == c2, Dest[idx] == c1)) for (c1, c2) in direct_flights_list])
+    solver.add(Implies(Fly[idx], flight_cond))
+    # Also, if flying, L[d] != Dest[d]
+    solver.add(Implies(Fly[idx], L[idx] != Dest[idx]))
+
+# Next day constraints for L: for d from 1 to 18
+for d in days[:-1]:  # days 1 to 18
+    idx = d-1
+    solver.add(If(Fly[idx], L[idx+1] == Dest[idx], L[idx+1] == L[idx]))
+
+# Constraints for total days in each city
+# We'll define in_city[d][c] as a boolean expression
+in_city_expr = {}
+for d in days:
+    idx = d-1
     for c in range(5):
-        base_count = Sum([If(base[i] == c, 1, 0) for i in range(19)])
-        flight_land_count = Sum([If(And(flight[i], base[i+1] == c), 1, 0) for i in range(18)])
-        total = base_count + flight_land_count
-        s.add(total == city_totals[c])
-    
-    # Solve the problem
-    if s.check() == sat:
-        model = s.model()
-        base_val = [model.evaluate(base[i]).as_long() for i in range(19)]
-        flight_val = [model.evaluate(flight[i]) for i in range(18)]
-        
-        city_names = {
-            0: "Bucharest",
-            1: "Warsaw",
-            2: "Stuttgart",
-            3: "Copenhagen",
-            4: "Dubrovnik"
-        }
-        
-        # Step 1: For each city, compute the set of days the traveler is in that city.
-        days_in_city = {c: set() for c in range(5)}
-        
-        # Base days: day i+1 is in city base_val[i]
-        for i in range(19):
-            c = base_val[i]
-            days_in_city[c].add(i+1)  # because i=0 is day1, i=1 is day2, etc.
-        
-        # Flight arrival days: flight on day i+1 (flight_val[i]) lands in base_val[i+1] on day i+1
-        for i in range(18):
-            if flight_val[i]:
-                arrival_city = base_val[i+1]
-                days_in_city[arrival_city].add(i+1)  # flight on day i+1
-        
-        # Step 2: For each city, group consecutive days into blocks.
-        itinerary_records = []
-        for c in range(5):
-            if not days_in_city[c]:
-                continue
-            days = sorted(days_in_city[c])
-            blocks = []
-            start = days[0]
-            end = days[0]
-            for day in days[1:]:
-                if day == end + 1:
-                    end = day
-                else:
-                    if start == end:
-                        blocks.append((start, start))
-                    else:
-                        blocks.append((start, end))
-                    start = day
-                    end = day
-            if start == end:
-                blocks.append((start, start))
-            else:
-                blocks.append((start, end))
-            
-            for (s_day, e_day) in blocks:
-                if s_day == e_day:
-                    day_range_str = f"Day {s_day}"
-                else:
-                    day_range_str = f"Day {s_day}-{e_day}"
-                itinerary_records.append({
-                    'day_range': day_range_str,
-                    'place': city_names[c],
-                    'type': 1,  # block record
-                    'first_day': s_day
-                })
-        
-        # Step 3: Flight records: for each flight day, two records
-        for i in range(18):
-            if flight_val[i]:
-                day_num = i+1
-                dep_city = base_val[i]
-                arr_city = base_val[i+1]
-                itinerary_records.append({
-                    'day_range': f"Day {day_num}",
-                    'place': city_names[dep_city],
-                    'type': 0,  # flight record
-                    'first_day': day_num
-                })
-                itinerary_records.append({
-                    'day_range': f"Day {day_num}",
-                    'place': city_names[arr_city],
-                    'type': 0,  # flight record
-                    'first_day': day_num
-                })
-        
-        # Step 4: Sort the records: by first_day, then by type (0 for flight, 1 for block), then by place
-        itinerary_records_sorted = sorted(itinerary_records, key=lambda x: (x['first_day'], x['type'], x['place']))
-        
-        # Remove helper keys and create the final itinerary list
-        final_itinerary = [{'day_range': rec['day_range'], 'place': rec['place']} for rec in itinerary_records_sorted]
-        
-        # Output as JSON
-        result = {'itinerary': final_itinerary}
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
+        in_city_expr[(d, c)] = Or(
+            And(Not(Fly[idx]), L[idx] == c),
+            And(Fly[idx], Or(L[idx] == c, Dest[idx] == c))
+        )
 
-if __name__ == '__main__':
-    main()
+# Total days per city
+total_days = [0]*5
+for c in range(5):
+    total_days[c] = Sum([If(in_city_expr[(d, c)], 1, 0) for d in days])
+solver.add(total_days[city_map["Bucharest"]] == 6)
+solver.add(total_days[city_map["Warsaw"]] == 2)
+solver.add(total_days[city_map["Stuttgart"]] == 7)
+solver.add(total_days[city_map["Copenhagen"]] == 3)
+solver.add(total_days[city_map["Dubrovnik"]] == 5)
+
+# Specific day constraints: Stuttgart on day 7 and 13
+solver.add(in_city_expr[(7, city_map["Stuttgart"])] == True)
+solver.add(in_city_expr[(13, city_map["Stuttgart"])] == True)
+
+# Bucharest wedding: must be in Bucharest on at least one day between 1 and 6
+solver.add(Or([in_city_expr[(d, city_map["Bucharest"])] for d in range(1, 7)]))
+
+# Total flights must be 4
+total_flights = Sum([If(Fly[d-1], 1, 0) for d in days])
+solver.add(total_flights == 4)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    # Evaluate L, Fly, Dest for each day
+    L_val = [model.evaluate(L[i]).as_long() for i in range(19)]
+    Fly_val = [model.evaluate(Fly[i]) for i in range(19)]
+    Dest_val = [model.evaluate(Dest[i]).as_long() for i in range(19)]
+    
+    # Build the set of days for each city
+    in_city_days = {c: set() for c in range(5)}
+    for d in days:
+        idx = d-1
+        if Fly_val[idx]:
+            in_city_days[L_val[idx]].add(d)
+            in_city_days[Dest_val[idx]].add(d)
+        else:
+            in_city_days[L_val[idx]].add(d)
+    
+    # Find contiguous intervals for each city
+    blocks = []
+    for c in range(5):
+        if not in_city_days[c]:
+            continue
+        sorted_days = sorted(in_city_days[c])
+        start = sorted_days[0]
+        end = start
+        for i in range(1, len(sorted_days)):
+            if sorted_days[i] == end + 1:
+                end = sorted_days[i]
+            else:
+                blocks.append((start, end, c))
+                start = sorted_days[i]
+                end = start
+        blocks.append((start, end, c))
+    
+    # Create records: blocks and flight records
+    records = []
+    # Block records
+    for (s, e, c) in blocks:
+        if s == e:
+            day_range_str = "Day %d" % s
+        else:
+            day_range_str = "Day %d-%d" % (s, e)
+        place = city_names[c]
+        key = (s, 1)  # 1 for block
+        records.append((key, {"day_range": day_range_str, "place": place}))
+    
+    # Flight records: for each flight day, two records
+    for d in days:
+        idx = d-1
+        if is_true(Fly_val[idx]):
+            # Departure city
+            c1 = L_val[idx]
+            record1 = {"day_range": "Day %d" % d, "place": city_names[c1]}
+            key1 = (d, 0)  # 0 for flight record
+            records.append((key1, record1))
+            # Arrival city
+            c2 = Dest_val[idx]
+            record2 = {"day_range": "Day %d" % d, "place": city_names[c2]}
+            key2 = (d, 0)
+            records.append((key2, record2))
+    
+    # Sort records: by key = (start_day, type) where type: 0 (flight) comes before 1 (block)
+    records_sorted = sorted(records, key=lambda x: (x[0][0], x[0][1]))
+    itinerary = [rec for (key, rec) in records_sorted]
+    
+    # Output as JSON
+    output = {"itinerary": itinerary}
+    print(output)
+else:
+    print("No solution found")

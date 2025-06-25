@@ -1,82 +1,78 @@
 from z3 import *
+import json
 
 def main():
-    s0, s1, s2 = Ints('s0 s1 s2')
-    f1, f2 = Ints('f1 f2')
+    s1, s2, s3 = Ints('s1 s2 s3')
+    a, b = Ints('a b')
+    s = Solver()
     
-    solver = Solver()
+    s.add(Distinct(s1, s2, s3))
+    s.add(s1 >= 0, s1 <= 2)
+    s.add(s2 >= 0, s2 <= 2)
+    s.add(s3 >= 0, s3 <= 2)
     
-    # Define the two valid sequences: [Mykonos, Vienna, Venice] or [Venice, Vienna, Mykonos]
-    order_constraint = Or(
-        And(s0 == 0, s1 == 1, s2 == 2),
-        And(s0 == 2, s1 == 1, s2 == 0)
-    )
-    solver.add(order_constraint)
+    s.add(a >= 1, a < 10)
+    s.add(b > a, b <= 10)
     
-    # Constraints for the first stay: s0
-    c1 = Or(
-        And(s0 == 0, f1 == 2),
-        And(s0 == 1, f1 == 4),
-        And(s0 == 2, f1 == 6)
-    )
-    solver.add(c1)
+    s.add(If(s1 == 0, a == 2, True))
+    s.add(If(s1 == 1, a == 4, True))
+    s.add(If(s1 == 2, a == 6, True))
     
-    # Constraints for the second stay: s1
-    c2 = Or(
-        And(s1 == 0, f2 == f1 + 1),
-        And(s1 == 1, f2 == f1 + 3),
-        And(s1 == 2, f2 == f1 + 5)
-    )
-    solver.add(c2)
+    s.add(If(s2 == 0, b - a + 1 == 2, True))
+    s.add(If(s2 == 1, b - a + 1 == 4, True))
+    s.add(If(s2 == 2, b - a + 1 == 6, True))
     
-    # Constraints for the third stay: s2
-    c3 = Or(
-        And(s2 == 0, 11 - f2 == 2),
-        And(s2 == 1, 11 - f2 == 4),
-        And(s2 == 2, 11 - f2 == 6)
-    )
-    solver.add(c3)
+    s.add(If(s3 == 0, 10 - b + 1 == 2, True))
+    s.add(If(s3 == 1, 10 - b + 1 == 4, True))
+    s.add(If(s3 == 2, 10 - b + 1 == 6, True))
     
-    # Workshop constraint: must be in Venice during days 5-10
-    workshop_constraint = Or(
-        And(s0 == 2, f1 >= 5),
-        And(s1 == 2, f2 >= 5),
-        s2 == 2
-    )
-    solver.add(workshop_constraint)
+    s.add(Or(
+        And(s1 == 2, a >= 5),
+        And(s2 == 2, b >= 5),
+        s3 == 2
+    ))
     
-    # Flight days must be between 1 and 10, and f1 < f2
-    solver.add(f1 >= 1, f1 <= 10)
-    solver.add(f2 >= 1, f2 <= 10)
-    solver.add(f1 < f2)
+    s.add(Or(
+        And(s1 == 0, s2 == 1),
+        And(s1 == 1, s2 == 0),
+        And(s1 == 1, s2 == 2),
+        And(s1 == 2, s2 == 1)
+    ))
     
-    if solver.check() == sat:
-        model = solver.model()
-        f1_val = model[f1].as_long()
-        f2_val = model[f2].as_long()
-        s0_val = model[s0].as_long()
-        s1_val = model[s1].as_long()
-        s2_val = model[s2].as_long()
+    s.add(Or(
+        And(s2 == 0, s3 == 1),
+        And(s2 == 1, s3 == 0),
+        And(s2 == 1, s3 == 2),
+        And(s2 == 2, s3 == 1)
+    ))
+    
+    if s.check() == sat:
+        m = s.model()
+        a_val = m[a].as_long()
+        b_val = m[b].as_long()
+        s1_val = m[s1].as_long()
+        s2_val = m[s2].as_long()
+        s3_val = m[s3].as_long()
         
         city_map = {0: "Mykonos", 1: "Vienna", 2: "Venice"}
-        city0 = city_map[s0_val]
         city1 = city_map[s1_val]
         city2 = city_map[s2_val]
+        city3 = city_map[s3_val]
         
         itinerary = [
-            {"day_range": f"Day 1-{f1_val}", "place": city0},
-            {"day_range": f"Day {f1_val}", "place": city0},
-            {"day_range": f"Day {f1_val}", "place": city1},
-            {"day_range": f"Day {f1_val}-{f2_val}", "place": city1},
-            {"day_range": f"Day {f2_val}", "place": city1},
-            {"day_range": f"Day {f2_val}", "place": city2},
-            {"day_range": f"Day {f2_val}-10", "place": city2}
+            {"day_range": "Day 1-{}".format(a_val), "place": city1},
+            {"day_range": "Day {}".format(a_val), "place": city1},
+            {"day_range": "Day {}".format(a_val), "place": city2},
+            {"day_range": "Day {}-{}".format(a_val, b_val), "place": city2},
+            {"day_range": "Day {}".format(b_val), "place": city2},
+            {"day_range": "Day {}".format(b_val), "place": city3},
+            {"day_range": "Day {}-10".format(b_val), "place": city3}
         ]
         
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result))
     else:
-        print("No solution found")
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

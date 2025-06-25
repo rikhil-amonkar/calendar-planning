@@ -1,90 +1,114 @@
 from z3 import *
 
 def main():
-    cities = ["Rome", "Mykonos", "Nice", "Riga", "Bucharest", "Munich", "Krakow"]
-    days_arr = [4, 3, 3, 3, 4, 4, 2]
-    directed_edges = [
-        (0, 3), (3, 5),  # Directed: Rome->Riga, Riga->Munich
-        (0, 1), (1, 0),  # Rome <-> Mykonos
-        (0, 2), (2, 0),  # Rome <-> Nice
-        (0, 4), (4, 0),  # Rome <-> Bucharest
-        (0, 5), (5, 0),  # Rome <-> Munich
-        (1, 5), (5, 1),  # Mykonos <-> Munich
-        (1, 2), (2, 1),  # Mykonos <-> Nice
-        (3, 2), (2, 3),  # Riga <-> Nice
-        (3, 4), (4, 3),  # Riga <-> Bucharest
-        (4, 5), (5, 4),  # Bucharest <-> Munich
-        (2, 5), (5, 2),  # Nice <-> Munich
-        (5, 6), (6, 5)   # Munich <-> Krakow
+    # Define the directed flight edges
+    edges = [
+        (1, 2), (2, 1), (3, 4), (4, 3), (0, 4), (4, 0), 
+        (2, 3), (3, 2), (5, 1), (1, 5), (5, 4), (4, 5), 
+        (0, 1), (1, 0), (5, 0), (0, 5), (4, 6), (6, 4), 
+        (5, 3), (3, 5), (1, 4), (4, 1), (2, 4), (5, 2)
     ]
     
+    # Cities: 0=Mykonos, 1=Nice, 2=Riga, 3=Bucharest, 4=Munich, 5=Rome, 6=Krakow
+    city_map = {
+        0: "Mykonos",
+        1: "Nice",
+        2: "Riga",
+        3: "Bucharest",
+        4: "Munich",
+        5: "Rome",
+        6: "Krakow"
+    }
+    
+    # Durations for cities 0,1,2,3: [Mykonos, Nice, Riga, Bucharest] -> [3,3,3,4]
+    dur_list = [3, 3, 3, 4]
+    
+    # Define variables for the permutation of intermediate cities (positions 1 to 4)
+    p0, p1, p2, p3 = Ints('p0 p1 p2 p3')
     s = Solver()
-    o1, o2, o3, o4, o5 = Ints('o1 o2 o3 o4 o5')
-    order = [0, o1, o2, o3, o4, o5, 6]
     
-    s.add(Distinct(o1, o2, o3, o4, o5))
-    for o in [o1, o2, o3, o4, o5]:
-        s.add(And(o >= 1, o <= 5))
+    # Each variable must be in [0,3] and distinct
+    s.add(Distinct(p0, p1, p2, p3))
+    for x in [p0, p1, p2, p3]:
+        s.add(x >= 0, x <= 3)
     
-    days_z3 = Array('days_z3', IntSort(), IntSort())
-    for idx, d_val in enumerate(days_arr):
-        s.add(days_z3[idx] == d_val)
+    # Mykonos (0) must be at position0 or position1; if at position1, then p0 cannot be 3 (Bucharest) because that would make the start day of Mykonos too late.
+    s.add(Or(p0 == 0, p1 == 0))
+    s.add(Implies(p1 == 0, p0 != 3))
     
-    d0 = 4
-    d1 = d0 + days_z3[o1] - 1
-    d2 = d1 + days_z3[o2] - 1
-    d3 = d2 + days_z3[o3] - 1
-    d4 = d3 + days_z3[o4] - 1
-    d5 = d4 + days_z3[o5] - 1
-    s.add(d5 == 16)
+    # Helper function to check if (a, b) is in the edges
+    def in_edges(a, b, edges_list):
+        options = []
+        for (x, y) in edges_list:
+            options.append(And(a == x, b == y))
+        return Or(options)
     
-    mykonos_idx = 1
-    s.add(Or(o1 == mykonos_idx, o2 == mykonos_idx, o3 == mykonos_idx))
-    s.add(If(o1 == mykonos_idx, True,
-             If(o2 == mykonos_idx, d1 <= 6,
-                If(o3 == mykonos_idx, d2 <= 6, False))))
+    # Flight connections between consecutive cities in the sequence
+    s.add(in_edges(p0, p1, edges))
+    s.add(in_edges(p1, p2, edges))
+    s.add(in_edges(p2, p3, edges))
     
-    for i in range(6):
-        from_city = order[i]
-        to_city = order[i+1]
-        edge_constraints = []
-        for u, v in directed_edges:
-            edge_constraints.append(And(from_city == u, to_city == v))
-        s.add(Or(edge_constraints))
-    
+    # Solve
     if s.check() == sat:
         m = s.model()
-        o1_val = m[o1].as_long()
-        o2_val = m[o2].as_long()
-        o3_val = m[o3].as_long()
-        o4_val = m[o4].as_long()
-        o5_val = m[o5].as_long()
-        full_order = [0, o1_val, o2_val, o3_val, o4_val, o5_val, 6]
+        p0_val = m[p0].as_long()
+        p1_val = m[p1].as_long()
+        p2_val = m[p2].as_long()
+        p3_val = m[p3].as_long()
         
-        d_vals = [4]  # d0
-        for i in range(1, 6):
-            d_vals.append(d_vals[i-1] + days_arr[full_order[i]] - 1)
+        # Durations for the intermediate cities
+        d0 = dur_list[p0_val]
+        d1 = dur_list[p1_val]
+        d2 = dur_list[p2_val]
+        d3 = dur_list[p3_val]
         
-        arrival = [1]
-        for i in range(1, 7):
-            arrival.append(d_vals[i-1])
+        # Start and end days for each city in the sequence
+        # The sequence: [Rome, city1, city2, city3, city4, Munich, Krakow]
+        cities = [5, p0_val, p1_val, p2_val, p3_val, 4, 6]
+        # Start days: 
+        s_vals = [
+            1,  # Rome starts at day1
+            4,  # city1 starts at day4 (since Rome ends at day4)
+            3 + d0,  # city2 starts at 3 + d0
+            2 + d0 + d1,  # city3 starts at 2 + d0 + d1
+            1 + d0 + d1 + d2,  # city4 starts at 1 + d0 + d1 + d2
+            d0 + d1 + d2 + d3,  # Munich starts at d0+d1+d2+d3 (since city4 ends at that day)
+            16  # Krakow starts at day16
+        ]
+        # End days: 
+        e_vals = [
+            4,  # Rome ends at day4
+            3 + d0,  # city1 ends at 3 + d0 (start + d0 - 1 = 4 + d0 - 1 = 3+d0)
+            2 + d0 + d1,  # city2 ends at 2 + d0 + d1
+            1 + d0 + d1 + d2,  # city3 ends at 1 + d0 + d1 + d2
+            d0 + d1 + d2 + d3,  # city4 ends at d0+d1+d2+d3
+            d0 + d1 + d2 + d3 + 3,  # Munich: 4 days -> ends at start+4-1 = s5+3
+            17  # Krakow ends at day17
+        ]
         
+        # Build the itinerary
         itinerary = []
         for i in range(7):
-            city = cities[full_order[i]]
-            a = arrival[i]
-            b = d_vals[i] if i < 6 else 17
+            city_name = city_map[cities[i]]
+            s_i = s_vals[i]
+            e_i = e_vals[i]
             
-            if a == b:
-                itinerary.append({"day_range": f"Day {a}", "place": city})
+            # Format the entire stay block
+            if s_i == e_i:
+                day_str = f"Day {s_i}"
             else:
-                itinerary.append({"day_range": f"Day {a}-{b}", "place": city})
+                day_str = f"Day {s_i}-{e_i}"
+            itinerary.append({"day_range": day_str, "place": city_name})
             
+            # If not the last city, add departure and arrival for the flight day
             if i < 6:
-                next_city = cities[full_order[i+1]]
-                itinerary.append({"day_range": f"Day {b}", "place": city})
-                itinerary.append({"day_range": f"Day {b}", "place": next_city})
+                # Departure from current city on day e_i
+                itinerary.append({"day_range": f"Day {e_i}", "place": city_name})
+                # Arrival at next city on day e_i (which is the same as the next city's start day)
+                next_city_name = city_map[cities[i+1]]
+                itinerary.append({"day_range": f"Day {e_i}", "place": next_city_name})
         
+        # Output the itinerary in JSON format
         result = {"itinerary": itinerary}
         print(result)
     else:

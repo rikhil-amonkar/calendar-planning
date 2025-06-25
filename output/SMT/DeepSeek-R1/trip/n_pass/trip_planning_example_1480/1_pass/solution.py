@@ -1,28 +1,31 @@
+import z3
 from z3 import *
-import json
 
 def main():
-    # Define city names and their indices
-    city_names = ['Geneva', 'Istanbul', 'Venice', 'Vilnius', 'Vienna', 'Riga', 'Brussels', 'Madrid', 'Munich', 'Reykjavik']
-    name_to_index = {name: idx for idx, name in enumerate(city_names)}
-    index_to_name = {idx: name for name, idx in name_to_index.items()}
-    
-    # Required days for each city (index 0 to 9)
-    req_days_arr = [4, 4, 5, 4, 4, 2, 2, 4, 5, 2]
-    # For the middle cities, term = req_days - 1
-    term_dict = {
-        1: 3,   # Istanbul
-        2: 4,   # Venice
-        3: 3,   # Vilnius
-        4: 3,   # Vienna
-        5: 1,   # Riga
-        7: 3,   # Madrid
-        8: 4,   # Munich
-        9: 1    # Reykjavik
+    # Define the cities and their durations
+    all_cities = ["Geneva", "Istanbul", "Vienna", "Riga", "Brussels", "Madrid", "Vilnius", "Venice", "Munich", "Reykjavik"]
+    duration = {
+        "Geneva": 4,
+        "Istanbul": 4,
+        "Vienna": 4,
+        "Riga": 2,
+        "Brussels": 2,
+        "Madrid": 4,
+        "Vilnius": 4,
+        "Venice": 5,
+        "Munich": 5,
+        "Reykjavik": 2
     }
     
-    # Build the flight graph
-    flight_strs = [
+    # Fixed positions
+    pos0 = "Geneva"
+    pos9 = "Brussels"
+    
+    # Remaining cities for positions 1 to 8
+    remaining_cities = ["Istanbul", "Vienna", "Riga", "Madrid", "Vilnius", "Venice", "Munich", "Reykjavik"]
+    
+    # Build the directed flight set
+    flight_list = [
         "Munich and Vienna", 
         "Istanbul and Brussels", 
         "Vienna and Vilnius", 
@@ -40,124 +43,152 @@ def main():
         "Venice and Vienna", 
         "Venice and Istanbul", 
         "from Reykjavik to Madrid", 
-        "from Riga to Vilnius", 
+        "from Riga to Munich", 
+        "Munich and Istanbul", 
+        "Reykjavik and Brussels", 
+        "Vilnius and Brussels", 
         "from Vilnius to Munich", 
         "Madrid and Vienna", 
         "Vienna and Riga", 
         "Geneva and Vienna", 
+        "Madrid and Brussels", 
+        "Vienna and Brussels", 
         "Geneva and Brussels", 
         "Geneva and Madrid", 
         "Munich and Brussels", 
-        "Madrid and Brussels", 
-        "Vienna and Brussels", 
+        "Madrid and Istanbul", 
         "Geneva and Munich", 
-        "Madrid and Istanbul"
+        "from Riga to Vilnius"
     ]
     
-    allowed_edges = set()
-    for s in flight_strs:
-        if s.startswith('from'):
+    directed_edges = set()
+    for s in flight_list:
+        if s.startswith("from"):
             parts = s.split()
-            city1 = parts[1]
-            city2 = parts[3]
+            if len(parts) == 4:
+                A = parts[1]
+                B = parts[3]
+                directed_edges.add((A, B))
         else:
-            parts = s.split(' and ')
-            city1 = parts[0]
-            city2 = parts[1]
-        idx1 = name_to_index[city1]
-        idx2 = name_to_index[city2]
-        if idx1 > idx2:
-            idx1, idx2 = idx2, idx1
-        allowed_edges.add((idx1, idx2))
+            if " and " in s:
+                parts = s.split(" and ")
+                A = parts[0].strip()
+                B = parts[1].strip()
+                directed_edges.add((A, B))
+                directed_edges.add((B, A))
     
-    # Middle cities: indices 1,2,3,4,5,7,8,9 (excluding Geneva(0) and Brussels(6))
-    middle_cities = [1,2,3,4,5,7,8,9]
-    
-    # Z3 setup
+    # Create Z3 solver and variables
     s = Solver()
-    n = 8
-    order = [Int(f'c_{i}') for i in range(n)]
+    # Positions 1 to 8: each is an integer index in [0,7] representing the city in remaining_cities
+    pos_vars = [Int(f'pos_{i}') for i in range(1, 9)]
     
-    # Each element in order must be one of the middle cities
-    for i in range(n):
-        s.add(Or([order[i] == c for c in middle_cities]))
-    s.add(Distinct(order))
+    # Each pos_var must be between 0 and 7
+    for i in range(8):
+        s.add(pos_vars[i] >= 0, pos_vars[i] <= 7)
     
-    # Function to check if two cities are connected
-    def connected(a, b):
-        constraints = []
-        for edge in allowed_edges:
-            constraints.append(Or(
-                And(a == edge[0], b == edge[1]),
-                And(a == edge[1], b == edge[0])
-            ))
-        return Or(constraints)
+    # All pos_vars are distinct
+    s.add(Distinct(pos_vars))
     
-    # Flight connection constraints
-    s.add(connected(0, order[0]))  # From Geneva to first city
-    for i in range(n-1):
-        s.add(connected(order[i], order[i+1]))  # Between middle cities
-    s.add(connected(order[n-1], 6))  # From last city to Brussels
+    # Build city_at: an array of 10, index 0 and 9 are fixed
+    city_at = [None] * 10
+    city_at[0] = "Geneva"
+    city_at[9] = "Brussels"
+    # For positions 1 to 8, city_at[i] = remaining_cities[ pos_vars[i-1] ]
+    for i in range(1, 9):
+        idx = i - 1  # index in pos_vars
+        # We use a function to map the Z3 variable to the city name
+        city_at[i] = remaining_cities[ pos_vars[idx] ]
     
-    # Cumulative constraints for events
-    cum = [Int(f'cum_{i}') for i in range(n+1)]
-    s.add(cum[0] == 0)
-    for i in range(n):
-        term_i = If(order[i] == 1, 3,
-                   If(order[i] == 2, 4,
-                   If(order[i] == 3, 3,
-                   If(order[i] == 4, 3,
-                   If(order[i] == 5, 1,
-                   If(order[i] == 7, 3,
-                   If(order[i] == 8, 4,
-                   If(order[i] == 9, 1, 0))))))))
-        s.add(cum[i+1] == cum[i] + term_i)
+    # Build the start days: start[0]=1, then start[i] = start[i-1] + (duration[city_at[i-1]] - 1)
+    start_days = [Int(f'start_{i}') for i in range(10)]
+    s.add(start_days[0] == 1)
+    for i in range(1, 10):
+        # We need to express: duration[city_at[i-1]]
+        # But city_at[i-1] is a string that depends on the Z3 variable
+        # We use a dictionary of conditions for each possible city
+        expr = None
+        for city in remaining_cities + ["Geneva", "Brussels"]:
+            # Skip cities that are not possible? Actually, for i-1 in [0,8]: 
+            #   if i-1==0: city_at[0] is fixed to "Geneva"
+            #   if i-1==9: not possible because i-1 from 0 to 8
+            if i-1 == 0:
+                # city_at[0] is "Geneva", duration 4
+                cond = (start_days[i] == start_days[i-1] + (4 - 1))
+                s.add(cond)
+                break
+            elif i-1 == 9:
+                # not possible
+                pass
+            else:
+                # For positions 1 to 8, city_at[i-1] is one of the remaining_cities
+                # We are at index i-1 (which is from 1 to 8)
+                # Create a condition: if city_at[i-1] == city, then start_days[i] = start_days[i-1] + (duration[city]-1)
+                if expr is None:
+                    expr = If(city_at[i-1] == city, start_days[i] == start_days[i-1] + (duration[city]-1), False)
+                else:
+                    expr = Or(expr, If(city_at[i-1] == city, start_days[i] == start_days[i-1] + (duration[city]-1), False))
+        if i-1 != 0:
+            s.add(expr)
     
-    # Event constraints
-    for i in range(n):
-        # Venice (index2) must be visited by day 11 (cumulative <= 7 at arrival)
-        s.add(If(order[i] == 2, cum[i] <= 7, True))
-        # Vilnius (index3) must be visited between days 20-23 (cumulative between 13 and 19 at arrival)
-        s.add(If(order[i] == 3, And(cum[i] <= 19, cum[i+1] >= 16), True))
+    # Constraints for Venice: must be at a position i in [1,8] and start_days[i] == 7
+    venice_constraint = Or([And(city_at[i] == "Venice", start_days[i] == 7) for i in range(1,9)])
+    s.add(venice_constraint)
     
-    # Solve
+    # Constraints for Vilnius: must be at a position i in [1,8] and start_days[i] == 20
+    vilnius_constraint = Or([And(city_at[i] == "Vilnius", start_days[i] == 20) for i in range(1,9)])
+    s.add(vilnius_constraint)
+    
+    # Flight constraints: for each i from 0 to 8, (city_at[i], city_at[i+1]) must be in directed_edges
+    for i in range(0,9):
+        # We'll create an OR over all edges that are in directed_edges
+        # But we have to use the actual city names
+        expr = Or([And(city_at[i] == A, city_at[i+1] == B) for (A,B) in directed_edges])
+        s.add(expr)
+    
+    # Check and get the model
     if s.check() == sat:
         model = s.model()
-        order_val = [model.evaluate(order[i]).as_long() for i in range(n)]
-        full_sequence = [0] + order_val + [6]
+        # Get the actual assignment for the positions
+        city_at_assign = [None] * 10
+        city_at_assign[0] = "Geneva"
+        city_at_assign[9] = "Brussels"
+        # For positions 1 to 8
+        actual_remaining = [None] * 8
+        for i in range(1,9):
+            idx_var = pos_vars[i-1]
+            idx_val = model[idx_var].as_long()
+            city_name = remaining_cities[idx_val]
+            city_at_assign[i] = city_name
+            actual_remaining[i-1] = city_name
         
-        # Compute arrival and departure days
-        a = [0] * 10
-        d = [0] * 10
-        a[0] = 1
-        d[0] = a[0] + req_days_arr[full_sequence[0]] - 1
-        for i in range(1, 10):
-            a[i] = d[i-1]
-            d[i] = a[i] + req_days_arr[full_sequence[i]] - 1
+        # Now compute the start_days_assign and end_days
+        start_assign = [0] * 10
+        end_assign = [0] * 10
+        start_assign[0] = 1
+        end_assign[0] = start_assign[0] + duration[city_at_assign[0]] - 1
+        for i in range(1,10):
+            start_assign[i] = end_assign[i-1]  # because end_assign[i-1] = start_assign[i-1] + dur - 1, and next starts on that day
+            end_assign[i] = start_assign[i] + duration[city_at_assign[i]] - 1
         
-        # Build itinerary
+        # Build the itinerary
         itinerary = []
         for i in range(10):
-            city_idx = full_sequence[i]
-            city_name = index_to_name[city_idx]
-            # Entire stay record
-            if a[i] == d[i]:
-                day_range_str = f"Day {a[i]}"
+            s_day = start_assign[i]
+            e_day = end_assign[i]
+            if s_day == e_day:
+                day_str = f"Day {s_day}"
             else:
-                day_range_str = f"Day {a[i]}-{d[i]}"
-            itinerary.append({"day_range": day_range_str, "place": city_name})
-            # If not last city, add departure and arrival records
+                day_str = f"Day {s_day}-{e_day}"
+            itinerary.append( {"day_range": day_str, "place": city_at_assign[i]} )
             if i < 9:
-                # Departure from current city
-                itinerary.append({"day_range": f"Day {d[i]}", "place": city_name})
-                # Arrival at next city
-                next_city_idx = full_sequence[i+1]
-                next_city_name = index_to_name[next_city_idx]
-                itinerary.append({"day_range": f"Day {d[i]}", "place": next_city_name})
+                # Flight out on e_day
+                itinerary.append( {"day_range": f"Day {e_day}", "place": city_at_assign[i]} )
+                itinerary.append( {"day_range": f"Day {e_day}", "place": city_at_assign[i+1]} )
         
         # Output as JSON
+        import json
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

@@ -1,9 +1,8 @@
-import json
 from z3 import *
+import json
 
 def main():
-    Cities = ['Copenhagen', 'Geneva', 'Mykonos', 'Naples', 'Prague', 'Dubrovnik', 'Athens', 'Santorini', 'Brussels', 'Munich']
-    
+    cities = ['Copenhagen', 'Geneva', 'Mykonos', 'Naples', 'Prague', 'Dubrovnik', 'Athens', 'Santorini', 'Brussels', 'Munich']
     durations = {
         'Copenhagen': 5,
         'Geneva': 3,
@@ -17,73 +16,102 @@ def main():
         'Munich': 5
     }
     
-    flights_str = "Copenhagen and Dubrovnik, Brussels and Copenhagen, Prague and Geneva, Athens and Geneva, Naples and Dubrovnik, Athens and Dubrovnik, Geneva and Mykonos, Naples and Mykonos, Naples and Copenhagen, Munich and Mykonos, Naples and Athens, Prague and Athens, Santorini and Geneva, Athens and Santorini, Naples and Munich, Prague and Copenhagen, Brussels and Naples, Athens and Mykonos, Athens and Copenhagen, Naples and Geneva, Dubrovnik and Munich, Brussels and Munich, Prague and Brussels, Brussels and Athens, Athens and Munich, Geneva and Munich, Copenhagen and Munich, Brussels and Geneva, Copenhagen and Geneva, Prague and Munich, Copenhagen and Santorini, Naples and Santorini, Geneva and Dubrovnik"
-    flight_pairs = [s.split(' and ') for s in flights_str.split(', ')]
-    allowed_directed = set()
-    for a, b in flight_pairs:
-        allowed_directed.add((a, b))
-        allowed_directed.add((b, a))
+    non_mykonos = [c for c in cities if c != 'Mykonos']
     
-    solver = Solver()
+    flight_connections_str = """Copenhagen and Dubrovnik, Brussels and Copenhagen, Prague and Geneva, Athens and Geneva, Naples and Dubrovnik, Athens and Dubrovnik, Geneva and Mykonos, Naples and Mykonos, Naples and Copenhagen, Munich and Mykonos, Naples and Athens, Prague and Athens, Santorini and Geneva, Athens and Santorini, Naples and Munich, Prague and Copenhagen, Brussels and Naples, Athens and Mykonos, Athens and Copenhagen, Naples and Geneva, Dubrovnik and Munich, Brussels and Munich, Prague and Brussels, Brussels and Athens, Athens and Munich, Geneva and Munich, Copenhagen and Munich, Brussels and Geneva, Copenhagen and Geneva, Prague and Munich, Copenhagen and Santorini, Naples and Santorini, Geneva and Dubrovnik"""
     
-    start = {c: Int(f'start_{c}') for c in Cities}
-    end = {c: Int(f'end_{c}') for c in Cities}
-    order = {c: Int(f'order_{c}') for c in Cities}
+    flight_pairs = set()
+    connections_list = [conn.strip() for conn in flight_connections_str.split(',')]
+    for conn in connections_list:
+        parts = conn.split(' and ')
+        if len(parts) == 2:
+            A, B = parts[0], parts[1]
+            flight_pairs.add((A, B))
+            flight_pairs.add((B, A))
     
-    for c in Cities:
-        solver.add(end[c] == start[c] + durations[c] - 1)
-        solver.add(start[c] >= 1, end[c] <= 28)
+    s = Solver()
     
-    solver.add(start['Mykonos'] == 27, end['Mykonos'] == 28)
+    pos_vars = {}
+    for city in cities:
+        if city == 'Mykonos':
+            pos_vars[city] = 9
+        else:
+            pos_vars[city] = Int(f'pos_{city}')
     
-    solver.add(Distinct([order[c] for c in Cities]))
-    for c in Cities:
-        solver.add(order[c] >= 0, order[c] <= 9)
+    s.add(Distinct([pos_vars[city] for city in cities]))
+    for city in non_mykonos:
+        s.add(pos_vars[city] >= 0)
+        s.add(pos_vars[city] <= 8)
     
-    first_city_constraint = Or([And(order[c] == 0, start[c] == 1) for c in Cities])
-    last_city_constraint = Or([And(order[c] == 9, end[c] == 28) for c in Cities])
-    solver.add(first_city_constraint, last_city_constraint)
+    start_day = {}
+    end_day = {}
+    for city in non_mykonos:
+        sum_before = 0
+        for d in non_mykonos:
+            sum_before += If(pos_vars[d] < pos_vars[city], durations[d], 0)
+        start_day[city] = 1 + sum_before - pos_vars[city]
+        end_day[city] = start_day[city] + durations[city] - 1
     
-    for c1 in Cities:
-        for c2 in Cities:
-            if c1 == c2:
-                continue
-            solver.add(Implies(order[c1] + 1 == order[c2], end[c1] == start[c2]))
-            if (c1, c2) not in allowed_directed:
-                solver.add(order[c1] + 1 != order[c2])
+    start_day['Mykonos'] = 27
+    end_day['Mykonos'] = 28
     
-    solver.add(start['Copenhagen'] <= 15, end['Copenhagen'] >= 11)
-    solver.add(start['Naples'] <= 8, end['Naples'] >= 5)
-    solver.add(start['Athens'] <= 11, end['Athens'] >= 8)
+    s.add(start_day['Copenhagen'] <= 15)
+    s.add(end_day['Copenhagen'] >= 11)
+    s.add(start_day['Naples'] <= 8)
+    s.add(end_day['Naples'] >= 5)
+    s.add(start_day['Athens'] <= 11)
+    s.add(end_day['Athens'] >= 8)
     
-    if solver.check() == sat:
-        m = solver.model()
-        start_vals = {c: m.eval(start[c]).as_long() for c in Cities}
-        end_vals = {c: m.eval(end[c]).as_long() for c in Cities}
-        order_vals = {c: m.eval(order[c]).as_long() for c in Cities}
+    for k in range(9):
+        or_conditions = []
+        for (c1, c2) in flight_pairs:
+            or_conditions.append(And(pos_vars[c1] == k, pos_vars[c2] == k+1))
+        s.add(Or(or_conditions))
+    
+    for city in non_mykonos:
+        s.add(start_day[city] >= 1)
+        s.add(start_day[city] <= 28)
+        s.add(end_day[city] >= 1)
+        s.add(end_day[city] <= 28)
+    
+    if s.check() == sat:
+        m = s.model()
+        pos_vals = {}
+        for city in cities:
+            if city == 'Mykonos':
+                pos_vals[city] = 9
+            else:
+                pos_vals[city] = m.eval(pos_vars[city]).as_long()
         
-        sorted_cities = sorted(Cities, key=lambda c: order_vals[c])
+        sorted_cities = sorted(cities, key=lambda c: pos_vals[c])
+        
+        start_vals = {}
+        end_vals = {}
+        for city in non_mykonos:
+            start_vals[city] = m.eval(start_day[city]).as_long()
+            end_vals[city] = m.eval(end_day[city]).as_long()
+        start_vals['Mykonos'] = 27
+        end_vals['Mykonos'] = 28
         
         itinerary = []
-        for idx, c in enumerate(sorted_cities):
-            s = start_vals[c]
-            e = end_vals[c]
-            if s == e:
-                day_range_str = f"Day {s}"
+        for idx, city in enumerate(sorted_cities):
+            s_val = start_vals[city]
+            e_val = end_vals[city]
+            if s_val == e_val:
+                day_str = f"Day {s_val}"
             else:
-                day_range_str = f"Day {s}-{e}"
-            itinerary.append({"day_range": day_range_str, "place": c})
+                day_str = f"Day {s_val}-{e_val}"
+            itinerary.append({"day_range": day_str, "place": city})
             
-            if idx < len(sorted_cities) - 1:
-                flight_day = e
-                itinerary.append({"day_range": f"Day {flight_day}", "place": c})
-                next_city = sorted_cities[idx + 1]
-                itinerary.append({"day_range": f"Day {flight_day}", "place": next_city})
+            if idx < 9:
+                next_city = sorted_cities[idx+1]
+                itinerary.append({"day_range": f"Day {e_val}", "place": city})
+                itinerary.append({"day_range": f"Day {e_val}", "place": next_city})
         
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print('{"error": "No solution found"}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

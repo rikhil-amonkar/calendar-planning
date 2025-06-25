@@ -1,112 +1,97 @@
-import z3
+from z3 import *
 
 def main():
-    # City names and their durations
-    cities = ["Porto", "Geneva", "Mykonos", "Manchester", "Hamburg", "Naples", "Frankfurt"]
-    durations = [2, 3, 3, 4, 5, 5, 2]
-    city_to_duration = dict(zip(cities, durations))
-    city_to_index = {city: idx for idx, city in enumerate(cities)}
-    
-    # Adjacency list for direct flights
-    adj_list = {
-        "Porto": ["Geneva", "Manchester", "Hamburg", "Frankfurt"],
-        "Geneva": ["Porto", "Mykonos", "Manchester", "Hamburg", "Naples", "Frankfurt"],
-        "Mykonos": ["Geneva", "Naples"],
-        "Manchester": ["Porto", "Geneva", "Hamburg", "Naples", "Frankfurt"],
-        "Hamburg": ["Porto", "Geneva", "Manchester", "Frankfurt"],
-        "Naples": ["Geneva", "Mykonos", "Manchester", "Frankfurt"],
-        "Frankfurt": ["Porto", "Geneva", "Manchester", "Hamburg", "Naples"]
+    cities = ['Porto', 'Geneva', 'Mykonos', 'Manchester', 'Hamburg', 'Naples', 'Frankfurt']
+    d = {
+        'Porto': 2,
+        'Geneva': 3,
+        'Mykonos': 3,
+        'Manchester': 4,
+        'Hamburg': 5,
+        'Naples': 5,
+        'Frankfurt': 2
     }
     
-    # Convert adjacency list to indices
-    adj_list_index = {}
-    for city, neighbors in adj_list.items():
-        idx = city_to_index[city]
-        adj_list_index[idx] = [city_to_index[n] for n in neighbors]
+    direct_flights_tuples = [
+        ('Hamburg', 'Frankfurt'),
+        ('Naples', 'Mykonos'),
+        ('Hamburg', 'Porto'),
+        ('Hamburg', 'Geneva'),
+        ('Mykonos', 'Geneva'),
+        ('Frankfurt', 'Geneva'),
+        ('Frankfurt', 'Porto'),
+        ('Geneva', 'Porto'),
+        ('Geneva', 'Manchester'),
+        ('Naples', 'Manchester'),
+        ('Frankfurt', 'Naples'),
+        ('Frankfurt', 'Manchester'),
+        ('Naples', 'Geneva'),
+        ('Porto', 'Manchester'),
+        ('Hamburg', 'Manchester')
+    ]
     
-    # Allowed flight pairs
-    allowed_pairs = set()
-    for a, neighbors in adj_list_index.items():
-        for b in neighbors:
-            allowed_pairs.add((a, b))
+    # Create Z3 variables
+    pos = {c: Int(f'pos_{c}') for c in cities}
+    s_day = {c: Int(f's_{c}') for c in cities}
     
-    # Z3 variables
-    seq = [z3.Int(f'seq_{i}') for i in range(7)]
-    cumulative = [z3.Int(f'cum_{i}') for i in range(8)]
-    start = [z3.Int(f'start_{i}') for i in range(7)]
-    end = [z3.Int(f'end_{i}') for i in range(7)]
+    solver = Solver()
     
-    s = z3.Solver()
+    # Each city has a distinct position between 0 and 6
+    solver.add(Distinct([pos[c] for c in cities]))
+    for c in cities:
+        solver.add(pos[c] >= 0, pos[c] <= 6)
     
-    # Constraints for sequence: distinct and within [0,6]
-    for i in range(7):
-        s.add(seq[i] >= 0)
-        s.add(seq[i] < 7)
-    s.add(z3.Distinct(seq))
+    # Define start day for each city
+    for c in cities:
+        sum_before = 0
+        for other in cities:
+            if other == c:
+                continue
+            sum_before += If(pos[other] < pos[c], d[other], 0)
+        solver.add(s_day[c] == 1 + sum_before - pos[c])
     
-    # Helper function to get duration from city index
-    def get_dur(idx):
-        return z3.If(idx == 0, durations[0],
-                z3.If(idx == 1, durations[1],
-                z3.If(idx == 2, durations[2],
-                z3.If(idx == 3, durations[3],
-                z3.If(idx == 4, durations[4],
-                z3.If(idx == 5, durations[5],
-                z3.If(idx == 6, durations[6], 0)))))))
+    # Fixed constraints for Frankfurt
+    solver.add(s_day['Frankfurt'] == 5)
     
-    # Cumulative sum constraints
-    s.add(cumulative[0] == 0)
-    for i in range(1, 8):
-        s.add(cumulative[i] == cumulative[i-1] + get_dur(seq[i-1]))
+    # Constraints for Mykonos and Manchester
+    solver.add(s_day['Mykonos'] >= 8, s_day['Mykonos'] <= 12)
+    solver.add(s_day['Manchester'] >= 12, s_day['Manchester'] <= 15)
     
-    # Start and end day constraints
-    for j in range(7):
-        s.add(start[j] == 1 + cumulative[j] - j)
-        s.add(end[j] == start[j] + get_dur(seq[j]) - 1)
+    # Direct flight constraints for consecutive cities
+    for c1 in cities:
+        for c2 in cities:
+            if c1 == c2:
+                continue
+            is_consecutive = (pos[c2] == pos[c1] + 1)
+            allowed = False
+            for (a, b) in direct_flights_tuples:
+                allowed = Or(allowed, Or(And(c1 == a, c2 == b), And(c1 == b, c2 == a)))
+            solver.add(Implies(is_consecutive, allowed))
     
-    # Event constraints
-    mykonos_index = city_to_index["Mykonos"]
-    manchester_index = city_to_index["Manchester"]
-    frankfurt_index = city_to_index["Frankfurt"]
+    # Bounds for start days and end days
+    for c in cities:
+        solver.add(s_day[c] >= 1)
+        solver.add(s_day[c] + d[c] - 1 <= 18)
     
-    mykonos_constraint = z3.Or([z3.And(seq[j] == mykonos_index, start[j] <= 12, end[j] >= 10) for j in range(7)])
-    manchester_constraint = z3.Or([z3.And(seq[j] == manchester_index, end[j] >= 15) for j in range(7)])
-    frankfurt_constraint = z3.Or([z3.And(seq[j] == frankfurt_index, start[j] <= 6, end[j] >= 5) for j in range(7)])
-    
-    s.add(mykonos_constraint)
-    s.add(manchester_constraint)
-    s.add(frankfurt_constraint)
-    
-    # Flight connection constraints
-    for j in range(6):
-        conds = []
-        for a, b in allowed_pairs:
-            conds.append(z3.And(seq[j] == a, seq[j+1] == b))
-        s.add(z3.Or(conds))
-    
-    # Solve and get model
-    if s.check() == z3.sat:
-        m = s.model()
-        seq_val = [m.evaluate(seq[i]).as_long() for i in range(7)]
-        start_val = [m.evaluate(start[i]).as_long() for i in range(7)]
-        end_val = [m.evaluate(end[i]).as_long() for i in range(7)]
-        
-        # Map indices to city names
-        city_sequence = [cities[idx] for idx in seq_val]
-        
-        # Generate itinerary
+    # Solve the problem
+    if solver.check() == sat:
+        m = solver.model()
+        # Get the order of cities
+        city_order = sorted(cities, key=lambda c: m.eval(pos[c]).as_long())
         itinerary = []
-        for j in range(7):
-            city_name = city_sequence[j]
-            s_day = start_val[j]
-            e_day = end_val[j]
-            itinerary.append({"day_range": f"Day {s_day}-{e_day}", "place": city_name})
-            if j < 6:
-                itinerary.append({"day_range": f"Day {e_day}", "place": city_name})
-                next_city = city_sequence[j+1]
-                itinerary.append({"day_range": f"Day {e_day}", "place": next_city})
         
-        # Output as JSON
+        for idx, c in enumerate(city_order):
+            start = m.eval(s_day[c]).as_long()
+            duration = d[c]
+            end = start + duration - 1
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": c})
+            
+            if idx < len(city_order) - 1:
+                next_c = city_order[idx + 1]
+                itinerary.append({"day_range": f"Day {end}", "place": c})
+                itinerary.append({"day_range": f"Day {end}", "place": next_c})
+        
+        # Output the itinerary in JSON format
         import json
         result = {"itinerary": itinerary}
         print(json.dumps(result, indent=2))

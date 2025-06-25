@@ -1,117 +1,113 @@
 from z3 import *
 
 def main():
-    # City names and their indices
-    cities = ["Paris", "Venice", "Vilnius", "Salzburg", "Amsterdam", "Barcelona", "Hamburg", "Florence", "Tallinn", "Warsaw"]
-    city_index = {city: idx for idx, city in enumerate(cities)}
+    # Define city mapping
+    cities = [0, 1, 2, 3, 4, 5]
+    city_names = {
+        0: "Warsaw",
+        1: "Venice",
+        2: "Vilnius",
+        3: "Amsterdam",
+        4: "Florence",
+        5: "Tallinn"
+    }
+    duration_map = {0: 4, 1: 3, 2: 3, 3: 2, 4: 5, 5: 2}
     
-    # Days required for each city
-    days_arr = [2, 3, 3, 4, 2, 5, 4, 5, 2, 4]  # Corresponding to cities list
-    
-    # Build directed flight connections
-    undirected_edges = [
-        ("Paris", "Venice"),
-        ("Barcelona", "Amsterdam"),
-        ("Amsterdam", "Warsaw"),
-        ("Amsterdam", "Vilnius"),
-        ("Barcelona", "Warsaw"),
-        ("Warsaw", "Venice"),
-        ("Amsterdam", "Hamburg"),
-        ("Barcelona", "Hamburg"),
-        ("Barcelona", "Florence"),
-        ("Barcelona", "Venice"),
-        ("Paris", "Hamburg"),
-        ("Paris", "Vilnius"),
-        ("Paris", "Amsterdam"),
-        ("Paris", "Florence"),
-        ("Florence", "Amsterdam"),
-        ("Vilnius", "Warsaw"),
-        ("Barcelona", "Tallinn"),
-        ("Paris", "Warsaw"),
-        ("Tallinn", "Warsaw"),
-        ("Amsterdam", "Tallinn"),
-        ("Paris", "Tallinn"),
-        ("Paris", "Barcelona"),
-        ("Venice", "Hamburg"),
-        ("Warsaw", "Hamburg"),
-        ("Hamburg", "Salzburg"),
-        ("Amsterdam", "Venice")
+    # Define direct flight edges (symmetric)
+    allowed_edges = [
+        (0,1), (1,0),
+        (0,2), (2,0),
+        (0,3), (3,0),
+        (0,5), (5,0),
+        (1,3), (3,1),
+        (2,3), (3,2),
+        (2,5), (5,2),
+        (3,4), (4,3),
+        (3,5), (5,3)
     ]
-    directed_edges = set()
-    for a, b in undirected_edges:
-        directed_edges.add((a, b))
-        directed_edges.add((b, a))
-    directed_edges.add(("Tallinn", "Vilnius"))  # Directed edge
     
-    # Map to indices
-    directed_edges_index = set()
-    for a, b in directed_edges:
-        i = city_index[a]
-        j = city_index[b]
-        directed_edges_index.add((i, j))
+    # Z3 variables
+    city_vars = [Int(f'city_{i}') for i in range(6)]
+    start_vars = [Int(f'start_{i}') for i in range(6)]
     
-    # Z3 variables and solver
-    solver = Solver()
-    O = [Int(f'O_{i}') for i in range(10)]
-    s = [Int(f's_{i}') for i in range(10)]
+    s = Solver()
     
-    # Constraints for O: permutation of cities starting with Paris (index0)
-    solver.add(O[0] == 0)
-    for i in range(10):
-        solver.add(O[i] >= 0, O[i] < 10)
-    solver.add(Distinct(O))
+    # Each city_var is in [0,5] and all distinct
+    for i in range(6):
+        s.add(Or([city_vars[i] == c for c in cities]))
+    s.add(Distinct(city_vars))
     
-    # Start day for first city is 1
-    solver.add(s[0] == 1)
+    # Start of first middle city is day 6
+    s.add(start_vars[0] == 6)
     
-    # Function to get days for a city index
-    days_func = Function('days_func', IntSort(), IntSort())
-    for idx, d in enumerate(days_arr):
-        solver.add(days_func(idx) == d)
+    # Start of subsequent cities
+    for i in range(1, 6):
+        prev_duration = duration_map[city_vars[i-1]]
+        s.add(start_vars[i] == start_vars[i-1] + prev_duration - 1)
     
-    # Constraints for start days of subsequent cities
-    for i in range(1, 10):
-        solver.add(s[i] == s[i-1] + days_func(O[i-1]) - 1)
+    # Last city ends on day 19
+    s.add(start_vars[5] + duration_map[city_vars[5]] - 1 == 19)
     
-    # Specific constraints for cities
-    hamburg_idx = city_index["Hamburg"]
-    salzburg_idx = city_index["Salzburg"]
-    barcelona_idx = city_index["Barcelona"]
-    tallinn_idx = city_index["Tallinn"]
-    for i in range(10):
-        solver.add(If(O[i] == hamburg_idx, s[i] == 19, True))
-        solver.add(If(O[i] == salzburg_idx, s[i] == 22, True))
-        solver.add(If(O[i] == barcelona_idx, s[i] <= 6, True))
-        solver.add(If(O[i] == tallinn_idx, And(s[i] >= 10, s[i] <= 12), True))
+    # Tallinn must start between day 10 and 12
+    for i in range(6):
+        s.add(Implies(city_vars[i] == 5, And(start_vars[i] >= 10, start_vars[i] <= 12)))
     
-    # Flight constraints between consecutive cities
-    for i in range(9):
-        edge_constraints = []
-        for (a, b) in directed_edges_index:
-            edge_constraints.append(And(O[i] == a, O[i+1] == b))
-        solver.add(Or(edge_constraints))
+    # Flight connections: Barcelona to first city (must be connected to Barcelona)
+    s.add(Or(city_vars[0] == 0, city_vars[0] == 1, city_vars[0] == 3, city_vars[0] == 4, city_vars[0] == 5))
     
-    # Final day constraint (should be day 25)
-    solver.add(s[9] + days_func(O[9]) - 1 == 25)
+    # Last city to Hamburg (must be connected to Hamburg)
+    s.add(Or(city_vars[5] == 0, city_vars[5] == 1, city_vars[5] == 3))
+    
+    # Adjacent cities in the middle must have direct flights
+    for i in range(5):
+        edge_exists = Or([And(city_vars[i] == a, city_vars[i+1] == b) for (a, b) in allowed_edges])
+        s.add(edge_exists)
     
     # Check and get model
-    if solver.check() == sat:
-        model = solver.model()
-        O_val = [model.evaluate(O[i]).as_long() for i in range(10)]
-        s_val = [model.evaluate(s[i]).as_long() for i in range(10)]
+    if s.check() == sat:
+        m = s.model()
+        city_assign = [m.evaluate(city_vars[i]).as_long() for i in range(6)]
+        start_assign = [m.evaluate(start_vars[i]).as_long() for i in range(6)]
+        end_assign = [start_assign[i] + duration_map[city_assign[i]] - 1 for i in range(6)]
         
-        # Generate itinerary
         itinerary = []
-        for i in range(10):
-            start = s_val[i]
-            duration = days_arr[O_val[i]]
-            end = start + duration - 1
-            city_name = cities[O_val[i]]
-            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_name})
-            if i < 9:
-                itinerary.append({"day_range": f"Day {end}", "place": city_name})
-                next_city = cities[O_val[i+1]]
-                itinerary.append({"day_range": f"Day {end}", "place": next_city})
+        
+        # Paris: days 1-2
+        itinerary.append({"day_range": "Day 1-2", "place": "Paris"})
+        itinerary.append({"day_range": "Day 2", "place": "Paris"})
+        itinerary.append({"day_range": "Day 2", "place": "Barcelona"})
+        itinerary.append({"day_range": "Day 2-6", "place": "Barcelona"})
+        
+        # Flight from Barcelona to first middle city on day 6
+        first_city_name = city_names[city_assign[0]]
+        itinerary.append({"day_range": "Day 6", "place": "Barcelona"})
+        itinerary.append({"day_range": "Day 6", "place": first_city_name})
+        itinerary.append({"day_range": f"Day 6-{end_assign[0]}", "place": first_city_name})
+        
+        # Middle cities
+        for i in range(5):
+            current_city_name = city_names[city_assign[i]]
+            next_city_name = city_names[city_assign[i+1]]
+            # Flight day: end day of current city
+            flight_day = end_assign[i]
+            itinerary.append({"day_range": f"Day {flight_day}", "place": current_city_name})
+            itinerary.append({"day_range": f"Day {flight_day}", "place": next_city_name})
+            # Next city's stay
+            if i < 4:
+                itinerary.append({"day_range": f"Day {flight_day}-{end_assign[i+1]}", "place": next_city_name})
+            else:
+                itinerary.append({"day_range": f"Day {flight_day}-19", "place": next_city_name})
+        
+        # Flight to Hamburg on day 19
+        last_middle_city_name = city_names[city_assign[5]]
+        itinerary.append({"day_range": "Day 19", "place": last_middle_city_name})
+        itinerary.append({"day_range": "Day 19", "place": "Hamburg"})
+        itinerary.append({"day_range": "Day 19-22", "place": "Hamburg"})
+        
+        # Flight to Salzburg on day 22
+        itinerary.append({"day_range": "Day 22", "place": "Hamburg"})
+        itinerary.append({"day_range": "Day 22", "place": "Salzburg"})
+        itinerary.append({"day_range": "Day 22-25", "place": "Salzburg"})
         
         # Output as JSON
         import json

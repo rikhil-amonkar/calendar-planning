@@ -1,127 +1,186 @@
 from z3 import *
-import json
 
-def main():
-    cities = ["Naples", "Valencia", "Stuttgart", "Split", "Venice", "Amsterdam", "Nice", "Barcelona", "Porto"]
-    required_days = {
-        "Naples": 3,
-        "Valencia": 5,
-        "Stuttgart": 2,
-        "Split": 5,
-        "Venice": 5,
-        "Amsterdam": 4,
-        "Nice": 2,
-        "Barcelona": 2,
-        "Porto": 4
+# Define the City datatype
+City = Datatype('City')
+City.declare('Naples')
+City.declare('Valencia')
+City.declare('Stuttgart')
+City.declare('Split')
+City.declare('Venice')
+City.declare('Amsterdam')
+City.declare('Nice')
+City.declare('Barcelona')
+City.declare('Porto')
+City = City.create()
+
+# City constants
+Naples = City.Naples
+Valencia = City.Valencia
+Stuttgart = City.Stuttgart
+Split = City.Split
+Venice = City.Venice
+Amsterdam = City.Amsterdam
+Nice = City.Nice
+Barcelona = City.Barcelona
+Porto = City.Porto
+
+# Duration lookup
+duration_dict = {
+    Naples: 3,
+    Valencia: 5,
+    Stuttgart: 2,
+    Split: 5,
+    Venice: 5,
+    Amsterdam: 4,
+    Nice: 2,
+    Barcelona: 2,
+    Porto: 4
+}
+
+# Direct flight edges (undirected, so include both (a,b) and (b,a))
+edges = [
+    (Venice, Nice),
+    (Naples, Amsterdam),
+    (Barcelona, Nice),
+    (Amsterdam, Nice),
+    (Stuttgart, Valencia),
+    (Stuttgart, Porto),
+    (Split, Stuttgart),
+    (Split, Naples),
+    (Valencia, Amsterdam),
+    (Barcelona, Porto),
+    (Valencia, Naples),
+    (Venice, Amsterdam),
+    (Barcelona, Naples),
+    (Barcelona, Valencia),
+    (Split, Amsterdam),
+    (Barcelona, Venice),
+    (Stuttgart, Amsterdam),
+    (Naples, Nice),
+    (Venice, Stuttgart),
+    (Split, Barcelona),
+    (Porto, Nice),
+    (Barcelona, Stuttgart),
+    (Venice, Naples),
+    (Porto, Amsterdam),
+    (Porto, Valencia),
+    (Stuttgart, Naples),
+    (Barcelona, Amsterdam)
+]
+
+# Include both directions for edges
+directed_edges = edges + [(b, a) for (a, b) in edges]
+
+# Free cities: all except Barcelona, Venice, Nice
+free_cities = [Naples, Valencia, Stuttgart, Split, Amsterdam, Porto]
+
+# Create free position variables
+P0 = Const('P0', City)
+P3 = Const('P3', City)
+P4 = Const('P4', City)
+P5 = Const('P5', City)
+P6 = Const('P6', City)
+P7 = Const('P7', City)
+
+# Build the entire sequence P
+P = [
+    P0,
+    Barcelona,
+    Venice,
+    P3,
+    P4,
+    P5,
+    P6,
+    P7,
+    Nice
+]
+
+solver = Solver()
+
+# Constraint: P0 is either Valencia or Split
+solver.add(Or(P0 == Valencia, P0 == Split))
+
+# Constraint: all free positions are distinct and from free_cities
+solver.add(Distinct([P0, P3, P4, P5, P6, P7]))
+for var in [P0, P3, P4, P5, P6, P7]:
+    solver.add(Or([var == c for c in free_cities]))
+
+# Flight constraints between consecutive cities
+for i in range(8):
+    solver.add(Or([And(P[i] == a, P[i+1] == b) for (a, b) in directed_edges]))
+
+# Define a duration function for Z3
+dur = Function('dur', City, IntSort())
+solver.add(dur(Naples) == 3)
+solver.add(dur(Valencia) == 5)
+solver.add(dur(Stuttgart) == 2)
+solver.add(dur(Split) == 5)
+solver.add(dur(Venice) == 5)
+solver.add(dur(Amsterdam) == 4)
+solver.add(dur(Nice) == 2)
+solver.add(dur(Barcelona) == 2)
+solver.add(dur(Porto) == 4)
+
+# Cumulative sums for the first few positions
+cum0 = dur(P[0])
+cum1 = cum0 + dur(P[1])
+cum2 = cum1 + dur(P[2])
+cum3 = cum2 + dur(P[3])
+cum4 = cum3 + dur(P[4])
+cum5 = cum4 + dur(P[5])
+cum6 = cum5 + dur(P[6])
+cum7 = cum6 + dur(P[7])
+
+# Naples constraint: must be in positions 3 to 7 and start day between 16 and 20
+naples_in_pos = [P[i] == Naples for i in range(3, 8)]
+solver.add(Or(naples_in_pos))  # Naples must be in one of these positions
+
+# Define start days for each possible position of Naples
+s_naples = Int('s_naples')
+s_naples = If(P[3] == Naples, 1 + cum2 - 3, 
+            If(P[4] == Naples, 1 + cum3 - 4,
+            If(P[5] == Naples, 1 + cum4 - 5,
+            If(P[6] == Naples, 1 + cum5 - 6,
+            If(P[7] == Naples, 1 + cum6 - 7,
+            0)))))
+solver.add(s_naples >= 16, s_naples <= 20)
+
+# Solve the model
+if solver.check() == sat:
+    model = solver.model()
+    # Map Z3 constants to city names
+    city_const_to_name = {
+        Naples: "Naples",
+        Valencia: "Valencia",
+        Stuttgart: "Stuttgart",
+        Split: "Split",
+        Venice: "Venice",
+        Amsterdam: "Amsterdam",
+        Nice: "Nice",
+        Barcelona: "Barcelona",
+        Porto: "Porto"
     }
-    connections = [
-        "Venice and Nice",
-        "Naples and Amsterdam",
-        "Barcelona and Nice",
-        "Amsterdam and Nice",
-        "Stuttgart and Valencia",
-        "Stuttgart and Porto",
-        "Split and Stuttgart",
-        "Split and Naples",
-        "Valencia and Amsterdam",
-        "Barcelona and Porto",
-        "Valencia and Naples",
-        "Venice and Amsterdam",
-        "Barcelona and Naples",
-        "Barcelona and Valencia",
-        "Split and Amsterdam",
-        "Barcelona and Venice",
-        "Stuttgart and Amsterdam",
-        "Naples and Nice",
-        "Venice and Stuttgart",
-        "Split and Barcelona",
-        "Porto and Nice",
-        "Barcelona and Stuttgart",
-        "Venice and Naples",
-        "Porto and Amsterdam",
-        "Porto and Valencia",
-        "Stuttgart and Naples",
-        "Barcelona and Amsterdam"
-    ]
+    # Get the actual sequence
+    P_actual = []
+    for i, city_var in enumerate(P):
+        if i in [0, 3, 4, 5, 6, 7]:
+            c = model[city_var]
+            P_actual.append(city_const_to_name[c])
+        else:
+            P_actual.append(city_const_to_name[city_var])
     
-    city_to_index = {city: idx for idx, city in enumerate(cities)}
-    
-    directed_edges_set = set()
-    for conn in connections:
-        parts = conn.split(" and ")
-        if len(parts) == 2:
-            city1 = parts[0].strip()
-            city2 = parts[1].strip()
-            idx1 = city_to_index[city1]
-            idx2 = city_to_index[city2]
-            directed_edges_set.add((idx1, idx2))
-            directed_edges_set.add((idx2, idx1))
-    
-    s = Solver()
-    
-    order_index = [Int(f'order_{i}') for i in range(9)]
-    start_day = [Int(f'start_{i}') for i in range(9)]
-    
-    end_day = [start_day[i] + (required_days[cities[i]] - 1) for i in range(9)]
-    
-    venice_idx = city_to_index["Venice"]
-    barcelona_idx = city_to_index["Barcelona"]
-    naples_idx = city_to_index["Naples"]
-    nice_idx = city_to_index["Nice"]
-    
-    s.add(start_day[venice_idx] == 6, end_day[venice_idx] == 10)
-    s.add(start_day[barcelona_idx] == 5, end_day[barcelona_idx] == 6)
-    
-    s.add(start_day[naples_idx] >= 16, start_day[naples_idx] <= 20)
-    s.add(start_day[nice_idx] >= 22, start_day[nice_idx] <= 23)
-    
-    s.add(Distinct(order_index))
-    for i in range(9):
-        s.add(order_index[i] >= 0, order_index[i] <= 8)
-    
-    first_city_constraint = Or([And(order_index[i] == 0, start_day[i] == 1) for i in range(9)])
-    last_city_constraint = Or([And(order_index[i] == 8, end_day[i] == 24) for i in range(9)])
-    s.add(first_city_constraint, last_city_constraint)
-    
-    for i in range(9):
-        for j in range(9):
-            if i == j:
-                continue
-            s.add(Implies(order_index[j] == order_index[i] + 1, end_day[i] == start_day[j]))
-    
-    for i in range(9):
-        for j in range(9):
-            if i == j:
-                continue
-            if (i, j) not in directed_edges_set:
-                s.add(order_index[j] != order_index[i] + 1)
-    
-    if s.check() == sat:
-        model = s.model()
-        order_vals = [model.evaluate(order_index[i]).as_long() for i in range(9)]
-        start_vals = [model.evaluate(start_day[i]).as_long() for i in range(9)]
-        end_vals = [start_vals[i] + (required_days[cities[i]] - 1) for i in range(9)]
-        
-        seq_cities = sorted(range(9), key=lambda i: order_vals[i])
-        itinerary = []
-        
-        for i in seq_cities:
-            s_val = start_vals[i]
-            e_val = end_vals[i]
-            day_range = f"Day {s_val}-{e_val}" if s_val != e_val else f"Day {s_val}"
-            itinerary.append({"day_range": day_range, "place": cities[i]})
-        
-        for i in range(8):
-            idx_i = seq_cities[i]
-            idx_j = seq_cities[i+1]
-            flight_day = end_vals[idx_i]
-            itinerary.append({"day_range": f"Day {flight_day}", "place": cities[idx_i]})
-            itinerary.append({"day_range": f"Day {flight_day}", "place": cities[idx_j]})
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
-
-if __name__ == '__main__':
-    main()
+    # Generate itinerary
+    itinerary = []
+    s = 1
+    for idx, city in enumerate(P_actual):
+        d = duration_dict[city_const_to_name.inverse[city]]
+        end = s + d - 1
+        itinerary.append({"day_range": f"Day {s}-{end}", "place": city})
+        if idx < 8:
+            itinerary.append({"day_range": f"Day {end}", "place": city})
+            itinerary.append({"day_range": f"Day {end}", "place": P_actual[idx+1]})
+            s = end
+    # Output the result
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

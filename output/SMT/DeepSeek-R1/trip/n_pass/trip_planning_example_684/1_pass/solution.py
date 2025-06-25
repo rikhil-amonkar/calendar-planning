@@ -1,87 +1,117 @@
 from z3 import *
 
 def main():
-    # City indices: 0=Amsterdam, 1=Edinburgh, 2=Brussels, 3=Vienna, 4=Berlin, 5=Reykjavik
-    city_names = ['Amsterdam', 'Edinburgh', 'Brussels', 'Vienna', 'Berlin', 'Reykjavik']
-    reqs = [4, 5, 5, 5, 4, 5]  # required days for each city
-
-    # Flight edges as sorted tuples (min, max)
-    flight_edges = [
+    # City indices: 0:Amsterdam, 1:Edinburgh, 2:Brussels, 3:Vienna, 4:Berlin, 5:Reykjavik
+    cities = ["Amsterdam", "Edinburgh", "Brussels", "Vienna", "Berlin", "Reykjavik"]
+    req_array = [4, 5, 5, 5, 4, 5]
+    flight_pairs = [
         (0, 1), (0, 3), (0, 4), (0, 5),
         (1, 2), (1, 4),
         (2, 3), (2, 4), (2, 5),
         (3, 4), (3, 5),
         (4, 5)
     ]
-
-    # Create Z3 variables
-    n_segments = 6
-    city = [Int(f'city_{i}') for i in range(n_segments)]
-    start = [Int(f'start_{i}') for i in range(n_segments)]
-    end = [Int(f'end_{i}') for i in range(n_segments)]
-
+    
+    # Create Z3 variables for the order of cities (6 segments)
+    order = [Int(f"order_{i}") for i in range(6)]
     s = Solver()
-
-    # Each city variable is between 0 and 5
-    for i in range(n_segments):
-        s.add(city[i] >= 0, city[i] < 6)
-
-    # All cities are distinct
-    s.add(Distinct(city))
-
-    # Timeline constraints: starts at day 1, ends at day 23, contiguous segments
-    s.add(start[0] == 1)
-    s.add(end[5] == 23)
-    for i in range(n_segments - 1):
-        s.add(start[i+1] == end[i])
-
-    # Stay duration constraints
-    for i in range(n_segments):
-        dur = end[i] - start[i] + 1
-        s.add(If(city[i] == 0, dur == 4,
-                If(city[i] == 1, dur == 5,
-                If(city[i] == 2, dur == 5,
-                If(city[i] == 3, dur == 5,
-                If(city[i] == 4, dur == 4, dur == 5))))))
-
-    # Flight connectivity constraints
-    for i in range(n_segments - 1):
-        u = city[i]
-        v = city[i+1]
-        low = If(u < v, u, v)
-        high = If(u < v, v, u)
-        conds = []
-        for edge in flight_edges:
-            conds.append(And(low == edge[0], high == edge[1]))
-        s.add(Or(conds))
-
-    # Special constraints for Amsterdam, Berlin, Reykjavik
-    ams_constraint = Or([And(city[i] == 0, start[i] <= 8, end[i] >= 5) for i in range(n_segments)])
+    
+    # Each order[i] must be between 0 and 5, and all must be distinct
+    for i in range(6):
+        s.add(And(order[i] >= 0, order[i] < 6))
+    s.add(Distinct(order))
+    
+    # Function to get the required days for a city index
+    def get_req(idx):
+        return If(idx == 0, 4,
+              If(idx == 1, 5,
+              If(idx == 2, 5,
+              If(idx == 3, 5,
+              If(idx == 4, 4, 5)))))
+    
+    # Flight days: d1, d2, d3, d4, d5
+    d1 = get_req(order[0])
+    d2 = d1 + get_req(order[1]) - 1
+    d3 = d2 + get_req(order[2]) - 1
+    d4 = d3 + get_req(order[3]) - 1
+    d5 = d4 + get_req(order[4]) - 1
+    
+    # Ensure flight days are within bounds
+    s.add(d5 >= 1, d5 <= 23)
+    
+    # Function to check if two cities have a direct flight
+    def unordered_in(a, b, pairs):
+        conditions = []
+        for (x, y) in pairs:
+            conditions.append(Or(And(a == x, b == y), And(a == y, b == x)))
+        return Or(conditions)
+    
+    # Flight constraints between consecutive segments
+    for i in range(5):
+        s.add(unordered_in(order[i], order[i+1], flight_pairs))
+    
+    # Temporal constraints for Amsterdam (city0)
+    ams_constraint = Or(
+        And(order[0] == 0, 1 <= 8, d1 >= 5),
+        And(order[1] == 0, d1 <= 8, d2 >= 5),
+        And(order[2] == 0, d2 <= 8, d3 >= 5),
+        And(order[3] == 0, d3 <= 8, d4 >= 5),
+        And(order[4] == 0, d4 <= 8, d5 >= 5),
+        And(order[5] == 0, d5 <= 8)
+    )
     s.add(ams_constraint)
-
-    berlin_constraint = Or([And(city[i] == 4, start[i] <= 19, end[i] >= 16) for i in range(n_segments)])
-    s.add(berlin_constraint)
-
-    reyk_constraint = Or([And(city[i] == 5, start[i] <= 16, end[i] >= 12) for i in range(n_segments)])
-    s.add(reyk_constraint)
-
-    # Solve the problem
+    
+    # Temporal constraints for Berlin (city4)
+    ber_constraint = Or(
+        And(order[0] == 4, 1 <= 19, d1 >= 16),
+        And(order[1] == 4, d1 <= 19, d2 >= 16),
+        And(order[2] == 4, d2 <= 19, d3 >= 16),
+        And(order[3] == 4, d3 <= 19, d4 >= 16),
+        And(order[4] == 4, d4 <= 19, d5 >= 16),
+        And(order[5] == 4, d5 <= 19)
+    )
+    s.add(ber_constraint)
+    
+    # Temporal constraints for Reykjavik (city5)
+    rey_constraint = Or(
+        And(order[0] == 5, 1 <= 16, d1 >= 12),
+        And(order[1] == 5, d1 <= 16, d2 >= 12),
+        And(order[2] == 5, d2 <= 16, d3 >= 12),
+        And(order[3] == 5, d3 <= 16, d4 >= 12),
+        And(order[4] == 5, d4 <= 16, d5 >= 12),
+        And(order[5] == 5, d5 <= 16)
+    )
+    s.add(rey_constraint)
+    
+    # Check for a solution
     if s.check() == sat:
         m = s.model()
-        # Build the itinerary
-        itinerary = []
-        for i in range(n_segments):
-            c_idx = m.eval(city[i]).as_long()
-            c_name = city_names[c_idx]
-            s_val = m.eval(start[i]).as_long()
-            e_val = m.eval(end[i]).as_long()
-            itinerary.append({'day_range': f"Day {s_val}-{e_val}", 'place': c_name})
-            if i < n_segments - 1:
-                next_c_idx = m.eval(city[i+1]).as_long()
-                next_c_name = city_names[next_c_idx]
-                itinerary.append({'day_range': f"Day {e_val}", 'place': c_name})
-                itinerary.append({'day_range': f"Day {e_val}", 'place': next_c_name})
-        result = {'itinerary': itinerary}
+        order_vals = [m.evaluate(order[i]).as_long() for i in range(6)]
+        
+        # Compute flight days
+        d1_val = req_array[order_vals[0]]
+        d2_val = d1_val + req_array[order_vals[1]] - 1
+        d3_val = d2_val + req_array[order_vals[2]] - 1
+        d4_val = d3_val + req_array[order_vals[3]] - 1
+        d5_val = d4_val + req_array[order_vals[4]] - 1
+        
+        # Build itinerary
+        starts = [1, d1_val, d2_val, d3_val, d4_val, d5_val]
+        ends = [d1_val, d2_val, d3_val, d4_val, d5_val, 23]
+        itinerary_list = []
+        
+        for i in range(6):
+            city_name = cities[order_vals[i]]
+            start = starts[i]
+            end = ends[i]
+            itinerary_list.append({"day_range": f"Day {start}-{end}", "place": city_name})
+            if i < 5:
+                next_city = cities[order_vals[i+1]]
+                itinerary_list.append({"day_range": f"Day {end}", "place": city_name})
+                itinerary_list.append({"day_range": f"Day {end}", "place": next_city})
+        
+        # Output the result
+        result = {"itinerary": itinerary_list}
         print(result)
     else:
         print("No solution found")

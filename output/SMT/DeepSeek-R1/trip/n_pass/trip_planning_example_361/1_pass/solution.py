@@ -1,100 +1,115 @@
 from z3 import *
-import json
 
 def main():
-    # Define the City datatype
-    City = Datatype('City')
-    City.declare('Paris')
-    City.declare('Madrid')
-    City.declare('Bucharest')
-    City.declare('Seville')
-    City = City.create()
+    n_days = 15
+    cities = {0: "Madrid", 1: "Paris", 2: "Bucharest", 3: "Seville"}
+    allowed_edges = [(0,1), (1,0), (0,2), (2,0), (0,3), (3,0), (1,2), (2,1), (1,3), (3,1)]
     
-    # Create constants for each city
-    Paris = City.Paris
-    Madrid = City.Madrid
-    Bucharest = City.Bucharest
-    Seville = City.Seville
-
-    # Define the solver
+    # Create Z3 variables
+    start_city = [Int(f'start_city_{i+1}') for i in range(n_days)]
+    flight_day = [Bool(f'flight_day_{i+1}') for i in range(n_days)]
+    flight_to = [Int(f'flight_to_{i+1}') for i in range(n_days)]
+    
     s = Solver()
     
-    # Define the variables
-    city2 = Const('city2', City)
-    city3 = Const('city3', City)
-    move2_day = Int('move2_day')
+    # Each start_city must be in [0,3]
+    for i in range(n_days):
+        s.add(And(start_city[i] >= 0, start_city[i] <= 3))
     
-    # Constraints on move2_day: between 8 and 13 inclusive
-    s.add(move2_day >= 8, move2_day <= 13)
+    # Each flight_to must be in [0,3] if flight_day is True
+    for i in range(n_days):
+        s.add(Implies(flight_day[i], And(flight_to[i] >= 0, flight_to[i] <= 3)))
     
-    # city2 and city3 must be Paris and Seville, and different
-    s.add(Or(city2 == Paris, city2 == Seville))
-    s.add(Or(city3 == Paris, city3 == Seville))
-    s.add(city2 != city3)
+    # No flight on day 15
+    s.add(Not(flight_day[14]))
     
-    # Constraints on stay durations
-    # For city2: if it's Paris, stay is 6 days; if Seville, 3 days
-    # The stay in city2 is from day7 to move2_day (inclusive), so duration = move2_day - 7 + 1
-    s.add(
-        If(city2 == Paris, 
-           (move2_day - 7 + 1) == 6,
-           (move2_day - 7 + 1) == 3)
-    )
+    # Start in Madrid on day 1
+    s.add(start_city[0] == 0)
     
-    # For city3: if it's Paris, stay is 6 days; if Seville, 3 days
-    # The stay in city3 is from move2_day to day14 (inclusive), so duration = 14 - move2_day + 1
-    s.add(
-        If(city3 == Paris,
-           (14 - move2_day + 1) == 6,
-           (14 - move2_day + 1) == 3)
-    )
+    # Constraints for days 1 to 14
+    for i in range(0, n_days-1):
+        s.add(If(flight_day[i],
+                 And(start_city[i+1] == flight_to[i],
+                     Or([And(start_city[i] == a, flight_to[i] == b) for (a,b) in allowed_edges])
+                 ),
+                 start_city[i+1] == start_city[i]
+        ))
     
-    # Define direct_flight function
-    direct_flight = Function('direct_flight', City, City, BoolSort())
-    # Add known direct flights (symmetric)
-    flights = [
-        (Madrid, Paris), (Paris, Madrid),
-        (Madrid, Seville), (Seville, Madrid),
-        (Madrid, Bucharest), (Bucharest, Madrid),
-        (Paris, Seville), (Seville, Paris),
-        (Paris, Bucharest), (Bucharest, Paris)
-    ]
-    # Set direct_flight to True for known pairs, False otherwise (though not strictly needed)
-    for c1, c2 in flights:
-        s.add(direct_flight(c1, c2) == True)
+    # Must be in Madrid on days 1-7
+    for i in range(0, 7):  # days 1 to 7
+        s.add(Or(start_city[i] == 0, And(flight_day[i], flight_to[i] == 0)))
     
-    # Flight constraints
-    s.add(direct_flight(Madrid, city2) == True)
-    s.add(direct_flight(city2, city3) == True)
-    s.add(direct_flight(city3, Bucharest) == True)
+    # Must be in Bucharest on day 14 and day 15
+    s.add(Or(start_city[13] == 2, And(flight_day[13], flight_to[13] == 2)))  # day 14
+    s.add(start_city[14] == 2)  # day 15
     
-    # Check and get the model
+    # Count days in each city
+    madrid_days = 0
+    paris_days = 0
+    bucharest_days = 0
+    seville_days = 0
+    
+    for i in range(0, n_days):
+        # Count start_city
+        madrid_days += If(start_city[i] == 0, 1, 0)
+        paris_days += If(start_city[i] == 1, 1, 0)
+        bucharest_days += If(start_city[i] == 2, 1, 0)
+        seville_days += If(start_city[i] == 3, 1, 0)
+        
+        # Count flight_to if flight_day is True
+        madrid_days += If(And(flight_day[i], flight_to[i] == 0), 1, 0)
+        paris_days += If(And(flight_day[i], flight_to[i] == 1), 1, 0)
+        bucharest_days += If(And(flight_day[i], flight_to[i] == 2), 1, 0)
+        seville_days += If(And(flight_day[i], flight_to[i] == 3), 1, 0)
+    
+    s.add(madrid_days == 7)
+    s.add(paris_days == 6)
+    s.add(bucharest_days == 2)
+    s.add(seville_days == 3)
+    
+    # Exactly 3 flight days (days 1 to 14)
+    flight_days = Sum([If(flight_day[i], 1, 0) for i in range(0, 14)])
+    s.add(flight_days == 3)
+    
+    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        city2_val = m[city2]
-        city3_val = m[city3]
-        move2_day_val = m[move2_day].as_long()  # Get the integer value
         
-        # Convert city values to string names
-        city2_name = str(city2_val)
-        city3_name = str(city3_val)
+        # Extract values
+        start_city_vals = [m.evaluate(start_city[i]).as_long() for i in range(n_days)]
+        flight_day_vals = [m.evaluate(flight_day[i]) for i in range(n_days)]
+        flight_to_vals = [m.evaluate(flight_to[i]).as_long() if flight_day_vals[i] else -1 for i in range(n_days)]
+        
+        # Build blocks and flights
+        blocks = []
+        flights = []
+        current_start = 1
+        current_city = start_city_vals[0]
+        
+        for i in range(0, n_days):
+            if i < n_days - 1 and flight_day_vals[i]:
+                end_day = i+1
+                blocks.append((current_start, end_day, current_city))
+                flights.append((end_day, current_city, flight_to_vals[i]))
+                current_city = flight_to_vals[i]
+                current_start = end_day
+        blocks.append((current_start, n_days, current_city))
         
         # Build itinerary
-        itinerary = [
-            {"day_range": "Day 1-7", "place": "Madrid"},
-            {"day_range": "Day 7", "place": "Madrid"},
-            {"day_range": "Day 7", "place": city2_name},
-            {"day_range": "Day 7-{}".format(move2_day_val), "place": city2_name},
-            {"day_range": "Day {}".format(move2_day_val), "place": city2_name},
-            {"day_range": "Day {}".format(move2_day_val), "place": city3_name},
-            {"day_range": "Day {}-14".format(move2_day_val), "place": city3_name},
-            {"day_range": "Day 14", "place": city3_name},
-            {"day_range": "Day 14", "place": "Bucharest"},
-            {"day_range": "Day 14-15", "place": "Bucharest"}
-        ]
+        itinerary_list = []
+        for idx, (s_day, e_day, city_idx) in enumerate(blocks):
+            if s_day == e_day:
+                day_range_str = f"Day {s_day}"
+            else:
+                day_range_str = f"Day {s_day}-{e_day}"
+            itinerary_list.append({"day_range": day_range_str, "place": cities[city_idx]})
+            if idx < len(flights):
+                d, from_c, to_c = flights[idx]
+                itinerary_list.append({"day_range": f"Day {d}", "place": cities[from_c]})
+                itinerary_list.append({"day_range": f"Day {d}", "place": cities[to_c]})
         
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        result = {"itinerary": itinerary_list}
+        print(result)
     else:
         print("No solution found")
 

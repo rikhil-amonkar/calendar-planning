@@ -1,32 +1,29 @@
-import json
 from z3 import *
+import json
 
 def main():
-    d_start = Int('d_start')
-    r_start = Int('r_start')
-    r_end = Int('r_end')
+    d1 = Int('d1')
+    d2 = Int('d2')
     
     s = Solver()
-    s.add(d_start >= 1)
-    s.add(r_end <= 12)
-    s.add(r_start - d_start + 1 == 2)
-    s.add(r_end - r_start + 1 == 5)
-    s.add(12 - r_end + 1 == 7)
+    s.add(d1 >= 1, d1 <= 12, d2 >= 1, d2 <= 12, d1 < d2)
+    s.add(d1 == 2)
+    s.add(d2 - d1 + 1 == 5)
+    s.add(12 - d2 + 1 == 7)
     
     if s.check() == sat:
         m = s.model()
-        d_start_val = m[d_start].as_long()
-        r_start_val = m[r_start].as_long()
-        r_end_val = m[r_end].as_long()
+        d1_val = m[d1].as_long()
+        d2_val = m[d2].as_long()
         
         itinerary = [
-            {"day_range": f"Day {d_start_val}-{r_start_val}", "place": "Dublin"},
-            {"day_range": f"Day {r_start_val}", "place": "Dublin"},
-            {"day_range": f"Day {r_start_val}", "place": "Riga"},
-            {"day_range": f"Day {r_start_val}-{r_end_val}", "place": "Riga"},
-            {"day_range": f"Day {r_end_val}", "place": "Riga"},
-            {"day_range": f"Day {r_end_val}", "place": "Vilnius"},
-            {"day_range": f"Day {r_end_val}-12", "place": "Vilnius"}
+            {"day_range": "Day 1-2", "place": "Dublin"},
+            {"day_range": "Day 2", "place": "Dublin"},
+            {"day_range": "Day 2", "place": "Riga"},
+            {"day_range": "Day 2-6", "place": "Riga"},
+            {"day_range": "Day 6", "place": "Riga"},
+            {"day_range": "Day 6", "place": "Vilnius"},
+            {"day_range": "Day 6-12", "place": "Vilnius"}
         ]
         
         result = {"itinerary": itinerary}

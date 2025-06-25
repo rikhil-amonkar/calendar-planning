@@ -1,107 +1,86 @@
 from z3 import *
 
 def main():
-    # Create solver
     s = Solver()
     
-    # Variables for the cities of the three stays after Warsaw
-    s1 = Int('s1')
     s2 = Int('s2')
     s3 = Int('s3')
+    s4 = Int('s4')
+    k = Int('k')
+    Y = Int('Y')
     
-    # Variables for the end days of the second and third stays
-    a = Int('a')  # end day of stay1 (which starts at day2)
-    b = Int('b')  # end day of stay2 (which starts at day a)
+    Budapest = 1
+    Riga = 2
+    Paris = 3
     
-    # Constraints for s1, s2, s3: each is one of 1,2,3 (Budapest, Paris, Riga) and they are distinct
-    s.add(s1 >= 1, s1 <= 3)
-    s.add(s2 >= 1, s2 <= 3)
-    s.add(s3 >= 1, s3 <= 3)
-    s.add(Distinct(s1, s2, s3))
+    s.add(And(s2 >= 1, s2 <= 3))
+    s.add(And(s3 >= 1, s3 <= 3))
+    s.add(And(s4 >= 1, s4 <= 3))
+    s.add(Distinct(s2, s3, s4))
     
-    # Constraints for a and b: a is at least 2, b is at least a, and both at most 17
-    s.add(a >= 2, a <= 17)
-    s.add(b >= a, b <= 17)
+    s.add(k >= 3, k <= 16)
+    s.add(Y >= k+1, Y <= 17)
     
-    # Days in each city (city0: Warsaw, city1: Budapest, city2: Paris, city3: Riga)
-    # Warsaw: stay0: days 1 to 2 -> 2 days (fixed)
-    # For the other cities: sum over the stays
-    days_city1 = If(s1 == 1, a - 1, 0) + If(s2 == 1, b - a + 1, 0) + If(s3 == 1, 17 - b + 1, 0)
-    days_city2 = If(s1 == 2, a - 1, 0) + If(s2 == 2, b - a + 1, 0) + If(s3 == 2, 17 - b + 1, 0)
-    days_city3 = If(s1 == 3, a - 1, 0) + If(s2 == 3, b - a + 1, 0) + If(s3 == 3, 17 - b + 1, 0)
-    
-    s.add(days_city1 == 7)  # Budapest
-    s.add(days_city2 == 4)  # Paris
-    s.add(days_city3 == 7)  # Riga
-    
-    # Wedding constraint: must be in Riga during day11 to day17
     s.add(Or(
-        And(s1 == 3, a >= 11),   # Riga in stay1 (ends at a) and a>=11
-        And(s2 == 3, b >= 11),    # Riga in stay2 (ends at b) and b>=11
-        s3 == 3                  # Riga in stay3 (ends at 17) -> always in [11,17]
+        And(s2 == Budapest, s3 == Paris),
+        And(s2 == Paris, s3 == Budapest),
+        And(s2 == Paris, s3 == Riga),
+        And(s2 == Riga, s3 == Paris)
     ))
     
-    # Function to check direct flight
-    def direct_flight(c1, c2):
-        return Or(
-            And(c1 == 0, c2 == 1), And(c1 == 0, c2 == 2), And(c1 == 0, c2 == 3),
-            And(c1 == 1, c2 == 0), And(c1 == 1, c2 == 2),
-            And(c1 == 2, c2 == 0), And(c1 == 2, c2 == 1), And(c1 == 2, c2 == 3),
-            And(c1 == 3, c2 == 0), And(c1 == 3, c2 == 2)
-        )
+    s.add(Or(
+        And(s3 == Budapest, s4 == Paris),
+        And(s3 == Riga, s4 == Paris),
+        And(s3 == Paris, s4 == Budapest),
+        And(s3 == Paris, s4 == Riga)
+    ))
     
-    # Flight constraints: 
-    s.add(direct_flight(0, s1))  # from Warsaw (0) to s1
-    s.add(direct_flight(s1, s2)) # from s1 to s2
-    s.add(direct_flight(s2, s3)) # from s2 to s3
+    days_budapest = If(s2 == Budapest, k - 1, 
+                      If(s3 == Budapest, Y - k + 1, 
+                       If(s4 == Budapest, 18 - Y, 0)))
+    days_riga = If(s2 == Riga, k - 1, 
+                  If(s3 == Riga, Y - k + 1, 
+                   If(s4 == Riga, 18 - Y, 0)))
+    days_paris = If(s2 == Paris, k - 1, 
+                   If(s3 == Paris, Y - k + 1, 
+                    If(s4 == Paris, 18 - Y, 0)))
     
-    # Check if there is a solution
+    s.add(days_budapest == 7)
+    s.add(days_riga == 7)
+    s.add(days_paris == 4)
+    
+    s.add(If(s2 == Riga, k >= 11, True))
+    s.add(If(s3 == Riga, Y >= 11, True))
+    
     if s.check() == sat:
         m = s.model()
-        s1_val = m[s1].as_long()
         s2_val = m[s2].as_long()
         s3_val = m[s3].as_long()
-        a_val = m[a].as_long()
-        b_val = m[b].as_long()
+        s4_val = m[s4].as_long()
+        k_val = m[k].as_long()
+        Y_val = m[Y].as_long()
         
-        # Map city indices to names
-        city_names = {
-            0: "Warsaw",
-            1: "Budapest",
-            2: "Paris",
-            3: "Riga"
-        }
-        s1_name = city_names[s1_val]
-        s2_name = city_names[s2_val]
-        s3_name = city_names[s3_val]
+        city_map = {1: "Budapest", 2: "Riga", 3: "Paris"}
+        s2_name = city_map[s2_val]
+        s3_name = city_map[s3_val]
+        s4_name = city_map[s4_val]
         
-        # Function to format day range
-        def format_day_range(start, end):
-            if start == end:
-                return "Day " + str(start)
-            else:
-                return "Day {}-{}".format(start, end)
+        itinerary = []
+        itinerary.append({"day_range": "Day 1-2", "place": "Warsaw"})
+        itinerary.append({"day_range": "Day 2", "place": "Warsaw"})
+        itinerary.append({"day_range": "Day 2", "place": s2_name})
+        itinerary.append({"day_range": f"Day 2-{k_val}", "place": s2_name})
+        itinerary.append({"day_range": f"Day {k_val}", "place": s2_name})
+        itinerary.append({"day_range": f"Day {k_val}", "place": s3_name})
+        itinerary.append({"day_range": f"Day {k_val}-{Y_val}", "place": s3_name})
+        itinerary.append({"day_range": f"Day {Y_val}", "place": s3_name})
+        itinerary.append({"day_range": f"Day {Y_val}", "place": s4_name})
+        itinerary.append({"day_range": f"Day {Y_val}-17", "place": s4_name})
         
-        # Build itinerary
-        itinerary = [
-            {"day_range": "Day 1-2", "place": "Warsaw"},
-            {"day_range": "Day 2", "place": "Warsaw"},
-            {"day_range": "Day 2", "place": s1_name},
-            {"day_range": format_day_range(2, a_val), "place": s1_name},
-            {"day_range": "Day " + str(a_val), "place": s1_name},
-            {"day_range": "Day " + str(a_val), "place": s2_name},
-            {"day_range": format_day_range(a_val, b_val), "place": s2_name},
-            {"day_range": "Day " + str(b_val), "place": s2_name},
-            {"day_range": "Day " + str(b_val), "place": s3_name},
-            {"day_range": format_day_range(b_val, 17), "place": s3_name}
-        ]
-        
-        # Output as JSON
-        import json
         result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        print(result)
     else:
-        print("No solution found")
+        print({"itinerary": []})
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

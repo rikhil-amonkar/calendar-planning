@@ -1,167 +1,147 @@
 from z3 import *
 
-# City mapping
-city_names = ["Reykjavik", "Oslo", "Stuttgart", "Split", "Geneva", "Porto", "Tallinn", "Stockholm"]
-total_days = [2, 5, 5, 3, 2, 3, 5, 3]  # for cities in order
-
-# Direct flights set (as tuples (min, max))
-direct_flights_set = {
-    (0, 1), (0, 2), (0, 6), (0, 7),
-    (1, 3), (1, 4), (1, 5), (1, 6), (1, 7),
-    (2, 3), (2, 5), (2, 7),
-    (3, 4), (3, 7),
-    (4, 5), (4, 7),
-    (5, 1), (5, 2), (5, 4)  # Note: (5,1) is (1,5), etc. But we use min,max so we have (1,5) already.
-}
-# Remove duplicates by ensuring min < max and no self-loops
-direct_flights_set_cleaned = set()
-for a, b in direct_flights_set:
-    if a == b:
-        continue
-    low = min(a, b)
-    high = max(a, b)
-    direct_flights_set_cleaned.add((low, high))
-direct_flights_set = direct_flights_set_cleaned
-
-# Create Z3 variables: c0 to c21
-c = [Int(f'c{i}') for i in range(22)]
-
-solver = Solver()
-
-# Constraint: c0 = Reykjavik (0)
-solver.add(c[0] == 0)
-
-# Constraints: c[i] between 0 and 7
-for i in range(1, 22):
-    solver.add(c[i] >= 0, c[i] <= 7)
-
-# Flight constraints for day1 to day21
-for i in range(1, 22):
-    flight_i = c[i-1] != c[i]
-    # If flight, then the pair must be in direct_flights_set
-    or_conditions = []
-    for (a, b) in direct_flights_set:
-        cond1 = And(c[i-1] == a, c[i] == b)
-        cond2 = And(c[i-1] == b, c[i] == a)
-        or_conditions.append(Or(cond1, cond2))
-    solver.add(Implies(flight_i, Or(or_conditions)))
-
-# Total days constraints for each city
-for x in range(8):
-    conditions = []
-    # Day 1: 
-    #   present if: x==c0 or (flight1 and x==c1)
-    flight1 = (c[0] != c[1])
-    cond_day1 = Or(x == c[0], And(flight1, x == c[1]))
-    conditions.append(cond_day1)
-    # Days 2 to 21: present if: x == c[i-1] or (flight_i and x == c[i])
-    for day_index in range(2, 22):  # day_index: 2 to 21
-        # For day_index, we use c[day_index-1] (which is the city at the end of the previous day) and c[day_index] (city at the end of this day)
-        flight_day = (c[day_index-1] != c[day_index])
-        cond = Or(x == c[day_index-1], And(flight_day, x == c[day_index]))
-        conditions.append(cond)
-    # Now, the total days for city x is the sum of the conditions (each condition is a boolean that counts as 1 if true)
-    total_here = Sum([If(cond, 1, 0) for cond in conditions])
-    solver.add(total_here == total_days[x])
-
-# Fixed event: Reykjavik (0) must be present on day2 (which is the second day, index1 in conditions list: conditions[1] is day2)
-# conditions[0] is day1, conditions[1] is day2, ... conditions[20] is day21.
-# We can use the conditions list we built for the total days. But note: we have to extract the condition for day2 for city0.
-# Alternatively, rebuild for city0 day2:
-flight2 = (c[1] != c[2])
-cond_day2 = Or(0 == c[1], And(flight2, 0 == c[2]))
-solver.add(cond_day2)
-
-# Porto (5) must be present on day19,20,21
-# Day19: day index 18 in our conditions list? 
-# Our conditions list for city5: 
-#   We need to extract the condition for day19: which is the 18th condition (since day1:0, day2:1, ... day19:18)
-# But we can recompute for each day for city5:
-cond_day19 = Or(5 == c[18], And(c[18] != c[19], 5 == c[19]))
-cond_day20 = Or(5 == c[19], And(c[19] != c[20], 5 == c[20]))
-cond_day21 = Or(5 == c[20], And(c[20] != c[21], 5 == c[21]))
-solver.add(cond_day19)
-solver.add(cond_day20)
-solver.add(cond_day21)
-
-# Stockholm (7) must be present on at least one of day2,3,4
-cond_day2_stock = Or(7 == c[1], And(c[1] != c[2], 7 == c[2]))
-cond_day3_stock = Or(7 == c[2], And(c[2] != c[3], 7 == c[3]))
-cond_day4_stock = Or(7 == c[3], And(c[3] != c[4], 7 == c[4]))
-solver.add(Or(cond_day2_stock, cond_day3_stock, cond_day4_stock))
-
-# Solve
-if solver.check() == sat:
-    model = solver.model()
-    c_vals = [model.evaluate(c[i]).as_long() for i in range(22)]
+def main():
+    s = Solver()
     
-    # Build present_days: for each city, the set of days it is present
-    present_days = [set() for _ in range(8)]
-    # For day1:
-    day1 = 1
-    c0_val = c_vals[0]
-    c1_val = c_vals[1]
-    present_days[c0_val].add(day1)
-    if c0_val != c1_val:
-        present_days[c1_val].add(day1)
-    # For days 2 to 21:
-    for day in range(2, 22):  # day from 2 to 21
-        # the city at the beginning: c[day-1] (which is c_vals[day-1])
-        # and if flight, then also c_vals[day]
-        c_prev = c_vals[day-1]
-        c_curr = c_vals[day]
-        present_days[c_prev].add(day)
-        if c_prev != c_curr:
-            present_days[c_curr].add(day)
+    # Define the city indices and names
+    cities = ["Reykjavik", "Stuttgart", "Stockholm", "Tallinn", "Oslo", "Split", "Geneva", "Porto"]
+    city_to_index = {name: idx for idx, name in enumerate(cities)}
+    index_to_city = {idx: name for idx, name in enumerate(cities)}
     
-    # Now, for each city, find continuous intervals in present_days
-    itinerary = []
-    for city in range(8):
-        days = sorted(present_days[city])
-        if not days:
-            continue
-        intervals = []
-        start = days[0]
-        end = days[0]
-        for d in days[1:]:
-            if d == end + 1:
-                end = d
+    # Durations for the middle segments (c1 to c6): 
+    #   Stuttgart:1, Stockholm:2, Tallinn:3, Oslo:4, Split:5, Geneva:6
+    dur_dict = {
+        1: 5,   # Stuttgart
+        2: 3,   # Stockholm
+        3: 5,   # Tallinn
+        4: 5,   # Oslo
+        5: 3,   # Split
+        6: 2    # Geneva
+    }
+    
+    # Create Z3 variables for the 6 segments (c1 to c6)
+    c1, c2, c3, c4, c5, c6 = Ints('c1 c2 c3 c4 c5 c6')
+    s.add([c1 >= 1, c1 <= 6, c2 >= 1, c2 <= 6, c3 >= 1, c3 <= 6, c4 >= 1, c4 <= 6, c5 >= 1, c5 <= 6, c6 >= 1, c6 <= 6])
+    s.add(Distinct([c1, c2, c3, c4, c5, c6]))
+    
+    # Define durations for each segment
+    def dur(city_var):
+        return If(city_var == 1, 5, 
+                If(city_var == 2, 3,
+                If(city_var == 3, 5,
+                If(city_var == 4, 5,
+                If(city_var == 5, 3,
+                If(city_var == 6, 2, 0))))))
+    
+    d1 = dur(c1) + 1
+    d2 = d1 + dur(c2) - 1
+    d3 = d2 + dur(c3) - 1
+    d4 = d3 + dur(c4) - 1
+    d5 = d4 + dur(c5) - 1
+    dur_c6 = dur(c6)
+    s.add(dur_c6 == 20 - d5)
+    
+    s.add(d1 >= 2, d1 <= 19)
+    s.add(d2 >= d1, d2 <= 19)
+    s.add(d3 >= d2, d3 <= 19)
+    s.add(d4 >= d3, d4 <= 19)
+    s.add(d5 >= d4, d5 <= 19)
+    s.add(dur_c6 >= 2, dur_c6 <= 5)  # dur_c6 must be one of 2,3,5
+    
+    # Stockholm constraint: if the segment is Stockholm (index 2) and it's in the first 4 segments, then its arrival day must be <=4
+    s.add(If(c1 == 2, True, True))  # segment1 always arrives on day2 <=4
+    s.add(If(c2 == 2, d1 <= 4, True))
+    s.add(If(c3 == 2, d2 <= 4, True))
+    s.add(If(c4 == 2, d3 <= 4, True))
+    
+    # Flight constraints: define allowed edges (both directions)
+    allowed_edges = [
+        (0,1), (0,2), (0,3), (0,4),
+        (1,0), (1,2), (1,5), (1,7),
+        (2,0), (2,1), (2,4), (2,5), (2,6),
+        (3,0), (3,4),
+        (4,0), (4,1), (4,2), (4,3), (4,5), (4,6), (4,7),
+        (5,1), (5,2), (5,4), (5,6),
+        (6,2), (6,4), (6,5), (6,7),
+        (7,1), (7,4), (7,6)
+    ]
+    
+    def edge(u, v):
+        options = []
+        for a, b in allowed_edges:
+            options.append(And(u == a, v == b))
+        return Or(options)
+    
+    # Flight constraints between consecutive segments
+    s.add(edge(0, c1))          # Reykjavik (0) to c1
+    s.add(edge(c1, c2))         # c1 to c2
+    s.add(edge(c2, c3))         # c2 to c3
+    s.add(edge(c3, c4))         # c3 to c4
+    s.add(edge(c4, c5))         # c4 to c5
+    s.add(edge(c5, c6))         # c5 to c6
+    s.add(edge(c6, 7))          # c6 to Porto (7)
+    
+    if s.check() == sat:
+        m = s.model()
+        c1_val = m[c1].as_long()
+        c2_val = m[c2].as_long()
+        c3_val = m[c3].as_long()
+        c4_val = m[c4].as_long()
+        c5_val = m[c5].as_long()
+        c6_val = m[c6].as_long()
+        
+        # Compute d1 to d5 from the model
+        dur1 = dur_dict[c1_val]
+        d1_val = dur1 + 1
+        dur2 = dur_dict[c2_val]
+        d2_val = d1_val + dur2 - 1
+        dur3 = dur_dict[c3_val]
+        d3_val = d2_val + dur3 - 1
+        dur4 = dur_dict[c4_val]
+        d4_val = d3_val + dur4 - 1
+        dur5 = dur_dict[c5_val]
+        d5_val = d4_val + dur5 - 1
+        dur6 = dur_dict[c6_val]
+        # Check: dur6 should equal 20 - d5_val
+        assert dur6 == 20 - d5_val, "Inconsistency in duration for c6"
+        
+        # Build the segments: [Reykjavik, c1, c2, c3, c4, c5, c6, Porto]
+        segments = [0, c1_val, c2_val, c3_val, c4_val, c5_val, c6_val, 7]
+        # Arrival days for each segment: 
+        #   Reykjavik:1, c1:2, c2:d1, c3:d2, c4:d3, c5:d4, c6:d5, Porto:19
+        arr_days = [1, 2, d1_val, d2_val, d3_val, d4_val, d5_val, 19]
+        # Departure days for each segment (for non-last segments, this is the day of flight, which is the same as the next segment's arrival)
+        # For the last segment (Porto), we stay until day21, so dep=21 (but we don't use it for flight)
+        dep_days = [2, d1_val, d2_val, d3_val, d4_val, d5_val, 19, 21]
+        
+        itinerary = []
+        for i in range(8):
+            city_idx = segments[i]
+            city_name = index_to_city[city_idx]
+            arr = arr_days[i]
+            dep = dep_days[i]
+            
+            # Entire stay record: for non-last segments, the entire stay is from arr to dep (inclusive)
+            # For the last segment (Porto), the entire stay is from arr (19) to 21.
+            if i < 7:
+                day_range_str = f"Day {arr}-{dep}"
             else:
-                intervals.append((start, end))
-                start = d
-                end = d
-        intervals.append((start, end))
-        for (s, e) in intervals:
-            if s == e:
-                itinerary.append({"day_range": f"Day {s}", "place": city_names[city]})
-            else:
-                itinerary.append({"day_range": f"Day {s}-{e}", "place": city_names[city]})
-    
-    # Now, add flight day records: for each flight day i (from 1 to 21) if c[i-1] != c[i]
-    for day in range(1, 22):
-        if c_vals[day-1] != c_vals[day]:
-            city_dep = city_names[c_vals[day-1]]
-            city_arr = city_names[c_vals[day]]
-            itinerary.append({"day_range": f"Day {day}", "place": city_dep})
-            itinerary.append({"day_range": f"Day {day}", "place": city_arr})
-    
-    # We need to sort the itinerary by the first day of the range? 
-    # But the problem does not specify order. We can try to sort by the day_range.
-    # However, the example output is in the order of the trip.
-    # How to sort? 
-    #   We can extract the start day from the day_range string.
-    def get_start_day(entry):
-        s = entry['day_range']
-        if s.startswith('Day '):
-            parts = s[4:].split('-')
-            return int(parts[0])
-        return 0
-    
-    itinerary_sorted = sorted(itinerary, key=get_start_day)
-    
-    # Output as JSON
-    import json
-    result = {"itinerary": itinerary_sorted}
-    print(json.dumps(result))
-else:
-    print("No solution found")
+                day_range_str = f"Day {arr}-21"
+            itinerary.append({"day_range": day_range_str, "place": city_name})
+            
+            # If not the last segment, add flight records: departure from current city and arrival in next city on the same day (dep)
+            if i < 7:
+                # Flight day: departure from current city
+                itinerary.append({"day_range": f"Day {dep}", "place": city_name})
+                next_city_idx = segments[i+1]
+                next_city_name = index_to_city[next_city_idx]
+                itinerary.append({"day_range": f"Day {dep}", "place": next_city_name})
+        
+        # Output the itinerary as a JSON dictionary
+        result = {"itinerary": itinerary}
+        print(result)
+    else:
+        print("No solution found")
+
+if __name__ == "__main__":
+    main()

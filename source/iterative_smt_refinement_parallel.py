@@ -572,12 +572,24 @@ async def process_single_example(
             
             # Save final evaluation result even if we failed to solve
             if 'pred_formatted' in locals() and 'gold_formatted' in locals():
+                # Determine the correct status based on what happened in the last pass
+                if has_execution_error:
+                    # Check if it's a code extraction error specifically
+                    if execution_output == "No code found in model response":
+                        final_status = "No code extracted"
+                    else:
+                        final_status = "Error"
+                elif not constraints_satisfied:
+                    final_status = "Wrong plan"
+                else:
+                    final_status = "Failed to solve within max passes"
+                
                 final_eval_result = {
-                    "has_execution_error": False,
+                    "has_execution_error": has_execution_error,
                     "execution_output": execution_output,
                     "pred": pred_formatted,
                     "gold": gold_formatted,
-                    "status": "Failed to solve within max passes",
+                    "status": final_status,
                     "violated_constraint": violated_constraints,
                     "is_exact_match": is_exact_match,
                     "constraints_satisfied": constraints_satisfied,
@@ -585,7 +597,7 @@ async def process_single_example(
                 }
                 with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                     json.dump(final_eval_result, f, indent=4)
-                logging.info(f"[{example_id}] Saved final evaluation result from pass {pass_num}")
+                logging.info(f"[{example_id}] Saved final evaluation result from pass {pass_num} with status: {final_status}")
             
             return
             

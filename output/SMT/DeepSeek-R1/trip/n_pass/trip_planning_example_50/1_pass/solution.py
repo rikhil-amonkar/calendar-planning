@@ -1,35 +1,44 @@
-from z3 import Int, Solver, sat
+from z3 import *
 import json
 
 def main():
-    F1 = Int('F1')
-    F2 = Int('F2')
-    s = Solver()
-    s.add(F1 >= 1, F1 <= 12)
-    s.add(F2 >= 1, F2 <= 12)
-    s.add(F1 < F2)
-    s.add(F1 == 4)
-    s.add(F2 - F1 + 1 == 3)
-    s.add(12 - F2 + 1 == 7)
+    f1 = Int('f1')
+    f2 = Int('f2')
     
+    s = Solver()
+    s.add(f1 >= 1, f1 <= 12)
+    s.add(f2 >= 1, f2 <= 12)
+    s.add(f1 < f2)
+    s.add(f1 == 4)
+    s.add(f2 - f1 + 1 == 3)
+    s.add(12 - f2 + 1 == 7)
+    
+    itinerary = []
     if s.check() == sat:
         m = s.model()
-        f1 = m[F1].as_long()
-        f2 = m[F2].as_long()
+        f1_val = m[f1].as_long()
+        f2_val = m[f2].as_long()
         
-        itinerary = []
-        itinerary.append({"day_range": f"Day 1-{f1}", "place": "Vilnius"})
-        itinerary.append({"day_range": f"Day {f1}", "place": "Vilnius"})
-        itinerary.append({"day_range": f"Day {f1}", "place": "Munich"})
-        itinerary.append({"day_range": f"Day {f1}-{f2}", "place": "Munich"})
-        itinerary.append({"day_range": f"Day {f2}", "place": "Munich"})
-        itinerary.append({"day_range": f"Day {f2}", "place": "Mykonos"})
-        itinerary.append({"day_range": f"Day {f2}-12", "place": "Mykonos"})
+        if f1_val > 1:
+            itinerary.append({"day_range": f"Day 1-{f1_val-1}", "place": "Vilnius"})
+        itinerary.append({"day_range": f"Day {f1_val}", "place": "Vilnius"})
+        
+        itinerary.append({"day_range": f"Day {f1_val}", "place": "Munich"})
+        
+        itinerary.append({"day_range": f"Day {f1_val}-{f2_val}", "place": "Munich"})
+        itinerary.append({"day_range": f"Day {f2_val}", "place": "Munich"})
+        
+        itinerary.append({"day_range": f"Day {f2_val}", "place": "Mykonos"})
+        
+        if f2_val < 12:
+            itinerary.append({"day_range": f"Day {f2_val}-12", "place": "Mykonos"})
+        else:
+            itinerary.append({"day_range": f"Day {f2_val}", "place": "Mykonos"})
         
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print(json.dumps({"error": "No solution found"}))
+        print("No valid itinerary found.")
 
 if __name__ == "__main__":
     main()

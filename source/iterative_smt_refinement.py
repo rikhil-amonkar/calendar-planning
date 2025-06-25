@@ -247,16 +247,56 @@ def evaluate_trip(constraints, pred_dict):
         if not event_covered:
             return False, {"event_range": ev}
 
-    # Fix: Check flight constraints, but skip consecutive segments that are the same place on the same day
+    # Fix: Check flight constraints by identifying flight days properly
     allowed = [(d["from"], d["to"]) for d in constraints.get("direct_flights")]
-    for a, b in zip(segments, segments[1:]):
-        # Skip if both segments are the same place and overlap in time (same day)
-        if a["place"] == b["place"]:
+    
+    # Group segments by day
+    day_cities = {}
+    for seg in segments:
+        for day in range(seg["start"], seg["end"] + 1):
+            if day not in day_cities:
+                day_cities[day] = set()
+            day_cities[day].add(seg["place"])
+    
+    # Check only flight days (days with more than 1 city)
+    sorted_days = sorted(day_cities.keys())
+    for i, flight_day in enumerate(sorted_days):
+        cities_on_flight_day = day_cities[flight_day]
+        
+        # Skip if not a flight day (only 1 city or no cities)
+        if len(cities_on_flight_day) <= 1:
             continue
         
-        pair = (a["place"], b["place"])
-        if pair not in allowed:
-            return False, {"flight": {"from": a["place"], "to": b["place"]}}
+        departure_city = None
+        arrival_city = None
+        
+        if i == 0:
+            # First day flight - check day after for arrival city
+            if i < len(sorted_days) - 1:
+                next_day = sorted_days[i+1]
+                cities_next_day = day_cities[next_day]
+                # Arrival city is one that's in next day
+                arrived_cities = cities_on_flight_day & cities_next_day
+                if arrived_cities:
+                    arrival_city = list(arrived_cities)[0]
+                    # Departure city is the other city on flight day
+                    departure_city = list(cities_on_flight_day - {arrival_city})[0]
+        else:
+            # Regular flight day - check day before for departure city
+            prev_day = sorted_days[i-1]
+            cities_prev_day = day_cities[prev_day]
+            # Departure city is one that was in previous day
+            departed_cities = cities_on_flight_day & cities_prev_day
+            if departed_cities:
+                departure_city = list(departed_cities)[0]
+                # Arrival city is the other city on flight day
+                arrival_city = list(cities_on_flight_day - {departure_city})[0]
+        
+        # Check flight constraint if we found both departure and arrival
+        if departure_city and arrival_city:
+            pair = (departure_city, arrival_city)
+            if pair not in allowed:
+                return False, {"flight": {"from": departure_city, "to": arrival_city}}
 
     return True, {}
 

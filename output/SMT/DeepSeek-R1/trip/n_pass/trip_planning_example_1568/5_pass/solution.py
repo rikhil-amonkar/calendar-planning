@@ -1,28 +1,38 @@
 def main():
-    itinerary = [
-        {"day_range": "Day 1-5", "place": "Vienna"},
-        {"day_range": "Day 5", "place": "Vienna"},
-        {"day_range": "Day 5", "place": "Prague"},
-        {"day_range": "Day 5-9", "place": "Prague"},
-        {"day_range": "Day 9", "place": "Prague"},
-        {"day_range": "Day 9", "place": "Split"},
-        {"day_range": "Day 9-13", "place": "Split"},
-        {"day_range": "Day 13", "place": "Split"},
-        {"day_range": "Day 13", "place": "Amsterdam"},
-        {"day_range": "Day 13-15", "place": "Amsterdam"},
-        {"day_range": "Day 15", "place": "Amsterdam"},
-        {"day_range": "Day 15", "place": "Riga"},
-        {"day_range": "Day 15-16", "place": "Riga"},
-        {"day_range": "Day 16", "place": "Riga"},
-        {"day_range": "Day 16", "place": "Stockholm"},
-        {"day_range": "Day 16-17", "place": "Stockholm"},
-        {"day_range": "Day 17", "place": "Stockholm"},
-        {"day_range": "Day 17", "place": "Brussels"},
-        {"day_range": "Day 17-20", "place": "Brussels"},
-        {"day_range": "Day 20", "place": "Brussels"},
-        {"day_range": "Day 20", "place": "Seville"}
+    # Define the cities with their durations in the new order
+    cities = [
+        ("Prague", 4),
+        ("Vienna", 4),
+        ("Istanbul", 1),
+        ("Munich", 1),
+        ("Split", 2),
+        ("Amsterdam", 2),
+        ("Riga", 1),
+        ("Stockholm", 1),
+        ("Brussels", 1),
+        ("Seville", 3)
     ]
-    print(f'{{"itinerary": {itinerary}}}')
+    
+    itinerary = []
+    current_day = 1
+    
+    for city, duration in cities:
+        if duration == 1:
+            day_range = f"Day {current_day}"
+            end_day = current_day
+        else:
+            end_day = current_day + duration - 1
+            day_range = f"Day {current_day}-{end_day}"
+        
+        itinerary.append({
+            "day_range": day_range,
+            "place": city
+        })
+        
+        current_day = end_day + 1
+    
+    result = {"itinerary": itinerary}
+    print(result)
 
 if __name__ == "__main__":
     main()

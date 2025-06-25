@@ -1,113 +1,116 @@
-from z3 import *
-import json
+import itertools
 
-def main():
-    stay_dict = {
-        'Warsaw': 3,
-        'Porto': 5,
-        'Naples': 4,
-        'Brussels': 3,
-        'Split': 3,
-        'Reykjavik': 5,
-        'Amsterdam': 4,
-        'Lyon': 3,
-        'Helsinki': 4,
-        'Valencia': 2
-    }
-    cities = list(stay_dict.keys())
+cities_list = ['Warsaw', 'Porto', 'Naples', 'Brussels', 'Split', 'Reykjavik', 'Amsterdam', 'Lyon', 'Helsinki', 'Valencia']
+durations = {
+    'Warsaw': 3,
+    'Porto': 5,
+    'Naples': 4,
+    'Brussels': 3,
+    'Split': 3,
+    'Reykjavik': 5,
+    'Amsterdam': 4,
+    'Lyon': 3,
+    'Helsinki': 4,
+    'Valencia': 2
+}
+
+direct_flights_list = [
+    "Amsterdam and Warsaw", "Helsinki and Brussels", "Helsinki and Warsaw", "Reykjavik and Brussels",
+    "Amsterdam and Lyon", "Amsterdam and Naples", "Amsterdam and Reykjavik", "Naples and Valencia",
+    "Porto and Brussels", "Amsterdam and Split", "Lyon and Split", "Warsaw and Split", "Porto and Amsterdam",
+    "Helsinki and Split", "Brussels and Lyon", "Porto and Lyon", "Reykjavik and Warsaw", "Brussels and Valencia",
+    "Valencia and Lyon", "Porto and Warsaw", "Warsaw and Valencia", "Amsterdam and Helsinki", "Porto and Valencia",
+    "Warsaw and Brussels", "Warsaw and Naples", "Naples and Split", "Helsinki and Naples", "Helsinki and Reykjavik",
+    "Amsterdam and Valencia", "Naples and Brussels"
+]
+
+flight_set = set()
+for flight in direct_flights_list:
+    a, b = flight.split(' and ')
+    flight_set.add((a, b))
+    flight_set.add((b, a))
+
+non_fixed = ['Warsaw', 'Porto', 'Split', 'Reykjavik', 'Amsterdam', 'Lyon', 'Helsinki', 'Valencia']
+part1_required = ['Porto', 'Reykjavik', 'Amsterdam', 'Helsinki']
+part1_optional = ['Warsaw', 'Split', 'Lyon']
+
+found_solution = False
+solution_seq = None
+solution_start_days = None
+
+for X in part1_optional:
+    part1_cities = part1_required + [X]
+    part3_cities = [c for c in non_fixed if c not in part1_cities]
     
-    flight_edges_list = [
-        ("Amsterdam", "Warsaw"),
-        ("Helsinki", "Brussels"),
-        ("Helsinki", "Warsaw"),
-        ("Reykjavik", "Brussels"),
-        ("Amsterdam", "Lyon"),
-        ("Amsterdam", "Naples"),
-        ("Amsterdam", "Reykjavik"),
-        ("Naples", "Valencia"),
-        ("Porto", "Brussels"),
-        ("Amsterdam", "Split"),
-        ("Lyon", "Split"),
-        ("Warsaw", "Split"),
-        ("Porto", "Amsterdam"),
-        ("Helsinki", "Split"),
-        ("Brussels", "Lyon"),
-        ("Porto", "Lyon"),
-        ("Reykjavik", "Warsaw"),
-        ("Brussels", "Valencia"),
-        ("Valencia", "Lyon"),
-        ("Porto", "Warsaw"),
-        ("Warsaw", "Valencia"),
-        ("Amsterdam", "Helsinki"),
-        ("Porto", "Valencia"),
-        ("Warsaw", "Brussels"),
-        ("Warsaw", "Naples"),
-        ("Naples", "Split"),
-        ("Helsinki", "Naples"),
-        ("Helsinki", "Reykjavik"),
-        ("Amsterdam", "Valencia"),
-        ("Naples", "Brussels")
-    ]
-    
-    normalized_flight_set = set()
-    for a, b in flight_edges_list:
-        normalized_flight_set.add((min(a, b), max(a, b)))
-    
-    pos = {c: Int(f'pos_{c}') for c in cities}
-    s = Solver()
-    
-    for c in cities:
-        s.add(pos[c] >= 0, pos[c] <= 9)
-    s.add(Distinct([pos[c] for c in cities]))
-    
-    start = {}
-    for c in cities:
-        sum_before = 0
-        for d in cities:
-            if d == c:
-                continue
-            sum_before += If(pos[d] < pos[c], stay_dict[d], 0)
-        start[c] = 1 + sum_before - pos[c]
-    
-    s.add(start['Naples'] == 17)
-    s.add(start['Brussels'] == 20)
-    s.add(start['Porto'] <= 5)
-    s.add(start['Amsterdam'] >= 2, start['Amsterdam'] <= 8)
-    s.add(start['Helsinki'] >= 5, start['Helsinki'] <= 11)
-    
-    for i in range(len(cities)):
-        for j in range(i+1, len(cities)):
-            c1 = cities[i]
-            c2 = cities[j]
-            pair = (min(c1, c2), max(c1, c2))
-            if pair not in normalized_flight_set:
-                s.add(Not(Or(pos[c1] - pos[c2] == 1, pos[c1] - pos[c2] == -1)))
-    
-    if s.check() == sat:
-        m = s.model()
-        pos_val = {}
-        for c in cities:
-            pos_val[c] = m.evaluate(pos[c]).as_long()
-        
-        order_sorted = sorted(cities, key=lambda c: pos_val[c])
-        
-        itinerary = []
-        current_day = 1
-        for idx, city in enumerate(order_sorted):
-            start_city = current_day
-            end_city = start_city + stay_dict[city] - 1
-            itinerary.append({"day_range": f"Day {start_city}-{end_city}", "place": city})
+    for p1 in itertools.permutations(part1_cities):
+        for p3 in itertools.permutations(part3_cities):
+            seq = list(p1) + ['Naples', 'Brussels'] + list(p3)
+            start_days = [0] * 10
+            start_days[0] = 1
+            for i in range(1, 10):
+                start_days[i] = start_days[i-1] + durations[seq[i-1]] - 1
             
-            if idx < len(cities) - 1:
-                next_city = order_sorted[idx+1]
-                itinerary.append({"day_range": f"Day {end_city}", "place": city})
-                itinerary.append({"day_range": f"Day {end_city}", "place": next_city})
-                current_day = end_city
-        
-        result = {"itinerary": itinerary}
-        print(json.dumps(result))
-    else:
-        print("No solution found")
+            valid_events = True
+            for i in range(5):
+                city = seq[i]
+                s = start_days[i]
+                if city == 'Porto':
+                    if not (1 <= s <= 5):
+                        valid_events = False
+                        break
+                elif city == 'Amsterdam':
+                    if not (2 <= s <= 8):
+                        valid_events = False
+                        break
+                elif city == 'Helsinki':
+                    if not (5 <= s <= 11):
+                        valid_events = False
+                        break
+            if not valid_events:
+                continue
+            
+            valid_flights = True
+            for i in range(9):
+                c1 = seq[i]
+                c2 = seq[i+1]
+                if (c1, c2) not in flight_set:
+                    valid_flights = False
+                    break
+            if not valid_flights:
+                continue
+            
+            if start_days[9] + durations[seq[9]] - 1 == 27:
+                found_solution = True
+                solution_seq = seq
+                solution_start_days = start_days
+                break
+        if found_solution:
+            break
+    if found_solution:
+        break
 
-if __name__ == "__main__":
-    main()
+if not found_solution:
+    print("No solution found")
+    exit()
+
+end_days = [0] * 10
+for i in range(10):
+    end_days[i] = solution_start_days[i] + durations[solution_seq[i]] - 1
+
+itinerary = []
+for i in range(9):
+    s = solution_start_days[i]
+    e = end_days[i]
+    city = solution_seq[i]
+    itinerary.append({"day_range": f"Day {s}-{e}", "place": city})
+    itinerary.append({"day_range": f"Day {e}", "place": city})
+    next_city = solution_seq[i+1]
+    itinerary.append({"day_range": f"Day {e}", "place": next_city})
+
+last_city = solution_seq[9]
+s_last = solution_start_days[9]
+e_last = end_days[9]
+itinerary.append({"day_range": f"Day {s_last}-{e_last}", "place": last_city})
+
+output = {"itinerary": itinerary}
+print(output)

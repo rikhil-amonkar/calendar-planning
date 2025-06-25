@@ -1,94 +1,102 @@
 from z3 import *
 
 def main():
-    # City indices: 0:Geneva, 1:Munich, 2:Valencia, 3:Bucharest, 4:Stuttgart
-    city_names = ["Geneva", "Munich", "Valencia", "Bucharest", "Stuttgart"]
-    durations = [4, 7, 6, 2, 2]
+    # Cities and their indices
+    cities = ["Geneva", "Munich", "Bucharest", "Valencia", "Stuttgart"]
+    # Index mapping: Geneva:0, Munich:1, Bucharest:2, Valencia:3, Stuttgart:4
     
-    # Allowed direct flight edges (undirected)
-    allowed_edges = [
-        (0,1), (1,0),
-        (1,2), (2,1),
-        (3,2), (2,3),
-        (1,3), (3,1),
-        (2,4), (4,2),
-        (0,2), (2,0)
-    ]
-    
-    # Position variables for the sequence
-    pos0, pos1, pos2, pos3, pos4 = Ints('pos0 pos1 pos2 pos3 pos4')
-    pos = [pos0, pos1, pos2, pos3, pos4]
-    
+    # Create solver
     s = Solver()
     
-    # Each position must be between 0 and 4
-    for p in pos:
-        s.add(p >= 0, p <= 4)
+    # Sequence of cities (order of visit)
+    seq = [Int('seq0'), Int('seq1'), Int('seq2'), Int('seq3'), Int('seq4')]
     
-    # All positions must be distinct
-    s.add(Distinct(pos0, pos1, pos2, pos3, pos4))
+    # Start and end days for each city
+    start = [Int(f'start_{i}') for i in range(5)]
+    end = [Int(f'end_{i}') for i in range(5)]
     
-    # Function to get duration of a city index
-    def dur(city_idx):
-        return If(city_idx == 0, 4,
-               If(city_idx == 1, 7,
-               If(city_idx == 2, 6,
-               If(city_idx == 3, 2, 2))))
-    
-    d_vals = [dur(p) for p in pos]
-    
-    # Cumulative sums for the first i cities (for i from 0 to 4)
-    # S[0] = 0, S[1] = d0, S[2] = d0+d1, S[3] = d0+d1+d2, S[4] = d0+d1+d2+d3
-    S = [0] 
-    for i in range(4):
-        S.append(S[-1] + d_vals[i])
-    
-    # Start days for each city in the sequence
-    starts = [1]  # start of first city is day 1
-    for i in range(1, 5):
-        starts.append(1 + S[i] - i)
-    
-    # Constraints for Geneva and Munich
+    # Constraints for sequence: must be distinct and within [0,4]
+    s.add(Distinct(seq))
     for i in range(5):
-        s.add(If(pos[i] == 0, starts[i] <= 4, True))
-        s.add(If(pos[i] == 1, starts[i] <= 10, True))
+        s.add(seq[i] >= 0)
+        s.add(seq[i] < 5)
     
-    # Flight connection constraints between consecutive cities
+    # First city must be Geneva (index 0)
+    s.add(seq[0] == 0)
+    
+    # Geneva: start on day 1, duration 4 days -> end on day 4
+    s.add(start[0] == 1)
+    s.add(end[0] == 4)  # 1 + 3 = 4
+    
+    # For the sequence: the start of next city = end of previous
+    for i in range(1, 5):
+        s.add(start[seq[i]] == end[seq[i-1]])
+    
+    # Last city ends on day 17
+    s.add(end[seq[4]] == 17)
+    
+    # Durations for other cities
+    # Munich: 7 days -> end = start + 6
+    s.add(end[1] == start[1] + 6)
+    # Bucharest: 2 days -> end = start + 1
+    s.add(end[2] == start[2] + 1)
+    # Valencia: 6 days -> end = start + 5
+    s.add(end[3] == start[3] + 5)
+    # Stuttgart: 2 days -> end = start + 1
+    s.add(end[4] == start[4] + 1)
+    
+    # Munich must be the second city (since it starts at day 4, immediately after Geneva)
+    s.add(seq[1] == 1)
+    
+    # Direct flight constraints: allowed pairs (undirected)
+    allowed_pairs = [
+        (0, 1), (1, 0),
+        (1, 3), (3, 1),
+        (2, 3), (3, 2),
+        (1, 2), (2, 1),
+        (3, 4), (4, 3),
+        (0, 3), (3, 0)
+    ]
+    
+    # Consecutive cities in the sequence must have direct flights
     for i in range(4):
-        edge_constraints = []
-        for a, b in allowed_edges:
-            edge_constraints.append(And(pos[i] == a, pos[i+1] == b))
-        s.add(Or(edge_constraints))
+        c1 = seq[i]
+        c2 = seq[i+1]
+        constraints = []
+        for a, b in allowed_pairs:
+            constraints.append(And(c1 == a, c2 == b))
+        s.add(Or(constraints))
     
+    # Check for solution
     if s.check() == sat:
         m = s.model()
-        order = [m.evaluate(p).as_long() for p in pos]
-        fixed_durations = [4, 7, 6, 2, 2]
+        seq_val = [m.evaluate(seq[i]).as_long() for i in range(5)]
+        start_val = [m.evaluate(start[i]).as_long() for i in range(5)]
+        end_val = [m.evaluate(end[i]).as_long() for i in range(5)]
         
-        # Compute start days based on the resolved order
-        cum = 0
-        computed_starts = [1]
-        for i in range(1, 5):
-            cum += fixed_durations[order[i-1]]
-            computed_starts.append(1 + cum - i)
-        
+        # Map indices to city names
+        seq_cities = [cities[idx] for idx in seq_val]
         itinerary = []
+        
         for i in range(5):
-            city_idx = order[i]
-            name = city_names[city_idx]
-            s_day = computed_starts[i]
-            dur_val = fixed_durations[city_idx]
-            e_day = s_day + dur_val - 1
+            city = seq_cities[i]
+            s_start = start_val[seq_val[i]]
+            s_end = end_val[seq_val[i]]
             
-            if i == 0:
-                itinerary.append({"day_range": f"Day {s_day}-{e_day}", "place": name})
-                if i < 4:
-                    itinerary.append({"day_range": f"Day {e_day}", "place": name})
+            # Entire stay block
+            if s_start == s_end:
+                day_range = f"Day {s_start}"
             else:
-                itinerary.append({"day_range": f"Day {s_day}", "place": name})
-                itinerary.append({"day_range": f"Day {s_day}-{e_day}", "place": name})
-                if i < 4:
-                    itinerary.append({"day_range": f"Day {e_day}", "place": name})
+                day_range = f"Day {s_start}-{s_end}"
+            itinerary.append({"day_range": day_range, "place": city})
+            
+            # If not the last city, add flight day entries
+            if i < 4:
+                # Departure from current city
+                itinerary.append({"day_range": f"Day {s_end}", "place": city})
+                # Arrival in next city
+                next_city = seq_cities[i+1]
+                itinerary.append({"day_range": f"Day {s_end}", "place": next_city})
         
         result = {"itinerary": itinerary}
         print(result)
