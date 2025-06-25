@@ -1,127 +1,120 @@
 from z3 import *
+from typing import Dict, List, Tuple
 
-# Define the cities
-cities = [
-    "Valencia",
-    "Oslo",
-    "Lyon",
-    "Prague",
-    "Paris",
-    "Nice",
-    "Seville",
-    "Tallinn",
-    "Mykonos",
-    "Lisbon"
-]
+# Define the cities and their corresponding indices
+cities = ['Valencia', 'Oslo', 'Lyon', 'Prague', 'Paris', 'Nice', 'Seville', 'Tallinn', 'Mykonos', 'Lisbon']
 
-# Define the direct flights
-flights = {
-    "Lisbon": ["Paris"],
-    "Lyon": ["Nice", "Paris", "Prague"],
-    "Tallinn": ["Oslo", "Paris"],
-    "Prague": ["Lisbon", "Oslo", "Paris", "Valencia"],
-    "Paris": ["Lyon", "Nice", "Oslo", "Seville", "Tallinn"],
-    "Nice": ["Lyon", "Mykonos", "Oslo"],
-    "Seville": ["Lisbon", "Paris"],
-    "Oslo": ["Lyon", "Nice", "Tallinn"],
-    "Mykonos": ["Nice"],
-    "Valencia": ["Lisbon", "Lyon", "Paris", "Seville"]
+# Define the direct flights between cities
+flights: Dict[Tuple[str, str], int] = {
+    ('Lisbon', 'Paris'): 0,
+    ('Lyon', 'Nice'): 0,
+    ('Tallinn', 'Oslo'): 0,
+    ('Prague', 'Lyon'): 0,
+    ('Paris', 'Oslo'): 0,
+    ('Lisbon', 'Seville'): 0,
+    ('Prague', 'Lisbon'): 0,
+    ('Oslo', 'Nice'): 0,
+    ('Valencia', 'Paris'): 0,
+    ('Valencia', 'Lisbon'): 0,
+    ('Paris', 'Nice'): 0,
+    ('Nice', 'Mykonos'): 0,
+    ('Paris', 'Lyon'): 0,
+    ('Valencia', 'Lyon'): 0,
+    ('Prague', 'Oslo'): 0,
+    ('Prague', 'Paris'): 0,
+    ('Seville', 'Paris'): 0,
+    ('Oslo', 'Lyon'): 0,
+    ('Prague', 'Valencia'): 0,
+    ('Lisbon', 'Nice'): 0,
+    ('Lisbon', 'Oslo'): 0,
+    ('Valencia', 'Seville'): 0,
+    ('Lisbon', 'Lyon'): 0,
+    ('Paris', 'Tallinn'): 0,
+    ('Prague', 'Tallinn'): 0
 }
 
-# Define the days
-days = 25
+# Define the minimum and maximum number of days to stay in each city
+min_days: Dict[str, int] = {
+    'Valencia': 2,
+    'Oslo': 3,
+    'Lyon': 4,
+    'Prague': 3,
+    'Paris': 4,
+    'Nice': 4,
+    'Seville': 5,
+    'Tallinn': 2,
+    'Mykonos': 5,
+    'Lisbon': 2
+}
+
+max_days: Dict[str, int] = {
+    'Valencia': 2,
+    'Oslo': 3,
+    'Lyon': 4,
+    'Prague': 3,
+    'Paris': 4,
+    'Nice': 4,
+    'Seville': 5,
+    'Tallinn': 2,
+    'Mykonos': 5,
+    'Lisbon': 2
+}
+
+# Define the constraints for the annual show in Seville
+seville_show: int = 5
+
+# Define the constraints for meeting friends in Valencia and Oslo
+valencia_friends: int = 2
+oslo_friends: int = 3
+
+# Define the constraints for attending a wedding in Mykonos
+mykonos_wedding: int = 5
+
+# Define the total number of days
+total_days: int = 25
+
+# Define the solver
+s = Solver()
+
+# Define the variables
+days_in_city: Dict[str, Int] = {city: Int(city) for city in cities}
+flight_days: Dict[Tuple[str, str], Int] = {(city1, city2): Int(f"{city1}-{city2}") for city1, city2 in flights.keys()}
 
 # Define the constraints
-constraints = []
-days_in_city = {city: [0] * days for city in cities}
-
-# Meeting friends in Valencia between day 3 and day 4
-constraints.append(days_in_city["Valencia"][3] > 0)
-constraints.append(days_in_city["Valencia"][4] > 0)
-
-# Meeting friends in Oslo between day 13 and day 15
-constraints.append(days_in_city["Oslo"][13] > 0)
-constraints.append(days_in_city["Oslo"][14] > 0)
-constraints.append(days_in_city["Oslo"][15] > 0)
-
-# Staying in Oslo for 3 days
-constraints.append(days_in_city["Oslo"][12] > 0)
-constraints.append(days_in_city["Oslo"][13] > 0)
-constraints.append(days_in_city["Oslo"][14] > 0)
-
-# Staying in Lyon for 4 days
-constraints.append(days_in_city["Lyon"][5] > 0)
-constraints.append(days_in_city["Lyon"][6] > 0)
-constraints.append(days_in_city["Lyon"][7] > 0)
-constraints.append(days_in_city["Lyon"][8] > 0)
-
-# Staying in Prague for 3 days
-constraints.append(days_in_city["Prague"][9] > 0)
-constraints.append(days_in_city["Prague"][10] > 0)
-constraints.append(days_in_city["Prague"][11] > 0)
-
-# Staying in Paris for 4 days
-constraints.append(days_in_city["Paris"][4] > 0)
-constraints.append(days_in_city["Paris"][5] > 0)
-constraints.append(days_in_city["Paris"][6] > 0)
-constraints.append(days_in_city["Paris"][7] > 0)
-
-# Staying in Nice for 4 days
-constraints.append(days_in_city["Nice"][8] > 0)
-constraints.append(days_in_city["Nice"][9] > 0)
-constraints.append(days_in_city["Nice"][10] > 0)
-constraints.append(days_in_city["Nice"][11] > 0)
-
-# Staying in Seville for 5 days
-constraints.append(days_in_city["Seville"][5] > 0)
-constraints.append(days_in_city["Seville"][6] > 0)
-constraints.append(days_in_city["Seville"][7] > 0)
-constraints.append(days_in_city["Seville"][8] > 0)
-constraints.append(days_in_city["Seville"][9] > 0)
-
-# Attending the annual show in Seville between day 5 and day 9
-constraints.append(days_in_city["Seville"][5] > 0)
-constraints.append(days_in_city["Seville"][6] > 0)
-constraints.append(days_in_city["Seville"][7] > 0)
-constraints.append(days_in_city["Seville"][8] > 0)
-constraints.append(days_in_city["Seville"][9] > 0)
-
-# Staying in Tallinn for 2 days
-constraints.append(days_in_city["Tallinn"][10] > 0)
-constraints.append(days_in_city["Tallinn"][11] > 0)
-
-# Attending the wedding in Mykonos between day 21 and day 25
-constraints.append(days_in_city["Mykonos"][21] > 0)
-constraints.append(days_in_city["Mykonos"][22] > 0)
-constraints.append(days_in_city["Mykonos"][23] > 0)
-constraints.append(days_in_city["Mykonos"][24] > 0)
-
-# Staying in Lisbon for 2 days
-constraints.append(days_in_city["Lisbon"][12] > 0)
-constraints.append(days_in_city["Lisbon"][13] > 0)
-
-# Flight constraints
-for city, flight_cities in flights.items():
-    for flight_city in flight_cities:
-        constraints.append(days_in_city[city][12] > 0 == days_in_city[flight_city][12] > 0)
-        for day in range(13, days):
-            constraints.append(days_in_city[city][day] > 0 == (days_in_city[city][day-1] > 0 and days_in_city[flight_city][day-1] > 0))
-
-# Ensure the total number of days is 25
 for city in cities:
-    constraints.append(And([days_in_city[city][day] >= 0 for day in range(days)]).implies(Or([days_in_city[city][day] > 0 for day in range(days)])))
-    constraints.append(Sum([days_in_city[city][day] for day in range(days)]) == days)
+    s.add(days_in_city[city] >= min_days[city])
+    s.add(days_in_city[city] <= max_days[city])
+
+s.add(days_in_city['Valencia'] == valencia_friends)
+s.add(days_in_city['Oslo'] == oslo_friends)
+s.add(days_in_city['Seville'] >= seville_show)
+s.add(days_in_city['Mykonos'] == mykonos_wedding)
+
+for city1, city2 in flights.keys():
+    s.add(flight_days[(city1, city2)] >= 1)
+    s.add(flight_days[(city1, city2)] <= total_days)
+
+# Define the constraints for flight days
+for city1, city2 in flights.keys():
+    s.add(flight_days[(city1, city2)] == flight_days[(city2, city1)])
 
 # Solve the constraints
-s = Solver()
-for constraint in constraints:
-    s.add(constraint)
-if s.check() == sat:
-    model = s.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = [day for day, value in enumerate(model[city].as_long()) if value > 0]
-    for city, days_in_city in trip_plan.items():
-        print(f"{city}: {days_in_city}")
-else:
-    print("No solution found")
+s.check()
+
+# Get the model
+m = s.model()
+
+# Print the itinerary
+itinerary: List[Dict[str, str]] = []
+for city in cities:
+    days = m[days_in_city[city]].as_long()
+    for i in range(days):
+        itinerary.append({"day_range": f"Day {i+1}", "place": city})
+
+for city1, city2 in flights.keys():
+    flight_days = m[flight_days[(city1, city2)]].as_long()
+    if flight_days > 0:
+        itinerary.append({"day_range": f"Day {flight_days}", "place": city1})
+        itinerary.append({"day_range": f"Day {flight_days}", "place": city2})
+
+print({"itinerary": itinerary})

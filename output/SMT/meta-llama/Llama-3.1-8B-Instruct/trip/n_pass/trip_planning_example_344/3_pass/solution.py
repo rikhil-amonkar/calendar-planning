@@ -1,73 +1,53 @@
 from z3 import *
 
-# Define the variables
-days = 20
-valencia_days = 6
-athens_days = 6
-naples_days = 5
-zurich_days = 6
-
 # Define the cities
 cities = ['Valencia', 'Athens', 'Naples', 'Zurich']
 
-# Define the direct flights
-flights = [
-    ('Valencia', 'Athens'),
-    ('Valencia', 'Zurich'),
-    ('Athens', 'Naples'),
-    ('Athens', 'Zurich'),
-    ('Zurich', 'Valencia'),
-    ('Zurich', 'Naples')
-]
+# Define the days
+days = Int('days')
+days_value = [days(i) for i in range(1, 21)]
+
+# Define the variables
+visit = [Bool(f'visit_{city}') for city in cities]
+relatives = Bool('relatives')
+wedding = Bool('wedding')
+days_in_city = [Int(f'days_in_{city}') for city in cities]
 
 # Define the constraints
-x = [Int(f'x_{i}') for i in range(len(cities))]
-constraints = []
-for i in range(len(cities)):
-    constraints.append(x[i] >= 0)
-    constraints.append(x[i] <= days)
+s = Solver()
+for city in cities:
+    s.add(days_in_city[city] >= 0)
+    s.add(days_in_city[city] <= 20)
 
-# Constraints for Valencia
-constraints.append(x[0] >= valencia_days)
-constraints.append(x[0] <= days)
+s.add(days_in_city['Valencia'] == 6)
+s.add(days_in_city['Athens'] == 6)
+s.add(days_in_city['Naples'] == 5)
+s.add(days_in_city['Zurich'] == 6)
 
-# Constraints for Athens
-constraints.append(x[1] >= athens_days)
-constraints.append(x[1] <= days)
+s.add(Implies(relatives, And(And(days_in_city['Athens'] >= 1, days_in_city['Athens'] <= 6), days_in_city['Athens'] == 6)))
+s.add(Implies(wedding, And(And(days_in_city['Naples'] >= 16, days_in_city['Naples'] <= 20), days_in_city['Naples'] == 5)))
 
-# Constraints for Naples
-constraints.append(x[2] >= naples_days)
-constraints.append(x[2] <= days)
+s.add(Or(visit['Valencia'], visit['Athens']))
+s.add(Or(visit['Athens'], visit['Naples']))
+s.add(Or(visit['Naples'], visit['Zurich']))
+s.add(Or(visit['Zurich'], visit['Valencia']))
+s.add(Or(visit['Athens'], visit['Zurich']))
 
-# Constraints for Zurich
-constraints.append(x[3] >= zurich_days)
-constraints.append(x[3] <= days)
+s.add(Implies(visit['Valencia'], days_in_city['Valencia'] == 6))
+s.add(Implies(visit['Athens'], days_in_city['Athens'] == 6))
+s.add(Implies(visit['Naples'], days_in_city['Naples'] == 5))
+s.add(Implies(visit['Zurich'], days_in_city['Zurich'] == 6))
 
-# Constraints for visiting relatives in Athens
-constraints.append(x[1] >= 1)
-constraints.append(x[1] <= 6)
+s.add(Implies(visit['Valencia'], days_value[0]))
+s.add(Implies(visit['Athens'], And(days_value[0], days_value[6])))
+s.add(Implies(visit['Naples'], And(days_value[7], days_value[12])))
+s.add(Implies(visit['Zurich'], And(days_value[13], days_value[18])))
 
-# Constraints for attending a wedding in Naples
-constraints.append(x[2] >= 16)
-constraints.append(x[2] <= 20)
-
-# Constraints for direct flights
-flight_indices = {city: i for i, city in enumerate(cities)}
-for flight in flights:
-    city1, city2 = flight
-    constraints.append(x[flight_indices[city1]] + 1 >= x[flight_indices[city2]])
-    constraints.append(x[flight_indices[city2]] + 1 >= x[flight_indices[city1]])
-
-# Solve the constraints
-solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
-if solver.check() == sat:
-    model = solver.model()
-    trip_plan = {}
-    for i in range(len(cities)):
-        trip_plan[cities[i]] = model[x[i]].as_long()
-    for city in trip_plan:
-        print(f'Visit {city} for {trip_plan[city]} days')
+# Solve the problem
+if s.check() == sat:
+    m = s.model()
+    print("A valid trip plan is:")
+    for city in cities:
+        print(f"Visit {city} for {m[days_in_city[city]].as_long()} days")
 else:
-    print('No solution found')
+    print("No valid trip plan exists")

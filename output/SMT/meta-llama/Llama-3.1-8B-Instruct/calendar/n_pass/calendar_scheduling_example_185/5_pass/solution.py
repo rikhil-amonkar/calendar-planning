@@ -1,76 +1,67 @@
 from z3 import *
 
-def schedule_meeting(day, meeting_duration, schedules, preferences):
-    # Create a Z3 solver
-    s = Solver()
+def schedule_meeting(participants, meeting_duration, preferences=None):
+    # Define the day of the meeting
+    day = 'Monday'
 
-    # Define the time slots
-    start_time = 9 * 60  # 9:00
-    end_time = 17 * 60  # 17:00
-    time_slots = [i for i in range(start_time, end_time - meeting_duration + 1)]
+    # Define the start time of the meeting
+    start_time = Int('start_time')
 
-    # Define the variables
-    meeting_start = Int('meeting_start')
-
-    # Add constraints
-    s.add(meeting_start >= start_time)
-    s.add(meeting_start + meeting_duration <= end_time)
-
-    # Add constraints for each participant
-    for participant, schedule in schedules.items():
+    # Define the constraints for each participant
+    constraints = []
+    for participant, schedule in participants.items():
         for time in schedule:
-            s.add(meeting_start + meeting_duration > time[0] * 60 + time[1])
-            s.add(meeting_start < time[0] * 60 + time[1] + meeting_duration)
+            if len(time) == 2:
+                constraints.append(And(start_time >= time[0]*60 + time[1], start_time < (time[0]+1)*60 + time[1]))
+            elif len(time) == 4:
+                constraints.append(And(start_time >= time[0]*60 + time[1], start_time < (time[0]+1)*60 + time[1]))
+                constraints.append(And(start_time >= time[2]*60 + time[3], start_time < (time[2]+1)*60 + time[3]))
+            else:
+                raise ValueError("Invalid time format")
 
-    # Add preference constraints
-    for participant, preference in preferences.items():
-        if preference:
-            s.add(meeting_start >= 10 * 60)  # 10:00
+    # Define the constraint for the meeting duration
+    end_time = start_time + meeting_duration
+
+    # Define the constraint for Megan's preference
+    if preferences and 'Megan' in preferences and 'avoid_before' in preferences['Megan']:
+        constraints.append(And(start_time >= 10*60, start_time < 17*60))
+
+    # Define the solver and add the constraints
+    solver = Solver()
+    solver.add(constraints)
 
     # Check if a solution exists
-    if s.check() == sat:
-        # Get the solution
-        meeting_start_value = s.model()[meeting_start].as_long()
+    if solver.check() == sat:
+        # Extract the solution
+        model = solver.model()
+        start_time_value = model[start_time].as_long()
 
-        # Find the end time of the meeting
-        for time in time_slots:
-            if time > meeting_start_value and time <= meeting_start_value + meeting_duration:
-                meeting_end_value = time
-                break
+        # Find a valid end time
+        end_time_value = start_time_value + meeting_duration.as_long()
+        while end_time_value >= 17*60:
+            start_time_value += 1
+            end_time_value = start_time_value + meeting_duration.as_long()
 
-        # Return the solution
-        return f"Day: {day}\nStart Time: {meeting_start_value // 60:02d}:{meeting_start_value % 60:02d}\nEnd Time: {meeting_end_value // 60:02d}:{meeting_end_value % 60:02d}"
+        # Print the solution
+        print(f'DAY: {day}')
+        print(f'START TIME: {(start_time_value // 60):02d}:{(start_time_value % 60):02d}')
+        print(f'END TIME: {(end_time_value // 60):02d}:{(end_time_value % 60):02d}')
     else:
-        # If no solution exists, try to find a solution that satisfies the constraints
-        # by iterating over the time slots
-        for time in time_slots:
-            s.add(meeting_start == time)
-            if s.check() == sat:
-                # Get the solution
-                meeting_start_value = s.model()[meeting_start].as_long()
+        print('No solution found.')
 
-                # Find the end time of the meeting
-                meeting_end_value = meeting_start_value + meeting_duration
-
-                # Return the solution
-                return f"Day: {day}\nStart Time: {meeting_start_value // 60:02d}:{meeting_start_value % 60:02d}\nEnd Time: {meeting_end_value // 60:02d}:{meeting_end_value % 60:02d}"
-            else:
-                s.add(meeting_start!= time)
-
-        return "No solution exists"
-
-# Define the schedules and preferences
-schedules = {
-    'Kimberly': [(10, 0), (11, 0), (16, 0)],
+# Define the participants and their schedules
+participants = {
+    'Kimberly': [(10*60 + 30), (11*60), (16*60 + 30)],
     'Megan': [],
-    'Marie': [(10, 0), (11, 30), (16, 0)],
-    'Diana': [(9, 30), (10, 30), (15, 30)]
+    'Marie': [(10*60), (11*60 + 30, 15*60), (16*60 + 30)],
+    'Diana': [(9*60 + 30), (10*60 + 30, 14*60 + 30), (15*60 + 30, 17*60)]
 }
 
+# Define the meeting duration and preferences
+meeting_duration = 30
 preferences = {
-    'Megan': True
+    'Megan': {'avoid_before': '10:00'}
 }
 
-# Call the function
-print("SOLUTION:")
-print(schedule_meeting('Monday', 30, schedules, preferences))
+# Schedule the meeting
+schedule_meeting(participants, meeting_duration, preferences)

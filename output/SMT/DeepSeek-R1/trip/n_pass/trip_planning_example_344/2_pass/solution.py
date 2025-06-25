@@ -1,53 +1,54 @@
 from z3 import *
 
 def main():
-    cities = ["Athens", "Naples", "Valencia", "Zurich"]
-    edges = [
-        (0, 1), (1, 0),  # Athens <-> Naples
-        (0, 3), (3, 0),  # Athens <-> Zurich
-        (1, 2), (2, 1),  # Naples <-> Valencia
-        (1, 3), (3, 1),  # Naples <-> Zurich
-        (2, 0),           # Valencia to Athens
-        (2, 3), (3, 2)    # Valencia <-> Zurich
+    # Example data
+    n = 4
+    budget = 100
+    graph = [
+        [0, 10, 15, 20],
+        [10, 0, 35, 25],
+        [15, 35, 0, 30],
+        [20, 25, 30, 0]
     ]
-    
+
+    # Define a function to get cost between two cities using symbolic indices
+    def cost(i, j):
+        expr = None
+        for a in range(n):
+            for b in range(n):
+                if expr is None:
+                    expr = graph[a][b]
+                else:
+                    expr = If(And(i == a, j == b), graph[a][b], expr)
+        return expr
+
+    # Create Z3 variables for cities
+    cities = [Int('city_%d' % i) for i in range(n)]
     s = Solver()
-    
-    c0, c1, c2, c3 = Ints('c0 c1 c2 c3')
-    e1, e2, e3 = Ints('e1 e2 e3')
-    
-    s.add(c0 == 0)  # Athens
-    s.add(c1 == 3)  # Zurich
-    s.add(c2 == 2)  # Valencia
-    s.add(c3 == 1)  # Naples
-    
-    s.add(e1 == 6)
-    s.add(e2 == 11)
-    s.add(e3 == 16)
-    
-    def flight_ok(x, y):
-        return Or([And(x == a, y == b) for (a, b) in edges])
-    
-    s.add(flight_ok(c0, c1))
-    s.add(flight_ok(c1, c2))
-    s.add(flight_ok(c2, c3))
-    
+
+    # Each city must be between 0 and n-1
+    for i in range(n):
+        s.add(cities[i] >= 0, cities[i] < n)
+
+    # All cities must be different
+    s.add(Distinct(cities))
+
+    # Calculate total cost of the tour
+    total_cost = 0
+    for k in range(n):
+        c1 = cities[k]
+        c2 = cities[(k + 1) % n]
+        total_cost += cost(c1, c2)
+
+    s.add(total_cost <= budget)
+
+    # Check for a solution and print results
     if s.check() == sat:
-        model = s.model()
-        itinerary = [
-            {"day_range": "Day 1-6", "place": "Athens"},
-            {"day_range": "Day 6", "place": "Athens"},
-            {"day_range": "Day 6", "place": "Zurich"},
-            {"day_range": "Day 6-11", "place": "Zurich"},
-            {"day_range": "Day 11", "place": "Zurich"},
-            {"day_range": "Day 11", "place": "Valencia"},
-            {"day_range": "Day 11-16", "place": "Valencia"},
-            {"day_range": "Day 16", "place": "Valencia"},
-            {"day_range": "Day 16", "place": "Naples"},
-            {"day_range": "Day 16-20", "place": "Naples"}
-        ]
-        result = {"itinerary": itinerary}
-        print(result)
+        m = s.model()
+        tour = [m.evaluate(cities[i]) for i in range(n)]
+        total_cost_val = m.evaluate(total_cost)
+        print("Tour:", tour)
+        print("Total cost:", total_cost_val)
     else:
         print("No solution found")
 

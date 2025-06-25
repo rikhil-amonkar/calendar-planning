@@ -1,39 +1,36 @@
 from z3 import *
 
 # Define the variables
-start_time = 0  # Start time of the day (in minutes)
-end_time = 12 * 60  # End time of the day (in minutes)
-stephanie_arrive, stephanie_leave = 8 * 60 + 15, 11 * 60 + 30  # Stephanie's arrival and departure times
-john_arrive, john_leave = 10 * 60 + 15, 20 * 60 + 45  # John's arrival and departure times
-min_stephanie_meet, min_john_meet = 90, 30  # Minimum meeting time for Stephanie and John
-travel_time_embarcadero_financial_district, travel_time_embarcadero_alamo_square = 5, 19  # Travel times
-travel_time_financial_district_embarcadero, travel_time_financial_district_alamo_square = 4, 17  # Travel times
-travel_time_alamo_square_embarcadero, travel_time_alamo_square_financial_district = 17, 17  # Travel times
-
-# Define the decision variables
-x_stephanie = Int('x_stephanie')  # Time to meet Stephanie
-x_john = Int('x_john')  # Time to meet John
+start_time = Int('start_time')
+end_time = Int('end_time')
+stephanie_meeting = Int('stephanie_meeting')
+john_meeting = Int('john_meeting')
 
 # Define the constraints
 s = Optimize()
-s.add(x_stephanie >= stephanie_arrive)
-s.add(x_stephanie <= stephanie_leave - min_stephanie_meet)
-s.add(x_john >= john_arrive)
-s.add(x_john <= john_leave - min_john_meet)
+s.add(start_time == 0)
+s.add(end_time >= 13 * 60)  # end time should be at least 13 hours after start time
+s.add(start_time + 90 <= stephanie_meeting)  # meet Stephanie for at least 90 minutes
+s.add(stephanie_meeting <= start_time + 3 * 60)  # Stephanie is available until 11:30 AM
+s.add(start_time + 30 <= john_meeting)  # meet John for at least 30 minutes
+s.add(john_meeting <= start_time + 11 * 60)  # John is available until 8:45 PM
+s.add(Embarcadero_to_Financial_District * (start_time <= stephanie_meeting) <= stephanie_meeting - start_time)
+s.add(Embarcadero_to_Alamo_Square * (start_time <= john_meeting) <= john_meeting - start_time)
 
-# Define the objective function (minimum travel time)
-s.add(x_stephanie + travel_time_embarcadero_financial_district + travel_time_financial_district_embarcadero + x_john + travel_time_alamo_square_embarcadero + travel_time_embarcadero_alamo_square <= end_time)
+# Define the distances
+Embarcadero_to_Financial_District = 5
+Embarcadero_to_Alamo_Square = 19
 
-# Solve the optimization problem
-s.minimize(x_stephanie + x_john + travel_time_embarcadero_financial_district + travel_time_financial_district_embarcadero + travel_time_alamo_square_embarcadero + travel_time_embarcadero_alamo_square)
+# Define the objective function
+s.add(Obj('total_distance', Sum([Embarcadero_to_Financial_District * (start_time <= stephanie_meeting), Embarcadero_to_Alamo_Square * (start_time <= john_meeting)])))
+
+# Solve the problem
 result = s.check()
-
-# Print the solution
 if result == sat:
     model = s.model()
-    print("SOLUTION:")
-    print(f"Meet Stephanie at {model[x_stephanie].as_long() / 60} hours")
-    print(f"Meet John at {(model[x_stephanie].as_long() + travel_time_embarcadero_financial_district + travel_time_financial_district_embarcadero) / 60} hours")
-    print(f"Total travel time: {(model[x_stephanie].as_long() + model[x_john].as_long() + travel_time_embarcadero_financial_district + travel_time_financial_district_embarcadero + travel_time_alamo_square_embarcadero + travel_time_embarcadero_alamo_square) / 60} hours")
+    print(f"Optimal start time: {model[start_time].as_long()} minutes")
+    print(f"Optimal end time: {model[end_time].as_long()} minutes")
+    print(f"Optimal time to meet Stephanie: {model[stephanie_meeting].as_long()} minutes")
+    print(f"Optimal time to meet John: {model[john_meeting].as_long()} minutes")
 else:
-    print("No solution found.")
+    print("No solution found")

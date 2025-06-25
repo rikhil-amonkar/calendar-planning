@@ -1,61 +1,63 @@
 from z3 import *
 
-def schedule_meeting(schedules, duration):
+def schedule_meeting():
+    # Define the day
+    day = 'Monday'
+
+    # Define the start and end times of the work hours
+    start_time = 9 * 60
+    end_time = 17 * 60
+
+    # Define the duration of the meeting
+    duration = 30
+
+    # Define the participants and their schedules
+    participants = {
+        'Megan': [9 * 60, 9 * 60 + 30, 10 * 60, 11 * 60, 12 * 60, 12 * 60 + 30],
+        'Christine': [9 * 60, 9 * 60 + 30, 11 * 60 + 30, 12 * 60, 13 * 60, 14 * 60, 15 * 60 + 30],
+        'Gabriel': [],
+        'Sara': [11 * 60 + 30, 12 * 60, 14 * 60 + 30, 15 * 60],
+        'Bruce': [9 * 60 + 30, 10 * 60, 10 * 60 + 30, 12 * 60, 12 * 60 + 30, 14 * 60, 14 * 60 + 30, 15 * 60 + 30],
+        'Kathryn': [10 * 60, 15 * 60 + 30, 16 * 60],
+        'Billy': [9 * 60, 9 * 60 + 30, 11 * 60, 11 * 60 + 30, 12 * 60, 14 * 60, 14 * 60 + 30]
+    }
+
     # Define the variables
-    days = ['Monday']
-    start_times = [9]  # 9:00
-    end_times = [17]  # 17:00
-    time_slots = [(start, end) for start in start_times for end in range(start + 1, end_times[0] + 1)]
-    
-    # Create a Z3 solver
-    s = Solver()
-    
-    # Create variables for the meeting day, start time, and end time
-    day = Int('day')
-    start_time = Int('start_time')
-    end_time = Int('end_time')
-    
-    # Create variables for the availability of each participant
-    availability = [Int(f'availability_{i}') for i in range(len(schedules))]
-    
+    start_time_var = Int('start_time')
+    end_time_var = Int('end_time')
+
     # Define the constraints
-    s.add(day == 0)  # Only one day is available
-    s.add(Or([start_time == i for i in range(9, 18)]))  # Only one start time is available
-    s.add(Or([end_time == i for i in range(start_time + 1, 18)]))  # Only one end time is available
-    
-    # Check if the meeting time conflicts with any participant's schedule
-    for i, schedule in enumerate(schedules):
-        for time_slot in schedule:
-            s.add(Or([start_time + duration > time_slot[0], end_time < time_slot[1]]))  # Check if the meeting time conflicts with the participant's schedule
-    
-    # Check if the meeting time is at least 30 minutes long
-    s.add(end_time - start_time >= duration)
-    
-    # Solve the constraints
-    s.check()
-    
-    # Get the solution
-    model = s.model()
-    
-    # Print the solution
-    print(f'SOLUTION:')
-    print(f'Day: {days[model[day]]}')
-    print(f'Start Time: {model[start_time]:02d}:00')
-    print(f'End Time: {model[end_time]:02d}:00')
+    constraints = []
+    for participant, schedule in participants.items():
+        for time in schedule:
+            constraints.append(And(start_time_var >= time, start_time_var < time + 30))
+            constraints.append(And(end_time_var > time, end_time_var <= time + 30))
 
-# Define the existing schedules for everyone during the day
-schedules = [
-    [(9, 9.5), (10, 11), (12, 12.5)],  # Megan
-    [(9, 9.5), (11.5, 12), (13, 14), (15.5, 16.5)],  # Christine
-    [],  # Gabriel
-    [(11.5, 12), (14.5, 15)],  # Sara
-    [(9.5, 10), (10.5, 12), (12.5, 14), (14.5, 15), (15.5, 16.5)],  # Bruce
-    [(10, 15.5), (16, 16.5)],  # Kathryn
-    [(9, 9.5), (11, 11.5), (12, 14), (14.5, 15.5)]  # Billy
-]
+    # Define the objective function
+    objective_function = And(start_time_var >= start_time, start_time_var <= end_time - duration, end_time_var > start_time_var, end_time_var <= end_time)
 
-# Define the meeting duration
-duration = 0.5  # 30 minutes
+    # Add the objective function to the constraints
+    constraints.append(objective_function)
 
-# Call the function to schedule the meeting
-schedule_meeting(schedules, duration)
+    # Create the solver
+    solver = Solver()
+
+    # Add the constraints to the solver
+    for constraint in constraints:
+        solver.add(constraint)
+
+    # Check if the solver has a solution
+    if solver.check() == sat:
+        # Get the model
+        model = solver.model()
+
+        # Get the start and end times from the model
+        start_time_value = model[start_time_var].as_long()
+        end_time_value = model[end_time_var].as_long()
+
+        # Print the solution
+        print(f"SOLUTION:\nDay: {day}\nStart Time: {start_time_value // 60:02d}:{start_time_value % 60:02d} (24-hour format)\nEnd Time: {end_time_value // 60:02d}:{end_time_value % 60:02d} (24-hour format)")
+    else:
+        print("No solution exists.")
+
+schedule_meeting()

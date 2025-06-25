@@ -1,118 +1,70 @@
 from z3 import *
+from itertools import combinations
 
-# Define the variables
-days = 14
+# Define the cities and their corresponding indices
 cities = ['Helsinki', 'Reykjavik', 'Budapest', 'Warsaw', 'Madrid', 'Split']
-num_days_in_city = {city: 0 for city in cities}
+city_indices = {city: i for i, city in enumerate(cities)}
 
-# Create a variable for each city
-for city in cities:
-    num_days_in_city[city] = Int(city)
+# Define the direct flights
+flights = {
+    'Helsinki': ['Reykjavik', 'Budapest', 'Warsaw', 'Madrid', 'Split'],
+    'Reykjavik': ['Helsinki', 'Warsaw', 'Madrid'],
+    'Budapest': ['Helsinki', 'Warsaw', 'Madrid'],
+    'Warsaw': ['Helsinki', 'Budapest', 'Madrid', 'Split', 'Reykjavik'],
+    'Madrid': ['Helsinki', 'Budapest', 'Warsaw', 'Split'],
+    'Split': ['Helsinki', 'Warsaw', 'Madrid']
+}
 
-# Constraints
-# Total days constraint
-total_days = Sum([num_days_in_city[city] for city in cities])
-total_days == days
+# Define the workshop and relative visits
+workshop = {'Helsinki': [1, 2]}
+relative_visits = {'Warsaw': [9, 10, 11]}
+friend_visit = {'Reykjavik': [8, 9]}
 
-# Each city must be visited for at least 0 days
-for city in cities:
-    num_days_in_city[city] >= 0
+# Define the solver and variables
+solver = Solver()
+days = [Bool(f'day_{i}') for i in range(1, 15)]
+places = [Int(f'place_{i}') for i in range(1, 15)]
+for i in range(1, 15):
+    solver.add(And(days[i-1], places[i-1] >= 0, places[i-1] < len(cities)))
 
-# Constraints for specific city stays
-num_days_in_city['Helsinki'] == 2
-num_days_in_city['Warsaw'] == 3
-num_days_in_city['Madrid'] == 4
-num_days_in_city['Split'] == 4
-num_days_in_city['Reykjavik'] == 2
+# Define the constraints
+for i in range(1, 15):
+    # Each day, one city is visited
+    solver.add(Or([days[i] & (places[i] == j) for j in range(len(cities))]))
+    # If a flight exists from city A to city B, then one of them is visited on day i
+    for A in cities:
+        for B in flights[A]:
+            solver.add(Or([days[i] & (places[i] == city_indices[A]), days[i] & (places[i] == city_indices[B])]))
+    # If a workshop or relative visit is scheduled in a city, then the city is visited on the corresponding days
+    if i in workshop.get(cities[0], []):
+        solver.add(days[i-1] & (places[i-1] == city_indices[cities[0]]))
+    if i in relative_visits.get(cities[1], []):
+        solver.add(days[i-1] & (places[i-1] == city_indices[cities[1]]))
+    if i in friend_visit.get(cities[2], []):
+        solver.add(days[i-1] & (places[i-1] == city_indices[cities[2]]))
+    # If a flight is taken on day i, then the departure city is visited on day i
+    for A in cities:
+        if i in [x for x in range(1, 15) if any(x == y for y in flights[A])]:
+            solver.add(days[i-1] & (places[i-1] == city_indices[A]))
+    # If a flight is taken on day i, then the arrival city is visited on day i
+    for A in cities:
+        for B in flights[A]:
+            if i in [x for x in range(1, 15) if any(x == y for y in flights[A])]:
+                solver.add(days[i-1] & (places[i-1] == city_indices[B]))
 
-# Constraints for workshop and relative visits
-num_days_in_city['Helsinki'] >= 1  # Workshop
-num_days_in_city['Helsinki'] >= 2  # Stay
-num_days_in_city['Warsaw'] >= 9  # Relative visit
-num_days_in_city['Warsaw'] >= 11  # Relative visit
-num_days_in_city['Reykjavik'] >= 8  # Friend visit
-num_days_in_city['Reykjavik'] >= 9  # Friend visit
-
-# Constraints for direct flights
-# Helsinki and Reykjavik
-num_days_in_city['Helsinki'] >= num_days_in_city['Reykjavik'] - 1
-num_days_in_city['Reykjavik'] >= num_days_in_city['Helsinki'] - 1
-# Budapest and Warsaw
-num_days_in_city['Budapest'] >= num_days_in_city['Warsaw'] - 1
-num_days_in_city['Warsaw'] >= num_days_in_city['Budapest'] - 1
-# Madrid and Split
-num_days_in_city['Madrid'] >= num_days_in_city['Split'] - 1
-num_days_in_city['Split'] >= num_days_in_city['Madrid'] - 1
-# Helsinki and Split
-num_days_in_city['Helsinki'] >= num_days_in_city['Split'] - 1
-num_days_in_city['Split'] >= num_days_in_city['Helsinki'] - 1
-# Helsinki and Madrid
-num_days_in_city['Helsinki'] >= num_days_in_city['Madrid'] - 1
-num_days_in_city['Madrid'] >= num_days_in_city['Helsinki'] - 1
-# Helsinki and Budapest
-num_days_in_city['Helsinki'] >= num_days_in_city['Budapest'] - 1
-num_days_in_city['Budapest'] >= num_days_in_city['Helsinki'] - 1
-# Reykjavik and Warsaw
-num_days_in_city['Reykjavik'] >= num_days_in_city['Warsaw'] - 1
-num_days_in_city['Warsaw'] >= num_days_in_city['Reykjavik'] - 1
-# Helsinki and Warsaw
-num_days_in_city['Helsinki'] >= num_days_in_city['Warsaw'] - 1
-num_days_in_city['Warsaw'] >= num_days_in_city['Helsinki'] - 1
-# Madrid and Budapest
-num_days_in_city['Madrid'] >= num_days_in_city['Budapest'] - 1
-num_days_in_city['Budapest'] >= num_days_in_city['Madrid'] - 1
-# Budapest and Reykjavik
-num_days_in_city['Budapest'] >= num_days_in_city['Reykjavik'] - 1
-num_days_in_city['Reykjavik'] >= num_days_in_city['Budapest'] - 1
-# Madrid and Warsaw
-num_days_in_city['Madrid'] >= num_days_in_city['Warsaw'] - 1
-num_days_in_city['Warsaw'] >= num_days_in_city['Madrid'] - 1
-# Warsaw and Split
-num_days_in_city['Warsaw'] >= num_days_in_city['Split'] - 1
-num_days_in_city['Split'] >= num_days_in_city['Warsaw'] - 1
-# Reykjavik and Madrid
-num_days_in_city['Reykjavik'] >= num_days_in_city['Madrid'] - 1
-num_days_in_city['Madrid'] >= num_days_in_city['Reykjavik'] - 1
+# Define the objective function
+solver.add(Or([days[13]]))
 
 # Solve the problem
-solver = Solver()
-solver.add([num_days_in_city[city] >= 0 for city in cities])
-solver.add([num_days_in_city[city] == days for city in cities])
-for city in cities:
-    solver.add(num_days_in_city[city] == 0)
-
-for city in cities:
-    solver.add(num_days_in_city[city] == 2)
-    solver.add(num_days_in_city[city] == 3)
-    solver.add(num_days_in_city[city] == 4)
-
-for city in cities:
-    solver.add(num_days_in_city[city] >= 1)
-    solver.add(num_days_in_city[city] >= 2)
-    solver.add(num_days_in_city[city] >= 8)
-    solver.add(num_days_in_city[city] >= 9)
-    solver.add(num_days_in_city[city] >= 9)
-    solver.add(num_days_in_city[city] >= 11)
-
-for city in cities:
-    solver.add(num_days_in_city[city] >= num_days_in_city['Helsinki'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Reykjavik'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Budapest'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Warsaw'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Madrid'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Split'] - 1)
-
-for city in cities:
-    solver.add(num_days_in_city[city] >= num_days_in_city['Helsinki'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Reykjavik'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Budapest'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Warsaw'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Madrid'] - 1)
-    solver.add(num_days_in_city[city] >= num_days_in_city['Split'] - 1)
-
 if solver.check() == sat:
     model = solver.model()
-    for city in cities:
-        print(f"{city}: {model[num_days_in_city[city]]}")
+    itinerary = []
+    for i in range(1, 15):
+        current_place = model.evaluate(places[i-1]).as_long()
+        if model.evaluate(days[i-1]):
+            itinerary.append({"day_range": f"Day {i-1}" if i-1 == 1 else f"Day {i-1}-{i-2}", "place": cities[current_place]})
+        if model.evaluate(days[i]):
+            itinerary.append({"day_range": f"Day {i}", "place": cities[current_place]})
+    print({"itinerary": itinerary})
 else:
     print("No solution found")

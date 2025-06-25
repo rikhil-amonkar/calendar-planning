@@ -2,90 +2,103 @@ from z3 import *
 import json
 
 def main():
-    cities = ['Reykjavik', 'Riga', 'Warsaw', 'Istanbul', 'Krakow']
-    dur = {
-        'Reykjavik': 7,
-        'Riga': 2,
-        'Warsaw': 3,
-        'Istanbul': 6,
-        'Krakow': 7
+    # Define the city indices and names
+    cities = {
+        0: "Reykjavik",
+        1: "Riga",
+        2: "Warsaw",
+        3: "Istanbul",
+        4: "Krakow"
     }
     
-    flight_set = { 
-        ('Istanbul', 'Krakow'), 
-        ('Warsaw', 'Reykjavik'),
-        ('Istanbul', 'Warsaw'),
-        ('Riga', 'Istanbul'),
-        ('Krakow', 'Warsaw'),
-        ('Riga', 'Warsaw')
-    }
+    # Given direct flights (undirected edges)
+    given_edges = [(3,4), (2,0), (3,2), (1,3), (4,2), (1,2)]
+    allowed_pairs = set()
+    for u, v in given_edges:
+        allowed_pairs.add((u, v))
+        allowed_pairs.add((v, u))
+    allowed_pairs = list(allowed_pairs)
     
-    allowed_edges = []
-    for (c1, c2) in flight_set:
-        allowed_edges.append((c1, c2))
-        allowed_edges.append((c2, c1))
+    # Z3 solver setup
+    s = [Int(f's{i}') for i in range(5)]
+    solver = Solver()
     
-    # Create solver and variables
-    s = Solver()
-    city_vars = [String(f'city_{i}') for i in range(5)]
-    start_days = [Int(f'start_{i}') for i in range(5)]
-    
-    # Each city_vars must be one of the cities and all distinct
+    # Each s[i] is between 0 and 4
     for i in range(5):
-        s.add(Or(*[city_vars[i] == c for c in cities]))
-    s.add(Distinct(city_vars))
+        solver.add(And(s[i] >= 0, s[i] <= 4))
     
-    # Flight constraints between consecutive cities
-    for i in range(4):
-        edge_constraints = []
-        for (c1, c2) in allowed_edges:
-            edge_constraints.append(And(city_vars[i] == c1, city_vars[i+1] == c2))
-        s.add(Or(edge_constraints))
+    # All cities are distinct
+    solver.add(Distinct(s))
     
-    # Start day constraints
-    s.add(start_days[0] == 1)
-    for i in range(4):
-        dur_i = Int(f'dur_{i}')
-        s.add(dur_i == If(city_vars[i] == 'Reykjavik', dur['Reykjavik'],
-                        If(city_vars[i] == 'Riga', dur['Riga'],
-                        If(city_vars[i] == 'Warsaw', dur['Warsaw'],
-                        If(city_vars[i] == 'Istanbul', dur['Istanbul'],
-                        dur['Krakow']))))
-        s.add(start_days[i+1] == start_days[i] + dur_i - 1)
+    # Function to get the length of stay for a city
+    def z3_length(city):
+        return If(city == 0, 7,
+               If(city == 1, 2,
+               If(city == 2, 3,
+               If(city == 3, 6, 7))))
     
-    dur_last = Int('dur_last')
-    s.add(dur_last == If(city_vars[4] == 'Reykjavik', dur['Reykjavik'],
-                       If(city_vars[4] == 'Riga', dur['Riga'],
-                       If(city_vars[4] == 'Warsaw', dur['Warsaw'],
-                       If(city_vars[4] == 'Istanbul', dur['Istanbul'],
-                       dur['Krakow']))))
-    s.add(start_days[4] + dur_last - 1 == 21)
+    # Arrays for start and end days
+    start_day = [Int(f'start_{i}') for i in range(5)]
+    end_day = [Int(f'end_{i}') for i in range(5)]
     
-    # Event constraints
+    # Constraints for start_day and end_day
+    solver.add(start_day[0] == 1)
+    solver.add(end_day[0] == start_day[0] + z3_length(s[0]) - 1)
+    
+    for i in range(1, 5):
+        solver.add(start_day[i] == end_day[i-1])
+        solver.add(end_day[i] == start_day[i] + z3_length(s[i]) - 1)
+    
+    # The entire trip must end at day 21
+    solver.add(end_day[4] == 21)
+    
+    # Constraints for Riga and Istanbul
     for i in range(5):
-        s.add(If(city_vars[i] == 'Riga', Or(start_days[i] == 1, start_days[i] == 2), True))
-        s.add(If(city_vars[i] == 'Istanbul', start_days[i] <= 7, True))
+        # Riga (city 1) must start on or before day 2
+        solver.add(If(s[i] == 1, start_day[i] <= 2, True))
+        # Istanbul (city 3) must start on or before day 7
+        solver.add(If(s[i] == 3, start_day[i] <= 7, True))
     
-    if s.check() == sat:
-        m = s.model()
-        order = [m.eval(city_vars[i]).as_string() for i in range(5)]
-        starts = [m.eval(start_days[i]).as_long() for i in range(5)]
+    # Constraints for direct flights between consecutive cities
+    for i in range(4):
+        constraints = []
+        for u, v in allowed_pairs:
+            constraints.append(And(s[i] == u, s[i+1] == v))
+        solver.add(Or(constraints))
+    
+    # Check and get the model
+    if solver.check() == sat:
+        model = solver.model()
+        city_order = [model.eval(s[i]).as_long() for i in range(5)]
+        start_days = [model.eval(start_day[i]).as_long() for i in range(5)]
+        end_days = [model.eval(end_day[i]).as_long() for i in range(5)]
         
         itinerary = []
         for i in range(5):
-            c = order[i]
-            start = starts[i]
-            d = dur[c]
-            end = start + d - 1
-            itinerary.append({"day_range": f"Day {start}-{end}", "place": c})
+            city_idx = city_order[i]
+            city_name = cities[city_idx]
+            s_day = start_days[i]
+            e_day = end_days[i]
+            itinerary.append({
+                "day_range": f"Day {s_day}-{e_day}",
+                "place": city_name
+            })
             if i < 4:
-                itinerary.append({"day_range": f"Day {end}", "place": c})
-                itinerary.append({"day_range": f"Day {end}", "place": order[i+1]})
+                itinerary.append({
+                    "day_range": f"Day {e_day}",
+                    "place": city_name
+                })
+                next_city_idx = city_order[i+1]
+                next_city_name = cities[next_city_idx]
+                itinerary.append({
+                    "day_range": f"Day {e_day}",
+                    "place": next_city_name
+                })
         
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

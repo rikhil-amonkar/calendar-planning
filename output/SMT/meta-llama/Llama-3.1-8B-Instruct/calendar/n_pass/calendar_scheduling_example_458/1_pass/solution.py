@@ -1,71 +1,55 @@
 from z3 import *
 
-def schedule_meeting(day, start_time, end_time, participants, constraints, preferences):
-    # Define the variables
-    meeting_time = [Bool(f'meeting_time_{i}') for i in range(len(participants))]
-    
-    # Define the constraints
-    constraints = []
-    for i in range(len(participants)):
-        for j in range(len(participants[i])):
-            constraints.append(Implies(meeting_time[i], Not(participants[i][j])))
-    
-    # Add the preference constraint
-    for i in range(len(participants)):
-        if preferences[i] is not None:
-            constraints.append(Implies(meeting_time[i], start_time >= preferences[i]))
-    
-    # Add the duration constraint
-    constraints.append(start_time + 30 <= end_time)
-    
-    # Add the day constraint
-    constraints.append(start_time >= 9 * 60)
-    constraints.append(end_time <= 17 * 60)
-    
-    # Solve the constraints
-    s = Solver()
-    s.add(And(constraints))
-    s.add(Or(meeting_time))
-    result = s.check()
-    
-    if result == sat:
-        model = s.model()
-        for i in range(len(participants)):
-            if model.evaluate(meeting_time[i]).as_bool():
-                return model.evaluate(start_time).as_int(), model.evaluate(end_time).as_int()
-    return None
+# Define the variables
+day = 'Monday'
+meeting_duration = 30  # in minutes
+start_time = 9 * 60  # 9:00 in minutes
+end_time = 17 * 60  # 17:00 in minutes
+preferences = {'Wayne': [14 * 60]}  # Wayne prefers meetings after 14:00
 
-def find_solution():
-    # Define the day
-    day = 'Monday'
-    
-    # Define the participants
-    participants = [
-        [(0, 60), (150, 180), (180, 210)],  # Melissa
-        [(0, 60)],  # Catherine
-        [(120, 150), (210, 240)],  # Gregory
-        [(0, 30), (210, 240), (270, 300), (330, 360), (390, 420)],  # Victoria
-        [(0, 120), (120, 150), (270, 420)],  # Thomas
-        [(0, 30), (60, 90), (180, 300), (390, 420), (210, 240), (360, 420)]  # Jennifer
-    ]
-    
-    # Define the preferences
-    preferences = [None, None, None, None, None, None]
-    for i in range(len(participants)):
-        if i == 0:  # Wayne
-            preferences[i] = 14 * 60
-    
-    # Find the solution
-    solution = schedule_meeting(day, 0, 24 * 60, participants, participants, preferences)
-    
+# Define the schedules
+schedules = {
+    'Wayne': [0, 1, 2, 3, 4, 5, 6],  # Wayne is free the entire day
+    'Melissa': [1, 3, 5, 6],  # Melissa has meetings on Monday during 10:00 to 11:00, 12:30 to 14:00, 15:00 to 15:30
+    'Catherine': [0, 1, 2, 3, 4, 5, 6],  # Catherine is free the entire day
+    'Gregory': [3, 6],  # Gregory has blocked their calendar on Monday during 12:30 to 13:00, 15:30 to 16:00
+    'Victoria': [0, 1, 3, 4, 5, 6],  # Victoria is busy on Monday during 9:00 to 9:30, 10:30 to 11:30, 13:00 to 14:00, 14:30 to 15:00, 15:30 to 16:30
+    'Thomas': [1, 3, 6],  # Thomas has meetings on Monday during 10:00 to 12:00, 12:30 to 13:00, 14:30 to 16:00
+    'Jennifer': [0, 1, 3, 4, 5, 6]  # Jennifer has blocked their calendar on Monday during 9:00 to 9:30, 10:00 to 10:30, 11:00 to 13:00, 13:30 to 14:30, 15:00 to 15:30, 16:00 to 16:30
+}
+
+# Define the solver
+solver = Solver()
+
+# Define the variables for the meeting time
+start_time_var = Int('start_time')
+end_time_var = Int('end_time')
+
+# Add the constraints for the meeting time
+solver.add(start_time_var >= start_time)
+solver.add(end_time_var <= end_time)
+solver.add(end_time_var - start_time_var == meeting_duration)
+
+# Add the constraints for the schedules
+for person, schedule in schedules.items():
+    for time in schedule:
+        solver.add(start_time_var + meeting_duration > time * 60)
+
+# Add the constraints for the preferences
+for person, preference in preferences.items():
+    solver.add(start_time_var >= preference[0])
+
+# Check if a solution exists
+if solver.check() == sat:
+    # Get the solution
+    model = solver.model()
+    start_time_var_value = model[start_time_var].as_long()
+    end_time_var_value = model[end_time_var].as_long()
+
     # Print the solution
-    if solution is not None:
-        start_time, end_time = solution
-        print(f'SOLUTION:')
-        print(f'Day: {day}')
-        print(f'Start Time: {str(start_time // 60).zfill(2)}:{str(start_time % 60).zfill(2)}')
-        print(f'End Time: {str(end_time // 60).zfill(2)}:{str(end_time % 60).zfill(2)}')
-    else:
-        print('No solution found.')
-
-find_solution()
+    print(f'SOLUTION:')
+    print(f'Day: {day}')
+    print(f'Start Time: {start_time_var_value // 60:02d}:{start_time_var_value % 60:02d}')
+    print(f'End Time: {(end_time_var_value // 60) % 24:02d}:{end_time_var_value % 60:02d}')
+else:
+    print('No solution exists.')

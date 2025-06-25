@@ -1,62 +1,259 @@
 from z3 import *
 
 # Define the variables
-start_time = 0
-end_time = 1440  # 1440 minutes in a day
-friends = [
-    {"name": "Matthew", "location": "Bayview", "start_time": 435, "end_time": 600, "min_time": 120},
-    {"name": "Karen", "location": "Chinatown", "start_time": 465, "end_time": 585, "min_time": 90},
-    {"name": "Sarah", "location": "Alamo Square", "start_time": 480, "end_time": 585, "min_time": 105},
-    {"name": "Jessica", "location": "Nob Hill", "start_time": 270, "end_time": 405, "min_time": 120},
-    {"name": "Stephanie", "location": "Presidio", "start_time": 90, "end_time": 165, "min_time": 60},
-    {"name": "Mary", "location": "Union Square", "start_time": 285, "end_time": 570, "min_time": 60},
-    {"name": "Charles", "location": "The Castro", "start_time": 270, "end_time": 600, "min_time": 105},
-    {"name": "Nancy", "location": "North Beach", "start_time": 165, "end_time": 480, "min_time": 15},
-    {"name": "Thomas", "location": "Fisherman's Wharf", "start_time": 90, "end_time": 420, "min_time": 30},
-    {"name": "Brian", "location": "Marina District", "start_time": 75, "end_time": 360, "min_time": 60},
-]
-
-# Define the locations and their distances from Embarcadero
-locations = {
-    "Embarcadero": 0,
-    "Bayview": 21,
-    "Chinatown": 7,
-    "Alamo Square": 19,
-    "Nob Hill": 10,
-    "Presidio": 20,
-    "Union Square": 10,
-    "The Castro": 25,
-    "North Beach": 5,
-    "Fisherman's Wharf": 6,
-    "Marina District": 12,
-}
-
-# Create the solver
-s = Optimize()
-
-# Define the decision variables
-x = [Bool(f"visit_{i}") for i in range(len(friends))]
-y = [Bool(f"meet_{i}") for i in range(len(friends))]
-z = [Int(f"travel_{i}") for i in range(len(friends))]
+start_time = 9 * 60  # 9:00 AM in minutes
+end_time = 24 * 60  # 24:00 PM in minutes
+time_slots = [i for i in range(start_time, end_time + 1)]
+num_time_slots = len(time_slots)
+locations = ['Embarcadero', 'Bayview', 'Chinatown', 'Alamo Square', 'Nob Hill', 'Presidio', 'Union Square', 'The Castro', 'North Beach', 'Fisherman\'s Wharf', 'Marina District']
+num_locations = len(locations)
+people = ['Matthew', 'Karen', 'Sarah', 'Jessica', 'Stephanie', 'Mary', 'Charles', 'Nancy', 'Thomas', 'Brian']
+num_people = len(people)
 
 # Define the constraints
-for i in range(len(friends)):
-    s.add(If(x[i], y[i], 0) >= friends[i]["min_time"])  # If visit, then meet for at least min_time
-    s.add(z[i] >= abs(locations[friends[i]["location"]] - locations["Embarcadero"]))  # Travel time is at least distance
+x = [Bool(f"x_{i}") for i in range(num_people)]
+y = [Bool(f"y_{i}") for i in range(num_people)]
+z = [Bool(f"z_{i}") for i in range(num_people)]
+t = [Int(f"t_{i}") for i in range(num_people)]
 
-# Define the objective function
-s.add(Maximize(Sum([If(x[i], y[i], 0) for i in range(len(friends))])))  # Maximize total meeting time
+# Constraints for meeting each person for the minimum required time
+for i in range(num_people):
+    if people[i] == 'Matthew':
+        s = 7 * 60 + 15  # 7:15 PM in minutes
+        e = 10 * 60  # 10:00 PM in minutes
+        min_time = 120
+    elif people[i] == 'Karen':
+        s = 7 * 60 + 15  # 7:15 PM in minutes
+        e = 9 * 60  # 9:00 PM in minutes
+        min_time = 90
+    elif people[i] == 'Sarah':
+        s = 8 * 60  # 8:00 PM in minutes
+        e = 9 * 60 + 45  # 9:45 PM in minutes
+        min_time = 105
+    elif people[i] == 'Jessica':
+        s = 4 * 60 + 30  # 4:30 PM in minutes
+        e = 6 * 60 + 45  # 6:45 PM in minutes
+        min_time = 120
+    elif people[i] == 'Stephanie':
+        s = 7 * 60 + 30  # 7:30 AM in minutes
+        e = 10 * 60 + 15  # 10:15 AM in minutes
+        min_time = 60
+    elif people[i] == 'Mary':
+        s = 4 * 60 + 45  # 4:45 PM in minutes
+        e = 9 * 60 + 30  # 9:30 PM in minutes
+        min_time = 60
+    elif people[i] == 'Charles':
+        s = 4 * 60 + 30  # 4:30 PM in minutes
+        e = 10 * 60  # 10:00 PM in minutes
+        min_time = 105
+    elif people[i] == 'Nancy':
+        s = 2 * 60 + 45  # 2:45 PM in minutes
+        e = 8 * 60  # 8:00 PM in minutes
+        min_time = 15
+    elif people[i] == 'Thomas':
+        s = 1 * 60 + 30  # 1:30 PM in minutes
+        e = 7 * 60  # 7:00 PM in minutes
+        min_time = 30
+    elif people[i] == 'Brian':
+        s = 12 * 60 + 15  # 12:15 PM in minutes
+        e = 6 * 60  # 6:00 PM in minutes
+        min_time = 60
+
+    if people[i] == 'Matthew':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Karen':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Sarah':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Jessica':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Stephanie':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Mary':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Charles':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Nancy':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Thomas':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+    elif people[i] == 'Brian':
+        for j in range(s, e + 1):
+            if x[i] and y[i] and j - s >= min_time:
+                z[i] = And(z[i], s == t[i])
+                break
+
+# Constraints for visiting each location
+for i in range(num_people):
+    if people[i] == 'Matthew':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 120:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Karen':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 90:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Sarah':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 105:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Jessica':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 120:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Stephanie':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 60:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Mary':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 60:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Charles':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 105:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Nancy':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 15:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Thomas':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 30:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Brian':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 60:
+                z[i] = And(z[i], j == t[i])
+                break
+
+# Constraints for visiting each location
+for i in range(num_people):
+    if people[i] == 'Matthew':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 120:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Karen':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 90:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Sarah':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 105:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Jessica':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 120:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Stephanie':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 60:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Mary':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 60:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Charles':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 105:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Nancy':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 15:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Thomas':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 30:
+                z[i] = And(z[i], j == t[i])
+                break
+    elif people[i] == 'Brian':
+        for j in range(start_time, end_time + 1):
+            if x[i] and y[i] and j - start_time >= 60:
+                z[i] = And(z[i], j == t[i])
+                break
 
 # Solve the problem
-s.check()
-model = s.model()
+solver = Solver()
+for i in range(num_people):
+    solver.add(Or(x[i], Not(x[i])))
+    solver.add(Or(y[i], Not(y[i])))
+    solver.add(Or(z[i], Not(z[i])))
 
-# Print the solution
-print("SOLUTION:")
-for i in range(len(friends)):
-    if model[x[i]]:
-        print(f"Visit {friends[i]['name']}: {model[z[i]].as_long()} minutes")
-        print(f"Meet {friends[i]['name']}: {friends[i]['min_time']} minutes")
-    else:
-        print(f"Skip {friends[i]['name']}")
-    print()
+solver.add(Implies(x[0], y[0]))
+solver.add(Implies(x[1], y[1]))
+solver.add(Implies(x[2], y[2]))
+solver.add(Implies(x[3], y[3]))
+solver.add(Implies(x[4], y[4]))
+solver.add(Implies(x[5], y[5]))
+solver.add(Implies(x[6], y[6]))
+solver.add(Implies(x[7], y[7]))
+solver.add(Implies(x[8], y[8]))
+solver.add(Implies(x[9], y[9]))
+
+solver.add(Implies(x[0], z[0]))
+solver.add(Implies(x[1], z[1]))
+solver.add(Implies(x[2], z[2]))
+solver.add(Implies(x[3], z[3]))
+solver.add(Implies(x[4], z[4]))
+solver.add(Implies(x[5], z[5]))
+solver.add(Implies(x[6], z[6]))
+solver.add(Implies(x[7], z[7]))
+solver.add(Implies(x[8], z[8]))
+solver.add(Implies(x[9], z[9]))
+
+if solver.check() == sat:
+    model = solver.model()
+    print("Optimal schedule:")
+    for i in range(num_people):
+        if model.evaluate(x[i]).as_bool():
+            print(f"Meet {people[i]}")
+        if model.evaluate(y[i]).as_bool():
+            print(f"Visit {locations[i]}")
+        if model.evaluate(z[i]).as_bool():
+            print(f"Meet {people[i]} at {locations[i]}")
+else:
+    print("No solution exists")

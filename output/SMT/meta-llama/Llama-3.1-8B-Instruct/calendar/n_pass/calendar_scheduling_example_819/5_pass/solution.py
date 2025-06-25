@@ -1,82 +1,53 @@
 from z3 import *
 
-# Define the days of the week
-days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+def schedule_meeting():
+    # Define the days of the week
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
 
-# Define the start and end times of the workday
-start_time = 9 * 60  # 9:00 in minutes
-end_time = 17 * 60   # 17:00 in minutes
-meeting_duration = 30  # half an hour
+    # Define the start and end times
+    start_times = [9, 10, 11, 11.5, 12, 13, 14, 14.5, 15, 15.5, 16, 16.5, 17]
+    end_times = [9.5, 10.5, 11.5, 12, 12.5, 13.5, 14.5, 15, 15.5, 16, 16.5, 17, 17.5]
 
-# Define the existing schedules for Ruth
-ruth_schedule = {
-    'Monday': [(9 * 60, 17 * 60)],
-    'Tuesday': [(9 * 60, 17 * 60)],
-    'Wednesday': [(9 * 60, 17 * 60)],
-    'Thursday': [(9 * 60, 9 * 60 + 90), (9 * 60 + 120, 17 * 60)]
-}
+    # Create Z3 variables for the meeting day, start time, and end time
+    day = Int('day')
+    start_time = Real('start_time')
+    end_time = Real('end_time')
 
-# Define the constraints for Julie
-julie_constraints = {
-    'Thursday': [(9 * 60 + 90, 17 * 60)]  # Julie wants to avoid meetings before 11:30 on Thursday
-}
+    # Create Z3 constraints for the meeting day
+    day_domain = [day!= 1, day!= 2, day!= 3]  # Julie has no meetings the whole week
+    day_domain = [day == 0 or day == 1 or day == 2]  # Julie would like to avoid more meetings on Thursday before 11:30
 
-# Define the solver
-solver = Optimize()
+    # Create Z3 constraints for the start and end times
+    start_time_domain = [start_time >= 9, start_time <= 17]
+    end_time_domain = [end_time >= start_time, end_time <= 17.5]
 
-# Define the variables
-day = [Bool(f'day_{i}') for i in range(len(days))]
-start_time_var = [Int(f'start_time_{i}') for i in range(len(days))]
-end_time_var = [Int(f'end_time_{i}') for i in range(len(days))]
+    # Create Z3 constraints for the meeting duration
+    duration = [end_time - start_time == 0.5]
 
-# Define the constraints
-for i, day_name in enumerate(days):
-    solver.add(day[i])  # at least one day
-    solver.add(Or([day[i] for i in range(len(days))]))  # exactly one day
-    solver.add(Implies(day[i], And(start_time_var[i] >= 9 * 60, start_time_var[i] <= 17 * 60 - 30)))
-    solver.add(Implies(day[i], And(end_time_var[i] >= start_time_var[i] + 30, end_time_var[i] <= 17 * 60)))
-    
-    # Ruth's schedule constraints
-    for time in ruth_schedule[day_name]:
-        solver.add(Implies(day[i], And(start_time_var[i] >= time[0], start_time_var[i] <= time[1])))
-        solver.add(Implies(day[i], And(end_time_var[i] >= time[0], end_time_var[i] <= time[1])))
-        
-    # Julie's constraints
-    if day_name == 'Thursday':
-        for time in julie_constraints[day_name]:
-            solver.add(Implies(day[i], And(start_time_var[i] >= time[0], start_time_var[i] <= time[1])))
-            solver.add(Implies(day[i], And(end_time_var[i] >= time[0], end_time_var[i] <= time[1])))
+    # Create Z3 constraints for Ruth's schedule
+    ruth_schedule = [start_time >= 9, start_time <= 17,  # Monday
+                     start_time >= 9, start_time <= 17,  # Tuesday
+                     start_time >= 9, start_time <= 17,  # Wednesday
+                     start_time >= 11, start_time <= 11.5, start_time >= 14.5, start_time <= 17]  # Thursday
 
-# Solve the optimization problem
-solution = solver.check()
-if solution == sat:
-    model = solver.model()
-    for i, day_name in enumerate(days):
-        if model[day[i]].as_bool():
-            start_time_to_meet = model[start_time_var[i]].as_int()
-            end_time_to_meet = model[end_time_var[i]].as_int()
-            print(f"SOLUTION:")
-            print(f"Day: {day_name}")
-            print(f"Start Time: {(start_time_to_meet // 60):02d}:{(start_time_to_meet % 60):02d}")
-            print(f"End Time: {(end_time_to_meet // 60):02d}:{(end_time_to_meet % 60):02d}")
-            break
-else:
-    # Try all possible days
-    for day_name in days:
-        solver.push()  # push the current state of the solver onto the stack
-        for i, day in enumerate(days):
-            if day_name == day:
-                solver.add(day[i])  # select the current day
-            else:
-                solver.add(Not(day[i]))  # deselect the other days
-        solution = solver.check()
-        solver.pop()  # pop the current state of the solver from the stack
-        if solution == sat:
-            model = solver.model()
-            start_time_to_meet = model[start_time_var[days.index(day_name)]].as_int()
-            end_time_to_meet = model[end_time_var[days.index(day_name)]].as_int()
-            print(f"SOLUTION:")
-            print(f"Day: {day_name}")
-            print(f"Start Time: {(start_time_to_meet // 60):02d}:{(start_time_to_meet % 60):02d}")
-            print(f"End Time: {(end_time_to_meet // 60):02d}:{(end_time_to_meet % 60):02d}")
-            break
+    # Create Z3 constraints for Julie's preference
+    julie_preference = [start_time >= 11.5]
+
+    # Create the Z3 solver and add the constraints
+    solver = Solver()
+    solver.add(And(day_domain, start_time_domain, end_time_domain, duration, ruth_schedule, julie_preference))
+
+    # Solve the Z3 constraints
+    if solver.check() == sat:
+        model = solver.model()
+        day_value = model[day].as_long()
+        start_time_value = model[start_time].numeral().as_real()
+        end_time_value = model[end_time].numeral().as_real()
+        day_name = days[day_value]
+        start_time = str(int(start_time_value * 2)) + ':00'
+        end_time = str(int(end_time_value * 2)) + ':00'
+        return f"SOLUTION:\nDay: {day_name}\nStart Time: {start_time}\nEnd Time: {end_time}"
+    else:
+        return "No solution found"
+
+print(schedule_meeting())

@@ -1,98 +1,193 @@
 from z3 import *
+from itertools import combinations
+
+# Define the cities and their durations
+cities = {
+    'Paris': 5,
+    'Warsaw': 2,
+    'Krakow': 2,
+    'Tallinn': 2,
+    'Riga': 2,
+    'Copenhagen': 5,
+    'Helsinki': 5,
+    'Oslo': 5,
+    'Santorini': 2,
+    'Lyon': 4
+}
+
+# Define the direct flights
+flights = {
+    ('Warsaw', 'Riga'): 1,
+    ('Warsaw', 'Tallinn'): 1,
+    ('Copenhagen', 'Helsinki'): 1,
+    ('Lyon', 'Paris'): 1,
+    ('Copenhagen', 'Warsaw'): 1,
+    ('Lyon', 'Oslo'): 1,
+    ('Paris', 'Oslo'): 1,
+    ('Paris', 'Riga'): 1,
+    ('Krakow', 'Helsinki'): 1,
+    ('Paris', 'Tallinn'): 1,
+    ('Oslo', 'Riga'): 1,
+    ('Krakow', 'Warsaw'): 1,
+    ('Paris', 'Helsinki'): 1,
+    ('Copenhagen', 'Santorini'): 1,
+    ('Helsinki', 'Warsaw'): 1,
+    ('Helsinki', 'Riga'): 1,
+    ('Copenhagen', 'Krakow'): 1,
+    ('Copenhagen', 'Riga'): 1,
+    ('Paris', 'Krakow'): 1,
+    ('Copenhagen', 'Oslo'): 1,
+    ('Oslo', 'Tallinn'): 1,
+    ('Oslo', 'Helsinki'): 1,
+    ('Copenhagen', 'Tallinn'): 1,
+    ('Oslo', 'Krakow'): 1,
+    ('Riga', 'Tallinn'): 1,
+    ('Helsinki', 'Tallinn'): 1,
+    ('Paris', 'Copenhagen'): 1,
+    ('Paris', 'Warsaw'): 1,
+    ('Santorini', 'Oslo'): 1,
+    ('Oslo', 'Warsaw'): 1
+}
 
 # Define the variables
-days = 25
-cities = [
-    'Paris', 'Warsaw', 'Krakow', 'Tallinn', 'Riga', 'Copenhagen', 'Helsinki', 'Oslo', 'Santorini', 'Lyon'
-]
-city_days = {city: [Bool(f'day_{i}_{city}') for i in range(days)] for city in cities}
-friend_meetings = {
-    'Paris': [Bool(f'friend_meeting_{i}_Paris') for i in range(4, 8)],
-    'Helsinki': [Bool(f'friend_meeting_{i}_Helsinki') for i in range(18, 22)],
-}
-workshop = {
-    'Krakow': [Bool(f'workshop_{i}_Krakow') for i in range(17, 18)],
-}
-wedding = {
-    'Riga': [Bool(f'wedding_{i}_Riga') for i in range(23, 24)],
-}
-relatives = {
-    'Santorini': [Bool(f'relatives_{i}_Santorini') for i in range(12, 13)],
-}
-
-# Define the constraints
-constraints = []
-for city in cities:
-    constraints += [Or([city_days[city][i] for i in range(days)])]  # Each city must be visited at least once
-
-for city, meetings in friend_meetings.items():
-    constraints += [Implies(city_days[city][4], Or(meetings))]  # Meet friends in Paris between day 4 and day 8
-    constraints += [Implies(city_days[city][18], Or(meetings))]  # Meet friends in Helsinki between day 18 and day 22
-
-for city, workshop_dates in workshop.items():
-    constraints += [Implies(city_days[city][17], Or(workshop_dates))]  # Attend workshop in Krakow between day 17 and day 18
-
-for city, wedding_dates in wedding.items():
-    constraints += [Implies(city_days[city][23], Or(wedding_dates))]  # Attend wedding in Riga between day 23 and day 24
-
-for city, relatives_dates in relatives.items():
-    constraints += [Implies(city_days[city][12], Or(relatives_dates))]  # Visit relatives in Santorini between day 12 and day 13
-
-direct_flights = {
-    ('Warsaw', 'Riga'): [Bool(f'direct_flight_{i}_Warsaw_Riga') for i in range(days)],
-    ('Warsaw', 'Tallinn'): [Bool(f'direct_flight_{i}_Warsaw_Tallinn') for i in range(days)],
-    ('Copenhagen', 'Helsinki'): [Bool(f'direct_flight_{i}_Copenhagen_Helsinki') for i in range(days)],
-    ('Lyon', 'Paris'): [Bool(f'direct_flight_{i}_Lyon_Paris') for i in range(days)],
-    ('Copenhagen', 'Warsaw'): [Bool(f'direct_flight_{i}_Copenhagen_Warsaw') for i in range(days)],
-    ('Lyon', 'Oslo'): [Bool(f'direct_flight_{i}_Lyon_Oslo') for i in range(days)],
-    ('Paris', 'Oslo'): [Bool(f'direct_flight_{i}_Paris_Oslo') for i in range(days)],
-    ('Paris', 'Riga'): [Bool(f'direct_flight_{i}_Paris_Riga') for i in range(days)],
-    ('Krakow', 'Helsinki'): [Bool(f'direct_flight_{i}_Krakow_Helsinki') for i in range(days)],
-    ('Oslo', 'Riga'): [Bool(f'direct_flight_{i}_Oslo_Riga') for i in range(days)],
-    ('Copenhagen', 'Santorini'): [Bool(f'direct_flight_{i}_Copenhagen_Santorini') for i in range(days)],
-    ('Helsinki', 'Warsaw'): [Bool(f'direct_flight_{i}_Helsinki_Warsaw') for i in range(days)],
-    ('Helsinki', 'Riga'): [Bool(f'direct_flight_{i}_Helsinki_Riga') for i in range(days)],
-    ('Copenhagen', 'Krakow'): [Bool(f'direct_flight_{i}_Copenhagen_Krakow') for i in range(days)],
-    ('Copenhagen', 'Riga'): [Bool(f'direct_flight_{i}_Copenhagen_Riga') for i in range(days)],
-    ('Paris', 'Krakow'): [Bool(f'direct_flight_{i}_Paris_Krakow') for i in range(days)],
-    ('Copenhagen', 'Oslo'): [Bool(f'direct_flight_{i}_Copenhagen_Oslo') for i in range(days)],
-    ('Oslo', 'Tallinn'): [Bool(f'direct_flight_{i}_Oslo_Tallinn') for i in range(days)],
-    ('Oslo', 'Helsinki'): [Bool(f'direct_flight_{i}_Oslo_Helsinki') for i in range(days)],
-    ('Copenhagen', 'Tallinn'): [Bool(f'direct_flight_{i}_Copenhagen_Tallinn') for i in range(days)],
-    ('Oslo', 'Krakow'): [Bool(f'direct_flight_{i}_Oslo_Krakow') for i in range(days)],
-    ('Riga', 'Tallinn'): [Bool(f'direct_flight_{i}_Riga_Tallinn') for i in range(days)],
-    ('Helsinki', 'Tallinn'): [Bool(f'direct_flight_{i}_Helsinki_Tallinn') for i in range(days)],
-    ('Paris', 'Copenhagen'): [Bool(f'direct_flight_{i}_Paris_Copenhagen') for i in range(days)],
-    ('Paris', 'Warsaw'): [Bool(f'direct_flight_{i}_Paris_Warsaw') for i in range(days)],
-    ('Santorini', 'Oslo'): [Bool(f'direct_flight_{i}_Santorini_Oslo') for i in range(days)],
-    ('Oslo', 'Warsaw'): [Bool(f'direct_flight_{i}_Oslo_Warsaw') for i in range(days)],
-}
-
-for (city1, city2), flights in direct_flights.items():
-    for i in range(days):
-        constraints += [Implies(city_days[city1][i], Or(flights[i]))]
-        constraints += [Implies(city_days[city2][i], Or(flights[i]))]
+days = [Int(f'day_{i}') for i in range(1, 26)]
+places = [Int(f'place_{i}') for i in range(1, 26)]
+day_ranges = [Int(f'day_range_{i}') for i in range(1, 26)]
 
 # Define the solver
 solver = Solver()
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Add constraints for the day ranges
+for i in range(1, 26):
+    if i == 1:
+        solver.add(day_ranges[i-1] == 0)
+    else:
+        solver.add(day_ranges[i-1] >= day_ranges[i-2])
+        solver.add(day_ranges[i-1] <= day_ranges[i-2] + 1)
 
-# Solve the problem
+# Add constraints for the places
+for i in range(1, 26):
+    solver.add(places[i-1].is_int())
+
+# Add constraints for the friends in Paris
+solver.add(ForAll([days[i] for i in range(4, 9)], Implies(days[i] >= 4, days[i] <= 8)))
+
+# Add constraints for the workshop in Krakow
+solver.add(ForAll([days[i] for i in range(17, 19)], Implies(days[i] >= 17, days[i] <= 18)))
+
+# Add constraints for the wedding in Riga
+solver.add(ForAll([days[i] for i in range(23, 25)], Implies(days[i] >= 23, days[i] <= 24)))
+
+# Add constraints for the friend in Helsinki
+solver.add(ForAll([days[i] for i in range(18, 23)], Implies(days[i] >= 18, days[i] <= 22)))
+
+# Add constraints for the relatives in Santorini
+solver.add(ForAll([days[i] for i in range(12, 14)], Implies(days[i] >= 12, days[i] <= 13)))
+
+# Add constraints for the cities
+for city in cities:
+    solver.add(ForAll([days[i] for i in range(cities[city])], Implies(days[i] >= 1, days[i] <= cities[city])))
+
+# Add constraints for the flights
+for (city1, city2), duration in flights.items():
+    for i in range(1, 26):
+        solver.add(Or([days[i] == days[i] + duration, days[i] == days[i] - duration]))
+
+# Add constraints for the direct flights
+for (city1, city2), duration in flights.items():
+    for i in range(1, 26):
+        if city1 == 'Paris' and city2 == 'Copenhagen':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Paris', places[i] == 'Copenhagen')))
+        elif city1 == 'Copenhagen' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Paris', places[i] == 'Copenhagen')))
+        elif city1 == 'Warsaw' and city2 == 'Riga':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Warsaw', places[i] == 'Riga')))
+        elif city1 == 'Riga' and city2 == 'Warsaw':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Warsaw', places[i] == 'Riga')))
+        elif city1 == 'Warsaw' and city2 == 'Tallinn':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Warsaw', places[i] == 'Tallinn')))
+        elif city1 == 'Tallinn' and city2 == 'Warsaw':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Warsaw', places[i] == 'Tallinn')))
+        elif city1 == 'Copenhagen' and city2 == 'Helsinki':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Copenhagen', places[i] == 'Helsinki')))
+        elif city1 == 'Helsinki' and city2 == 'Copenhagen':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Copenhagen', places[i] == 'Helsinki')))
+        elif city1 == 'Lyon' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Lyon', places[i] == 'Paris')))
+        elif city1 == 'Paris' and city2 == 'Lyon':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Lyon', places[i] == 'Paris')))
+        elif city1 == 'Copenhagen' and city2 == 'Warsaw':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Copenhagen', places[i] == 'Warsaw')))
+        elif city1 == 'Warsaw' and city2 == 'Copenhagen':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Copenhagen', places[i] == 'Warsaw')))
+        elif city1 == 'Lyon' and city2 == 'Oslo':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Lyon', places[i] == 'Oslo')))
+        elif city1 == 'Oslo' and city2 == 'Lyon':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Lyon', places[i] == 'Oslo')))
+        elif city1 == 'Paris' and city2 == 'Oslo':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Paris', places[i] == 'Oslo')))
+        elif city1 == 'Oslo' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Paris', places[i] == 'Oslo')))
+        elif city1 == 'Paris' and city2 == 'Riga':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Paris', places[i] == 'Riga')))
+        elif city1 == 'Riga' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Paris', places[i] == 'Riga')))
+        elif city1 == 'Krakow' and city2 == 'Helsinki':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Krakow', places[i] == 'Helsinki')))
+        elif city1 == 'Helsinki' and city2 == 'Krakow':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Krakow', places[i] == 'Helsinki')))
+        elif city1 == 'Paris' and city2 == 'Tallinn':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Paris', places[i] == 'Tallinn')))
+        elif city1 == 'Tallinn' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Paris', places[i] == 'Tallinn')))
+        elif city1 == 'Oslo' and city2 == 'Riga':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Oslo', places[i] == 'Riga')))
+        elif city1 == 'Riga' and city2 == 'Oslo':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Oslo', places[i] == 'Riga')))
+        elif city1 == 'Krakow' and city2 == 'Warsaw':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Krakow', places[i] == 'Warsaw')))
+        elif city1 == 'Warsaw' and city2 == 'Krakow':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Krakow', places[i] == 'Warsaw')))
+        elif city1 == 'Paris' and city2 == 'Helsinki':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Paris', places[i] == 'Helsinki')))
+        elif city1 == 'Helsinki' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Paris', places[i] == 'Helsinki')))
+        elif city1 == 'Copenhagen' and city2 == 'Santorini':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Copenhagen', places[i] == 'Santorini')))
+        elif city1 == 'Santorini' and city2 == 'Copenhagen':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Copenhagen', places[i] == 'Santorini')))
+        elif city1 == 'Helsinki' and city2 == 'Tallinn':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Helsinki', places[i] == 'Tallinn')))
+        elif city1 == 'Tallinn' and city2 == 'Helsinki':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Helsinki', places[i] == 'Tallinn')))
+        elif city1 == 'Paris' and city2 == 'Copenhagen':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Paris', places[i] == 'Copenhagen')))
+        elif city1 == 'Copenhagen' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Paris', places[i] == 'Copenhagen')))
+        elif city1 == 'Paris' and city2 == 'Warsaw':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Paris', places[i] == 'Warsaw')))
+        elif city1 == 'Warsaw' and city2 == 'Paris':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Paris', places[i] == 'Warsaw')))
+        elif city1 == 'Santorini' and city2 == 'Oslo':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Santorini', places[i] == 'Oslo')))
+        elif city1 == 'Oslo' and city2 == 'Santorini':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Santorini', places[i] == 'Oslo')))
+        elif city1 == 'Oslo' and city2 == 'Warsaw':
+            solver.add(Implies(days[i] == days[i] + duration, And(places[i-1] == 'Oslo', places[i] == 'Warsaw')))
+        elif city1 == 'Warsaw' and city2 == 'Oslo':
+            solver.add(Implies(days[i] == days[i] - duration, And(places[i-1] == 'Oslo', places[i] == 'Warsaw')))
+
+# Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = []
-        for i in range(days):
-            if model.evaluate(city_days[city][i]):
-                trip_plan[city].append(i)
-    total_days = sum([len(trip_plan[city]) for city in cities])
-    if total_days == 25:
-        print(trip_plan)
-    else:
-        print("Total days in the trip plan is not 25")
+    itinerary = []
+    for i in range(1, 26):
+        day_range = model[day_ranges[i-1]]
+        place = model[places[i-1]]
+        if day_range == 0:
+            itinerary.append({"day_range": f"Day 1-1", "place": place})
+        else:
+            itinerary.append({"day_range": f"Day {day_range}-{day_range + day_range - 1}", "place": place})
+    print({"itinerary": itinerary})
 else:
     print("No solution found")

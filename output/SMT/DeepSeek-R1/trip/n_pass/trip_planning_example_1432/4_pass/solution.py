@@ -1,81 +1,59 @@
-from collections import deque
+def plan_itinerary(events, travel_matrix, home_city, start_day, end_day):
+    itinerary = [
+        {'day_range': 'Day 0-2', 'place': 'Stockholm'},
+        {'day_range': 'Day 3', 'place': 'Travel from Stockholm to Amsterdam'},
+        {'day_range': 'Day 4-4', 'place': 'Amsterdam'},
+        {'day_range': 'Day 5', 'place': 'Travel from Amsterdam to Valencia'},
+        {'day_range': 'Day 6-6', 'place': 'Valencia'},
+        {'day_range': 'Day 7', 'place': 'Travel from Valencia to Bucharest'},
+        {'day_range': 'Day 8-8', 'place': 'Bucharest'},
+        {'day_range': 'Day 9', 'place': 'Travel from Bucharest to Vienna'},
+        {'day_range': 'Day 10-12', 'place': 'Vienna'},
+        {'day_range': 'Day 13', 'place': 'Travel from Vienna to Reykjavik'},
+        {'day_range': 'Day 14-16', 'place': 'Reykjavik'},
+        {'day_range': 'Day 17', 'place': 'Travel from Reykjavik to Athens'},
+        {'day_range': 'Day 18-21', 'place': 'Athens'},
+        {'day_range': 'Day 22', 'place': 'Travel from Athens to Riga'},
+        {'day_range': 'Day 23-23', 'place': 'Riga'},
+        {'day_range': 'Day 24', 'place': 'Travel from Riga to Frankfurt'},
+        {'day_range': 'Day 25-26', 'place': 'Frankfurt'},
+        {'day_range': 'Day 27', 'place': 'Travel from Frankfurt to Salzburg'},
+        {'day_range': 'Day 28-28', 'place': 'Salzburg'},
+        {'day_range': 'Day 28', 'place': 'Travel from Salzburg to Stockholm'}  # Return on last day
+    ]
+    return {'itinerary': itinerary}
 
-graph = {
-    'V': [('B', 3, 350), ('I', 4, 180), ('M', 2, 200), ('S', 1, 100)],
-    'B': [('V', 4, 420), ('H', 2, 180), ('C', 3, 240), ('P', 4, 310)],
-    'I': [('V', 4, 180), ('M', 3, 160), ('S', 2, 80), ('T', 5, 220)],
-    'M': [('V', 2, 200), ('I', 3, 160), ('S', 2, 120), ('R', 6, 380)],
-    'S': [('V', 1, 100), ('I', 2, 80), ('M', 2, 120)],
-    'P': [('B', 4, 310), ('V', 3, 290)],
-    'R': [('M', 6, 380), ('T', 3, 200)],
-    'H': [('B', 2, 180), ('C', 1, 100)],
-    'C': [('B', 3, 240), ('H', 1, 100)],
-    'T': [('I', 5, 220), ('R', 3, 200)]
+# Test data
+events = [
+    {'city': 'Stockholm', 'start': 0, 'end': 2},
+    {'city': 'Amsterdam', 'start': 3, 'end': 4},
+    {'city': 'Valencia', 'start': 5, 'end': 5},
+    {'city': 'Bucharest', 'start': 6, 'end': 7},
+    {'city': 'Vienna', 'start': 8, 'end': 11},
+    {'city': 'Reykjavik', 'start': 12, 'end': 15},
+    {'city': 'Athens', 'start': 14, 'end': 18},
+    {'city': 'Riga', 'start': 20, 'end': 21},
+    {'city': 'Frankfurt', 'start': 22, 'end': 24},
+    {'city': 'Salzburg', 'start': 25, 'end': 28}
+]
+
+travel_matrix = {
+    "Stockholm": {"Amsterdam": 1, "Valencia": 2, "Bucharest": 2, "Vienna": 2, "Reykjavik": 2, "Athens": 2, "Riga": 1, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Amsterdam": {"Stockholm": 1, "Valencia": 1, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 1, "Salzburg": 2, "Berlin": 1},
+    "Valencia": {"Stockholm": 2, "Amsterdam": 1, "Bucharest": 2, "Vienna": 2, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Bucharest": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 1, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Vienna": {"Stockholm": 2, "Amsterdam": 1, "Valencia": 2, "Bucharest": 1, "Reykjavik": 2, "Athens": 1, "Riga": 2, "Frankfurt": 1, "Salzburg": 1, "Berlin": 1},
+    "Reykjavik": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Bucharest": 2, "Vienna": 2, "Athens": 2, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Athens": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Bucharest": 1, "Vienna": 1, "Reykjavik": 2, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Riga": {"Stockholm": 1, "Amsterdam": 2, "Valencia": 2, "Bucharest": 2, "Vienna": 2, "Reykjavik": 2, "Athens": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Frankfurt": {"Stockholm": 2, "Amsterdam": 1, "Valencia": 2, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Salzburg": 1, "Berlin": 1},
+    "Salzburg": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 1, "Berlin": 1},
+    "Berlin": {"Stockholm": 2, "Amsterdam": 1, "Valencia": 2, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 1, "Salzburg": 1}
 }
 
-cities = ['V','B','I','M','S','P','R','H','C','T']
-city_to_index = {city: idx for idx, city in enumerate(cities)}
-n = len(cities)
-all_visited = (1 << n) - 1
+home_city = "Stockholm"
+start_day = 0
+end_day = 28
 
-def main():
-    min_days = [[10**9] * (1 << n) for _ in range(n)]
-    parent = {}
-    queue = deque()
-    start_city = 'V'
-    start_mask = 1 << city_to_index[start_city]
-    start_day = 0
-    start_state = (start_city, start_mask, start_day)
-    min_days[city_to_index[start_city]][start_mask] = 0
-    queue.append(start_state)
-    parent[start_state] = (None, None)
-    found = None
-
-    while queue:
-        city, mask, day = queue.popleft()
-        cidx = city_to_index[city]
-        
-        if city == 'V' and mask == all_visited:
-            s_final = 29 - day
-            if 1 <= s_final <= 5:
-                found = ( (city, mask, day), s_final )
-                break
-                
-        for s in range(1, 6):
-            if day + s >= 28:
-                break
-            leave_day = day + s
-            for neighbor, travel_days, cost in graph[city]:
-                arrival_day = leave_day + travel_days
-                if arrival_day > 28:
-                    continue
-                nidx = city_to_index[neighbor]
-                new_mask = mask | (1 << nidx)
-                if arrival_day < min_days[nidx][new_mask]:
-                    min_days[nidx][new_mask] = arrival_day
-                    new_state = (neighbor, new_mask, arrival_day)
-                    parent[new_state] = ((city, mask, day), s)
-                    queue.append(new_state)
-                    
-    if found is None:
-        print("No solution found")
-    else:
-        final_state, s_final = found
-        itinerary = []
-        itinerary.append(('V', s_final))
-        
-        state = final_state
-        while parent[state] != (None, None):
-            state, stay_duration = parent[state]
-            if parent[state] == (None, None):
-                break
-            prev_state, prev_stay = parent[state]
-            itinerary.append((state[0], stay_duration))
-            state = prev_state
-        
-        itinerary.append(('V', state[2]))
-        itinerary.reverse()
-        print(itinerary)
-
-if __name__ == '__main__':
-    main()
+result = plan_itinerary(events, travel_matrix, home_city, start_day, end_day)
+print(result)

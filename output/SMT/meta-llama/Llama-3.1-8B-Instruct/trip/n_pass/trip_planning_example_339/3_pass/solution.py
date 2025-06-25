@@ -1,44 +1,77 @@
 from z3 import *
+from datetime import datetime, timedelta
 
 # Define the cities
 cities = ['Warsaw', 'Budapest', 'Riga', 'Paris']
 
-# Define the number of days in each city
-days_in_city = {'Warsaw': 2, 'Budapest': 7, 'Riga': 7, 'Paris': 4}
+# Define the flight days
+flight_days = {
+    'Warsaw': {'Budapest': 1, 'Riga': 1, 'Paris': 1},
+    'Budapest': {'Paris': 1},
+    'Riga': {'Paris': 1}
+}
 
-# Define the direct flights
-flights = [('Warsaw', 'Budapest'), ('Warsaw', 'Riga'), ('Budapest', 'Paris'), 
-           ('Warsaw', 'Paris'), ('Paris', 'Riga')]
+# Define the minimum and maximum days in each city
+min_days = {'Warsaw': 2, 'Budapest': 7, 'Riga': 7, 'Paris': 4}
+max_days = {'Warsaw': 2, 'Budapest': 7, 'Riga': 7, 'Paris': 4}
+
+# Define the solver
+s = Solver()
+
+# Define the variables
+days_in_city = {city: [Int(f'days_in_{city}_{i}') for i in range(1, 18)] for city in cities}
 
 # Define the constraints
-n = 17  # total number of days
-x = {city: [Bool(f'{city}_day_{i}') for i in range(1, n+1)] for city in cities}
-
-# Each day, exactly one city is visited
-for day in range(1, n+1):
-    c = [x[city][day-1] for city in cities]
-    solution = solve(Or([Not(a) for a in c]))
-    for city in cities:
-        x[city][day-1] = solution.eval(x[city][day-1])
-
-# Wedding in Riga between day 11 and day 17
-for i in range(11, 18):
-    x['Riga'][i-1] = True
-
-# Each city is visited for a certain number of days
 for city in cities:
-    c = And([x[city][i-1] for i in range(1, days_in_city[city]+1)])
-    solve(c)
+    for i in range(1, 18):
+        s.add(days_in_city[city][i] >= 0)
+        s.add(days_in_city[city][i] <= 1)
+        if i == 1:
+            s.add(days_in_city[city][i] == 0)
 
-# Direct flights
-for city1, city2 in flights:
-    for day in range(1, n+1):
-        if day > days_in_city[city1] and day <= days_in_city[city2]:
-            c = x[city1][day-1] == x[city2][day-1]
-            solve(c)
+for city in cities:
+    for i in range(1, min_days[city] + 1):
+        s.add(days_in_city[city][i] == 0)
 
-# Print the solution
-for day in range(1, n+1):
+for city in cities:
+    for i in range(1, 18):
+        s.add(days_in_city[city][i] + sum([days_in_city[city][j] for j in range(i+1, 18)]) <= 1)
+
+# Wedding in Riga from Day 11 to Day 17
+for i in range(11, 18):
+    s.add(days_in_city['Riga'][i] == 1)
+
+# Wedding in Riga from Day 11 to Day 17
+for i in range(1, 11):
+    s.add(days_in_city['Riga'][i] == 0)
+
+s.add(days_in_city['Warsaw'][2] == 1)
+s.add(days_in_city['Warsaw'][14] == 1)
+s.add(days_in_city['Warsaw'][15] == 1)
+s.add(days_in_city['Budapest'][8] == 1)
+s.add(days_in_city['Paris'][5] == 1)
+s.add(days_in_city['Riga'][10] == 1)
+
+for city in cities:
+    for i in range(1, 18):
+        if city in flight_days and i in flight_days[city]:
+            s.add(days_in_city[city][i] == 1)
+            s.add(days_in_city[flight_days[city][i]][i] == 1)
+
+# Solve the problem
+if s.check() == sat:
+    m = s.model()
+    # Create the itinerary
+    itinerary = []
     for city in cities:
-        if x[city][day-1]:
-            print(f'Day {day}: {city}')
+        for i in range(1, 18):
+            if m[days_in_city[city][i]].as_long() > 0:
+                if i == 1:
+                    itinerary.append({"day_range": f"Day {i}", "place": city})
+                else:
+                    itinerary.append({"day_range": f"Day {i-1}-{i}", "place": city})
+                    itinerary.append({"day_range": f"Day {i}", "place": city})
+    # Print the itinerary
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

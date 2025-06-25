@@ -1,65 +1,42 @@
 from z3 import *
+import json
 
 def main():
-    # Define the variables
-    T1 = Int('T1')
-    T2 = Int('T2')
-    s1 = Int('s1')  # Segment 1 city index
-    s2 = Int('s2')  # Segment 2 city index
-    s3 = Int('s3')  # Segment 3 city index
-
-    # City names and their required days
-    city_names = ["Vilnius", "Munich", "Mykonos"]
-    days_required = [4, 3, 7]
-    available_pairs = [(0, 1), (1, 0), (1, 2), (2, 1)]  # Allowed flight connections
-
+    f1 = Int('f1')
+    f2 = Int('f2')
+    
     s = Solver()
-
-    # Constraints for city indices (0, 1, 2) and distinct
-    s.add(s1 >= 0, s1 <= 2)
-    s.add(s2 >= 0, s2 <= 2)
-    s.add(s3 >= 0, s3 <= 2)
-    s.add(Distinct(s1, s2, s3))
-
-    # Constraints for travel days
-    s.add(T1 >= 1, T1 <= 12)
-    s.add(T2 >= 2, T2 <= 12)
-    s.add(T1 < T2)
-
-    # Segment day constraints
-    s.add(T1 == days_required[s1])
-    s.add(T2 - T1 + 1 == days_required[s2])
-    s.add(13 - T2 == days_required[s3])
-
-    # Flight connection constraints
-    s.add(Or([And(s1 == i, s2 == j) for (i, j) in available_pairs]))
-    s.add(Or([And(s2 == i, s3 == j) for (i, j) in available_pairs]))
-
-    # Check for a solution
+    s.add(f1 >= 1, f1 <= 12)
+    s.add(f2 >= 1, f2 <= 12)
+    s.add(f1 < f2)
+    s.add(f1 == 4)
+    s.add(f2 - f1 + 1 == 3)
+    s.add(12 - f2 + 1 == 7)
+    
+    itinerary = []
     if s.check() == sat:
         m = s.model()
-        t1_val = m.eval(T1).as_long()
-        t2_val = m.eval(T2).as_long()
-        s1_val = m.eval(s1).as_long()
-        s2_val = m.eval(s2).as_long()
-        s3_val = m.eval(s3).as_long()
-
-        city1 = city_names[s1_val]
-        city2 = city_names[s2_val]
-        city3 = city_names[s3_val]
-
-        itinerary = [
-            {"day_range": f"Day 1-{t1_val}", "place": city1},
-            {"day_range": f"Day {t1_val}", "place": city1},
-            {"day_range": f"Day {t1_val}", "place": city2},
-            {"day_range": f"Day {t1_val}-{t2_val}", "place": city2},
-            {"day_range": f"Day {t2_val}", "place": city2},
-            {"day_range": f"Day {t2_val}", "place": city3},
-            {"day_range": f"Day {t2_val}-12", "place": city3}
-        ]
-
+        f1_val = m[f1].as_long()
+        f2_val = m[f2].as_long()
+        
+        if f1_val > 1:
+            itinerary.append({"day_range": f"Day 1-{f1_val-1}", "place": "Vilnius"})
+        itinerary.append({"day_range": f"Day {f1_val}", "place": "Vilnius"})
+        
+        itinerary.append({"day_range": f"Day {f1_val}", "place": "Munich"})
+        
+        itinerary.append({"day_range": f"Day {f1_val}-{f2_val}", "place": "Munich"})
+        itinerary.append({"day_range": f"Day {f2_val}", "place": "Munich"})
+        
+        itinerary.append({"day_range": f"Day {f2_val}", "place": "Mykonos"})
+        
+        if f2_val < 12:
+            itinerary.append({"day_range": f"Day {f2_val}-12", "place": "Mykonos"})
+        else:
+            itinerary.append({"day_range": f"Day {f2_val}", "place": "Mykonos"})
+        
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result))
     else:
         print("No valid itinerary found.")
 

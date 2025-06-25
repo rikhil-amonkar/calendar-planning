@@ -1,49 +1,27 @@
-from z3 import *
+def find_schedule(min_meeting_time):
+    # Generate all possible combinations of time slots
+    valid_combinations = []
+    for nob_hill_values in [True, False]*11:
+        for presidio_values in [False, True]*11:
+            meeting_time = 0
+            for t in range(11):
+                if nob_hill_values[t] and presidio_values[t]:
+                    meeting_time += 1
+            if meeting_time >= min_meeting_time:
+                valid_combinations.append((nob_hill_values, presidio_values))
 
-# Define the variables
-nob_hill_start = Int('nob_hill_start')
-nob_hill_end = Int('nob_hill_end')
-friend_start = Int('friend_start')
-friend_end = Int('friend_end')
-friend_location = Int('friend_location')
+    # Return the first valid combination
+    return valid_combinations[0]
 
 # Define the constraints
-s = Optimize()
+min_meeting_time = 2  # Convert 120 minutes to hours
 
-# We arrive at Nob Hill at 9:00AM
-s.add(nob_hill_start == 9 * 60)
+# Find the schedule
+schedule = find_schedule(min_meeting_time)
 
-# Robert is at Presidio from 11:15AM to 5:45PM
-s.add(Or(friend_location == 0, And(friend_start >= 11 * 60 + 15, friend_end <= 17 * 60 + 45)))
-
-# Travel time from Nob Hill to Presidio
-s.add(Implies(friend_location == 1, friend_start >= nob_hill_end + 17))
-
-# Travel time from Presidio to Nob Hill
-s.add(Implies(friend_location == 0, nob_hill_end >= friend_end + 18))
-
-# Ensure that we don't spend more than 24 hours at each location
-s.add(nob_hill_end - nob_hill_start <= 24 * 60)
-
-# Meeting time with Robert is at least 120 minutes
-s.add(Implies(friend_location == 1, friend_end - friend_start >= 120))
-s.add(Implies(friend_location == 0, friend_start - nob_hill_start >= 120))
-
-# Objective: minimize the total time spent at all locations
-s.minimize((nob_hill_end - nob_hill_start) + (friend_end - friend_start))
-
-# Solve the optimization problem
-if s.check() == sat:
-    model = s.model()
-    nob_hill_start_val = model[nob_hill_start].as_long()
-    nob_hill_end_val = model[nob_hill_end].as_long()
-    friend_start_val = model[friend_start].as_long()
-    friend_end_val = model[friend_end].as_long()
-    friend_location_val = model[friend_location].as_long()
-    
-    if friend_location_val == 0:
-        print("Meet Robert at Nob Hill from", nob_hill_start_val, "to", nob_hill_end_val)
-    else:
-        print("Meet Robert at Presidio from", friend_start_val, "to", friend_end_val)
-else:
-    print("No solution found")
+# Print the schedule
+print("Schedule:")
+for t in range(len(schedule[0])):
+    nob_hill_value = schedule[0][t]
+    presidio_value = schedule[1][t]
+    print(f"{t}:00 AM - Nob Hill: {nob_hill_value}, Presidio: {presidio_value}")

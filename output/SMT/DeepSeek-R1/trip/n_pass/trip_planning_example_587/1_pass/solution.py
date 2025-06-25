@@ -1,113 +1,87 @@
-import z3
+from z3 import *
 
 def main():
-    # Initialize Z3 solver
-    s = z3.Solver()
+    city_names = ["Manchester", "Istanbul", "Venice", "Krakow", "Lyon"]
+    days_arr = [3, 7, 7, 6, 2]
+    allowed_edges = [(0,1), (0,2), (0,3), (1,2), (1,3), (1,4), (2,4)]
     
-    # Cities and their required days
-    cities = ["Manchester", "Venice", "Istanbul", "Krakow", "Lyon"]
-    days_list = [3, 7, 7, 6, 2]
-    city_to_days = {i: days_list[i] for i in range(5)}
+    c0, c1, c2, c3, c4 = Ints('c0 c1 c2 c3 c4')
+    c = [c0, c1, c2, c3, c4]
     
-    # Graph of direct flights (undirected)
-    graph = [
-        [1, 2, 3],   # Manchester (0) connected to Venice(1), Istanbul(2), Krakow(3)
-        [0, 2, 4],   # Venice (1) connected to Manchester(0), Istanbul(2), Lyon(4)
-        [0, 1, 3, 4], # Istanbul (2) connected to Manchester(0), Venice(1), Krakow(3), Lyon(4)
-        [0, 2],      # Krakow (3) connected to Manchester(0), Istanbul(2)
-        [1, 2]       # Lyon (4) connected to Venice(1), Istanbul(2)
-    ]
+    s = Solver()
     
-    # City sequence variables
-    city_vars = [z3.Int(f'city_{i}') for i in range(5)]
-    for c in city_vars:
-        s.add(z3.And(c >= 0, c <= 4))
-    s.add(z3.Distinct(city_vars))
+    for ci in c:
+        s.add(ci >= 0, ci <= 4)
+    s.add(Distinct(c))
     
-    # Transition days variables
-    d0 = z3.Int('d0')
-    d1 = z3.Int('d1')
-    d2 = z3.Int('d2')
-    d3 = z3.Int('d3')
+    def day_val(ci):
+        return If(ci == 0, days_arr[0],
+               If(ci == 1, days_arr[1],
+               If(ci == 2, days_arr[2],
+               If(ci == 3, days_arr[3], days_arr[4]))))
     
-    # Constraints for transition days based on city durations
-    s.add(d0 == z3.If(city_vars[0] == 0, 3,
-                      z3.If(city_vars[0] == 1, 7,
-                            z3.If(city_vars[0] == 2, 7,
-                                  z3.If(city_vars[0] == 3, 6, 2)))))
+    s0 = 1
+    s1 = s0 + day_val(c0) - 1
+    s2 = s1 + day_val(c1) - 1
+    s3 = s2 + day_val(c2) - 1
+    s4 = s3 + day_val(c3) - 1
+    s_start = [s0, s1, s2, s3, s4]
     
-    s.add(d1 == d0 + z3.If(city_vars[1] == 0, 3 - 1,
-                           z3.If(city_vars[1] == 1, 7 - 1,
-                                 z3.If(city_vars[1] == 2, 7 - 1,
-                                       z3.If(city_vars[1] == 3, 6 - 1, 2 - 1)))))
+    man_index = 0
+    venice_index = 2
     
-    s.add(d2 == d1 + z3.If(city_vars[2] == 0, 3 - 1,
-                           z3.If(city_vars[2] == 1, 7 - 1,
-                                 z3.If(city_vars[2] == 2, 7 - 1,
-                                       z3.If(city_vars[2] == 3, 6 - 1, 2 - 1)))))
-    
-    s.add(d3 == d2 + z3.If(city_vars[3] == 0, 3 - 1,
-                           z3.If(city_vars[3] == 1, 7 - 1,
-                                 z3.If(city_vars[3] == 2, 7 - 1,
-                                       z3.If(city_vars[3] == 3, 6 - 1, 2 - 1)))))
-    
-    s.add(22 - d3 == z3.If(city_vars[4] == 0, 3,
-                           z3.If(city_vars[4] == 1, 7,
-                                 z3.If(city_vars[4] == 2, 7,
-                                       z3.If(city_vars[4] == 3, 6, 2)))))
-    
-    # Flight connection constraints
-    for idx in range(4):
-        current_city = city_vars[idx]
-        next_city = city_vars[idx + 1]
-        s.add(z3.Or([z3.And(current_city == i, next_city == j) for i in range(5) for j in graph[i]]))
-    
-    # Event constraints
-    starts = [1, d0, d1, d2, d3]
-    ends = [d0, d1, d2, d3, 21]
-    
-    # Manchester (index 0) must have start <= 3
     for i in range(5):
-        s.add(z3.Implies(city_vars[i] == 0, starts[i] <= 3))
-        # Venice (index 1) must have start <= 9 and end >= 3
-        s.add(z3.Implies(city_vars[i] == 1, z3.And(starts[i] <= 9, ends[i] >= 3)))
+        s.add(If(c[i] == man_index, s_start[i] <= 3, True))
+        s.add(If(c[i] == venice_index, s_start[i] <= 9, True))
     
-    # Bounds for transition days
-    s.add(d0 >= 1, d0 <= 21)
-    s.add(d1 >= d0, d1 <= 21)
-    s.add(d2 >= d1, d2 <= 21)
-    s.add(d3 >= d2, d3 <= 21)
+    for i in range(4):
+        cond = Or([Or(And(c[i] == a, c[i+1] == b), And(c[i] == b, c[i+1] == a)) for (a, b) in allowed_edges])
+        s.add(cond)
     
-    # Check for solution
-    if s.check() == z3.sat:
-        model = s.model()
-        d0_val = model.eval(d0).as_long()
-        d1_val = model.eval(d1).as_long()
-        d2_val = model.eval(d2).as_long()
-        d3_val = model.eval(d3).as_long()
-        starts_vals = [1, d0_val, d1_val, d2_val, d3_val]
-        ends_vals = [d0_val, d1_val, d2_val, d3_val, 21]
+    if s.check() == sat:
+        m = s.model()
+        c_val = [m[ci].as_long() for ci in c]
+        d_val = [days_arr[idx] for idx in c_val]
         
-        city_vals = [model.eval(city_vars[i]).as_long() for i in range(5)]
-        city_names = [cities[idx] for idx in city_vals]
+        s0_val = 1
+        s1_val = s0_val + d_val[0] - 1
+        s2_val = s1_val + d_val[1] - 1
+        s3_val = s2_val + d_val[2] - 1
+        s4_val = s3_val + d_val[3] - 1
+        s_vals = [s0_val, s1_val, s2_val, s3_val, s4_val]
         
         itinerary = []
-        for i in range(5):
-            s_val = starts_vals[i]
-            e_val = ends_vals[i]
-            if s_val == e_val:
-                day_range = f"Day {s_val}"
-            else:
-                day_range = f"Day {s_val}-{e_val}"
-            itinerary.append({"day_range": day_range, "place": city_names[i]})
-            
-            if i < 4:
-                flight_day = ends_vals[i]
-                itinerary.append({"day_range": f"Day {flight_day}", "place": city_names[i]})
-                itinerary.append({"day_range": f"Day {flight_day}", "place": city_names[i+1]})
+        
+        # Segment0
+        city0 = city_names[c_val[0]]
+        itinerary.append({"day_range": f"Day {s0_val}-{s1_val}", "place": city0})
+        itinerary.append({"day_range": f"Day {s1_val}", "place": city0})
+        
+        # Segment1
+        city1 = city_names[c_val[1]]
+        itinerary.append({"day_range": f"Day {s1_val}", "place": city1})
+        itinerary.append({"day_range": f"Day {s1_val}-{s2_val}", "place": city1})
+        itinerary.append({"day_range": f"Day {s2_val}", "place": city1})
+        
+        # Segment2
+        city2 = city_names[c_val[2]]
+        itinerary.append({"day_range": f"Day {s2_val}", "place": city2})
+        itinerary.append({"day_range": f"Day {s2_val}-{s3_val}", "place": city2})
+        itinerary.append({"day_range": f"Day {s3_val}", "place": city2})
+        
+        # Segment3
+        city3 = city_names[c_val[3]]
+        itinerary.append({"day_range": f"Day {s3_val}", "place": city3})
+        itinerary.append({"day_range": f"Day {s3_val}-{s4_val}", "place": city3})
+        itinerary.append({"day_range": f"Day {s4_val}", "place": city3})
+        
+        # Segment4
+        city4 = city_names[c_val[4]]
+        itinerary.append({"day_range": f"Day {s4_val}", "place": city4})
+        itinerary.append({"day_range": f"Day {s4_val}-21", "place": city4})
         
         result = {"itinerary": itinerary}
-        print(f"result = {result}")
+        print(result)
     else:
         print("No solution found")
 

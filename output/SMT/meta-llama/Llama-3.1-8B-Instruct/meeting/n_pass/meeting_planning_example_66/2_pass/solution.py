@@ -1,55 +1,39 @@
-from z3 import *
+from itertools import product
+
+def find_schedule(nob_hill_time_slots, presidio_time_slots, min_meeting_time):
+    # Generate all possible combinations of time slots
+    combinations = list(product(*[nob_hill_time_slots, presidio_time_slots]))
+    valid_combinations = []
+
+    # Check each combination
+    for combination in combinations:
+        nob_hill_values, presidio_values = combination
+        meeting_time = 0
+        for t in range(len(nob_hill_time_slots)):
+            if nob_hill_values[t] and presidio_values[t]:
+                meeting_time += 1
+        if meeting_time >= min_meeting_time:
+            valid_combinations.append(combination)
+
+    # Return the first valid combination
+    return valid_combinations[0]
+
+# Define the time slots
+time_slots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
 # Define the variables
-nob_hill_start = Int('nob_hill_start')
-presidio_start = Int('presidio_start')
-nob_hill_end = Int('nob_hill_end')
-presidio_end = Int('presidio_end')
-friend_start = Int('friend_start')
-friend_end = Int('friend_end')
+nob_hill = [True, False, False, False, False, False, False, False, False, False, False, False]
+presidio = [False, False, True, True, True, True, True, True, True, True, True, True]
 
 # Define the constraints
-s = Optimize()
+min_meeting_time = 2  # Convert 120 minutes to hours
 
-# We arrive at Nob Hill at 9:00AM
-s.add(nob_hill_start == 9 * 60)
+# Find the schedule
+schedule = find_schedule(nob_hill, presidio, min_meeting_time)
 
-# We want to meet Robert for at least 120 minutes
-s.add(presidio_end - presidio_start >= 120)
-
-# Travel time from Nob Hill to Presidio
-s.add(presidio_start >= nob_hill_end + 17)
-
-# Travel time from Presidio to Nob Hill
-s.add(nob_hill_end >= presidio_end + 18)
-
-# Robert is at Presidio from 11:15AM to 5:45PM
-s.add(presidio_start >= 11 * 60 + 15)
-s.add(presidio_end <= 17 * 60 + 45)
-
-# Ensure that we don't spend more than 24 hours at each location
-s.add(nob_hill_end - nob_hill_start <= 24 * 60)
-s.add(presidio_end - presidio_start <= 24 * 60)
-
-# Friend is at Presidio from 11:15AM to 5:45PM
-s.add(friend_start >= 11 * 60 + 15)
-s.add(friend_end <= 17 * 60 + 45)
-
-# We can't visit the friend at the same time as Robert
-s.add(Or(presidio_start + 120 > friend_start, presidio_end < friend_start))
-s.add(Or(friend_start + 120 > presidio_start, friend_end < presidio_start))
-
-# Objective: minimize the total time spent at all locations
-s.minimize((nob_hill_end - nob_hill_start) + (presidio_end - presidio_start) + (friend_end - friend_start))
-
-# Solve the optimization problem
-if s.check() == sat:
-    model = s.model()
-    print("Nob Hill start time:", model[nob_hill_start].as_long())
-    print("Presidio start time:", model[presidio_start].as_long())
-    print("Nob Hill end time:", model[nob_hill_end].as_long())
-    print("Presidio end time:", model[presidio_end].as_long())
-    print("Friend start time:", model[friend_start].as_long())
-    print("Friend end time:", model[friend_end].as_long())
-else:
-    print("No solution found")
+# Print the schedule
+print("Schedule:")
+for t in range(len(nob_hill)):
+    nob_hill_value = schedule[t]
+    presidio_value = schedule[t + len(nob_hill)]
+    print(f"{t}:00 AM - Nob Hill: {nob_hill_value}, Presidio: {presidio_value}")

@@ -1,94 +1,93 @@
 from z3 import *
+from datetime import timedelta
 
-# Define the variables
-days_in_venice = Int('days_in_venice')
-days_in_mykonos = Int('days_in_mykonos')
-days_in_vienna = Int('days_in_vienna')
-day_in_venice_workshop = Int('day_in_venice_workshop')
-
-# Define the constraints
-# Total days in all cities must be 10
-constraints = [days_in_venice + days_in_mykonos + days_in_vienna == 10]
-
-# Days in Venice must be between 6 and 10
-constraints.append(days_in_venice >= 6)
-constraints.append(days_in_venice <= 10)
-
-# Days in Mykonos must be 2
-constraints.append(days_in_mykonos == 2)
-
-# Days in Vienna must be between 4 and 10
-constraints.append(days_in_vienna >= 4)
-constraints.append(days_in_vienna <= 10)
-
-# Day in Venice for workshop must be between 5 and 10
-constraints.append(day_in_venice_workshop >= 5)
-constraints.append(day_in_venice_workshop <= 10)
-
-# Day in Venice for workshop must be less than or equal to days in Venice
-constraints.append(day_in_venice_workshop <= days_in_venice)
-
-# If days in Venice is less than 6, then day in Venice for workshop must be 5
-constraints.append(If(days_in_venice < 6, day_in_venice_workshop == 5, day_in_venice_workshop >= 6))
+# Define the days and cities
+days = range(1, 11)  # 10 days
+cities = ['Mykonos', 'Vienna', 'Venice']
 
 # Create a solver
 solver = Solver()
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Define the variables
+visit_start = [Int('visit_start_' + city) for city in cities]
+visit_end = [Int('visit_end_' + city) for city in cities]
+flight_days = [Int('flight_day_' + str(i)) for i in range(len(days) - 1)]
 
-# Check if the solver has a solution
+# Add constraints
+for city in cities:
+    solver.add(visit_start[city] >= 1)
+    solver.add(visit_end[city] >= visit_start[city])
+    solver.add(visit_end[city] <= 10)
+
+# Venice must be visited for 6 days
+solver.add(visit_end['Venice'] - visit_start['Venice'] == 6)
+# Venice workshop must be between day 5 and day 10
+solver.add(visit_start['Venice'] >= 5)
+solver.add(visit_end['Venice'] <= 10)
+
+# Mykonos must be visited for 2 days
+solver.add(visit_end['Mykonos'] - visit_start['Mykonos'] == 2)
+
+# Vienna must be visited for 4 days
+solver.add(visit_end['Vienna'] - visit_start['Vienna'] == 4)
+
+# Direct flights between cities
+solver.add(flight_days[0] == visit_end['Mykonos'])
+solver.add(flight_days[0] == visit_start['Vienna'])
+solver.add(flight_days[1] == visit_end['Vienna'])
+solver.add(flight_days[1] == visit_start['Venice'])
+solver.add(flight_days[2] == visit_end['Venice'])
+solver.add(flight_days[2] == visit_start['Mykonos'])
+solver.add(flight_days[3] == visit_end['Mykonos'])
+solver.add(flight_days[3] == visit_start['Vienna'])
+
+# Ensure that each day is either a visit day or a flight day
+for day in days:
+    solver.add(Or([visit_start[city] <= day < visit_end[city] for city in cities], [day == flight_days[i] for i in range(len(days) - 1) if day == flight_days[i]]))
+
+# Check if the solver found a solution
 if solver.check() == sat:
-    # Get the model from the solver
     model = solver.model()
-    
-    # Print the solution
-    print("Days in Venice:", model[days_in_venice].as_long())
-    print("Days in Mykonos:", model[days_in_mykonos].as_long())
-    print("Days in Vienna:", model[days_in_vienna].as_long())
-    print("Day in Venice for workshop:", model[day_in_venice_workshop].as_long())
-    
-    # Print a possible trip plan
-    if model[days_in_venice].as_long() == 6:
-        print("Day 1-6: Venice")
-        print("Day 7-8: Mykonos")
-        print("Day 9-10: Vienna")
-    elif model[days_in_venice].as_long() == 7:
-        print("Day 1-7: Venice")
-        print("Day 8-9: Mykonos")
-        print("Day 10: Vienna")
-    elif model[days_in_venice].as_long() == 8:
-        print("Day 1-8: Venice")
-        print("Day 9: Mykonos")
-        print("Day 10: Vienna")
-    elif model[days_in_venice].as_long() == 9:
-        print("Day 1-9: Venice")
-        print("Day 10: Mykonos and Vienna")
-    elif model[days_in_venice].as_long() == 10:
-        print("Day 1-10: Venice")
-    elif model[days_in_venice].as_long() == 5:
-        print("Day 1-5: Venice")
-        print("Day 6-7: Mykonos")
-        print("Day 8-10: Vienna")
-    elif model[days_in_venice].as_long() == 6:
-        print("Day 1-5: Venice")
-        print("Day 6-7: Mykonos")
-        print("Day 8-10: Vienna")
-    elif model[days_in_venice].as_long() == 7:
-        print("Day 1-5: Venice")
-        print("Day 6: Mykonos")
-        print("Day 7-10: Vienna")
-    elif model[days_in_venice].as_long() == 8:
-        print("Day 1-5: Venice")
-        print("Day 6: Mykonos")
-        print("Day 7-10: Vienna")
-    elif model[days_in_venice].as_long() == 9:
-        print("Day 1-5: Venice")
-        print("Day 6: Mykonos")
-        print("Day 7-10: Vienna")
-    elif model[days_in_venice].as_long() == 10:
-        print("Day 1-5: Venice")
-        print("Day 6: Mykonos and Vienna")
+    itinerary = []
+    for day in days:
+        in_mykonos = model.evaluate(visit_start['Mykonos'] <= day < visit_end['Mykonos']).as_bool()
+        in_vienna = model.evaluate(visit_start['Vienna'] <= day < visit_end['Vienna']).as_bool()
+        in_venice = model.evaluate(visit_start['Venice'] <= day < visit_end['Venice']).as_bool()
+        if in_mykonos and in_vienna:
+            itinerary.append({"day_range": str(day) + "-10", "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Vienna"})
+            itinerary.append({"day_range": str(day) + "-10", "place": "Vienna"})
+        elif in_mykonos and in_venice:
+            itinerary.append({"day_range": str(day) + "-10", "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Venice"})
+            itinerary.append({"day_range": str(day) + "-6", "place": "Venice"})
+        elif in_vienna and in_venice:
+            itinerary.append({"day_range": str(day) + "-10", "place": "Vienna"})
+            itinerary.append({"day_range": str(day), "place": "Vienna"})
+            itinerary.append({"day_range": str(day), "place": "Venice"})
+            itinerary.append({"day_range": str(day) + "-6", "place": "Venice"})
+        elif day == flight_days[0]:
+            itinerary.append({"day_range": str(day) + "-10", "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Vienna"})
+            itinerary.append({"day_range": str(day) + "-4", "place": "Vienna"})
+        elif day == flight_days[1]:
+            itinerary.append({"day_range": str(day) + "-4", "place": "Vienna"})
+            itinerary.append({"day_range": str(day), "place": "Vienna"})
+            itinerary.append({"day_range": str(day), "place": "Venice"})
+            itinerary.append({"day_range": str(day) + "-6", "place": "Venice"})
+        elif day == flight_days[2]:
+            itinerary.append({"day_range": str(day) + "-6", "place": "Venice"})
+            itinerary.append({"day_range": str(day), "place": "Venice"})
+            itinerary.append({"day_range": str(day), "place": "Mykonos"})
+            itinerary.append({"day_range": str(day) + "-2", "place": "Mykonos"})
+        elif day == flight_days[3]:
+            itinerary.append({"day_range": str(day) + "-2", "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Mykonos"})
+            itinerary.append({"day_range": str(day), "place": "Vienna"})
+            itinerary.append({"day_range": str(day) + "-10", "place": "Vienna"})
+    print({"itinerary": itinerary})
 else:
     print("No solution found")

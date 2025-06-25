@@ -1,45 +1,56 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the day of the meeting
-    day = "Monday"
+def find_meeting_time(day, participants, schedules, meeting_duration):
+    # Create a Z3 solver
+    solver = Solver()
 
-    # Define the meeting duration
-    meeting_duration = 30  # minutes
+    # Define variables for each participant's availability
+    availability = [Bool(f'available_{i}') for i in range(len(participants))]
 
-    # Define the start and end time of the work hours
-    start_time = 9 * 60  # 9:00 in minutes
-    end_time = 17 * 60  # 17:00 in minutes
+    # Define variables for the start time
+    start_time = Int('start_time')
 
-    # Define the existing schedules for each participant
-    gregory_schedule = [9 * 60, 10 * 60, 10 * 30, 11 * 30, 12 * 30, 13 * 30, 14 * 30]
-    natalie_schedule = []
-    christine_schedule = [9 * 60, 11 * 30, 13 * 30, 17 * 60]
-    vincent_schedule = [9 * 30, 10 * 30, 12 * 30, 14 * 30, 17 * 60]
+    # Define a variable for the end time
+    end_time = start_time + meeting_duration
 
-    # Create Z3 variables for the start time of the meeting
-    start_time_var = Int('start_time')
+    # Add constraints for each participant's availability
+    for i, participant in enumerate(participants):
+        for start, end in schedules[participant]:
+            solver.add(Not(And(And(start_time >= start, start_time < end),
+                              And(end_time > start, end_time <= end))))
 
-    # Define the constraints for the start time of the meeting
-    constraints = [
-        And(start_time_var >= 14 * 60, start_time_var + meeting_duration <= 17 * 60),
-        start_time_var + meeting_duration <= end_time
-    ]
+    # Add constraint that all participants are available at the meeting time
+    for i, participant in enumerate(participants):
+        if schedules[participant]:
+            available = True
+            for start, end in schedules[participant]:
+                if start < end_time and end_time < end:
+                    available = False
+                    break
+            solver.add(availability[i] == available)
+        else:
+            solver.add(availability[i])
 
-    # Define the constraints for each participant's schedule
-    for schedule in [gregory_schedule, christine_schedule, vincent_schedule]:
-        for time in schedule:
-            constraints.append(Or(start_time_var + meeting_duration > time, start_time_var + meeting_duration < time))
+    # Add constraint that the meeting duration is exactly 0.5 hours
+    solver.add(end_time - start_time == meeting_duration)
+
+    # Add constraint that the meeting time is within the work hours
+    solver.add(And(start_time >= 9, end_time <= 17))
 
     # Solve the constraints
-    solver = Solver()
-    solver.add(constraints)
     if solver.check() == sat:
         model = solver.model()
-        start_time_value = model[start_time_var].as_long()
-        end_time_value = start_time_value + meeting_duration
-        print(f"SOLUTION:\nDay: {day}\nStart Time: {start_time_value // 60:02d}:{start_time_value % 60:02d}\nEnd Time: {end_time_value // 60:02d}:{end_time_value % 60:02d}")
+        return f'SOLUTION:\nDay: {day}\nStart Time: {model[start_time].as_long():02d}:{(model[start_time].as_long() % 60):02d}\nEnd Time: {model[end_time].as_long():02d}:{(model[end_time].as_long() % 60):02d}'
     else:
-        print("No solution found")
+        return 'No solution found'
 
-schedule_meeting()
+# Define the schedules for each participant
+schedules = {
+    'Gregory': [(9, 10), (10.5, 11.5), (12.5, 13), (13.5, 14)],
+    'Natalie': [],
+    'Christine': [(9, 11.5), (13.5, 17)],
+    'Vincent': [(9, 9.5), (10.5, 12), (12.5, 14), (14.5, 17)]
+}
+
+# Find a meeting time that works for everyone
+print(find_meeting_time('Monday', ['Gregory', 'Natalie', 'Christine', 'Vincent'], schedules, 30))

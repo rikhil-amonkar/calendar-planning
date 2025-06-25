@@ -1,80 +1,110 @@
 from z3 import *
 
-# Define the cities
-cities = ['Rome', 'Mykonos', 'Lisbon', 'Frankfurt', 'Nice', 'Stuttgart', 'Venice', 'Dublin', 'Bucharest', 'Seville']
-
-# Define the days
-days = range(1, 24)
-
-# Define the variables
-x = {}
-for city in cities:
-    x[city] = [Bool(f'x_{city}_{day}') for day in days]
-
-# Define the constraints
-constraints = []
-for city in cities:
-    constraints.append(AtMost([x[city][day] for day in days], 1))
-for city in cities:
-    for day in days:
-        constraints.append(Or([x[city][day]]))
-for city in cities:
-    for day in days:
-        constraints.append(Implies(x[city][day], [x[city][day + 1]]))
-for city in cities:
-    for day in days:
-        constraints.append(Implies(Not(x[city][day]), [Not(x[city][day + 1])]))
-for city in cities:
-    constraints.append(AtLeast([x[city][day] for day in days], [3, 2, 2, 5, 3, 4, 4, 2, 2, 5][cities.index(city)]))
-for city in cities:
-    for day in days:
-        constraints.append(Implies(x[city][day], [x[city][day + 1]]))
-for city in cities:
-    for day in days:
-        constraints.append(Implies(Not(x[city][day]), [Not(x[city][day + 1])]))
-constraints.append(And([x['Rome'][1], x['Rome'][2], x['Rome'][3]]))
-constraints.append(And([x['Mykonos'][10], x['Mykonos'][11]]))
-constraints.append(And([x['Lisbon'][14], x['Lisbon'][15]]))
-constraints.append(And([x['Frankfurt'][1], x['Frankfurt'][2], x['Frankfurt'][3], x['Frankfurt'][4]]))
-constraints.append(And([x['Nice'][6], x['Nice'][7], x['Nice'][8]]))
-constraints.append(And([x['Stuttgart'][5], x['Stuttgart'][6], x['Stuttgart'][7], x['Stuttgart'][8]]))
-constraints.append(And([x['Venice'][4], x['Venice'][5], x['Venice'][6], x['Venice'][7], x['Venice'][8]]))
-constraints.append(And([x['Dublin'][18], x['Dublin'][19]]))
-constraints.append(And([x['Bucharest'][19], x['Bucharest'][20]]))
-constraints.append(And([x['Seville'][13], x['Seville'][17]]))
+# Define the cities and their durations
+cities = {
+    'Rome': 3,
+    'Mykonos': 2,
+    'Lisbon': 2,
+    'Frankfurt': 5,
+    'Nice': 3,
+    'Stuttgart': 4,
+    'Venice': 4,
+    'Dublin': 2,
+    'Bucharest': 2,
+    'Seville': 5
+}
 
 # Define the direct flights
 flights = {
-    'Rome': ['Stuttgart', 'Venice'],
-    'Mykonos': ['Rome'],
-    'Lisbon': [],
-    'Frankfurt': ['Rome', 'Dublin', 'Venice', 'Stuttgart', 'Bucharest', 'Lisbon'],
-    'Nice': ['Mykonos', 'Dublin', 'Rome', 'Lisbon'],
-    'Stuttgart': ['Venice', 'Frankfurt'],
-    'Venice': ['Rome', 'Lisbon', 'Stuttgart', 'Nice', 'Dublin'],
-    'Dublin': ['Bucharest', 'Lisbon', 'Frankfurt', 'Rome', 'Nice', 'Venice'],
-    'Bucharest': ['Lisbon', 'Dublin', 'Frankfurt'],
-    'Seville': ['Dublin', 'Lisbon']
+    ('Rome', 'Stuttgart'): 1,
+    ('Venice', 'Rome'): 1,
+    ('Dublin', 'Bucharest'): 1,
+    ('Mykonos', 'Rome'): 1,
+    ('Seville', 'Lisbon'): 1,
+    ('Frankfurt', 'Venice'): 1,
+    ('Venice', 'Stuttgart'): 1,
+    ('Bucharest', 'Lisbon'): 1,
+    ('Nice', 'Mykonos'): 1,
+    ('Venice', 'Lisbon'): 1,
+    ('Dublin', 'Lisbon'): 1,
+    ('Venice', 'Nice'): 1,
+    ('Rome', 'Seville'): 1,
+    ('Frankfurt', 'Rome'): 1,
+    ('Nice', 'Dublin'): 1,
+    ('Rome', 'Dublin'): 1,
+    ('Venice', 'Dublin'): 1,
+    ('Rome', 'Lisbon'): 1,
+    ('Frankfurt', 'Lisbon'): 1,
+    ('Nice', 'Rome'): 1,
+    ('Frankfurt', 'Nice'): 1,
+    ('Frankfurt', 'Stuttgart'): 1,
+    ('Frankfurt', 'Bucharest'): 1,
+    ('Lisbon', 'Stuttgart'): 1,
+    ('Nice', 'Lisbon'): 1,
+    ('Seville', 'Dublin'): 1
 }
 
-# Define the solver
-solver = Solver()
+# Define the constraints
+s = Optimize()
+day = [Int('day_' + str(i)) for i in range(1, 24)]
+place = [Int('place_' + str(i)) for i in range(1, 24)]
+visit = [Bool('visit_' + str(i)) for i in range(1, 24)]
+stay = [Bool('stay_' + str(i)) for i in range(1, 24)]
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Initialize the day and place variables
+s.add(day[1] == 1)
+for i in range(2, 24):
+    s.add(day[i] == day[i-1] + 1)
+    s.add(place[i] == place[i-1])
 
-# Solve the problem
-solver.check()
+# Add constraints for each city
+for city, duration in cities.items():
+    for i in range(1, duration+1):
+        s.add(stay[i] == 1)
 
-# Print the solution
-model = solver.model()
-for city in cities:
-    for day in days:
-        if model.evaluate(x[city][day]):
-            print(f'Day {day}: {city}')
+# Add constraints for each flight
+for (city1, city2), duration in flights.items():
+    for i in range(1, duration+1):
+        s.add(Implies(stay[i], visit[i]))
+        s.add(Implies(visit[i], place[i] == city1))
+        s.add(Implies(visit[i], place[i+1] == city2))
 
-# Print the direct flights
-for city in cities:
-    for flight in flights[city]:
-        print(f'From {city} to {flight} on day {model.evaluate(x[city][1]) + 1}')
+# Add constraints for the wedding and conference
+s.add(stay[1] == 1)
+s.add(stay[2] == 1)
+s.add(stay[3] == 1)
+s.add(stay[4] == 1)
+s.add(stay[10] == 1)
+s.add(stay[11] == 1)
+s.add(stay[13] == 1)
+s.add(stay[14] == 1)
+s.add(stay[15] == 1)
+s.add(stay[16] == 1)
+s.add(stay[17] == 1)
+
+# Add constraints for the friends meeting
+s.add(stay[10] == 1)
+s.add(stay[11] == 1)
+
+# Add constraints for the visit durations
+s.add(day[3] == 3)
+s.add(day[6] == 6)
+s.add(day[10] == 10)
+s.add(day[14] == 14)
+s.add(day[18] == 18)
+
+# Solve the optimization problem
+s.check()
+model = s.model()
+
+# Create the itinerary
+itinerary = []
+for i in range(1, 24):
+    if model.evaluate(stay[i]).as_bool():
+        if model.evaluate(day[i])!= model.evaluate(day[i-1]):
+            itinerary.append({"day_range": "Day " + str(model.evaluate(day[i-1])) + "-" + str(model.evaluate(day[i])), "place": model.evaluate(place[i]).as_string()})
+        else:
+            itinerary.append({"day_range": "Day " + str(model.evaluate(day[i])), "place": model.evaluate(place[i]).as_string()})
+
+# Print the itinerary
+print({"itinerary": itinerary})

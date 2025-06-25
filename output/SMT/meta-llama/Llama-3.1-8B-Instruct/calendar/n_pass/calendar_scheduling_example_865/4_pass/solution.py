@@ -1,82 +1,105 @@
 from z3 import *
 
-# Define the days of the week
-days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+def schedule_meeting(megan_schedule, daniel_schedule, meeting_duration):
+    # Create a Z3 solver
+    solver = Solver()
 
-# Define the start and end times
-times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
+    # Define the days of the week
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+
+    # Create Z3 variables for the meeting day, start time, and end time
+    day = Int('day')
+    start_hour = Int('start_hour')
+    end_hour = Int('end_hour')
+
+    # Add constraints for the meeting day
+    solver.add(day >= 0)
+    solver.add(day < 4)  # 4 is the number of days in the week
+
+    # Add constraints for the start and end times
+    solver.add(start_hour >= 9)
+    solver.add(start_hour < 17)
+    solver.add(end_hour >= 9)
+    solver.add(end_hour < 17)
+    solver.add(end_hour > start_hour)
+
+    # Add constraints for the meeting duration
+    solver.add(end_hour - start_hour == meeting_duration)
+
+    # Add constraints for Megan's schedule
+    for i, (day_str, start, end) in enumerate(megan_schedule):
+        if day_str == days[0]:  # Monday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 13)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 13)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 14)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 15)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 16)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 17)))
+        elif day_str == days[1]:  # Tuesday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 9)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 9)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 12)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 12)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 16)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 17)))
+        elif day_str == days[2]:  # Wednesday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 9)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 9)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 10)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 11)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 12)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 17)))
+        elif day_str == days[3]:  # Thursday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 13)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 13)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 15)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 15)))
+
+    # Add constraints for Daniel's schedule
+    for i, (day_str, start, end) in enumerate(daniel_schedule):
+        if day_str == days[0]:  # Monday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 10)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 11)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 12)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 15)))
+        elif day_str == days[1]:  # Tuesday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 9)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 10)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 10)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 17)))
+        elif day_str == days[2]:  # Wednesday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 9)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 10)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 10)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 11)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 12)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 17)))
+        elif day_str == days[3]:  # Thursday
+            solver.add(Not(And(9 <= start_hour, start_hour <= 9)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 12)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 12)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 14)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 15)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 15)))
+            solver.add(Not(And(9 <= start_hour, start_hour <= 16)))
+            solver.add(Not(And(9 <= end_hour, end_hour <= 17)))
+
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        day_val = days[model[day].as_long()]
+        start_hour_val = model[start_hour].as_long()
+        end_hour_val = model[end_hour].as_long()
+        return f'SOLUTION:\nDay: {day_val}\nStart Time: {start_hour_val:02d}:00\nEnd Time: {end_hour_val:02d}:00'
+    else:
+        return 'No solution found'
+
+# Define the existing schedules for Megan and Daniel
+megan_schedule = [('Monday', 13, 13.5), ('Monday', 14, 15.5), ('Tuesday', 9, 9.5), ('Tuesday', 12, 12.5), ('Tuesday', 16, 17), ('Wednesday', 9.5, 10), ('Wednesday', 10.5, 11.5), ('Wednesday', 12.5, 14), ('Wednesday', 16, 16.5), ('Thursday', 13.5, 14.5), ('Thursday', 15, 15.5)]
+daniel_schedule = [('Monday', 10, 11.5), ('Monday', 12.5, 15), ('Tuesday', 9, 10), ('Tuesday', 10.5, 17), ('Wednesday', 9, 10), ('Wednesday', 10.5, 11.5), ('Wednesday', 12, 17), ('Thursday', 9, 12), ('Thursday', 12.5, 14.5), ('Thursday', 15, 15.5), ('Thursday', 16, 17)]
 
 # Define the meeting duration
 meeting_duration = 1
 
-# Define the existing schedules for Megan and Daniel
-megan_schedule = {
-    'Monday': ['13:00-13:30', '14:00-15:30'],
-    'Tuesday': ['09:00-09:30', '12:00-12:30', '16:00-17:00'],
-    'Wednesday': ['09:30-10:00', '10:30-11:30', '12:30-14:00', '16:00-16:30'],
-    'Thursday': ['13:30-14:30', '15:00-15:30']
-}
-
-daniel_schedule = {
-    'Monday': ['10:00-11:30', '12:30-15:00'],
-    'Tuesday': ['09:00-10:00', '10:30-17:00'],
-    'Wednesday': ['09:00-10:00', '10:30-11:30', '12:00-17:00'],
-    'Thursday': ['09:00-12:00', '12:30-14:30', '15:00-15:30', '16:00-17:00']
-}
-
-# Convert the schedules to a format that can be used by the Z3 solver
-megan_schedule_z3 = {}
-for day, times in megan_schedule.items():
-    megan_schedule_z3[day] = []
-    for time in times:
-        start, end = time.split('-')
-        start_hour, start_minute = map(int, start.split(':'))
-        end_hour, end_minute = map(int, end.split(':'))
-        megan_schedule_z3[day].append((start_hour, start_minute, end_hour, end_minute))
-
-daniel_schedule_z3 = {}
-for day, times in daniel_schedule.items():
-    daniel_schedule_z3[day] = []
-    for time in times:
-        start, end = time.split('-')
-        start_hour, start_minute = map(int, start.split(':'))
-        end_hour, end_minute = map(int, end.split(':'))
-        daniel_schedule_z3[day].append((start_hour, start_minute, end_hour, end_minute))
-
-# Define the variables for the Z3 solver
-day = Int('day')
-start_hour = Int('start_hour')
-start_minute = Int('start_minute')
-end_hour = Int('end_hour')
-end_minute = Int('end_minute')
-
-# Define the constraints for the Z3 solver
-solver = Solver()
-for day_val, day_name in enumerate(days):
-    for i in range(len(times)):
-        start_time = times[i].split(':')[0], times[i].split(':')[1]
-        end_hour = int(start_time[0]) + meeting_duration
-        if end_hour > 17:
-            end_hour = 17
-        end_minute = start_time[1]
-        if end_hour == 17 and end_minute == '00':
-            end_minute = '00'
-        solver.assert_and_track(Or(
-            And(day == day_val, start_hour == i, start_minute == 0, end_hour == end_hour, end_minute == int(end_minute))
-        ), f'{day_name}_{i}')
-
-        for time in megan_schedule_z3[day_name]:
-            solver.assert_and_track(Not(And(day == day_val, start_hour == i, start_minute == 0, end_hour == time[0], end_minute == time[1])), f'megan_{day_name}_{i}')
-
-        for time in daniel_schedule_z3[day_name]:
-            solver.assert_and_track(Not(And(day == day_val, start_hour == i, start_minute == 0, end_hour == time[0], end_minute == time[1])), f'daniel_{day_name}_{i}')
-
-# Solve the constraints
-if solver.check() == sat:
-    model = solver.model()
-    day_value = days[model[day].as_long()]
-    start_time = f'{model[start_hour].as_long()}:{model[start_minute].as_long():02}'
-    end_time = f'{model[end_hour].as_long()}:{model[end_minute].as_long():02}'
-    print(f'SOLUTION:\nDay: {day_value}\nStart Time: {start_time}\nEnd Time: {end_time}')
-else:
-    print('No solution found')
+# Call the function to schedule the meeting
+print(schedule_meeting(megan_schedule, daniel_schedule, meeting_duration))

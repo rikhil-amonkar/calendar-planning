@@ -1,7 +1,7 @@
 from z3 import *
 
-# Define the travel distances in minutes
-distances = {
+# Define the travel times
+travel_times = {
     ('Golden Gate Park', 'Alamo Square'): 10,
     ('Golden Gate Park', 'Presidio'): 11,
     ('Golden Gate Park', 'Russian Hill'): 19,
@@ -17,55 +17,59 @@ distances = {
 }
 
 # Define the constraints
-start_time = 0
-timothy_arrives = 12
-timothy_leaves = 4*60 + 15
-mark_arrives = 6*60 + 45
-mark_leaves = 9*60
-joseph_arrives = 4*60 + 45
-joseph_leaves = 9*60 + 30
-min_timothy_time = 105
-min_mark_time = 60
-min_joseph_time = 60
-min_meetings = 3
+s = Optimize()
 
 # Define the variables
-x = Int('x')
-y = Int('y')
-z = Int('z')
-meet_timothy = Bool('meet_timothy')
-meet_mark = Bool('meet_mark')
-meet_joseph = Bool('meet_joseph')
+visit_timothy = Bool('visit_timothy')
+visit_mark = Bool('visit_mark')
+visit_joseph = Bool('visit_joseph')
+visit_others = Bool('visit_others')
+time_at_alamo_square = Int('time_at_alamo_square')
+time_at_presidio = Int('time_at_presidio')
+time_at_russian_hill = Int('time_at_russian_hill')
 
-# Define the constraints
-constraints = [
-    x >= start_time,
-    y >= start_time,
-    z >= start_time,
-    meet_timothy == (x + distances[('Golden Gate Park', 'Alamo Square')] + min_timothy_time <= timothy_arrives),
-    meet_mark == (y + distances[('Alamo Square', 'Presidio')] + min_mark_time <= mark_arrives),
-    meet_joseph == (z + distances[('Presidio', 'Russian Hill')] + min_joseph_time <= joseph_arrives),
-    meet_timothy + meet_mark + meet_joseph == min_meetings
-]
+# Add the constraints
+s.add(visit_timothy + visit_mark + visit_joseph + visit_others == 3)
+s.add(If(visit_timothy, 105, 0) >= 105)
+s.add(If(visit_mark, 60, 0) >= 60)
+s.add(If(visit_joseph, 60, 0) >= 60)
+s.add(time_at_alamo_square >= 0)
+s.add(time_at_alamo_square <= 360)
+s.add(time_at_presidio >= 0)
+s.add(time_at_presidio <= 375)
+s.add(time_at_russian_hill >= 0)
+s.add(time_at_russian_hill <= 390)
+s.add(If(visit_timothy, time_at_alamo_square - 720 >= 0, True))
+s.add(If(visit_mark, time_at_presidio - 675 >= 0, True))
+s.add(If(visit_joseph, time_at_russian_hill - 630 >= 0, True))
+s.add(If(visit_timothy, time_at_alamo_square - 9*60 + travel_times[('Golden Gate Park', 'Alamo Square')] >= 0, True))
+s.add(If(visit_mark, time_at_presidio - 9*60 - 9*60 + travel_times[('Golden Gate Park', 'Presidio')] >= 0, True))
+s.add(If(visit_joseph, time_at_russian_hill - 9*60 - 4*60 + travel_times[('Golden Gate Park', 'Russian Hill')] >= 0, True))
+s.add(If(visit_timothy, time_at_alamo_square - 9*60 - 9*60 + travel_times[('Alamo Square', 'Presidio')] >= 0, True))
+s.add(If(visit_mark, time_at_presidio - 9*60 + travel_times[('Presidio', 'Golden Gate Park')] >= 0, True))
+s.add(If(visit_joseph, time_at_russian_hill - 9*60 + travel_times[('Russian Hill', 'Golden Gate Park')] >= 0, True))
+s.add(If(visit_timothy, time_at_alamo_square - 9*60 + travel_times[('Alamo Square', 'Golden Gate Park')] >= 0, True))
+s.add(If(visit_mark, time_at_presidio - 9*60 + travel_times[('Presidio', 'Alamo Square')] >= 0, True))
+s.add(If(visit_joseph, time_at_russian_hill - 9*60 + travel_times[('Russian Hill', 'Alamo Square')] >= 0, True))
+s.add(If(visit_timothy, time_at_alamo_square - 9*60 + travel_times[('Alamo Square', 'Russian Hill')] >= 0, True))
+s.add(If(visit_mark, time_at_presidio - 9*60 + travel_times[('Presidio', 'Russian Hill')] >= 0, True))
+s.add(If(visit_joseph, time_at_russian_hill - 9*60 + travel_times[('Russian Hill', 'Presidio')] >= 0, True))
 
-# Solve the constraints
-s = Optimize()
-s.add(constraints)
-s.add(x + distances[('Golden Gate Park', 'Alamo Square')] + min_timothy_time <= timothy_leaves)
-s.add(y + distances[('Alamo Square', 'Presidio')] + min_mark_time <= mark_leaves)
-s.add(z + distances[('Presidio', 'Russian Hill')] + min_joseph_time <= joseph_leaves)
-s.add(x + y + z >= start_time)
-s.add(x + y + z <= 24*60)
-s.minimize(x + y + z)
+# Define the objective function
+s.minimize(If(visit_others, 1, 0) + If(visit_timothy, 0, 1) + If(visit_mark, 0, 1) + If(visit_joseph, 0, 1))
 
-# Check if an optimal solution exists
-if s.check() == sat:
-    model = s.model()
-    print(f"Optimal schedule: {model[x]}:00AM - {model[x] + distances[('Golden Gate Park', 'Alamo Square')]}:00AM (Timothy) {'if meet_timothy is True' if model[meet_timothy] else 'else'}")
-    print(f"{model[y]}:00AM - {model[y] + distances[('Alamo Square', 'Presidio')]}:00AM (Mark) {'if meet_mark is True' if model[meet_mark] else 'else'}")
-    print(f"{model[z]}:00AM - {model[z] + distances[('Presidio', 'Russian Hill')]}:00AM (Joseph) {'if meet_joseph is True' if model[meet_joseph] else 'else'}")
-    print(f"{'Meet Timothy' if model[meet_timothy] else 'Do not meet Timothy'}")
-    print(f"{'Meet Mark' if model[meet_mark] else 'Do not meet Mark'}")
-    print(f"{'Meet Joseph' if model[meet_joseph] else 'Do not meet Joseph'}")
+# Solve the optimization problem
+solution = s.check()
+
+# Print the solution
+if solution == sat:
+    m = s.model()
+    print("Visit Timothy:", m[visit_timothy])
+    print("Visit Mark:", m[visit_mark])
+    print("Visit Joseph:", m[visit_joseph])
+    print("Visit Others:", m[visit_others])
+    print("Time at Alamo Square:", m[time_at_alamo_square])
+    print("Time at Presidio:", m[time_at_presidio])
+    print("Time at Russian Hill:", m[time_at_russian_hill])
 else:
-    print("No optimal solution exists.")
+    print("No solution found")

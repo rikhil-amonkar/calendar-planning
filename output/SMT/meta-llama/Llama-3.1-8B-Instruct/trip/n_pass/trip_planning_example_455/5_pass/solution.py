@@ -1,64 +1,79 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = 21
+# Define the cities
 cities = ['Reykjavik', 'Riga', 'Warsaw', 'Istanbul', 'Krakow']
-city_days = {city: [0] for city in cities}
-city_days['Reykjavik'].append(7)
-city_days['Riga'].append(2)
-city_days['Warsaw'].append(3)
-city_days['Istanbul'].append(6)
-city_days['Krakow'].append(7)
-friend_meeting = 1
-wedding = 7
-direct_flights = {
-    ('Istanbul', 'Krakow'): 1,
-    ('Warsaw', 'Reykjavik'): 1,
-    ('Istanbul', 'Warsaw'): 1,
-    ('Riga', 'Istanbul'): 1,
-    ('Krakow', 'Warsaw'): 1,
-    ('Riga', 'Warsaw'): 1
+
+# Define the days
+days = range(1, 22)
+
+# Define the direct flights
+flights = {
+    ('Istanbul', 'Krakow'): [2, 3, 4, 5, 6],
+    ('Warsaw', 'Reykjavik'): [2, 3],
+    ('Istanbul', 'Warsaw'): [2, 3, 4, 5, 6],
+    ('Riga', 'Istanbul'): [1, 2],
+    ('Krakow', 'Warsaw'): [2, 3],
+    ('Riga', 'Warsaw'): [1, 2]
 }
 
-# Define the solver
-s = Solver()
+# Create a Z3 solver
+solver = Solver()
 
-# Define the variables for the solver
-x = {city: [Int(f'{city}_day_{i}') for i in range(days+1)] for city in cities}
-x['Reykjavik'][0] = 0
-x['Riga'][0] = 0
-x['Warsaw'][0] = 0
-x['Istanbul'][0] = 0
-x['Krakow'][0] = 0
+# Create a dictionary to store the day-place mappings
+itinerary = {}
 
-# Define the constraints
-for city in cities:
-    for i in range(1, days+1):
-        s.add(x[city][i] >= x[city][i-1] + 1)
+# Create a variable for each day and place
+for day in days:
+    for place in cities:
+        solver.add(Bool(f'day_{day}_{place}'))
 
-for city, days_list in city_days.items():
-    for i in range(1, len(days_list)):
-        s.add(x[city][days_list[i-1]+1] == days_list[i])
+# Create constraints for the given constraints
+solver.add(Or([Bool(f'day_{day}_{place}') for place in cities]) for day in range(1, 8))  # 7 days in Reykjavik
+solver.add(Or([Bool(f'day_{1}_{place}') for place in cities]) & Or([Bool(f'day_{2}_{place}') for place in cities]))  # meet friend in Riga between day 1 and day 2
+solver.add(Or([Bool(f'day_{1}_{place}') for place in cities]) & Or([Bool(f'day_{2}_{place}') for place in cities]))  # stay in Riga for 2 days
+solver.add(Or([Bool(f'day_{1}_{place}') for place in cities]) & Or([Bool(f'day_{2}_{place}') for place in cities]) & Or([Bool(f'day_{3}_{place}') for place in cities]) & Or([Bool(f'day_{4}_{place}') for place in cities]) & Or([Bool(f'day_{5}_{place}') for place in cities]) & Or([Bool(f'day_{6}_{place}') for place in cities]))  # attend wedding in Istanbul between day 2 and day 7
+solver.add(Or([Bool(f'day_{8}_{place}') for place in cities]) & Or([Bool(f'day_{9}_{place}') for place in cities]) & Or([Bool(f'day_{10}_{place}') for place in cities]))  # stay in Warsaw for 3 days
+solver.add(Or([Bool(f'day_{8}_{place}') for place in cities]) & Or([Bool(f'day_{9}_{place}') for place in cities]) & Or([Bool(f'day_{10}_{place}') for place in cities]) & Or([Bool(f'day_{11}_{place}') for place in cities]) & Or([Bool(f'day_{12}_{place}') for place in cities]) & Or([Bool(f'day_{13}_{place}') for place in cities]) & Or([Bool(f'day_{14}_{place}') for place in cities]) & Or([Bool(f'day_{15}_{place}') for place in cities]) & Or([Bool(f'day_{16}_{place}') for place in cities]) & Or([Bool(f'day_{17}_{place}') for place in cities]))  # stay in Istanbul for 6 days
+solver.add(Or([Bool(f'day_{18}_{place}') for place in cities]) & Or([Bool(f'day_{19}_{place}') for place in cities]) & Or([Bool(f'day_{20}_{place}') for place in cities]) & Or([Bool(f'day_{21}_{place}') for place in cities]))  # stay in Krakow for 7 days
 
-s.add(x['Reykjavik'][7] == 7)
-s.add(x['Riga'][2] == 2)
-s.add(x['Warsaw'][3] == 3)
-s.add(x['Istanbul'][7] == 7)
-s.add(x['Krakow'][7] == 7)
+# Create constraints for the flights
+for (from_city, to_city) in flights.items():
+    for day in to_city:
+        solver.add(Bool(f'day_{day}_{from_city}') == Bool(f'day_{day}_{to_city}'))
 
-s.add(x['Riga'][1] == friend_meeting)
-s.add(x['Istanbul'][7] == wedding)
+# Create a constraint to cover exactly 21 days
+days_covered = [Bool(f'day_{day}_{place}') for day in range(1, 22) for place in cities]
+solver.add(Or(days_covered))
+solver.add(And([Not(Or([Bool(f'day_{day}_{place}') for place in cities])) for day in range(1, 22) if day!= 8 and day!= 18]))
 
-for (city1, city2), flight_days in direct_flights.items():
-    for i in range(days+1):
-        s.add(Implies(x[city1][i] == flight_days, x[city2][i] == flight_days))
-
-# Check the solution
-if s.check() == sat:
-    m = s.model()
-    for city in cities:
-        print(f'{city}:')
-        for i in range(days+1):
-            print(f'day {i+1}: {m[x[city][i]]}')
+# Solve the constraints
+if solver.check() == sat:
+    model = solver.model()
+    day_place = []
+    for day in range(1, 22):
+        places = [place for place in cities if model.evaluate(Bool(f'day_{day}_{place}')).decl().name() == 'day']
+        if places:
+            day_place.append((day, places))
+    for day, places in day_place:
+        if day == 1:
+            itinerary[f'day_range={day}-{day + len(places) - 1}'] = places
+        elif day == 3:
+            itinerary[f'day_range={day - 1}-{day - 1}'] = places
+            itinerary[f'day_range={day}-{day}'] = places
+        elif day == 8:
+            itinerary[f'day_range={day - 1}-{day - 1}'] = places
+            itinerary[f'day_range={day}-{day}'] = places
+        elif day == 18:
+            itinerary[f'day_range={day - 1}-{day - 1}'] = places
+            itinerary[f'day_range={day}-{day}'] = places
+        else:
+            itinerary[f'day_range={day - 1}-{day - 1}'] = places
+        for (from_city, to_city) in flights.items():
+            if day in to_city:
+                itinerary[f'day_range={day}-{day}'] = from_city
+                itinerary[f'day_range={day}-{day}'] = to_city
 else:
-    print('No solution found')
+    print("No solution found")
+
+print({"itinerary": list(itinerary.values())})

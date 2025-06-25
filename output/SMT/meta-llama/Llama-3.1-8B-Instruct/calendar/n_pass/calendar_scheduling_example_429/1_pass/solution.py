@@ -1,71 +1,85 @@
 from z3 import *
 
-def schedule_meeting(schedules, meeting_duration):
-    # Create a Z3 solver
-    s = Solver()
-
-    # Define the day, start time, and end time
+def schedule_meeting():
+    # Define the variables
     day = 'Monday'
-    start_time = 9
-    end_time = 17
+    start_time = Int('start_time')
+    end_time = Int('end_time')
+    meeting_duration = 30  # in minutes
 
-    # Calculate the total number of time slots
-    num_slots = (end_time - start_time) * 2
+    # Define the constraints
+    constraints = [
+        # Judy's constraints
+        start_time + meeting_duration > 60 * 13,  # 13:00
+        start_time + meeting_duration > 60 * 16,  # 16:00
+        start_time < 60 * 13 - meeting_duration,  # before 13:00
+        start_time < 60 * 16 - meeting_duration,  # before 16:00
 
-    # Create a boolean variable for each time slot
-    time_slots = [Bool(f'time_slot_{i}') for i in range(num_slots)]
+        # Olivia's constraints
+        start_time > 60 * 10,  # 10:00
+        start_time > 60 * 12,  # 12:00
+        start_time + meeting_duration < 60 * 13,  # before 13:00
+        start_time + meeting_duration < 60 * 14,  # before 14:00
 
-    # Create a boolean variable for the meeting
-    meeting = Bool('meeting')
+        # Eric's constraints
+        # No constraints
 
-    # Add the constraints that the meeting must be on the same day and within the work hours
-    s.add(And([meeting == True], [day == 'Monday'], [start_time * 2 <= Or([time_slot for time_slot in time_slots])], [end_time * 2 > Or([time_slot for time_slot in time_slots])]))
+        # Jacqueline's constraints
+        start_time > 60 * 10,  # 10:00
+        start_time + meeting_duration < 60 * 15,  # before 15:00
 
-    # Add the constraints that the meeting must not conflict with any existing schedules
-    for schedule in schedules:
-        s.add(Not(And([meeting == True], [schedule[0] == 'Monday'], [schedule[1] * 2 <= Or([time_slot for time_slot in time_slots])], [schedule[2] * 2 > Or([time_slot for time_slot in time_slots])]))))
+        # Laura's constraints
+        start_time > 60 * 9,  # 9:00
+        start_time > 60 * 10,  # 10:00
+        start_time > 60 * 13,  # 13:00
+        start_time > 60 * 14,  # 14:00
+        start_time > 60 * 15,  # 15:00
+        start_time + meeting_duration < 60 * 17,  # before 17:00
 
-    # Add the constraint that the meeting must last for the specified duration
-    s.add(And([meeting == True], [meeting_duration * 2 <= Or([time_slot for time_slot in time_slots])], [meeting_duration * 2 > Or([time_slot for time_slot in time_slots])]))
+        # Tyler's constraints
+        start_time > 60 * 9,  # 9:00
+        start_time > 60 * 11,  # 11:00
+        start_time > 60 * 12,  # 12:00
+        start_time > 60 * 14,  # 14:00
+        start_time > 60 * 15,  # 15:00
+        start_time + meeting_duration < 60 * 17,  # before 17:00
 
-    # Add the constraints that each person is available during the meeting
-    for schedule in schedules:
-        if schedule[0]!= 'Monday':
-            s.add(Not(And([meeting == True], [schedule[0] == 'Monday'], [schedule[1] * 2 <= Or([time_slot for time_slot in time_slots])], [schedule[2] * 2 > Or([time_slot for time_slot in time_slots])]))))
+        # Lisa's constraints
+        start_time > 60 * 9,  # 9:00
+        start_time > 60 * 9,  # 9:30
+        start_time > 60 * 11,  # 11:00
+        start_time > 60 * 12,  # 12:00
+        start_time > 60 * 13,  # 13:00
+        start_time > 60 * 14,  # 14:00
+        start_time + meeting_duration < 60 * 17,  # before 17:00
+    ]
+
+    # Define the solver
+    solver = Solver()
+
+    # Add the constraints to the solver
+    for constraint in constraints:
+        solver.add(constraint)
 
     # Solve the constraints
-    if s.check() == sat:
+    if solver.check() == sat:
         # Get the model
-        m = s.model()
+        model = solver.model()
 
-        # Find the time slots that are true in the model
-        true_time_slots = [i for i, time_slot in enumerate(time_slots) if m.evaluate(time_slot) == True]
+        # Get the start and end times from the model
+        start_time_value = model[start_time].as_long()
+        end_time_value = start_time_value + meeting_duration
 
-        # Calculate the start and end times of the meeting
-        start_time_index = min(true_time_slots)
-        end_time_index = start_time_index + meeting_duration
+        # Format the start and end times
+        start_time_str = f"{start_time_value // 60:02d}:{start_time_value % 60:02d}"
+        end_time_str = f"{end_time_value // 60:02d}:{end_time_value % 60:02d}"
 
-        # Calculate the start and end times in 24-hour format
-        start_time = (start_time_index // 2) % 12 + 9
-        end_time = (end_time_index // 2) % 12 + 9
-
-        # Return the solution
-        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time:02d}:00\nEnd Time: {end_time:02d}:00'
+        # Print the solution
+        print(f"SOLUTION:")
+        print(f"Day: {day}")
+        print(f"Start Time: {start_time_str}")
+        print(f"End Time: {end_time_str}")
     else:
-        return 'No solution found'
+        print("No solution found")
 
-# Define the existing schedules
-schedules = [
-    ('Monday', 9, 10), ('Monday', 13, 13.5), ('Monday', 16, 16.5),
-    ('Monday', 10, 10.5), ('Monday', 12, 13), ('Monday', 14, 14.5),
-    ('Monday', 10, 10.5), ('Monday', 15, 15.5),
-    ('Monday', 9, 10), ('Monday', 10.5, 12), ('Monday', 13, 13.5), ('Monday', 14.5, 15), ('Monday', 15.5, 17),
-    ('Monday', 9, 10), ('Monday', 11, 11.5), ('Monday', 12.5, 13), ('Monday', 14, 14.5), ('Monday', 15.5, 17),
-    ('Monday', 9.5, 10.5), ('Monday', 11, 11.5), ('Monday', 12, 12.5), ('Monday', 13, 13.5), ('Monday', 14, 14.5), ('Monday', 16, 17)
-]
-
-# Define the meeting duration
-meeting_duration = 0.5
-
-# Print the solution
-print(schedule_meeting(schedules, meeting_duration))
+schedule_meeting()

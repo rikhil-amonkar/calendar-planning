@@ -1,95 +1,113 @@
-import json
 from z3 import *
+import json
 
 def main():
-    d2 = Int('d2')
-    d3 = Int('d3')
-    s1 = Int('s1')
-    s2 = Int('s2')
-    s3 = Int('s3')
+    # Cities: 0=Nice, 1=Lyon, 2=Dublin, 3=Krakow, 4=Frankfurt
+    names = {
+        0: "Nice",
+        1: "Lyon",
+        2: "Dublin",
+        3: "Krakow",
+        4: "Frankfurt"
+    }
+    
+    # Required days per city index
+    days_req = [5, 4, 7, 6, 2]
+    
+    # Graph: list of directed edges (for undirected, we have both ways)
+    edges = [
+        (0,2), (2,0),
+        (2,4), (4,2),
+        (2,3), (3,2),
+        (3,4), (4,3),
+        (1,4), (4,1),
+        (0,4), (4,0),
+        (1,2), (2,1),
+        (0,1), (1,0)
+    ]
+    
+    # Create Z3 variables
+    p1, p2, p3 = Ints('p1 p2 p3')
     
     s = Solver()
     
-    s.add(d2 > 5, d2 < 19)
-    s.add(d3 > d2, d3 < 19)
+    # Constraints: p1, p2, p3 are distinct and in {1,2,3}
+    s.add(Distinct(p1, p2, p3))
+    s.add(And(p1 >= 1, p1 <= 3))
+    s.add(And(p2 >= 1, p2 <= 3))
+    s.add(And(p3 >= 1, p3 <= 3))
     
-    dur1 = d2 - 4
-    dur2 = d3 - d2 + 1
-    dur3 = 20 - d3
+    # Define a function to check edge
+    def has_edge(a, b):
+        return Or([And(a == i, b == j) for (i, j) in edges])
     
-    s.add(dur1 > 0, dur2 > 0, dur3 > 0)
-    
-    s.add(Distinct(s1, s2, s3))
-    s.add(s1 >= 1, s1 <= 3)
-    s.add(s2 >= 1, s2 <= 3)
-    s.add(s3 >= 1, s3 <= 3)
-    
-    dur_s1 = If(s1 == 1, 7, If(s1 == 2, 6, 4))
-    dur_s2 = If(s2 == 1, 7, If(s2 == 2, 6, 4))
-    dur_s3 = If(s3 == 1, 7, If(s3 == 2, 6, 4))
-    
-    s.add(dur1 == dur_s1)
-    s.add(dur2 == dur_s2)
-    s.add(dur3 == dur_s3)
-    
-    s.add(Or(s1 == 1, s1 == 3))
-    
-    s.add(Or(
-        And(s1 == 1, Or(s2 == 2, s2 == 3)),
-        And(s1 == 3, s2 == 1)
-    ))
-    
-    s.add(Or(
-        And(s2 == 1, Or(s3 == 2, s3 == 3)),
-        And(s2 == 2, s3 == 1),
-        And(s2 == 3, s3 == 1)
-    ))
+    # Constraints for the flights
+    s.add(has_edge(0, p1))   # from Nice to first city
+    s.add(has_edge(p1, p2))  # from first to second
+    s.add(has_edge(p2, p3))  # from second to third
+    s.add(has_edge(p3, 4))   # from third to Frankfurt
     
     if s.check() == sat:
         m = s.model()
-        d2_val = m[d2].as_long()
-        d3_val = m[d3].as_long()
-        s1_val = m[s1].as_long()
-        s2_val = m[s2].as_long()
-        s3_val = m[s3].as_long()
+        p1_val = m[p1].as_long()
+        p2_val = m[p2].as_long()
+        p3_val = m[p3].as_long()
         
-        city_names = {
-            0: "Nice",
-            1: "Dublin",
-            2: "Krakow",
-            3: "Lyon",
-            4: "Frankfurt"
+        # Build the order: [0, p1_val, p2_val, p3_val, 4]
+        order = [0, p1_val, p2_val, p3_val, 4]
+        
+        # Now compute the start and end days for each city in the order
+        start = [0] * 5
+        end = [0] * 5
+        
+        # First city: Nice
+        start[0] = 1
+        end[0] = start[0] + days_req[order[0]] - 1   # 1+5-1 = 5
+        
+        for i in range(1, 5):
+            start[i] = end[i-1]
+            end[i] = start[i] + days_req[order[i]] - 1
+        
+        # Now, build the itinerary list
+        itinerary_list = []
+        
+        for i in range(5):
+            city_index = order[i]
+            city_name = names[city_index]
+            
+            # The block for the entire stay in this city
+            block_record = {
+                "day_range": f"Day {start[i]}-{end[i]}",
+                "place": city_name
+            }
+            itinerary_list.append(block_record)
+            
+            # If this is not the last city, then we have a flight to the next city on the end day of this city
+            if i < 4:
+                # Departure record for the current city
+                dep_record = {
+                    "day_range": f"Day {end[i]}",
+                    "place": city_name
+                }
+                # Arrival record for the next city
+                next_city_index = order[i+1]
+                next_city_name = names[next_city_index]
+                arr_record = {
+                    "day_range": f"Day {end[i]}",
+                    "place": next_city_name
+                }
+                itinerary_list.append(dep_record)
+                itinerary_list.append(arr_record)
+        
+        # Create the result dictionary
+        result = {
+            "itinerary": itinerary_list
         }
         
-        segments = [
-            (1, 5, 0),
-            (5, d2_val, s1_val),
-            (d2_val, d3_val, s2_val),
-            (d3_val, 19, s3_val),
-            (19, 20, 4)
-        ]
-        
-        itinerary = []
-        
-        for i, seg in enumerate(segments):
-            start, end, city_idx = seg
-            city = city_names[city_idx]
-            if start == end:
-                day_range_str = f"Day {start}"
-            else:
-                day_range_str = f"Day {start}-{end}"
-            itinerary.append({"day_range": day_range_str, "place": city})
-            
-            if i < len(segments) - 1:
-                next_city_idx = segments[i+1][2]
-                next_city = city_names[next_city_idx]
-                itinerary.append({"day_range": f"Day {end}", "place": city})
-                itinerary.append({"day_range": f"Day {end}", "place": next_city})
-                
-        result = {"itinerary": itinerary}
+        # Output as JSON string
         print(json.dumps(result))
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

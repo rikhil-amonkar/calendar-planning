@@ -1,0 +1,1 @@
+solver.add(Or(meetings[i], meetings[j]) | (start <= times[i] & start_j <= times[j]))

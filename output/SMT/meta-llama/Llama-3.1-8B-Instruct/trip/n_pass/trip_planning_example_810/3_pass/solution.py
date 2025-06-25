@@ -1,86 +1,77 @@
 from z3 import *
+from itertools import product
 
-# Define the cities
+# Define the cities and their corresponding indices
 cities = ['Berlin', 'Nice', 'Athens', 'Stockholm', 'Barcelona', 'Vilnius', 'Lyon']
 
-# Define the days
-days = range(1, 21)
+# Define the days and their corresponding indices
+days = list(range(1, 21))
 
 # Define the direct flights
-flights = [
-    ('Lyon', 'Nice'),
-    ('Stockholm', 'Athens'),
-    ('Nice', 'Athens'),
-    ('Berlin', 'Athens'),
-    ('Berlin', 'Nice'),
-    ('Berlin', 'Barcelona'),
-    ('Berlin', 'Vilnius'),
-    ('Barcelona', 'Nice'),
-    ('Athens', 'Vilnius'),
-    ('Berlin', 'Stockholm'),
-    ('Nice', 'Stockholm'),
-    ('Barcelona', 'Athens'),
-    ('Barcelona', 'Stockholm'),
-    ('Barcelona', 'Lyon')
-]
+flights = {
+    'Berlin': ['Athens', 'Nice', 'Barcelona', 'Vilnius'],
+    'Nice': ['Athens', 'Stockholm', 'Barcelona', 'Lyon'],
+    'Athens': ['Stockholm', 'Vilnius'],
+    'Stockholm': [],
+    'Barcelona': ['Nice', 'Athens', 'Stockholm', 'Lyon'],
+    'Vilnius': [],
+    'Lyon': []
+}
 
-# Create the solver
-s = Optimize()
+# Define the constraints
+constraints = []
 
-# Create the variables
-x = [[Bool(f'{city}_{day}') for day in days] for city in cities]
+# Define the variables
+places = [Int(f'place_{i}') for i in range(len(days))]
+days_in_place = [Int(f'days_in_place_{i}') for i in range(len(days))]
 
-# Create the constraints
-for i in days:
-    # Each person can be in at most one city
-    s.add(Or([x[city][i] for city in cities]))
-    # Each person is in at least one city
-    s.add(And([x[city][i] for city in cities]))
-    # Conference in Berlin
-    if i == 1 or i == 3:
-        s.add(x['Berlin'][i-1])
-    # Workshop in Barcelona
-    if i == 3:
-        s.add(x['Barcelona'][i-1])
-    # Wedding in Lyon
-    if i == 4:
-        s.add(x['Lyon'][i-1])
-    # Stay in Berlin for 3 days
-    if i < 4 and i >= 1 and x['Berlin'][i-1]:
-        s.add(Or([x['Berlin'][i], x['Berlin'][i+1]]))
-    # Stay in Nice for 5 days
-    if i < 10 and i >= 1 and x['Nice'][i-1]:
-        s.add(Or([x['Nice'][i], x['Nice'][i+1], x['Nice'][i+2], x['Nice'][i+3]]))
-    # Stay in Athens for 5 days
-    if i < 11 and i >= 1 and x['Athens'][i-1]:
-        s.add(Or([x['Athens'][i], x['Athens'][i+1], x['Athens'][i+2], x['Athens'][i+3]]))
-    # Stay in Stockholm for 5 days
-    if i < 11 and i >= 1 and x['Stockholm'][i-1]:
-        s.add(Or([x['Stockholm'][i], x['Stockholm'][i+1], x['Stockholm'][i+2], x['Stockholm'][i+3]]))
-    # Stay in Barcelona for 2 days
-    if i < 6 and i >= 1 and x['Barcelona'][i-1]:
-        s.add(Or([x['Barcelona'][i]]))
-    # Stay in Vilnius for 4 days
-    if i < 9 and i >= 1 and x['Vilnius'][i-1]:
-        s.add(Or([x['Vilnius'][i], x['Vilnius'][i+1], x['Vilnius'][i+2]]))
-    # Stay in Lyon for 2 days
-    if i < 7 and i >= 1 and x['Lyon'][i-1]:
-        s.add(Or([x['Lyon'][i]]))
-    # Direct flights
-    for city1, city2 in flights:
-        for day in days:
-            if x[city1][day] and x[city2][day]:
-                s.add(Or([x[city1][day+1], x[city2][day+1]]))
+# Define the solver
+solver = Solver()
 
-# Add the objective function
-s.add(TotalCount([x[city][i] for city in cities for i in days]) == 20)
+# Add the constraints
+for i, day in enumerate(days):
+    # The place must be one of the cities
+    constraints.append(places[i].as_string() in cities)
+    
+    # The number of days in the place must be a non-negative integer
+    constraints.append(days_in_place[i] >= 0)
+    
+    # The number of days in the place must be less than or equal to the number of days
+    constraints.append(days_in_place[i] <= day)
+    
+    # If the day is a conference or workshop day, the place must be the corresponding city
+    if day == 1 or day == 3:
+        constraints.append(places[i] == 'Berlin')
+    elif day == 4:
+        constraints.append(Or([places[i] == 'Barcelona', places[i] == 'Lyon']))
+    elif day == 5:
+        constraints.append(places[i] == 'Lyon')
+    elif day == 3:
+        constraints.append(places[i] == 'Barcelona')
+    
+    # If the day is a flight day, the place must be the departure city
+    if day > 1 and day < 20:
+        for city in cities:
+            if city in flights[cities[i-1]]:
+                constraints.append(places[i] == city)
+                break
+    
+    # The number of days in the place must be equal to the number of days minus the number of days in the previous places
+    if i > 0:
+        constraints.append(days_in_place[i] == days_in_place[i-1] + (1 if places[i]!= places[i-1] else 0))
+
+# Add the constraints to the solver
+for constraint in constraints:
+    solver.add(constraint)
 
 # Solve the problem
-s.check()
-model = s.model()
-
-# Print the solution
-for city in cities:
-    for day in days:
-        if model.evaluate(x[city][day]):
-            print(f'Day {day}: {city}')
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for i, day in enumerate(days):
+        if model.evaluate(places[i]!= model.evaluate(places[i-1])).as_bool():
+            itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_string()}-{model.evaluate(places[i]).as_string()}", "place": model.evaluate(places[i-1]).as_string()})
+        itinerary.append({"day_range": f"Day {model.evaluate(places[i]).as_string()}", "place": model.evaluate(places[i]).as_string()})
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

@@ -1,68 +1,44 @@
 from z3 import *
 
-def schedule_meeting(james_schedule, john_schedule, duration):
-    # Create Z3 variables
-    day = Int('day')
-    start_time = Int('start_time')
-    end_time = Int('end_time')
-
-    # Define the domain of the day
-    day_domain = [1]  # Assuming we only have one day to consider (Monday)
-    
-    # Define the domain of the start and end time
-    time_domain = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-    
-    # Define the constraints for the day
-    day_constraints = [day == day_domain[0]]
-    
-    # Define the constraints for the start and end time
-    time_constraints = [And(start_time >= 9, start_time <= 17),
-                       And(end_time >= 9, end_time <= 17),
-                       start_time < end_time,
-                       end_time - start_time == duration]
-    
-    # Define the constraints for James' schedule
-    james_constraints = []
-    for i in range(len(james_schedule)):
-        james_constraints.append(Or(start_time + i * 30 >= james_schedule[i][0],
-                                   start_time + i * 30 + duration <= james_schedule[i][1]))
-    
-    # Define the constraints for John's schedule
-    john_constraints = []
-    for i in range(len(john_schedule)):
-        john_constraints.append(Or(start_time + i * 30 >= john_schedule[i][0],
-                                   start_time + i * 30 + duration <= john_schedule[i][1]))
-    
-    # Define the constraints for the unavailable time slot on Monday from 12.5 to 13.5
-    unavailable_constraints = [And(start_time >= 12.5 * 2, start_time <= 13.5 * 2)]
-    
-    # Define the solver
+def schedule_meeting(schedules, meeting_duration):
+    # Create a Z3 solver
     solver = Solver()
-    
-    # Add the constraints to the solver
-    solver.add(day_constraints + time_constraints + james_constraints + john_constraints + unavailable_constraints)
-    
+
+    # Define the variables
+    days = [Int('day')]
+    start_times = [Int('start_time')]
+    end_times = [Int('end_time')]
+
+    # Add constraints for the day
+    solver.add(days[0] == 0)  # Only Monday for now
+
+    # Add constraints for the start time
+    solver.add(And(9 <= start_times[0], start_times[0] <= 17))
+    solver.add(And(start_times[0] + meeting_duration <= 18, start_times[0] + meeting_duration >= 9))
+
+    # Add constraints for the end time
+    solver.add(end_times[0] == start_times[0] + meeting_duration)
+
+    # Add constraints for the schedules
+    for i, schedule in enumerate(schedules):
+        solver.add(Or(
+            start_times[0] + meeting_duration > schedule[1] + 1,  # End time is after the schedule
+            start_times[0] < schedule[0],  # Start time is before the schedule
+            end_times[0] < schedule[0],  # End time is before the schedule
+            end_times[0] > schedule[1] + 1  # Start time is after the schedule
+        ))
+
     # Check if there is a solution
     if solver.check() == sat:
-        # Get the model
         model = solver.model()
-        
-        # Extract the values from the model
-        day_value = model[day].as_long()
-        start_time_value = model[start_time].as_long()
-        end_time_value = model[end_time].as_long()
-        
-        # Print the solution
-        print(f'SOLUTION:')
-        print(f'Day: {day_value}')
-        print(f'Start Time: {start_time_value:02d}:00')
-        print(f'End Time: {end_time_value:02d}:00')
+        day_value = "Monday"
+        start_time_value = str(model[start_times[0]].as_long()) + ":00"
+        end_time_value = str(model[end_times[0]].as_long()) + ":00"
+        return f"SOLUTION:\nDay: {day_value}\nStart Time: {start_time_value}\nEnd Time: {end_time_value}"
     else:
-        print('No solution found.')
+        return "No solution found"
 
 # Example usage
-james_schedule = [(11.5, 12.0), (14.5, 15.0)]
-john_schedule = [(9.5, 11.0), (11.5, 12.0), (12.5, 13.5), (14.5, 16.5)]
-duration = 1
-
-schedule_meeting(james_schedule, john_schedule, duration)
+schedules = [[11*60, 12*60], [9*60, 11*60], [11*60, 12*60], [12*30*60, 13*30*60], [14*30*60, 16*30*60]]
+meeting_duration = 60
+print(schedule_meeting(schedules, meeting_duration))

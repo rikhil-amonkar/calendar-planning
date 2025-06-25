@@ -1,70 +1,49 @@
 from z3 import *
 
-def schedule_meeting(schedules, duration):
-    # Create a Z3 solver
+def schedule_meeting(day, start_time, end_time, schedules):
+    # Create Z3 variables for each participant's availability
+    participants = ['Patrick', 'Kayla', 'Carl', 'Christian']
+    variables = [Bool(participant + '_available') for participant in participants]
+
+    # Create Z3 constraints for each participant's schedule
+    constraints = []
+    for participant, schedule in schedules.items():
+        for time in schedule:
+            start, end = time
+            constraints.append(Not(And(start_time <= start, end <= end_time, variables[participants.index(participant)])))
+
+    # Add constraints for the meeting duration
+    constraints.append(start_time + 0.5 <= end_time)
+
+    # Add constraints for the meeting time
+    constraints.append(start_time >= 9 + day * 24)
+    constraints.append(end_time <= 17 + day * 24)
+
+    # Add constraints for the meeting time in 30-minute intervals
+    possible_times = [9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5]
+    start_time_var = Int('start_time')
+    end_time_var = Int('end_time')
     solver = Solver()
+    for variable in variables:
+        solver.add(variable)
+    for i, time in enumerate(possible_times):
+        solver.add(start_time_var == time)
+        solver.add(end_time_var == time + 0.5)
+        solver.add(And(constraints))
+        if solver.check() == sat:
+            model = solver.model()
+            return f"SOLUTION:\nDay: {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'][day]}\nStart Time: {int(time.as_real().numerator / 60):02d}:00\nEnd Time: {int((time + 0.5).as_real().numerator / 60):02d}:30"
+        solver.add(Not(start_time_var == time))
+        solver.add(Not(end_time_var == time + 0.5))
 
-    # Define the day of the meeting
-    day = 1  # In this case, the day is always Monday
+    return "No solution found"
 
-    # Define the possible start times
-    start_times = [9 * 60 + i for i in range(8 * 60)]
+# Example usage
+schedules = {
+    'Patrick': [(9, 9.5), (10, 10.5), (13.5, 14), (16, 16.5)],
+    'Kayla': [(12.5, 13.5), (15, 15.5), (16, 16.5)],
+    'Carl': [(10.5, 11), (12, 12.5), (13, 13.5), (14.5, 17)],
+    'Christian': [(9, 12.5), (13, 14), (14.5, 17)]
+}
 
-    # Define the end times
-    end_times = [(st + duration * 60) % (8 * 60) for st in start_times]
-
-    # Create Z3 variables for the start and end times
-    times = [Int(f'time_{i}') for i in range(len(start_times))]
-
-    # Add constraints for the start and end times
-    for i in range(len(start_times)):
-        solver.add(And(times[i] >= start_times[i], times[i] <= end_times[i]))
-
-    # Create Z3 variables for each participant's free time
-    free_times = [[Bool(f'person_{i}_free_{j}') for j in range(len(start_times))] for i in range(len(schedules))]
-
-    # Add constraints for each participant's schedule
-    for i, schedule in enumerate(schedules):
-        for j, time in enumerate(times):
-            if start_times[j] >= schedule[0] * 60 and start_times[j] < schedule[1] * 60:
-                solver.add(free_times[i][j] == False)
-            elif end_times[j] >= schedule[0] * 60 and end_times[j] < schedule[1] * 60:
-                solver.add(free_times[i][j] == False)
-
-    # Add a constraint to ensure at least one time slot is free for everyone
-    for i in range(len(start_times)):
-        solver.add(Or([free_times[j][i] for j in range(len(schedules))]))
-
-    # Add constraints to ensure the meeting time is within the work hours
-    for i in range(len(start_times)):
-        solver.add(And(times[i] >= 9 * 60, times[i] <= 17 * 60))
-
-    # Add constraints to ensure the meeting time is not blocked by Christian or Carl
-    for i in range(len(start_times)):
-        solver.add(Or([Not(free_times[j][i]) for j in range(2)]))
-
-    # Add a constraint to ensure the meeting time is not blocked by Kayla
-    for i in range(len(start_times)):
-        solver.add(Not(free_times[1][i]))
-
-    # Solve the constraints
-    if solver.check() == sat:
-        model = solver.model()
-        start_time = model[times[0]].as_long() // 60
-        end_time = model[times[0]].as_long() % 60
-        return f'SOLUTION:\nDay: Monday\nStart Time: {start_time:02d}:{end_time:02d}\nEnd Time: {start_time:02d}:{end_time:02d + 30:02d}'
-    else:
-        return 'No solution found'
-
-# Define the existing schedules for everyone during the day
-schedules = [
-    [9, 9.5, 10, 10.5, 13.5, 14, 16, 16.5],  # Patrick
-    [9, 9.5, 10, 10.5, 12.5, 13.5, 15.5, 16],  # Kayla
-    [10.5, 11, 12, 12.5, 13, 13.5, 14.5, 17],  # Carl
-    [9, 9.5, 12.5, 13, 14, 14.5, 14.5, 17]  # Christian
-]
-
-# Define the meeting duration
-duration = 0.5
-
-print(schedule_meeting(schedules, duration))
+print(schedule_meeting(0, 0, 0, schedules))

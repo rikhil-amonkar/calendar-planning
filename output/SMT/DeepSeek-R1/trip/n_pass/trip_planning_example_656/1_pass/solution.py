@@ -1,98 +1,90 @@
-from z3 import *
+from z3 import Solver, Int, Distinct, If, Sum, And, Or, sat
+import json
 
 def main():
-    cities = ['Reykjavik', 'Istanbul', 'Edinburgh', 'Oslo', 'Stuttgart', 'Bucharest']
-    days_required = [5, 4, 5, 2, 3, 5]
-    n = len(cities)
-    
-    # Build city index map
-    city_index = {city: idx for idx, city in enumerate(cities)}
-    
-    # Define flight connections (undirected graph)
-    graph = {
-        'Reykjavik': ['Stuttgart', 'Oslo'],
-        'Istanbul': ['Oslo', 'Bucharest', 'Edinburgh', 'Stuttgart'],
-        'Edinburgh': ['Stuttgart', 'Istanbul', 'Oslo'],
-        'Oslo': ['Bucharest', 'Istanbul', 'Reykjavik', 'Edinburgh'],
-        'Stuttgart': ['Reykjavik', 'Edinburgh', 'Istanbul'],
-        'Bucharest': ['Oslo', 'Istanbul']
+    city_names = ["Reykjavik", "Istanbul", "Edinburgh", "Oslo", "Stuttgart", "Bucharest"]
+    days_map = {
+        "Reykjavik": 5,
+        "Istanbul": 4,
+        "Edinburgh": 5,
+        "Oslo": 2,
+        "Stuttgart": 3,
+        "Bucharest": 5
     }
     
-    # Build adjacency matrix
-    conn_matrix = [[0]*n for _ in range(n)]
-    for city, neighbors in graph.items():
-        i = city_index[city]
-        for neighbor in neighbors:
-            j = city_index[neighbor]
-            conn_matrix[i][j] = 1
-            conn_matrix[j][i] = 1
+    bidirectional_edges = [
+        ("Bucharest", "Oslo"),
+        ("Istanbul", "Oslo"),
+        ("Bucharest", "Istanbul"),
+        ("Stuttgart", "Edinburgh"),
+        ("Istanbul", "Edinburgh"),
+        ("Oslo", "Reykjavik"),
+        ("Istanbul", "Stuttgart"),
+        ("Oslo", "Edinburgh")
+    ]
     
-    # Initialize Z3 variables
-    solver = Solver()
-    order = [Int(f'o{i}') for i in range(n)]
-    offsets = [Int(f'offs{i}') for i in range(n)]
+    directed_edges_list = []
+    for (a, b) in bidirectional_edges:
+        directed_edges_list.append((a, b))
+        directed_edges_list.append((b, a))
+    directed_edges_list.append(("Reykjavik", "Stuttgart"))
     
-    # Constraints: order is a permutation of [0, n-1]
-    solver.add(Distinct(order))
-    for i in range(n):
-        solver.add(And(order[i] >= 0, order[i] < n))
+    s = Solver()
+    pos = {}
+    for city in city_names:
+        pos[city] = Int(f'pos_{city}')
+        s.add(pos[city] >= 0, pos[city] <= 5)
     
-    # Define offsets: cumulative sum of (days - 1) for previous cities
-    solver.add(offsets[0] == 0)
-    for i in range(1, n):
-        prev_city_days = days_required[order[i-1]]
-        solver.add(offsets[i] == offsets[i-1] + (prev_city_days - 1))
+    s.add(Distinct([pos[city] for city in city_names]))
     
-    # Flight connection constraints
-    for i in range(n-1):
-        city1 = order[i]
-        city2 = order[i+1]
-        solver.add(conn_matrix[city1][city2] == 1)
+    start = {}
+    for city in city_names:
+        others = [other for other in city_names if other != city]
+        start[city] = 1 + Sum([If(pos[other] < pos[city], days_map[other] - 1, 0) for other in others])
     
-    # Constraints for Istanbul and Oslo
-    istanbul_idx = city_index['Istanbul']
-    oslo_idx = city_index['Oslo']
+    ist_start = start["Istanbul"]
+    ist_end = ist_start + days_map["Istanbul"] - 1
+    s.add(ist_start <= 8, ist_end >= 5)
     
-    # Start day for a city at position k: 1 + offsets[k]
-    istanbul_start = Int('istanbul_start')
-    oslo_start = Int('oslo_start')
+    osl_start = start["Oslo"]
+    osl_end = osl_start + days_map["Oslo"] - 1
+    s.add(osl_start <= 9, osl_end >= 8)
     
-    # Sum over k: if order[k] is Istanbul, then start = 1 + offsets[k]
-    istanbul_start_expr = 1 + Sum([If(order[k] == istanbul_idx, offsets[k], 0) for k in range(n)])
-    oslo_start_expr = 1 + Sum([If(order[k] == oslo_idx, offsets[k], 0) for k in range(n)])
-    solver.add(istanbul_start == istanbul_start_expr)
-    solver.add(oslo_start == oslo_start_expr)
-    solver.add(istanbul_start >= 2, istanbul_start <= 8)
-    solver.add(oslo_start >= 7, oslo_start <= 9)
+    for k in range(5):
+        constraints = []
+        for (A, B) in directed_edges_list:
+            constraints.append(And(pos[A] == k, pos[B] == k+1))
+        s.add(Or(constraints))
     
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        order_sol = [model.evaluate(order[i]).as_long() for i in range(n)]
-        offsets_sol = [model.evaluate(offsets[i]).as_long() for i in range(n)]
+    if s.check() == sat:
+        model = s.model()
+        positions = {}
+        for city in city_names:
+            positions[city] = model.evaluate(pos[city]).as_long()
         
-        # Build itinerary
+        sequence = sorted(city_names, key=lambda city: positions[city])
+        
+        current_day = 1
+        stays = []
+        for city in sequence:
+            end_day = current_day + days_map[city] - 1
+            stays.append((city, current_day, end_day))
+            current_day = end_day
+        
         itinerary = []
-        for pos in range(n):
-            city_idx = order_sol[pos]
-            start_day = 1 + offsets_sol[pos]
-            stay_days = days_required[city_idx]
-            end_day = start_day + stay_days - 1
-            city_name = cities[city_idx]
+        for i, (city, start_day, end_day) in enumerate(stays):
+            if start_day == end_day:
+                day_range_str = f"Day {start_day}"
+            else:
+                day_range_str = f"Day {start_day}-{end_day}"
+            itinerary.append({"day_range": day_range_str, "place": city})
             
-            # If not the first city, add arrival record
-            if pos > 0:
-                itinerary.append({'day_range': f'Day {start_day}', 'place': city_name})
-            
-            # Entire stay record
-            itinerary.append({'day_range': f'Day {start_day}-{end_day}', 'place': city_name})
-            
-            # If not the last city, add departure record
-            if pos < n - 1:
-                itinerary.append({'day_range': f'Day {end_day}', 'place': city_name})
+            if i < len(stays) - 1:
+                itinerary.append({"day_range": f"Day {end_day}", "place": city})
+                itinerary.append({"day_range": f"Day {end_day}", "place": stays[i+1][0]})
         
-        result = {'itinerary': itinerary}
-        print(result)
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 

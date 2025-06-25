@@ -1,65 +1,111 @@
 from z3 import *
+from itertools import combinations
 
-# Define the variables
-days = 13
+# Define the cities and their corresponding indices
 cities = ['Dublin', 'Madrid', 'Oslo', 'Vilnius', 'London', 'Berlin']
-stays = {city: days for city in cities}
-stays['Dublin'] = 3
-stays['Madrid'] = 2
-stays['Oslo'] = 3
-stays['Vilnius'] = 3
-stays['London'] = 2
-stays['Berlin'] = 5
+city_indices = {city: i for i, city in enumerate(cities)}
+
+# Define the flight connections
+flights = {
+    'Dublin': ['Madrid', 'Oslo'],
+    'Madrid': ['Dublin', 'Oslo', 'London', 'Berlin'],
+    'Oslo': ['Dublin', 'Madrid', 'Vilnius', 'London', 'Berlin'],
+    'Vilnius': ['Oslo', 'Berlin'],
+    'London': ['Madrid', 'Oslo', 'Berlin', 'Dublin'],
+    'Berlin': ['Madrid', 'Oslo', 'Vilnius', 'London', 'Dublin']
+}
+
+# Define the days for each city
+days = {
+    'Dublin': [7, 8, 9],
+    'Madrid': [2, 3],
+    'Oslo': [],
+    'Vilnius': [1, 2, 3],
+    'London': [4, 5],
+    'Berlin': [6, 7]
+}
 
 # Define the constraints
-s = Solver()
+def constraints(model):
+    for city, day in model.items():
+        if day < 1 or day > 13:
+            return False
+        if city in days and day not in days[city]:
+            return False
+        for flight in flights[city]:
+            if day in days[flight]:
+                return False
+    return True
 
-# Define the variables for each day
-days_in_city = {city: [Bool(f'{city}_{i}') for i in range(days)] for city in cities}
+# Define the solver
+solver = Solver()
 
-# Each day, the person is in at most one city
-for day in range(days):
-    s.add(Or(*[days_in_city[city][day] for city in cities]))
+# Define the variables
+days_var = {city: Int(city) for city in cities}
+visit_var = {city: Int(city + '_visit') for city in cities}
 
-# The person stays in each city for the specified number of days
+# Add constraints
 for city in cities:
-    for day in range(stays[city]):
-        s.add(days_in_city[city][day])
-    for day in range(days - stays[city], days):
-        s.add(Not(days_in_city[city][day]))
+    solver.add(days_var[city] >= 1)
+    solver.add(days_var[city] <= 13)
+    solver.add(visit_var[city] >= 0)
+    solver.add(visit_var[city] <= 1)
 
-# The person meets friends in Dublin between day 7 and day 9
-s.add(And(days_in_city['Dublin'][6], days_in_city['Dublin'][7], days_in_city['Dublin'][8]))
+# Add constraints for days in each city
+for city, day_list in days.items():
+    for day in day_list:
+        solver.add(days_var[city] == day)
 
-# The person visits relatives in Madrid between day 2 and day 3
-s.add(And(days_in_city['Madrid'][1], days_in_city['Madrid'][2]))
+# Add constraints for flights
+for city, flight_list in flights.items():
+    for flight in flight_list:
+        solver.add(days_var[city] > days_var[flight])
 
-# The person attends a wedding in Berlin between day 3 and day 7
-s.add(And(days_in_city['Berlin'][2], days_in_city['Berlin'][3], days_in_city['Berlin'][4], days_in_city['Berlin'][5], days_in_city['Berlin'][6]))
+# Add constraints for friends in Dublin
+solver.add(days_var['Dublin'] >= 7)
+solver.add(days_var['Dublin'] <= 9)
 
-# The person visits each city in the correct order
-for flight in [['London', 'Madrid'], ['Madrid', 'Oslo'], ['Oslo', 'Vilnius'], ['Vilnius', 'Berlin'], ['Berlin', 'Dublin'], ['Dublin', 'London'], ['London', 'Berlin'], ['Berlin', 'Oslo'], ['Oslo', 'Madrid'], ['Madrid', 'Dublin']]:
-    if flight[0] in cities:
-        if flight[1] in cities:
-            s.add(days_in_city[flight[0]][0] == days_in_city[flight[1]][0])
-    if flight[0] in cities and flight[1] in cities:
-        if flight[1] == 'Dublin' or flight[1] == 'London':
-            s.add(days_in_city[flight[1]][days_in_city[flight[1]][0]-1] == days_in_city[flight[0]][0])
-        elif flight[1] == 'Berlin':
-            s.add(days_in_city[flight[1]][days_in_city[flight[1]][0]-1] == days_in_city[flight[0]][0])
-        else:
-            s.add(days_in_city[flight[1]][days_in_city[flight[1]][0]-1] == days_in_city[flight[0]][0])
+# Add constraints for relatives in Madrid
+solver.add(days_var['Madrid'] >= 2)
+solver.add(days_var['Madrid'] <= 3)
 
-# Solve the constraints
-if s.check() == sat:
-    model = s.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = []
-        for day in range(days):
-            if model[days_in_city[city][day]].as_bool():
-                trip_plan[city].append(day)
-    for city in trip_plan:
-        print(f'{city}: {trip_plan[city]}')
+# Add constraints for wedding in Berlin
+solver.add(days_var['Berlin'] >= 3)
+solver.add(days_var['Berlin'] <= 7)
+
+# Add constraints for Oslo and Vilnius
+solver.add(days_var['Oslo'] > days_var['Vilnius'])
+
+# Add constraints for London
+solver.add(days_var['London'] > days_var['Madrid'])
+
+# Add constraints for Berlin and Vilnius
+solver.add(days_var['Berlin'] > days_var['Vilnius'])
+
+# Add constraints for total days
+total_days = 0
+for city in cities:
+    total_days += 1
+    if city in days:
+        total_days -= 1
+    solver.add(total_days == 13)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    day = 1
+    for city, visit in model.decls():
+        if city.startswith('Dublin') or city.startswith('Madrid') or city.startswith('Oslo') or city.startswith('Vilnius') or city.startswith('London') or city.startswith('Berlin'):
+            if model[city].as_long() == 0:
+                itinerary.append({"day_range": f"Day {day}-{day}", "place": city.split("'")[1]})
+                day += 1
+            else:
+                itinerary.append({"day_range": f"Day {model[city].as_long()}-{model[city].as_long() + (13 - model[city].as_long())}", "place": city.split("'")[1]})
+                day = model[city].as_long() + 1
+                for flight in flights[city.split("'")[1]]:
+                    itinerary.append({"day_range": f"Day {model[city].as_long()}", "place": flight})
+                    itinerary.append({"day_range": f"Day {model[city].as_long()}-{model[city].as_long() + (13 - model[city].as_long())}", "place": flight})
+    print({"itinerary": itinerary})
 else:
-    print('No solution exists')
+    print("No solution found")

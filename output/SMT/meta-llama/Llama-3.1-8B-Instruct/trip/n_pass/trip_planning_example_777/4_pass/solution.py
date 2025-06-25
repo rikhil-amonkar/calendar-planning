@@ -1,92 +1,91 @@
 from z3 import *
+from itertools import product
 
-# Define the days of the trip
-days = range(1, 16)
-
-# Define the cities
-cities = ['Dublin', 'Helsinki', 'Riga', 'Tallinn', 'Reykjavik', 'Vienna']
-
-# Define the constraints for each city
-constraints = {}
-for city in cities:
-    constraints[city] = [Bool(f'day_{city}_{day}') for day in days]
-
-# Define the direct flights
-flights = {
-    ('Helsinki', 'Riga'): [Bool(f'helsinki_to_riga_{day}') for day in days],
-    ('Riga', 'Tallinn'): [Bool(f'riga_to_tallinn_{day}') for day in days],
-    ('Vienna', 'Helsinki'): [Bool(f'vienna_to_helsinki_{day}') for day in days],
-    ('Riga', 'Dublin'): [Bool(f'riga_to_dublin_{day}') for day in days],
-    ('Vienna', 'Riga'): [Bool(f'vienna_to_riga_{day}') for day in days],
-    ('Reykjavik', 'Vienna'): [Bool(f'reykjavik_to_vienna_{day}') for day in days],
-    ('Helsinki', 'Dublin'): [Bool(f'helsinki_to_dublin_{day}') for day in days],
-    ('Tallinn', 'Dublin'): [Bool(f'tallinn_to_dublin_{day}') for day in days],
-    ('Reykjavik', 'Helsinki'): [Bool(f'reykjavik_to_helsinki_{day}') for day in days],
-    ('Reykjavik', 'Dublin'): [Bool(f'reykjavik_to_dublin_{day}') for day in days],
-    ('Helsinki', 'Tallinn'): [Bool(f'helsinki_to_tallinn_{day}') for day in days],
-    ('Vienna', 'Dublin'): [Bool(f'vienna_to_dublin_{day}') for day in days]
+# Define the cities and their corresponding durations
+cities = {
+    'Dublin': 5,
+    'Helsinki': 3,
+    'Riga': 3,
+    'Reykjavik': 2,
+    'Vienna': 2,
+    'Tallinn': 5
 }
 
-# Define the constraints for each flight
-for (from_city, to_city) in flights:
-    for day in days:
-        if day > 0 and day < 15:  # Ensure day is within range
-            flights[(from_city, to_city)][day] = Implies(constraints[from_city][day], constraints[to_city][day])
+# Define the flight connections
+flights = {
+    'Helsinki-Riga': 1,
+    'Riga-Tallinn': 1,
+    'Vienna-Helsinki': 1,
+    'Riga-Dublin': 1,
+    'Vienna-Riga': 1,
+    'Reykjavik-Vienna': 1,
+    'Helsinki-Dublin': 1,
+    'Tallinn-Dublin': 1,
+    'Reykjavik-Helsinki': 1,
+    'Reykjavik-Dublin': 1,
+    'Helsinki-Tallinn': 1,
+    'Vienna-Dublin': 1
+}
 
-# Define the constraints for each city's stay
+# Define the constraints
+days = 15
+min_days = {city: cities[city] for city in cities}
+max_days = {city: cities[city] for city in cities}
+
+# Define the Z3 solver
+s = Solver()
+
+# Define the variables
+places = [Int(f'place_{i}') for i in range(days)]
+days_var = [Int(f'day_{i}') for i in range(days)]
+flight_var = [Bool(f'flight_{i}') for i in range(days)]
+
+# Define the constraints
+for i in range(days):
+    s.add(days_var[i] >= 1)
+    s.add(days_var[i] <= days)
+    s.add(places[i] in [Int(c) for c in cities])
+
+for i in range(1, days):
+    s.add(days_var[i] > days_var[i-1])
+    s.add(places[i]!= places[i-1])
+
 for city in cities:
-    for day in days:
-        if day > 0 and day < 15:  # Ensure day is within range
-            constraints[city][day] = Implies(constraints[city][day], Or([constraints[city][i] for i in range(1, day)]))
+    city_int = Int(city)
+    s.add(And([days_var[i] >= cities[city] for i in range(days) if places[i] == city_int]))
 
-# Define the constraints for the trip's duration
-for city in cities:
-    for day in days:
-        if day > 0 and day < 15:  # Ensure day is within range
-            constraints[city][day] = Implies(constraints[city][day], day <= 15)
+# Define the flight connections as Z3 constraints
+for flight in flights:
+    flight_days = flights[flight]
+    for i in range(days):
+        if i + flight_days <= days - 1:  # Ensure i+flight_days is within range
+            s.add(Implies(flight_var[i], And(places[i] == Int(flight.split('-')[0]), places[i+flight_days] == Int(flight.split('-')[1]))))
 
-# Define the constraints for Dublin
-for day in days:
-    constraints['Dublin'][day] = Implies(constraints['Dublin'][day], day <= 5)
+# Define the meeting constraints
+meeting_days = [3, 4, 5]
+s.add(And([places[i] == Int('Helsinki') for i in meeting_days]))
 
-# Define the constraints for Helsinki
-for day in days:
-    constraints['Helsinki'][day] = Implies(constraints['Helsinki'][day], day >= 3 and day <= 5)
+# Define the wedding constraints
+wedding_days = [7, 8, 9, 10, 11]
+s.add(And([places[i] == Int('Tallinn') for i in wedding_days]))
 
-# Define the constraints for Riga
-for day in days:
-    constraints['Riga'][day] = Implies(constraints['Riga'][day], day >= 2 and day <= 5)
+# Solve the problem
+s.add(Or([flight_var[i] for i in range(days)]))
+s.check()
 
-# Define the constraints for Tallinn
-for day in days:
-    constraints['Tallinn'][day] = Implies(constraints['Tallinn'][day], day >= 7 and day <= 11)
+# Get the solution
+model = s.model()
 
-# Define the constraints for Reykjavik
-for day in days:
-    constraints['Reykjavik'][day] = Implies(constraints['Reykjavik'][day], day >= 6 and day <= 8)
+# Print the solution
+itinerary = []
+for i in range(days):
+    if model[days_var[i]].as_long() == i+1:
+        day_range = f'Day {i+1}-{i+1}' if model[days_var[i+1]].as_long()!= i+2 else f'Day {i+1}-{i+1}'
+        if model[places[i]].as_long() == model[places[i+1]].as_long():
+            day_range = f'Day {i+1}'
+        itinerary.append({'day_range': day_range, 'place': model[places[i]].as_string()})
 
-# Define the constraints for Vienna
-for day in days:
-    constraints['Vienna'][day] = Implies(constraints['Vienna'][day], day >= 2 and day <= 4)
-
-# Define the solver
-solver = Solver()
-
-# Add the constraints to the solver
-for city in constraints:
-    for day in days:
-        solver.add(constraints[city][day])
-
-for (from_city, to_city) in flights:
-    for day in days:
-        solver.add(flights[(from_city, to_city)][day])
-
-# Solve the solver
-if solver.check() == sat:
-    model = solver.model()
-    for city in cities:
-        print(f"{city}:")
-        for day in days:
-            print(f"  Day {day}: {model.evaluate(constraints[city][day])}")
-else:
-    print("No solution found")
+# Print the solution in JSON format
+print('{"itinerary":', end=' ')
+print(itinerary, end='')
+print('}')

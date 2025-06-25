@@ -1,67 +1,121 @@
 from z3 import *
+from itertools import combinations
 
-# Define the variables
-days = 21
-cities = ['Reykjavik', 'Oslo', 'Stuttgart', 'Stockholm', 'Tallijk', 'Split', 'Geneva', 'Porto']
-city_days = {city: [Bool(f'{city}_day_{i}') for i in range(1, days+1)] for city in cities}
+# Define cities and days
+cities = ['Oslo', 'Stuttgart', 'Reykjavik', 'Split', 'Geneva', 'Porto', 'Tallinn', 'Stockholm']
+days = range(1, 22)
 
-# Define the constraints
-constrs = []
-for city in cities:
-    constrs += [Or([city_days[city][i] for i in range(1, days+1)]).eq(True)]  # Each city must be visited at least once
-
-# Define the conference and workshop constraints
-constrs += [city_days['Reykjavik'][1].eq(True), city_days['Reykjavik'][2].eq(True)]
-constrs += [city_days['Porto'][19].eq(True), city_days['Porto'][20].eq(True), city_days['Porto'][21].eq(True)]
-
-# Define the stay constraints
-constrs += [city_days['Oslo'][1].eq(True), city_days['Oslo'][2].eq(True), city_days['Oslo'][3].eq(True), city_days['Oslo'][4].eq(True), city_days['Oslo'][5].eq(True)]
-constrs += [city_days['Stuttgart'][1].eq(True), city_days['Stuttgart'][2].eq(True), city_days['Stuttgart'][3].eq(True), city_days['Stuttgart'][4].eq(True), city_days['Stuttgart'][5].eq(True)]
-constrs += [city_days['Reykjavik'][6].eq(True), city_days['Reykjavik'][7].eq(True)]
-constrs += [city_days['Split'][8].eq(True), city_days['Split'][9].eq(True), city_days['Split'][10].eq(True)]
-constrs += [city_days['Geneva'][11].eq(True), city_days['Geneva'][12].eq(True)]
-constrs += [city_days['Porto'][13].eq(True), city_days['Porto'][14].eq(True), city_days['Porto'][15].eq(True)]
-constrs += [city_days['Tallinn'][16].eq(True), city_days['Tallinn'][17].eq(True), city_days['Tallinn'][18].eq(True), city_days['Tallinn'][19].eq(True), city_days['Tallinn'][20].eq(True), city_days['Tallinn'][21].eq(True)]
-constrs += [city_days['Stockholm'][2].eq(True), city_days['Stockholm'][3].eq(True), city_days['Stockholm'][4].eq(True)]
-
-# Define the flight constraints
+# Define direct flights
 flights = {
-    ('Reykjavik', 'Stuttgart'): [1, 2],
-    ('Reykjavik', 'Stockholm'): [1, 2],
-    ('Reykjavik', 'Oslo'): [1, 2],
-    ('Stuttgart', 'Porto'): [3, 4],
-    ('Oslo', 'Split'): [5, 6],
-    ('Stockholm', 'Stuttgart'): [2, 3],
-    ('Stockholm', 'Split'): [4, 5],
-    ('Stockholm', 'Geneva'): [5, 6],
-    ('Oslo', 'Geneva'): [6, 7],
-    ('Oslo', 'Porto'): [7, 8],
-    ('Geneva', 'Porto'): [8, 9],
-    ('Geneva', 'Split'): [9, 10],
-    ('Tallinn', 'Oslo'): [16, 17],
-    ('Stockholm', 'Geneva'): [3, 4]
+    'Reykjavik': ['Stuttgart', 'Stockholm', 'Oslo'],
+    'Stuttgart': ['Porto', 'Split', 'Stockholm'],
+    'Oslo': ['Split', 'Geneva'],
+    'Split': ['Stuttgart', 'Stockholm'],
+    'Geneva': ['Porto', 'Split'],
+    'Porto': [],
+    'Tallinn': ['Oslo'],
+    'Stockholm': ['Stuttgart', 'Geneva']
 }
 
-for (city1, city2) in flights:
-    for day in flights[(city1, city2)]:
-        constrs += [city_days[city1][day].eq(city_days[city2][day])]
+# Define constraints
+constraints = []
+places = {}
+for day in days:
+    for city in cities:
+        places[city + str(day)] = Int(city + str(day))
+        places[city + str(day)].sort_key = city + str(day)
+    for city in cities:
+        for neighbor in flights[city]:
+            constraints.append(places[city + str(day)] == 0)
+            constraints.append(places[neighbor + str(day)] == 0)
+            if day > 1 and city == 'Reykjavik' and day <= 2:
+                constraints.append(places[city + str(day)] == 1)
+            elif day > 1 and city == 'Stockholm' and 2 <= day <= 4:
+                constraints.append(places[city + str(day)] == 1)
+            elif day > 18 and city == 'Porto' and 19 <= day <= 21:
+                constraints.append(places[city + str(day)] == 1)
+            else:
+                constraints.append(places[city + str(day)] >= 0)
+                constraints.append(places[city + str(day)] <= 1)
+    for city in cities:
+        if city == 'Oslo':
+            constraints.append(places[city + str(day)] == 5)
+        elif city == 'Stuttgart':
+            constraints.append(places[city + str(day)] == 5)
+        elif city == 'Reykjavik':
+            constraints.append(places[city + str(day)] == 2)
+        elif city == 'Split':
+            constraints.append(places[city + str(day)] == 3)
+        elif city == 'Geneva':
+            constraints.append(places[city + str(day)] == 2)
+        elif city == 'Porto':
+            constraints.append(places[city + str(day)] == 3)
+        elif city == 'Tallinn':
+            constraints.append(places[city + str(day)] == 5)
+        elif city == 'Stockholm':
+            constraints.append(places[city + str(day)] == 3)
+        else:
+            constraints.append(places[city + str(day)] == 0)
+    for i in range(1, 22):
+        for j in range(i + 1, 22):
+            if i == 1 and j == 2:
+                constraints.append(places['Reykjavik1'] == 1)
+                constraints.append(places['Reykjavik2'] == 1)
+            elif i == 2 and j == 3:
+                constraints.append(places['Stockholm2'] == 1)
+            elif i == 3 and j == 4:
+                constraints.append(places['Stockholm3'] == 1)
+            elif i == 19 and j == 21:
+                constraints.append(places['Porto19'] == 1)
+                constraints.append(places['Porto20'] == 1)
+                constraints.append(places['Porto21'] == 1)
+            else:
+                constraints.append(places['Oslo' + str(i)] == 0)
+                constraints.append(places['Oslo' + str(j)] == 0)
+                constraints.append(places['Stuttgart' + str(i)] == 0)
+                constraints.append(places['Stuttgart' + str(j)] == 0)
+                constraints.append(places['Reykjavik' + str(i)] == 0)
+                constraints.append(places['Reykjavik' + str(j)] == 0)
+                constraints.append(places['Split' + str(i)] == 0)
+                constraints.append(places['Split' + str(j)] == 0)
+                constraints.append(places['Geneva' + str(i)] == 0)
+                constraints.append(places['Geneva' + str(j)] == 0)
+                constraints.append(places['Porto' + str(i)] == 0)
+                constraints.append(places['Porto' + str(j)] == 0)
+                constraints.append(places['Tallinn' + str(i)] == 0)
+                constraints.append(places['Tallinn' + str(j)] == 0)
+                constraints.append(places['Stockholm' + str(i)] == 0)
+                constraints.append(places['Stockholm' + str(j)] == 0)
+                constraints.append(places['Oslo' + str(i)] + places['Oslo' + str(j)] <= 1)
+                constraints.append(places['Stuttgart' + str(i)] + places['Stuttgart' + str(j)] <= 1)
+                constraints.append(places['Reykjavik' + str(i)] + places['Reykjavik' + str(j)] <= 1)
+                constraints.append(places['Split' + str(i)] + places['Split' + str(j)] <= 1)
+                constraints.append(places['Geneva' + str(i)] + places['Geneva' + str(j)] <= 1)
+                constraints.append(places['Porto' + str(i)] + places['Porto' + str(j)] <= 1)
+                constraints.append(places['Tallinn' + str(i)] + places['Tallinn' + str(j)] <= 1)
+                constraints.append(places['Stockholm' + str(i)] + places['Stockholm' + str(j)] <= 1)
 
-# Define the solver
 solver = Solver()
+for constraint in constraints:
+    solver.add(constraint)
 
-# Add the constraints to the solver
-for constr in constrs:
-    solver.add(constr)
-
-# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    trip_plan = {}
+    result = []
     for city in cities:
-        trip_plan[city] = []
-        for i in range(1, days+1):
-            if model.evaluate(city_days[city][i]).as_bool():
-                trip_plan[city].append(i)
-    print(trip_plan)
+        days_in_city = 0
+        for day in days:
+            if model.evaluate(places[city + str(day)]).as_bool():
+                days_in_city += 1
+        if days_in_city > 0:
+            result.append({"day_range": "Day 1-" + str(days_in_city), "place": city})
+            for day in days:
+                if model.evaluate(places[city + str(day)]).as_bool():
+                    result.append({"day_range": "Day " + str(day), "place": city})
+                    for neighbor in flights[city]:
+                        if model.evaluate(places[neighbor + str(day)]).as_bool():
+                            result.append({"day_range": "Day " + str(day), "place": neighbor})
+    result.sort(key=lambda x: (x['day_range'], x['place']))
+    print({"itinerary": result})
 else:
-    print("No solution found")
+    print("No solution exists")

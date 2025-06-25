@@ -1,59 +1,46 @@
 from z3 import *
 
-def schedule_meeting(participants, meeting_duration, preferences):
-    # Define the day and time slots
-    day = 'Monday'
-    start_time = 9 * 60  # 9:00 in minutes
-    end_time = 17 * 60  # 17:00 in minutes
-    time_slots = [i for i in range(start_time, end_time - meeting_duration + 1)]
-
+def schedule_meeting():
     # Define the variables
-    meeting_start = [Int(f'meeting_start_{i}') for i in range(len(participants))]
-    for i in range(len(participants)):
-        meeting_start[i].sort(IntSort())
-        meeting_start[i].get_sort().set_range(IntSort(0, len(time_slots) - 1))
+    day = 'Monday'
+    start_time = Int('start_time')
+    end_time = Int('end_time')
+    duration = 30  # Meeting duration in minutes
+    start_time_bounds = [9 * 60, 17 * 60]  # 9:00 to 17:00 in minutes
 
     # Define the constraints
-    constraints = []
-    for i in range(len(participants)):
-        constraints.append(And(meeting_start[i] >= start_time, meeting_start[i] <= end_time - meeting_duration))
-        for j, participant in enumerate(participants):
-            if i!= j:
-                constraints.append(Or(meeting_start[i] < participants[j]['start'] - meeting_duration,
-                                      meeting_start[i] >= participants[j]['end']))
-        if preferences and i == participants.index(preferences):
-            constraints.append(meeting_start[i] >= 14 * 60)
+    constraints = [
+        And(start_time >= start_time_bounds[0], start_time <= start_time_bounds[1]),  # Start time within work hours
+        start_time + duration <= 17 * 60,  # End time within work hours
+        Or(start_time >= 14 * 60, start_time <= 11 * 60 + 30),  # David does not want to meet before 14:00
+    ]
 
-    # Define the solver
+    # Define the existing schedules
+    natalie_schedule = [0, 24 * 60]  # Natalie's schedule is wide open the entire day
+    david_schedule = [11 * 60, 11 * 60 + 30], [14 * 60, 14 * 60 + 30]  # David's schedule
+    douglas_schedule = [9 * 60 + 30, 10 * 60], [11 * 60, 11 * 60 + 30], [13 * 60, 13 * 60 + 30], [14 * 60, 14 * 60 + 30]  # Douglas' schedule
+    ralph_schedule = [9 * 60, 9 * 60 + 30], [10 * 60, 11 * 60], [11 * 60 + 30, 12 * 60 + 30], [13 * 60 + 30, 15 * 60], [15 * 60 + 30, 16 * 60], [16 * 60 + 30, 17 * 60]  # Ralph's schedule
+    jordan_schedule = [9 * 60, 10 * 60], [12 * 60, 12 * 60 + 30], [13 * 60, 13 * 60 + 30], [14 * 60, 14 * 60 + 30], [15 * 60 + 30, 17 * 60]  # Jordan's schedule
+
+    # Add constraints for each participant's schedule
+    for schedule in [natalie_schedule, david_schedule, douglas_schedule, ralph_schedule, jordan_schedule]:
+        for start, end in schedule:
+            constraints.append(Or(start > end_time + duration, start > start_time, end_time > end))
+
+    # Solve the constraints
     solver = Solver()
-    for var in meeting_start:
-        solver.add(var >= 0)
-    solver.add(And([meeting_start[i] + meeting_duration <= end_time for i in range(len(participants))]))
-
-    # Add the constraints to the solver
-    for constraint in constraints:
-        solver.add(constraint)
-
-    # Solve the problem
+    solver.add(constraints)
+    solver.add(start_time + duration == end_time)
     if solver.check() == sat:
         model = solver.model()
-        start_time = model[meeting_start[0]].as_long() // 60
-        end_time = (model[meeting_start[0]].as_long() // 60) + meeting_duration // 60
-        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time:02d}:{(start_time % 1) * 60:02d}\nEnd Time: {end_time:02d}:{(end_time % 1) * 60:02d}'
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+        hours_start = start_time_value // 60
+        minutes_start = start_time_value % 60
+        hours_end = end_time_value // 60
+        minutes_end = end_time_value % 60
+        return f'SOLUTION:\nDay: {day}\nStart Time: {hours_start:02d}:{minutes_start:02d}\nEnd Time: {hours_end:02d}:{minutes_end:02d}'
     else:
         return 'No solution found'
 
-# Define the participants and their schedules
-participants = [
-    {'name': 'Natalie','start': 0, 'end': 17 * 60},
-    {'name': 'David','start': 11 * 60, 'end': 12 * 60,'start2': 14 * 60 + 30, 'end2': 15 * 60},
-    {'name': 'Douglas','start': 9 * 60 + 30, 'end': 10 * 60,'start2': 11 * 60, 'end2': 12 * 60,'start3': 13 * 60, 'end3': 13 * 60 + 30,'start4': 14 * 60 + 30, 'end4': 15 * 60},
-    {'name': 'Ralph','start': 9 * 60, 'end': 9 * 60 + 30,'start2': 10 * 60, 'end2': 11 * 60,'start3': 11 * 60, 'end3': 12 * 60 + 30,'start4': 13 * 60 + 30, 'end4': 15 * 60,'start5': 15 * 60 + 30, 'end5': 16 * 60,'start6': 16 * 60 + 30, 'end6': 17 * 60},
-    {'name': 'Jordan','start': 9 * 60, 'end': 10 * 60,'start2': 12 * 60, 'end2': 12 * 60 + 30,'start3': 13 * 60, 'end3': 13 * 60 + 30,'start4': 14 * 60 + 30, 'end4': 15 * 60,'start5': 15 * 60 + 30, 'end5': 17 * 60}
-]
-
-# Define the meeting duration and preferences
-meeting_duration = 30
-preferences = 'David'
-
-print(schedule_meeting(participants, meeting_duration, preferences))
+print(schedule_meeting())

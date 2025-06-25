@@ -1,87 +1,168 @@
 from z3 import *
 
-# Define the variables
-time_slots = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-places = ['Nob Hill', 'Embarcadero', 'The Castro', 'Haight-Ashbury', 'Union Square', 'North Beach', 'Pacific Heights', 'Chinatown', 'Golden Gate Park', 'Marina District', 'Russian Hill']
-people = ['Mary', 'Kenneth', 'Joseph', 'Sarah', 'Thomas', 'Daniel', 'Richard', 'Mark', 'David', 'Karen']
-time_constraints = {'Mary': (8*60, 9*60+75), 'Kenneth': (9*60, 7*60+30), 'Joseph': (8*60, 10*60), 'Sarah': (9*60+45, 12*60+90), 'Thomas': (19*60, 19*60+15), 'Daniel': (9*60+45, 8*60+15), 'Richard': (0, 6*60+30), 'Mark': (5*60+30, 9*60), 'David': (20*60, 21*60), 'Karen': (9*60+15, 6*60+120)}
+# Define the travel times
 travel_times = {
-    'Nob Hill': {'Embarcadero': 9, 'The Castro': 17, 'Haight-Ashbury': 13, 'Union Square': 7, 'North Beach': 8, 'Pacific Heights': 8, 'Chinatown': 6, 'Golden Gate Park': 17, 'Marina District': 11, 'Russian Hill': 5},
-    'Embarcadero': {'Nob Hill': 10, 'The Castro': 25, 'Haight-Ashbury': 21, 'Union Square': 10, 'North Beach': 5, 'Pacific Heights': 11, 'Chinatown': 7, 'Golden Gate Park': 25, 'Marina District': 12, 'Russian Hill': 8},
-    'The Castro': {'Nob Hill': 16, 'Embarcadero': 22, 'Haight-Ashbury': 6, 'Union Square': 19, 'North Beach': 20, 'Pacific Heights': 16, 'Chinatown': 22, 'Golden Gate Park': 11, 'Marina District': 21, 'Russian Hill': 18},
-    'Haight-Ashbury': {'Nob Hill': 15, 'Embarcadero': 20, 'The Castro': 6, 'Union Square': 19, 'North Beach': 19, 'Pacific Heights': 12, 'Chinatown': 19, 'Golden Gate Park': 7, 'Marina District': 17, 'Russian Hill': 17},
-    'Union Square': {'Nob Hill': 9, 'Embarcadero': 11, 'The Castro': 17, 'Haight-Ashbury': 18, 'North Beach': 10, 'Pacific Heights': 15, 'Chinatown': 7, 'Golden Gate Park': 22, 'Marina District': 18, 'Russian Hill': 13},
-    'North Beach': {'Nob Hill': 7, 'Embarcadero': 6, 'The Castro': 23, 'Haight-Ashbury': 18, 'Union Square': 7, 'Pacific Heights': 8, 'Chinatown': 6, 'Golden Gate Park': 22, 'Marina District': 9, 'Russian Hill': 4},
-    'Pacific Heights': {'Nob Hill': 8, 'Embarcadero': 10, 'The Castro': 16, 'Haight-Ashbury': 11, 'Union Square': 12, 'North Beach': 9, 'Chinatown': 11, 'Golden Gate Park': 15, 'Marina District': 6, 'Russian Hill': 7},
-    'Chinatown': {'Nob Hill': 9, 'Embarcadero': 5, 'The Castro': 22, 'Haight-Ashbury': 19, 'Union Square': 7, 'North Beach': 3, 'Pacific Heights': 10, 'Golden Gate Park': 23, 'Marina District': 12, 'Russian Hill': 7},
-    'Golden Gate Park': {'Nob Hill': 20, 'Embarcadero': 25, 'The Castro': 13, 'Haight-Ashbury': 7, 'Union Square': 22, 'North Beach': 23, 'Pacific Heights': 16, 'Chinatown': 23, 'Marina District': 16, 'Russian Hill': 19},
-    'Marina District': {'Nob Hill': 12, 'Embarcadero': 14, 'The Castro': 22, 'Haight-Ashbury': 16, 'Union Square': 16, 'North Beach': 11, 'Pacific Heights': 7, 'Chinatown': 15, 'Golden Gate Park': 18, 'Russian Hill': 8},
-    'Russian Hill': {'Nob Hill': 5, 'Embarcadero': 8, 'The Castro': 21, 'Haight-Ashbury': 17, 'Union Square': 10, 'North Beach': 5, 'Pacific Heights': 7, 'Chinatown': 9, 'Golden Gate Park': 21, 'Marina District': 7}
+    ('Nob Hill', 'Embarcadero'): 9,
+    ('Nob Hill', 'The Castro'): 17,
+    ('Nob Hill', 'Haight-Ashbury'): 13,
+    ('Nob Hill', 'Union Square'): 7,
+    ('Nob Hill', 'North Beach'): 8,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Chinatown'): 6,
+    ('Nob Hill', 'Golden Gate Park'): 17,
+    ('Nob Hill', 'Marina District'): 11,
+    ('Nob Hill', 'Russian Hill'): 5,
+    ('Embarcadero', 'Nob Hill'): 10,
+    ('Embarcadero', 'The Castro'): 25,
+    ('Embarcadero', 'Haight-Ashbury'): 21,
+    ('Embarcadero', 'Union Square'): 10,
+    ('Embarcadero', 'North Beach'): 5,
+    ('Embarcadero', 'Pacific Heights'): 11,
+    ('Embarcadero', 'Chinatown'): 7,
+    ('Embarcadero', 'Golden Gate Park'): 25,
+    ('Embarcadero', 'Marina District'): 12,
+    ('Embarcadero', 'Russian Hill'): 8,
+    ('The Castro', 'Nob Hill'): 16,
+    ('The Castro', 'Embarcadero'): 22,
+    ('The Castro', 'Haight-Ashbury'): 6,
+    ('The Castro', 'Union Square'): 19,
+    ('The Castro', 'North Beach'): 20,
+    ('The Castro', 'Pacific Heights'): 16,
+    ('The Castro', 'Chinatown'): 22,
+    ('The Castro', 'Golden Gate Park'): 11,
+    ('The Castro', 'Marina District'): 21,
+    ('The Castro', 'Russian Hill'): 18,
+    ('Haight-Ashbury', 'Nob Hill'): 15,
+    ('Haight-Ashbury', 'Embarcadero'): 20,
+    ('Haight-Ashbury', 'The Castro'): 6,
+    ('Haight-Ashbury', 'Union Square'): 19,
+    ('Haight-Ashbury', 'North Beach'): 19,
+    ('Haight-Ashbury', 'Pacific Heights'): 12,
+    ('Haight-Ashbury', 'Chinatown'): 19,
+    ('Haight-Ashbury', 'Golden Gate Park'): 7,
+    ('Haight-Ashbury', 'Marina District'): 17,
+    ('Haight-Ashbury', 'Russian Hill'): 17,
+    ('Union Square', 'Nob Hill'): 9,
+    ('Union Square', 'Embarcadero'): 11,
+    ('Union Square', 'The Castro'): 17,
+    ('Union Square', 'Haight-Ashbury'): 18,
+    ('Union Square', 'North Beach'): 10,
+    ('Union Square', 'Pacific Heights'): 15,
+    ('Union Square', 'Chinatown'): 7,
+    ('Union Square', 'Golden Gate Park'): 22,
+    ('Union Square', 'Marina District'): 18,
+    ('Union Square', 'Russian Hill'): 13,
+    ('North Beach', 'Nob Hill'): 7,
+    ('North Beach', 'Embarcadero'): 6,
+    ('North Beach', 'The Castro'): 23,
+    ('North Beach', 'Haight-Ashbury'): 18,
+    ('North Beach', 'Union Square'): 7,
+    ('North Beach', 'Pacific Heights'): 8,
+    ('North Beach', 'Chinatown'): 6,
+    ('North Beach', 'Golden Gate Park'): 22,
+    ('North Beach', 'Marina District'): 9,
+    ('North Beach', 'Russian Hill'): 4,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Embarcadero'): 10,
+    ('Pacific Heights', 'The Castro'): 16,
+    ('Pacific Heights', 'Haight-Ashbury'): 11,
+    ('Pacific Heights', 'Union Square'): 12,
+    ('Pacific Heights', 'North Beach'): 9,
+    ('Pacific Heights', 'Chinatown'): 11,
+    ('Pacific Heights', 'Golden Gate Park'): 15,
+    ('Pacific Heights', 'Marina District'): 6,
+    ('Pacific Heights', 'Russian Hill'): 7,
+    ('Chinatown', 'Nob Hill'): 9,
+    ('Chinatown', 'Embarcadero'): 5,
+    ('Chinatown', 'The Castro'): 22,
+    ('Chinatown', 'Haight-Ashbury'): 19,
+    ('Chinatown', 'Union Square'): 7,
+    ('Chinatown', 'North Beach'): 3,
+    ('Chinatown', 'Pacific Heights'): 10,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Chinatown', 'Marina District'): 12,
+    ('Chinatown', 'Russian Hill'): 7,
+    ('Golden Gate Park', 'Nob Hill'): 20,
+    ('Golden Gate Park', 'Embarcadero'): 25,
+    ('Golden Gate Park', 'The Castro'): 13,
+    ('Golden Gate Park', 'Haight-Ashbury'): 7,
+    ('Golden Gate Park', 'Union Square'): 22,
+    ('Golden Gate Park', 'North Beach'): 23,
+    ('Golden Gate Park', 'Pacific Heights'): 16,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'Marina District'): 16,
+    ('Golden Gate Park', 'Russian Hill'): 19,
+    ('Marina District', 'Nob Hill'): 12,
+    ('Marina District', 'Embarcadero'): 14,
+    ('Marina District', 'The Castro'): 22,
+    ('Marina District', 'Haight-Ashbury'): 16,
+    ('Marina District', 'Union Square'): 16,
+    ('Marina District', 'North Beach'): 11,
+    ('Marina District', 'Pacific Heights'): 7,
+    ('Marina District', 'Chinatown'): 15,
+    ('Marina District', 'Golden Gate Park'): 18,
+    ('Marina District', 'Russian Hill'): 8,
+    ('Russian Hill', 'Nob Hill'): 5,
+    ('Russian Hill', 'Embarcadero'): 8,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Haight-Ashbury'): 17,
+    ('Russian Hill', 'Union Square'): 10,
+    ('Russian Hill', 'North Beach'): 5,
+    ('Russian Hill', 'Pacific Heights'): 7,
+    ('Russian Hill', 'Chinatown'): 9,
+    ('Russian Hill', 'Golden Gate Park'): 21,
+    ('Russian Hill', 'Marina District'): 7
 }
 
-# Create the solver
-solver = Solver()
+# Define the constraints
+s = Optimize()
 
-# Define the decision variables
-x = {}
-for i in time_slots:
-    for p in people:
-        x[(i, p)] = Bool('x_%s_%s' % (i, p))
+# Define the variables
+visit = [Bool(f'visit_{i}') for i in range(10)]
+meet_time = [Int(f'meet_time_{i}') for i in range(10)]
 
-# Add constraints for each person
-for p in people:
-    start, end = time_constraints[p]
-    for i in time_slots:
-        solver.assert(Not(x[(i, p)])) # Assume the person is not met at this time slot
-    for i in range(start, end+1):
-        solver.assert(x[(i, p)]) # The person is met at all time slots within their availability
-    for i in range(end+1, max(time_slots)+1):
-        solver.assert(Not(x[(i, p)])) # The person is not met after their availability ends
+# Define the objective function
+objective = 0
+for i in range(10):
+    objective += meet_time[i]
 
-# Add constraints for each place
-for p1 in places:
-    for p2 in places:
-        if p1!= p2:
-            for i in time_slots:
-                if p1 == 'Nob Hill' and p2 == 'Embarcadero':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)]))
-                elif p1 == 'Embarcadero' and p2 == 'The Castro':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')]))
-                elif p1 == 'The Castro' and p2 == 'Haight-Ashbury':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')]))
-                elif p1 == 'Haight-Ashbury' and p2 == 'Union Square':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')]))
-                elif p1 == 'Union Square' and p2 == 'North Beach':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')]))
-                elif p1 == 'North Beach' and p2 == 'Pacific Heights':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')]))
-                elif p1 == 'Pacific Heights' and p2 == 'Chinatown':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')]))
-                elif p1 == 'Chinatown' and p2 == 'Golden Gate Park':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')], x[(i, p1)]!= x[(i, 'Mark')]))
-                elif p1 == 'Golden Gate Park' and p2 == 'Marina District':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')], x[(i, p1)]!= x[(i, 'Mark')], x[(i, p1)]!= x[(i, 'David')]))
-                elif p1 == 'Marina District' and p2 == 'Russian Hill':
-                    solver.assert(Or(x[(i, 'Mary')], Not(x[(i, 'Mary')]), x[(i, p1)]!= x[(i, p2)], x[(i, p1)]!= x[(i, 'Kenneth')], x[(i, p1)]!= x[(i, 'Joseph')], x[(i, p1)]!= x[(i, 'Sarah')], x[(i, p1)]!= x[(i, 'Thomas')], x[(i, p1)]!= x[(i, 'Daniel')], x[(i, p1)]!= x[(i, 'Richard')], x[(i, p1)]!= x[(i, 'Mark')], x[(i, p1)]!= x[(i, 'David')], x[(i, p1)]!= x[(i, 'Karen')]))
-                else:
-                    solver.assert(x[(i, p1)] == x[(i, p2)])
+# Add constraints
+s.add(And([visit[i] == True for i in range(10)]))  # All friends must be visited
+s.add(And([meet_time[i] >= 0 for i in range(10)]))  # Meet time must be non-negative
+s.add(And([meet_time[i] <= 540 for i in range(10)]))  # Meet time must be less than or equal to 9 hours
+for i in range(10):
+    s.add(If(visit[i], meet_time[i] >= 0, meet_time[i] <= 0))  # Meet time must be non-negative if friend is visited
+    s.add(If(visit[i], meet_time[i] <= 540, meet_time[i] <= 0))  # Meet time must be less than or equal to 9 hours if friend is visited
 
-# Add constraints for travel times
-for i in time_slots:
-    for p1 in places:
-        for p2 in places:
-            if p1!= p2:
-                travel_time = travel_times[p1][p2]
-                solver.assert(Implies(x[(i, p1)], x[(i, p2)] == (x[(i, p1)])))
-                solver.assert(Implies(x[(i, p2)], x[(i, p1)] == (x[(i, p2)] + travel_time)))
+# Define the start time
+start_time = 0
 
-# Check if the solver can find a solution
-if solver.check() == sat:
-    model = solver.model()
-    print("Solution:")
-    for i in time_slots:
-        for p in people:
-            if model.evaluate(x[(i, p)]).as_bool():
-                print(f"At {i}:00, meet {p}")
+# Add constraints for each friend
+s.add(If(visit[0], meet_time[0] >= 480, meet_time[0] <= 0))  # Mary
+s.add(If(visit[1], meet_time[1] >= 375, meet_time[1] <= 0))  # Kenneth
+s.add(If(visit[2], meet_time[2] >= 480, meet_time[2] <= 0))  # Joseph
+s.add(If(visit[3], meet_time[3] >= 375, meet_time[3] <= 0))  # Sarah
+s.add(If(visit[4], meet_time[4] >= 225, meet_time[4] <= 0))  # Thomas
+s.add(If(visit[5], meet_time[5] >= 225, meet_time[5] <= 0))  # Daniel
+s.add(If(visit[6], meet_time[6] >= 375, meet_time[6] <= 0))  # Richard
+s.add(If(visit[7], meet_time[7] >= 480, meet_time[7] <= 0))  # Mark
+s.add(If(visit[8], meet_time[8] >= 360, meet_time[8] <= 0))  # David
+s.add(If(visit[9], meet_time[9] >= 375, meet_time[9] <= 0))  # Karen
+
+# Define the locations
+locations = ['Nob Hill', 'Embarcadero', 'The Castro', 'Haight-Ashbury', 'Union Square', 'North Beach', 'Pacific Heights', 'Chinatown', 'Golden Gate Park', 'Marina District', 'Russian Hill']
+
+# Add constraints for each location
+for i in range(10):
+    s.add(If(visit[i], meet_time[i] >= start_time + travel_times[('Nob Hill', locations[i])], meet_time[i] <= start_time))
+
+# Solve the optimization problem
+s.maximize(objective)
+solution = s.check()
+if solution == sat:
+    model = s.model()
+    print('SOLUTION:')
+    for i in range(10):
+        print(f'Visit {locations[i]} at {model[meet_time[i]]} minutes')
 else:
-    print("No solution found")
+    print('No solution found')

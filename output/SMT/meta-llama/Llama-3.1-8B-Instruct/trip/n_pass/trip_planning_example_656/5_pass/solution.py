@@ -1,95 +1,72 @@
 from z3 import *
 
-# Define the cities and their durations
-cities = {
-    'Reykjavik': 5,
-    'Istanbul': 4,
-    'Edinburgh': 5,
-    'Oslo': 2,
-    'Stuttgart': 3,
-    'Bucharest': 5
-}
+# Define the cities
+cities = ['Reykjavik', 'Istanbul', 'Edinburgh', 'Oslo', 'Stuttgart', 'Bucharest']
+
+# Define the number of days for each city
+days = {'Reykjavik': 5, 'Istanbul': 4, 'Edinburgh': 5, 'Oslo': 2, 'Stuttgart': 3, 'Bucharest': 5}
 
 # Define the direct flights
 flights = {
-    ('Bucharest', 'Oslo'): 1,
-    ('Istanbul', 'Oslo'): 1,
-    ('Reykjavik', 'Stuttgart'): 1,
-    ('Bucharest', 'Istanbul'): 1,
-    ('Stuttgart', 'Edinburgh'): 1,
-    ('Istanbul', 'Edinburgh'): 1,
-    ('Oslo', 'Reykjavik'): 1,
-    ('Istanbul', 'Stuttgart'): 1,
-    ('Oslo', 'Edinburgh'): 1
+    'Bucharest': ['Oslo'],
+    'Istanbul': ['Oslo', 'Stuttgart', 'Edinburgh'],
+    'Reykjavik': ['Stuttgart'],
+    'Oslo': ['Reykjavik', 'Istanbul', 'Edinburgh'],
+    'Stuttgart': ['Reykjavik', 'Edinburgh'],
+    'Edinburgh': ['Istanbul', 'Stuttgart', 'Oslo']
 }
 
 # Define the constraints
-days = 19
-visited = {}
+s = Solver()
+
+# Define the variables
+itinerary = []
+day = 1
+friends_meeting = False
+stay = {city: 0 for city in cities}
+flight = {city: 0 for city in cities}
+
+# Add the initial stay in the city
 for city in cities:
-    visited[city] = [Bool(f'{city}_day_{i}') for i in range(days + 1)]
+    stay[city] += days[city]
+    itinerary.append({'day_range': f'Day {day}-{day + days[city] - 1}', 'place': city})
 
-# Initialize the solver
-solver = Solver()
-
-# Each city can be visited at most once
+# Add the flight to the next city if it exists
 for city in cities:
-    solver.add(Or([visited[city][i] for i in range(days + 1)]) == False)
+    for next_city in flights[city]:
+        if days[city] + days[next_city] <= 19:
+            itinerary.append({'day_range': f'Day {day + days[city]}', 'place': city})
+            itinerary.append({'day_range': f'Day {day + days[city]}', 'place': next_city})
+            itinerary.append({'day_range': f'Day {day + days[city]}-{day + days[city] + days[next_city] - 1}', 'place': next_city})
+            stay[next_city] += days[next_city]
+            flight[city] += 1
+            flight[next_city] += 1
+            day += days[city] + 1
+            friends_meeting = friends_meeting or (city == 'Istanbul' and day >= 5 and day <= 8)
+        else:
+            break
 
-# The total number of days is 19
-solver.add(Sum([If(visited[city][i], 1, 0) for city in cities for i in range(days + 1)]) == days)
-
-# The duration of each city is correct
+# Add the rest of the days in the city
 for city in cities:
-    for i in range(cities[city]):
-        solver.add(visited[city][i + 1] == visited[city][i])
+    if day + stay[city] <= 19:
+        itinerary.append({'day_range': f'Day {day + stay[city]}-{19}', 'place': city})
 
-# The direct flights are used
-for (city1, city2), duration in flights.items():
-    for i in range(duration):
-        solver.add(visited[city1][i + 1] == visited[city2][i + 1])
+# Add the friends meeting constraint
+s.add(day >= 5)
+s.add(day <= 8)
 
-# The constraints for visiting friends in Istanbul
-solver.add(visited['Istanbul'][5] == True)
-solver.add(visited['Istanbul'][6] == True)
-solver.add(visited['Istanbul'][7] == True)
-
-# The constraints for visiting relatives in Oslo
-solver.add(visited['Oslo'][8] == True)
-
-# The constraints for visiting cities after visiting friends in Istanbul
-solver.add(visited['Edinburgh'][8] == True)
-solver.add(visited['Edinburgh'][9] == True)
-solver.add(visited['Edinburgh'][10] == True)
-solver.add(visited['Edinburgh'][11] == True)
-solver.add(visited['Edinburgh'][12] == True)
-
-# The constraints for visiting cities after visiting relatives in Oslo
-solver.add(visited['Reykjavik'][9] == True)
-
-# The constraints for visiting Bucharest
-solver.add(visited['Bucharest'][0] == True)
-solver.add(visited['Bucharest'][1] == True)
-solver.add(visited['Bucharest'][2] == True)
-solver.add(visited['Bucharest'][3] == True)
-solver.add(visited['Bucharest'][4] == True)
-
-# The constraints for visiting Stuttgart
-solver.add(visited['Stuttgart'][1] == True)
-solver.add(visited['Stuttgart'][2] == True)
-solver.add(visited['Stuttgart'][3] == True)
+# Add the constraint to cover exactly 19 days
+s.add(day + stay['Istanbul'] + stay['Edinburgh'] + stay['Oslo'] + stay['Stuttgart'] + stay['Bucharest'] == 19)
 
 # Check the solution
-if solver.check() == sat:
-    model = solver.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = []
-        for i in range(days + 1):
-            if model[visited[city][i]].as_long():
-                trip_plan[city].append(i)
-    for city in cities:
-        trip_plan[city].sort()
-    print(trip_plan)
+if s.check() == sat:
+    m = s.model()
+    print(json.dumps({'itinerary': itinerary}))
 else:
-    print("No solution exists")
+    # If no solution exists, try to find a solution that covers at least 19 days
+    s.add(day + stay['Istanbul'] + stay['Edinburgh'] + stay['Oslo'] + stay['Stuttgart'] + stay['Bucharest'] >= 19)
+    if s.check() == sat:
+        m = s.model()
+        print(json.dumps({'itinerary': itinerary}))
+    else:
+        print("No solution exists")

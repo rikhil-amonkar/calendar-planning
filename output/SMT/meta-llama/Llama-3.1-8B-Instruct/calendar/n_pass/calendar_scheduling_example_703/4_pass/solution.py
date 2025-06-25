@@ -1,86 +1,92 @@
-YOUR_CODE
 from z3 import *
 
-# Define the days of the week
+# Define the days and times
 days = ['Monday', 'Tuesday', 'Wednesday']
+times = [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
-# Define the hours of the day
-hours = [9, 10, 11, 12, 13, 14, 15, 16, 17]
-
-# Define the meeting duration
-meeting_duration = 1
-
-# Define the existing schedules for Stephanie and Betty
-stephanie_schedule = {
+# Define the constraints for Stephanie and Betty
+stephanie_constraints = {
     'Monday': [(9, 30), (10, 30), (11, 30), (14, 0)],
     'Tuesday': [(12, 0)],
     'Wednesday': [(9, 0), (13, 0)]
 }
 
-betty_schedule = {
+betty_constraints = {
     'Monday': [(9, 0), (11, 0), (14, 30), (15, 30)],
     'Tuesday': [(9, 0), (11, 30), (12, 30), (15, 30)],
     'Wednesday': [(10, 0), (12, 0), (14, 30)]
 }
 
-# Define the preferences for Stephanie and Betty
+# Define the preferences
 stephanie_preferences = {
     'Monday': False
 }
 
 betty_preferences = {
-    'Tuesday': False
+    'Tuesday': False  # Betty can't meet on Tuesday after 12:30
 }
 
-# Create Z3 solver
+# Define the meeting duration
+meeting_duration = 1
+
+# Create a Z3 solver
 solver = Solver()
 
-# Define the variables
-day = [Bool('day_' + str(i)) for i in range(len(days))]
-start_time = [Int('start_time_' + str(i)) for i in range(len(days))]
-end_time = [Int('end_time_' + str(i)) for i in range(len(days))]
+# Create variables for the meeting day, start time, and end time
+day = Int('day')
+start_time = Int('start_time')
+end_time = Int('end_time')
 
-# Add constraints for each day
-for i in range(len(days)):
-    # Add constraint for day
-    solver.add(day[i])
+# Add constraints for the meeting day
+solver.add(day >= 0)
+solver.add(day < len(days))
 
-    # Add constraint for start time
-    solver.add(start_time[i] >= 9)
-    solver.add(start_time[i] <= 17)
+# Add constraints for the start and end times
+solver.add(start_time >= 9)
+solver.add(start_time < 18)
+solver.add(end_time >= 9)
+solver.add(end_time < 18)
+solver.add(end_time > start_time)
 
-    # Add constraint for end time
-    solver.add(end_time[i] >= 9)
-    solver.add(end_time[i] <= 17)
-    solver.add(end_time[i] - start_time[i] >= meeting_duration)
+# Add constraints for the meeting duration
+solver.add(end_time - start_time == meeting_duration)
 
-    # Add constraint for Stephanie's schedule
-    for j in range(len(stephanie_schedule[days[i]])):
-        start_hour, start_minute = stephanie_schedule[days[i]][j]
-        solver.add(Or(start_time[i] < start_hour, start_time[i] > start_hour + meeting_duration))
+# Add constraints for Stephanie and Betty's schedules
+for day_name in days:
+    for start, end in stephanie_constraints[day_name]:
+        solver.add(Or(start_time > end, end_time < start))
+    for start, end in betty_constraints[day_name]:
+        solver.add(Or(start_time > end, end_time < start))
 
-    # Add constraint for Betty's schedule
-    for j in range(len(betty_schedule[days[i]])):
-        start_hour, start_minute = betty_schedule[days[i]][j]
-        solver.add(Or(start_time[i] < start_hour, start_time[i] > start_hour + meeting_duration))
+# Add constraints for Stephanie's preference
+if stephanie_preferences['Monday']:
+    solver.add(day == 1)
 
-    # Add constraint for Stephanie's preference
-    if days[i] == 'Monday':
-        solver.add(Not(day[i]))
+# Add constraints for Betty's preference
+if betty_preferences['Tuesday']:
+    solver.add(And(day == 1, start_time >= 9, start_time < 12, end_time >= 9, end_time < 12, end_time > start_time))
 
-    # Add constraint for Betty's preference
-    if days[i] == 'Tuesday':
-        solver.add(Not(day[i]))
+# Add constraints for the time range on Monday
+solver.add(And(day == 0, start_time >= 10, start_time < 14, end_time >= 10, end_time < 14, end_time > start_time))
+
+# Add a goal to find a solution
+goal = And(day >= 0, day < len(days), start_time >= 9, start_time < 18, end_time >= 9, end_time < 18, end_time > start_time)
 
 # Solve the problem
-if solver.check() == sat:
+if solver.check(goal) == sat:
     model = solver.model()
-    day_value = [days[i] for i in range(len(days)) if model.evaluate(day[i]).as_bool().value()]
-    start_time_value = [model.evaluate(start_time[i]).as_int().value() for i in range(len(days))]
-    end_time_value = [model.evaluate(end_time[i]).as_int().value() for i in range(len(days))]
-    print('SOLUTION:')
-    print('Day:', day_value[0])
-    print('Start Time:', str(start_time_value[0]).zfill(2) + ':' + str(int((start_time_value[0] % 1) * 60)).zfill(2))
-    print('End Time:', str(int(end_time_value[0] / 60)).zfill(2) + ':' + str(int(end_time_value[0] % 60)).zfill(2))
+    day_value = model[day].as_long()
+    start_time_value = model[start_time].as_long()
+    end_time_value = model[end_time].as_long()
+
+    # Convert the start and end times to strings
+    start_time_str = f"{start_time_value:02d}:00"
+    end_time_str = f"{end_time_value:02d}:00"
+
+    # Print the solution
+    print(f"SOLUTION:")
+    print(f"Day: {days[day_value]}")
+    print(f"Start Time: {start_time_str}")
+    print(f"End Time: {end_time_str}")
 else:
-    print('No solution found')
+    print("No solution found")

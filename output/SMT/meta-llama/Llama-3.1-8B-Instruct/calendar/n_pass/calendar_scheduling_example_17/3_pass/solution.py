@@ -1,56 +1,70 @@
 from z3 import *
 
-def schedule_meeting(margaret_schedule, donna_schedule, helen_schedule, day, meeting_duration):
-    # Create Z3 variables for the start time
-    start_time = Int('start_time')
-    
-    # Ensure the start time is within the work hours
-    is_within_work_hours = And(start_time >= 9 * 60, start_time <= 17 * 60)
-    
-    # Ensure the end time is within the work hours
-    end_time = start_time + meeting_duration
-    is_within_work_hours = And(is_within_work_hours, end_time <= 17 * 60)
-    
-    # Ensure the start time does not conflict with Margaret's schedule
-    for start, end in margaret_schedule:
-        is_not_conflicting = And(start_time + meeting_duration <= start, end_time >= end)
-        is_within_work_hours = And(is_within_work_hours, is_not_conflicting)
-    
-    # Ensure the start time does not conflict with Donna's schedule
-    for start, end in donna_schedule:
-        is_not_conflicting = And(start_time + meeting_duration <= start, end_time >= end)
-        is_within_work_hours = And(is_within_work_hours, is_not_conflicting)
-    
-    # Ensure the start time does not conflict with Helen's schedule
-    for start, end in helen_schedule:
-        is_not_conflicting = And(start_time + meeting_duration <= start, end_time >= end)
-        is_within_work_hours = And(is_within_work_hours, is_not_conflicting)
-    
-    # Ensure Helen does not meet after 13:30
-    is_not_conflicting = And(end_time <= 13 * 60 + 30)
-    is_within_work_hours = And(is_within_work_hours, is_not_conflicting)
-    
-    # Ensure the start time is not before 9:00
-    is_not_too_early = And(start_time >= 9 * 60)
-    is_within_work_hours = And(is_within_work_hours, is_not_too_early)
-    
-    # Ensure the start time is not after 16:30
-    is_not_too_late = And(start_time <= 16 * 60 + 30)
-    is_within_work_hours = And(is_within_work_hours, is_not_too_late)
-    
-    # Solve the constraints
-    solver = Solver()
-    solver.add(is_within_work_hours)
-    if solver.check() == sat:
-        model = solver.model()
-        return f'SOLUTION:\nDay: {day}\nStart Time: {model[start_time].as_long() // 60:02d}:{model[start_time].as_long() % 60:02d}\nEnd Time: {(model[start_time].as_long() // 60 + meeting_duration.as_long() // 60):02d}:{(model[start_time].as_long() % 60 + meeting_duration.as_long() % 60):02d}'
-    else:
-        return 'No solution found'
+# Define the day, start time, and end time
+day = 'Monday'
+start_time = 9
+end_time = 17
+duration = 30
 
-# Define the schedules
-margaret_schedule = [(9 * 60, 10 * 60), (10 * 60 + 30, 11 * 60), (11 * 60 + 30, 12 * 60), (13 * 60, 13 * 60 + 30), (15 * 60, 15 * 60 + 30)]
-donna_schedule = [(14 * 60 + 30, 15 * 60), (16 * 60, 16 * 60 + 30)]
-helen_schedule = [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60 + 30), (13 * 60, 14 * 60), (14 * 60 + 30, 15 * 60), (15 * 60 + 30, 17 * 60)]
+# Define the participants and their schedules
+schedules = {
+    'Margaret': [(9, 10), (10.5, 11), (11.5, 12), (13, 13.5), (15, 15.5)],
+    'Donna': [(14.5, 15), (16, 16.5)],
+    'Helen': [(9, 9.5), (10, 11.5), (13, 14), (14.5, 15), (15.5, 17)]
+}
 
-# Find a solution
-print(schedule_meeting(margaret_schedule, donna_schedule, helen_schedule, 'Monday', 30))
+# Define the preferences
+preferences = {
+    'Helen': (13.5, 13.5)
+}
+
+# Create Z3 solver
+solver = Solver()
+
+# Define the variables
+start_var = Int('start')
+end_var = Int('end')
+
+# Add constraints for start and end time
+solver.add(start_var >= 9)
+solver.add(end_var <= 17)
+
+# Add constraints for duration
+solver.add(end_var - start_var == 30)
+
+# Add constraints for each participant's schedule
+for participant, schedule in schedules.items():
+    for start, end in schedule:
+        solver.add(start_var > start)
+        solver.add(end_var < end)
+
+# Add constraints for Helen's preference
+helen_preference_start, helen_preference_end = preferences['Helen']
+solver.add(start_var > helen_preference_start)
+solver.add(end_var < helen_preference_end)
+
+# Check if there's a solution
+if solver.check() == sat:
+    model = solver.model()
+    start_time_str = str(int(model[start_var])).zfill(2) + ':' + str(int((model[start_var] % 1) * 60)).zfill(2)
+    end_time_str = str(int(model[end_var])).zfill(2) + ':' + str(int((model[end_var] % 1) * 60)).zfill(2)
+    print(f"SOLUTION:\nDay: {day}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+else:
+    # Try to find a solution by iterating over possible start times
+    for hour in range(start_time, end_time):
+        for minute in range(0, 60 - duration % 60, 30):
+            start_time_str = f"{hour}:{minute:02d}"
+            end_time_str = f"{hour}:{int(minute + duration / 60):02d}"
+            valid = True
+            for participant, schedule in schedules.items():
+                for start, end in schedule:
+                    if hour < start or hour + duration / 60 > end:
+                        valid = False
+                        break
+                if not valid:
+                    break
+            if valid:
+                print(f"SOLUTION:\nDay: {day}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
+                break
+        if valid:
+            break

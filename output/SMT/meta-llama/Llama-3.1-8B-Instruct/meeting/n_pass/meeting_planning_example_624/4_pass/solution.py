@@ -1,22 +1,7 @@
 from z3 import *
 
-# Define the locations
-locations = ['Golden Gate Park', 'Haight-Ashbury', 'Fisherman\'s Wharf', 'The Castro', 'Chinatown', 'Alamo Square', 'North Beach', 'Russian Hill']
-
-# Define the people and their locations
-people = ['Carol', 'Laura', 'Karen', 'Elizabeth', 'Deborah', 'Jason', 'Steven']
-locations_people = {
-    'Carol': 'Haight-Ashbury',
-    'Laura': 'Fisherman\'s Wharf',
-    'Karen': 'The Castro',
-    'Elizabeth': 'Chinatown',
-    'Deborah': 'Alamo Square',
-    'Jason': 'North Beach',
-    'Steven': 'Russian Hill'
-}
-
-# Define the travel distances
-travel_distances = {
+# Define the travel times
+travel_times = {
     ('Golden Gate Park', 'Haight-Ashbury'): 7,
     ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
     ('Golden Gate Park', 'The Castro'): 13,
@@ -79,43 +64,22 @@ travel_distances = {
 s = Optimize()
 
 # Define the variables
-time = [Int(f'time_{i}') for i in range(len(locations))]
-meet_carol = [Bool(f'meet_carol_{i}') for i in range(len(locations))]
-meet_laura = [Bool(f'meet_laura_{i}') for i in range(len(locations))]
-meet_karen = [Bool(f'meet_karen_{i}') for i in range(len(locations))]
-meet_elizabeth = [Bool(f'meet_elizabeth_{i}') for i in range(len(locations))]
-meet_deborah = [Bool(f'meet_deborah_{i}') for i in range(len(locations))]
-meet_jason = [Bool(f'meet_jason_{i}') for i in range(len(locations))]
-meet_steven = [Bool(f'meet_steven_{i}') for i in range(len(locations))]
+x = [Bool(f'x_{i}') for i in range(7)]
 
-# Define the constraints
-for i in range(len(locations)):
-    s.add(And(time[i] >= 0, time[i] <= 12*60))  # time should be between 0 and 12 hours
-    s.add((If(meet_carol[i], 60, 0) + 
-          If(meet_laura[i], 60, 0) + 
-          If(meet_karen[i], 75, 0) + 
-          If(meet_elizabeth[i], 75, 0) + 
-          If(meet_deborah[i], 105, 0) + 
-          If(meet_jason[i], 90, 0) + 
-          If(meet_steven[i], 120, 0)) >= 0)
+# Define the objective function
+obj = Sum([If(x[i], 120, 0) + If(x[i+1], 90, 0) + If(x[i+2], 75, 0) + If(x[i+3], 75, 0) + If(x[i+4], 105, 0) + If(x[i+5], 60, 0) + If(x[i+6], 60, 0) for i in range(7)])
 
-# Solve the optimization problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    time_values = [model.evaluate(time[i]).as_long() for i in range(len(locations))]
-    print("Time values:")
-    for i in range(len(locations)):
-        print(f"Location {locations[i]}: {time_values[i]} minutes")
-    meet_carol_values = [model.evaluate(meet_carol[i]).as_bool() for i in range(len(locations))]
-    meet_laura_values = [model.evaluate(meet_laura[i]).as_bool() for i in range(len(locations))]
-    meet_karen_values = [model.evaluate(meet_karen[i]).as_bool() for i in range(len(locations))]
-    meet_elizabeth_values = [model.evaluate(meet_elizabeth[i]).as_bool() for i in range(len(locations))]
-    meet_deborah_values = [model.evaluate(meet_deborah[i]).as_bool() for i in range(len(locations))]
-    meet_jason_values = [model.evaluate(meet_jason[i]).as_bool() for i in range(len(locations))]
-    meet_steven_values = [model.evaluate(meet_steven[i]).as_bool() for i in range(len(locations))]
-    print("\nMeet values:")
-    for i in range(len(locations)):
-        print(f"Location {locations[i]}: meet {people[0]}: {meet_carol_values[i]}, meet {people[1]}: {meet_laura_values[i]}, meet {people[2]}: {meet_karen_values[i]}, meet {people[3]}: {meet_elizabeth_values[i]}, meet {people[4]}: {meet_deborah_values[i]}, meet {people[5]}: {meet_jason_values[i]}, meet {people[6]}: {meet_steven_values[i]}")
+# Solve the problem
+s.maximize(obj)
+solution = s.check()
+
+if solution == sat:
+    m = s.model()
+    schedule = []
+    for i in range(7):
+        if m.evaluate(x[i]):
+            schedule.append(f'Visit {list(travel_times.keys())[i]}')
+    print('SOLUTION:')
+    print(schedule)
 else:
-    print("No solution found")
+    print('No solution found')

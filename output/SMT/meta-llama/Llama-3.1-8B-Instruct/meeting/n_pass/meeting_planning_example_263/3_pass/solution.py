@@ -1,60 +1,71 @@
 from z3 import *
 
-# Define the travel times
-travel_times = {
+# Define the travel distances (in minutes)
+distances = {
     'Bayview': {'Embarcadero': 19, 'Fisherman\'s Wharf': 25, 'Financial District': 19},
     'Embarcadero': {'Bayview': 21, 'Fisherman\'s Wharf': 6, 'Financial District': 5},
     'Fisherman\'s Wharf': {'Bayview': 26, 'Embarcadero': 8, 'Financial District': 11},
     'Financial District': {'Bayview': 19, 'Embarcadero': 4, 'Fisherman\'s Wharf': 10}
 }
 
+# Define the arrival and departure times for each person
+arrival_times = {
+    'Betty': 7 * 60 + 45,  # 7:45 PM
+    'Karen': 8 * 60,      # 8:00 AM
+    'Anthony': 9 * 60     # 9:00 AM
+}
+departure_times = {
+    'Betty': 21 * 60,     # 9:45 PM
+    'Karen': 15 * 60,     # 3:00 PM
+    'Anthony': 21 * 60    # 9:30 PM
+}
+
+# Define the minimum meeting times
+min_meeting_times = {
+    'Betty': 15,
+    'Karen': 30,
+    'Anthony': 105
+}
+
+# Define the solver
+s = Solver()
+
+# Define the variables
+visit_times = {}
+for person in ['Betty', 'Karen', 'Anthony']:
+    visit_times[person] = [Bool(f'visit_{person}_{i}') for i in range(arrival_times[person], departure_times[person] + 1, 60)]
+
 # Define the constraints
-s = Optimize()
+for person in ['Betty', 'Karen', 'Anthony']:
+    s.add(Or([visit_times[person][i] for i in range(len(visit_times[person]))]))  # Must visit at some point
 
-# Define the decision variables
-x = {'Bayview': Bool('x_Bayview'), 'Embarcadero': Bool('x_Embarcadero'), 'Fisherman\'s Wharf': Bool('x_Fisherman\'s_Wharf'), 'Financial_District': Bool('x_Financial_District')}
-y = {'Bayview': Int('y_Bayview'), 'Embarcadero': Int('y_Embarcadero'), 'Fisherman\'s Wharf': Int('y_Fisherman\'s_Wharf'), 'Financial_District': Int('y_Financial_District')}
-z = {'Bayview': Int('z_Bayview'), 'Embarcadero': Int('z_Embarcadero'), 'Fisherman\'s Wharf': Int('z_Fisherman\'s_Wharf'), 'Financial_District': Int('z_Financial_District')}
+for person in ['Betty', 'Karen', 'Anthony']:
+    for i in range(len(visit_times[person])):
+        s.add(visit_times[person][i] == (visit_times[person][i] > 0))  # Can't visit twice
 
-# Add the decision variables to the solver
-s.add(x['Bayview'])
-s.add(x['Embarcadero'])
-s.add(x['Fisherman\'s Wharf'])
-s.add(x['Financial_District'])
-s.add(y['Bayview'] >= 0)
-s.add(y['Embarcadero'] >= 0)
-s.add(y['Fisherman\'s Wharf'] >= 0)
-s.add(y['Financial_District'] >= 0)
-s.add(z['Bayview'] >= 0)
-s.add(z['Embarcadero'] >= 0)
-s.add(z['Fisherman\'s Wharf'] >= 0)
-s.add(z['Financial_District'] >= 0)
+for person in ['Betty', 'Karen', 'Anthony']:
+    for i in range(len(visit_times[person])):
+        for j in range(len(visit_times[person])):
+            if i!= j:
+                s.add((visit_times[person][i] > 0) == (visit_times[person][j] > 0))  # Can't visit and not visit at the same time
 
-# Add the constraints
-s.add(y['Bayview'] == 0)
-s.add(y['Embarcadero'] >= 7 * 60 + 45)
-s.add(y['Embarcadero'] <= 21 * 60 + 45)
-s.add(y['Fisherman\'s Wharf'] >= 8 * 60 + 45)
-s.add(y['Fisherman\'s Wharf'] <= 15 * 60 + 0)
-s.add(y['Financial_District'] >= 9 * 60 + 15)
-s.add(y['Financial_District'] <= 21 * 60 + 30)
-
-# Define the objective function
-def objective():
-    return (x['Bayview'] + x['Embarcadero'] + x['Fisherman\'s Wharf'] + x['Financial_District'] +
-            z['Bayview'] + z['Embarcadero'] + z['Fisherman\'s Wharf'] + z['Financial_District'])
+# Define the constraints for meeting times
+for person in ['Betty', 'Karen', 'Anthony']:
+    min_meeting_time = min_meeting_times[person]
+    for i in range(len(visit_times[person])):
+        for j in range(i + min_meeting_time // 60, min(len(visit_times[person]), i + min_meeting_time // 60 + 1)):
+            s.add((visit_times[person][i] > 0) == (visit_times[person][j] > 0))  # Must meet for at least min_meeting_time minutes
 
 # Solve the problem
-result = s.check()
+s.check()
+model = s.model()
 
-# If the problem has a solution, print the solution
-if result == sat:
-    m = s.model()
-    print("SOLUTION:")
-    print("Meet Betty at Embarcadero:", m.evaluate(y['Embarcadero']).as_long())
-    print("Meet Karen at Fisherman's Wharf:", m.evaluate(y['Fisherman\'s Wharf']).as_long())
-    print("Meet Anthony at Financial District:", m.evaluate(y['Financial_District']).as_long())
-    print("Total time spent with friends:", m.evaluate(z['Bayview'] + z['Embarcadero'] + z['Fisherman\'s Wharf'] + z['Financial_District']).as_long())
-    print("Total number of friends met:", m.evaluate(x['Bayview'] + x['Embarcadero'] + x['Fisherman\'s Wharf'] + x['Financial_District']).as_long())
-else:
-    print("No solution exists")
+# Print the result
+print('SOLUTION:')
+for person in ['Betty', 'Karen', 'Anthony']:
+    visit_times[person] = [model[visit_times[person][i]].as_bool() for i in range(len(visit_times[person]))]
+    print(f'{person}:')
+    for i in range(len(visit_times[person])):
+        if visit_times[person][i]:
+            print(f'  {i}:00 - {(i+1):02d}:00')
+    print()

@@ -1,94 +1,344 @@
 from z3 import *
 
-# Define the locations
-locations = ['Alamo Square', 'Russian Hill', 'Presidio', 'Chinatown', 'Sunset District', 'The Castro', 'Embarcadero', 'Golden Gate Park']
-
-# Define the travel times
-travel_times = {
-    'Alamo Square': {'Alamo Square': 0, 'Russian Hill': 13, 'Presidio': 18, 'Chinatown': 16, 'Sunset District': 16, 'The Castro': 8, 'Embarcadero': 17, 'Golden Gate Park': 9},
-    'Russian Hill': {'Alamo Square': 15, 'Russian Hill': 0, 'Presidio': 14, 'Chinatown': 9, 'Sunset District': 23, 'The Castro': 21, 'Embarcadero': 8, 'Golden Gate Park': 21},
-    'Presidio': {'Alamo Square': 18, 'Russian Hill': 14, 'Presidio': 0, 'Chinatown': 21, 'Sunset District': 15, 'The Castro': 21, 'Embarcadero': 20, 'Golden Gate Park': 12},
-    'Chinatown': {'Alamo Square': 16, 'Russian Hill': 9, 'Presidio': 19, 'Chinatown': 0, 'Sunset District': 29, 'The Castro': 22, 'Embarcadero': 5, 'Golden Gate Park': 23},
-    'Sunset District': {'Alamo Square': 17, 'Russian Hill': 24, 'Presidio': 16, 'Chinatown': 30, 'Sunset District': 0, 'The Castro': 17, 'Embarcadero': 31, 'Golden Gate Park': 11},
-    'The Castro': {'Alamo Square': 8, 'Russian Hill': 18, 'Presidio': 20, 'Chinatown': 20, 'Sunset District': 17, 'The Castro': 0, 'Embarcadero': 22, 'Golden Gate Park': 11},
-    'Embarcadero': {'Alamo Square': 17, 'Russian Hill': 8, 'Presidio': 20, 'Chinatown': 7, 'Sunset District': 30, 'The Castro': 25, 'Embarcadero': 0, 'Golden Gate Park': 25},
-    'Golden Gate Park': {'Alamo Square': 9, 'Russian Hill': 21, 'Presidio': 11, 'Chinatown': 23, 'Sunset District': 10, 'The Castro': 13, 'Embarcadero': 25, 'Golden Gate Park': 0}
+# Define the travel distances
+travel_distances = {
+    ('Alamo Square', 'Russian Hill'): 13,
+    ('Alamo Square', 'Presidio'): 18,
+    ('Alamo Square', 'Chinatown'): 16,
+    ('Alamo Square', 'Sunset District'): 16,
+    ('Alamo Square', 'The Castro'): 8,
+    ('Alamo Square', 'Embarcadero'): 17,
+    ('Alamo Square', 'Golden Gate Park'): 9,
+    ('Russian Hill', 'Alamo Square'): 15,
+    ('Russian Hill', 'Presidio'): 14,
+    ('Russian Hill', 'Chinatown'): 9,
+    ('Russian Hill', 'Sunset District'): 23,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Embarcadero'): 8,
+    ('Russian Hill', 'Golden Gate Park'): 21,
+    ('Presidio', 'Alamo Square'): 18,
+    ('Presidio', 'Russian Hill'): 14,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'Sunset District'): 15,
+    ('Presidio', 'The Castro'): 21,
+    ('Presidio', 'Embarcadero'): 20,
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Chinatown', 'Alamo Square'): 17,
+    ('Chinatown', 'Russian Hill'): 7,
+    ('Chinatown', 'Presidio'): 19,
+    ('Chinatown', 'Sunset District'): 29,
+    ('Chinatown', 'The Castro'): 22,
+    ('Chinatown', 'Embarcadero'): 5,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Sunset District', 'Alamo Square'): 17,
+    ('Sunset District', 'Russian Hill'): 24,
+    ('Sunset District', 'Presidio'): 16,
+    ('Sunset District', 'Chinatown'): 30,
+    ('Sunset District', 'The Castro'): 17,
+    ('Sunset District', 'Embarcadero'): 31,
+    ('Sunset District', 'Golden Gate Park'): 11,
+    ('The Castro', 'Alamo Square'): 8,
+    ('The Castro', 'Russian Hill'): 18,
+    ('The Castro', 'Presidio'): 20,
+    ('The Castro', 'Chinatown'): 20,
+    ('The Castro', 'Sunset District'): 17,
+    ('The Castro', 'Embarcadero'): 22,
+    ('The Castro', 'Golden Gate Park'): 11,
+    ('Embarcadero', 'Alamo Square'): 19,
+    ('Embarcadero', 'Russian Hill'): 8,
+    ('Embarcadero', 'Presidio'): 20,
+    ('Embarcadero', 'Chinatown'): 7,
+    ('Embarcadero', 'Sunset District'): 30,
+    ('Embarcadero', 'The Castro'): 25,
+    ('Embarcadero', 'Golden Gate Park'): 25,
+    ('Golden Gate Park', 'Alamo Square'): 10,
+    ('Golden Gate Park', 'Russian Hill'): 19,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'Sunset District'): 10,
+    ('Golden Gate Park', 'The Castro'): 13,
+    ('Golden Gate Park', 'Embarcadero'): 25,
 }
 
 # Define the constraints
 s = Solver()
 
 # Define the variables
-start_time = 9 * 60  # 9:00 AM
-end_time = 24 * 60  # 24:00 PM
-times = [Int(f'time_{i}') for i in range(len(locations))]
-locations_var = [Int(f'location_{i}') for i in range(len(locations))]
-meetings = [Bool(f'meeting_{i}') for i in range(len(locations))]
+locations = ['Alamo Square', 'Russian Hill', 'Presidio', 'Chinatown', 'Sunset District', 'The Castro', 'Embarcadero', 'Golden Gate Park']
+locations_dict = {locations[i]: i for i in range(len(locations))}
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+times = [9 * 60, 12 * 60 + 15, 2 * 60 + 45, 7 * 60 + 30, 9 * 60 + 30, 7 * 60, 8 * 60 + 15, 11 * 60 + 15, 9 * 60 + 15]
+durations = [105, 105, 60, 45, 60, 60, 75, 105]
+meetings = [(0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0), (0, 4, 0), (0, 5, 0), (0, 6, 0), (0, 7, 0)]
 
-# Add constraints for meeting Emily
-s.add(And(times[0] >= start_time + 15 * 60,  # 12:15 PM
-          times[0] <= start_time + 17 * 60,  # 2:15 PM
-          times[1] >= start_time + 15 * 60,  # 12:15 PM
-          times[1] <= start_time + 17 * 60,  # 2:15 PM
-          times[0] + 105 >= times[1]))  # Meeting for at least 105 minutes
+# Add variables for each location
+location_vars = [Int(f'location_{i}') for i in range(len(locations))]
+time_vars = [Int(f'time_{i}') for i in range(len(times))]
 
-# Add constraints for meeting Mark
-s.add(And(times[2] >= start_time + 16 * 60,  # 2:45 PM
-          times[2] <= start_time + 20 * 60,  # 7:30 PM
-          times[3] >= start_time + 16 * 60,  # 2:45 PM
-          times[3] <= start_time + 20 * 60,  # 7:30 PM
-          times[2] + 60 >= times[3]))  # Meeting for at least 60 minutes
-
-# Add constraints for meeting Deborah
-s.add(And(times[4] >= start_time,  # 7:30 AM
-          times[4] <= start_time + 8 * 60,  # 3:30 PM
-          times[0] >= times[4],  # Meeting at Alamo Square
-          times[0] + 45 >= times[4]))  # Meeting for at least 45 minutes
-
-# Add constraints for meeting Margaret
-s.add(And(times[5] >= start_time + 19 * 60,  # 9:30 PM
-          times[5] <= start_time + 20 * 60,  # 10:30 PM
-          times[6] >= start_time + 19 * 60,  # 9:30 PM
-          times[6] <= start_time + 20 * 60,  # 10:30 PM
-          times[5] + 60 >= times[6]))  # Meeting for at least 60 minutes
-
-# Add constraints for meeting George
-s.add(And(times[6] >= start_time,  # 7:30 AM
-          times[6] <= start_time + 15 * 60,  # 2:15 PM
-          times[0] >= times[6],  # Meeting at Alamo Square
-          times[0] + 60 >= times[6]))  # Meeting for at least 60 minutes
-
-# Add constraints for meeting Andrew
-s.add(And(times[7] >= start_time + 18 * 60,  # 8:15 PM
-          times[7] <= start_time + 20 * 60,  # 10:00 PM
-          times[8] >= start_time + 18 * 60,  # 8:15 PM
-          times[8] <= start_time + 20 * 60,  # 10:00 PM
-          times[7] + 75 >= times[8]))  # Meeting for at least 75 minutes
-
-# Add constraints for meeting Steven
-s.add(And(times[9] >= start_time + 11 * 60,  # 11:15 AM
-          times[9] <= start_time + 21 * 60,  # 9:15 PM
-          times[0] >= times[9],  # Meeting at Alamo Square
-          times[0] + 105 >= times[9]))  # Meeting for at least 105 minutes
-
-# Add constraints for locations
+# Add constraints for each location
 for i in range(len(locations)):
-    s.add(Or([locations_var[j] == i for j in range(len(locations))]))
+    s.add(Or([location_vars[j] == i for j in range(len(locations))]))
+    s.add(Implies(location_vars[i] == locations_dict[locations[i]], time_vars[i] >= times[i]))
+
+# Add constraints for each meeting
+for meeting in meetings:
+    location1, location2, duration = meeting
+    s.add(Implies(And(location_vars[location1] == locations_dict['Alamo Square'], location_vars[location2] == locations_dict['Russian Hill']),
+                  time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Alamo Square']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Alamo Square'], location_vars[location2] == locations_dict['Presidio']),
+                  time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Alamo Square']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Alamo Square'], location_vars[location2] == locations_dict['Chinatown']),
+                  time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Alamo Square']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Alamo Square'], location_vars[location2] == locations_dict['Sunset District']),
+                  time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Alamo Square']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Alamo Square'], location_vars[location2] == locations_dict['The Castro']),
+                  time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Alamo Square']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Alamo Square'], location_vars[location2] == locations_dict['Embarcadero']),
+                  time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Alamo Square']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Alamo Square'], location_vars[location2] == locations_dict['Golden Gate Park']),
+                  time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Alamo Square']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Russian Hill'], location_vars[location2] == locations_dict['Alamo Square']),
+                  time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Russian Hill']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Russian Hill'], location_vars[location2] == locations_dict['Presidio']),
+                  time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Russian Hill']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Russian Hill'], location_vars[location2] == locations_dict['Chinatown']),
+                  time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Russian Hill']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Russian Hill'], location_vars[location2] == locations_dict['Sunset District']),
+                  time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Russian Hill']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Russian Hill'], location_vars[location2] == locations_dict['The Castro']),
+                  time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Russian Hill']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Russian Hill'], location_vars[location2] == locations_dict['Embarcadero']),
+                  time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Russian Hill']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Russian Hill'], location_vars[location2] == locations_dict['Golden Gate Park']),
+                  time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Russian Hill']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Presidio'], location_vars[location2] == locations_dict['Alamo Square']),
+                  time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Presidio']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Presidio'], location_vars[location2] == locations_dict['Russian Hill']),
+                  time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Presidio']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Presidio'], location_vars[location2] == locations_dict['Chinatown']),
+                  time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Presidio']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Presidio'], location_vars[location2] == locations_dict['Sunset District']),
+                  time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Presidio']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Presidio'], location_vars[location2] == locations_dict['The Castro']),
+                  time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Presidio']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Presidio'], location_vars[location2] == locations_dict['Embarcadero']),
+                  time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Presidio']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Presidio'], location_vars[location2] == locations_dict['Golden Gate Park']),
+                  time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Presidio']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Chinatown'], location_vars[location2] == locations_dict['Alamo Square']),
+                  time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Chinatown']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Chinatown'], location_vars[location2] == locations_dict['Russian Hill']),
+                  time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Chinatown']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Chinatown'], location_vars[location2] == locations_dict['Presidio']),
+                  time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Chinatown']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Chinatown'], location_vars[location2] == locations_dict['Sunset District']),
+                  time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Chinatown']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Chinatown'], location_vars[location2] == locations_dict['The Castro']),
+                  time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Chinatown']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Chinatown'], location_vars[location2] == locations_dict['Embarcadero']),
+                  time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Chinatown']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Chinatown'], location_vars[location2] == locations_dict['Golden Gate Park']),
+                  time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Chinatown']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Sunset District'], location_vars[location2] == locations_dict['Alamo Square']),
+                  time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Sunset District']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Sunset District'], location_vars[location2] == locations_dict['Russian Hill']),
+                  time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Sunset District']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Sunset District'], location_vars[location2] == locations_dict['Presidio']),
+                  time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Sunset District']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Sunset District'], location_vars[location2] == locations_dict['Chinatown']),
+                  time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Sunset District']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Sunset District'], location_vars[location2] == locations_dict['The Castro']),
+                  time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Sunset District']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Sunset District'], location_vars[location2] == locations_dict['Embarcadero']),
+                  time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Sunset District']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Sunset District'], location_vars[location2] == locations_dict['Golden Gate Park']),
+                  time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Sunset District']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['The Castro'], location_vars[location2] == locations_dict['Alamo Square']),
+                  time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['The Castro']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['The Castro'], location_vars[location2] == locations_dict['Russian Hill']),
+                  time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['The Castro']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['The Castro'], location_vars[location2] == locations_dict['Presidio']),
+                  time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['The Castro']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['The Castro'], location_vars[location2] == locations_dict['Chinatown']),
+                  time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['The Castro']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['The Castro'], location_vars[location2] == locations_dict['Sunset District']),
+                  time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['The Castro']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['The Castro'], location_vars[location2] == locations_dict['Embarcadero']),
+                  time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['The Castro']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['The Castro'], location_vars[location2] == locations_dict['Golden Gate Park']),
+                  time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['The Castro']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Embarcadero'], location_vars[location2] == locations_dict['Alamo Square']),
+                  time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Embarcadero']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Embarcadero'], location_vars[location2] == locations_dict['Russian Hill']),
+                  time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Embarcadero']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Embarcadero'], location_vars[location2] == locations_dict['Presidio']),
+                  time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Embarcadero']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Embarcadero'], location_vars[location2] == locations_dict['Chinatown']),
+                  time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Embarcadero']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Embarcadero'], location_vars[location2] == locations_dict['Sunset District']),
+                  time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Embarcadero']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Embarcadero'], location_vars[location2] == locations_dict['The Castro']),
+                  time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Embarcadero']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Embarcadero'], location_vars[location2] == locations_dict['Golden Gate Park']),
+                  time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Embarcadero']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Golden Gate Park'], location_vars[location2] == locations_dict['Alamo Square']),
+                  time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Golden Gate Park']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Golden Gate Park'], location_vars[location2] == locations_dict['Russian Hill']),
+                  time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Golden Gate Park']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Golden Gate Park'], location_vars[location2] == locations_dict['Presidio']),
+                  time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Golden Gate Park']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Golden Gate Park'], location_vars[location2] == locations_dict['Chinatown']),
+                  time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Golden Gate Park']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Golden Gate Park'], location_vars[location2] == locations_dict['Sunset District']),
+                  time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Golden Gate Park']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Golden Gate Park'], location_vars[location2] == locations_dict['The Castro']),
+                  time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Golden Gate Park']] + duration))
+    s.add(Implies(And(location_vars[location1] == locations_dict['Golden Gate Park'], location_vars[location2] == locations_dict['Embarcadero']),
+                  time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Golden Gate Park']] + duration))
 
 # Add constraints for travel times
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            s.add(Or([And(times[i] + travel_times[locations[i]][locations[j]] >= times[j], locations_var[i] == j, locations_var[j] == i)]))
+for location1 in locations:
+    for location2 in locations:
+        if (location1, location2) in travel_distances:
+            travel_time = travel_distances[(location1, location2)]
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Alamo Square'], location_vars[locations_dict[location2]] == locations_dict['Russian Hill']),
+                          time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Alamo Square']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Alamo Square'], location_vars[locations_dict[location2]] == locations_dict['Presidio']),
+                          time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Alamo Square']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Alamo Square'], location_vars[locations_dict[location2]] == locations_dict['Chinatown']),
+                          time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Alamo Square']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Alamo Square'], location_vars[locations_dict[location2]] == locations_dict['Sunset District']),
+                          time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Alamo Square']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Alamo Square'], location_vars[locations_dict[location2]] == locations_dict['The Castro']),
+                          time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Alamo Square']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Alamo Square'], location_vars[locations_dict[location2]] == locations_dict['Embarcadero']),
+                          time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Alamo Square']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Alamo Square'], location_vars[locations_dict[location2]] == locations_dict['Golden Gate Park']),
+                          time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Alamo Square']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Russian Hill'], location_vars[locations_dict[location2]] == locations_dict['Alamo Square']),
+                          time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Russian Hill']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Russian Hill'], location_vars[locations_dict[location2]] == locations_dict['Presidio']),
+                          time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Russian Hill']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Russian Hill'], location_vars[locations_dict[location2]] == locations_dict['Chinatown']),
+                          time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Russian Hill']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Russian Hill'], location_vars[locations_dict[location2]] == locations_dict['Sunset District']),
+                          time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Russian Hill']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Russian Hill'], location_vars[locations_dict[location2]] == locations_dict['The Castro']),
+                          time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Russian Hill']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Russian Hill'], location_vars[locations_dict[location2]] == locations_dict['Embarcadero']),
+                          time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Russian Hill']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Russian Hill'], location_vars[locations_dict[location2]] == locations_dict['Golden Gate Park']),
+                          time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Russian Hill']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Presidio'], location_vars[locations_dict[location2]] == locations_dict['Alamo Square']),
+                          time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Presidio']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Presidio'], location_vars[locations_dict[location2]] == locations_dict['Russian Hill']),
+                          time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Presidio']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Presidio'], location_vars[locations_dict[location2]] == locations_dict['Chinatown']),
+                          time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Presidio']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Presidio'], location_vars[locations_dict[location2]] == locations_dict['Sunset District']),
+                          time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Presidio']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Presidio'], location_vars[locations_dict[location2]] == locations_dict['The Castro']),
+                          time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Presidio']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Presidio'], location_vars[locations_dict[location2]] == locations_dict['Embarcadero']),
+                          time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Presidio']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Presidio'], location_vars[locations_dict[location2]] == locations_dict['Golden Gate Park']),
+                          time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Presidio']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Chinatown'], location_vars[locations_dict[location2]] == locations_dict['Alamo Square']),
+                          time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Chinatown']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Chinatown'], location_vars[locations_dict[location2]] == locations_dict['Russian Hill']),
+                          time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Chinatown']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Chinatown'], location_vars[locations_dict[location2]] == locations_dict['Presidio']),
+                          time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Chinatown']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Chinatown'], location_vars[locations_dict[location2]] == locations_dict['Sunset District']),
+                          time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Chinatown']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Chinatown'], location_vars[locations_dict[location2]] == locations_dict['The Castro']),
+                          time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Chinatown']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Chinatown'], location_vars[locations_dict[location2]] == locations_dict['Embarcadero']),
+                          time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Chinatown']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Chinatown'], location_vars[locations_dict[location2]] == locations_dict['Golden Gate Park']),
+                          time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Chinatown']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Sunset District'], location_vars[locations_dict[location2]] == locations_dict['Alamo Square']),
+                          time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Sunset District']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Sunset District'], location_vars[locations_dict[location2]] == locations_dict['Russian Hill']),
+                          time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Sunset District']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Sunset District'], location_vars[locations_dict[location2]] == locations_dict['Presidio']),
+                          time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Sunset District']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Sunset District'], location_vars[locations_dict[location2]] == locations_dict['Chinatown']),
+                          time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Sunset District']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Sunset District'], location_vars[locations_dict[location2]] == locations_dict['The Castro']),
+                          time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Sunset District']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Sunset District'], location_vars[locations_dict[location2]] == locations_dict['Embarcadero']),
+                          time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Sunset District']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Sunset District'], location_vars[locations_dict[location2]] == locations_dict['Golden Gate Park']),
+                          time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Sunset District']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['The Castro'], location_vars[locations_dict[location2]] == locations_dict['Alamo Square']),
+                          time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['The Castro']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['The Castro'], location_vars[locations_dict[location2]] == locations_dict['Russian Hill']),
+                          time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['The Castro']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['The Castro'], location_vars[locations_dict[location2]] == locations_dict['Presidio']),
+                          time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['The Castro']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['The Castro'], location_vars[locations_dict[location2]] == locations_dict['Chinatown']),
+                          time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['The Castro']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['The Castro'], location_vars[locations_dict[location2]] == locations_dict['Sunset District']),
+                          time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['The Castro']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['The Castro'], location_vars[locations_dict[location2]] == locations_dict['Embarcadero']),
+                          time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['The Castro']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['The Castro'], location_vars[locations_dict[location2]] == locations_dict['Golden Gate Park']),
+                          time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['The Castro']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Embarcadero'], location_vars[locations_dict[location2]] == locations_dict['Alamo Square']),
+                          time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Embarcadero']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Embarcadero'], location_vars[locations_dict[location2]] == locations_dict['Russian Hill']),
+                          time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Embarcadero']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Embarcadero'], location_vars[locations_dict[location2]] == locations_dict['Presidio']),
+                          time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Embarcadero']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Embarcadero'], location_vars[locations_dict[location2]] == locations_dict['Chinatown']),
+                          time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Embarcadero']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Embarcadero'], location_vars[locations_dict[location2]] == locations_dict['Sunset District']),
+                          time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Embarcadero']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Embarcadero'], location_vars[locations_dict[location2]] == locations_dict['The Castro']),
+                          time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Embarcadero']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Embarcadero'], location_vars[locations_dict[location2]] == locations_dict['Golden Gate Park']),
+                          time_vars[locations_dict['Golden Gate Park']] >= time_vars[locations_dict['Embarcadero']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Golden Gate Park'], location_vars[locations_dict[location2]] == locations_dict['Alamo Square']),
+                          time_vars[locations_dict['Alamo Square']] >= time_vars[locations_dict['Golden Gate Park']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Golden Gate Park'], location_vars[locations_dict[location2]] == locations_dict['Russian Hill']),
+                          time_vars[locations_dict['Russian Hill']] >= time_vars[locations_dict['Golden Gate Park']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Golden Gate Park'], location_vars[locations_dict[location2]] == locations_dict['Presidio']),
+                          time_vars[locations_dict['Presidio']] >= time_vars[locations_dict['Golden Gate Park']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Golden Gate Park'], location_vars[locations_dict[location2]] == locations_dict['Chinatown']),
+                          time_vars[locations_dict['Chinatown']] >= time_vars[locations_dict['Golden Gate Park']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Golden Gate Park'], location_vars[locations_dict[location2]] == locations_dict['Sunset District']),
+                          time_vars[locations_dict['Sunset District']] >= time_vars[locations_dict['Golden Gate Park']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Golden Gate Park'], location_vars[locations_dict[location2]] == locations_dict['The Castro']),
+                          time_vars[locations_dict['The Castro']] >= time_vars[locations_dict['Golden Gate Park']] + travel_time))
+            s.add(Implies(And(location_vars[locations_dict[location1]] == locations_dict['Golden Gate Park'], location_vars[locations_dict[location2]] == locations_dict['Embarcadero']),
+                          time_vars[locations_dict['Embarcadero']] >= time_vars[locations_dict['Golden Gate Park']] + travel_time))
 
-# Check the solution
+# Add constraints for exactly 6 meetings
+s.add(Or([location_vars[i] == 0 for i in range(len(locations))]))
+s.add(Or([location_vars[i] == 1 for i in range(len(locations))]))
+s.add(Or([location_vars[i] == 2 for i in range(len(locations))]))
+s.add(Or([location_vars[i] == 3 for i in range(len(locations))]))
+s.add(Or([location_vars[i] == 4 for i in range(len(locations))]))
+s.add(Or([location_vars[i] == 5 for i in range(len(locations))]))
+s.add(Or([location_vars[i] == 6 for i in range(len(locations))]))
+s.add(Or([location_vars[i] == 7 for i in range(len(locations))]))
+s.add(Not(Or([location_vars[i] == 0 for i in range(len(locations))]) & 
+           Or([location_vars[i] == 1 for i in range(len(locations))]) & 
+           Or([location_vars[i] == 2 for i in range(len(locations))]) & 
+           Or([location_vars[i] == 3 for i in range(len(locations))]) & 
+           Or([location_vars[i] == 4 for i in range(len(locations))]) & 
+           Or([location_vars[i] == 5 for i in range(len(locations))]) & 
+           Or([location_vars[i] == 6 for i in range(len(locations))]) & 
+           Or([location_vars[i] == 7 for i in range(len(locations))])))
+
+# Solve the problem
 if s.check() == sat:
     model = s.model()
-    print('SOLUTION:')
+    print("SOLUTION:")
     for i in range(len(locations)):
-        print(f'Location {i}: {locations[model[locations_var[i]].as_long()]}')
-        print(f'Time: {model[times[i]].as_long()}')
-        print(f'Meeting: {model[meetings[i]].as_long()}')
-        print()
+        print(f'Location {i}: {locations[model[location_vars[i]].as_long()]}')
+        print(f'Time: {model[time_vars[i]].as_long()} minutes')
 else:
-    print('No solution found')
+    print("No solution exists")

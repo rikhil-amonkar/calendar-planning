@@ -1,55 +1,47 @@
 from z3 import *
 
-def schedule_meeting(day, start_time, end_time, schedules, preferences):
+def solve_scheduling_problem():
+    # Define the day of the meeting
+    day = 'Monday'
+
+    # Define the start and end time of the work hours
+    start_time = 9 * 60  # 9:00 in minutes
+    end_time = 17 * 60   # 17:00 in minutes
+    meeting_duration = 30  # 30 minutes
+
+    # Define the constraints for each participant
+    shirley = [10 * 60, 11 * 60, 12 * 60]  # 10:30, 11:00, 12:00
+    jacob = [9 * 60, 10 * 60, 11 * 60, 12 * 60 + 30, 14 * 60 + 30]
+    stephen = [11 * 60, 12 * 60]
+    margaret = [9 * 60, 10 * 60 + 30, 12 * 60, 13 * 60, 15 * 60, 16 * 60 + 30]
+    mason = [9 * 60, 10 * 60 + 30, 11 * 60 + 30, 12 * 60, 13 * 60, 14 * 60, 16 * 60 + 30]
+
+    # Margaret's preference
+    margaret_preferred_start = 14 * 60
+
     # Create a Z3 solver
-    solver = Solver()
+    s = Solver()
 
-    # Define the variables
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+    # Define the variables for the start time of the meeting
+    start = Int('start')
 
-    # Add constraints for the meeting duration
-    solver.add(And(meeting_start >= start_time, meeting_end <= end_time))
-    solver.add(meeting_end - meeting_start == 30)  # 30 minutes meeting duration
+    # Add constraints for each participant
+    s.add(start >= 14 * 60)  # Margaret does not want to meet before 14:30
+    s.add(start <= 16 * 60)  # Meeting should not go past 16:30
 
-    # Add constraints for the schedules
-    for person, schedule in schedules.items():
-        for time in schedule:
-            solver.add(Or(meeting_start + 30 > time[1], meeting_start < time[0]))
+    s.add(And([start + meeting_duration >= time for time in shirley]))
+    s.add(And([start + meeting_duration >= time for time in jacob]))
+    s.add(And([start + meeting_duration >= time for time in stephen]))
+    s.add(And([start + meeting_duration >= time for time in margaret]))
+    s.add(And([start + meeting_duration >= time for time in mason]))
 
-    # Add constraints for the preferences
-    for person, preference in preferences.items():
-        if preference!= None:
-            if preference:  # If the preference is True, the meeting cannot start before the preferred time
-                solver.add(meeting_start >= 14*60)
-
-    # Add constraints for the unavailable time slots
-    solver.add(Or(meeting_start + 30 <= 9*60, meeting_start >= 17*60))  # Unavailable time slot from 0 to 9
-    solver.add(Or(meeting_start + 30 <= 14*60, meeting_start >= 15*60))  # Unavailable time slot from 14:30 to 15:00
-
-    # Check if a solution exists
-    if solver.check() == sat:
-        model = solver.model()
-        meeting_start_value = model[meeting_start].as_long()
-        meeting_end_value = model[meeting_end].as_long()
-        return f'SOLUTION:\nDay: {day}\nStart Time: {meeting_start_value:02d}:00\nEnd Time: {meeting_end_value:02d}:30'
+    # Solve the problem
+    if s.check() == sat:
+        model = s.model()
+        start_time = model[start].as_long()
+        end_time = start_time + meeting_duration
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time // 60:02d}:{start_time % 60:02d}\nEnd Time: {end_time // 60:02d}:{end_time % 60:02d}'
     else:
-        return 'No solution exists'
+        return 'No solution found'
 
-# Define the schedules and preferences
-schedules = {
-    'Shirley': [(10*60 + 30, 11*60 + 0), (12*60 + 0, 12*60 + 30)],
-    'Jacob': [(9*60 + 0, 9*60 + 30), (10*60 + 0, 10*60 + 30), (11*60 + 0, 11*60 + 30), (12*60 + 30, 13*60 + 30), (14*60 + 30, 15*60 + 0)],
-    'Stephen': [(11*60 + 30, 12*60 + 0), (12*60 + 30, 13*60 + 0)],
-    'Margaret': [(9*60 + 0, 9*60 + 30), (10*60 + 30, 12*60 + 30), (13*60 + 0, 13*60 + 30), (15*60 + 0, 15*60 + 30), (16*60 + 30, 17*60 + 0)],
-    'Mason': [(9*60 + 0, 10*60 + 0), (10*60 + 30, 11*60 + 0), (11*60 + 30, 12*60 + 30), (13*60 + 0, 13*60 + 30), (14*60 + 0, 14*60 + 30), (16*60 + 30, 17*60 + 0)]
-}
-preferences = {
-    'Margaret': True
-}
-
-# Find a time that works for everyone's schedule and constraints
-day = 'Monday'
-start_time = 9*60
-end_time = 17*60
-print(schedule_meeting(day, start_time, end_time, schedules, preferences))
+print(solve_scheduling_problem())

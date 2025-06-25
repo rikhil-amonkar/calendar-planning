@@ -1,46 +1,83 @@
 from z3 import *
+from dataclasses import dataclass
+from typing import List
 
-# Define the variables
-days = [Bool(f'day_{i}') for i in range(7)]
-cities = ['Riga', 'Amsterdam', 'Mykonos']
-days_in_city = {city: Int(f'days_in_{city}') for city in cities}
+@dataclass
+class City:
+    name: str
+    days: int
 
-# Define the constraints
-s = Optimize()
+@dataclass
+class Flight:
+    from_city: City
+    to_city: City
+    day: int
 
-# Spend 2 days in Riga
-s.add(days_in_city['Riga'] == 2)
-s.add(days[0] == days[1])  # Visit Riga on day 1 and 2
+def solve_scheduling_problem():
+    # Define the cities and their days
+    cities = [
+        City('Riga', 2),
+        City('Amsterdam', 2),
+        City('Mykonos', 5)
+    ]
 
-# Spend 2 days in Amsterdam
-s.add(days_in_city['Amsterdam'] == 2)
-s.add(days[2] == days[3])  # Visit Amsterdam on day 3 and 4
+    # Define the flights
+    flights = [
+        Flight(City('Riga', 1), City('Amsterdam', 1), 1),
+        Flight(City('Amsterdam', 1), City('Mykonos', 1), 1),
+        Flight(City('Riga', 1), City('Amsterdam', 1), 1),
+        Flight(City('Amsterdam', 1), City('Riga', 1), 1),
+        Flight(City('Amsterdam', 1), City('Mykonos', 1), 1),
+        Flight(City('Mykonos', 1), City('Amsterdam', 1), 1),
+    ]
 
-# Spend 3 days in Mykonos
-s.add(days_in_city['Mykonos'] == 3)
-s.add(days[4] == days[5])  # Visit Mykonos on day 5 and 6
+    # Create a list of all possible days
+    days = [i for i in range(1, 8)]
 
-# Direct flights constraints
-s.add(days[0] == days[1])  # Same day for Riga
-s.add(days[2] == days[3])  # Same day for Amsterdam
-s.add(days[4] == days[5])  # Same day for Mykonos
+    # Create a solver
+    solver = Solver()
 
-# Ensure the itinerary covers exactly 7 days
-s.add([days[i] for i in range(7)].count(True) == 7)
+    # Create a list to store the itinerary
+    itinerary = []
 
-# Solve the optimization problem
-s.maximize(days_in_city['Riga'] + days_in_city['Amsterdam'] + days_in_city['Mykonos'])
+    # Create a list to store the current city for each day
+    current_city = [Int(f'day_{i}') for i in range(1, 8)]
 
-# Check if the problem has a solution
-if s.check() == sat:
-    model = s.model()
-    # Print the trip plan
-    for i in range(7):
-        day = model[days[i]]
-        if day:
-            print(f'Day {i+1}: {cities[i]}')
-    print(f'Total days in Riga: {model[days_in_city["Riga"]]}')
-    print(f'Total days in Amsterdam: {model[days_in_city["Amsterdam"]]}')
-    print(f'Total days in Mykonos: {model[days_in_city["Mykonos"]]}')
-else:
-    print("No solution found")
+    # Create a list to store the current city for each flight
+    flight_current_city = [Int(f'flight_{i}') for i in range(6)]
+
+    # Add constraints for each city
+    for city in cities:
+        for day in range(1, city.days + 1):
+            city_var = Int(f'city_{city.name}_{day}')
+            solver.assert_and_track(Implies(And([day >= city.days, day <= 7]), city_var == city.name), f'city_{city.name}_{day}')
+
+    # Add constraints for each flight
+    for flight in flights:
+        solver.assert_and_track(flight_current_city[flight.day - 1] == flight.from_city.name, f'flight_{flight.day}_{flight.from_city.name}_{flight.to_city.name}')
+
+    # Add constraints for each day
+    for day in range(1, 8):
+        solver.assert_and_track(Or([current_city[day - 1] == city.name for city in cities]), f'day_{day}')
+
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        for day in range(1, 8):
+            current_city_value = model[current_city[day - 1]].as_string()
+            for city in cities:
+                if city.name == current_city_value:
+                    itinerary.append({"day_range": f"Day {day - city.days} - {day}", "place": city.name})
+                    for i in range(day - city.days, day):
+                        itinerary.append({"day_range": f"Day {i}", "place": city.name})
+                    break
+            for flight in flights:
+                if flight.day == day and model[flight_current_city[flight.day - 1]].as_string() == flight.from_city.name:
+                    itinerary.append({"day_range": f"Day {day}", "place": flight.from_city.name})
+                    itinerary.append({"day_range": f"Day {day}", "place": flight.to_city.name})
+                    break
+
+    return {"itinerary": itinerary}
+
+# Print the solution
+print(solve_scheduling_problem())

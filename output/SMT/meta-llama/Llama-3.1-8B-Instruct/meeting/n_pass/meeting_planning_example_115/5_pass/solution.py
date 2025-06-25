@@ -1,63 +1,76 @@
 from z3 import *
 
-# Define the travel times in minutes
-travel_times = {
-    'Richmond District to Pacific Heights': 10,
-    'Richmond District to Marina District': 9,
-    'Pacific Heights to Richmond District': 12,
-    'Pacific Heights to Marina District': 6,
-    'Marina District to Richmond District': 11,
-    'Marina District to Pacific Heights': 7
-}
-
-# Define the meeting times and durations
-meeting_times = {
-    'Jessica': {'start': 3 * 60 + 30, 'end': 4 * 60 + 45, 'duration': 45},
-    'Carol': {'start': 11 * 60, 'end': 15 * 60, 'duration': 60}
-}
-
-# Define the possible locations
-locations = ['Richmond District', 'Pacific Heights', 'Marina District']
-
 # Define the variables
-locations_order = [locations[0]]
-locations_order += [location for location in locations[1:] if location!= locations_order[-1]]
-locations_order += [locations[0]]
+start_time = Int('start_time')
+end_time = Int('end_time')
+richmond_to_pacific = Int('richmond_to_pacific')
+richmond_to_marina = Int('richmond_to_marina')
+pacific_to_richmond = Int('pacific_to_richmond')
+pacific_to_marina = Int('pacific_to_marina')
+marina_to_richmond = Int('marina_to_richmond')
+marina_to_pacific = Int('marina_to_pacific')
+meet_jessica = Bool('meet_jessica')
+meet_carol = Bool('meet_carol')
+meet_jessica_time = Int('meet_jessica_time')
+meet_carol_time = Int('meet_carol_time')
 
-start_time = 9 * 60
-end_time = 18 * 60
-
-locations_order = [Int(f'location_{i}') for i in range(len(locations_order))]
+# Define the travel times
+travel_times = {
+    'richmond_to_pacific': 10,
+    'richmond_to_marina': 9,
+    'pacific_to_richmond': 12,
+    'pacific_to_marina': 6,
+'marina_to_richmond': 11,
+'marina_to_pacific': 7
+}
 
 # Define the constraints
 s = Optimize()
-for i in range(len(locations_order) - 1):
-    s.add(locations_order[i + 1] > locations_order[i])
 
-for i in range(len(locations_order) - 1):
-    if f'{locations_order[i]} to {locations_order[i + 1]}' in travel_times:
-        s.add(locations_order[i + 1] > locations_order[i] + travel_times[f'{locations_order[i]} to {locations_order[i + 1]}'])
-    elif f'{locations_order[i + 1]} to {locations_order[i]}' in travel_times:
-        s.add(locations_order[i + 1] > locations_order[i] + travel_times[f'{locations_order[i + 1]} to {locations_order[i]}'])
+# Jessica's availability
+jessica_start = 3 * 60 + 30  # 3:30 PM
+jessica_end = 4 * 60 + 45  # 4:45 PM
+s.add(And(jessica_start - travel_times['pacific_to_richmond'] <= start_time,
+          start_time + 45 <= jessica_end))
 
-s.add(locations_order[0] == 0)
-s.add(locations_order[-1] == 0)
+# Carol's availability
+carol_start = 11 * 60  # 11:30 AM
+carol_end = 3 * 60  # 3:00 PM
+s.add(And(carol_start - travel_times['richmond_to_marina'] <= start_time,
+          start_time + 60 <= carol_end))
 
-# Define the constraints for the meetings
-meet_jessica = Bool('meet_jessica')
-meet_carol = Bool('meet_carol')
-s.add(And(meet_jessica == locations_order[1] == 2, meet_carol == locations_order[1] == 1))
+# Meet with exactly 2 people
+s.add(And(meet_jessica + meet_carol == 1,
+          meet_jessica <= start_time + 45,
+          meet_jessica >= start_time,
+          meet_carol <= start_time + 60,
+          meet_carol >= start_time,
+          meet_jessica_time >= jessica_start,
+          meet_jessica_time <= jessica_end,
+          meet_carol_time >= carol_start,
+          meet_carol_time <= carol_end))
 
-# Define the constraint to meet with exactly 2 people
-s.add(meet_jessica + meet_carol == 1)
+# End time must be greater than or equal to start time
+s.add(end_time >= start_time)
 
-# Solve the problem
-if s.check() == sat:
+# Minimize the end time
+s.minimize(end_time)
+
+# Solve the optimization problem
+result = s.check()
+
+if result == sat:
     model = s.model()
-    print(f'SOLUTION:')
-    for i in range(len(locations_order)):
-        print(f'Location {i+1}: {model[locations_order[i]]}')
-    print(f'Meet Jessica: {model[meet_jessica]}')
-    print(f'Meet Carol: {model[meet_carol]}')
+    print(f"Best schedule: Start at {model[start_time].as_long()} minutes, End at {model[end_time].as_long()} minutes")
+    print(f"Travel to Pacific Heights: {model[richmond_to_pacific].as_long()} minutes")
+    print(f"Travel to Marina District: {model[richmond_to_marina].as_long()} minutes")
+    print(f"Travel from Pacific Heights: {model[pacific_to_richmond].as_long()} minutes")
+    print(f"Travel from Pacific Heights: {model[pacific_to_marina].as_long()} minutes")
+    print(f"Travel from Marina District: {model[marina_to_richmond].as_long()} minutes")
+    print(f"Travel from Marina District: {model[marina_to_pacific].as_long()} minutes")
+    print(f"Meet Jessica at: {model[meet_jessica_time].as_long()} minutes")
+    print(f"Meet Carol at: {model[meet_carol_time].as_long()} minutes")
+    print(f"Meet Jessica: {model[meet_jessica].as_bool()}")
+    print(f"Meet Carol: {model[meet_carol].as_bool()}")
 else:
-    print('No solution found')
+    print("No solution found")

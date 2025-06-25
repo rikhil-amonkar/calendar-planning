@@ -3,69 +3,94 @@ from z3 import *
 # Define the cities
 cities = ['Stuttgart', 'Edinburgh', 'Athens', 'Split', 'Krakow', 'Venice', 'Mykonos']
 
-# Define the days for each city
-cities_days = {}
-for city in cities:
-    days = [Bool(f"{city}_{day}") for day in range(1, 21)]  # 21 days (0-20)
-    cities_days[city] = days
+# Define the days
+days = [Bool(f'day_{i}') for i in range(20)]
 
-# Direct flights
-direct_flights = {
-    ('Krakow', 'Split'): 1,
-    ('Split', 'Athens'): 1,
-    ('Edinburgh', 'Krakow'): 1,
-    ('Venice', 'Stuttgart'): 1,
-    ('Krakow', 'Stuttgart'): 1,
-    ('Edinburgh', 'Stuttgart'): 1,
-    ('Stuttgart', 'Split'): 1,
-    ('Edinburgh', 'Athens'): 1,
-    ('Athens', 'Mykonos'): 1,
-    ('Venice', 'Athens'): 1,
-    ('Athens', 'Mykonos'): 1,
-    ('Venice', 'Edinburgh'): 1,
+# Define the direct flights
+flights = {
+    ('Krakow', 'Split'): [10],
+    ('Split', 'Athens'): [15],
+    ('Edinburgh', 'Krakow'): [5],
+    ('Venice', 'Stuttgart'): [6],
+    ('Krakow', 'Stuttgart'): [8],
+    ('Edinburgh', 'Stuttgart'): [7],
+    ('Stuttgart', 'Split'): [12],
+    ('Edinburgh', 'Athens'): [9],
+    ('Stuttgart', 'Athens'): [13],
+    ('Athens', 'Mykonos'): [18],
+    ('Venice', 'Athens'): [14],
+    ('Athens', 'Mykonos'): [17]
 }
 
 # Define the constraints
-constraints = []
-for city1, city2 in direct_flights.items():
-    city1_name, city2_name = city1
-    for day in range(1, 20 - city2 + 1):  # Ensure day + city2 is within the range
-        constraints.append(Implies(cities_days[city1_name][day] == True, cities_days[city2_name][day + city2] == True))
-
-# Workshop in Stuttgart
-constraints.append(Implies(cities_days['Stuttgart'][11] == True, Or([cities_days['Stuttgart'][12] == True, cities_days['Stuttgart'][13] == True])))
-constraints.append(Implies(cities_days['Stuttgart'][12] == True, Or([cities_days['Stuttgart'][13] == True])))
-constraints.append(Implies(cities_days['Stuttgart'][13] == True, Or([])))
-
-# Meeting friends in Split
-constraints.append(Implies(cities_days['Split'][13] == True, Or([cities_days['Split'][14] == True])))
-
-# Meeting friend in Krakow
-constraints.append(Implies(cities_days['Krakow'][8] == True, Or([cities_days['Krakow'][9] == True])))
-constraints.append(Implies(cities_days['Krakow'][9] == True, Or([cities_days['Krakow'][10] == True])))
-constraints.append(Implies(cities_days['Krakow'][10] == True, Or([cities_days['Krakow'][11] == True])))
-
-# Visit durations
-constraints.append(Implies(cities_days['Stuttgart'][3] == True, Or([cities_days['Stuttgart'][6] == True])))
-constraints.append(Implies(cities_days['Edinburgh'][4] == True, Or([cities_days['Edinburgh'][7] == True])))
-constraints.append(Implies(cities_days['Athens'][4] == True, Or([cities_days['Athens'][7] == True])))
-constraints.append(Implies(cities_days['Split'][2] == True, Or([cities_days['Split'][3] == True])))
-constraints.append(Implies(cities_days['Krakow'][4] == True, Or([cities_days['Krakow'][7] == True])))
-constraints.append(Implies(cities_days['Venice'][5] == True, Or([cities_days['Venice'][9] == True])))
-constraints.append(Implies(cities_days['Mykonos'][4] == True, Or([cities_days['Mykonos'][7] == True])))
-
-# Total duration
-for city in cities:
-    constraints.append(Or([cities_days[city][day] == True for day in range(1, 21)]))
-
 solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
 
+# Ensure each day is in exactly one city
+for i in range(20):
+    solver.add(Or([days[i]]))
+
+# Ensure each city is visited for the correct number of days
+for city in cities:
+    if city == 'Stuttgart':
+        solver.add(And([days[10], days[11], days[12], days[13]]))
+    elif city == 'Edinburgh':
+        solver.add(And([days[4], days[5], days[6], days[7]]))
+    elif city == 'Athens':
+        solver.add(And([days[16], days[17], days[18], days[19]]))
+    elif city == 'Split':
+        solver.add(And([days[14], days[15]]))
+    elif city == 'Krakow':
+        solver.add(And([days[7], days[8], days[9], days[10]]))
+    elif city == 'Venice':
+        solver.add(And([days[3], days[4], days[5], days[6]]))
+    elif city == 'Mykonos':
+        solver.add(And([days[18], days[19]]))
+
+# Ensure the workshop in Stuttgart
+solver.add(days[10])
+solver.add(days[11])
+solver.add(days[12])
+solver.add(days[13])
+
+# Ensure meeting a friend in Krakow
+solver.add(days[8])
+solver.add(days[9])
+solver.add(days[10])
+
+# Ensure meeting a friend in Split
+solver.add(days[13])
+solver.add(days[14])
+
+# Ensure the flights
+for (city1, city2), day in flights.items():
+    for i in day:
+        solver.add(days[i])
+        solver.add(days[i])
+
+# Ensure the itinerary covers exactly 20 days
+solver.add(Or([days[i] for i in range(20)]))
+
+# Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    for city in cities:
-        days = [model[city + str(day)].as_bool() for day in range(1, 21)]
-        print(f"{city}: {days}")
+    itinerary = []
+    for i in range(20):
+        if model.evaluate(days[i]).decl().name() == 'day':
+            if itinerary and itinerary[-1]['place'] == cities[i]:
+                itinerary[-1]['day_range'] = str(int(itinerary[-1]['day_range'].split('-')[0]) + 1) + '-' + str(i + 1)
+            else:
+                itinerary.append({'day_range': str(i + 1) + '-' + str(i + 1), 'place': cities[i]})
+            if i + 1 < 20:
+                for (city1, city2), day_list in flights.items():
+                    if i + 1 in day_list:
+                        itinerary.append({'day_range': str(i + 1), 'place': city1})
+                        itinerary.append({'day_range': str(i + 1), 'place': city2})
+                        itinerary.append({'day_range': str(i + 1) + '-' + str(i + 1), 'place': city2})
+    # If the itinerary is empty, try to find a solution that covers all 20 days
+    if not itinerary:
+        for i in range(20):
+            if model.evaluate(days[i]).decl().name() == 'day':
+                itinerary.append({'day_range': str(i + 1) + '-' + str(i + 1), 'place': cities[i]})
+    print({'itinerary': itinerary})
 else:
-    print("No solution found")
+    print('No solution found')

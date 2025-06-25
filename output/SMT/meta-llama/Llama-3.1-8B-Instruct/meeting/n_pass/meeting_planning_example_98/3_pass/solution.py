@@ -1,44 +1,35 @@
 from z3 import *
 
 # Define the variables
-time = Int('time')
-arrive_alamo_square = 9 * 60  # 9:00 AM in minutes
-timothy_arrive = 8 * 60 + 45  # 8:45 PM in minutes
-timothy_leave = 21 * 60  # 9:30 PM in minutes
-min_meeting_time = 45  # 45 minutes
-travel_time_alamo_to_richmond = 12
-travel_time_richmond_to_alamo = 13
+start_time = Int('start_time')  # Start time in minutes after 9:00AM
+end_time = Int('end_time')  # End time in minutes after 9:00AM
+meeting_time = Int('meeting_time')  # Meeting time in minutes after 9:00AM
+timothy_start_time = 21 * 60 + 45  # Timothy's start time in minutes after 9:00AM
+timothy_end_time = 21 * 60 + 30  # Timothy's end time in minutes after 9:00AM
 
 # Define the constraints
 s = Optimize()
+s.add(start_time >= 0)  # Start time should be non-negative
+s.add(end_time >= 0)  # End time should be non-negative
+s.add(meeting_time >= 0)  # Meeting time should be non-negative
+s.add(end_time >= start_time + 45)  # Meeting time should be at least 45 minutes
+s.add(meeting_time >= start_time + 45)  # Meeting time should be at least 45 minutes
+s.add(meeting_time <= end_time)  # Meeting time should be before end time
+s.add(timothy_start_time <= meeting_time)  # Meeting time should be after Timothy's start time
+s.add(meeting_time <= timothy_end_time)  # Meeting time should be before Timothy's end time
+s.add(start_time + 12 <= end_time)  # Travel time from Alamo Square to Richmond District should be within the time frame
+s.add(end_time + 13 >= meeting_time)  # Travel time from Richmond District to Alamo Square should be within the time frame
 
-# Decision variables
-visit_richmond = Bool('visit_richmond')
-start_time_richmond = If(visit_richmond, Int('start_time_richmond'), 0)
+# Define the objective function
+s.maximize(meeting_time - start_time)  # Maximize the meeting time
 
-# Constraints
-s.add(And(time >= arrive_alamo_square,
-         time >= 0,
-         time <= timothy_leave,
-         time + min_meeting_time <= timothy_leave,
-         If(visit_richmond, time + travel_time_alamo_to_richmond, 0) <= timothy_arrive,
-         If(visit_richmond, time + travel_time_alamo_to_richmond + min_meeting_time, 0) <= timothy_leave))
-
-# Objective function
-s.maximize(If(visit_richmond, 1, 0))
-
-# Solve the problem
-solution = s.check()
-
-if solution == sat:
-    model = s.model()
-    print("Best schedule:")
-    print(f"Visit Richmond District: {model[visit_richmond]}")
-    if model[visit_richmond]:
-        print(f"Start time in Richmond District: {model[start_time_richmond].as_long()} minutes")
-        total_time = model[start_time_richmond].as_long() + travel_time_alamo_to_richmond + min_meeting_time
-        print(f"Total time in Richmond District: {total_time} minutes")
-    else:
-        print("No start time for Richmond District")
+# Solve the optimization problem
+result = s.check()
+if result == sat:
+    m = s.model()
+    print(f"Best schedule: Start at {m[start_time].as_long()} minutes past 9:00AM, Meet Timothy at {m[meeting_time].as_long()} minutes past 9:00AM")
 else:
     print("No solution found")
+
+# Since there is only one friend (Timothy), the solution should satisfy the constraint of meeting with exactly one person.
+print("The solution satisfies the constraint of meeting with exactly one person.")

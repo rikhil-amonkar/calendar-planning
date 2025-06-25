@@ -1,89 +1,121 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = 18
-cities = ['Porto', 'Frankfurt', 'Geneva', 'Mykonos', 'Manchester', 'Hamburg', 'Naples']
-stays = {
-    'Porto': 2,
-    'Frankfurt': 2,
-    'Geneva': 3,
-    'Mykonos': 3,
-    'Manchester': 4,
-    'Hamburg': 5,
-    'Naples': 5
+# Define the cities
+cities = ['Hamburg', 'Frankfurt', 'Naples', 'Mykonos', 'Geneva', 'Manchester', 'Porto']
+
+# Define the days
+days = range(1, 19)
+
+# Define the direct flights
+flights = {
+    'Hamburg': ['Frankfurt', 'Porto'],
+    'Frankfurt': ['Hamburg', 'Geneva', 'Naples', 'Manchester', 'Porto'],
+    'Naples': ['Mykonos', 'Manchester', 'Frankfurt'],
+    'Mykonos': ['Naples', 'Geneva'],
+    'Geneva': ['Frankfurt', 'Porto', 'Manchester'],
+    'Manchester': ['Frankfurt', 'Naples', 'Geneva', 'Porto'],
+    'Porto': ['Hamburg', 'Geneva', 'Frankfurt', 'Manchester']
 }
 
 # Define the constraints
-x = [Int(f'x_{i}') for i in range(days)]
-x[0] = 0  # Initial day
-x[days-1] = days - 1  # Last day
+def constraint_days(day, city):
+    return day >= 1 and day <= 18
 
-# Constraints for stays
-for city in cities:
-    stay_days = stays[city]
-    for i in range(days - stay_days + 1):
-        constraint = And(x[i] == i, x[i+stay_days-1] == i+stay_days-1, 
-                         Or([x[j] == i for j in range(i, i+stay_days)]))
-        solver.add(constraint)
+def constraint_city(day, city):
+    return city in cities
 
-# Constraints for direct flights
-direct_flights = {
-    ('Hamburg', 'Frankfurt'): 1,
-    ('Naples', 'Mykonos'): 1,
-    ('Hamburg', 'Porto'): 1,
-    ('Hamburg', 'Geneva'): 1,
-    ('Mykonos', 'Geneva'): 1,
-    ('Frankfurt', 'Geneva'): 1,
-    ('Frankfurt', 'Porto'): 1,
-    ('Geneva', 'Porto'): 1,
-    ('Geneva', 'Manchester'): 1,
-    ('Naples', 'Manchester'): 1,
-    ('Frankfurt', 'Naples'): 1,
-    ('Frankfurt', 'Manchester'): 1,
-    ('Naples', 'Geneva'): 1,
-    ('Porto', 'Manchester'): 1,
-    ('Hamburg', 'Manchester'): 1
-}
-for (city1, city2), days_between in direct_flights.items():
-    for i in range(days - days_between + 1):
-        constraint = And(x[i] == i, x[i+days_between-1] == i+days_between-1, 
-                         Or([x[j] == i for j in range(i, i+days_between)]), 
-                         Or([x[j] == i+days_between-1 for j in range(i+days_between-1, i+days_between)]))
-        solver.add(constraint)
+def constraint_flights(day, city, destination):
+    return (day, city) in flights and destination in flights[city]
 
-# Constraints for meeting a friend in Mykonos
-for i in range(10, 12):
-    constraint = And(x[i] == i, x[i] == Mykonos)
-    solver.add(constraint)
+def constraint_meeting(day, city):
+    return (day, city) == (11, 'Mykonos') or (day, city) == (12, 'Mykonos')
 
-# Constraints for attending a wedding in Manchester
-for i in range(15, 18):
-    constraint = And(x[i] == i, x[i] == Manchester)
-    solver.add(constraint)
+def constraint_wedding(day, city):
+    return (day, city) == (15, 'Manchester') or (day, city) == (16, 'Manchester') or (day, city) == (17, 'Manchester') or (day, city) == (18, 'Manchester')
 
-# Constraints for attending an annual show in Frankfurt
-for i in range(5, 6):
-    constraint = And(x[i] == i, x[i] == Frankfurt)
-    solver.add(constraint)
+def constraint_stay(day, city, days):
+    return day in range(int(day_range.split('-')[0]), int(day_range.split('-')[1]) + 1)
 
-# Solve the constraints
+def constraint_direct_flights(day, city):
+    return (day, city) in flights
+
+def constraint_events(day, city):
+    return (day, city) == (5, 'Frankfurt') or (day, city) == (6, 'Frankfurt')
+
+# Define the solver
 solver = Solver()
-for i in range(days):
-    solver.add(x[i] >= 0)
-    solver.add(x[i] <= days-1)
-for i in range(1, days):
-    solver.add(x[i] > x[i-1])
+
+# Define the variables
+places = [Bool(f'place_{i}_{j}') for i in cities for j in days]
+
+# Add constraints
+for city in cities:
+    for day in days:
+        solver.add(constraint_days(day, city))
+        solver.add(constraint_city(day, city))
+        solver.add(Or([places[(city, day)]]))
+
+for city in cities:
+    for day in days:
+        for destination in flights[city]:
+            solver.add(constraint_flights(day, city, destination))
+            solver.add(Or([places[(city, day)], places[(destination, day)]]))
+
+for city in cities:
+    for day in days:
+        for destination in flights[city]:
+            solver.add(constraint_flights(day, city, destination))
+            solver.add(Implies(places[(city, day)], Or([places[(destination, day)]])))
+
+for day in days:
+    solver.add(Not(Or([places[(city, day)] for city in cities if city!= 'Mykonos' and (day, city) == (11, 'Mykonos') or (day, city) == (12, 'Mykonos')])))
+
+for day in days:
+    solver.add(Not(Or([places[(city, day)] for city in cities if city!= 'Manchester' and (day, city) == (15, 'Manchester') or (day, city) == (16, 'Manchester') or (day, city) == (17, 'Manchester') or (day, city) == (18, 'Manchester')])))
+
+for city in cities:
+    for day in days:
+        solver.add(constraint_stay(day, city, '2-3'))
+        solver.add(constraint_stay(day, city, '3-6'))
+        solver.add(constraint_stay(day, city, '10-12'))
+        solver.add(constraint_stay(day, city, '15-18'))
+        solver.add(constraint_stay(day, city, '3-6'))
+        solver.add(constraint_stay(day, city, '7-11'))
+        solver.add(constraint_stay(day, city, '13-14'))
+        solver.add(constraint_stay(day, city, '4-7'))
+        solver.add(constraint_stay(day, city, '13-17'))
+
+for city in cities:
+    for day in days:
+        solver.add(constraint_direct_flights(day, city))
+
+for city in cities:
+    for day in days:
+        solver.add(constraint_events(day, city))
+
+# Check the solution
 if solver.check() == sat:
     model = solver.model()
-    trip_plan = {}
+    places = {city: [model.evaluate(places[(city, day)]).as_bool() for day in days] for city in cities}
+    itinerary = []
     for city in cities:
-        trip_plan[city] = []
-    for i in range(days):
-        city = [city for city in cities if model.evaluate(x[i] == i) == model.from_ast(True)][0]
-        trip_plan[city].append(i)
-    for city, stays in trip_plan.items():
-        trip_plan[city] = sorted(set(stays))
-    for city, stays in trip_plan.items():
-        print(f'{city}: {stays}')
+        for day in days:
+            if places[city][day-1]:
+                if day == 1:
+                    itinerary.append({"day_range": f"Day {day}-{day+int(places[city][day])-1}", "place": city})
+                elif day == int(places[city][day-1]):
+                    itinerary.append({"day_range": f"Day {day-1}-{day+int(places[city][day])-1}", "place": city})
+                elif day == int(places[city][day-1])+1:
+                    itinerary.append({"day_range": f"Day {day-1}", "place": city})
+                elif day == int(places[city][day-1])+int(places[city][day]):
+                    itinerary.append({"day_range": f"Day {day-1}-{day}", "place": city})
+                else:
+                    itinerary.append({"day_range": f"Day {day-1}-{day}", "place": city})
+                if day!= int(places[city][day-1])+int(places[city][day]):
+                    for destination in flights[city]:
+                        if model.evaluate(places[(destination, day)]).as_bool():
+                            itinerary.append({"day_range": f"Day {day}", "place": destination})
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
+    print("No solution found")

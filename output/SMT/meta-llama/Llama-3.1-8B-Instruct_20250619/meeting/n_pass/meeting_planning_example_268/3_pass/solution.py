@@ -1,0 +1,2 @@
+# Add constraints for visiting exactly 3 locations
+solver.add(x_ggp_ams + x_ggp_prd + x_ggp_rsh + x_ams_ggp + x_ams_prd + x_ams_rsh + x_prd_ggp + x_prd_ams + x_prd_rsh + x_rsh_ggp + x_rsh_ams + x_rsh_prd == 3)

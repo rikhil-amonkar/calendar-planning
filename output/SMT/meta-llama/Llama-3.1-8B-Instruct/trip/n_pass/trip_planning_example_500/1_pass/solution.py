@@ -1,4 +1,5 @@
 from z3 import *
+import json
 
 # Define the cities
 cities = ['Hamburg', 'Munich', 'Manchester', 'Lyon', 'Split']
@@ -6,49 +7,90 @@ cities = ['Hamburg', 'Munich', 'Manchester', 'Lyon', 'Split']
 # Define the days
 days = range(1, 21)
 
-# Define the variables
-x = [Int(f'day_in_{city}') for city in cities]
+# Define the direct flights
+flights = [
+    ('Split', 'Munich'),
+    ('Munich', 'Manchester'),
+    ('Hamburg', 'Manchester'),
+    ('Hamburg', 'Munich'),
+    ('Split', 'Lyon'),
+    ('Lyon', 'Munich'),
+    ('Hamburg', 'Split'),
+    ('Manchester', 'Split')
+]
 
-# Define the constraints
-s = Optimize()
+# Create a dictionary to store the itinerary
+itinerary = []
+
+# Create a dictionary to store the current place
+current_place = {}
+
+# Create a dictionary to store the current days
+current_days = {}
+
+# Function to add a place to the itinerary
+def add_place(day, place):
+    if day not in current_days:
+        current_days[day] = []
+    current_days[day].append(place)
+    itinerary.append({"day_range": f"Day {min(current_days.keys())}-{max(current_days.keys())}", "place": place})
+
+# Function to update the current place
+def update_place(day, place):
+    if day not in current_days:
+        current_days[day] = []
+    current_days[day].append(place)
+    if day in current_place:
+        itinerary.append({"day_range": f"Day {current_place[day]}-{day-1}", "place": current_place[day]})
+    current_place[day] = place
+    itinerary.append({"day_range": f"Day {day}-{day}", "place": place})
+
+# Create a Z3 solver
+s = Solver()
+
+# Create a list of variables
+vars = [Bool(f"day_{i}") for i in range(1, 21)]
+
+# Add constraints for each city
 for city in cities:
-    s.add(x[city] >= 0)
-for city in cities:
-    s.add(x[city] <= 20)
+    # Add constraints for the number of days in each city
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 1 and i <= 7 and city == 'Hamburg']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 8 and i <= 13 and city == 'Munich']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 14 and i <= 15 and city == 'Lyon']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 16 and i <= 18 and city == 'Split']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 19 and i <= 20 and city == 'Manchester']))
 
-# Constraints for Hamburg
-s.add(x['Hamburg'] == 7)
-s.add(And([x['Hamburg'] + 1 >= x['Munich'], x['Munich'] >= 1], [x['Hamburg'] + 1 >= x['Split'], x['Split'] >= 1]))
+# Add constraints for the flights
+for flight in flights:
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 1 and i <= 6 and flight[0] == 'Hamburg' and flight[1] == 'Munich']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 1 and i <= 6 and flight[0] == 'Hamburg' and flight[1] == 'Manchester']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 7 and i <= 12 and flight[0] == 'Munich' and flight[1] == 'Manchester']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 1 and i <= 6 and flight[0] == 'Hamburg' and flight[1] == 'Split']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 7 and i <= 12 and flight[0] == 'Split' and flight[1] == 'Lyon']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 1 and i <= 6 and flight[0] == 'Split' and flight[1] == 'Munich']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 7 and i <= 12 and flight[0] == 'Lyon' and flight[1] == 'Munich']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 13 and i <= 14 and flight[0] == 'Lyon' and flight[1] == 'Munich']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 13 and i <= 14 and flight[0] == 'Munich' and flight[1] == 'Manchester']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 1 and i <= 6 and flight[0] == 'Munich' and flight[1] == 'Manchester']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 1 and i <= 6 and flight[0] == 'Manchester' and flight[1] == 'Split']))
+    s.add(Or([vars[i] for i in range(1, 21) if i >= 7 and i <= 12 and flight[0] == 'Split' and flight[1] == 'Lyon']))
 
-# Constraints for Munich
-s.add(x['Munich'] == 6)
-s.add(And([x['Munich'] + 1 >= x['Manchester'], x['Manchester'] >= 1], [x['Munich'] + 1 >= x['Lyon'], x['Lyon'] >= 1]))
+# Solve the constraints
+s.add(Or([vars[i] for i in range(1, 21)]))
+if s.check() == sat:
+    model = s.model()
+    for i in range(1, 21):
+        if model[vars[i]]:
+            update_place(i, 'Hamburg')
+            update_place(i, 'Munich')
+            update_place(i, 'Manchester')
+            update_place(i, 'Lyon')
+            update_place(i, 'Split')
+else:
+    print("No solution exists")
 
-# Constraints for Manchester
-s.add(x['Manchester'] == 2)
-s.add(And([x['Manchester'] + 1 >= x['Munich'], x['Munich'] >= 1], [x['Manchester'] + 1 >= x['Split'], x['Split'] >= 1]))
+# Add the last place to the itinerary
+itinerary.append({"day_range": f"Day {max(current_days.keys())}-{max(current_days.keys())}", "place": 'Manchester'})
 
-# Constraints for Lyon
-s.add(x['Lyon'] >= 2)
-s.add(And([x['Lyon'] + 1 >= x['Munich'], x['Munich'] >= 1], [x['Lyon'] + 1 >= x['Split'], x['Split'] >= 1]))
-
-# Constraints for Split
-s.add(x['Split'] == 7)
-s.add(And([x['Split'] + 1 >= x['Munich'], x['Munich'] >= 1], [x['Split'] + 1 >= x['Manchester'], x['Manchester'] >= 1]))
-
-# Constraints for annual show in Lyon
-s.add(And([x['Lyon'] >= 13, x['Lyon'] + 1 >= 14]))
-
-# Constraints for visiting relatives in Manchester
-s.add(And([x['Manchester'] + 1 >= 19, x['Manchester'] + 1 <= 20]))
-
-# Objective function
-s.minimize(Sum([x[city] for city in cities]))
-
-# Solve the problem
-s.check()
-model = s.model()
-
-# Print the result
-for city in cities:
-    print(f'Days in {city}: {model[x[city]].as_long()}')
+# Print the itinerary
+print(json.dumps({"itinerary": itinerary}, indent=4))

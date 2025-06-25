@@ -1,82 +1,56 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the variables
-    day = [Bool('day_monday'), Bool('day_tuesday')]
-    start_time = [Int('start_time_monday'), Int('start_time_tuesday')]
-    end_time = [Int('end_time_monday'), Int('end_time_tuesday')]
+def schedule_meeting(margaret_schedule, alexis_schedule, meeting_duration, day, preference):
+    # Create Z3 solver
+    s = Solver()
 
-    # Define the constraints
+    # Define variables
+    day_var = Bool('day')
+    start_time_var = Int('start_time')
+    end_time_var = Int('end_time')
+
+    # Define constraints
+    s.add(day_var == day)  # Day of the meeting
+    s.add(start_time_var >= 9)  # Start time must be after 9:00
+    s.add(start_time_var <= 17)  # Start time must be before 17:00
+    s.add(end_time_var == start_time_var + meeting_duration)  # End time must be after start time
+    s.add(end_time_var <= 17)  # End time must be before 17:00
+
     # Margaret's constraints
-    margaret_monday_constraints = [
-        Or(start_time[0] < 9, start_time[0] > 11),
-        Or(start_time[0] < 13, start_time[0] > 13.5),
-        Or(start_time[0] < 15, start_time[0] > 16.5)
-    ]
-    margaret_tuesday_constraints = [
-        start_time[1] > 12,
-        start_time[1] < 12.5
-    ]
+    for margaret_block in margaret_schedule[day]:
+        s.add(start_time_var + meeting_duration > margaret_block[0])  # Start time must be before Margaret's block
+        s.add(start_time_var < margaret_block[1])  # End time must be after Margaret's block
+    if day == 'Monday' and not preference:
+        s.add(start_time_var > 11)  # Start time must be after 11:00 if Margaret doesn't want to meet on Monday
+    elif day == 'Tuesday' and not preference:
+        s.add(start_time_var >= 14.5)  # Start time must be after 14:30 if Margaret doesn't want to meet on Tuesday
 
-    # Alexis' constraints
-    alexis_monday_constraints = [
-        Or(start_time[0] < 9, start_time[0] > 11.5),
-        Or(start_time[0] < 12.5, start_time[0] > 13),
-        start_time[0] < 14,
-        start_time[0] > 14.5
-    ]
-    alexis_tuesday_constraints = [
-        Or(start_time[1] < 9, start_time[1] > 9.5),
-        Or(start_time[1] < 10, start_time[1] > 10.5),
-        start_time[1] < 14,
-        start_time[1] > 14.5,
-        start_time[1] < 16.5
-    ]
+    # Alexis's constraints
+    for alexis_block in alexis_schedule[day]:
+        s.add(start_time_var + meeting_duration > alexis_block[0])  # Start time must be before Alexis's block
+        s.add(start_time_var < alexis_block[1])  # End time must be after Alexis's block
 
-    # Meeting duration constraints
-    meeting_duration = 0.5  # half an hour in hours
-    margaret_constraints = [
-        (start_time[0] - 9) / 0.5 > 0,
-        (17 - start_time[0]) / 0.5 > 0,
-        (start_time[1] - 9) / 0.5 > 0,
-        (17 - start_time[1]) / 0.5 > 0
-    ]
-    alexis_constraints = [
-        (start_time[0] - 9) / 0.5 > 0,
-        (start_time[0] - 9.5) / 0.5 > 0,
-        (11.5 - start_time[0]) / 0.5 > 0,
-        (13 - start_time[0]) / 0.5 > 0,
-        (14 - start_time[0]) / 0.5 > 0,
-        (14.5 - start_time[0]) / 0.5 > 0,
-        (17 - start_time[0]) / 0.5 > 0,
-        (start_time[1] - 9) / 0.5 > 0,
-        (start_time[1] - 9.5) / 0.5 > 0,
-        (10.5 - start_time[1]) / 0.5 > 0,
-        (14 - start_time[1]) / 0.5 > 0,
-        (14.5 - start_time[1]) / 0.5 > 0,
-        (16.5 - start_time[1]) / 0.5 > 0
-    ]
-    margaret_preferences = [
-        Not(day[0]),
-        start_time[1] > 14.5
-    ]
-
-    # Create the solver and add the constraints
-    solver = Solver()
-    solver.add([day[0] + day[1] == 1])  # Exactly one day
-    solver.add(margaret_monday_constraints + margaret_tuesday_constraints)
-    solver.add(alexis_monday_constraints + alexis_tuesday_constraints)
-    solver.add(margaret_constraints + alexis_constraints)
-    solver.add(margaret_preferences)
-
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        day_to_meet = 'Monday' if model[day[0]] else 'Tuesday'
-        start_time_to_meet = model[start_time[0]] if day_to_meet == 'Monday' else model[start_time[1]]
-        end_time_to_meet = start_time_to_meet + meeting_duration
-        return f'SOLUTION:\nDay: {day_to_meet}\nStart Time: {start_time_to_meet:02d}:00\nEnd Time: {end_time_to_meet:02d}:00'
+    # Check if there's a solution
+    if s.check() == sat:
+        model = s.model()
+        day_to_meet = 'Monday' if model[day_var] else 'Tuesday'
+        start_time_to_meet = model[start_time_var].as_long()
+        end_time_to_meet = model[end_time_var].as_long()
+        return f'SOLUTION:\nDay: {day_to_meet}\nStart Time: {start_time_to_meet:02d}:{int(start_time_to_meet % 1 * 60):02d}\nEnd Time: {end_time_to_meet:02d}:{int(end_time_to_meet % 1 * 60):02d}'
     else:
         return 'No solution found'
 
-print(schedule_meeting())
+# Example usage
+margaret_schedule = {
+    'Monday': [(10.5, 11), (11.5, 12), (13, 13.5), (15, 17)],
+    'Tuesday': [(12, 12.5)]
+}
+alexis_schedule = {
+    'Monday': [(9.5, 11.5), (12.5, 13), (13.5, 17)],
+    'Tuesday': [(9, 9.5), (10, 10.5), (13.5, 16.5)]
+}
+meeting_duration = 0.5  # Half an hour
+day = 'Monday'
+preference = False
+
+print(schedule_meeting(margaret_schedule, alexis_schedule, meeting_duration, day, preference))

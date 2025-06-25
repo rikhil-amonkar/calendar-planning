@@ -1,90 +1,105 @@
 from z3 import *
+from itertools import combinations
 
-# Define the cities and their corresponding days
-cities = {
-    'Amsterdam': 4,
-    'Edinburgh': 5,
-    'Brussels': 5,
-    'Vienna': 5,
-    'Berlin': 4,
-    'Reykjavik': 5
-}
+def generate_variables(days, cities):
+    """Generate Z3 variables for each day and city."""
+    variables = {}
+    for day in range(1, days + 1):
+        variables[day] = {}
+        for city in cities:
+            variables[day][city] = Bool(f'day_{day}_{city}')
+    return variables
 
-# Define the direct flights
-flights = {
-    ('Edinburgh', 'Berlin'): 1,
-    ('Amsterdam', 'Berlin'): 1,
-    ('Edinburgh', 'Amsterdam'): 1,
-    ('Vienna', 'Berlin'): 1,
-    ('Berlin', 'Brussels'): 1,
-    ('Vienna', 'Brussels'): 1,
-    ('Vienna', 'Reykjavik'): 1,
-    ('Edinburgh', 'Brussels'): 1,
-    ('Amsterdam', 'Reykjavik'): 1,
-    ('Reykjavik', 'Brussels'): 1,
-    ('Amsterdam', 'Vienna'): 1,
-    ('Reykjavik', 'Berlin'): 1
-}
+def generate_constraints(variables, days, cities, direct_flights, relatives, friends):
+    """Generate Z3 constraints for the problem."""
+    constraints = []
+    for day in range(1, days + 1):
+        for city in cities:
+            # Ensure a city is not visited on a day it is not scheduled
+            constraints.append(Not(variables[day][city]))
+            # Ensure a city is visited on the days it is scheduled
+            for city2 in cities:
+                if (day, city2) in relatives or (day, city2) in friends:
+                    constraints.append(variables[day][city2])
+            # Ensure a city is not visited on the same day as another city
+            for city2 in cities:
+                if city!= city2:
+                    constraints.append(Not(And(variables[day][city], variables[day][city2])))
+        # Ensure a flight day is only used for one city
+        for city1, city2 in direct_flights:
+            for day in range(1, days + 1):
+                constraints.append(Implies(And(variables[day][city1], variables[day][city2]), Not(And([variables[i][city1] for i in range(1, days + 1)]))))
+    return constraints
 
-# Define the days for visiting relatives and friends
-relative_days = [5, 6, 7, 8]
-friend_days = [16, 17, 18, 19]
+def generate_direct_flight_constraints(variables, days, direct_flights):
+    """Generate Z3 constraints for direct flights."""
+    constraints = []
+    for city1, city2 in direct_flights:
+        for day in range(1, days + 1):
+            constraints.append(Implies(And(variables[day][city1], variables[day][city2]), Or([variables[day - 1][city1] == False, variables[day + 1][city1] == False])))
+    return constraints
 
-# Define the variables
-days = [Int(f'day_{i}') for i in range(1, 24)]
-city_vars = [Int(f'city_{i}') for i in range(6)]
+def generate_relatives_constraints(variables, relatives, days):
+    """Generate Z3 constraints for relatives."""
+    constraints = []
+    for day, city in relatives:
+        for i in range(day, min(day + 3, days + 1)):
+            constraints.append(variables[i][city])
+    return constraints
 
-# Define the solver
-solver = Solver()
+def generate_friends_constraints(variables, friends, days):
+    """Generate Z3 constraints for friends."""
+    constraints = []
+    for day, city in friends:
+        for i in range(day, min(day + 3, days + 1)):
+            constraints.append(variables[i][city])
+    return constraints
 
-# Define the constraints
-for i in range(1, 24):
-    # Each day is associated with a city
-    city = city_vars[0]  # Default to Amsterdam
+def generate_stay_constraints(variables, days, cities, stay_days):
+    """Generate Z3 constraints for staying in a city."""
+    constraints = []
+    for city, days in stay_days.items():
+        for day in range(1, days + 1):
+            constraints.append(variables[day][city])
+    return constraints
 
-    # Direct flights
-    for (city1, city2), flight in flights.items():
-        if i == flight:
-            city = city2
+def solve_itinerary(days, cities, direct_flights, relatives, friends, stay_days):
+    """Solve the itinerary problem using Z3."""
+    variables = generate_variables(days, cities)
+    constraints = generate_constraints(variables, days, cities, direct_flights, relatives, friends)
+    direct_flight_constraints = generate_direct_flight_constraints(variables, days, direct_flights)
+    relatives_constraints = generate_relatives_constraints(variables, relatives, days)
+    friends_constraints = generate_friends_constraints(variables, friends, days)
+    stay_constraints = generate_stay_constraints(variables, days, cities, stay_days)
+    solver = Solver()
+    for day in range(1, days + 1):
+        for city in cities:
+            solver.add(variables[day][city])
+    for constraint in constraints + direct_flight_constraints + relatives_constraints + friends_constraints + stay_constraints:
+        solver.add(constraint)
+    result = solver.check()
+    if result == sat:
+        model = solver.model()
+        itinerary = []
+        for day in range(1, days + 1):
+            for city in cities:
+                if model.evaluate(variables[day][city]).as_bool():
+                    itinerary.append({"day_range": f"Day {day}" if day == 1 else f"Day {day}-{day + 1}", "place": city})
+        return {"itinerary": itinerary}
+    else:
+        return None
 
-    # Relatives and friends
-    if i in relative_days:
-        city = city_vars[0]
-    if i in friend_days:
-        city = city_vars[4]
-
-    # Ensure that the city is not changed
-    if i > 1:
-        solver.add(city == city_vars[0])  # Amsterdam is the default city
-
-    # Ensure that the city is not changed when visiting relatives or friends
-    if i > 1 and (i in relative_days or i in friend_days):
-        solver.add(city == city_vars[0])  # Amsterdam is the default city
-
-    # Ensure that the city is not changed when taking a direct flight
-    if i > 1 and (city, city2) in flights:
-        solver.add(city == city2)
-
-# Define the constraints for each city
-for i, city_name in enumerate(cities):
-    solver.add(And([days[j] == cities[city_name] for j in range(i+1)]))
+# Problem parameters
+days = 23
+cities = ['Amsterdam', 'Edinburgh', 'Brussels', 'Vienna', 'Berlin', 'Reykjavik']
+direct_flights = [('Amsterdam', 'Berlin'), ('Amsterdam', 'Reykjavik'), ('Edinburgh', 'Berlin'), ('Edinburgh', 'Brussels'), ('Vienna', 'Berlin'), ('Vienna', 'Brussels'), ('Vienna', 'Reykjavik'), ('Berlin', 'Brussels'), ('Reykjavik', 'Brussels'), ('Amsterdam', 'Vienna'), ('Reykjavik', 'Berlin')]
+relatives = [(5, 'Amsterdam'), (6, 'Amsterdam'), (7, 'Amsterdam'), (8, 'Amsterdam')]
+friends = [(16, 'Berlin'), (17, 'Berlin'), (18, 'Berlin'), (19, 'Berlin')]
+stay_days = {'Amsterdam': 4, 'Edinburgh': 5, 'Brussels': 5, 'Vienna': 5, 'Berlin': 4, 'Reykjavik': 5}
 
 # Solve the problem
-for var in days:
-    solver.add(var >= 1)
-for var in city_vars:
-    solver.add(var >= 0)
-    solver.add(var < 7)
-for i in range(1, 24):
-    solver.add(days[i] == days[i-1] + 1)
-
-result = solver.check()
-if result == sat:
-    model = solver.model()
-    for i in range(1, 24):
-        print(f'Day {i}: {model[days[i]].as_long()}')
-        for city_name, city_var in cities.items():
-            if model[city_vars[0]].as_long() == model[city_var].as_long():
-                print(f'  {city_name}')
+result = solve_itinerary(days, cities, direct_flights, relatives, friends, stay_days)
+if result:
+    print(result)
 else:
-    print('No solution found')
+    print("No solution found")

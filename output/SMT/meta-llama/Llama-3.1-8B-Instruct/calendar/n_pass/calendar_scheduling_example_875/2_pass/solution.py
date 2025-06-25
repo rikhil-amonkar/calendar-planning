@@ -1,100 +1,80 @@
 from z3 import *
 
-def schedule_meeting(natalie_schedule, william_schedule, duration):
-    # Define the days and times
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-    times = [9, 10, 11, 12, 13, 14, 15, 16, 17]
-    
-    # Create Z3 variables for the day and time of the meeting
-    day = Int('day')
-    start_time = Int('start_time')
-    end_time = Int('end_time')
-    
-    # Define the constraints for the day and time
-    constraints = [day >= 0, day < len(days), start_time >= 9, start_time < 18, end_time >= 9, end_time < 18]
-    
-    # Define the constraints for the meeting duration
-    constraints.append(start_time + duration < 18)
-    
-    # Define the constraints for Natalie's schedule
-    natalie_constraints = []
-    for i in range(len(days)):
-        for j in range(len(times)):
-            for k in range(len(times)):
-                if i == 0:  # Monday
-                    if (j == 0 and k == 0) or (j == 1 and k == 1) or (j == 2 and k == 1) or (j == 3 and k == 3) or (j == 4 and k == 5) or (j == 5 and k == 8):
-                        continue
-                elif i == 1:  # Tuesday
-                    if (j == 0 and k == 0) or (j == 1 and k == 1) or (j == 2 and k == 5) or (j == 3 and k == 5) or (j == 4 and k == 7):
-                        continue
-                elif i == 2:  # Wednesday
-                    if (j == 1 and k == 2) or (j == 2 and k == 5) or (j == 3 and k == 8) or (j == 4 and k == 5) or (j == 5 and k == 8):
-                        continue
-                elif i == 3:  # Thursday
-                    if (j == 0 and k == 1) or (j == 1 and k == 2) or (j == 2 and k == 8) or (j == 3 and k == 6) or (j == 4 and k == 7) or (j == 5 and k == 8):
-                        continue
-                if (j >= 0 and k >= 0 and i < len(natalie_schedule) and 
-                    (j >= len(natalie_schedule[i]) or k >= len(natalie_schedule[i][j]) or 
-                     (natalie_schedule[i][j][0] <= start_time and natalie_schedule[i][j][1] > start_time) or 
-                     (natalie_schedule[i][j][0] <= end_time and natalie_schedule[i][j][1] > end_time))):
-                    natalie_constraints.append(Or(day!= i, (start_time!= j or end_time!= k)))
-    
-    # Define the constraints for William's schedule
-    william_constraints = []
-    for i in range(len(days)):
-        for j in range(len(times)):
-            for k in range(len(times)):
-                if i == 0:  # Monday
-                    if (j == 0 and k == 0) or (j == 1 and k == 2) or (j == 2 and k == 8) or (j == 3 and k == 4) or (j == 4 and k == 7) or (j == 5 and k == 8):
-                        continue
-                elif i == 1:  # Tuesday
-                    if (j == 0 and k == 0) or (j == 1 and k == 2) or (j == 2 and k == 4) or (j == 3 and k == 5) or (j == 4 and k == 6):
-                        continue
-                elif i == 2:  # Wednesday
-                    if (j == 0 and k == 0) or (j == 1 and k == 2) or (j == 2 and k == 4) or (j == 3 and k == 5) or (j == 4 and k == 7) or (j == 5 and k == 8):
-                        continue
-                elif i == 3:  # Thursday
-                    if (j == 0 and k == 0) or (j == 1 and k == 1) or (j == 2 and k == 2) or (j == 3 and k == 4) or (j == 4 and k == 7) or (j == 5 and k == 8):
-                        continue
-                if (j >= 0 and k >= 0 and i < len(william_schedule) and 
-                    (j >= len(william_schedule[i]) or k >= len(william_schedule[i][j]) or 
-                     (william_schedule[i][j][0] <= start_time and william_schedule[i][j][1] > start_time) or 
-                     (william_schedule[i][j][0] <= end_time and william_schedule[i][j][1] > end_time))):
-                    william_constraints.append(Or(day!= i, (start_time!= j or end_time!= k)))
-    
-    # Add the constraints to the solver
-    solver = Solver()
-    solver.add(constraints)
-    solver.add(natalie_constraints)
-    solver.add(william_constraints)
-    
-    # Solve the constraints
-    if solver.check() == sat:
-        model = solver.model()
-        day_val = days[model[day].as_long()]
-        start_time_val = model[start_time].as_long()
-        end_time_val = model[end_time].as_long()
-        
-        # Print the solution
-        print(f'SOLUTION:')
-        print(f'Day: {day_val}')
-        print(f'Start Time: {start_time_val:02d}:00')
-        print(f'End Time: {end_time_val:02d}:00')
-    else:
-        print('No solution found.')
+# Define the days of the week
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
 
-# Example usage
-natalie_schedule = [
-    [9, 9.5], [10, 12], [12.5, 13], [14, 14.5], [15, 16.5],
-    [9, 9.5], [10, 10.5], [12.5, 14], [16, 17],
-    [11, 11.5], [16, 16.5],
-    [10, 11], [11.5, 15], [15.5, 16], [16.5, 17]
-]
-william_schedule = [
-    [9.5, 11], [11.5, 17],
-    [9, 13], [13.5, 16], [16, 17],
-    [9, 12.5], [13.5, 16], [16.5, 17],
-    [9, 10.5], [11, 11.5], [12, 12.5], [13, 14], [15, 17],
-]
+# Define the start and end times of the work hours
+start_time = 9
+end_time = 17
 
-schedule_meeting(natalie_schedule, william_schedule, 1)
+# Define the meeting duration
+meeting_duration = 1
+
+# Define the existing schedules for Natalie and William
+natalie_schedule = {
+    'Monday': [(9, 30), (10, 12), (12, 30), (14, 30), (15, 30, 16, 30)],
+    'Tuesday': [(9, 30), (10, 30), (12, 30, 14), (16, 17)],
+    'Wednesday': [(11, 30), (16, 30)],
+    'Thursday': [(10, 11), (11, 30, 15), (15, 30, 16), (16, 30, 17)]
+}
+
+william_schedule = {
+    'Monday': [(9, 30), (11, 30, 17)],
+    'Tuesday': [(9, 13), (13, 30, 16)],
+    'Wednesday': [(9, 12, 30), (13, 30, 14, 30), (15, 30, 16), (16, 30, 17)],
+    'Thursday': [(9, 10, 30), (11, 11, 30), (12, 12, 30), (13, 14), (15, 17)]
+}
+
+# Define the Z3 solver
+solver = Solver()
+
+# Define the variables for the day, start time, and end time
+day = [Bool(f'day_{i}') for i in range(4)]
+start_time_var = [Int(f'start_time_{i}') for i in range(4)]
+end_time_var = [Int(f'end_time_{i}') for i in range(4)]
+
+# Add constraints for the day
+for i in range(4):
+    solver.add(day[i] == day[i])
+
+# Add constraints for the start and end times
+for i in range(4):
+    solver.add(start_time_var[i] >= start_time*60)
+    solver.add(start_time_var[i] <= end_time*60)
+    solver.add(end_time_var[i] >= start_time*60)
+    solver.add(end_time_var[i] <= end_time*60)
+    solver.add(end_time_var[i] > start_time_var[i])
+
+# Add constraints for the meeting duration
+for i in range(4):
+    solver.add(end_time_var[i] - start_time_var[i] == meeting_duration * 60)
+
+# Add constraints for the existing schedules
+for day_name, schedule in natalie_schedule.items():
+    for time in schedule:
+        solver.add(Or([start_time_var[i] > time[0]*60 + time[1] for i in range(4)]))
+    for time in schedule:
+        solver.add(Or([end_time_var[i] < time[0]*60 + time[1] for i in range(4)]))
+
+for day_name, schedule in william_schedule.items():
+    for time in schedule:
+        solver.add(Or([start_time_var[i] > time[0]*60 + time[1] for i in range(4)]))
+    for time in schedule:
+        solver.add(Or([end_time_var[i] < time[0]*60 + time[1] for i in range(4)]))
+
+# Add constraints for the day of the week
+solver.add(Or([day[0] for i in range(4)]))
+solver.add(Or([day[1] for i in range(4)]))
+solver.add(Or([day[2] for i in range(4)]))
+solver.add(Or([day[3] for i in range(4)]))
+
+# Solve the constraints
+if solver.check() == sat:
+    model = solver.model()
+    day_value = [model.evaluate(day[i]).as_string() for i in range(4)]
+    start_time_value = [model.evaluate(start_time_var[i]).as_int() for i in range(4)]
+    end_time_value = [model.evaluate(end_time_var[i]).as_int() for i in range(4)]
+    day_index = day_value.index('True')
+    print(f"SOLUTION:\nDay: {day_value[day_index]}\nStart Time: {str(int(start_time_value[day_index] / 60)).zfill(2) + ':' + str((int(start_time_value[day_index] % 60) // 10)).zfill(1) + str(int(start_time_value[day_index] % 10)).zfill(1)}\nEnd Time: {str(int(end_time_value[day_index] / 60)).zfill(2) + ':' + str((int(end_time_value[day_index] % 60) // 10)).zfill(1) + str(int(end_time_value[day_index] % 10)).zfill(1)}")
+else:
+    print("No solution found.")

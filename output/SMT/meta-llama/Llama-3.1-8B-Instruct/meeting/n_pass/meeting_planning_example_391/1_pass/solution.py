@@ -1,90 +1,80 @@
 from z3 import *
 
 # Define the variables
-start_time = 0
-end_time = 1430  # 2:30 PM
-friends = ['Kevin', 'Kimberly', 'Joseph', 'Thomas']
-locations = ['Sunset District', 'Alamo Square', 'Russian Hill', 'Presidio', 'Financial District']
-travel_times = {
-    ('Sunset District', 'Alamo Square'): 17,
-    ('Sunset District', 'Russian Hill'): 24,
-    ('Sunset District', 'Presidio'): 16,
-    ('Sunset District', 'Financial District'): 30,
-    ('Alamo Square', 'Sunset District'): 16,
-    ('Alamo Square', 'Russian Hill'): 13,
-    ('Alamo Square', 'Presidio'): 18,
-    ('Alamo Square', 'Financial District'): 17,
-    ('Russian Hill', 'Sunset District'): 23,
-    ('Russian Hill', 'Alamo Square'): 15,
-    ('Russian Hill', 'Presidio'): 14,
-    ('Russian Hill', 'Financial District'): 11,
-    ('Presidio', 'Sunset District'): 15,
-    ('Presidio', 'Alamo Square'): 18,
-    ('Presidio', 'Russian Hill'): 14,
-    ('Presidio', 'Financial District'): 23,
-    ('Financial District', 'Sunset District'): 31,
-    ('Financial District', 'Alamo Square'): 17,
-    ('Financial District', 'Russian Hill'): 10,
-    ('Financial District', 'Presidio'): 22
+start_time = 9 * 60  # 9:00 AM in minutes
+kevin_arrival = 8 * 60 + 15  # 8:15 AM in minutes
+kevin_departure = 21 * 60 + 30  # 9:30 PM in minutes
+kimberly_arrival = 8 * 60 + 45  # 8:45 AM in minutes
+kimberly_departure = 12 * 60 + 30  # 12:30 PM in minutes
+joseph_arrival = 18 * 60 + 30  # 6:30 PM in minutes
+joseph_departure = 18 * 60 + 15  # 7:15 PM in minutes
+thomas_arrival = 19 * 60  # 7:00 PM in minutes
+thomas_departure = 21 * 60 + 45  # 9:45 PM in minutes
+
+# Define the distances between locations
+distances = {
+    'Sunset District': {'Alamo Square': 17, 'Russian Hill': 24, 'Presidio': 16, 'Financial District': 30},
+    'Alamo Square': {'Sunset District': 16, 'Russian Hill': 13, 'Presidio': 18, 'Financial District': 17},
+    'Russian Hill': {'Sunset District': 23, 'Alamo Square': 15, 'Presidio': 14, 'Financial District': 11},
+    'Presidio': {'Sunset District': 15, 'Alamo Square': 18, 'Russian Hill': 14, 'Financial District': 23},
+    'Financial District': {'Sunset District': 31, 'Alamo Square': 17, 'Russian Hill': 10, 'Presidio': 22}
 }
 
-s = Optimize()
+# Define the solver
+s = Solver()
 
-# Define the decision variables
-x = [[Bool(f'x_{friend}_{location}') for location in locations] for friend in friends]
-y = [[Bool(f'y_{friend}_{location}_{next_location}') for next_location in locations for location in locations] for friend in friends]
-z = [Int(f'z_{friend}') for friend in friends]
+# Define the variables
+locations = ['Sunset District', 'Alamo Square', 'Russian Hill', 'Presidio', 'Financial District']
+friends = ['Kevin', 'Kimberly', 'Joseph', 'Thomas']
+times = [start_time]
+meetings = {}
 
-# Add constraints
+# Add the constraints for each friend
 for friend in friends:
-    s.add(z[friend] >= 0)
-    s.add(z[friend] <= 1430 - start_time)
+    if friend == 'Kevin':
+        kevin_meeting_time = 0
+        for location in locations:
+            s.add(And(kevin_arrival <= start_time + times[kevin_meeting_time] + distances['Sunset District'][location], 
+                      start_time + times[kevin_meeting_time] + distances['Sunset District'][location] <= kevin_departure))
+            meetings[friend] = location
+            kevin_meeting_time += 1
+    elif friend == 'Kimberly':
+        kimberly_meeting_time = 0
+        for location in locations:
+            s.add(And(kimberly_arrival <= start_time + times[kimberly_meeting_time] + distances['Sunset District'][location], 
+                      start_time + times[kimberly_meeting_time] + distances['Sunset District'][location] <= kimberly_departure))
+            meetings[friend] = location
+            kimberly_meeting_time += 1
+    elif friend == 'Joseph':
+        joseph_meeting_time = 0
+        for location in locations:
+            s.add(And(joseph_arrival <= start_time + times[joseph_meeting_time] + distances['Sunset District'][location], 
+                      start_time + times[joseph_meeting_time] + distances['Sunset District'][location] <= joseph_departure))
+            meetings[friend] = location
+            joseph_meeting_time += 1
+    elif friend == 'Thomas':
+        thomas_meeting_time = 0
+        for location in locations:
+            s.add(And(thomas_arrival <= start_time + times[thomas_meeting_time] + distances['Sunset District'][location], 
+                      start_time + times[thomas_meeting_time] + distances['Sunset District'][location] <= thomas_departure))
+            meetings[friend] = location
+            thomas_meeting_time += 1
 
+# Add the constraints for the meeting times
 for friend in friends:
-    for location in locations:
-        s.add(x[friend][location] == 0)
-        for next_location in locations:
-            s.add(y[friend][location][next_location] == 0)
+    s.add(times[meetings[friend]] >= 75 if friend == 'Kevin' else 30 if friend == 'Kimberly' else 45 if friend == 'Joseph' or friend == 'Thomas' else 0)
 
-for friend in friends:
-    for location in locations:
-        s.add(If(x[friend][location], z[friend] - travel_times[(location, 'Sunset District')] >= 0, True))
-
-for friend in friends:
-    for location in locations:
-        for next_location in locations:
-            if location!= next_location:
-                s.add(If(y[friend][location][next_location], z[friend] - travel_times[(location, next_location)] >= 0, True))
-
-for friend in friends:
-    s.add(z[friend] >= 75 * x[friend]['Alamo Square'])
-    s.add(z[friend] >= 30 * x[friend]['Russian Hill'])
-    s.add(z[friend] >= 45 * x[friend]['Presidio'])
-    s.add(z[friend] >= 45 * x[friend]['Financial District'])
-
-# Add objective function
-s.minimize(z[0] + z[1] + z[2] + z[3])
+# Add the constraint that the total time should be minimized
+s.add(If(Or([And(times[i] >= 0 for i in range(len(locations))]), 
+             And([times[i] == 0 for i in range(len(locations))])) == False, 
+        Or([And(times[i] == 0 for i in range(len(locations)))]), 
+        Minimize([times[i] for i in range(len(locations))])))
 
 # Solve the problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    print("SOLUTION:")
-    for friend in friends:
-        print(f"Friend: {friend}")
-        for location in locations:
-            if model[x[friend][location]].as_bool():
-                print(f"  Visit {location}: Yes")
-            else:
-                print(f"  Visit {location}: No")
-        for location in locations:
-            for next_location in locations:
-                if location!= next_location:
-                    if model[y[friend][location][next_location]].as_bool():
-                        print(f"  Travel from {location} to {next_location}: Yes")
-                    else:
-                        print(f"  Travel from {location} to {next_location}: No")
-        print(f"  Total time: {model[z[friend]]}")
-        print()
+if s.check() == sat:
+    m = s.model()
+    print('SOLUTION:')
+    for i in range(len(locations)):
+        print(f'Meet {m[meetings[friends[i]]].as_long()} minutes after 9:00 AM at {meetings[friends[i]]}')
 else:
-    print("No solution found")
+    print('No solution found')

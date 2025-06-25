@@ -1,4 +1,5 @@
 from z3 import *
+import json
 
 # Define the cities and their corresponding indices
 cities = ['London', 'Hamburg', 'Reykjavik', 'Barcelona', 'Stuttgart', 'Stockholm', 'Tallinn', 'Milan', 'Zurich', 'Bucharest']
@@ -8,117 +9,91 @@ city_indices = {city: i for i, city in enumerate(cities)}
 days = range(1, 29)
 
 # Define the variables
-x = [Bool(f'day_{city}') for city in cities]
+X = [Bool(f'X_{city}_{day}') for city in cities for day in days]
 
 # Define the constraints
 constraints = []
-for i, city in enumerate(cities):
-    constraints.append(Or([x[i] == True]))
-    constraints.append(Implies(x[i], x[city_indices['London']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Hamburg']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Reykjavik']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Barcelona']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Stuttgart']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Stockholm']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Tallinn']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Milan']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Zurich']] == False))
-    constraints.append(Implies(x[i], x[city_indices['Bucharest']] == False))
+for day in days:
+    # Each city can be visited at most once
+    for city in cities:
+        constraints.append(Or([Not(X[city_indices[city] * 28 + day - 1])]))
+    # If a flight is taken, the departure city is visited on the same day
+    for city in cities:
+        for departure_city, arrival_city in [('London', 'Hamburg'), ('London', 'Reykjavik'), ('Milan', 'Barcelona'), ('Reykjavik', 'Barcelona'), ('Reykjavik', 'Stuttgart'), ('Stockholm', 'Reykjavik'), ('London', 'Stuttgart'), ('London', 'Barcelona'), ('London', 'Milan'), ('London', 'Stockholm'), ('Milan', 'Hamburg'), ('Milan', 'Stockholm'), ('Stockholm', 'Hamburg'), ('Stockholm', 'Tallinn'), ('Hamburg', 'Bucharest'), ('London', 'Bucharest'), ('London', 'Zurich'), ('Milan', 'Zurich')]:
+            if city == departure_city:
+                constraints.append(X[city_indices[departure_city] * 28 + day - 1] == X[city_indices[arrival_city] * 28 + day - 1])
+            elif city == arrival_city:
+                constraints.append(Not(X[city_indices[departure_city] * 28 + day - 1]))
+    # If a city is visited, all previous days are also visited
+    for city in cities:
+        for day2 in range(1, day):
+            constraints.append(X[city_indices[city] * 28 + day2 - 1] == X[city_indices[city] * 28 + day - 1])
 
-# Direct flights
-direct_flights = {
-    ('London', 'Hamburg'): 1,
-    ('London', 'Reykjavik'): 1,
-    ('Milan', 'Barcelona'): 1,
-    ('Reykjavik', 'Barcelona'): 1,
-    ('Reykjavik', 'Stuttgart'): 1,
-    ('Stockholm', 'Reykjavik'): 1,
-    ('London', 'Stuttgart'): 1,
-    ('London', 'Barcelona'): 1,
-    ('Stockholm', 'Hamburg'): 1,
-    ('Milan', 'Hamburg'): 1,
-    ('Stockholm', 'Tallinn'): 1,
-    ('Hamburg', 'Bucharest'): 1,
-    ('London', 'Bucharest'): 1,
-    ('Milan', 'Stockholm'): 1,
-    ('Stuttgart', 'Hamburg'): 1,
-    ('London', 'Zurich'): 1,
-    ('Milan', 'Reykjavik'): 1,
-    ('London', 'Stockholm'): 1,
-    ('Milan', 'Stuttgart'): 1,
-    ('Stockholm', 'Barcelona'): 1,
-    ('London', 'Milan'): 1,
-    ('Zurich', 'Hamburg'): 1,
-    ('Bucharest', 'Barcelona'): 1,
-    ('Zurich', 'Stockholm'): 1,
-    ('Barcelona', 'Tallinn'): 1,
-    ('Zurich', 'Tallinn'): 1,
-    ('Hamburg', 'Barcelona'): 1,
-    ('Stuttgart', 'Barcelona'): 1,
-    ('Zurich', 'Reykjavik'): 1,
-    ('Zurich', 'Bucharest'): 1
-}
+# Add constraints for fixed visits
+for city in ['Zurich', 'Bucharest']:
+    for day in range(2):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['Hamburg']:
+    for day in range(5):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['Barcelona']:
+    for day in range(4):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['Reykjavik']:
+    for day in range(5):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['Stuttgart']:
+    for day in range(5):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['Stockholm']:
+    for day in range(2):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['Tallinn']:
+    for day in range(4):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['Milan']:
+    for day in range(5):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
+for city in ['London']:
+    for day in range(3):
+        constraints.append(X[city_indices[city] * 28 + day - 1])
 
-for (city1, city2) in direct_flights:
-    constraints.append(Implies(x[city_indices[city1]] == True, x[city_indices[city2]] == True))
+# Add constraint to cover exactly 28 days
+constraints.append(Sum([X[city_indices[city] * 28 + day - 1] for city in cities for day in days]) == 28)
 
-# Constraints for the given days
-for i, city in enumerate(cities):
-    if city == 'London':
-        constraints.append(x[i] == True >> (x[i] == True).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Reykjavik':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == True).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Barcelona':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == True).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Stuttgart':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == True).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Stockholm':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == True).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Tallinn':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == True).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Milan':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == True).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Zurich':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == True).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Bucharest':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == True).as_bool() == 1)
-
-# Constraints for the given days
-for i, city in enumerate(cities):
-    if city == 'London':
-        constraints.append(x[i] == True >> (x[i] == True).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Zurich':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == True).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Bucharest':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == True).as_bool() == 1)
-    elif city == 'Hamburg':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == True).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Barcelona':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == True).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Stuttgart':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == True).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Stockholm':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == True).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Tallinn':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == True).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Milan':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == True).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Zurich':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == True).as_bool() + (x[city_indices['Bucharest']] == False).as_bool() == 1)
-    elif city == 'Bucharest':
-        constraints.append(x[i] == True >> (x[city_indices['London']] == False).as_bool() + (x[city_indices['Hamburg']] == False).as_bool() + (x[city_indices['Reykjavik']] == False).as_bool() + (x[city_indices['Barcelona']] == False).as_bool() + (x[city_indices['Stuttgart']] == False).as_bool() + (x[city_indices['Stockholm']] == False).as_bool() + (x[city_indices['Tallinn']] == False).as_bool() + (x[city_indices['Milan']] == False).as_bool() + (x[city_indices['Zurich']] == False).as_bool() + (x[city_indices['Bucharest']] == True).as_bool() == 1)
-
-# Solve the problem
+# Solve the constraints
 solver = Solver()
+for var in X:
+    solver.add(var == var)  # Add a trivial constraint to make the solver use the var
 for constraint in constraints:
     solver.add(constraint)
-solution = solver.check()
+solver.add(Or([X[city_indices['London'] * 28 + day - 1] for day in range(1, 29)]))  # Ensure the trip starts in London
+result = solver.check()
 
-if solution == sat:
-    model = solver.model()
-    print('Solution found:')
-    for city in cities:
-        if model.evaluate(x[city_indices[city]]).as_bool():
-            print(f'{city}: {model.evaluate(x[city_indices[city]]).as_bool()}')
+# If the result is unsat, print an error message
+if result == unsat:
+    print("No solution found")
 else:
-    print('No solution found')
+    # Extract the solution
+    model = solver.model()
+    solution = []
+    for city in cities:
+        day_range = []
+        for day in range(1, 29):
+            if model.evaluate(X[city_indices[city] * 28 + day - 1]).as_bool():
+                day_range.append(day)
+        if day_range:
+            solution.append({"day_range": f"Day {min(day_range)}-{max(day_range)}" if max(day_range) - min(day_range) > 1 else f"Day {min(day_range)}", "place": city})
+    # Add flight days
+    for city in cities:
+        for day in range(1, 29):
+            for departure_city, arrival_city in [('London', 'Hamburg'), ('London', 'Reykjavik'), ('Milan', 'Barcelona'), ('Reykjavik', 'Barcelona'), ('Reykjavik', 'Stuttgart'), ('Stockholm', 'Reykjavik'), ('London', 'Stuttgart'), ('London', 'Barcelona'), ('London', 'Milan'), ('London', 'Stockholm'), ('Milan', 'Hamburg'), ('Milan', 'Stockholm'), ('Stockholm', 'Hamburg'), ('Stockholm', 'Tallinn'), ('Hamburg', 'Bucharest'), ('London', 'Bucharest'), ('London', 'Zurich'), ('Milan', 'Zurich')]:
+                if model.evaluate(X[city_indices[departure_city] * 28 + day - 1]).as_bool() and model.evaluate(X[city_indices[arrival_city] * 28 + day - 1]).as_bool():
+                    solution.append({"day_range": f"Day {day}", "place": departure_city})
+                    solution.append({"day_range": f"Day {day}", "place": arrival_city})
+    # Remove duplicates
+    solution = [dict(t) for t in {tuple(d.items()) for d in solution}]
+    # Sort the solution
+    solution.sort(key=lambda x: x['day_range'])
+    # Print the solution
+    print(json.dumps({"itinerary": solution}, indent=4))

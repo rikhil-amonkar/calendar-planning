@@ -1,116 +1,95 @@
 from z3 import *
-import json
 
 def main():
-    # Define the city enum
-    City, (c_Riga, c_Amsterdam, c_Mykonos) = EnumSort('City', ['Riga', 'Amsterdam', 'Mykonos'])
-    city_names = {
-        c_Riga: "Riga",
-        c_Amsterdam: "Amsterdam",
-        c_Mykonos: "Mykonos"
-    }
-    
-    # Define the flight days and order
+    # Define the integer variables for the flight days
     f1 = Int('f1')
     f2 = Int('f2')
-    order = [Const(f'order_{i}', City) for i in range(3)]
+    
+    # Define the city variables for the three segments
+    c1, c2, c3 = Ints('c1 c2 c3')
     
     s = Solver()
     
-    # Constraints on flight days
+    # Flight day constraints: f1 in [1,6], f2 in [f1+1,7]
     s.add(f1 >= 1, f1 <= 6)
-    s.add(f2 >= 2, f2 <= 7)
-    s.add(f1 < f2)
+    s.add(f2 >= f1 + 1, f2 <= 7)
     
-    # Segment lengths
-    seg0 = f1
-    seg1 = f2 - f1 + 1
-    seg2 = 8 - f2   # because 7 - f2 + 1 = 8 - f2
+    # Cities: 0=Riga, 1=Amsterdam, 2=Mykonos
+    s.add(c1 >= 0, c1 <= 2)
+    s.add(c2 >= 0, c2 <= 2)
+    s.add(c3 >= 0, c3 <= 2)
+    s.add(Distinct(c1, c2, c3))
     
-    # The three segments must be permutations of [2, 2, 5]
+    # Direct flight constraints: (c1,c2) and (c2,c3) must be direct flight pairs
+    direct_flights = [(0,1), (1,0), (1,2), (2,1)]
+    s.add(Or([And(c1 == i, c2 == j) for (i,j) in direct_flights]))
+    s.add(Or([And(c2 == i, c3 == j) for (i,j) in direct_flights]))
+    
+    # Days in each city: 
+    # For Riga (0): if in segment1 -> f1, segment2 -> (f2-f1+1), segment3 -> (8-f2)
+    days_riga = If(c1 == 0, f1, If(c2 == 0, (f2 - f1 + 1), If(c3 == 0, (8 - f2), 0)))
+    days_amsterdam = If(c1 == 1, f1, If(c2 == 1, (f2 - f1 + 1), If(c3 == 1, (8 - f2), 0)))
+    days_mykonos = If(c1 == 2, f1, If(c2 == 2, (f2 - f1 + 1), If(c3 == 2, (8 - f2), 0)))
+    
+    s.add(days_riga == 2)
+    s.add(days_amsterdam == 2)
+    s.add(days_mykonos == 5)
+    
+    # Relative visit constraint: Riga must include day1 or day2
     s.add(Or(
-        And(seg0 == 2, seg1 == 2, seg2 == 5),
-        And(seg0 == 2, seg1 == 5, seg2 == 2),
-        And(seg0 == 5, seg1 == 2, seg2 == 2)
-    ))
-    
-    # Each city appears exactly once
-    s.add(Distinct(order[0], order[1], order[2]))
-    
-    # The direct flight constraints for adjacent segments
-    direct_pairs = [
-        (c_Riga, c_Amsterdam),
-        (c_Amsterdam, c_Riga),
-        (c_Amsterdam, c_Mykonos),
-        (c_Mykonos, c_Amsterdam)
-    ]
-    s.add(Or([And(order[0] == pair[0], order[1] == pair[1]) for pair in direct_pairs]))
-    s.add(Or([And(order[1] == pair[0], order[2] == pair[1]) for pair in direct_pairs]))
-    
-    # Constraints on the days per city
-    # Riga: 2 days
-    s.add(Implies(order[0] == c_Riga, seg0 == 2))
-    s.add(Implies(order[1] == c_Riga, seg1 == 2))
-    s.add(Implies(order[2] == c_Riga, seg2 == 2))
-    
-    # Amsterdam: 2 days
-    s.add(Implies(order[0] == c_Amsterdam, seg0 == 2))
-    s.add(Implies(order[1] == c_Amsterdam, seg1 == 2))
-    s.add(Implies(order[2] == c_Amsterdam, seg2 == 2))
-    
-    # Mykonos: 5 days
-    s.add(Implies(order[0] == c_Mykonos, seg0 == 5))
-    s.add(Implies(order[1] == c_Mykonos, seg1 == 5))
-    s.add(Implies(order[2] == c_Mykonos, seg2 == 5))
-    
-    # Riga relative visit: must be in Riga on day1 or day2.
-    s.add(Or(
-        order[0] == c_Riga,
-        And(order[1] == c_Riga, f1 <= 2),
-        And(order[2] == c_Riga, f2 <= 2)
+        c1 == 0,          # Riga in first segment: includes day1
+        And(c2 == 0, f1 <= 2)  # Riga in second segment: must start by day2 to include day2
     ))
     
     if s.check() == sat:
         m = s.model()
         f1_val = m[f1].as_long()
         f2_val = m[f2].as_long()
-        order_vals = [m[o] for o in order]
-        city0 = city_names[order_vals[0]]
-        city1 = city_names[order_vals[1]]
-        city2 = city_names[order_vals[2]]
+        c1_val = m[c1].as_long()
+        c2_val = m[c2].as_long()
+        c3_val = m[c3].as_long()
+        
+        # Map city numbers to names
+        city_names = {0: "Riga", 1: "Amsterdam", 2: "Mykonos"}
+        c1_name = city_names[c1_val]
+        c2_name = city_names[c2_val]
+        c3_name = city_names[c3_val]
         
         itinerary = []
         
-        # Segment0: from day1 to f1_val (inclusive)
+        # Segment1: from day1 to f1_val (inclusive)
         if f1_val == 1:
-            itinerary.append({"day_range": "Day 1", "place": city0})
+            seg1_range = "Day 1"
         else:
-            itinerary.append({"day_range": f"Day 1-{f1_val}", "place": city0})
+            seg1_range = f"Day 1-{f1_val}"
+        itinerary.append({"day_range": seg1_range, "place": c1_name})
         
-        # Flight on f1_val: from city0 to city1
-        itinerary.append({"day_range": f"Day {f1_val}", "place": city0})
-        itinerary.append({"day_range": f"Day {f1_val}", "place": city1})
+        # Flight1: on day f1_val from c1 to c2
+        itinerary.append({"day_range": f"Day {f1_val}", "place": c1_name})
+        itinerary.append({"day_range": f"Day {f1_val}", "place": c2_name})
         
-        # Segment1: from f1_val to f2_val (inclusive)
+        # Segment2: from day f1_val to f2_val (inclusive)
         if f1_val == f2_val:
-            itinerary.append({"day_range": f"Day {f1_val}", "place": city1})
+            seg2_range = f"Day {f1_val}"
         else:
-            itinerary.append({"day_range": f"Day {f1_val}-{f2_val}", "place": city1})
+            seg2_range = f"Day {f1_val}-{f2_val}"
+        itinerary.append({"day_range": seg2_range, "place": c2_name})
         
-        # Flight on f2_val: from city1 to city2
-        itinerary.append({"day_range": f"Day {f2_val}", "place": city1})
-        itinerary.append({"day_range": f"Day {f2_val}", "place": city2})
+        # Flight2: on day f2_val from c2 to c3
+        itinerary.append({"day_range": f"Day {f2_val}", "place": c2_name})
+        itinerary.append({"day_range": f"Day {f2_val}", "place": c3_name})
         
-        # Segment2: from f2_val to day7
+        # Segment3: from day f2_val to day7
         if f2_val == 7:
-            itinerary.append({"day_range": "Day 7", "place": city2})
+            seg3_range = "Day 7"
         else:
-            itinerary.append({"day_range": f"Day {f2_val}-7", "place": city2})
+            seg3_range = f"Day {f2_val}-7"
+        itinerary.append({"day_range": seg3_range, "place": c3_name})
         
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(result)
     else:
-        print('{"error": "No solution found"}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

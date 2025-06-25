@@ -1,87 +1,124 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 23 * 60  # 11:00 PM
-sunset_district = 0
-russian_hill = 1
-the_castro = 2
-richmond_district = 3
-marina_district = 4
-north_beach = 5
-union_square = 6
-golden_gate_park = 7
+# Define the travel times
+travel_times = {
+    ('Sunset District', 'Russian Hill'): 24,
+    ('Sunset District', 'The Castro'): 17,
+    ('Sunset District', 'Richmond District'): 12,
+    ('Sunset District', 'Marina District'): 21,
+    ('Sunset District', 'North Beach'): 29,
+    ('Sunset District', 'Union Square'): 30,
+    ('Sunset District', 'Golden Gate Park'): 11,
+    ('Russian Hill', 'Sunset District'): 23,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Richmond District'): 14,
+    ('Russian Hill', 'Marina District'): 7,
+    ('Russian Hill', 'North Beach'): 5,
+    ('Russian Hill', 'Union Square'): 11,
+    ('Russian Hill', 'Golden Gate Park'): 21,
+    ('The Castro', 'Sunset District'): 17,
+    ('The Castro', 'Russian Hill'): 18,
+    ('The Castro', 'Richmond District'): 16,
+    ('The Castro', 'Marina District'): 21,
+    ('The Castro', 'North Beach'): 20,
+    ('The Castro', 'Union Square'): 19,
+    ('The Castro', 'Golden Gate Park'): 11,
+    ('Richmond District', 'Sunset District'): 11,
+    ('Richmond District', 'Russian Hill'): 13,
+    ('Richmond District', 'The Castro'): 16,
+    ('Richmond District', 'Marina District'): 9,
+    ('Richmond District', 'North Beach'): 17,
+    ('Richmond District', 'Union Square'): 21,
+    ('Richmond District', 'Golden Gate Park'): 9,
+    ('Marina District', 'Sunset District'): 19,
+    ('Marina District', 'Russian Hill'): 8,
+    ('Marina District', 'The Castro'): 22,
+    ('Marina District', 'Richmond District'): 11,
+    ('Marina District', 'North Beach'): 11,
+    ('Marina District', 'Union Square'): 16,
+    ('Marina District', 'Golden Gate Park'): 18,
+    ('North Beach', 'Sunset District'): 27,
+    ('North Beach', 'Russian Hill'): 4,
+    ('North Beach', 'The Castro'): 22,
+    ('North Beach', 'Richmond District'): 18,
+    ('North Beach', 'Marina District'): 9,
+    ('North Beach', 'Union Square'): 7,
+    ('North Beach', 'Golden Gate Park'): 22,
+    ('Union Square', 'Sunset District'): 26,
+    ('Union Square', 'Russian Hill'): 13,
+    ('Union Square', 'The Castro'): 19,
+    ('Union Square', 'Richmond District'): 20,
+    ('Union Square', 'Marina District'): 18,
+    ('Union Square', 'North Beach'): 10,
+    ('Union Square', 'Golden Gate Park'): 22,
+    ('Golden Gate Park', 'Sunset District'): 10,
+    ('Golden Gate Park', 'Russian Hill'): 19,
+    ('Golden Gate Park', 'The Castro'): 13,
+    ('Golden Gate Park', 'Richmond District'): 7,
+    ('Golden Gate Park', 'Marina District'): 16,
+    ('Golden Gate Park', 'North Beach'): 24,
+    ('Golden Gate Park', 'Union Square'): 22,
+}
+
+# Define the start and end times for each person
+start_times = {
+    'Karen': 8*60 + 45,
+    'Jessica': 3*60 + 45,
+    'Matthew': 7*60,
+    'Michelle': 10*60 + 30,
+    'Carol': 12*60,
+    'Stephanie': 10*60 + 45,
+    'Linda': 10*60 + 45,
+}
+
+end_times = {
+    'Karen': 9*60,
+    'Jessica': 7*60 + 30,
+    'Matthew': 3*60 + 15,
+    'Michelle': 6*60 + 45,
+    'Carol': 5*60,
+    'Stephanie': 2*60 + 15,
+    'Linda': 10*60,
+}
+
+# Define the minimum meeting times
+min_meeting_times = {
+    'Karen': 60,
+    'Jessica': 60,
+    'Matthew': 15,
+    'Michelle': 75,
+    'Carol': 90,
+    'Stephanie': 30,
+    'Linda': 90,
+}
 
 # Define the locations
-locations = [sunset_district, russian_hill, the_castro, richmond_district, marina_district, north_beach, union_square, golden_gate_park]
+locations = ['Sunset District', 'Russian Hill', 'The Castro', 'Richmond District', 'Marina District', 'North Beach', 'Union Square', 'Golden Gate Park']
 
-travel_times = {
-    sunset_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [24, 17, 12, 21, 29, 30, 11]]},
-    russian_hill: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [23, 21, 14, 7, 5, 11, 21]]},
-    the_castro: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [17, 18, 16, 21, 20, 19, 11]]},
-    richmond_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [11, 13, 16, 9, 17, 21, 9]]},
-    marina_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [19, 8, 22, 11, 9, 16, 18]]},
-    north_beach: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [27, 4, 22, 18, 9, 7, 22]]},
-    union_square: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [26, 13, 19, 20, 18, 10, 22]]},
-    golden_gate_park: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [10, 19, 13, 7, 16, 24, 22]]}
-}
+# Define the solver
+s = Solver()
 
-reverse_travel_times = {
-    sunset_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [23, 17, 11, 21, 29, 30, 12]]},
-    russian_hill: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [24, 21, 14, 7, 5, 11, 19]]},
-    the_castro: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [17, 18, 16, 21, 20, 19, 13]]},
-    richmond_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [11, 13, 16, 9, 17, 21, 7]]},
-    marina_district: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [19, 8, 22, 11, 9, 16, 16]]},
-    north_beach: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [27, 4, 22, 18, 9, 7, 24]]},
-    union_square: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [26, 13, 19, 20, 18, 10, 22]]},
-    golden_gate_park: {loc: time for loc, time in [(loc, time) for loc in locations[1:] for time in [10, 19, 13, 7, 16, 24, 22]]}
-}
+# Define the variables
+times = [Int(f'time_{i}') for i in range(len(locations) + 1)]
 
-meetings = [
-    {'name': 'Karen', 'location': russian_hill,'start_time': 8 * 60 + 45, 'end_time': 9 * 60 + 45,'min_meeting_time': 60},
-    {'name': 'Jessica', 'location': the_castro,'start_time': 3 * 60 + 45, 'end_time': 7 * 60 + 30,'min_meeting_time': 60},
-    {'name': 'Matthew', 'location': richmond_district,'start_time': 7 * 60, 'end_time': 3 * 60 + 15,'min_meeting_time': 15},
-    {'name': 'Michelle', 'location': marina_district,'start_time': 10 * 60 + 30, 'end_time': 18 * 60 + 45,'min_meeting_time': 75},
-    {'name': 'Carol', 'location': north_beach,'start_time': 12 * 60, 'end_time': 17 * 60,'min_meeting_time': 90},
-    {'name': 'Stephanie', 'location': union_square,'start_time': 10 * 60 + 45, 'end_time': 2 * 60 + 15,'min_meeting_time': 30},
-    {'name': 'Linda', 'location': golden_gate_park,'start_time': 10 * 60 + 45, 'end_time': 22 * 60,'min_meeting_time': 90}
-]
+# Define the constraints
+for i in range(len(locations)):
+    s.add(And(times[i] >= 0, times[i] <= 24*60))
 
-# Create the solver
-solver = Solver()
+for person in min_meeting_times:
+    s.add(And([times[0] + min_meeting_times[person] <= times[-1]]))
 
-# Create the variables
-visit_times = [Int(f'visit_{i}') for i in locations]
-meet_times = [Int(f'meet_{i}') for i in range(len(meetings))]
-
-# Add constraints
-for i in locations:
-    solver.add(visit_times[i] >= 9 * 60)  # Start visiting after 9:00 AM
-    solver.add(visit_times[i] <= end_time)  # Finish visiting before 11:00 PM
-
-for i in range(len(meetings)):
-    meeting = meetings[i]
-    solver.add(meet_times[i] >= meeting['start_time'])
-    solver.add(meet_times[i] <= meeting['end_time'])
-    solver.add(meet_times[i] >= visit_times[meeting['location']])
-    solver.add(meet_times[i] + meeting['min_meeting_time'] <= visit_times[meeting['location']])
-
-for i in locations:
-    for j in locations:
-        if i!= j:
-            solver.add(visit_times[i] + reverse_travel_times[i][j] <= visit_times[j])
-
-# Add the objective function
-objective = [visit_times[i] for i in locations]
-solver.minimize(objective)
+for i in range(len(locations)):
+    for j in range(len(locations)):
+        if (i, j) in travel_times:
+            s.add(times[i] + travel_times[(i, j)] == times[j])
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    print('SOLUTION:')
-    for i in locations:
-        print(f'Visit {locations[i]} at {model[visit_times[i]].as_long()} minutes')
-    for i in range(len(meetings)):
-        print(f'Meet {meetings[i]["name"]} at {model[meet_times[i]].as_long()} minutes')
-else:
-    print('No solution found')
+s.check()
+
+model = s.model()
+
+# Print the solution
+print('SOLUTION:')
+for i in range(len(locations)):
+    print(f'Visit {locations[i]} at time {model[times[i]].as_long()}')

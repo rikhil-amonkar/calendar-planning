@@ -1,25 +1,29 @@
 from z3 import *
 
-# Define the variables
-meet_kenneth = Bool('meet_kenneth')
-time_at_nob_hill = Int('time_at_nob_hill')
-time_at_fishermans_wharf = Int('time_at_fishermans_wharf')
+# Define the time spent at each location
+time_fishermans_wharf = Int('time_fishermans_wharf')
+time_nob_hill = Int('time_nob_hill')
 
 # Define the constraints
-s = Solver()
-s.add(meet_kenneth == (time_at_nob_hill >= 215) & (time_at_nob_hill <= 745) & (time_at_fishermans_wharf - time_at_nob_hill >= 90))
-s.add(time_at_nob_hill >= 215)  # Kenneth is available from 2:15PM
-s.add(time_at_nob_hill <= 745)  # Kenneth is available until 7:45PM
-s.add(time_at_fishermans_wharf >= 900)  # We arrive at Fisherman's Wharf at 9:00AM
-s.add(time_at_nob_hill >= 900)  # We arrive at Nob Hill after 9:00AM
-s.add(time_at_fishermans_wharf - time_at_nob_hill <= 720)  # We arrive back at Fisherman's Wharf within 12 hours
+s = Optimize()
+s.add(0 <= time_fishermans_wharf)  # Time spent at Fisherman's Wharf is non-negative
+s.add(time_fishermans_wharf <= 480)  # Time spent at Fisherman's Wharf is at most 480 minutes (8 hours)
+s.add(0 <= time_nob_hill)  # Time spent at Nob Hill is non-negative
+s.add(time_nob_hill <= 480)  # Time spent at Nob Hill is at most 480 minutes (8 hours)
+s.add(time_fishermans_wharf + time_nob_hill >= 90)  # Meet Kenneth for at least 90 minutes
+s.add(time_fishermans_wharf + time_nob_hill <= 540)  # Meet Kenneth before 9:00 PM
+s.add(time_fishermans_wharf >= 90)  # Start meeting Kenneth at least 90 minutes after arriving at Fisherman's Wharf
+s.add(time_nob_hill >= 135)  # Start meeting Kenneth at Nob Hill at least 135 minutes (2:15 PM) after arriving at Fisherman's Wharf
+s.add(time_nob_hill <= 270)  # Finish meeting Kenneth at Nob Hill at most 270 minutes (5:30 PM) after arriving at Fisherman's Wharf
 
 # Define the objective function
-s.add(meet_kenneth == True)  # We want to meet Kenneth for a minimum of 90 minutes
+s.minimize((time_fishermans_wharf + time_nob_hill) / 2)  # Optimize the average time spent at both locations
 
-# Solve the problem
+# Solve the optimization problem
 if s.check() == sat:
     model = s.model()
-    print("We meet Kenneth at Nob Hill at", model[time_at_nob_hill].as_long(), "and arrive back at Fisherman's Wharf at", model[time_at_fishermans_wharf].as_long())
+    print("Optimal schedule:")
+    print(f"Time spent at Fisherman's Wharf: {model[time_fishermans_wharf]} minutes")
+    print(f"Time spent at Nob Hill: {model[time_nob_hill]} minutes")
 else:
     print("No solution found")

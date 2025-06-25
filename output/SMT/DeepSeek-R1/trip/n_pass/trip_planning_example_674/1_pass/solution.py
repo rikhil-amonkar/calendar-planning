@@ -1,89 +1,112 @@
 from z3 import *
-import json
 
 def main():
+    # City mapping and durations
     cities = ['Helsinki', 'Warsaw', 'Madrid', 'Split', 'Reykjavik', 'Budapest']
-    days_arr = [2, 3, 4, 4, 2, 4]
-    n = 6
-
-    edges = [
-        (0, 4), (4, 0),
-        (5, 1), (1, 5),
-        (2, 3), (3, 2),
-        (0, 3), (3, 0),
-        (0, 2), (2, 0),
-        (0, 5), (5, 0),
-        (4, 1), (1, 4),
-        (0, 1), (1, 0),
-        (2, 5), (5, 2),
-        (5, 4), (4, 5),
-        (2, 1), (1, 2),
-        (1, 3), (3, 1),
-        (4, 2)
+    dur_list = [2, 3, 4, 4, 2, 4]  # Corresponding durations
+    
+    # Allowed directed flights (bidirectional and Reykjavik->Madrid)
+    edges_int = [
+        (0,4), (4,0),  # Helsinki-Reykjavik
+        (5,1), (1,5),  # Budapest-Warsaw
+        (2,3), (3,2),  # Madrid-Split
+        (0,3), (3,0),  # Helsinki-Split
+        (0,2), (2,0),  # Helsinki-Madrid
+        (0,5), (5,0),  # Helsinki-Budapest
+        (4,1), (1,4),  # Reykjavik-Warsaw
+        (0,1), (1,0),  # Helsinki-Warsaw
+        (2,5), (5,2),  # Madrid-Budapest
+        (5,4), (4,5),  # Budapest-Reykjavik
+        (2,1), (1,2),  # Madrid-Warsaw
+        (1,3), (3,1),  # Warsaw-Split
+        (4,2)          # Reykjavik->Madrid
     ]
-
+    
+    # Z3 variables for the sequence of cities
+    seq = [Int(f'seq_{i}') for i in range(6)]
     s = Solver()
-
-    order = [Int('order_%d' % i) for i in range(n)]
-    for i in range(n):
-        s.add(order[i] >= 0)
-        s.add(order[i] < n)
-    s.add(Distinct(order))
-
+    
+    # Each seq[i] must be between 0 and 5
+    for i in range(6):
+        s.add(seq[i] >= 0, seq[i] < 6)
+    
+    # Distinct cities in the sequence
+    s.add(Distinct(seq))
+    
+    # Flight constraints between consecutive cities
     for i in range(5):
-        constraints = []
-        for u, v in edges:
-            constraints.append(And(order[i] == u, order[i+1] == v))
-        s.add(Or(constraints))
-
-    def get_days(city_var):
-        return If(city_var == 0, 2,
-               If(city_var == 1, 3,
-               If(city_var == 2, 4,
-               If(city_var == 3, 4,
-               If(city_var == 4, 2,
-               If(city_var == 5, 4, 0))))))
-
-    prefix_expr = [0] * (n+1)
-    prefix_expr[0] = 0
-    for i in range(1, n+1):
-        city_index = order[i-1]
-        d = get_days(city_index)
-        prefix_expr[i] = prefix_expr[i-1] + d
-
-    for k in range(n):
-        city_k = order[k]
-        s.add(If(city_k == 0, prefix_expr[k] - k <= 1, True))
-        s.add(If(city_k == 4, 
-                 And(prefix_expr[k] - k <= 8, prefix_expr[k+1] - k >= 8), 
-                 True))
-        s.add(If(city_k == 1,
-                 And(prefix_expr[k] - k <= 10, prefix_expr[k+1] - k >= 9),
-                 True))
-
+        s.add(Or([And(seq[i] == a, seq[i+1] == b) for (a, b) in edges_int]))
+    
+    # Duration lookup function
+    def get_dur(city_code):
+        return If(city_code == 0, 2,
+               If(city_code == 1, 3,
+               If(city_code == 2, 4,
+               If(city_code == 3, 4,
+               If(city_code == 4, 2, 4)))))  # 5 is Budapest
+    
+    # Cumulative durations
+    cum = [0] * 7
+    cum[0] = 0
+    for j in range(6):
+        cum[j+1] = cum[j] + get_dur(seq[j])
+    
+    # Helsinki must be first or second, and if second, first must be Reykjavik
+    s.add(Or(
+        seq[0] == 0,
+        And(seq[1] == 0, seq[0] == 4)
+    ))
+    
+    # Reykjavik and Warsaw constraints
+    for k in range(6):
+        start_day = 1 + cum[k] - k
+        # Reykjavik (city4) must start on day 7, 8, or 9
+        s.add(If(seq[k] == 4, Or(start_day == 7, start_day == 8, start_day == 9), True))
+        # Warsaw (city1) must start between day 7 and 11 inclusive
+        s.add(If(seq[k] == 1, And(start_day >= 7, start_day <= 11), True))
+    
+    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        order_vals = [m.evaluate(order[i]).as_long() for i in range(n)]
-        prefix_num = [0] * (n+1)
-        for i in range(1, n+1):
-            city_idx = order_vals[i-1]
-            prefix_num[i] = prefix_num[i-1] + days_arr[city_idx]
-
+        seq_val = [m.evaluate(seq[i]).as_long() for i in range(6)]
+        
+        # Compute concrete start and end days
+        cum_val = [0] * 7
+        for j in range(6):
+            cum_val[j+1] = cum_val[j] + dur_list[seq_val[j]]
+        
+        starts = []
+        ends = []
+        for k in range(6):
+            start_day = 1 + cum_val[k] - k
+            end_day = start_day + dur_list[seq_val[k]] - 1
+            starts.append(start_day)
+            ends.append(end_day)
+        
+        # Build itinerary
         itinerary = []
-        for k in range(n):
-            city_idx = order_vals[k]
-            city_name = cities[city_idx]
-            s_k = 1 + prefix_num[k] - k
-            e_k = prefix_num[k+1] - k
-            itinerary.append({'day_range': f'Day {s_k}-{e_k}', 'place': city_name})
-            if k < n-1:
-                next_city_idx = order_vals[k+1]
-                next_city = cities[next_city_idx]
-                itinerary.append({'day_range': f'Day {e_k}', 'place': city_name})
-                itinerary.append({'day_range': f'Day {e_k}', 'place': next_city})
-
-        result = {'itinerary': itinerary}
-        print(json.dumps(result))
+        for k in range(6):
+            city_name = cities[seq_val[k]]
+            start = starts[k]
+            end = ends[k]
+            itinerary.append({
+                "day_range": f"Day {start}-{end}" if start != end else f"Day {start}",
+                "place": city_name
+            })
+            if k < 5:
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": city_name
+                })
+                next_city = cities[seq_val[k+1]]
+                itinerary.append({
+                    "day_range": f"Day {end}",
+                    "place": next_city
+                })
+        
+        # Output result
+        result = {"itinerary": itinerary}
+        print(result)
     else:
         print("No solution found")
 

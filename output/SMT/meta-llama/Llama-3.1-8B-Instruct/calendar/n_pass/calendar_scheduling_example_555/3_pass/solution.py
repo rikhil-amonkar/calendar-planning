@@ -1,52 +1,66 @@
 from z3 import *
 
-def schedule_meeting(evelyn_schedule, randy_schedule, meeting_duration, day, evelyn_preferences):
-    # Create Z3 solver
+def schedule_meeting(evelyn_availability, randy_availability, meeting_duration, evelyn_preferences):
+    # Create a Z3 solver
     solver = Solver()
 
-    # Define variables for the start time of the meeting
+    # Define the day, start time, and end time variables
+    day = Int('day')
     start_time = Int('start_time')
-    end_time = start_time + meeting_duration
+    end_time = Int('end_time')
 
-    # Add constraints for the day
-    solver.add(And(start_time >= 9 * 60, start_time < 17 * 60))
-    solver.add(end_time <= 17 * 60)
+    # Define the day of the week (0 = Monday, 1 = Tuesday,..., 6 = Sunday)
+    days_of_week = [day == 0]  # We are only scheduling for Monday
 
-    # Add constraints for Evelyn's schedule
-    for time in evelyn_schedule:
-        solver.add(And(start_time >= time[0] * 60, start_time < time[1] * 60))
+    # Define the start and end times for each day (in 30-minute increments)
+    times_of_day = [start_time >= 0, start_time < 24*60, end_time >= 0, end_time < 24*60]
 
-    # Add constraints for Randy's schedule
-    for time in randy_schedule:
-        solver.add(And(start_time >= time[0] * 60, start_time < time[1] * 60))
-
-    # Add constraints for Evelyn's preferences
+    # Add constraints for Evelyn's availability
+    evelyn_constraints = []
+    for time in evelyn_availability:
+        evelyn_constraints.append(Or(start_time < time[0], start_time >= time[1]))
     for time in evelyn_preferences:
-        if time[0] <= 13:
-            solver.add(And(start_time >= time[1] * 60, start_time < 13 * 60))
-        else:
-            solver.add(And(start_time >= 13 * 60, start_time < 17 * 60))
+        evelyn_constraints.append(Or(start_time < time[0], start_time >= time[1]))
+
+    # Add constraints for Randy's availability
+    randy_constraints = []
+    for time in randy_availability:
+        randy_constraints.append(Or(start_time < time[0], start_time >= time[1]))
+
+    # Add constraints for the meeting duration
+    meeting_constraints = [end_time == start_time + meeting_duration]
+
+    # Add all constraints to the solver
+    solver.add(days_of_week)
+    solver.add(times_of_day)
+    solver.add(evelyn_constraints)
+    solver.add(randy_constraints)
+    solver.add(meeting_constraints)
 
     # Check if a solution exists
     if solver.check() == sat:
         # Get the solution
         model = solver.model()
-        start_time_value = model[start_time].as_long() // 60
-        end_time_value = (model[start_time].as_long() // 60) + meeting_duration
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+
+        # Convert the start and end times to 24-hour format
+        hours = start_time_value // 60
+        minutes = start_time_value % 60
+        start_time_str = f"{hours:02d}:{minutes:02d}"
+        hours = end_time_value // 60
+        minutes = end_time_value % 60
+        end_time_str = f"{hours:02d}:{minutes:02d}"
 
         # Print the solution
-        print(f"SOLUTION:")
-        print(f"Day: {day}")
-        print(f"Start Time: {start_time_value:02d}:00")
-        print(f"End Time: {end_time_value:02d}:00")
+        print(f"SOLUTION:\nDay: Monday\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
     else:
         print("No solution exists.")
 
-# Example usage
-evelyn_schedule = []
-randy_schedule = [(9, 10.5), (11, 15.5), (16, 17)]
-meeting_duration = 0.5
-day = "Monday"
-evelyn_preferences = [(9, 13)]
+# Example usage:
+evelyn_availability = [(0, 60), (120, 180), (210, 240)]  # 9:00-10:00, 13:00-15:00, 16:00-17:00
+randy_availability = [(0, 150), (180, 210), (240, 300)]  # 9:00-10:30, 11:00-15:30, 16:00-17:00
+meeting_duration = 30  # 30 minutes
+evelyn_preferences = [(120, 210)]  # 13:00-14:30
 
-schedule_meeting(evelyn_schedule, randy_schedule, meeting_duration, day, evelyn_preferences)
+schedule_meeting(evelyn_availability, randy_availability, meeting_duration, evelyn_preferences)

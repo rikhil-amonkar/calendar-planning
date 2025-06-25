@@ -1,65 +1,78 @@
+YOUR_CODE
 from z3 import *
 
-def schedule_meeting(judith_schedule, timothy_schedule, meeting_duration, day_preferences, judith_preferences):
-    # Create Z3 variables
-    days = [Int(f'day') for _ in range(3)]
-    day_values = [1, 2, 3]
-    
-    judith_start_times = [Int(f'judith_start_{i}') for i in range(8)]
-    judith_end_times = [Int(f'judith_end_{i}') for i in range(8)]
-    for i in range(8):
-        judith_start_times[i].eq(9 + i)
-        judith_end_times[i].eq(judith_start_times[i] + meeting_duration)
-    
-    timothy_start_times = [Int(f'timothy_start_{i}') for i in range(14)]
-    timothy_end_times = [Int(f'timothy_end_{i}') for i in range(14)]
-    for i in range(14):
-        timothy_start_times[i].eq(9 + i)
-        timothy_end_times[i].eq(timothy_start_times[i] + meeting_duration)
-    
-    # Define constraints
-    constraints = []
-    
-    # Judith's constraints
-    for i, (start, end) in enumerate(judith_schedule):
-        constraints.append(And(start <= judith_start_times[i], judith_end_times[i] <= end))
-    
-    for i, (start, end) in enumerate(judith_preferences):
-        if judith_preferences[i][0] == 'Monday' and judith_preferences[i][1] == 'before 12:00':
-            constraints.append(And(judith_start_times[i] > 11, days[0] == 1))
-        elif judith_preferences[i][0] == 'Wednesday' and judith_preferences[i][1] == 'before 12:00':
-            constraints.append(And(judith_start_times[i] > 11, days[2] == 1))
-    
-    # Timothy's constraints
-    for i, (start, end) in enumerate(timothy_schedule):
-        constraints.append(And(start <= timothy_start_times[i], timothy_end_times[i] <= end))
-    
-    # Meeting duration constraint
-    constraints.append(And(meeting_duration <= 1))
-    
-    # Day preference constraint
-    for i, day_value in enumerate(day_values):
-        constraints.append(Or([days[i] == day_value, days[i] == day_value + 3]))
-    
-    # Solve the problem
-    solver = Solver()
-    solver.add(constraints)
-    if solver.check() == sat:
-        model = solver.model()
-        day = model[days[0]]
-        judith_start = model[judith_start_times[0]]
-        judith_end = model[judith_end_times[0]]
-        return f'SOLUTION:\nDay: {["Monday", "Tuesday", "Wednesday"][day.as_long() - 1]}\nStart Time: {judith_start.as_long():02d}:00\nEnd Time: {judith_end.as_long():02d}:00'
-    else:
-        return 'No solution found'
+# Define the variables
+days = ['Monday', 'Tuesday', 'Wednesday']
+times = [(9, 60), (10, 60), (11, 60), (12, 30), (13, 60), (14, 30), (15, 30), (16, 60), (17, 0)]
 
-# Example usage
-judith_schedule = [(12, 12.5), (11.5, 12)]
-timothy_schedule = [(9.5, 10), (10.5, 11.5), (12.5, 14.5), (15.5, 17.5), 
-                    (9.5, 13), (13.5, 14), (14.5, 17.5), 
-                    (9, 9.5), (10.5, 11), (13.5, 14.5), (15, 15.5), (16, 16.5)]
-meeting_duration = 1
-day_preferences = [1, 2, 3]
-judith_preferences = [['Monday', 'avoid'], ['Wednesday', 'before 12:00']]
+# Define the constraints
+judith_blocked = [Int(f'judith_blocked_{i}') for i in range(len(days) * len(times))]
+timothy_blocked = [Int(f'timothy_blocked_{i}') for i in range(len(days) * len(times))]
 
-print(schedule_meeting(judith_schedule, timothy_schedule, meeting_duration, day_preferences, judith_preferences))
+# Define the meeting duration
+meeting_duration = 60
+
+# Define the constraints
+for i, day in enumerate(days):
+    for j, time in enumerate(times):
+        judith_blocked[i * len(times) + j] = Bool(f'judith_blocked_{i}_{j}')
+        timothy_blocked[i * len(times) + j] = Bool(f'timothy_blocked_{i}_{j}')
+
+# Judith's constraints
+judith_monday_1200_1230 = judith_blocked[1]
+judith_wednesday_1130_1200 = judith_blocked[7]
+judith_monday_avoid = [judith_blocked[0], judith_blocked[1], judith_blocked[2], judith_blocked[3]]
+judith_wednesday_before_1200 = [judith_blocked[0], judith_blocked[1], judith_blocked[2], judith_blocked[3]]
+
+# Timothy's constraints
+timothy_monday_0930_1000 = timothy_blocked[0]
+timothy_monday_1030_1130 = timothy_blocked[2]
+timothy_monday_1230_1400 = timothy_blocked[4]
+timothy_monday_1530_1700 = timothy_blocked[8]
+timothy_tuesday_0930_1300 = timothy_blocked[9]
+timothy_tuesday_1330_1400 = timothy_blocked[10]
+timothy_tuesday_1430_1700 = timothy_blocked[11]
+timothy_wednesday_0900_0930 = timothy_blocked[0]
+timothy_wednesday_1030_1100 = timothy_blocked[2]
+timothy_wednesday_1330_1430 = timothy_blocked[6]
+timothy_wednesday_1500_1530 = timothy_blocked[7]
+timothy_wednesday_1600_1630 = timothy_blocked[8]
+
+# Meeting constraints
+day = [Int('day') for _ in range(len(days))]
+start_time = [Int('start_time') for _ in range(len(times))]
+end_time = [Int('end_time') for _ in range(len(times))]
+
+for i, day_var in enumerate(day):
+    day_var.domain = IntRange(0, len(days) - 1)
+
+for i, start_time_var in enumerate(start_time):
+    start_time_var.domain = IntRange(0, 23)
+
+for i, end_time_var in enumerate(end_time):
+    end_time_var.domain = IntRange(0, 23)
+
+# Judith's constraints
+s = Optimize()
+s.add(Or([day[i] == 0 for i in range(len(days))]))
+s.add(And([start_time[i] >= times[i][0] for i in range(len(times))]))
+s.add(And([end_time[i] <= times[i][1] for i in range(len(times))]))
+s.add(And([start_time[i] < end_time[i] for i in range(len(times))]))
+s.add(Implies(day[0] == 0, Or([start_time[0]!= 12])))
+s.add(Implies(day[2] == 0, Or([start_time[2]!= 11])))
+s.add(Or([timothy_blocked[i * len(times) + j] for i in range(len(days)) for j in range(len(times))]))
+s.add(Or([judith_blocked[i * len(times) + j] for i in range(len(days)) for j in range(len(times))]))
+
+# Solve
+solution = s.check()
+if solution == sat:
+    m = s.model()
+    meeting_day = m[day[0]].as_long()
+    meeting_start_time = m[start_time[0]].as_long()
+    meeting_end_time = m[end_time[0]].as_long()
+    print(f'SOLUTION:')
+    print(f'Day: {days[meeting_day]}')
+    print(f'Start Time: {meeting_start_time:02d}:00')
+    print(f'End Time: {(meeting_start_time + meeting_duration):02d}:00')
+else:
+    print('No solution found')

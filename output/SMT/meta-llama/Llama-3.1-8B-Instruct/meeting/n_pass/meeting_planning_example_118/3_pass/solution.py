@@ -1,61 +1,51 @@
 from z3 import *
 
-# Define the travel times in minutes
-travel_times = {
-    'Bayview': {'Union Square': 17, 'Presidio': 31},
-    'Union Square': {'Bayview': 15, 'Presidio': 24},
-    'Presidio': {'Bayview': 31, 'Union Square': 22}
-}
-
-# Define the arrival and departure times for each location
-arrival_times = {
-    'Richard': {'start': 8*60 + 45, 'end': 1*60 + 0},
-    'Charles': {'start': 9*60 + 45, 'end': 1*60 + 0}
-}
-
-# Define the minimum meeting times in minutes
-min_meeting_times = {
-    'Richard': 2*60 + 0,
-    'Charles': 2*60 + 0
-}
-
-# Define the solver
-s = Solver()
-
 # Define the variables
-x = [Bool(f'meet_{i}') for i in ['Richard', 'Charles']]
-y = [Int(f'time_{i}') for i in ['Richard', 'Charles']]
+start_time = 0  # Start time of the day (in minutes)
+end_time = 120 * 60  # End time of the day (in minutes)
+min_meeting_time = 120  # Minimum meeting time (in minutes)
+travel_times = {
+    'Bayview to Union Square': 17,
+    'Bayview to Presidio': 31,
+    'Union Square to Bayview': 15,
+    'Union Square to Presidio': 24,
+    'Presidio to Bayview': 31,
+    'Presidio to Union Square': 22
+}
 
 # Define the constraints
-for i in ['Richard', 'Charles']:
-    s.add(y[i] >= 9*60)  # Ensure that Richard and Charles are met after 9:00AM
-    s.add(y[i] <= arrival_times[i]['end'])
+s = Optimize()
+x = [Bool(f'x_{i}') for i in range(1, 5)]  # Variables to represent meetings
+y = [Bool(f'y_{i}') for i in range(1, 5)]  # Variables to represent locations
+t = [Int(f't_{i}') for i in range(1, 5)]  # Variables to represent meeting times
 
-# Define the constraints for meeting times
-for i in ['Richard', 'Charles']:
-    s.add(x[i] == True == (y[i] + min_meeting_times[i] <= arrival_times[i]['end']))
+# Constraints for Richard
+s.add(t[0] >= 45)  # Richard is available from 8:45AM
+s.add(t[0] <= 60)  # Richard is available until 9:00AM
+s.add(t[0] + travel_times['Bayview to Union Square'] <= 120)  # Meeting Richard at Union Square
 
-# Define the constraints for travel times
-s.add(x['Richard'] == True == (y['Richard'] >= 0))  # Richard starts at Bayview
-s.add(x['Charles'] == True == (y['Charles'] >= travel_times['Bayview']['Presidio']))  # Charles starts at Presidio
+# Constraints for Charles
+s.add(t[1] >= 45)  # Charles is available from 9:45AM
+s.add(t[1] <= 120)  # Charles is available until 12:00PM
+s.add(t[1] + travel_times['Bayview to Presidio'] <= 120)  # Meeting Charles at Presidio
 
-# Define the objective function
-s.add(x['Richard'] + x['Charles'] == Max(x['Richard'], x['Charles']))
+# Constraints for minimum meeting time
+s.add(t[0] + t[1] >= min_meeting_time)
+
+# Constraints for location variables
+s.add(If(x[0], y[0], y[0] == 0))  # If meeting Richard, y[0] = 1, otherwise y[0] = 0
+s.add(If(x[1], y[1], y[1] == 0))  # If meeting Charles, y[1] = 1, otherwise y[1] = 0
+s.add(If(x[2], y[2], y[2] == 0))  # If meeting Richard at Presidio, y[2] = 1, otherwise y[2] = 0
+s.add(If(x[3], y[3], y[3] == 0))  # If meeting Charles at Union Square, y[3] = 1, otherwise y[3] = 0
+
+# Objective function
+s.maximize(x[0] + x[1])
 
 # Solve the problem
-s.check()
-
-# Get the solution
-model = s.model()
-
-# Print the solution
-print("SOLUTION:")
-if model[x['Richard']].as_bool():
-    print(f"Meet Richard at {model[y['Richard']].as_long()} minutes after 9:00AM")
+if s.check() == sat:
+    model = s.model()
+    print("SOLUTION:")
+    for i in range(1, 5):
+        print(f"Meeting {i} is at location {int(model[y[i-1]].as_bool())} for {int(model[x[i-1]].as_bool())} minutes")
 else:
-    print("Do not meet Richard")
-
-if model[x['Charles']].as_bool():
-    print(f"Meet Charles at {model[y['Charles']].as_long()} minutes after 9:00AM")
-else:
-    print("Do not meet Charles")
+    print("No solution found")

@@ -1,88 +1,112 @@
-YOUR_CODE
 from z3 import *
 
-# Define the variables
-s = Optimize()
-t = [Int(f't_{i}') for i in range(1, 10001)]
-x = [Int(f'x_{i}') for i in range(1, 10001)]
-y = [Int(f'y_{i}') for i in range(1, 10001)]
-z = [Int(f'z_{i}') for i in range(1, 10001)]
-
-# Define the distances
-distances = {
-    'Presidio': 0,
-    'Golden Gate Park': 11,
-    'Bayview': 31,
-    'Chinatown': 21,
-    'North Beach': 18,
-    'Mission District': 26
+# Define the travel times
+travel_times = {
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Presidio', 'Bayview'): 31,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'North Beach'): 18,
+    ('Presidio', 'Mission District'): 26,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Bayview'): 23,
+    ('Golden Gate Park', 'Chinatown'): 23,
+    ('Golden Gate Park', 'North Beach'): 24,
+    ('Golden Gate Park', 'Mission District'): 17,
+    ('Bayview', 'Presidio'): 31,
+    ('Bayview', 'Golden Gate Park'): 22,
+    ('Bayview', 'Chinatown'): 18,
+    ('Bayview', 'North Beach'): 21,
+    ('Bayview', 'Mission District'): 13,
+    ('Chinatown', 'Presidio'): 21,
+    ('Chinatown', 'Golden Gate Park'): 23,
+    ('Chinatown', 'Bayview'): 22,
+    ('Chinatown', 'North Beach'): 3,
+    ('Chinatown', 'Mission District'): 18,
+    ('North Beach', 'Presidio'): 18,
+    ('North Beach', 'Golden Gate Park'): 22,
+    ('North Beach', 'Bayview'): 22,
+    ('North Beach', 'Chinatown'): 6,
+    ('North Beach', 'Mission District'): 18,
+    ('Mission District', 'Presidio'): 26,
+    ('Mission District', 'Golden Gate Park'): 17,
+    ('Mission District', 'Bayview'): 15,
+    ('Mission District', 'Chinatown'): 16,
+    ('Mission District', 'North Beach'): 17
 }
 
+# Define the start and end times for each friend
+friends = {
+    'Jessica': (1.75, 3.0),
+    'Ashley': (5.25, 8.0),
+    'Ronald': (7.25, 2.75),
+    'William': (1.25, 8.25),
+    'Daniel': (7.0, 11.25)
+}
+
+# Define the minimum meeting times
+min_meeting_times = {
+    'Jessica': 0.5,
+    'Ashley': 1.75,
+    'Ronald': 1.5,
+    'William': 0.25,
+    'Daniel': 1.75
+}
+
+# Define the solver
+s = Optimize()
+
+# Define the variables
+x = {}
+for friend in friends:
+    x[friend] = [Bool(f'{friend}_{i}') for i in range(5)]
+
 # Define the constraints
-s.add(And(Sum([t[i] for i in range(1, 10001)]) == 10000, Sum([t[i] for i in range(1, 10001)]) >= 9 * 60, Sum([t[i] for i in range(1, 10001)]) <= 24 * 60))
+for friend in friends:
+    start, end = friends[friend]
+    min_meet = min_meeting_times[friend]
+    for i in range(5):
+        s.add(Implies(x[friend][i], x[friend][i] == True))
+        s.add(If(x[friend][i], start + i * 0.25 >= min_meet, True))
+        s.add(If(x[friend][i], end - i * 0.25 <= min_meet, True))
 
-s.add(ForAll(x, And(t[1] == 0, x[1] == 1)))
-s.add(ForAll(y, And(t[2] == 0, y[2] == 1)))
-s.add(ForAll(z, And(t[3] == 0, z[3] == 1)))
-
-s.add(ForAll(IntVal(4), Implies(IntVal(4) >= 4, And(t[IntVal(4)] >= t[IntVal(4)-1] + distances['Presidio to Golden Gate Park'], t[IntVal(4)] <= t[IntVal(4)-1] + distances['Presidio to Golden Gate Park'] + 60))))
-s.add(ForAll(IntVal(4), Implies(IntVal(4) >= 4, And(t[IntVal(4)] >= t[IntVal(4)-1] + distances['Presidio to Bayview'], t[IntVal(4)] <= t[IntVal(4)-1] + distances['Presidio to Bayview'] + 60))))
-s.add(ForAll(IntVal(4), Implies(IntVal(4) >= 4, And(t[IntVal(4)] >= t[IntVal(4)-1] + distances['Presidio to Chinatown'], t[IntVal(4)] <= t[IntVal(4)-1] + distances['Presidio to Chinatown'] + 60))))
-s.add(ForAll(IntVal(4), Implies(IntVal(4) >= 4, And(t[IntVal(4)] >= t[IntVal(4)-1] + distances['Presidio to North Beach'], t[IntVal(4)] <= t[IntVal(4)-1] + distances['Presidio to North Beach'] + 60))))
-s.add(ForAll(IntVal(4), Implies(IntVal(4) >= 4, And(t[IntVal(4)] >= t[IntVal(4)-1] + distances['Presidio to Mission District'], t[IntVal(4)] <= t[IntVal(4)-1] + distances['Presidio to Mission District'] + 60))))
-
-s.add(ForAll(IntVal(5), Implies(IntVal(5) >= 5, And(t[IntVal(5)] >= t[IntVal(5)-1] + distances['Golden Gate Park to Bayview'], t[IntVal(5)] <= t[IntVal(5)-1] + distances['Golden Gate Park to Bayview'] + 60))))
-s.add(ForAll(IntVal(5), Implies(IntVal(5) >= 5, And(t[IntVal(5)] >= t[IntVal(5)-1] + distances['Golden Gate Park to Chinatown'], t[IntVal(5)] <= t[IntVal(5)-1] + distances['Golden Gate Park to Chinatown'] + 60))))
-s.add(ForAll(IntVal(5), Implies(IntVal(5) >= 5, And(t[IntVal(5)] >= t[IntVal(5)-1] + distances['Golden Gate Park to North Beach'], t[IntVal(5)] <= t[IntVal(5)-1] + distances['Golden Gate Park to North Beach'] + 60))))
-s.add(ForAll(IntVal(5), Implies(IntVal(5) >= 5, And(t[IntVal(5)] >= t[IntVal(5)-1] + distances['Golden Gate Park to Mission District'], t[IntVal(5)] <= t[IntVal(5)-1] + distances['Golden Gate Park to Mission District'] + 60))))
-
-s.add(ForAll(IntVal(6), Implies(IntVal(6) >= 6, And(t[IntVal(6)] >= t[IntVal(6)-1] + distances['Bayview to Chinatown'], t[IntVal(6)] <= t[IntVal(6)-1] + distances['Bayview to Chinatown'] + 60))))
-s.add(ForAll(IntVal(6), Implies(IntVal(6) >= 6, And(t[IntVal(6)] >= t[IntVal(6)-1] + distances['Bayview to North Beach'], t[IntVal(6)] <= t[IntVal(6)-1] + distances['Bayview to North Beach'] + 60))))
-s.add(ForAll(IntVal(6), Implies(IntVal(6) >= 6, And(t[IntVal(6)] >= t[IntVal(6)-1] + distances['Bayview to Mission District'], t[IntVal(6)] <= t[IntVal(6)-1] + distances['Bayview to Mission District'] + 60))))
-
-s.add(ForAll(IntVal(7), Implies(IntVal(7) >= 7, And(t[IntVal(7)] >= t[IntVal(7)-1] + distances['Chinatown to North Beach'], t[IntVal(7)] <= t[IntVal(7)-1] + distances['Chinatown to North Beach'] + 60))))
-s.add(ForAll(IntVal(7), Implies(IntVal(7) >= 7, And(t[IntVal(7)] >= t[IntVal(7)-1] + distances['Chinatown to Mission District'], t[IntVal(7)] <= t[IntVal(7)-1] + distances['Chinatown to Mission District'] + 60))))
-
-s.add(ForAll(IntVal(8), Implies(IntVal(8) >= 8, And(t[IntVal(8)] >= t[IntVal(8)-1] + distances['North Beach to Mission District'], t[IntVal(8)] <= t[IntVal(8)-1] + distances['North Beach to Mission District'] + 60))))
-
-s.add(ForAll(IntVal(4), Implies(IntVal(4) >= 4, Or(x[IntVal(4)] == 1, y[IntVal(4)] == 1, z[IntVal(4)] == 1))))
-s.add(ForAll(IntVal(5), Implies(IntVal(5) >= 5, Or(x[IntVal(5)] == 1, y[IntVal(5)] == 1, z[IntVal(5)] == 1))))
-s.add(ForAll(IntVal(6), Implies(IntVal(6) >= 6, Or(x[IntVal(6)] == 1, y[IntVal(6)] == 1, z[IntVal(6)] == 1))))
-s.add(ForAll(IntVal(7), Implies(IntVal(7) >= 7, Or(x[IntVal(7)] == 1, y[IntVal(7)] == 1, z[IntVal(7)] == 1))))
-s.add(ForAll(IntVal(8), Implies(IntVal(8) >= 8, Or(x[IntVal(8)] == 1, y[IntVal(8)] == 1, z[IntVal(8)] == 1))))
-
-s.add(ForAll(IntVal(4), Implies(IntVal(4) >= 4, And(t[IntVal(4)] + 30 >= 9 * 60, t[IntVal(4)] + 30 <= 24 * 60))))
-s.add(ForAll(IntVal(5), Implies(IntVal(5) >= 5, And(t[IntVal(5)] + 105 >= 9 * 60, t[IntVal(5)] + 105 <= 24 * 60))))
-s.add(ForAll(IntVal(6), Implies(IntVal(6) >= 6, And(t[IntVal(6)] + 90 >= 9 * 60, t[IntVal(6)] + 90 <= 24 * 60))))
-s.add(ForAll(IntVal(7), Implies(IntVal(7) >= 7, And(t[IntVal(7)] + 15 >= 9 * 60, t[IntVal(7)] + 15 <= 24 * 60))))
-s.add(ForAll(IntVal(8), Implies(IntVal(8) >= 8, And(t[IntVal(8)] + 105 >= 9 * 60, t[IntVal(8)] + 105 <= 24 * 60))))
+# Define the objective function
+obj = 0
+for friend in friends:
+    for i in range(5):
+        obj += x[friend][i]
 
 # Solve the problem
-s.check()
+s.add(obj >= 3)  # Meet at least 3 friends
+s.add(x['Jessica'][2])  # Meet Jessica
+s.add(x['Ashley'][4])  # Meet Ashley
+s.add(x['Ronald'][0])  # Meet Ronald
+s.add(x['William'][0])  # Meet William
+s.add(x['Daniel'][0])  # Meet Daniel
+s.add(x['Daniel'][1])  # Meet Daniel
+s.add(x['Daniel'][2])  # Meet Daniel
+s.add(x['Daniel'][3])  # Meet Daniel
+s.add(x['Daniel'][4])  # Meet Daniel
+s.add(x['Jessica'][2] == True)  # Meet Jessica
+s.add(x['Ashley'][4] == True)  # Meet Ashley
+s.add(x['Ronald'][0] == True)  # Meet Ronald
+s.add(x['William'][0] == True)  # Meet William
+s.add(x['Daniel'][0] == True)  # Meet Daniel
+s.add(x['Daniel'][1] == True)  # Meet Daniel
+s.add(x['Daniel'][2] == True)  # Meet Daniel
+s.add(x['Daniel'][3] == True)  # Meet Daniel
+s.add(x['Daniel'][4] == True)  # Meet Daniel
+s.add(If(x['Jessica'][2], If(x['Jessica'][3], 1, 0), 0) >= 1)  # Meet Jessica for at least 30 minutes
+s.add(If(x['Ashley'][4], If(x['Ashley'][3], 1, 0), 0) >= 1)  # Meet Ashley for at least 105 minutes
+s.add(If(x['Ronald'][0], If(x['Ronald'][1], 1, 0), 0) >= 1)  # Meet Ronald for at least 90 minutes
+s.add(If(x['William'][0], If(x['William'][1], 1, 0), 0) >= 1)  # Meet William for at least 15 minutes
 
-# Print the solution
-model = s.model()
-for i in range(1, 10001):
-    print(f't_{i} = {model.evaluate(t[i])}')
-    print(f'x_{i} = {model.evaluate(x[i])}')
-    print(f'y_{i} = {model.evaluate(y[i])}')
-    print(f'z_{i} = {model.evaluate(z[i])}')
-    print()
-
-# Print the schedule
-schedule = []
-for i in range(1, 10001):
-    if model.evaluate(x[i]) == 1:
-        schedule.append('Presidio')
-    elif model.evaluate(y[i]) == 1:
-        schedule.append('Golden Gate Park')
-    elif model.evaluate(z[i]) == 1:
-        schedule.append('Bayview')
-    else:
-        schedule.append('Chinatown')
-    if i % 60 == 0:
-        print(schedule)
-        schedule = []
-
-print('SOLUTION:')
-print(schedule)
+# Solve the problem
+result = s.maximize(obj)
+if result:
+    print('SOLUTION:')
+    for friend in friends:
+        for i in range(5):
+            if x[friend][i].aval().as_long():
+                print(f'Meet {friend} at {friends[friend][0] + i * 0.25} hours')
+else:
+    print('No solution found')

@@ -1,9 +1,7 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 720  # 12 hours in minutes
-travel_times = {
+# Define the travel distances
+travel_distances = {
     ('Embarcadero', 'Richmond District'): 21,
     ('Embarcadero', 'Union Square'): 10,
     ('Embarcadero', 'Financial District'): 5,
@@ -48,69 +46,75 @@ travel_times = {
     ('Bayview', 'Nob Hill'): 20
 }
 
-locations = ['Embarcadero', 'Richmond District', 'Union Square', 'Financial District', 'Pacific Heights', 'Nob Hill', 'Bayview']
-
 # Define the constraints
-s = Optimize()
+locations = ['Embarcadero', 'Richmond District', 'Union Square', 'Financial District', 'Pacific Heights', 'Nob Hill', 'Bayview']
+friends = ['Kenneth', 'Lisa', 'Joshua', 'Nancy', 'Andrew', 'John']
+friend_times = {
+    'Kenneth': (9*60+15, 10*60),
+    'Lisa': (9*60, 4*60+30),
+    'Joshua': (12*60, 3*60+15),
+    'Nancy': (8*60, 11*60+30),
+    'Andrew': (11*60, 20*60+15),
+    'John': (4*60+45, 21*60)
+}
+min_meeting_times = {'Kenneth': 30, 'Lisa': 45, 'Joshua': 15, 'Nancy': 90, 'Andrew': 60, 'John': 75}
 
-# Time variables
-meet_kenneth = [Bool('meet_kenneth_%s' % i) for i in range(len(locations))]
-meet_lisa = [Bool('meet_lisa_%s' % i) for i in range(len(locations))]
-meet_joshua = [Bool('meet_joshua_%s' % i) for i in range(len(locations))]
-meet_nancy = [Bool('meet_nancy_%s' % i) for i in range(len(locations))]
-meet_andrew = [Bool('meet_andrew_%s' % i) for i in range(len(locations))]
-meet_john = [Bool('meet_john_%s' % i) for i in range(len(locations))]
+# Create Z3 solver
+s = Solver()
 
-# Constraints
-for i, loc in enumerate(locations):
-    s.add(Or(meet_kenneth[i], meet_lisa[i], meet_joshua[i], meet_nancy[i], meet_andrew[i], meet_john[i]))
+# Define variables
+x = [Int('x_' + str(i)) for i in range(len(locations))]
+y = [Int('y_' + str(i)) for i in range(len(locations))]
+z = [Bool('z_' + str(i)) for i in range(len(friends))]
 
-for i, loc in enumerate(locations):
-    if loc == 'Richmond District':
-        s.add(If(meet_kenneth[i], And(start_time + travel_times[('Embarcadero', 'Richmond District')] <= 900, 900 + 45 <= end_time), True))
-    elif loc == 'Union Square':
-        s.add(If(meet_lisa[i], And(start_time <= 450, 450 + 90 <= end_time), True))
-    elif loc == 'Financial District':
-        s.add(If(meet_joshua[i], And(start_time + 60 <= 450, 450 + 15 <= end_time), True))
-    elif loc == 'Pacific Heights':
-        s.add(If(meet_nancy[i], And(start_time + travel_times[('Embarcadero', 'Pacific Heights')] <= 570, 570 + 180 <= end_time), True))
-    elif loc == 'Nob Hill':
-        s.add(If(meet_andrew[i], And(start_time + travel_times[('Embarcadero', 'Nob Hill')] <= 630, 630 + 180 <= end_time), True))
-    elif loc == 'Bayview':
-        s.add(If(meet_john[i], And(start_time + travel_times[('Embarcadero', 'Bayview')] <= 630, 630 + 225 <= end_time), True))
+# Add constraints for meeting friends
+for i, friend in enumerate(friends):
+    start_time = friend_times[friend][0]
+    end_time = friend_times[friend][1]
+    min_meeting_time = min_meeting_times[friend]
+    for j, location in enumerate(locations):
+        if z[i]:
+            s.add(x[j] >= start_time - min_meeting_time)
+            s.add(x[j] <= end_time + min_meeting_time)
+            s.add(y[j] >= start_time - min_meeting_time)
+            s.add(y[j] <= end_time + min_meeting_time)
 
-s.add(If(meet_kenneth[0], start_time + 45 <= 900, True))
-s.add(If(meet_lisa[0], start_time <= 450, True))
-s.add(If(meet_joshua[0], start_time + 60 <= 450, True))
-s.add(If(meet_nancy[0], start_time + travel_times[('Embarcadero', 'Pacific Heights')] <= 570, True))
-s.add(If(meet_andrew[0], start_time + travel_times[('Embarcadero', 'Nob Hill')] <= 630, True))
-s.add(If(meet_john[0], start_time + travel_times[('Embarcadero', 'Bayview')] <= 630, True))
+# Add constraints for travel times
+for i, location1 in enumerate(locations):
+    for j, location2 in enumerate(locations):
+        if i!= j:
+            s.add(x[i] + travel_distances[(location1, location2)] <= x[j])
+            s.add(y[i] + travel_distances[(location1, location2)] >= y[j])
 
-# Objective function
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_kenneth[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_kenneth[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_lisa[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_lisa[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_joshua[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_joshua[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_nancy[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_nancy[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_andrew[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_andrew[k]]))
-s.minimize(Sum([travel_times[(locations[i], locations[j])] * meet_john[i] for i, j in enumerate(locations) for k in range(len(locations)) if meet_john[k]]))
+# Add constraints for arrival at Embarcadero
+s.add(x[0] == 9*60)
 
-# Solve the problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    print("Locations to visit:")
-    for i, loc in enumerate(locations):
-        if model.evaluate(meet_kenneth[i]):
-            print("Kenneth at %s" % loc)
-        if model.evaluate(meet_lisa[i]):
-            print("Lisa at %s" % loc)
-        if model.evaluate(meet_joshua[i]):
-            print("Joshua at %s" % loc)
-        if model.evaluate(meet_nancy[i]):
-            print("Nancy at %s" % loc)
-        if model.evaluate(meet_andrew[i]):
-            print("Andrew at %s" % loc)
-        if model.evaluate(meet_john[i]):
-            print("John at %s" % loc)
+# Add constraints for Kenneth's meeting
+s.add(z[0] == If(x[1] >= 9*60+15 - 30, True, False))
+
+# Add constraints for Lisa's meeting
+s.add(z[1] == If(x[1] >= 9*60 - 45, True, False))
+
+# Add constraints for Joshua's meeting
+s.add(z[2] == If(x[2] >= 12*60 - 15, True, False))
+
+# Add constraints for Nancy's meeting
+s.add(z[3] == If(x[3] >= 8*60 - 90, True, False))
+
+# Add constraints for Andrew's meeting
+s.add(z[4] == If(x[5] >= 11*60 - 60, True, False))
+
+# Add constraints for John's meeting
+s.add(z[5] == If(x[6] >= 4*60+45 - 75, True, False))
+
+# Check if the solver found a solution
+if s.check() == sat:
+    m = s.model()
+    schedule = []
+    for i, location in enumerate(locations):
+        schedule.append((location, m[x[i]].as_long(), m[y[i]].as_long()))
+    print('SOLUTION:')
+    for location, start_time, end_time in schedule:
+        print(f'Meet at {location} from {start_time//60}:{start_time%60} to {end_time//60}:{end_time%60}')
 else:
-    print("No solution found")
+    print('No solution found')

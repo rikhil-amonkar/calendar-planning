@@ -1,66 +1,55 @@
 from z3 import *
 
 # Define the variables
-financial_district = 0
-chinatown = 1
-golden_gate_park = 2
-
-# Define the distances
-distances = [
-    [0, 5, 23],  # Financial District to other places
-    [5, 0, 23],  # Chinatown to other places
-    [23, 23, 0]   # Golden Gate Park to other places
-]
-
-# Define the meeting times
-meeting_times = {
-    chinatown: [12, 3],  # Kenneth will be at Chinatown from 12:00PM to 3:00PM
-    golden_gate_park: [8, 19]  # Barbara will be at Golden Gate Park from 8:15AM to 7:00PM
-}
-
-# Define the meeting durations
-meeting_durations = {
-    chinatown: 90,  # You'd like to meet Kenneth for a minimum of 90 minutes
-    golden_gate_park: 45  # You'd like to meet Barbara for a minimum of 45 minutes
-}
-
-# Define the solver
-s = Solver()
-
-# Define the variables for the schedule
-schedule = [Bool(f'schedule_{i}') for i in range(4)]
+start_time = Int('start_time')
+end_time = Int('end_time')
+kenneth_meeting = Int('kenneth_meeting')
+barbara_meeting = Int('barbara_meeting')
+kenneth_arrival = Int('kenneth_arrival')
+barbara_arrival = Int('barbara_arrival')
+kenneth_departure = Int('kenneth_departure')
+barbara_departure = Int('barbara_departure')
 
 # Define the constraints
-for i in range(4):
-    s.add(schedule[i] == schedule[i-1] | (schedule[i] == Not(schedule[i-1])))
+s = Optimize()
+s.add(start_time >= 0)  # Start time cannot be negative
+s.add(end_time >= 0)  # End time cannot be negative
+s.add(kenneth_meeting >= 0)  # Kenneth meeting time cannot be negative
+s.add(barbara_meeting >= 0)  # Barbara meeting time cannot be negative
+s.add(kenneth_arrival >= 0)  # Kenneth arrival time cannot be negative
+s.add(barbara_arrival >= 0)  # Barbara arrival time cannot be negative
+s.add(kenneth_departure >= 0)  # Kenneth departure time cannot be negative
+s.add(barbara_departure >= 0)  # Barbara departure time cannot be negative
 
-# Define the constraints for the meeting times
-for place in [chinatown, golden_gate_park]:
-    s.add(schedule[distances[financial_district][place]] == schedule[financial_district])
+# Constraints for Kenneth
+s.add(kenneth_arrival == 12)  # Kenneth arrives at 12:00PM
+s.add(kenneth_departure == 15)  # Kenneth departs at 3:00PM
+s.add(kenneth_meeting >= 90)  # Minimum meeting time with Kenneth
+s.add(kenneth_meeting <= 3)  # Maximum meeting time with Kenneth (3 hours)
 
-# Define the constraints for the meeting durations
-for place in [chinatown, golden_gate_park]:
-    start_time = 9
-    end_time = 12
-    if place == chinatown:
-        end_time = 15
-    s.add(schedule[distances[place][financial_district]] == schedule[distances[place][financial_district]] + meeting_durations[place] >= start_time)
-    s.add(schedule[distances[place][financial_district]] == schedule[distances[place][financial_district]] + meeting_durations[place] <= end_time)
+# Constraints for Barbara
+s.add(barbara_arrival == 8)  # Barbara arrives at 8:15AM
+s.add(barbara_departure == 19)  # Barbara departs at 7:00PM
+s.add(barbara_meeting >= 45)  # Minimum meeting time with Barbara
+s.add(barbara_meeting <= 11)  # Maximum meeting time with Barbara (11 hours)
 
-# Define the objective function
-max_meetings = 0
-for i in range(4):
-    for j in range(i+1, 4):
-        if schedule[i] and schedule[j]:
-            max_meetings += 1
+# Constraints for meeting times
+s.add(kenneth_meeting >= kenneth_arrival + 1)  # Meeting time with Kenneth must be after arrival
+s.add(kenneth_meeting <= kenneth_departure - 1)  # Meeting time with Kenneth must be before departure
+s.add(barbara_meeting >= barbara_arrival + 1)  # Meeting time with Barbara must be after arrival
+s.add(barbara_meeting <= barbara_departure - 1)  # Meeting time with Barbara must be before departure
 
-s.add(max_meetings > 0)
+# Objective function: maximize the total meeting time
+s.maximize(kenneth_meeting + barbara_meeting)
 
-# Solve the problem
-s.check()
-model = s.model()
-
-# Print the schedule
-print("SCHEDULE:")
-for i in range(4):
-    print(f"Place {i+1}: {model.evaluate(schedule[i])}")
+# Solve the optimization problem
+solution = s.check()
+if solution == sat:
+    model = s.model()
+    print("SOLUTION:")
+    print(f"Start time: 9 hours")
+    print(f"End time: {model[end_time].as_long()} hours")
+    print(f"Kenneth meeting time: {model[kenneth_meeting].as_long()} hours")
+    print(f"Barbara meeting time: {model[barbara_meeting].as_long()} hours")
+else:
+    print("No solution found.")

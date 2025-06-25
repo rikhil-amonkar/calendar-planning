@@ -1,109 +1,129 @@
 from z3 import *
+import json
 
 def main():
     cities = ["Prague", "Tallinn", "Warsaw", "Porto", "Naples", "Milan", "Lisbon", "Santorini", "Riga", "Stockholm"]
-    days = [5, 3, 2, 3, 5, 3, 5, 5, 4, 2]
-    
+    lengths = [5, 3, 2, 3, 5, 3, 5, 5, 4, 2]
     city_index = {city: idx for idx, city in enumerate(cities)}
     
-    flight_list_str = [
-        ("Riga", "Prague"),
-        ("Stockholm", "Milan"),
-        ("Riga", "Milan"),
-        ("Lisbon", "Stockholm"),
-        ("Stockholm", "Santorini"),
-        ("Naples", "Warsaw"),
-        ("Lisbon", "Warsaw"),
-        ("Naples", "Milan"),
-        ("Lisbon", "Naples"),
-        ("Riga", "Tallinn"),
-        ("Tallinn", "Prague"),
-        ("Stockholm", "Warsaw"),
-        ("Riga", "Warsaw"),
-        ("Lisbon", "Riga"),
-        ("Riga", "Stockholm"),
-        ("Lisbon", "Porto"),
-        ("Lisbon", "Prague"),
-        ("Milan", "Porto"),
-        ("Prague", "Milan"),
-        ("Lisbon", "Milan"),
-        ("Warsaw", "Porto"),
-        ("Warsaw", "Tallinn"),
-        ("Santorini", "Milan"),
-        ("Stockholm", "Prague"),
-        ("Stockholm", "Tallinn"),
-        ("Warsaw", "Milan"),
-        ("Santorini", "Naples"),
-        ("Warsaw", "Prague")
+    flight_connections = [
+        "Riga and Prague", 
+        "Stockholm and Milan", 
+        "Riga and Milan", 
+        "Lisbon and Stockholm", 
+        "from Stockholm to Santorini", 
+        "Naples and Warsaw", 
+        "Lisbon and Warsaw", 
+        "Naples and Milan", 
+        "Lisbon and Naples", 
+        "from Riga to Tallinn", 
+        "Tallinn and Prague", 
+        "Stockholm and Warsaw", 
+        "Riga and Warsaw", 
+        "Lisbon and Riga", 
+        "Riga and Stockholm", 
+        "Lisbon and Porto", 
+        "Lisbon and Prague", 
+        "Milan and Porto", 
+        "Prague and Milan", 
+        "Lisbon and Milan", 
+        "Warsaw and Porto", 
+        "Warsaw and Tallinn", 
+        "Santorini and Milan", 
+        "Stockholm and Prague", 
+        "Stockholm and Tallinn", 
+        "Warsaw and Milan", 
+        "Santorini and Naples", 
+        "Warsaw and Prague"
     ]
     
-    graph_edges = set()
-    for (u_str, v_str) in flight_list_str:
-        u = city_index[u_str]
-        v = city_index[v_str]
-        graph_edges.add((min(u, v), max(u, v)))
+    edges_set = set()
+    for conn in flight_connections:
+        if conn.startswith("from"):
+            parts = conn.split()
+            city1 = parts[1]
+            city2 = parts[3]
+            key = tuple(sorted([city1, city2]))
+            edges_set.add(key)
+        else:
+            if " and " in conn:
+                parts = conn.split(" and ")
+                city1 = parts[0].strip()
+                city2 = parts[1].strip()
+                key = tuple(sorted([city1, city2]))
+                edges_set.add(key)
+            else:
+                print(f"Unhandled connection string: {conn}")
     
-    edges_list = list(graph_edges)
-    
-    pos = [Int('pos_%d' % i) for i in range(10)]
-    start = [Int('start_%d' % i) for i in range(10)]
+    graph_edges = []
+    for (a, b) in edges_set:
+        i = city_index[a]
+        j = city_index[b]
+        graph_edges.append((i, j))
     
     s = Solver()
+    n = 10
+    pos = [Int(f'pos_{i}') for i in range(n)]
     
-    for i in range(10):
-        s.add(pos[i] >= 0, pos[i] <= 9)
-    
+    for i in range(n):
+        s.add(pos[i] >= 0, pos[i] < n)
     s.add(Distinct(pos))
     
-    s.add(start[0] == 1)
+    idx_riga = city_index['Riga']
+    idx_tallinn = city_index['Tallinn']
+    idx_milan = city_index['Milan']
     
-    for k in range(1, 10):
-        prev_city_duration = days[pos[k-1]]
-        s.add(start[k] == start[k-1] + prev_city_duration - 1)
+    start_riga = 1
+    for j in range(n):
+        start_riga += If(pos[j] < pos[idx_riga], lengths[j] - 1, 0)
+    s.add(start_riga >= 2, start_riga <= 8)
     
-    last_city_duration = days[pos[9]]
-    s.add(start[9] + last_city_duration - 1 == 28)
+    start_tallinn = 1
+    for j in range(n):
+        start_tallinn += If(pos[j] < pos[idx_tallinn], lengths[j] - 1, 0)
+    s.add(start_tallinn >= 16, start_tallinn <= 20)
+    
+    start_milan = 1
+    for j in range(n):
+        start_milan += If(pos[j] < pos[idx_milan], lengths[j] - 1, 0)
+    s.add(start_milan >= 22, start_milan <= 26)
     
     for k in range(9):
-        a = pos[k]
-        b = pos[k+1]
-        edge_constraint = Or([Or(And(a == u, b == v), And(a == v, b == u)) for (u, v) in edges_list])
-        s.add(edge_constraint)
-    
-    for k in range(10):
-        s.add(If(pos[k] == 8, And(start[k] >= 2, start[k] <= 8), True))
-        s.add(If(pos[k] == 1, And(start[k] >= 16, start[k] <= 20), True))
-        s.add(If(pos[k] == 5, And(start[k] >= 22, start[k] <= 26), True))
+        or_terms = []
+        for (i, j) in graph_edges:
+            term1 = And(pos[i] == k, pos[j] == k + 1)
+            term2 = And(pos[j] == k, pos[i] == k + 1)
+            or_terms.append(term1)
+            or_terms.append(term2)
+        s.add(Or(or_terms))
     
     if s.check() == sat:
         m = s.model()
-        pos_val = [m.evaluate(pos[i]).as_long() for i in range(10)]
-        start_val = [m.evaluate(start[i]).as_long() for i in range(10)]
+        pos_val = [m.evaluate(pos[i]).as_long() for i in range(n)]
+        
+        perm_order = [0] * n
+        for idx in range(n):
+            p = pos_val[idx]
+            perm_order[p] = idx
+        
+        starts = [0] * n
+        starts[0] = 1
+        for i in range(1, n):
+            starts[i] = starts[i-1] + lengths[perm_order[i-1]] - 1
         
         itinerary = []
-        
-        for k in range(10):
-            city_idx = pos_val[k]
-            city_name = cities[city_idx]
-            s_day = start_val[k]
-            duration = days[city_idx]
-            e_day = s_day + duration - 1
-            
-            if s_day == e_day:
-                day_range_str = "Day %d" % s_day
-            else:
-                day_range_str = "Day %d-%d" % (s_day, e_day)
-            itinerary.append({"day_range": day_range_str, "place": city_name})
-            
-            if k < 9:
-                flight_day = e_day
-                itinerary.append({"day_range": "Day %d" % flight_day, "place": city_name})
-                next_city_idx = pos_val[k+1]
-                next_city_name = cities[next_city_idx]
-                itinerary.append({"day_range": "Day %d" % flight_day, "place": next_city_name})
+        for i in range(n):
+            city_idx = perm_order[i]
+            s_day = starts[i]
+            e_day = s_day + lengths[city_idx] - 1
+            itinerary.append({"day_range": f"Day {s_day}-{e_day}", "place": cities[city_idx]})
+            if i < n - 1:
+                itinerary.append({"day_range": f"Day {e_day}", "place": cities[city_idx]})
+                next_city_idx = perm_order[i+1]
+                itinerary.append({"day_range": f"Day {e_day}", "place": cities[next_city_idx]})
         
         result = {"itinerary": itinerary}
-        print(result)
+        print(json.dumps(result))
     else:
         print("No solution found")
 

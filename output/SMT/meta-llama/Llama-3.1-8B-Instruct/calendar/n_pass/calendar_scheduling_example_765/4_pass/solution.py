@@ -1,124 +1,113 @@
-YOUR_CODE
 from z3 import *
 
-def schedule_meeting():
+def schedule_meeting(joshua_schedule, joyce_schedule, preferred_days, meeting_duration):
     # Define the days of the week
     days = ['Monday', 'Tuesday', 'Wednesday']
-
-    # Define the start and end times
-    start_times = [9, 10, 11, 12, 13, 14, 15, 16]
-    end_times = [17]
-
-    # Define the meeting duration
-    meeting_duration = 30
-
+    
     # Create a Z3 solver
-    s = Solver()
-
+    solver = Solver()
+    
     # Define the variables
-    joshua_monday = [Bool(f'joshua_monday_{i}') for i in range(len(start_times))]
-    joshua_tuesday = [Bool(f'joshua_tuesday_{i}') for i in range(len(start_times))]
-    joshua_wednesday = [Bool(f'joshua_wednesday_{i}') for i in range(len(start_times))]
-    joyce_monday = [Bool(f'joyce_monday_{i}') for i in range(len(start_times))]
-    joyce_tuesday = [Bool(f'joyce_tuesday_{i}') for i in range(len(start_times))]
-    joyce_wednesday = [Bool(f'joyce_wednesday_{i}') for i in range(len(start_times))]
-    day = Int('day')
-    start_time = Int('start_time')
-    end_time = Int('end_time')
-
-    # Add constraints for Joshua's schedule
-    s.add(Or([joshua_monday[i] for i in range(len(start_times))]))
-    s.add(Or([joshua_tuesday[i] for i in range(len(start_times))]))
-    s.add(Or([joshua_wednesday[i] for i in range(len(start_times))]))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 9, start_time < 15, end_time == start_time + meeting_duration],
-                         Or([Not(joshua_monday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 11, start_time < 12, end_time == start_time + meeting_duration],
-                         Or([Not(joshua_tuesday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 14, start_time < 15, end_time == start_time + meeting_duration],
-                         Or([Not(joshua_tuesday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 14, start_time < 15, end_time == start_time + meeting_duration],
-                         Or([Not(joshua_tuesday[i]) for i in range(len(start_times))]))
-                 ))
-
-    # Add constraints for Joyce's schedule
-    s.add(Or([joyce_monday[i] for i in range(len(start_times))]))
-    s.add(Or([joyce_tuesday[i] for i in range(len(start_times))]))
-    s.add(Or([joyce_wednesday[i] for i in range(len(start_times))]))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 9, start_time < 9.5, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_monday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 10, start_time < 11, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_monday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 11, start_time < 12.5, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_monday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 13, start_time < 15, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_monday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 15.5, start_time < 17, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_monday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 9, start_time < 17, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_tuesday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 9, start_time < 9.5, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_wednesday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 10, start_time < 11, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_wednesday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 12.5, start_time < 15.5, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_wednesday[i]) for i in range(len(start_times))]))
-                 ))
-    s.add(ForAll([start_time, end_time],
-                 Implies([start_time >= 16, start_time < 16.5, end_time == start_time + meeting_duration],
-                         Or([Not(joyce_wednesday[i]) for i in range(len(start_times))]))
-                 ))
-
-    # Add constraints for the meeting time
-    s.add(Implies([day == 0, joyce_monday[0], joshua_monday[0], start_time >= 12, start_time < 15, end_time == start_time + meeting_duration],
-                  Or([Not(joyce_monday[i]) for i in range(len(start_times))]))
-           )
-    s.add(Implies([day == 1, joyce_tuesday[0], joshua_tuesday[0], start_time >= 11, start_time < 12, end_time == start_time + meeting_duration],
-                  Or([Not(joyce_tuesday[i]) for i in range(len(start_times))]))
-           )
-    s.add(Implies([day == 1, joyce_tuesday[0], joshua_tuesday[0], start_time >= 14, start_time < 15, end_time == start_time + meeting_duration],
-                  Or([Not(joyce_tuesday[i]) for i in range(len(start_times))]))
-           )
-    s.add(Implies([day == 2, joyce_wednesday[0], joshua_wednesday[0], start_time >= 9, start_time < 9.5, end_time == start_time + meeting_duration],
-                  Or([Not(joyce_wednesday[i]) for i in range(len(start_times))]))
-           )
-
-    # Solve the constraints
-    s.add(day == 0)
-    s.add(start_time >= 12)
-    s.add(start_time < 15)
-    s.add(end_time == start_time + meeting_duration)
-
-    if s.check() == sat:
-        model = s.model()
-        day_value = model[day].as_long()
-        start_time_value = model[start_time].as_long()
-        end_time_value = model[end_time].as_long()
-        return f'SOLUTION:\nDay: {days[day_value]}\nStart Time: {start_time_value:02d}:{int((start_time_value - int(start_time_value)) * 60):02d}\nEnd Time: {end_time_value:02d}:{int((end_time_value - int(end_time_value)) * 60):02d}'
+    day = [Bool(f'day_{i}') for i in range(len(days))]
+    start_time = [Int(f'start_time_{i}') for i in range(len(days))]
+    end_time = [Int(f'end_time_{i}') for i in range(len(days))]
+    
+    # Add constraints for the day
+    for i, d in enumerate(day):
+        solver.add(Or([d]))
+        solver.add(Implies(d, start_time[i] >= 9 * 60))
+        solver.add(Implies(d, start_time[i] <= 17 * 60))
+        solver.add(Implies(d, end_time[i] >= 9 * 60))
+        solver.add(Implies(d, end_time[i] <= 17 * 60))
+        solver.add(Implies(d, start_time[i] < end_time[i]))
+    
+    # Add constraints for the meeting duration
+    for i in range(len(days)):
+        solver.add(Implies(day[i], end_time[i] - start_time[i] == meeting_duration * 60))
+    
+    # Add constraints for the schedules
+    for i in range(len(days)):
+        for joshua_time in joshua_schedule.get(days[i], []):
+            solver.add(Not(And(day[i], start_time[i] >= joshua_time[0], start_time[i] < joshua_time[1])))
+        for joyce_time in joyce_schedule.get(days[i], []):
+            solver.add(Not(And(day[i], start_time[i] >= joyce_time[0], start_time[i] < joyce_time[1])))
+    
+    # Add constraints for the preferred days
+    for day_name in preferred_days:
+        if day_name in days:
+            solver.add(day[days.index(day_name)])
+        else:
+            solver.add(Not(Or([day[days.index(d)] for d in days if d == day_name])))
+    
+    # Add constraints for Joyce's preference
+    solver.add(Implies(And(day[1], start_time[1] < 12 * 60), Not(And(day[1], start_time[1] < 12 * 60, start_time[1] >= 9 * 60))))
+    
+    # Define possible start times
+    possible_start_times = []
+    for i in range(len(days)):
+        for t in range(9 * 60, 17 * 60):
+            possible_start_times.append((i, t))
+    
+    # Add possible start times as variables
+    start_time_vars = [Int(f'start_time_{i}') for i in range(len(possible_start_times))]
+    for i, t in enumerate(possible_start_times):
+        solver.add(start_time_vars[i] == t[1])
+    
+    # Define end times in terms of start times
+    end_time_vars = [start_time_vars[i] + meeting_duration * 60 for i in range(len(possible_start_times))]
+    
+    # Add end times as variables
+    for i, t in enumerate(end_time_vars):
+        solver.add(Implies(day[possible_start_times[i][0]], end_time[possible_start_times[i][0]] == t))
+    
+    # Add constraints to ensure that the start time is not within a busy period
+    for i in range(len(possible_start_times)):
+        for joshua_time in joshua_schedule.get(days[possible_start_times[i][0]], []):
+            solver.add(Not(And(day[possible_start_times[i][0]], start_time_vars[i] >= joshua_time[0], start_time_vars[i] < joshua_time[1])))
+        for joyce_time in joyce_schedule.get(days[possible_start_times[i][0]], []):
+            solver.add(Not(And(day[possible_start_times[i][0]], start_time_vars[i] >= joyce_time[0], start_time_vars[i] < joyce_time[1])))
+    
+    # Add constraints to ensure that the day is preferred
+    for i in range(len(possible_start_times)):
+        if days[possible_start_times[i][0]] in preferred_days:
+            solver.add(day[possible_start_times[i][0]])
+        else:
+            solver.add(Not(day[possible_start_times[i][0]]))
+    
+    # Check if there is a solution
+    if solver.check() == sat:
+        # Get the model
+        model = solver.model()
+        
+        # Print the solution
+        day_name = days[model.evaluate(day[0]).as_bool()]
+        start_time_value = model.evaluate(start_time_vars[0]).as_long() // 60
+        end_time_value = model.evaluate(end_time_vars[0]).as_long() // 60
+        print(f'SOLUTION:')
+        print(f'Day: {day_name}')
+        print(f'Start Time: {start_time_value:02d}:{(start_time_value % 60):02d}')
+        print(f'End Time: {end_time_value:02d}:{(end_time_value % 60):02d}')
     else:
-        return 'No solution found'
+        print('No solution found.')
 
-print(schedule_meeting())
+# Define the schedules
+joshua_schedule = {
+    'Monday': [(15 * 60, 15 * 60 + 30)],
+    'Tuesday': [(11 * 60, 12 * 60), (13 * 60, 13 * 60 + 30), (14 * 60, 15 * 60)],
+    'Wednesday': []
+}
+
+joyce_schedule = {
+    'Monday': [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60), (11 * 60, 12 * 60), (13 * 60, 15 * 60), (15 * 60, 17 * 60)],
+    'Tuesday': [(9 * 60, 17 * 60)],
+    'Wednesday': [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60), (12 * 60, 15 * 60), (16 * 60, 16 * 60 + 30)]
+}
+
+# Define the preferred days
+preferred_days = ['Monday', 'Tuesday', 'Wednesday']
+
+# Define the meeting duration
+meeting_duration = 0.5
+
+# Schedule the meeting
+schedule_meeting(joshua_schedule, joyce_schedule, preferred_days, meeting_duration)

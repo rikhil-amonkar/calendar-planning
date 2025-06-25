@@ -1,7 +1,7 @@
 from z3 import *
 
-# Define the travel times
-travel_times = {
+# Define the travel distances in minutes
+travel_distances = {
     ('Richmond District', 'Sunset District'): 11,
     ('Richmond District', 'Haight-Ashbury'): 10,
     ('Richmond District', 'Mission District'): 20,
@@ -24,21 +24,12 @@ travel_times = {
     ('Golden Gate Park', 'Mission District'): 17
 }
 
-# Define the start and end times for each location
-start_times = {
-    'Richmond District': 0,
-    'Sunset District': 0,
-    'Haight-Ashbury': 0,
-    'Mission District': 0,
-    'Golden Gate Park': 0
-}
-
-end_times = {
-    'Richmond District': 0,
-    'Sunset District': 0,
-    'Haight-Ashbury': 0,
-    'Mission District': 0,
-    'Golden Gate Park': 0
+# Define the friends and their availability
+friends = {
+    'Sarah': (10*60 + 45, 7*60),  # 10:45 AM - 7:00 PM
+    'Richard': (11*60 + 45, 3*60 + 45),  # 11:45 AM - 3:45 PM
+    'Elizabeth': (11*60, 5*60 + 15),  # 11:00 AM - 5:15 PM
+    'Michelle': (6*60 + 15, 8*60 + 45)  # 6:15 PM - 8:45 PM
 }
 
 # Define the minimum meeting times
@@ -49,65 +40,65 @@ min_meeting_times = {
     'Michelle': 90
 }
 
-# Define the start and end times for each person
-person_start_times = {
-    'Sarah': 10 * 60 + 45,
-    'Richard': 11 * 60 + 45,
-    'Elizabeth': 11 * 60,
-    'Michelle': 18 * 60 + 15
-}
-
-person_end_times = {
-    'Sarah': 19 * 60,
-    'Richard': 15 * 60 + 45,
-    'Elizabeth': 17 * 60 + 15,
-    'Michelle': 20 * 60 + 45
-}
-
 # Define the solver
-s = Solver()
+solver = Optimize()
 
 # Define the variables
-locations = ['Richmond District', 'Sunset District', 'Haight-Ashbury', 'Mission District', 'Golden Gate Park']
-people = ['Sarah', 'Richard', 'Elizabeth', 'Michelle']
+x = [Bool(f"visit_{i}") for i in friends]
+t = [Int(f"time_{i}") for i in friends]
+visit_times = [Int(f"visit_time_{i}") for i in friends]
+friend_order = [Int(f"friend_order_{i}") for i in range(4)]
 
 # Define the constraints
-locations_decl = [Int(locations[i]) for i in range(len(locations))]
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            s.add(Or([locations_decl[i] == locations_decl[j], locations_decl[i]!= locations_decl[j]]))
-
-for person in people:
-    for i in range(len(locations)):
-        for j in range(len(locations)):
-            if i!= j:
-                s.add(Implies(locations_decl[i] == locations_decl[j], person_start_times[person] < end_times[locations_decl[i]] + travel_times[(locations_decl[i], locations_decl[j])] and person_end_times[person] > start_times[locations_decl[j]] + travel_times[(locations_decl[j], locations_decl[i])]))
+for i, friend in enumerate(friends):
+    solver.add(t[i] >= friends[friend][0])
+    solver.add(t[i] <= friends[friend][1])
+    solver.add(t[i] >= 9*60)  # You arrive at Richmond District at 9:00 AM
+    if i == 0:  # Sarah
+        solver.add(t[i] + min_meeting_times[friend] >= friends[friend][0])
+        solver.add(t[i] + min_meeting_times[friend] <= friends[friend][1])
+    elif i == 1:  # Richard
+        solver.add(t[i] + min_meeting_times[friend] >= friends[friend][0])
+        solver.add(t[i] + min_meeting_times[friend] <= friends[friend][1])
+    elif i == 2:  # Elizabeth
+        solver.add(t[i] + min_meeting_times[friend] >= friends[friend][0])
+        solver.add(t[i] + min_meeting_times[friend] <= friends[friend][1])
+    elif i == 3:  # Michelle
+        solver.add(t[i] + min_meeting_times[friend] >= friends[friend][0])
+        solver.add(t[i] + min_meeting_times[friend] <= friends[friend][1])
 
 # Define the objective function
-max_meeting_time = 0
-for person in people:
-    for i in range(len(locations)):
-        for j in range(len(locations)):
-            if i!= j:
-                s.add(If(locations_decl[i] == locations_decl[j], max_meeting_time >= min_meeting_times[person] + travel_times[(locations_decl[i], locations_decl[j])], max_meeting_time >= 0))
+solver.minimize(sum([x[i] * (t[i] + min_meeting_times[friend]) for i, friend in enumerate(friends)]))
+
+# Add constraint to visit exactly 4 people
+solver.add(sum(x) == 4)
+
+# Add constraint to visit each person only once
+for i in range(4):
+    solver.add(Or([x[j] == False for j in range(i)]))
+
+# Add constraint to visit each person in a valid order
+for i in range(4):
+    solver.add(friend_order[i] >= 0)
+    solver.add(friend_order[i] < 4)
+    if i > 0:
+        solver.add(friend_order[i] > friend_order[i-1])
+
+# Add constraint to visit each person at a valid time
+for i, friend in enumerate(friends):
+    if i > 0:
+        prev_friend = list(friends.keys())[i-1]
+        solver.add(t[i] >= t[i-1] + travel_distances[(prev_friend, friend)])
 
 # Solve the problem
-s.check()
+solution = solver.check()
 
 # Print the solution
-model = s.model()
-print("Locations:")
-for i in range(len(locations)):
-    print(locations[i], ":", model[locations_decl[i]].as_long())
-
-print("\nMax Meeting Time:", max_meeting_time, "minutes")
-
-# Print the optimal schedule
-print("\nOptimal Schedule:")
-for person in people:
-    for i in range(len(locations)):
-        for j in range(len(locations)):
-            if i!= j:
-                if model[locations_decl[i]] == model[locations_decl[j]]:
-                    print(person, "meets at", locations[i], "at", (person_start_times[person] + travel_times[(locations_decl[j], locations_decl[i])]) // 60, ":", (person_start_times[person] + travel_times[(locations_decl[j], locations_decl[i])]) % 60, "AM/PM")
+if solution == sat:
+    model = solver.model()
+    print("SOLUTION:")
+    for i, friend in enumerate(friends):
+        if model.evaluate(x[i]):
+            print(f"Visit {friend} at {model.evaluate(t[i]).as_long() // 60}:{model.evaluate(t[i]).as_long() % 60}")
+else:
+    print("No solution found")

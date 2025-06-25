@@ -1,83 +1,81 @@
 from z3 import *
 
-# Define the variables
-days = 8
-cities = ['Stuttgart', 'Split', 'Prague', 'Krakow', 'Florence']
-stays = {'Stuttgart': 2, 'Split': 2, 'Prague': 4, 'Krakow': 2, 'Florence': 2}
-wedding = 2
-meeting = 2
-flights = [('Stuttgart', 'Split'), ('Split', 'Prague'), ('Prague', 'Florence'), 
-           ('Krakow', 'Stuttgart'), ('Krakow', 'Split'), ('Krakow', 'Prague')]
+def solve_scheduling():
+    # Define variables
+    days = 8
+    cities = ['Stuttgart', 'Split', 'Prague', 'Krakow', 'Florence']
+    flights = {
+        'Stuttgart': ['Split'],
+        'Split': ['Stuttgart', 'Krakow', 'Prague'],
+        'Prague': ['Split', 'Florence', 'Krakow'],
+        'Krakow': ['Stuttgart', 'Split', 'Prague'],
+        'Florence': ['Prague']
+    }
+    stays = {
+        'Stuttgart': 2,
+        'Split': 2,
+        'Prague': 4,
+        'Krakow': 2,
+        'Florence': 2
+    }
 
-# Create a Z3 solver
-solver = Solver()
+    # Create Z3 solver
+    solver = Solver()
 
-# Create variables to represent the day of arrival in each city
-arrival = {city: Int(city) for city in cities}
+    # Create variables
+    places = [Bool(f'place_{i}_{c}') for i in range(days) for c in cities]
+    for i in range(days):
+        for c in cities:
+            solver.add(Or([places[i*len(cities)+j] for j in range(len(cities)) if c == cities[j]]))
 
-# Create variables to represent the day of departure from each city
-departure = {city: Int(city) for city in cities}
+    # Add constraints for stays
+    for c in cities:
+        stay_days = stays[c]
+        for i in range(days):
+            if i < stay_days:
+                solver.add(places[i*len(cities)+cities.index(c)])
+            else:
+                solver.add(Not(places[i*len(cities)+cities.index(c)]))
 
-# Create variables to represent the number of days spent in each city
-days_spent = {city: Int(city) for city in cities}
+    # Add constraints for flights
+    for c in cities:
+        for d in flights[c]:
+            flight_days = len(flights[c])
+            for i in range(days):
+                if i < flight_days:
+                    solver.add(Or([places[i*len(cities)+cities.index(c)], places[i*len(cities)+cities.index(d)]]))
+                else:
+                    solver.add(Not(Or([places[i*len(cities)+cities.index(c)], places[i*len(cities)+cities.index(d)]])))
 
-# Add constraints for each city
-for city in cities:
-    # Arrival and departure day must be between 1 and days
-    solver.add(arrival[city] >= 1, arrival[city] <= days)
-    solver.add(departure[city] >= 1, departure[city] <= days)
-    
-    # Arrival day must be before departure day
-    solver.add(arrival[city] < departure[city])
-    
-    # If the city is Stuttgart, departure day must be after the wedding
-    if city == 'Stuttgart':
-        solver.add(departure[city] > wedding)
-        
-    # If the city is Split, departure day must be after the meeting
-    if city == 'Split':
-        solver.add(departure[city] > meeting)
-        
-    # If the city is Prague, departure day must be after 4 days
-    if city == 'Prague':
-        solver.add(departure[city] > 4)
+    # Add constraints for wedding and meeting
+    solver.add(places[1*len(cities)+cities.index('Stuttgart')])  # Stuttgart on day 1
+    solver.add(places[2*len(cities)+cities.index('Stuttgart')])  # Stuttgart on day 2
+    solver.add(Not(places[2*len(cities)+cities.index('Stuttgart')]))  # Not Stuttgart on day 3
+    solver.add(places[3*len(cities)+cities.index('Stuttgart')])  # Stuttgart on day 4
+    solver.add(places[2*len(cities)+cities.index('Split')])  # Split on day 2
+    solver.add(Not(places[3*len(cities)+cities.index('Split')]))  # Not Split on day 3
 
-    # Number of days spent must be equal to the stay
-    solver.add(days_spent[city] == stays[city])
+    # Add constraint for exactly 8 days
+    solver.add(Implies(places[0*len(cities)+cities.index('Stuttgart')], places[7*len(cities)+cities.index('Stuttgart')]))
+    solver.add(Implies(places[0*len(cities)+cities.index('Split')], places[7*len(cities)+cities.index('Split')]))
+    solver.add(Implies(places[0*len(cities)+cities.index('Prague')], places[7*len(cities)+cities.index('Prague')]))
+    solver.add(Implies(places[0*len(cities)+cities.index('Krakow')], places[7*len(cities)+cities.index('Krakow')]))
+    solver.add(Implies(places[0*len(cities)+cities.index('Florence')], places[7*len(cities)+cities.index('Florence')]))
 
-# Add constraints for each flight
-for flight in flights:
-    city1, city2 = flight
-    # Arrival day in city2 must be after departure day in city1
-    solver.add(arrival[city2] > departure[city1])
+    # Solve
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for i in range(days):
+            for j in range(len(cities)):
+                if model.evaluate(places[i*len(cities)+j]).as_bool():
+                    if i == 0:
+                        itinerary.append({"day_range": f"Day {i+1}-{i+stays[cities[j]]}", "place": cities[j]})
+                    else:
+                        itinerary.append({"day_range": f"Day {i+1}", "place": cities[j]})
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": "No solution found"}
 
-# Add constraints to ensure the itinerary covers exactly 8 days
-# Stuttgart must be visited on day 1
-solver.add(arrival['Stuttgart'] == 1)
-# Stuttgart must be visited for 2 days
-solver.add(departure['Stuttgart'] == 3)
-# Split must be visited on day 2
-solver.add(arrival['Split'] == 2)
-# Split must be visited for 2 days
-solver.add(departure['Split'] == 4)
-# Krakow must be visited on day 3
-solver.add(arrival['Krakow'] == 3)
-# Krakow must be visited for 2 days
-solver.add(departure['Krakow'] == 5)
-# Prague must be visited on day 4
-solver.add(arrival['Prague'] == 4)
-# Prague must be visited for 4 days
-solver.add(departure['Prague'] == 8)
-# Florence must be visited on day 5
-solver.add(arrival['Florence'] == 5)
-# Florence must be visited for 2 days
-solver.add(departure['Florence'] == 7)
-
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    # Print the trip plan
-    for city in cities:
-        print(f"{city}: {model[arrival[city]]} - {model[departure[city]]}, {model[days_spent[city]]} days")
-else:
-    print("No solution found")
+# Print solution
+print(solve_scheduling())

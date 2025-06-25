@@ -1,69 +1,84 @@
 from z3 import *
 
-# Define the cities
-cities = ['Mykonos', 'Reykjavik', 'Dublin', 'London', 'Helsinki', 'Hamburg']
+def create_itinerary():
+    # Define cities and their durations
+    cities = {
+        'Mykonos': 3,
+        'Reykjavik': 2,
+        'Dublin': 5,
+        'London': 5,
+        'Helsinki': 4,
+        'Hamburg': 2
+    }
 
-# Define the days
-days = range(1, 17)
+    # Define flight connections
+    flights = {
+        ('Dublin', 'London'): 1,
+        ('Hamburg', 'Dublin'): 1,
+        ('Helsinki', 'Reykjavik'): 1,
+        ('Hamburg', 'London'): 1,
+        ('Dublin', 'Helsinki'): 1,
+        ('Reykjavik', 'London'): 1,
+        ('London', 'Mykonos'): 1,
+        ('Dublin', 'Reykjavik'): 1,
+        ('Hamburg', 'Helsinki'): 1,
+        ('Helsinki', 'London'): 1
+    }
 
-# Define the variables
-x = [Bool(f'day_{city}_{day}') for city in cities for day in days]
+    # Define variables
+    days = [Bool(f'day_{i}') for i in range(1, 17)]
+    places = [Int(f'place_{i}') for i in range(1, 17)]
 
-# Define the constraints
-constraints = []
-for city in cities:
-    constraints.append(Sum([If(x[city][day], 1, 0) for day in days]) == 16)
-for city in cities:
-    for day in days:
-        constraints.append(Implies(x[city][day], Or([x[city][d] for d in range(day, 17)])))
+    # Define constraints
+    constraints = []
+    for i in range(1, 17):
+        # Each day can only be in one place
+        constraints.append(Or([places[i] == j for j in range(1, 7)]))
+        # Each day can only be a flight day if it's a flight day
+        constraints.append(Implies(days[i], places[i] in [j for j in range(1, 7) if (i-1, j) in flights or (j, i-1) in flights]))
+        # Each day can only be in a place if it's a place that can be visited
+        constraints.append(Implies(places[i] in [j for j in range(1, 7) if cities[j] > 0], days[i]))
 
-# Direct flights
-direct_flights = [
-    ('Dublin', 'London'),
-    ('Hamburg', 'Dublin'),
-    ('Helsinki', 'Reykjavik'),
-    ('Hamburg', 'London'),
-    ('Dublin', 'Helsinki'),
-    ('Reykjavik', 'London'),
-    ('London', 'Mykonos'),
-    ('Dublin', 'Reykjavik'),
-    ('Hamburg', 'Helsinki'),
-    ('Helsinki', 'London')
-]
-for city1, city2 in direct_flights:
-    constraints.append(Implies(x[city1][1], x[city2][1]))
-    for day in days[2:]:
-        constraints.append(Implies(x[city1][day], x[city2][day]))
-
-# Wedding in Reykjavik
-constraints.append(x['Reykjavik'][9] == True)
-constraints.append(x['Reykjavik'][10] == True)
-
-# Annual show in Dublin
-constraints.append(And([x['Dublin'][day] for day in range(2, 7)]))
-
-# Meeting friends in Hamburg
-constraints.append(x['Hamburg'][1] == True)
-constraints.append(x['Hamburg'][2] == True)
-
-# Staying in cities for specific days
-constraints.append(And([x['Mykonos'][day] for day in range(3, 6)]))
-constraints.append(And([x['Dublin'][day] for day in range(7, 12)]))
-constraints.append(And([x['London'][day] for day in range(13, 18)]))
-constraints.append(And([x['Helsinki'][day] for day in range(5, 9)]))
-constraints.append(And([x['Hamburg'][day] for day in range(2, 4)]))
-constraints.append(And([x['Reykjavik'][day] for day in range(8, 10)]))
-
-# Solve the constraints
-solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
-
-if solver.check() == sat:
-    model = solver.model()
+    # Add constraints for each city
     for city in cities:
-        for day in days:
-            if model.evaluate(x[city][day]):
-                print(f'{city} on day {day}')
-else:
-    print('No solution found')
+        constraints.append(places[1] == 1 + [j for j in range(1, 7) if cities[j] == cities[city]].index(city))
+        for i in range(1, cities[city] + 1):
+            constraints.append(days[i])
+
+    # Add constraints for each flight
+    for (a, b) in flights:
+        constraints.append(Implies(And(days[a], places[a] == 1 + [j for j in range(1, 7) if cities[j] == cities[a]].index(int(a))), days[b]))
+        constraints.append(Implies(And(days[b], places[b] == 1 + [j for j in range(1, 7) if cities[j] == cities[b]].index(int(b))), days[a]))
+
+    # Add constraints for wedding and annual show
+    constraints.append(And(days[9], places[9] == 1 + [j for j in range(1, 7) if cities[j] == cities['Reykjavik']].index(5)))
+    constraints.append(And(days[10], places[10] == 1 + [j for j in range(1, 7) if cities[j] == cities['Reykjavik']].index(5)))
+    constraints.append(And(days[2], places[2] == 1 + [j for j in range(1, 7) if cities[j] == cities['Dublin']].index(2)))
+    constraints.append(And(days[3], places[3] == 1 + [j for j in range(1, 7) if cities[j] == cities['Dublin']].index(2)))
+    constraints.append(And(days[4], places[4] == 1 + [j for j in range(1, 7) if cities[j] == cities['Dublin']].index(2)))
+    constraints.append(And(days[5], places[5] == 1 + [j for j in range(1, 7) if cities[j] == cities['Dublin']].index(2)))
+    constraints.append(And(days[6], places[6] == 1 + [j for j in range(1, 7) if cities[j] == cities['Dublin']].index(2)))
+
+    # Add constraints for meeting friends
+    constraints.append(And(days[1], places[1] == 1 + [j for j in range(1, 7) if cities[j] == cities['Hamburg']].index(3)))
+    constraints.append(And(days[2], places[2] == 1 + [j for j in range(1, 7) if cities[j] == cities['Hamburg']].index(3)))
+
+    # Create solver and solve
+    solver = Solver()
+    solver.add(And(constraints))
+
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for i in range(1, 17):
+            day_range = 'Day 1' if i == 1 else f'Day {i-1}-{i}'
+            place = [j for j in range(1, 7) if model.evaluate(places[i] == j).as_bool() == True][0]
+            if i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]:
+                itinerary.append({"day_range": day_range, "place": [k for k in cities.keys() if cities[k] == model.evaluate(places[i] == k).as_int() == True][0]})
+            if i in [3, 6, 10, 12, 14]:
+                itinerary.append({"day_range": day_range, "place": [k for k in cities.keys() if cities[k] == model.evaluate(places[i] == k).as_int() == True][0]})
+        return {"itinerary": itinerary}
+    else:
+        return "No solution found"
+
+print(create_itinerary())

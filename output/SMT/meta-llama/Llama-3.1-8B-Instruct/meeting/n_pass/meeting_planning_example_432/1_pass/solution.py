@@ -1,93 +1,66 @@
 from z3 import *
 
-# Define the travel times
+# Define the variables
+start_time = 0
+end_time = 12 * 60  # 12 hours in minutes
+friend_locations = ['Golden Gate Park', 'Fisherman\'s Wharf', 'Bayview', 'Mission District', 'Embarcadero', 'Financial District']
 travel_times = {
-    ('Golden Gate Park', 'Fisherman\'s Wharf'): 24,
-    ('Golden Gate Park', 'Bayview'): 23,
-    ('Golden Gate Park', 'Mission District'): 17,
-    ('Golden Gate Park', 'Embarcadero'): 25,
-    ('Golden Gate Park', 'Financial District'): 26,
-    ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
-    ('Fisherman\'s Wharf', 'Bayview'): 26,
-    ('Fisherman\'s Wharf', 'Mission District'): 22,
-    ('Fisherman\'s Wharf', 'Embarcadero'): 8,
-    ('Fisherman\'s Wharf', 'Financial District'): 11,
-    ('Bayview', 'Golden Gate Park'): 22,
-    ('Bayview', 'Fisherman\'s Wharf'): 25,
-    ('Bayview', 'Mission District'): 13,
-    ('Bayview', 'Embarcadero'): 19,
-    ('Bayview', 'Financial District'): 19,
-    ('Mission District', 'Golden Gate Park'): 17,
-    ('Mission District', 'Fisherman\'s Wharf'): 22,
-    ('Mission District', 'Bayview'): 15,
-    ('Mission District', 'Embarcadero'): 19,
-    ('Mission District', 'Financial District'): 17,
-    ('Embarcadero', 'Golden Gate Park'): 25,
-    ('Embarcadero', 'Fisherman\'s Wharf'): 6,
-    ('Embarcadero', 'Bayview'): 21,
-    ('Embarcadero', 'Mission District'): 20,
-    ('Embarcadero', 'Financial District'): 5,
-    ('Financial District', 'Golden Gate Park'): 23,
-    ('Financial District', 'Fisherman\'s Wharf'): 10,
-    ('Financial District', 'Bayview'): 19,
-    ('Financial District', 'Mission District'): 17,
-    ('Financial District', 'Embarcadero'): 4
+    'Golden Gate Park': {'Golden Gate Park': 0, 'Fisherman\'s Wharf': 24, 'Bayview': 23, 'Mission District': 17, 'Embarcadero': 25, 'Financial District': 26},
+    'Fisherman\'s Wharf': {'Golden Gate Park': 25, 'Fisherman\'s Wharf': 0, 'Bayview': 26, 'Mission District': 22, 'Embarcadero': 8, 'Financial District': 11},
+    'Bayview': {'Golden Gate Park': 22, 'Fisherman\'s Wharf': 25, 'Bayview': 0, 'Mission District': 13, 'Embarcadero': 19, 'Financial District': 19},
+    'Mission District': {'Golden Gate Park': 17, 'Fisherman\'s Wharf': 22, 'Bayview': 15, 'Mission District': 0, 'Embarcadero': 19, 'Financial District': 17},
+    'Embarcadero': {'Golden Gate Park': 25, 'Fisherman\'s Wharf': 6, 'Bayview': 21, 'Mission District': 20, 'Embarcadero': 0, 'Financial District': 5},
+    'Financial District': {'Golden Gate Park': 23, 'Fisherman\'s Wharf': 10, 'Bayview': 19, 'Mission District': 17, 'Embarcadero': 4, 'Financial District': 0}
 }
 
-# Define the constraints
-s = Optimize()
+friend_availability = {
+    'Joseph': (8 * 60, 5 * 60 + 30),
+    'Jeffrey': (5 * 60, 9 * 60 + 30),
+    'Kevin': (11 * 60 + 15, 15 * 60 + 15),
+    'David': (8 * 60 + 15, 9 * 60),
+    'Barbara': (10 * 60 + 30, 16 * 60 + 30)
+}
 
-# Define the variables
-x = [Bool(f'x_{i}') for i in range(6)]
-y = [Bool(f'y_{i}') for i in range(6)]
-z = [Bool(f'z_{i}') for i in range(6)]
+friend_meeting_times = {
+    'Joseph': 90,
+    'Jeffrey': 60,
+    'Kevin': 30,
+    'David': 30,
+    'Barbara': 15
+}
 
-# Define the objective function
-obj = [x[0] * 90 + x[1] * 90 + x[2] * 30 + x[3] * 30 + x[4] * 15 + x[5] * 15]
+# Create a Z3 solver
+solver = Solver()
 
-# Add constraints
-s.add(x[0] + x[1] + x[2] + x[3] + x[4] + x[5] == 1)  # Only one meeting
-s.add(And(x[0], 90 <= 25 + 25))  # Meet Joseph
-s.add(And(x[1], 60 <= 23 + 25))  # Meet Jeffrey
-s.add(And(x[2], 30 <= 17))  # Meet Kevin
-s.add(And(x[3], 30 <= 25))  # Meet David
-s.add(And(x[4], 15 <= 26))  # Meet Barbara
-s.add(And(x[5], 15 <= 26))  # Meet Barbara
+# Declare the variables
+locations = [Bool(f"location_{i}") for i in range(len(friend_locations))]
+times = [Int(f"time_{i}") for i in range(len(friend_locations) + 1)]
 
-# Add constraints for the objective function
-s.add(y[0] + y[1] + y[2] + y[3] + y[4] + y[5] == 1)  # Only one meeting
-s.add(And(y[0], 90 <= 25 + 25 + 25))  # Meet Joseph
-s.add(And(y[1], 60 <= 23 + 25 + 25))  # Meet Jeffrey
-s.add(And(y[2], 30 <= 17 + 17))  # Meet Kevin
-s.add(And(y[3], 30 <= 25 + 25))  # Meet David
-s.add(And(y[4], 15 <= 26 + 26))  # Meet Barbara
-s.add(And(y[5], 15 <= 26 + 26))  # Meet Barbara
+# Add the constraints
+for i in range(len(friend_locations)):
+    solver.add(Or(locations[i]))
+    solver.add(And(times[i] >= start_time, times[i] <= end_time))
+    for j in range(len(friend_locations)):
+        if i!= j:
+            solver.add(And(times[i] + travel_times[friend_locations[i]][friend_locations[j]] <= times[j]))
 
-# Add constraints for the second objective function
-s.add(z[0] + z[1] + z[2] + z[3] + z[4] + z[5] == 1)  # Only one meeting
-s.add(And(z[0], 90 <= 25 + 25 + 25 + 25))  # Meet Joseph
-s.add(And(z[1], 60 <= 23 + 25 + 25 + 25))  # Meet Jeffrey
-s.add(And(z[2], 30 <= 17 + 17 + 17))  # Meet Kevin
-s.add(And(z[3], 30 <= 25 + 25 + 25))  # Meet David
-s.add(And(z[4], 15 <= 26 + 26 + 26))  # Meet Barbara
-s.add(And(z[5], 15 <= 26 + 26 + 26))  # Meet Barbara
-
-# Add the objective functions
-s.maximize(obj[0])
-s.maximize(y[0] * 90 + y[1] * 90 + y[2] * 30 + y[3] * 30 + y[4] * 15 + y[5] * 15)
-s.maximize(z[0] * 90 + z[1] * 90 + z[2] * 30 + z[3] * 30 + z[4] * 15 + z[5] * 15)
+# Add the constraints for each friend
+for friend, (start, end) in friend_availability.items():
+    solver.add(And(And(times[0] + travel_times[friend_locations[0]][friend_availability[friend][0]] >= friend_meeting_times[friend],
+                      times[0] + travel_times[friend_locations[0]][friend_availability[friend][0]] <= friend_availability[friend][1]),
+                   Or([And(times[i] + travel_times[friend_locations[i]][friend_availability[friend][0]] >= friend_meeting_times[friend],
+                            times[i] + travel_times[friend_locations[i]][friend_availability[friend][0]] <= friend_availability[friend][1])
+                       for i in range(1, len(friend_locations) + 1)])))
 
 # Solve the problem
-result = s.check()
-if result == sat:
-    m = s.model()
+if solver.check() == sat:
+    model = solver.model()
+    schedule = []
+    for i in range(len(friend_locations)):
+        schedule.append((friend_locations[i], model[locations[i]], model[times[i]]))
     print("SOLUTION:")
-    for i in range(6):
-        if m.evaluate(x[i]):
-            print(f"Meet {['Joseph', 'Jeffrey', 'Kevin', 'David', 'Barbara', 'Barbara'][i]} at Fisherman's Wharf, Bayview, Mission District, Embarcadero, Financial District, Financial District respectively")
-        if m.evaluate(y[i]):
-            print(f"Meet {['Joseph', 'Jeffrey', 'Kevin', 'David', 'Barbara', 'Barbara'][i]} at Fisherman's Wharf, Bayview, Mission District, Embarcadero, Financial District, Financial District respectively")
-        if m.evaluate(z[i]):
-            print(f"Meet {['Joseph', 'Jeffrey', 'Kevin', 'David', 'Barbara', 'Barbara'][i]} at Fisherman's Wharf, Bayview, Mission District, Embarcadero, Financial District, Financial District respectively")
+    for location, at_location, time in schedule:
+        if at_location:
+            print(f"At {location} from {time} to {time + travel_times[location][schedule[schedule.index((location, at_location, time)) + 1][0]]} if {schedule[schedule.index((location, at_location, time)) + 1][0]}")
 else:
     print("No solution found")

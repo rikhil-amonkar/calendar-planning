@@ -1,84 +1,61 @@
 from z3 import *
 
-def solve_meeting():
+def solve_meeting_schedule():
     # Define the variables
     day = 'Monday'
-    start_hour = Int('start_hour')
-    start_minute = Int('start_minute')
-    end_hour = start_hour + 1
-    end_minute = 0
-    if start_minute == 0:
-        end_minute = 30
+    meeting_duration = 30  # in minutes
+    start_time = 9 * 60  # 9:00 in minutes
+    end_time = 17 * 60  # 17:00 in minutes
+    meeting_start = Int('meeting_start')
+    meeting_end = Int('meeting_end')
 
-    # Define the existing schedules
-    jacqueline = [
-        (9, 30),
-        (11, 30),
-        (12, 30),
-        (15, 30)
-    ]
-    harold = [
-        (10, 30),
-        (13, 30),
-        (15, 0, 17)
-    ]
-    arthur = [
-        (9, 30),
-        (10, 30, 12, 30),
-        (14, 30),
-        (15, 30, 17)
-    ]
-    kelly = [
-        (9, 30),
-        (10, 0, 11, 0),
-        (11, 30, 12, 30),
-        (14, 0, 15, 0),
-        (15, 30, 16, 0)
-    ]
+    # Define the constraints for each participant
+    jacqueline_busy = [9 * 60, 9 * 60 + 30, 11 * 60, 11 * 60 + 30, 12 * 60 + 30, 12 * 60 + 60, 15 * 60 + 30, 15 * 60 + 60]
+    harold_busy = [10 * 60, 10 * 60 + 30, 13 * 60, 13 * 60 + 30, 15 * 60, 17 * 60]
+    arthur_busy = [9 * 60, 9 * 60 + 30, 10 * 60, 12 * 60 + 30, 14 * 60 + 30, 15 * 60 + 30, 17 * 60]
+    kelly_busy = [9 * 60, 9 * 60 + 30, 10 * 60, 11 * 60, 11 * 60 + 30, 12 * 60 + 30, 14 * 60, 15 * 60, 15 * 60 + 30, 17 * 60]
 
-    # Convert the existing schedules to Z3 variables
-    jacqueline_vars = [Bool(f'jacqueline_{i}') for i in range(len(jacqueline))]
-    harold_vars = [Bool(f'harold_{i}') for i in range(len(harold))]
-    arthur_vars = [Bool(f'arthur_{i}') for i in range(len(arthur))]
-    kelly_vars = [Bool(f'kelly_{i}') for i in range(len(kelly))]
+    # Harold does not want to meet after 13:00
+    harold_constraint = meeting_start + meeting_duration <= 13 * 60
 
-    # Define the constraints
-    solver = Solver()
-    for i in range(len(jacqueline)):
-        solver.add(Not(jacqueline_vars[i]) | (start_hour > jacqueline[i][0]))
-    for i in range(len(harold)):
-        if len(harold[i]) == 2:
-            solver.add(Not(harold_vars[i]) | (start_hour > harold[i][0]))
-        else:
-            solver.add(Not(harold_vars[i]) | (start_hour > harold[i][0]))
-    for i in range(len(arthur)):
-        if len(arthur[i]) == 2:
-            solver.add(Not(arthur_vars[i]) | (start_hour > arthur[i][0]))
-        elif len(arthur[i]) == 3:
-            solver.add(Not(arthur_vars[i]) | (start_hour > arthur[i][0]))
-        else:
-            solver.add(Not(arthur_vars[i]) | (start_hour > arthur[i][0]))
-    for i in range(len(kelly)):
-        if len(kelly[i]) == 2:
-            solver.add(Not(kelly_vars[i]) | (start_hour > kelly[i][0]))
-        elif len(kelly[i]) == 3:
-            solver.add(Not(kelly_vars[i]) | (start_hour > kelly[i][0]))
-        else:
-            solver.add(Not(kelly_vars[i]) | (start_hour > kelly[i][0]))
-    solver.add(Implies(start_hour >= 9, start_hour <= 16))
-    solver.add(start_hour >= 9)
-    solver.add(start_hour <= 16)
-    solver.add(start_minute == 30)
-    solver.add(start_hour + 1 <= 17)
-    solver.add(start_hour + 1 >= 10)
+    # Define the constraints for the meeting schedule
+    constraints = [
+        meeting_start >= start_time,
+        meeting_start + meeting_duration <= end_time,
+        meeting_end >= meeting_start,
+        meeting_end <= end_time,
+        meeting_start + meeting_duration == meeting_end,
+        meeting_start >= 9 * 60,  # Meeting starts after 9:00
+        meeting_start <= 16 * 60,  # Meeting starts before 16:00
+        meeting_end <= 17 * 60,  # Meeting ends before 17:00
+        # Constraints for each participant
+        meeting_start + meeting_duration > max(jacqueline_busy),
+        meeting_start + meeting_duration > max(harold_busy),
+        meeting_start + meeting_duration > max(arthur_busy),
+        meeting_start + meeting_duration > max(kelly_busy),
+        meeting_start > max(jacqueline_busy),
+        meeting_start > max(harold_busy),
+        meeting_start > max(arthur_busy),
+        meeting_start > max(kelly_busy),
+        # Harold constraint
+        meeting_start + meeting_duration <= 13 * 60,
+        # Ensure meeting_start is a multiple of 30
+        meeting_start % 30 == 0,
+        # Ensure meeting_start is not before 9:00
+        meeting_start >= 9 * 60,
+    ]
 
     # Solve the constraints
+    solver = Solver()
+    solver.add(constraints)
     if solver.check() == sat:
         model = solver.model()
-        start_hour_val = model[start_hour].as_long()
-        start_minute_val = model[start_minute].as_long()
-        return f'SOLUTION:\nDay: {day}\nStart Time: {start_hour_val:02d}:{start_minute_val:02d}\nEnd Time: {start_hour_val + 1:02d}:30'
+        meeting_start_value = model[meeting_start].as_long()
+        meeting_end_value = model[meeting_end].as_long()
+        print(f'Day: {day}')
+        print(f'Start Time: {meeting_start_value // 60:02d}:{meeting_start_value % 60:02d}')
+        print(f'End Time: {meeting_end_value // 60:02d}:{meeting_end_value % 60:02d}')
     else:
-        return 'No solution found'
+        print('No solution found.')
 
-print(solve_meeting())
+solve_meeting_schedule()

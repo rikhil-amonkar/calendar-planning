@@ -1,94 +1,125 @@
 YOUR_CODE
 from z3 import *
 
-def schedule_meeting():
-    # Define the days of the week
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+# Define the variables
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+times = [9, 10, 11, 12, 13, 14, 15, 16, 17]
+times_str = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
+daniel_busy = [
+    [True, True, False, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, True, False, False, False, True, False, True, True, False, False, False, False, False, False, False, False, False],
+    [False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, False, False, False, False, False, False, True, True, True, False, False, True, True, False, False],
+    [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
+]
+bradley_busy = [
+    [True, True, True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, False, False, True, True, False, False, False, True, True, True, False, False, False, False, False],
+    [False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
+]
+daniel_preferences = [False, False, True, True, False]
+bradley_preferences = [False, True, False, False, True]
 
-    # Define the start and end times
-    times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
+# Define the solver
+solver = Solver()
 
-    # Convert times to minutes
-    time_in_minutes = {}
-    for i, time in enumerate(times):
-        hours, minutes = map(int, time.split(':'))
-        time_in_minutes[time] = hours * 60 + minutes
+# Define the variables
+day = [Bool(f'day_{i}') for i in range(5)]
+start_time = [Bool(f'start_time_{i}') for i in range(9)]
+end_time = [Bool(f'end_time_{i}') for i in range(9)]
 
-    # Define the meeting duration in minutes
-    meeting_duration = 30
+# Add constraints
+for i in range(5):
+    solver.add(Or([day[i]]))
+for i in range(9):
+    solver.add(Or([start_time[i]]))
+for i in range(9):
+    solver.add(Or([end_time[i]]))
 
-    # Define the solver
-    s = Solver()
+# Add constraints for meeting duration
+solver.add(Implies(And([day[0], start_time[0], end_time[1]]), Not(And([day[0], start_time[1], end_time[2]]))))
+solver.add(Implies(And([day[0], start_time[1], end_time[2]]), Not(And([day[0], start_time[2], end_time[3]]))))
+solver.add(Implies(And([day[0], start_time[2], end_time[3]]), Not(And([day[0], start_time[3], end_time[4]]))))
+solver.add(Implies(And([day[0], start_time[3], end_time[4]]), Not(And([day[0], start_time[4], end_time[5]]))))
+solver.add(Implies(And([day[0], start_time[4], end_time[5]]), Not(And([day[0], start_time[5], end_time[6]]))))
+solver.add(Implies(And([day[0], start_time[5], end_time[6]]), Not(And([day[0], start_time[6], end_time[7]]))))
+solver.add(Implies(And([day[0], start_time[6], end_time[7]]), Not(And([day[0], start_time[7], end_time[8]]))))
+solver.add(Implies(And([day[0], start_time[7], end_time[8]]), Not(And([day[0], start_time[8], end_time[0]]))))
+solver.add(Implies(And([day[0], start_time[8], end_time[0]]), Not(And([day[0], start_time[0], end_time[1]]))))
 
-    # Define the variables
-    day = [Bool(f'day_{i}') for i in range(len(days))]
-    start_time = [Bool(f'start_time_{i}') for i in range(len(times))]
-    end_time = [Bool(f'end_time_{i}') for i in range(len(times))]
+# Add constraints for meeting time
+for i in range(5):
+    for j in range(9):
+        for k in range(9):
+            for l in range(9):
+                if daniel_busy[i][j] and (k in [j+1, j+2, j+3, j+4, j+5, j+6, j+7, j+8, 0] or l in [j+1, j+2, j+3, j+4, j+5, j+6, j+7, j+8, 0]):
+                    solver.add(Implies(And([day[i], start_time[j]]), Not(And([day[i], start_time[k], end_time[l]]))))
+for i in range(5):
+    for j in range(9):
+        for k in range(9):
+            for l in range(9):
+                if bradley_busy[i][j] and (k in [j+1, j+2, j+3, j+4, j+5, j+6, j+7, j+8, 0] or l in [j+1, j+2, j+3, j+4, j+5, j+6, j+7, j+8, 0]):
+                    solver.add(Implies(And([day[i], start_time[j]]), Not(And([day[i], start_time[k], end_time[l]]))))
 
-    # Define the constraints for Daniel's schedule
-    daniel_schedule = [
-        Or([Not(day[0]), Not(start_time[time_in_minutes['09:30']]), Not(start_time[time_in_minutes['12:00']]), Not(start_time[time_in_minutes['13:00']]), Not(start_time[time_in_minutes['14:00']]), Not(start_time[time_in_minutes['14:30']]), Not(start_time[time_in_minutes['15:00']]), Not(start_time[time_in_minutes['15:30']]), Not(start_time[time_in_minutes['16:00']])]),
-        Or([Not(day[1]), Not(start_time[time_in_minutes['11:00']]), Not(start_time[time_in_minutes['13:00']]), Not(start_time[time_in_minutes['15:30']]), Not(start_time[time_in_minutes['16:30']])]),
-        Or([Not(day[2]), Not(start_time[time_in_minutes['09:00']])]),
-        Or([Not(day[3]), Not(start_time[time_in_minutes['10:30']]), Not(start_time[time_in_minutes['12:00']]), Not(start_time[time_in_minutes['14:30']]), Not(start_time[time_in_minutes['15:00']])]),
-        Or([Not(day[4]), Not(start_time[time_in_minutes['09:00']]), Not(start_time[time_in_minutes['11:30']]), Not(start_time[time_in_minutes['13:00']]), Not(start_time[time_in_minutes['16:30']])])
-    ]
+# Add constraints for preferences
+for i in range(5):
+    solver.add(Implies(And([day[i]]), daniel_preferences[i]))
+for i in range(5):
+    solver.add(Implies(And([day[i]]), bradley_preferences[i]))
 
-    # Define the constraints for Bradley's schedule
-    bradley_schedule = [
-        Or([Not(day[0]), Not(start_time[time_in_minutes['09:30']]), Not(start_time[time_in_minutes['11:00']]), Not(start_time[time_in_minutes['12:30']]), Not(start_time[time_in_minutes['14:00']])]),
-        Or([Not(day[1]), Not(start_time[time_in_minutes['10:30']]), Not(start_time[time_in_minutes['12:00']]), Not(start_time[time_in_minutes['13:30']]), Not(start_time[time_in_minutes['15:30']])]),
-        Or([Not(day[2]), Not(start_time[time_in_minutes['09:00']]), Not(start_time[time_in_minutes['11:00']]), Not(start_time[time_in_minutes['13:00']]), Not(start_time[time_in_minutes['13:30']]), Not(start_time[time_in_minutes['14:00']]), Not(start_time[time_in_minutes['14:30']]), Not(start_time[time_in_minutes['17:00']])]),
-        Or([Not(day[3]), Not(start_time[time_in_minutes['09:00']]), Not(start_time[time_in_minutes['12:30']]), Not(start_time[time_in_minutes['13:30']]), Not(start_time[time_in_minutes['14:30']]), Not(start_time[time_in_minutes['15:00']])]),
-        Or([Not(day[4]), Not(start_time[time_in_minutes['09:00']]), Not(start_time[time_in_minutes['10:00']]), Not(start_time[time_in_minutes['12:30']]), Not(start_time[time_in_minutes['13:00']]), Not(start_time[time_in_minutes['13:30']]), Not(start_time[time_in_minutes['14:00']]), Not(start_time[time_in_minutes['14:30']])])
-    ]
+# Add constraints for Daniel's preferences
+solver.add(Implies(And([day[2], start_time[0]]), Not(And([day[2], start_time[1]]))))
+solver.add(Implies(And([day[2], start_time[1]]), Not(And([day[2], start_time[2]]))))
+solver.add(Implies(And([day[2], start_time[2]]), Not(And([day[2], start_time[3]]))))
+solver.add(Implies(And([day[2], start_time[3]]), Not(And([day[2], start_time[4]]))))
+solver.add(Implies(And([day[2], start_time[4]]), Not(And([day[2], start_time[5]]))))
+solver.add(Implies(And([day[2], start_time[5]]), Not(And([day[2], start_time[6]]))))
+solver.add(Implies(And([day[2], start_time[6]]), Not(And([day[2], start_time[7]]))))
+solver.add(Implies(And([day[2], start_time[7]]), Not(And([day[2], start_time[8]]))))
+solver.add(Implies(And([day[2], start_time[8]]), Not(And([day[2], start_time[0]]))))
 
-    # Define the constraints for Daniel's preferences
-    daniel_preferences = [
-        Not(day[2]),
-        Not(day[3])
-    ]
+solver.add(Implies(And([day[3], start_time[0]]), Not(And([day[3], start_time[1]]))))
+solver.add(Implies(And([day[3], start_time[1]]), Not(And([day[3], start_time[2]]))))
+solver.add(Implies(And([day[3], start_time[2]]), Not(And([day[3], start_time[3]]))))
+solver.add(Implies(And([day[3], start_time[3]]), Not(And([day[3], start_time[4]]))))
+solver.add(Implies(And([day[3], start_time[4]]), Not(And([day[3], start_time[5]]))))
+solver.add(Implies(And([day[3], start_time[5]]), Not(And([day[3], start_time[6]]))))
+solver.add(Implies(And([day[3], start_time[6]]), Not(And([day[3], start_time[7]]))))
+solver.add(Implies(And([day[3], start_time[7]]), Not(And([day[3], start_time[8]]))))
+solver.add(Implies(And([day[3], start_time[8]]), Not(And([day[3], start_time[0]]))))
 
-    # Define the constraints for Bradley's preferences
-    bradley_preferences = [
-        Not(day[0]),
-        Not(day[1]),
-        Not(day[4])
-    ]
+# Add constraints for Bradley's preferences
+solver.add(Implies(And([day[0]]), Not(And([day[0], start_time[0]]))))
+for i in range(9):
+    for j in range(9):
+        if i < 5 and j in [i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, 0]:
+            solver.add(Implies(And([day[0], start_time[i]]), Not(And([day[0], start_time[j]]))))
+solver.add(Implies(And([day[1], start_time[0]]), Not(And([day[1], start_time[1]]))))
+solver.add(Implies(And([day[1], start_time[1]]), Not(And([day[1], start_time[2]]))))
+solver.add(Implies(And([day[1], start_time[2]]), Not(And([day[1], start_time[3]]))))
+solver.add(Implies(And([day[1], start_time[3]]), Not(And([day[1], start_time[4]]))))
+solver.add(Implies(And([day[1], start_time[4]]), Not(And([day[1], start_time[5]]))))
+solver.add(Implies(And([day[1], start_time[5]]), Not(And([day[1], start_time[6]]))))
+solver.add(Implies(And([day[1], start_time[6]]), Not(And([day[1], start_time[7]]))))
+solver.add(Implies(And([day[1], start_time[7]]), Not(And([day[1], start_time[8]]))))
+solver.add(Implies(And([day[1], start_time[8]]), Not(And([day[1], start_time[0]]))))
+solver.add(Implies(And([day[4]]), Not(And([day[4], start_time[0]]))))
+for i in range(9):
+    for j in range(9):
+        if i < 5 and j in [i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, 0]:
+            solver.add(Implies(And([day[4], start_time[i]]), Not(And([day[4], start_time[j]]))))
 
-    # Add the constraints to the solver
-    s.add(Or([day[i] for i in range(len(days))]))
-    for i in range(len(times)):
-        s.add((start_time[i] | end_time[i]))
-        if i > 0:
-            s.add((start_time[i] | start_time[i-1]))
-        if i < len(times) - 1:
-            s.add((end_time[i] | end_time[i+1]))
-        if i > 0 and i < len(times) - 1:
-            s.add((Not(start_time[i]) | Not(end_time[i-1])))
-    for time in times:
-        s.add(Not(start_time[time_in_minutes[time]] | end_time[time_in_minutes[time]]))
-    s.add(daniel_schedule)
-    s.add(bradley_schedule)
-    s.add(daniel_preferences)
-    s.add(bradley_preferences)
-
-    # Check if there is a solution
-    if s.check() == sat:
-        # Get the model
-        m = s.model()
-
-        # Get the day, start time, and end time
-        day_index = [i for i, b in enumerate(m[day]) if b == True][0]
-        start_time_index = [i for i, b in enumerate(m[start_time]) if b == True][0]
-        end_time_index = [i for i, b in enumerate(m[end_time]) if b == True][0]
-
-        # Print the solution
-        print(f'SOLUTION:')
-        print(f'Day: {days[day_index]}')
-        print(f'Start Time: {times[start_time_index]}')
-        print(f'End Time: {times[end_time_index]}')
-    else:
-        print('No solution exists.')
-
-schedule_meeting()
+# Check the solution
+if solver.check() == sat:
+    model = solver.model()
+    day_idx = [model.evaluate(day[i]).as_bool() for i in range(5)].index(True)
+    start_idx = [model.evaluate(start_time[i]).as_bool() for i in range(9)].index(True)
+    end_idx = [model.evaluate(end_time[i]).as_bool() for i in range(9)].index(True)
+    print(f'SOLUTION:')
+    print(f'Day: {days[day_idx]}')
+    print(f'Start Time: {times_str[start_idx]}')
+    print(f'End Time: {times_str[end_idx]}')
+else:
+    print('No solution found')

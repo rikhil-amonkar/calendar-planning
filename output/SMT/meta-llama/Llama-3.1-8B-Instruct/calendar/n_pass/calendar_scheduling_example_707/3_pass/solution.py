@@ -1,87 +1,58 @@
 YOUR_CODE
 from z3 import *
 
-def solve_scheduling_problem():
-    # Define the days of the week
-    days = ['Monday', 'Tuesday', 'Wednesday']
+def schedule_meeting():
+    # Define the variables
+    day = [Bool('d1'), Bool('d2'), Bool('d3')]  # Monday, Tuesday, Wednesday
+    start_time = [Int('st1'), Int('st2'), Int('st3')]  # Start time in minutes (0-480)
+    end_time = [Int('et1'), Int('et2'), Int('et3')]  # End time in minutes (0-480)
 
-    # Define the start and end times of the work hours
-    start_time = 9
-    end_time = 17
+    # Define the constraints
+    for i in range(3):
+        start_time[i] = start_time[i].sort(IntSort())
+        end_time[i] = end_time[i].sort(IntSort())
+        day[i] = day[i].sort(BoolSort())
 
-    # Define the duration of the meeting
-    meeting_duration = 30
+    # Ryan's constraints
+    ryan_monday = Or([start_time[0] < 930, start_time[0] > 1000, start_time[0] > 1100, start_time[0] > 1300, start_time[0] > 1530])
+    ryan_tuesday = Or([start_time[1] < 1130, start_time[1] > 1530])
+    ryan_wednesday = Or([start_time[2] < 1200, start_time[2] > 1530, start_time[2] > 1630])
+    ryan_constraints = And([ryan_monday, ryan_tuesday, ryan_wednesday])
 
-    # Define the existing schedules for Ryan and Adam
-    ryan_schedule = {
-        'Monday': [(9, 30), (10, 0), (11, 0), (12, 0), (13, 0), (13, 30), (15, 30), (16, 0)],
-        'Tuesday': [(11, 30), (15, 30), (16, 0)],
-        'Wednesday': [(12, 0), (15, 30), (16, 0), (16, 30), (17, 0)]
-    }
+    # Adam's constraints
+    adam_monday = Or([start_time[0] < 900, start_time[0] > 1030, start_time[0] > 1100, start_time[0] > 1330, start_time[0] > 1600, start_time[0] > 1630])
+    adam_tuesday = Or([start_time[1] < 900, start_time[1] > 1030, start_time[1] > 1030, start_time[1] > 1530, start_time[1] > 1600])
+    adam_wednesday = Or([start_time[2] < 900, start_time[2] > 930, start_time[2] > 1000, start_time[2] > 1130, start_time[2] > 1430, start_time[2] > 1500, start_time[2] > 1600])
+    adam_constraints = And([adam_monday, adam_tuesday, adam_wednesday])
 
-    adam_schedule = {
-        'Monday': [(9, 0), (10, 30), (11, 0), (13, 30), (14, 0), (16, 0), (16, 30), (17, 0)],
-        'Tuesday': [(9, 0), (10, 0), (10, 30), (16, 0), (17, 0)],
-        'Wednesday': [(9, 0), (9, 30), (10, 0), (11, 0), (11, 30), (14, 30), (15, 0), (15, 30), (16, 0), (16, 30)]
-    }
+    # Meeting duration constraint
+    duration_constraint = Implies(And([day[0], start_time[0] >= 930, end_time[0] <= 1730]), end_time[0] - start_time[0] == 30)
 
-    # Define the preferences for Adam
-    adam_preferences = {
-        'Monday': [(14, 30)],
-        'Tuesday': []
-    }
+    # Adam's preference constraint
+    adam_preference = Implies(And([day[0], start_time[0] < 1430]), Or([start_time[0] > 1430, Not(day[0])]))
 
-    # Create a Z3 solver
-    solver = Solver()
+    # Combine the constraints
+    constraints = And([ryan_constraints, adam_constraints, duration_constraint, adam_preference])
 
-    # Declare the variables
-    day = Int('day')
-    start_hour = Int('start_hour')
-    end_hour = Int('end_hour')
+    # Add the constraints to the solver
+    s = Solver()
+    s.add(constraints)
 
-    # Add constraints for the day
-    solver.add(day >= 0)
-    solver.add(day < len(days))
+    # Solve the constraints
+    if s.check() == sat:
+        model = s.model()
 
-    # Add constraints for the start and end times
-    solver.add(start_hour >= 9)
-    solver.add(start_hour <= 17)
-    solver.add(end_hour >= 9)
-    solver.add(end_hour <= 17)
-    solver.add(end_hour > start_hour)
-
-    # Add constraints for the meeting duration
-    solver.add(end_hour - start_hour == 30)
-
-    # Add constraints for Ryan's schedule
-    for i, (start, end) in enumerate(ryan_schedule[days[day]]):
-        solver.add(Or(start > end_hour, end < start_hour))
-
-    # Add constraints for Adam's schedule
-    for i, (start, end) in enumerate(adam_schedule[days[day]]):
-        solver.add(Or(start > end_hour, end < start_hour))
-
-    # Add constraints for Adam's preferences
-    for i, (start, end) in enumerate(adam_preferences[days[day]]):
-        solver.add(Or(start > end_hour, end < start_hour))
-
-    # Add constraints for Ryan's preference to not meet on Wednesday
-    solver.add(Or(day!= 2, start_hour!= 12))
-
-    # Check if a solution exists
-    if solver.check() == sat:
-        # Get the solution
-        model = solver.model()
-        day = model[day].as_long()
-        start_hour = model[start_hour].as_long()
-        end_hour = model[end_hour].as_long()
+        # Extract the solution
+        day_index = [i for i, x in enumerate(model[day]) if x == True][0]
+        start_time_value = model[start_time[day_index]].as_long() // 60
+        end_time_value = model[end_time[day_index]].as_long() // 60
 
         # Print the solution
         print('SOLUTION:')
-        print(f'Day: {days[day]}')
-        print(f'Start Time: {start_hour:02d}:00')
-        print(f'End Time: {end_hour:02d}:00')
+        print(f'Day: {["Monday", "Tuesday", "Wednesday"][day_index]}')
+        print(f'Start Time: {start_time_value:02d}:00')
+        print(f'End Time: {end_time_value:02d}:00')
     else:
-        print('No solution exists.')
+        print('No solution found.')
 
-solve_scheduling_problem()
+schedule_meeting()

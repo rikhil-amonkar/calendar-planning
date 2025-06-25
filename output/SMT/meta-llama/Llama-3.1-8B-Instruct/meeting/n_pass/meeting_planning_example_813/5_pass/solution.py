@@ -1,167 +1,191 @@
-YOUR_CODE
 from z3 import *
 
-# Define the time slots
-start_time = 9 * 60  # 9:00 AM
-end_time = 21 * 60  # 9:60 PM
-
-# Define the locations
-locations = [
-    "Marina District",
-    "Embarcadero",
-    "Bayview",
-    "Union Square",
-    "Chinatown",
-    "Sunset District",
-    "Golden Gate Park",
-    "Financial District",
-    "Haight-Ashbury",
-    "Mission District"
-]
-
-# Define the travel times
+# Define the variables
+start_time = 0
+end_time = 1440  # 12 hours in minutes
+time_slots = [Int(f't{i}') for i in range(start_time, end_time)]
 travel_times = {
-    ("Marina District", "Embarcadero"): 12,
-    ("Marina District", "Bayview"): 27,
-    ("Marina District", "Union Square"): 16,
-    ("Marina District", "Chinatown"): 15,
-    ("Marina District", "Sunset District"): 19,
-    ("Marina District", "Golden Gate Park"): 18,
-    ("Marina District", "Financial District"): 17,
-    ("Marina District", "Haight-Ashbury"): 16,
-    ("Marina District", "Mission District"): 20,
-    ("Embarcadero", "Marina District"): 12,
-    ("Embarcadero", "Bayview"): 21,
-    ("Embarcadero", "Union Square"): 10,
-    ("Embarcadero", "Chinatown"): 7,
-    ("Embarcadero", "Sunset District"): 30,
-    ("Embarcadero", "Golden Gate Park"): 25,
-    ("Embarcadero", "Financial District"): 5,
-    ("Embarcadero", "Haight-Ashbury"): 21,
-    ("Embarcadero", "Mission District"): 20,
-    ("Bayview", "Marina District"): 27,
-    ("Bayview", "Embarcadero"): 19,
-    ("Bayview", "Union Square"): 18,
-    ("Bayview", "Chinatown"): 19,
-    ("Bayview", "Sunset District"): 23,
-    ("Bayview", "Golden Gate Park"): 22,
-    ("Bayview", "Financial District"): 19,
-    ("Bayview", "Haight-Ashbury"): 19,
-    ("Bayview", "Mission District"): 13,
-    ("Union Square", "Marina District"): 18,
-    ("Union Square", "Embarcadero"): 11,
-    ("Union Square", "Bayview"): 15,
-    ("Union Square", "Chinatown"): 7,
-    ("Union Square", "Sunset District"): 27,
-    ("Union Square", "Golden Gate Park"): 22,
-    ("Union Square", "Financial District"): 9,
-    ("Union Square", "Haight-Ashbury"): 18,
-    ("Union Square", "Mission District"): 14,
-    ("Chinatown", "Marina District"): 12,
-    ("Chinatown", "Embarcadero"): 5,
-    ("Chinatown", "Bayview"): 20,
-    ("Chinatown", "Union Square"): 7,
-    ("Chinatown", "Sunset District"): 29,
-    ("Chinatown", "Golden Gate Park"): 23,
-    ("Chinatown", "Financial District"): 5,
-    ("Chinatown", "Haight-Ashbury"): 19,
-    ("Chinatown", "Mission District"): 17,
-    ("Sunset District", "Marina District"): 21,
-    ("Sunset District", "Embarcadero"): 30,
-    ("Sunset District", "Bayview"): 22,
-    ("Sunset District", "Union Square"): 30,
-    ("Sunset District", "Chinatown"): 30,
-    ("Sunset District", "Golden Gate Park"): 11,
-    ("Sunset District", "Financial District"): 30,
-    ("Sunset District", "Haight-Ashbury"): 15,
-    ("Sunset District", "Mission District"): 25,
-    ("Golden Gate Park", "Marina District"): 16,
-    ("Golden Gate Park", "Embarcadero"): 25,
-    ("Golden Gate Park", "Bayview"): 23,
-    ("Golden Gate Park", "Union Square"): 22,
-    ("Golden Gate Park", "Chinatown"): 23,
-    ("Golden Gate Park", "Sunset District"): 10,
-    ("Golden Gate Park", "Financial District"): 26,
-    ("Golden Gate Park", "Haight-Ashbury"): 7,
-    ("Golden Gate Park", "Mission District"): 17,
-    ("Financial District", "Marina District"): 15,
-    ("Financial District", "Embarcadero"): 4,
-    ("Financial District", "Bayview"): 19,
-    ("Financial District", "Union Square"): 9,
-    ("Financial District", "Chinatown"): 5,
-    ("Financial District", "Sunset District"): 30,
-    ("Financial District", "Golden Gate Park"): 23,
-    ("Financial District", "Haight-Ashbury"): 19,
-    ("Financial District", "Mission District"): 17,
-    ("Haight-Ashbury", "Marina District"): 17,
-    ("Haight-Ashbury", "Embarcadero"): 20,
-    ("Haight-Ashbury", "Bayview"): 18,
-    ("Haight-Ashbury", "Union Square"): 19,
-    ("Haight-Ashbury", "Chinatown"): 19,
-    ("Haight-Ashbury", "Sunset District"): 15,
-    ("Haight-Ashbury", "Golden Gate Park"): 7,
-    ("Haight-Ashbury", "Financial District"): 21,
-    ("Haight-Ashbury", "Mission District"): 11,
-    ("Mission District", "Marina District"): 19,
-    ("Mission District", "Embarcadero"): 19,
-    ("Mission District", "Bayview"): 14,
-    ("Mission District", "Union Square"): 15,
-    ("Mission District", "Chinatown"): 16,
-    ("Mission District", "Sunset District"): 24,
-    ("Mission District", "Golden Gate Park"): 17,
-    ("Mission District", "Financial District"): 15,
-    ("Mission District", "Haight-Ashbury"): 12
+    'Marina District to Embarcadero': 14,
+    'Marina District to Bayview': 27,
+    'Marina District to Union Square': 16,
+    'Marina District to Chinatown': 15,
+    'Marina District to Sunset District': 19,
+    'Marina District to Golden Gate Park': 18,
+    'Marina District to Financial District': 17,
+    'Marina District to Haight-Ashbury': 16,
+    'Marina District to Mission District': 20,
+    'Embarcadero to Marina District': 12,
+    'Embarcadero to Bayview': 21,
+    'Embarcadero to Union Square': 10,
+    'Embarcadero to Chinatown': 7,
+    'Embarcadero to Sunset District': 30,
+    'Embarcadero to Golden Gate Park': 25,
+    'Embarcadero to Financial District': 5,
+    'Embarcadero to Haight-Ashbury': 21,
+    'Embarcadero to Mission District': 20,
+    'Bayview to Marina District': 27,
+    'Bayview to Embarcadero': 19,
+    'Bayview to Union Square': 18,
+    'Bayview to Chinatown': 19,
+    'Bayview to Sunset District': 23,
+    'Bayview to Golden Gate Park': 22,
+    'Bayview to Financial District': 19,
+    'Bayview to Haight-Ashbury': 19,
+    'Bayview to Mission District': 13,
+    'Union Square to Marina District': 18,
+    'Union Square to Embarcadero': 11,
+    'Union Square to Bayview': 15,
+    'Union Square to Chinatown': 7,
+    'Union Square to Sunset District': 27,
+    'Union Square to Golden Gate Park': 22,
+    'Union Square to Financial District': 9,
+    'Union Square to Haight-Ashbury': 18,
+    'Union Square to Mission District': 14,
+    'Chinatown to Marina District': 12,
+    'Chinatown to Embarcadero': 5,
+    'Chinatown to Bayview': 20,
+    'Chinatown to Union Square': 7,
+    'Chinatown to Sunset District': 29,
+    'Chinatown to Golden Gate Park': 23,
+    'Chinatown to Financial District': 5,
+    'Chinatown to Haight-Ashbury': 19,
+    'Chinatown to Mission District': 17,
+    'Sunset District to Marina District': 21,
+    'Sunset District to Embarcadero': 30,
+    'Sunset District to Bayview': 22,
+    'Sunset District to Union Square': 30,
+    'Sunset District to Chinatown': 30,
+    'Sunset District to Golden Gate Park': 11,
+    'Sunset District to Financial District': 30,
+    'Sunset District to Haight-Ashbury': 15,
+    'Sunset District to Mission District': 25,
+    'Golden Gate Park to Marina District': 16,
+    'Golden Gate Park to Embarcadero': 25,
+    'Golden Gate Park to Bayview': 23,
+    'Golden Gate Park to Union Square': 22,
+    'Golden Gate Park to Chinatown': 23,
+    'Golden Gate Park to Sunset District': 10,
+    'Golden Gate Park to Financial District': 26,
+    'Golden Gate Park to Haight-Ashbury': 7,
+    'Golden Gate Park to Mission District': 17,
+    'Financial District to Marina District': 15,
+    'Financial District to Embarcadero': 4,
+    'Financial District to Bayview': 19,
+    'Financial District to Union Square': 9,
+    'Financial District to Chinatown': 5,
+    'Financial District to Sunset District': 30,
+    'Financial District to Golden Gate Park': 23,
+    'Financial District to Haight-Ashbury': 19,
+    'Financial District to Mission District': 17,
+    'Haight-Ashbury to Marina District': 17,
+    'Haight-Ashbury to Embarcadero': 20,
+    'Haight-Ashbury to Bayview': 18,
+    'Haight-Ashbury to Union Square': 19,
+    'Haight-Ashbury to Chinatown': 19,
+    'Haight-Ashbury to Sunset District': 15,
+    'Haight-Ashbury to Golden Gate Park': 7,
+    'Haight-Ashbury to Financial District': 21,
+    'Haight-Ashbury to Mission District': 11,
+    'Mission District to Marina District': 19,
+    'Mission District to Embarcadero': 19,
+    'Mission District to Bayview': 14,
+    'Mission District to Union Square': 15,
+    'Mission District to Chinatown': 16,
+    'Mission District to Sunset District': 24,
+    'Mission District to Golden Gate Park': 17,
+    'Mission District to Financial District': 15,
+    'Mission District to Haight-Ashbury': 12
 }
 
 # Define the constraints
-friends = [
-    {"name": "Joshua", "location": "Embarcadero", "start_time": 9 * 60 + 45, "end_time": 18 * 60, "required_time": 105},
-    {"name": "Jeffrey", "location": "Bayview", "start_time": 9 * 60 + 45, "end_time": 19 * 60 + 15, "required_time": 75},
-    {"name": "Charles", "location": "Union Square", "start_time": 10 * 60 + 45, "end_time": 19 * 60 + 15, "required_time": 120},
-    {"name": "Joseph", "location": "Chinatown", "start_time": 7 * 60, "end_time": 15 * 60 + 30, "required_time": 60},
-    {"name": "Elizabeth", "location": "Sunset District", "start_time": 9 * 60, "end_time": 9 * 60 + 45, "required_time": 45},
-    {"name": "Matthew", "location": "Golden Gate Park", "start_time": 11 * 60, "end_time": 19 * 60 + 30, "required_time": 45},
-    {"name": "Carol", "location": "Financial District", "start_time": 10 * 60 + 45, "end_time": 11 * 60 + 15, "required_time": 15},
-    {"name": "Paul", "location": "Haight-Ashbury", "start_time": 19 * 60 + 15, "end_time": 20 * 60 + 30, "required_time": 15},
-    {"name": "Rebecca", "location": "Mission District", "start_time": 17 * 60, "end_time": 21 * 60 + 45, "required_time": 45}
-]
+s = Solver()
 
-# Create the solver
-solver = Solver()
+# Joshua will be at Embarcadero from 9:45AM to 6:00PM
+joshua_arrival = 585  # 9:45AM in minutes
+joshua_departure = 3600  # 6:00PM in minutes
+embarcadero_to_marina_district = [Int(f'embarcadero_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= joshua_arrival, i <= end_time - 1), And(embarcadero_to_marina_district[i] >= joshua_arrival, embarcadero_to_marina_district[i] <= joshua_departure))))
 
-# Create the variables
-times = {}
-for friend in friends:
-    times[friend["name"]] = [Bool(f"{friend['name']}_{i}") for i in range(friend["required_time"] + 1)]
+# Joshua must be met for a minimum of 105 minutes
+s.add(ForAll('i', Implies(And(i >= joshua_arrival, i <= end_time - 1), embarcadero_to_marina_district[i] >= joshua_arrival + 105))))
 
-# Add the constraints
-for friend in friends:
-    for i in range(friend["required_time"] + 1):
-        solver.add(Not(times[friend["name"]][i]))
-    solver.add(Or([times[friend["name"]][i] for i in range(friend["required_time"] + 1)]))
-    solver.add(Implies(friend["start_time"] <= start_time + i * 60, times[friend["name"]][i]))
-    solver.add(Implies(start_time + i * 60 < friend["end_time"], times[friend["name"]][i]))
-    solver.add(Implies(And([times[friend["name"]][j] for j in range(i)]), times[friend["name"]][i]))
+# Jeffrey will be at Bayview from 9:45AM to 8:15PM
+jeffrey_arrival = 585  # 9:45AM in minutes
+jeffrey_departure = 4680  # 8:15PM in minutes
+bayview_to_marina_district = [Int(f'bayview_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= jeffrey_arrival, i <= end_time - 1), And(bayview_to_marina_district[i] >= jeffrey_arrival, bayview_to_marina_district[i] <= jeffrey_departure)))))
 
-# Add the travel time constraints
-for friend in friends:
-    for i in range(friend["required_time"] + 1):
-        for j in range(i + 1):
-            solver.add(Implies(times[friend["name"]][i], times[friend["name"]][j] + travel_times[(locations[0], friend["location"])]))
+# Jeffrey must be met for a minimum of 75 minutes
+s.add(ForAll('i', Implies(And(i >= jeffrey_arrival, i <= end_time - 1), bayview_to_marina_district[i] >= jeffrey_arrival + 75))))
+
+# Charles will be at Union Square from 10:45AM to 8:15PM
+charles_arrival = 645  # 10:45AM in minutes
+charles_departure = 4680  # 8:15PM in minutes
+union_square_to_marina_district = [Int(f'union_square_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= charles_arrival, i <= end_time - 1), And(union_square_to_marina_district[i] >= charles_arrival, union_square_to_marina_district[i] <= charles_departure)))))
+
+# Charles must be met for a minimum of 120 minutes
+s.add(ForAll('i', Implies(And(i >= charles_arrival, i <= end_time - 1), union_square_to_marina_district[i] >= charles_arrival + 120))))
+
+# Joseph will be at Chinatown from 7:00AM to 3:30PM
+joseph_arrival = 420  # 7:00AM in minutes
+joseph_departure = 210  # 3:30PM in minutes
+chinatown_to_marina_district = [Int(f'chinatown_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= joseph_arrival, i <= end_time - 1), And(chinatown_to_marina_district[i] >= joseph_arrival, chinatown_to_marina_district[i] <= joseph_departure)))))
+
+# Joseph must be met for a minimum of 60 minutes
+s.add(ForAll('i', Implies(And(i >= joseph_arrival, i <= end_time - 1), chinatown_to_marina_district[i] >= joseph_arrival + 60))))
+
+# Elizabeth will be at Sunset District from 9:00AM to 9:45AM
+elizabeth_arrival = 540  # 9:00AM in minutes
+elizabeth_departure = 585  # 9:45AM in minutes
+sunset_district_to_marina_district = [Int(f'sunset_district_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= elizabeth_arrival, i <= end_time - 1), And(sunset_district_to_marina_district[i] >= elizabeth_arrival, sunset_district_to_marina_district[i] <= elizabeth_departure)))))
+
+# Elizabeth must be met for a minimum of 45 minutes
+s.add(ForAll('i', Implies(And(i >= elizabeth_arrival, i <= end_time - 1), sunset_district_to_marina_district[i] >= elizabeth_arrival + 45))))
+
+# Matthew will be at Golden Gate Park from 11:00AM to 7:30PM
+matthew_arrival = 660  # 11:00AM in minutes
+matthew_departure = 4500  # 7:30PM in minutes
+golden_gate_park_to_marina_district = [Int(f'golden_gate_park_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= matthew_arrival, i <= end_time - 1), And(golden_gate_park_to_marina_district[i] >= matthew_arrival, golden_gate_park_to_marina_district[i] <= matthew_departure)))))
+
+# Matthew must be met for a minimum of 45 minutes
+s.add(ForAll('i', Implies(And(i >= matthew_arrival, i <= end_time - 1), golden_gate_park_to_marina_district[i] >= matthew_arrival + 45))))
+
+# Carol will be at Financial District from 10:45AM to 11:15AM
+carol_arrival = 645  # 10:45AM in minutes
+carol_departure = 675  # 11:15AM in minutes
+financial_district_to_marina_district = [Int(f'financial_district_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= carol_arrival, i <= end_time - 1), And(financial_district_to_marina_district[i] >= carol_arrival, financial_district_to_marina_district[i] <= carol_departure)))))
+
+# Carol must be met for a minimum of 15 minutes
+s.add(ForAll('i', Implies(And(i >= carol_arrival, i <= end_time - 1), financial_district_to_marina_district[i] >= carol_arrival + 15))))
+
+# Paul will be at Haight-Ashbury from 7:15PM to 8:30PM
+paul_arrival = 4350  # 7:15PM in minutes
+paul_departure = 4980  # 8:30PM in minutes
+haight_ashbury_to_marina_district = [Int(f'haight_ashbury_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= paul_arrival, i <= end_time - 1), And(haight_ashbury_to_marina_district[i] >= paul_arrival, haight_ashbury_to_marina_district[i] <= paul_departure)))))
+
+# Paul must be met for a minimum of 15 minutes
+s.add(ForAll('i', Implies(And(i >= paul_arrival, i <= end_time - 1), haight_ashbury_to_marina_district[i] >= paul_arrival + 15))))
+
+# Rebecca will be at Mission District from 5:00PM to 9:45PM
+rebecca_arrival = 3000  # 5:00PM in minutes
+rebecca_departure = 585  # 9:45PM in minutes
+mission_district_to_marina_district = [Int(f'mission_district_to_marina_district_{i}') for i in range(start_time, end_time)]
+s.add(ForAll('i', Implies(And(i >= rebecca_arrival, i <= end_time - 1), And(mission_district_to_marina_district[i] >= rebecca_arrival, mission_district_to_marina_district[i] <= rebecca_departure)))))
+
+# Rebecca must be met for a minimum of 45 minutes
+s.add(ForAll('i', Implies(And(i >= rebecca_arrival, i <= end_time - 1), mission_district_to_marina_district[i] >= rebecca_arrival + 45))))
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    print("SOLUTION:")
-    for friend in friends:
-        max_time = 0
-        for i in range(friend["required_time"] + 1):
-            if model.evaluate(times[friend["name"]][i]).as_bool():
-                max_time = i
-        print(f"Meet {friend['name']} at {locations[0]} for {max_time} minutes")
-        if friend["name"] == "Joshua":
-            print(f"Travel to {friend['location']} at {start_time + max_time * 60} minutes")
-        else:
-            print(f"Travel to {friend['location']} at {start_time + (max_time + travel_times[(locations[0], friend['location'])]) * 60} minutes")
+if s.check() == sat:
+    model = s.model()
+    print('SOLUTION:')
+    for i in range(start_time, end_time):
+        print(f't{i} = {model.evaluate(time_slots[i])}')
 else:
-    print("No solution found")
+    print('No solution exists.')

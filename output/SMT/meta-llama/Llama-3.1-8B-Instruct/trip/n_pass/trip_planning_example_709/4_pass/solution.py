@@ -1,45 +1,77 @@
 from z3 import *
 
-# Define the cities
-cities = ['Helsinki', 'Prague', 'Valencia', 'Porto', 'Dubrovnik', 'Reykjavik']
+def generate_itinerary():
+    # Define the cities
+    cities = ['Helsinki', 'Prague', 'Valencia', 'Porto', 'Dubrovnik', 'Reykjavik']
 
-# Define the durations of stay in each city
-durations = {'Helsinki': 4, 'Prague': 3, 'Valencia': 5, 'Porto': 3, 'Dubrovnik': 4, 'Reykjavik': 4}
+    # Define the direct flights
+    flights = [
+        ('Helsinki', 'Prague'),
+        ('Prague', 'Valencia'),
+        ('Valencia', 'Porto'),
+        ('Helsinki', 'Reykjavik'),
+        ('Dubrovnik', 'Helsinki'),
+        ('Reykjavik', 'Prague')
+    ]
 
-# Define the direct flights
-flights = {'Helsinki': ['Prague', 'Reykjavik'], 'Prague': ['Helsinki', 'Valencia'], 'Valencia': ['Prague', 'Porto'], 
-           'Dubrovnik': ['Helsinki'], 'Reykjavik': ['Helsinki', 'Prague'], 'Porto': ['Valencia']}
+    # Define the number of days in each city
+    days_in_city = {
+        'Helsinki': 4,
+        'Prague': 3,
+        'Valencia': 5,
+        'Porto': 3,
+        'Dubrovnik': 4,
+        'Reykjavik': 4
+    }
 
-# Define the variables for the days of stay in each city
-days = [Int(f'city_{i}_day') for i in range(len(cities))]
+    # Define the number of days in total
+    n = 18
 
-# Define the total number of days
-total_days = Int('total_days')
-s = Solver()
-for i, city in enumerate(cities):
-    s.add(days[i] >= durations[city])
-    s.add(days[i] >= 0)
+    # Define the variables
+    x = [[Bool('x_%s_%s' % (city, day)) for day in range(1, n+1)] for city in cities]
 
-s.add(Or([days[i] == 0 for i in range(len(cities))]))
-s.add(total_days == 18)
+    # Define the constraints
+    constraints = []
+    for city in cities:
+        for day in range(1, n+1):
+            constraints.append(x[cities.index(city)][day-1]) # adjust index and day
+    for flight in flights:
+        flight0_index = cities.index(flight[0])
+        flight1_index = cities.index(flight[1][0])
+        constraints.append(Or(x[flight0_index][flight[1][0]-1], x[flight0_index][flight[1][0]-1] == 0)) # adjust index
+        constraints.append(Or(x[flight1_index][flight[1][1]-1], x[flight1_index][flight[1][1]-1] == 0)) # adjust index
+    for city in cities:
+        city_index = cities.index(city)
+        constraints.append(Sum([x[city_index][day-1] for day in range(1, n+1)]) >= days_in_city[city]) # adjust index and day
+    constraints.append(Or(x[cities.index('Porto')][16-1], x[cities.index('Porto')][16-1] == 0)) # adjust index
+    constraints.append(Or(x[cities.index('Porto')][17-1], x[cities.index('Porto')][17-1] == 0)) # adjust index
+    constraints.append(Or(x[cities.index('Porto')][18-1], x[cities.index('Porto')][18-1] == 0)) # adjust index
 
-# Meet the friend in Porto between day 16 and day 18
-s.add(days[3] >= 16)
-s.add(days[3] <= 18)
+    # Solve the constraints
+    solver = Solver()
+    for constraint in constraints:
+        solver.add(constraint)
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for city in cities:
+            for day in range(1, n+1):
+                if model[x[cities.index(city)][day-1]].as_bool():
+                    if day == 1:
+                        itinerary.append({'day_range': 'Day %s-%s' % (day, days_in_city[city]), 'place': city})
+                    elif day == days_in_city[city]:
+                        itinerary.append({'day_range': 'Day %s' % day, 'place': city})
+                    elif day < days_in_city[city]:
+                        itinerary.append({'day_range': 'Day %s' % day, 'place': city})
+                    elif day > days_in_city[city]:
+                        itinerary.append({'day_range': 'Day %s' % day, 'place': city})
+                        for flight in flights:
+                            if flight[0] == city and flight[1][0] == day - days_in_city[city]:
+                                itinerary.append({'day_range': 'Day %s' % day, 'place': flight[1][1]})
+                            elif flight[1][0] == city and flight[1][1] == day - days_in_city[city]:
+                                itinerary.append({'day_range': 'Day %s' % day, 'place': flight[0]})
+        return {'itinerary': itinerary}
+    else:
+        return None
 
-# Direct flights
-for city in cities:
-    if city in flights:
-        for destination in flights[city]:
-            idx = cities.index(destination)
-            s.add(days[cities.index(city)] + 1 == days[idx])
-
-# Solve the constraints
-s.check()
-model = s.model()
-
-# Print the solution
-print('Day\tHelsinki\tPrague\tValencia\tPorto\tDubrovnik\tReykjavik')
-for i in range(18):
-    day = i + 1
-    print(f'{day}\t{model[days[0]].as_long()}\t{model[days[1]].as_long()}\t{model[days[2]].as_long()}\t{model[days[3]].as_long()}\t{model[days[4]].as_long()}\t{model[days[5]].as_long()}')
+print(generate_itinerary())

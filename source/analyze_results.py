@@ -1,3 +1,29 @@
+"""
+Analyze Results Script
+
+This script analyzes the results of SMT/Python/Plan task execution and generates Excel reports.
+
+Usage Examples:
+    # Analyze calendar task results
+    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct/calendar/n_pass
+    
+    # Analyze trip task results  
+    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct/trip/n_pass
+    
+    # Analyze meeting task results
+    python3 analyze_results.py --task_dir ../output/SMT/meta-llama/Llama-3.1-8B-Instruct/meeting/n_pass
+    
+    # Analyze results from different model (DeepSeek-R1)
+    python3 analyze_results.py --task_dir ../output/SMT/DeepSeek-R1/calendar/n_pass
+    
+    # Analyze results from Python approach
+    python3 analyze_results.py --task_dir ../output/Python/DeepSeek-R1/trip/n_pass
+
+Output:
+    - Excel file with summary and detailed sheets
+    - File location: ../output/{approach}/{model_name}/task_analysis_results_{approach}_{model_name}_{task_name}.xlsx
+"""
+
 import os
 import json
 import pandas as pd
@@ -29,36 +55,33 @@ def get_approach_from_path(model_path):
             return part
     return 'Unknown'
 
-def analyze_task_results(task, model_path, output_dir="../output"):
-    """Analyze results for a specific task and model"""
-    # Extract model name and approach from path
-    model_name = os.path.basename(model_path)
-    approach = get_approach_from_path(model_path)
-    
-    # Construct task directory path
-    if approach == 'Unknown':
-        # Try to find the model in each approach directory
-        for possible_approach in ['SMT', 'Python', 'Plan']:
-            task_dir = os.path.join(output_dir, possible_approach, model_name, task, "n_pass")
-            if os.path.exists(task_dir):
-                approach = possible_approach
-                break
-        else:
-            task_dir = os.path.join(output_dir, approach, model_name, task, "n_pass")
-    else:
-        task_dir = os.path.join(output_dir, approach, model_name, task, "n_pass")
-    
-    if not os.path.exists(task_dir):
-        logging.warning(f"Directory not found: {task_dir}")
+def analyze_task_results(task_dir_path, output_dir="../output"):
+    """Analyze results for a specific task directory"""
+    # Check if the provided path is a valid n_pass directory
+    if not os.path.exists(task_dir_path):
+        logging.warning(f"Directory not found: {task_dir_path}")
         return None, None
+    
+    # Extract model name and approach from path for output naming
+    path_parts = Path(task_dir_path).parts
+    model_name = "Unknown"
+    approach = "Unknown"
+    
+    # Try to extract model name and approach from the path
+    for i, part in enumerate(path_parts):
+        if part in ['SMT', 'Python', 'Plan']:
+            approach = part
+            if i + 1 < len(path_parts):
+                model_name = path_parts[i + 1]
+            break
     
     # Lists to store data for both sheets
     summary_data = []
     detailed_data = []
     
     # Walk through all example directories
-    for example_dir in os.listdir(task_dir):
-        example_path = os.path.join(task_dir, example_dir)
+    for example_dir in os.listdir(task_dir_path):
+        example_path = os.path.join(task_dir_path, example_dir)
         if not os.path.isdir(example_path):
             continue
             
@@ -109,16 +132,25 @@ def analyze_task_results(task, model_path, output_dir="../output"):
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Analyze task results')
-    parser.add_argument('--model_path', type=str, required=True,
-                      help='Path to model folder (e.g., DeepSeek-R1 or output/SMT/DeepSeek-R1)')
+    parser.add_argument('--task_dir', type=str, required=True,
+                      help='Path to the task\'s n_pass folder (e.g., ../output/SMT/meta-llama/Llama-3.1-8B-Instruct_20250619/calendar/n_pass)')
     args = parser.parse_args()
 
-    # Define tasks to analyze
-    tasks = ["calendar", "trip", "meeting"]
+    # Extract model name and approach from path for output naming
+    path_parts = Path(args.task_dir).parts
+    model_name = "Unknown"
+    approach = "Unknown"
+    task_name = "Unknown"
     
-    # Get approach from path
-    approach = get_approach_from_path(args.model_path)
-    model_name = os.path.basename(args.model_path)
+    # Try to extract model name, approach, and task from the path
+    for i, part in enumerate(path_parts):
+        if part in ['SMT', 'Python', 'Plan']:
+            approach = part
+            if i + 1 < len(path_parts):
+                model_name = path_parts[i + 1]
+            if i + 2 < len(path_parts):
+                task_name = path_parts[i + 2]
+            break
     
     # Create output directory path
     output_dir = "../output"
@@ -126,39 +158,27 @@ def main():
     os.makedirs(excel_dir, exist_ok=True)
     
     # Create Excel writer with approach in filename
-    output_file = os.path.join(excel_dir, f"task_analysis_results_{approach}_{model_name}.xlsx")
+    output_file = os.path.join(excel_dir, f"task_analysis_results_{approach}_{model_name}_{task_name}.xlsx")
     
-    # Track if we found any data
-    found_data = False
+    logging.info(f"Analyzing results for {task_name} from {args.task_dir}")
     
-    with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-        for task in tasks:
-            logging.info(f"Analyzing {task} results for {approach}/{model_name}")
+    # Get analysis results
+    summary_df, detailed_df = analyze_task_results(args.task_dir)
+    
+    if summary_df is not None and not summary_df.empty:
+        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+            # Write summary sheet
+            sheet_name = f"{task_name}_{approach}_{model_name}_summary"
+            summary_df.to_excel(writer, sheet_name=sheet_name, index=False)
             
-            # Get analysis results
-            summary_df, detailed_df = analyze_task_results(task, args.model_path)
+            # Write detailed sheet
+            sheet_name = f"{task_name}_{approach}_{model_name}_detailed"
+            detailed_df.to_excel(writer, sheet_name=sheet_name, index=False)
             
-            if summary_df is not None and not summary_df.empty:
-                found_data = True
-                # Write summary sheet
-                sheet_name = f"{task}_{approach}_{model_name}_summary"
-                summary_df.to_excel(writer, sheet_name=sheet_name, index=False)
-                
-                # Write detailed sheet
-                sheet_name = f"{task}_{approach}_{model_name}_detailed"
-                detailed_df.to_excel(writer, sheet_name=sheet_name, index=False)
-                
-                logging.info(f"Wrote {len(summary_df)} examples to {sheet_name}")
-            else:
-                logging.warning(f"No data found for {task} - {approach}/{model_name}")
-    
-    if not found_data:
-        # If no data was found, delete the empty Excel file
-        if os.path.exists(output_file):
-            os.remove(output_file)
-        logging.error("No data found for any task. No Excel file was created.")
-    else:
+            logging.info(f"Wrote {len(summary_df)} examples to {sheet_name}")
         logging.info(f"Analysis complete. Results written to {output_file}")
+    else:
+        logging.error("No data found. No Excel file was created.")
 
 if __name__ == "__main__":
     main() 

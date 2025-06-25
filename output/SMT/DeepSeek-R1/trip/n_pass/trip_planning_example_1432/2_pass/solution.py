@@ -1,74 +1,120 @@
-graph = {
-    'V': [('B', 3, 350), ('I', 4, 180), ('M', 2, 200), ('S', 1, 100)],
-    'B': [('V', 4, 420), ('H', 2, 180), ('C', 3, 240), ('P', 4, 310)],
-    'I': [('V', 4, 180), ('M', 3, 160), ('S', 2, 80), ('T', 5, 220)],
-    'M': [('V', 2, 200), ('I', 3, 160), ('S', 2, 120), ('R', 6, 380)],
-    'S': [('V', 1, 100), ('I', 2, 80), ('M', 2, 120)],
-    'P': [('B', 4, 310), ('V', 3, 290)],
-    'R': [('M', 6, 380), ('T', 3, 200)],
-    'H': [('B', 2, 180), ('C', 1, 100)],
-    'C': [('B', 3, 240), ('H', 1, 100)],
-    'T': [('I', 5, 220), ('R', 3, 200)]
+def plan_itinerary(events, travel_matrix, home_city, start_day, end_day):
+    # Create a list of unique cities from events
+    unique_cities = list(set(event['city'] for event in events))
+    
+    # Initialize the itinerary as a list of dictionaries
+    itinerary = []
+    
+    # Add home city as the starting point
+    itinerary.append({
+        'day_range': f"Day {start_day}",
+        'place': home_city
+    })
+    
+    # Plan the itinerary based on events
+    current_day = start_day
+    current_city = home_city
+    
+    # Process each event in the given order
+    for event in events:
+        city = event['city']
+        event_start = event['start']
+        event_end = event['end']
+        
+        # If the event is in the current city, extend the stay if needed
+        if city == current_city:
+            # Check if the event is already covered within the current stay
+            if current_day <= event_start:
+                # Update the end day of the current stay to cover the event
+                current_day = event_end + 1  # Stay ends after the event
+            else:
+                # The event has already passed, move to the next event
+                continue
+        else:
+            # Calculate travel days to the event city
+            travel_days = travel_matrix[current_city][city]
+            
+            # Departure day from current city
+            depart_day = current_day
+            arrive_day = depart_day + travel_days
+            
+            # Add travel segment
+            itinerary.append({
+                'day_range': f"Day {depart_day}",
+                'place': f"Travel from {current_city} to {city}"
+            })
+            
+            # Update current city and day
+            current_city = city
+            current_day = arrive_day
+            
+            # Ensure we arrive by the event start date
+            if current_day > event_start:
+                # If we arrive late, we cannot cover the event from the start
+                # Adjust by arriving earlier? But we have fixed events before.
+                # Since we cannot, we start from the arrival day
+                event_start = current_day
+            else:
+                # We arrive before the event starts, so wait until the event starts
+                current_day = event_start
+            
+            # Add the event city stay
+            itinerary.append({
+                'day_range': f"Day {current_day}-{event_end}",
+                'place': city
+            })
+            current_day = event_end + 1
+    
+    # Return home at the end
+    travel_days = travel_matrix[current_city][home_city]
+    depart_day = current_day
+    arrive_home_day = depart_day + travel_days
+    if depart_day < end_day:
+        itinerary.append({
+            'day_range': f"Day {depart_day}",
+            'place': f"Travel from {current_city} to {home_city}"
+        })
+        itinerary.append({
+            'day_range': f"Day {arrive_home_day}",
+            'place': home_city
+        })
+    
+    return {
+        'itinerary': itinerary
+    }
+
+# Test data (as provided in the problem)
+events = [
+    {'city': 'Stockholm', 'start': 0, 'end': 2},
+    {'city': 'Amsterdam', 'start': 3, 'end': 4},
+    {'city': 'Valencia', 'start': 5, 'end': 5},
+    {'city': 'Bucharest', 'start': 6, 'end': 7},
+    {'city': 'Vienna', 'start': 8, 'end': 11},
+    {'city': 'Reykjavik', 'start': 12, 'end': 15},
+    {'city': 'Athens', 'start': 14, 'end': 18},
+    {'city': 'Riga', 'start': 20, 'end': 21},
+    {'city': 'Frankfurt', 'start': 22, 'end': 24},
+    {'city': 'Salzburg', 'start': 25, 'end': 28}
+]
+
+travel_matrix = {
+    "Stockholm": {"Amsterdam": 1, "Valencia": 2, "Bucharest": 2, "Vienna": 2, "Reykjavik": 2, "Athens": 2, "Riga": 1, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Amsterdam": {"Stockholm": 1, "Valencia": 1, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 1, "Salzburg": 2, "Berlin": 1},
+    "Valencia": {"Stockholm": 2, "Amsterdam": 1, "Bucharest": 2, "Vienna": 2, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Bucharest": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 1, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Vienna": {"Stockholm": 2, "Amsterdam": 1, "Valencia": 2, "Bucharest": 1, "Reykjavik": 2, "Athens": 1, "Riga": 2, "Frankfurt": 1, "Salzburg": 1, "Berlin": 1},
+    "Reykjavik": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Bucharest": 2, "Vienna": 2, "Athens": 2, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Athens": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Bucharest": 1, "Vienna": 1, "Reykjavik": 2, "Riga": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Riga": {"Stockholm": 1, "Amsterdam": 2, "Valencia": 2, "Bucharest": 2, "Vienna": 2, "Reykjavik": 2, "Athens": 2, "Frankfurt": 2, "Salzburg": 2, "Berlin": 2},
+    "Frankfurt": {"Stockholm": 2, "Amsterdam": 1, "Valencia": 2, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Salzburg": 1, "Berlin": 1},
+    "Salzburg": {"Stockholm": 2, "Amsterdam": 2, "Valencia": 2, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 1, "Berlin": 1},
+    "Berlin": {"Stockholm": 2, "Amsterdam": 1, "Valencia": 2, "Bucharest": 2, "Vienna": 1, "Reykjavik": 2, "Athens": 2, "Riga": 2, "Frankfurt": 1, "Salzburg": 1}
 }
 
-cities = ['V','B','I','M','S','P','R','H','C','T']
-city_to_index = {city: idx for idx, city in enumerate(cities)}
-n = len(cities)
-all_visited = (1 << n) - 1
+home_city = "Stockholm"
+start_day = 0
+end_day = 28
 
-def main():
-    total_days_target = 29
-    memo = set()
-    
-    def dfs(current_city, current_day, visited, path, stays):
-        if current_city == 'V' and visited == all_visited:
-            s_last = total_days_target - current_day
-            if 1 <= s_last <= 5:
-                return path, stays + [s_last]
-            else:
-                return None
-        
-        for s in range(1, 6):
-            departure_day = current_day + s
-            if departure_day >= total_days_target:
-                continue
-                
-            neighbors = graph[current_city]
-            neighbors_sorted = sorted(neighbors, key=lambda x: x[1])
-            for neighbor, travel_days, cost in neighbors_sorted:
-                arrival_day = departure_day + travel_days
-                if arrival_day > total_days_target:
-                    continue
-                    
-                neighbor_idx = city_to_index[neighbor]
-                new_visited = visited | (1 << neighbor_idx)
-                
-                state_key = (neighbor, arrival_day, new_visited)
-                if state_key in memo:
-                    continue
-                memo.add(state_key)
-                
-                new_path = path + [neighbor]
-                new_stays = stays + [s]
-                result = dfs(neighbor, arrival_day, new_visited, new_path, new_stays)
-                if result is not None:
-                    return result
-                    
-        return None
-        
-    start_city = 'V'
-    start_day = 0
-    start_visited = 1 << city_to_index['V']
-    start_path = ['V']
-    start_stays = []
-    
-    result = dfs(start_city, start_day, start_visited, start_path, start_stays)
-    if result is None:
-        print("No solution found")
-    else:
-        path, stays = result
-        itinerary = list(zip(path, stays))
-        print(itinerary)
-
-if __name__ == '__main__':
-    main()
+# Generate itinerary
+result = plan_itinerary(events, travel_matrix, home_city, start_day, end_day)
+print(result)

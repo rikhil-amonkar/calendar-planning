@@ -1,127 +1,89 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = [Bool(f'day_{i}') for i in range(16)]
-cities = ['Valencia', 'Frankfurt', 'Manchester', 'Naples', 'Oslo', 'Vilnius']
-stays = {city: 0 for city in cities}
-stays['Frankfurt'] = 4
-stays['Manchester'] = 4
-stays['Valencia'] = 4
-stays['Naples'] = 4
-stays['Oslo'] = 3
-stays['Vilnius'] = 2
+# Define the cities
+cities = ['Frankfurt', 'Manchester', 'Valencia', 'Naples', 'Oslo', 'Vilnius']
+
+# Define the days
+days = range(1, 17)
+
+# Define the flight connections
+flights = {
+    'Frankfurt': ['Valencia', 'Manchester', 'Naples', 'Oslo', 'Vilnius'],
+    'Manchester': ['Frankfurt', 'Naples', 'Oslo'],
+    'Valencia': ['Frankfurt', 'Naples'],
+    'Naples': ['Frankfurt', 'Manchester', 'Oslo'],
+    'Oslo': ['Frankfurt', 'Manchester', 'Vilnius', 'Naples'],
+    'Vilnius': ['Frankfurt', 'Oslo']
+}
 
 # Define the constraints
-s = Optimize()
+def is_valid_day(day):
+    return day >= 1 and day <= 16
 
-for i in range(16):
-    # Each day, you can be in at most one city
-    s.add(Sum([days[j] for j in range(16)]) == 1)
+def is_valid_city(city, day):
+    return city in cities and (day >= 1 and day <= 16)
 
-    # You want to spend 4 days in Frankfurt
-    s.add(days[0] + days[5] + days[8] + days[13] >= stays['Frankfurt'])
+def is_valid_flight(departure, arrival, day):
+    return is_valid_day(day) and departure in flights and arrival in flights[departure] and day >= 1 and day <= 16
 
-    # You want to spend 4 days in Manchester
-    s.add(days[1] + days[5] + days[9] + days[14] >= stays['Manchester'])
+def is_valid_stay(city, day):
+    return is_valid_day(day) and is_valid_city(city, day)
 
-    # You want to spend 4 days in Valencia
-    s.add(days[2] + days[6] >= stays['Valencia'])
+def is_valid_trip(itinerary):
+    for i in range(len(itinerary) - 1):
+        if itinerary[i]['day_range'].split('-')[1] == itinerary[i+1]['day_range'].split('-')[0]:
+            return False
+    return True
 
-    # You want to spend 4 days in Naples
-    s.add(days[3] + days[7] + days[10] + days[15] >= stays['Naples'])
+# Create the solver
+s = Solver()
 
-    # You plan to stay in Oslo for 3 days
-    s.add(days[4] + days[11] >= stays['Oslo'])
+# Create the variables
+places = [Bool(f'place_{city}_{day}') for city in cities for day in days]
+flights_taken = [Bool(f'flight_{departure}_{arrival}_{day}') for departure, arrival in product(flights.keys(), flights.keys()) for day in days]
 
-    # You plan to stay in Vilnius for 2 days
-    s.add(days[12] + days[15] >= stays['Vilnius'])
+# Add the constraints
+for day in days:
+    s.add(Or([places[city * 16 + day - 1] for city in cities]))
+    for departure, arrival in product(flights.keys(), flights.keys()):
+        s.add(flights_taken[departure * 36 + arrival * 36 + day - 1] == flights_taken[arrival * 36 + departure * 36 + day - 1])
+    for departure in flights.keys():
+        s.add(Sum([If(flights_taken[departure * 36 + arrival * 36 + day - 1], 1, 0) for arrival in flights[departure]]) == 1)
+    for arrival in flights.keys():
+        s.add(Sum([If(flights_taken[departure * 36 + arrival * 36 + day - 1], 1, 0) for departure in flights.keys() if departure!= arrival]) == 1)
+    for city in cities:
+        s.add(If(places[city * 16 + day - 1], is_valid_stay(city, day), True))
+    for departure, arrival in product(flights.keys(), flights.keys()):
+        s.add(If(flights_taken[departure * 36 + arrival * 36 + day - 1], is_valid_flight(departure, arrival, day), True))
+    s.add(If(places[0 * 16 + 1 - 1], True, is_valid_day(1)))
+    s.add(If(places[5 * 16 + 12 - 1], True, is_valid_day(12)))
 
-    # You can only fly from Frankfurt to other cities after day 4
-    if i < 4:
-        s.add(Or([days[5] == False, days[8] == False, days[9] == False, days[10] == False, days[11] == False, days[12] == False]))
-    # You can only fly from other cities to Frankfurt after day 4
-    elif i == 4:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-    else:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
+# Add the specific constraints
+s.add(places[0 * 16 + 4 - 1] == True)
+s.add(places[1 * 16 + 4 - 1] == True)
+s.add(places[2 * 16 + 4 - 1] == True)
+s.add(places[3 * 16 + 4 - 1] == True)
+s.add(places[4 * 16 + 3 - 1] == True)
+s.add(places[5 * 16 + 2 - 1] == True)
+s.add(And([places[0 * 16 + day - 1] for day in range(13, 17)]))
+s.add(And([places[1 * 16 + day - 1] for day in range(13, 17)]))
 
-    # You can only fly from Manchester to other cities after day 4
-    if i < 4:
-        s.add(Or([days[9] == False, days[10] == False]))
-    # You can only fly from other cities to Manchester after day 4
-    elif i == 4:
-        s.add(Or([days[1] == False, days[2] == False, days[3] == False]))
-    else:
-        s.add(Or([days[1] == False, days[2] == False, days[3] == False]))
-
-    # You can only fly from Naples to other cities after day 4
-    if i < 4:
-        s.add(Or([days[10] == False, days[11] == False]))
-    # You can only fly from other cities to Naples after day 4
-    elif i == 4:
-        s.add(Or([days[3] == False, days[7] == False]))
-    else:
-        s.add(Or([days[3] == False, days[7] == False]))
-
-    # You can only fly from Oslo to other cities after day 4
-    if i < 4:
-        s.add(Or([days[11] == False, days[12] == False]))
-    # You can only fly from other cities to Oslo after day 4
-    elif i == 4:
-        s.add(Or([days[4] == False, days[7] == False]))
-    else:
-        s.add(Or([days[4] == False, days[7] == False]))
-
-    # You can only fly from Vilnius to other cities after day 4
-    if i < 4:
-        s.add(Or([days[12] == False]))
-    # You can only fly from other cities to Vilnius after day 4
-    elif i == 4:
-        s.add(Or([days[5] == False]))
-    else:
-        s.add(Or([days[5] == False]))
-
-    # You can only fly from Valencia to other cities after day 4
-    if i < 4:
-        s.add(Or([days[6] == False]))
-    # You can only fly from other cities to Valencia after day 4
-    elif i == 4:
-        s.add(Or([days[2] == False]))
-    else:
-        s.add(Or([days[2] == False]))
-
-    # You can only fly from Frankfurt to other cities after day 4
-    if i < 4:
-        s.add(Or([days[5] == False, days[8] == False, days[9] == False, days[10] == False, days[11] == False, days[12] == False]))
-    # You can only fly from other cities to Frankfurt after day 4
-    elif i == 4:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-    else:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-
-    # You can only attend the wedding in Vilnius between day 12 and day 13
-    if i < 12:
-        s.add(days[12] == False)
-    elif i > 13:
-        s.add(days[12] == False)
-
-    # You can only attend the annual show in Frankfurt between day 13 and day 16
-    if i < 13:
-        s.add(days[13] == False)
-    elif i > 16:
-        s.add(days[13] == False)
-
-# Solve the optimization problem
-s.minimize(Sum([If(days[i], 1, 0) for i in range(16)]))
-solution = s.check()
-if solution == sat:
+# Check the solution
+if s.check() == sat:
     model = s.model()
-    trip_plan = {city: 0 for city in cities}
-    for i in range(16):
-        for j in range(6):
-            if model[days[i] * 6 + j].as_long() == 1:
-                trip_plan[cities[j]] = i
-    for city in trip_plan:
-        print(f"You will visit {city} on days {trip_plan[city]}-{trip_plan[city]+stays[city]-1}")
+    itinerary = []
+    for day in range(1, 17):
+        places_in_day = [model.evaluate(places[city * 16 + day - 1]).as_bool() for city in cities]
+        flight_in_day = [model.evaluate(flights_taken[departure * 36 + arrival * 36 + day - 1]).as_bool() for departure, arrival in product(flights.keys(), flights.keys())]
+        for i, place in enumerate(places_in_day):
+            if place:
+                itinerary.append({'day_range': f'Day {day}-{day+1 if day!= 16 else day}', 'place': cities[i]})
+        for i, flight in enumerate(flight_in_day):
+            if flight:
+                departure, arrival = [k for k, v in enumerate(flights.keys()) if i // 36 == v][0], [k for k, v in enumerate(flights.keys()) if i % 36 == v][0]
+                itinerary.append({'day_range': f'Day {day}', 'place': cities[departure]})
+                itinerary.append({'day_range': f'Day {day}', 'place': cities[arrival]})
+    print({'itinerary': itinerary})
 else:
-    print("No solution found")
+    print('No solution found')

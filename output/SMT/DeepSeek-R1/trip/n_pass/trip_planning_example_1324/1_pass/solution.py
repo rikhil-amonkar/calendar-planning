@@ -1,98 +1,125 @@
 import z3
-import json
 
 def main():
-    CityNames = ["Venice", "Barcelona", "Copenhagen", "Lyon", "Reykjavik", "Dubrovnik", "Athens", "Tallinn", "Munich"]
-    Durations = [4, 3, 4, 4, 4, 5, 2, 5, 3]  # index-aligned with CityNames
-
-    # Build directed flight graph
-    edges = set()
-    # Add the directed flight: Reykjavik -> Athens
-    edges.add((4, 6))  # Reykjavik (4) -> Athens (6)
+    cities = ["Venice", "Barcelona", "Copenhagen", "Lyon", "Reykjavik", "Dubrovnik", "Athens", "Tallinn", "Munich"]
+    durations = {
+        "Venice": 4,
+        "Barcelona": 3,
+        "Copenhagen": 4,
+        "Lyon": 4,
+        "Reykjavik": 4,
+        "Dubrovnik": 5,
+        "Athens": 2,
+        "Tallinn": 5,
+        "Munich": 3
+    }
     
-    # Bidirectional pairs: add both directions
-    bidirectional_pairs = [
-        (2, 6), (2, 5), (8, 7), (2, 8), (0, 8), (6, 5), (0, 6), (3, 1), (2, 4), (4, 8),
-        (6, 8), (3, 8), (1, 4), (0, 2), (1, 5), (3, 0), (5, 8), (1, 6), (2, 1), (0, 1),
-        (1, 8), (1, 7), (2, 7)
+    edges_list = [
+        ("Copenhagen", "Athens"),
+        ("Copenhagen", "Dubrovnik"),
+        ("Munich", "Tallinn"),
+        ("Copenhagen", "Munich"),
+        ("Venice", "Munich"),
+        ("Reykjavik", "Athens"),
+        ("Athens", "Dubrovnik"),
+        ("Venice", "Athens"),
+        ("Lyon", "Barcelona"),
+        ("Copenhagen", "Reykjavik"),
+        ("Reykjavik", "Munich"),
+        ("Athens", "Munich"),
+        ("Lyon", "Munich"),
+        ("Barcelona", "Reykjavik"),
+        ("Venice", "Copenhagen"),
+        ("Barcelona", "Dubrovnik"),
+        ("Lyon", "Venice"),
+        ("Dubrovnik", "Munich"),
+        ("Barcelona", "Athens"),
+        ("Copenhagen", "Barcelona"),
+        ("Venice", "Barcelona"),
+        ("Barcelona", "Munich"),
+        ("Barcelona", "Tallinn"),
+        ("Copenhagen", "Tallinn")
     ]
-    for a, b in bidirectional_pairs:
-        edges.add((a, b))
-        edges.add((b, a))
     
-    # Initialize Z3 variables
+    edge_set_sym = set()
+    for u, v in edges_list:
+        key = (min(u, v), max(u, v))
+        edge_set_sym.add(key)
+    
+    positions = { city: z3.Int(f'pos_{city}') for city in cities }
+    starts = { city: z3.Int(f'start_{city}') for city in cities }
+    ends = { city: z3.Int(f'end_{city}') for city in cities }
+    
     s = z3.Solver()
-    city = [z3.Int(f"city_{i}") for i in range(9)]
-    start = [z3.Int(f"start_{i}") for i in range(9)]
-    end = [z3.Int(f"end_{i}") for i in range(9)]
     
-    # Constraints
-    s.add(start[0] == 1)
-    s.add(end[8] == 26)
+    # Positions are distinct and between 0 and 8
+    s.add(z3.Distinct([positions[c] for c in cities]))
+    for c in cities:
+        s.add(positions[c] >= 0, positions[c] <= 8)
     
-    for i in range(9):
-        s.add(end[i] == start[i] + z3.If(
-            city[i] == 0, Durations[0],
-            z3.If(city[i] == 1, Durations[1],
-            z3.If(city[i] == 2, Durations[2],
-            z3.If(city[i] == 3, Durations[3],
-            z3.If(city[i] == 4, Durations[4],
-            z3.If(city[i] == 5, Durations[5],
-            z3.If(city[i] == 6, Durations[6],
-            z3.If(city[i] == 7, Durations[7],
-            Durations[8])))))))) - 1)
-        )
+    # Duration constraints
+    for c in cities:
+        s.add(ends[c] == starts[c] + durations[c] - 1)
     
-    for i in range(1, 9):
-        s.add(start[i] == end[i-1])
+    # Flight constraints: if two cities are not connected, they cannot be consecutive
+    for i in range(len(cities)):
+        for j in range(i+1, len(cities)):
+            c1 = cities[i]
+            c2 = cities[j]
+            key = (min(c1, c2), max(c1, c2))
+            if key not in edge_set_sym:
+                cond = z3.Or(
+                    positions[c1] == positions[c2] + 1,
+                    positions[c1] == positions[c2] - 1
+                )
+                s.add(z3.Not(cond))
     
-    s.add(z3.Distinct(city))
-    for i in range(9):
-        s.add(city[i] >= 0)
-        s.add(city[i] <= 8)
+    # Consecutive cities in sequence must have end_i = start_j
+    for c1 in cities:
+        for c2 in cities:
+            if c1 == c2:
+                continue
+            cond = (positions[c2] == positions[c1] + 1)
+            s.add(z3.Implies(cond, ends[c1] == starts[c2]))
     
-    for i in range(8):
-        constraints = []
-        for a, b in edges:
-            constraints.append(z3.And(city[i] == a, city[i+1] == b))
-        s.add(z3.Or(constraints))
+    # First city starts at 1, last ends at 26
+    for c in cities:
+        s.add(z3.Implies(positions[c] == 0, starts[c] == 1))
+        s.add(z3.Implies(positions[c] == 8, ends[c] == 26))
     
-    for j in range(9):
-        s.add(z3.Implies(city[j] == 1, z3.And(start[j] <= 12, end[j] >= 10)))  # Barcelona
-        s.add(z3.Implies(city[j] == 2, z3.And(start[j] <= 10, end[j] >= 7)))   # Copenhagen
-        s.add(z3.Implies(city[j] == 5, z3.And(start[j] <= 20, end[j] >= 16)))  # Dubrovnik
+    # Event constraints
+    s.add(starts["Barcelona"] <= 12, ends["Barcelona"] >= 10)
+    s.add(starts["Copenhagen"] <= 10, ends["Copenhagen"] >= 7)
+    s.add(starts["Dubrovnik"] <= 20, ends["Dubrovnik"] >= 16)
     
     if s.check() == z3.sat:
         m = s.model()
-        city_order = [m.evaluate(city[i]).as_long() for i in range(9)]
-        start_days = [m.evaluate(start[i]).as_long() for i in range(9)]
-        end_days = [m.evaluate(end[i]).as_long() for i in range(9)]
+        pos_vals = { c: m.evaluate(positions[c]).as_long() for c in cities }
+        start_vals = { c: m.evaluate(starts[c]).as_long() for c in cities }
+        end_vals = { c: m.evaluate(ends[c]).as_long() for c in cities }
         
-        itinerary_list = []
-        itinerary_list.append({
-            "day_range": f"Day {start_days[0]}-{end_days[0]}",
-            "place": CityNames[city_order[0]]
-        })
+        sorted_cities = sorted(cities, key=lambda c: pos_vals[c])
         
-        for i in range(8):
-            flight_day = end_days[i]
-            itinerary_list.append({
-                "day_range": f"Day {flight_day}",
-                "place": CityNames[city_order[i]]
-            })
-            itinerary_list.append({
-                "day_range": f"Day {flight_day}",
-                "place": CityNames[city_order[i+1]]
-            })
-            itinerary_list.append({
-                "day_range": f"Day {start_days[i+1]}-{end_days[i+1]}",
-                "place": CityNames[city_order[i+1]]
-            })
+        itinerary = []
+        for i, c in enumerate(sorted_cities):
+            start = start_vals[c]
+            end = end_vals[c]
+            if start == end:
+                day_range = f"Day {start}"
+            else:
+                day_range = f"Day {start}-{end}"
+            itinerary.append({"day_range": day_range, "place": c})
+            
+            if i < len(sorted_cities) - 1:
+                flight_day = end
+                next_c = sorted_cities[i+1]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": c})
+                itinerary.append({"day_range": f"Day {flight_day}", "place": next_c})
         
-        result = {"itinerary": itinerary_list}
-        print(json.dumps(result))
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        print(json.dumps({"itinerary": []}))
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

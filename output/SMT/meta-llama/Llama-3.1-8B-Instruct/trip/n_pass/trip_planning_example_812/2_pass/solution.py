@@ -3,92 +3,71 @@ from z3 import *
 # Define the cities
 cities = ['Paris', 'Florence', 'Vienna', 'Porto', 'Munich', 'Nice', 'Warsaw']
 
-# Define the number of days in each city
-days_in_city = {
-    'Paris': 5,
-    'Florence': 3,
-    'Vienna': 2,
-    'Porto': 3,
-    'Munich': 5,
-    'Nice': 5,
-    'Warsaw': 3
-}
+# Define the days
+days = range(1, 21)
 
 # Define the direct flights
-flights = {
-    ('Florence', 'Vienna'): 1,
-    ('Paris', 'Warsaw'): 1,
-    ('Munich', 'Vienna'): 1,
-    ('Porto', 'Vienna'): 1,
-    ('Warsaw', 'Vienna'): 1,
-    ('Florence', 'Munich'): 1,
-    ('Munich', 'Warsaw'): 1,
-    ('Munich', 'Nice'): 1,
-    ('Paris', 'Florence'): 1,
-    ('Warsaw', 'Nice'): 1,
-    ('Porto', 'Munich'): 1,
-    ('Porto', 'Nice'): 1,
-    ('Paris', 'Vienna'): 1,
-    ('Nice', 'Vienna'): 1,
-    ('Porto', 'Paris'): 1,
-    ('Paris', 'Nice'): 1,
-    ('Paris', 'Munich'): 1
-}
+direct_flights = [
+    ('Florence', 'Vienna'),
+    ('Paris', 'Warsaw'),
+    ('Munich', 'Vienna'),
+    ('Porto', 'Vienna'),
+    ('Warsaw', 'Vienna'),
+    ('Florence', 'Munich'),
+    ('Munich', 'Warsaw'),
+    ('Munich', 'Nice'),
+    ('Paris', 'Florence'),
+    ('Warsaw', 'Nice'),
+    ('Porto', 'Munich'),
+    ('Porto', 'Nice'),
+    ('Paris', 'Vienna'),
+    ('Nice', 'Vienna'),
+    ('Porto', 'Paris'),
+    ('Paris', 'Nice'),
+    ('Paris', 'Munich'),
+    ('Porto', 'Warsaw'),
+]
 
 # Define the constraints
-s = Optimize()
+x = [Bool(f'{city}_day_{day}') for city in cities for day in days]
+constraints = [
+    # Each city can only be visited once per day
+    [Implies(x[city_to_index(city, days)], [Not(x[city_to_index(city, day)]) for city in cities if city!= city]) for city in cities for day in days],
+    # A city can only be visited on a day if there is a direct flight from the previous city
+    [Implies(x[city_to_index(city, day)], [x[city_to_index(prev_city, day-1)] for prev_city, next_city in direct_flights if next_city == city]) for city in cities for day in days if day > 1],
+    # Paris must be visited for 5 days
+    [x[city_to_index('Paris', day)] for day in range(1, 6)],
+    # Florence must be visited for 3 days
+    [x[city_to_index('Florence', day)] for day in range(1, 4)],
+    # Vienna must be visited for 2 days
+    [x[city_to_index('Vienna', day)] for day in range(19, 21)],
+    # Porto must be visited for 3 days
+    [x[city_to_index('Porto', day)] for day in range(1, 4)],
+    # A workshop in Porto between day 1 and day 3
+    [x[city_to_index('Porto', day)] for day in range(1, 4)],
+    # Munich must be visited for 5 days
+    [x[city_to_index('Munich', day)] for day in range(1, 6)],
+    # Nice must be visited for 5 days
+    [x[city_to_index('Nice', day)] for day in range(1, 6)],
+    # Warsaw must be visited for 3 days
+    [x[city_to_index('Warsaw', day)] for day in range(1, 4)],
+    # A wedding in Warsaw between day 13 and day 15
+    [x[city_to_index('Warsaw', day)] for day in range(13, 16)],
+]
 
-# Define the variables
-x = [Int(f'{city}_days') for city in cities]
+# Solve the constraints
+s = Solver()
+for constraint in constraints:
+    s.add(constraint)
 
-# Constraints
+s.check()
+model = s.model()
+
+# Print the solution
 for city in cities:
-    s.add(x[city].ge(0))
-    s.add(x[city].le(20))
+    for day in days:
+        if model[x[city_to_index(city, day)]]:
+            print(f'{city} visited on day {day}')
 
-for city in cities:
-    if city == 'Paris':
-        s.add(x[city] == 5)
-    elif city == 'Florence':
-        s.add(x[city] == 3)
-    elif city == 'Vienna':
-        s.add(x[city] == 2)
-    elif city == 'Porto':
-        s.add(x[city] == 3)
-    elif city == 'Munich':
-        s.add(x[city] == 5)
-    elif city == 'Nice':
-        s.add(x[city] == 5)
-    elif city == 'Warsaw':
-        s.add(x[city] == 3)
-
-# Attend workshop in Porto between day 1 and day 3
-s.add(x['Porto'] >= 3)
-s.add(x['Porto'] <= 20)
-
-# Attend wedding in Warsaw between day 13 and day 15
-s.add(x['Warsaw'] >= 15)
-s.add(x['Warsaw'] <= 20)
-
-# Visit relatives in Vienna between day 19 and day 20
-s.add(x['Vienna'] >= 20)
-s.add(x['Vienna'] <= 20)
-
-# Direct flights
-for (city1, city2) in flights:
-    s.add(x[city1] + flights[(city1, city2)] == x[city2])
-
-# Solve the optimization problem
-s.maximize(Sum([x[city] for city in cities]))
-
-# Check if the solution exists
-if s.check() == sat:
-    # Get the model
-    m = s.model()
-
-    # Print the solution
-    print("City\tDays")
-    for city in cities:
-        print(f"{city}\t{m[x[city]].as_long()}")
-else:
-    print("No solution exists")
+def city_to_index(city, day):
+    return (cities.index(city) * len(days)) + (day - 1)

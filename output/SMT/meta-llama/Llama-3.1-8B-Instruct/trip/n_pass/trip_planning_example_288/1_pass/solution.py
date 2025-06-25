@@ -1,49 +1,87 @@
 from z3 import *
 
-# Define the cities
-cities = ['Stuttgart', 'Manchester', 'Madrid', 'Vienna']
-
-# Define the days
-days = range(1, 16)
-
 # Define the variables
-stay = {}
-for city in cities:
-    stay[city] = Int(city + '_stay')
+days = [Bool(f'day_{i}') for i in range(1, 16)]
+places = ['Manchester', 'Madrid', 'Vienna', 'Stuttgart']
 
 # Define the constraints
+# Each day is either in one of the places or is a flight day
 constraints = []
-for city in cities:
-    constraints.append(stay[city] >= 0)
-    constraints.append(stay[city] <= 15)
+for i in range(1, 16):
+    constraints.append(Or([days[i] == place for place in places]))
+
+# Flight constraints
+flight_constraints = []
+for i in range(1, 15):
+    # If flying from A to B, then A is in the departure city and B is in the arrival city
+    for a in places:
+        for b in places:
+            if a!= b and (a == 'Manchester' and b == 'Stuttgart' or a == 'Manchester' and b == 'Vienna' or a == 'Manchester' and b == 'Madrid' or a == 'Madrid' and b == 'Vienna' or a == 'Vienna' and b == 'Stuttgart'):
+                flight_constraints.append(Implies(days[i] == a, days[i] == b))
+                flight_constraints.append(Implies(days[i] == b, days[i] == a))
 
 # Stuttgart constraints
-constraints.append(stay['Stuttgart'] == 5)
-constraints.append(Or([stay['Stuttgart'] == 11, stay['Stuttgart'] == 12, stay['Stuttgart'] == 13, stay['Stuttgart'] == 14, stay['Stuttgart'] == 15]))
+stuttgart_constraints = []
+for i in range(1, 16):
+    stuttgart_constraints.append(Or([days[i] == 'Stuttgart', days[i] == 'Manchester', days[i] == 'Madrid', days[i] == 'Vienna']))
 
 # Manchester constraints
-constraints.append(stay['Manchester'] == 7)
-constraints.append(Or([stay['Manchester'] == 1, stay['Manchester'] == 2, stay['Manchester'] == 3, stay['Manchester'] == 4, stay['Manchester'] == 5, stay['Manchester'] == 6, stay['Manchester'] == 7]))
+manchester_constraints = []
+for i in range(1, 16):
+    manchester_constraints.append(Or([days[i] == 'Manchester', days[i] == 'Stuttgart', days[i] == 'Madrid', days[i] == 'Vienna']))
 
 # Madrid constraints
-constraints.append(stay['Madrid'] == 4)
+madrid_constraints = []
+for i in range(1, 16):
+    madrid_constraints.append(Or([days[i] == 'Madrid', days[i] == 'Vienna']))
 
 # Vienna constraints
-constraints.append(stay['Vienna'] == 2)
+vienna_constraints = []
+for i in range(1, 16):
+    vienna_constraints.append(Or([days[i] == 'Vienna', days[i] == 'Stuttgart']))
 
-# Direct flights constraints
-constraints.append(Or([stay['Stuttgart'] >= 1, stay['Stuttgart'] >= 8, stay['Stuttgart'] >= 9, stay['Stuttgart'] >= 10, stay['Stuttgart'] >= 11, stay['Stuttgart'] >= 12, stay['Stuttgart'] >= 13, stay['Stuttgart'] >= 14, stay['Stuttgart'] >= 15]))
-constraints.append(Or([stay['Manchester'] >= 1, stay['Manchester'] >= 8, stay['Manchester'] >= 9, stay['Manchester'] >= 10, stay['Manchester'] >= 11, stay['Manchester'] >= 12, stay['Manchester'] >= 13, stay['Manchester'] >= 14, stay['Manchester'] >= 15]))
-constraints.append(Or([stay['Madrid'] >= 1, stay['Madrid'] >= 6, stay['Madrid'] >= 7, stay['Madrid'] >= 8, stay['Madrid'] >= 9, stay['Madrid'] >= 10, stay['Madrid'] >= 11, stay['Madrid'] >= 12, stay['Madrid'] >= 13, stay['Madrid'] >= 14, stay['Madrid'] >= 15]))
-constraints.append(Or([stay['Vienna'] >= 1, stay['Vienna'] >= 3, stay['Vienna'] >= 4, stay['Vienna'] >= 5, stay['Vienna'] >= 6, stay['Vienna'] >= 7, stay['Vienna'] >= 8, stay['Vienna'] >= 9, stay['Vienna'] >= 10, stay['Vienna'] >= 11, stay['Vienna'] >= 12, stay['Vienna'] >= 13, stay['Vienna'] >= 14, stay['Vienna'] >= 15]))
+# Wedding and workshop constraints
+wedding_constraints = []
+workshop_constraints = []
+for i in range(1, 16):
+    wedding_constraints.append(Not(days[i] == 'Manchester' and days[i] > 7))
+    workshop_constraints.append(Not(days[i] == 'Stuttgart' and (days[i] < 11 or days[i] > 15)))
 
-# Solve the constraints
-solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
-if solver.check() == sat:
-    model = solver.model()
-    for city in cities:
-        print(f"{city}: {model[city + '_stay']}")
+# Combine all constraints
+s = Solver()
+for c in constraints + flight_constraints + stuttgart_constraints + manchester_constraints + madrid_constraints + vienna_constraints + wedding_constraints + workshop_constraints:
+    s.add(c)
+
+# Solve the problem
+if s.check() == sat:
+    model = s.model()
+    itinerary = []
+    for i in range(1, 16):
+        places_in_day = [place for place in places if model[days[i]] == place]
+        if places_in_day:
+            if places_in_day[0] == 'Manchester':
+                if i >= 1 and i <= 7:
+                    itinerary.append({"day_range": f"Day {i}-7", "place": places_in_day[0]})
+                else:
+                    itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0]})
+            elif places_in_day[0] == 'Madrid':
+                itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0]})
+            elif places_in_day[0] == 'Vienna':
+                itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0]})
+            elif places_in_day[0] == 'Stuttgart':
+                if i >= 11 and i <= 15:
+                    itinerary.append({"day_range": f"Day {i}-15", "place": places_in_day[0]})
+                else:
+                    itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0]})
+            # If flying from A to B, add a record for the flight day
+            for a in places:
+                for b in places:
+                    if a!= b and (a == 'Manchester' and b == 'Stuttgart' or a == 'Manchester' and b == 'Vienna' or a == 'Manchester' and b == 'Madrid' or a == 'Madrid' and b == 'Vienna' or a == 'Vienna' and b == 'Stuttgart'):
+                        if model[days[i]] == a:
+                            itinerary.append({"day_range": f"Day {i}", "place": a})
+                        elif model[days[i]] == b:
+                            itinerary.append({"day_range": f"Day {i}", "place": b})
+
+    print({"itinerary": itinerary})
 else:
     print("No solution found")

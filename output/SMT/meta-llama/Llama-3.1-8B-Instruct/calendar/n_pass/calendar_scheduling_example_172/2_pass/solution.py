@@ -1,63 +1,53 @@
 from z3 import *
 
-def schedule_meeting(schedules, duration):
-    # Create a Z3 solver
-    solver = Solver()
+def schedule_meeting(day, start_time, end_time, schedules):
+    # Create Z3 variables for each participant's availability
+    participants = ['Patrick', 'Kayla', 'Carl', 'Christian']
+    variables = [Bool(participant + '_available') for participant in participants]
 
-    # Define the day of the meeting
-    day = 1  # In this case, the day is always Monday
+    # Create Z3 constraints for each participant's schedule
+    constraints = []
+    for participant, schedule in schedules.items():
+        for time in schedule:
+            start, end = time
+            constraints.append(Not(And(start_time <= start, end <= end_time, variables[participants.index(participant)])))
 
-    # Define the possible start times
-    start_times = [9 * 60 + i for i in range(8 * 60)]
+    # Add constraints for the meeting duration
+    constraints.append(start_time + 0.5 <= end_time)
 
-    # Define the end times
-    end_times = [(st + duration * 60) % (8 * 60) for st in start_times]
+    # Add constraints for the meeting time
+    constraints.append(start_time >= 9)
+    constraints.append(end_time <= 17)
 
-    # Create Z3 variables for the start and end times
-    times = [Int(f'time_{i}') for i in range(len(start_times))]
+    # Add constraints for the meeting day
+    constraints.append(start_time >= 9 + day * 24)
+    constraints.append(end_time <= 17 + day * 24)
 
-    # Add constraints for the start and end times
-    for i in range(len(start_times)):
-        solver.add(And(times[i] >= start_times[i], times[i] <= end_times[i]))
-
-    # Add constraints for each participant's schedule
-    for i, schedule in enumerate(schedules):
-        for j, time in enumerate(times):
-            if start_times[j] >= schedule[0] * 60 and start_times[j] < schedule[1] * 60:
-                solver.add(Not(Int(f'person_{i}_free_{j}')))
-            elif end_times[j] >= schedule[0] * 60 and end_times[j] < schedule[1] * 60:
-                solver.add(Not(Int(f'person_{i}_free_{j}')))
-
-    # Add a constraint to ensure at least one time slot is free for everyone
-    for i in range(len(start_times)):
-        solver.add(Or([Int(f'person_{j}_free_{i}') for j in range(len(schedules))]))
-
-    # Add constraints to ensure the meeting time is within the work hours
-    for i in range(len(start_times)):
-        solver.add(And(times[i] >= 9 * 60, times[i] <= 17 * 60))
-
-    # Add constraints to ensure the meeting time is not blocked by Christian or Carl
-    for i in range(len(start_times)):
-        solver.add(Or([Not(Int(f'person_{j}_free_{i}')) for j in range(2)]))
+    # Add constraints to ensure that start_time and end_time are integers
+    constraints.append(start_time == int(start_time))
+    constraints.append(end_time == int(end_time))
 
     # Solve the constraints
+    solver = Solver()
+    for variable in variables:
+        solver.add(variable)
+    solver.add(And(constraints))
+
+    # Check if a solution exists
     if solver.check() == sat:
         model = solver.model()
-        start_time = model[times[0]].as_long() // 60
-        end_time = model[times[0]].as_long() % 60
-        return f'SOLUTION:\nDay: Monday\nStart Time: {start_time:02d}:{end_time:02d}\nEnd Time: {start_time:02d}:{end_time:02d + 30:02d}'
+        start_time_val = int(model[start_time].as_real().numerator / 60)
+        end_time_val = int(model[end_time].as_real().numerator / 60)
+        return f"SOLUTION:\nDay: {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'][day]}\nStart Time: {start_time_val:02d}:00\nEnd Time: {end_time_val:02d}:30"
     else:
-        return 'No solution found'
+        return "No solution found"
 
-# Define the existing schedules for everyone during the day
-schedules = [
-    [9, 9.5, 10, 10.5, 13.5, 14, 16, 16.5],  # Patrick
-    [9, 9.5, 10, 10.5, 12.5, 13.5, 15.5, 16],  # Kayla
-    [10.5, 11, 12, 12.5, 13, 13.5, 14.5, 17],  # Carl
-    [9, 9.5, 12.5, 13, 14, 14.5, 14.5, 17]  # Christian
-]
+# Example usage
+schedules = {
+    'Patrick': [(9, 9.5), (10, 10.5), (13.5, 14), (16, 16.5)],
+    'Kayla': [(12.5, 13.5), (15, 15.5), (16, 16.5)],
+    'Carl': [(10.5, 11), (12, 12.5), (13, 13.5), (14.5, 17)],
+    'Christian': [(9, 12.5), (13, 14), (14.5, 17)]
+}
 
-# Define the meeting duration
-duration = 0.5
-
-print(schedule_meeting(schedules, duration))
+print(schedule_meeting(0, 0, 0, schedules))

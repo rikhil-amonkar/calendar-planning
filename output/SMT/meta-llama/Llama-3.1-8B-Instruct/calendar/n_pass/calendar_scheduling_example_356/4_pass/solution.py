@@ -1,67 +1,83 @@
+YOUR_CODE
 from z3 import *
 
-def schedule_meeting(day, start_time, end_time, existing_schedules, preferences):
-    # Define the meeting duration
-    meeting_duration = 30
+# Define the variables
+day = 'Monday'
+start_time = Int('start_time')
+end_time = Int('end_time')
+meeting_duration = 30  # in minutes
 
-    # Create a Z3 solver
-    solver = Solver()
+# Define the constraints for each participant
+katherine_busy = [Bool('katherine_busy_%d' % i) for i in range(8)]
+rebecca_busy = [Bool('rebecca_busy_%d' % i) for i in range(8)]
+julie_busy = [Bool('julie_busy_%d' % i) for i in range(8)]
+angela_busy = [Bool('angela_busy_%d' % i) for i in range(8)]
+nicholas_busy = [Bool('nicholas_busy_%d' % i) for i in range(8)]
+carl_busy = [Bool('carl_busy_%d' % i) for i in range(8)]
 
-    # Define the variables
-    times = [Bool(f"time_{i}") for i in range(96)]  # 96 possible time slots in a day
-
-    # Add constraints for each participant
-    for i, schedule in enumerate(existing_schedules):
-        for j, time_slot in enumerate(schedule):
-            if time_slot:
-                # If a time slot is busy, add a constraint to the solver
-                for k in range(time_slot[0], time_slot[1]):
-                    solver.add(times[k] == False)
-
-    # Add constraints for the meeting time
-    meeting_start = Int('meeting_start')
-    solver.add(meeting_start >= 9 * 60)
-    solver.add(meeting_start <= 16 * 60) # changed to 16 * 60
-    solver.add(meeting_start + meeting_duration <= 17 * 60)
-
-    # Add constraints for the day
-    solver.add(meeting_start % (24 * 60) == 9 * 60)  # Meeting starts at 9:00
-
-    # Add constraints for preferences
-    for participant, pref in preferences.items():
-        if pref and pref[0] == "before":
-            solver.add(meeting_start >= pref[1])
-
-    # Add constraints for each participant's schedule
-    for i, schedule in enumerate(existing_schedules):
-        for j, time_slot in enumerate(schedule):
-            if time_slot:
-                # If a time slot is busy, add a constraint to the solver
-                solver.add(meeting_start + meeting_duration <= time_slot[1])
-
-    # Check if a solution exists
-    if solver.check() == sat:
-        # Get the solution
-        model = solver.model()
-        meeting_start = model[meeting_start].as_long()
-        return f"SOLUTION:\nDay: {day}\nStart Time: {meeting_start // 60:02d}:{meeting_start % 60:02d}\nEnd Time: {(meeting_start + meeting_duration) // 60:02d}:{(meeting_start + meeting_duration) % 60:02d}"
-    else:
-        return "No solution exists"
-
-# Existing schedules
-existing_schedules = [
-    [(12, 30), (13, 30)],  # Katherine
-    [],  # Rebecca
-    [(0, 30), (10, 30), (13, 30), (15, 30)],  # Julie
-    [(0, 60), (10, 30), (11, 30), (14, 30), (15, 0)],  # Angela
-    [(9, 30, 60), (11, 30, 90), (14, 0, 180), (16, 30, 210)],  # Nicholas
-    [(0, 60), (11, 30, 90), (13, 0, 150), (15, 0, 180), (16, 30, 210)]  # Carl
+# Define the constraints
+katherine_constraints = [
+    katherine_busy[12] == True,
+    katherine_busy[13] == True,
+    And(katherine_busy[9] == False, katherine_busy[10] == False, katherine_busy[11] == False)
 ]
+rebecca_constraints = [rebecca_busy[i] == False for i in range(8)]
+julie_constraints = [
+    julie_busy[9] == True,
+    julie_busy[10] == True,
+    julie_busy[13] == True,
+    julie_busy[14] == True,
+    julie_busy[15] == True,
+    And(julie_busy[11] == False, julie_busy[12] == False, julie_busy[13] == False),
+    And(julie_busy[16] == False, julie_busy[17] == False)
+]
+angela_constraints = [
+    angela_busy[9] == True,
+    angela_busy[10] == True,
+    angela_busy[11] == True,
+    angela_busy[14] == True,
+    angela_busy[15] == True,
+    angela_busy[16] == True,
+    And(angela_busy[0] == False, angela_busy[1] == False, angela_busy[2] == False, angela_busy[3] == False, angela_busy[4] == False, angela_busy[5] == False, angela_busy[6] == False, angela_busy[7] == False),
+    angela_busy[17] == True
+]
+nicholas_constraints = [
+    nicholas_busy[10] == True,
+    nicholas_busy[11] == True,
+    nicholas_busy[14] == True,
+    nicholas_busy[15] == True,
+    nicholas_busy[16] == True,
+    And(nicholas_busy[9] == False, nicholas_busy[10] == False, nicholas_busy[11] == False),
+    nicholas_busy[17] == True
+]
+carl_constraints = [
+    carl_busy[9] == True,
+    carl_busy[10] == True,
+    carl_busy[11] == True,
+    carl_busy[14] == True,
+    carl_busy[15] == True,
+    carl_busy[16] == True,
+    And(carl_busy[0] == False, carl_busy[1] == False, carl_busy[2] == False, carl_busy[3] == False, carl_busy[4] == False, carl_busy[5] == False, carl_busy[6] == False, carl_busy[7] == False),
+    carl_busy[17] == True
+]
+angela_prefer = And(angela_busy[12] == False, angela_busy[13] == False, angela_busy[14] == False, angela_busy[15] == False)
 
-# Preferences
-preferences = {
-    "Angela": ["before", 15 * 60]  # Angela prefers to avoid meetings before 15:00
-}
+# Define the solver
+s = Solver()
 
-# Solve the scheduling problem
-print(schedule_meeting("Monday", 0, 0, existing_schedules, preferences))
+# Add the constraints to the solver
+s.add(katherine_constraints + rebecca_constraints + julie_constraints + angela_constraints + nicholas_constraints + carl_constraints)
+s.add(angela_prefer)
+s.add(And(start_time >= 9 * 60, start_time + meeting_duration <= 17 * 60, end_time >= start_time, end_time <= 17 * 60))
+
+# Solve the problem
+if s.check() == sat:
+    model = s.model()
+    start_time_val = model[start_time].as_long()
+    end_time_val = model[end_time].as_long()
+    print('SOLUTION:')
+    print(f'Day: {day}')
+    print(f'Start Time: {start_time_val // 60:02d}:{start_time_val % 60:02d}')
+    print(f'End Time: {end_time_val // 60:02d}:{end_time_val % 60:02d}')
+else:
+    print('No solution found')

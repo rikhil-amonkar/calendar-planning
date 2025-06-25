@@ -1,67 +1,105 @@
 from z3 import *
+from itertools import product
 
-# Define the cities
-cities = ['Reykjavik', 'Stuttgart', 'Split', 'Vienna', 'Lyon', 'Edinburgh', 'Manchester', 'Prague']
-
-# Define the number of days in each city
-days_in_city = {'Reykjavik': 5, 'Stuttgart': 5, 'Split': 5, 'Vienna': 4, 'Lyon': 3, 'Edinburgh': 4, 'Manchester': 2, 'Prague': 4}
+# Define the cities and their corresponding durations
+cities = {
+    'Reykjavik': 5,
+    'Stuttgart': 5,
+    'Split': 5,
+    'Vienna': 4,
+    'Lyon': 3,
+    'Edinburgh': 4,
+    'Manchester': 2,
+    'Prague': 4
+}
 
 # Define the direct flights
 flights = {
-    'Reykjavik': ['Stuttgart', 'Vienna'],
-    'Stuttgart': ['Split', 'Vienna', 'Edinburgh', 'Manchester'],
-    'Split': ['Lyon', 'Manchester', 'Vienna', 'Prague'],
-    'Vienna': ['Lyon', 'Manchester', 'Prague'],
-    'Lyon': [],
-    'Edinburgh': ['Prague'],
-    'Manchester': ['Split', 'Prague'],
-    'Prague': ['Lyon', 'Reykjavik', 'Split']
+    ('Reykjavik', 'Stuttgart'): 1,
+    ('Stuttgart', 'Split'): 1,
+    ('Stuttgart', 'Vienna'): 1,
+    ('Prague', 'Manchester'): 1,
+    ('Edinburgh', 'Prague'): 1,
+    ('Manchester', 'Split'): 1,
+    ('Prague', 'Vienna'): 1,
+    ('Vienna', 'Manchester'): 1,
+    ('Prague', 'Split'): 1,
+    ('Vienna', 'Lyon'): 1,
+    ('Stuttgart', 'Edinburgh'): 1,
+    ('Split', 'Lyon'): 1,
+    ('Stuttgart', 'Manchester'): 1,
+    ('Prague', 'Lyon'): 1,
+    ('Reykjavik', 'Vienna'): 1,
+    ('Prague', 'Reykjavik'): 1,
+    ('Vienna', 'Split'): 1
 }
 
-# Define the annual show in Edinburgh
-annual_show = [5, 6, 7, 8]
+# Define the constraints
+def constraints(model):
+    day = 1
+    place = 'Reykjavik'
+    itinerary = []
 
-# Define the wedding in Split
-wedding = [19, 20, 21, 22, 23]
+    while day <= 25:
+        # Add the current day to the itinerary
+        itinerary.append({'day_range': f'Day {day}-{day + cities[place] - 1}' if day + cities[place] - 1 <= 25 else f'Day {day}-{25}', 'place': place})
+
+        # If the place is Edinburgh, attend the annual show
+        if place == 'Edinburgh' and day >= 5 and day <= 8:
+            itinerary.append({'day_range': f'Day {day}', 'place': place})
+
+        # If the place is Split, attend the wedding
+        if place == 'Split' and (day >= 19 or day <= 23):
+            itinerary.append({'day_range': f'Day {day}', 'place': place})
+
+        # If the place is not the last city, add the flight to the next city
+        if day + cities[place] - 1 < 25:
+            for flight in flights:
+                if flight[0] == place and model[flight] == day + cities[place] - 1:
+                    place = flight[1]
+                    itinerary.append({'day_range': f'Day {day + cities[place] - 1}', 'place': place})
+                    break
+            else:
+                raise Exception(f'No flight found from {place}')
+
+        day += 1
+
+    return itinerary
 
 # Define the solver
 solver = Solver()
 
 # Define the variables
-days = [Int(f'day_{i}') for i in range(1, 26)]
-city = [Int(f'city_{i}') for i in range(1, 9)]
-for i in range(1, 9):
-    solver.add(city[i] >= 1)
-    solver.add(city[i] <= len(cities))
+days = [Int(f'day_{i}') for i in range(25)]
+places = [Int(f'place_{i}') for i in range(25)]
+flights = [[Bool(f'flight_{i}_{j}') for j in range(25)] for i in range(25)]
 
 # Define the constraints
-for i in range(1, 26):
-    solver.add(days[i] >= days[i-1])
-    if i in annual_show:
-        solver.add(city[6] == 2)
-    if i in wedding:
-        solver.add(city[7] == 2)
+for i in range(25):
+    solver.add(days[i] == i + 1)
+    solver.add(places[i] >= 0)
+    solver.add(places[i] < len(cities))
 
-# Define the city constraints
-for i in range(1, 26):
-    for j in range(1, 9):
-        if cities[j-1] in days_in_city and days_in_city[cities[j-1]] == i:
-            solver.add(city[j] == j-1)
-        elif cities[j-1] in flights and cities[j-1] in days[i-1]:
-            solver.add(Or([city[j] == k for k in range(1, 9) if cities[k-1] in flights[cities[j-1]]]))
-        else:
-            solver.add(city[j]!= j-1)
+for i in range(25):
+    for j in range(25):
+        if i!= j:
+            solver.add(Or([Not(flights[i][j]) for j in range(25)]))
 
-# Define the output constraint
-solver.add(And([days[i] == 0 for i in range(1, 26)]))
+for i in range(25):
+    solver.add(Or([flights[i][j] for j in range(25)]))
+
+for i in range(25):
+    for j in range(25):
+        if i!= j:
+            solver.add(Implies(flights[i][j], days[i] + cities[places[i]] - 1 == days[j]))
+
+for flight in flights.values():
+    solver.add(Or(flight))
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    trip_plan = []
-    for i in range(1, 26):
-        trip_plan.append((i, model[city[1]].as_string(), model[city[2]].as_string(), model[city[3]].as_string(), model[city[4]].as_string(), model[city[5]].as_string(), model[city[6]].as_string(), model[city[7]].as_string(), model[city[8]].as_string()))
-    for i in trip_plan:
-        print(f'Day {i[0]}: {i[1]} -> {i[2]} -> {i[3]} -> {i[4]} -> {i[5]} -> {i[6]} -> {i[7]} -> {i[8]}')
+    itinerary = constraints(model)
+    print({'itinerary': itinerary})
 else:
     print('No solution found')

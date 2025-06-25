@@ -1,104 +1,123 @@
 from z3 import *
 
+# Define the cities
+cities = ["Vienna", "Barcelona", "Edinburgh", "Krakow", "Riga", "Hamburg", "Paris", "Stockholm"]
+
+# Define the days
+days = range(1, 17)
+
 # Define the variables
-days = [Bool(f'day_{i}') for i in range(1, 17)]
-cities = ['Vienna', 'Barcelona', 'Edinburgh', 'Krakow', 'Riga', 'Hamburg', 'Paris', 'Stockholm']
-city_days = {city: [Bool(f'{city}_day_{i}') for i in range(1, 17)] for city in cities}
+place = [Int(f"place_{i}") for i in range(len(days))]
+stay = [Bool(f"stay_{i}") for i in range(len(days))]
+flight = [Bool(f"flight_{i}") for i in range(len(days))]
+friend = [Bool(f"friend_{i}") for i in range(len(days))]
+wedding = [Bool(f"wedding_{i}") for i in range(len(days))]
+conference = [Bool(f"conference_{i}") for i in range(len(days))]
+relative = [Bool(f"relative_{i}") for i in range(len(days))]
 
 # Define the constraints
-s = Solver()
+solver = Solver()
 
-# Wedding in Paris
-s.add(day_1)
+# Initialize the place variable
+solver.add(place[0] == 0)
 
-# City days for Paris
-for i in range(1, 17):
-    s.add(Or([city_days['Paris'][i], city_days['Paris'][i - 1]]))
+# Add constraints for each city
+for i in range(len(days)):
+    # Each day, a person can either stay in one city or fly to another city
+    solver.add(Or([stay[i], Or(flight[i], flight[i-1])]))
+    
+    # If a person flies, they must fly from one city to another
+    if i > 0:
+        solver.add(Implies(flight[i], Or(flight[i-1], stay[i-1])))
+    
+    # If a person stays in a city, they must have flown to that city the previous day
+    if i > 0:
+        solver.add(Implies(stay[i], flight[i-1]))
+    
+    # If a person attends a wedding or a conference, they must stay in the city where the wedding or conference is held
+    if i == 1:
+        solver.add(wedding[i] == stay[i])
+    if i >= 10 and i <= 11:
+        solver.add(conference[i] == stay[i])
+    if i >= 12 and i <= 15:
+        solver.add(friend[i] == stay[i])
+    if i >= 15 and i <= 16:
+        solver.add(relative[i] == stay[i])
+    
+    # If a person stays in a city for 4 days, they must have stayed there the previous 3 days
+    if i >= 4:
+        solver.add(Implies(stay[i], And(stay[i-1], stay[i-2], stay[i-3])))
+    
+    # If a person stays in a city for 2 days, they must have stayed there the previous day
+    if i >= 2:
+        solver.add(Implies(stay[i], stay[i-1]))
+    
+    # If a person flies to a city, they must not have stayed in that city the previous day
+    if i > 0:
+        solver.add(Implies(flight[i], Not(stay[i-1])))
+    
+    # If a person stays in a city for 3 days, they must have flown to that city 3 days ago
+    if i >= 3:
+        solver.add(Implies(stay[i], flight[i-3]))
+    
+    # Add constraints for each city
+    if i == 3:
+        solver.add(stay[i] == True)  # Stay in Vienna for 4 days
+    if i >= 3 and i <= 6:
+        solver.add(stay[i] == True)  # Stay in Vienna
+    if i == 7:
+        solver.add(stay[i] == False)  # Fly to Barcelona
+    if i >= 7 and i <= 8:
+        solver.add(stay[i] == True)  # Stay in Barcelona for 2 days
+    if i == 9:
+        solver.add(stay[i] == False)  # Fly to Edinburgh
+    if i >= 9 and i <= 12:
+        solver.add(stay[i] == True)  # Stay in Edinburgh for 4 days
+    if i == 12:
+        solver.add(stay[i] == False)  # Fly to Krakow
+    if i >= 12 and i <= 14:
+        solver.add(stay[i] == True)  # Stay in Krakow for 3 days
+    if i == 14:
+        solver.add(stay[i] == False)  # Fly to Riga
+    if i >= 14 and i <= 17:
+        solver.add(stay[i] == True)  # Stay in Riga for 4 days
+    if i == 5:
+        solver.add(stay[i] == False)  # Fly to Hamburg
+    if i == 6:
+        solver.add(stay[i] == False)  # Fly to Hamburg
+    if i >= 10 and i <= 11:
+        solver.add(stay[i] == True)  # Attend conference in Hamburg
+    if i == 4:
+        solver.add(stay[i] == False)  # Fly to Paris
+    if i == 2:
+        solver.add(stay[i] == False)  # Attend wedding in Paris
+    if i == 6:
+        solver.add(stay[i] == False)  # Fly to Paris
+    if i >= 6 and i <= 7:
+        solver.add(stay[i] == True)  # Stay in Paris for 2 days
+    if i == 8:
+        solver.add(stay[i] == False)  # Fly to Stockholm
+    if i >= 8 and i <= 9:
+        solver.add(stay[i] == True)  # Stay in Stockholm for 2 days
 
-# Conference in Hamburg
-s.add(day_10)
-s.add(day_11)
+# Add constraint to cover exactly 16 days
+solver.add(And([stay[i] == False for i in range(len(days))]))
 
-# City days for Hamburg
-for i in range(1, 17):
-    s.add(Or([city_days['Hamburg'][i], city_days['Hamburg'][i - 1]]))
-
-# Meeting a friend in Edinburgh
-s.add(day_12)
-s.add(day_13)
-s.add(day_14)
-s.add(day_15)
-
-# City days for Edinburgh
-for i in range(1, 17):
-    s.add(Or([city_days['Edinburgh'][i], city_days['Edinburgh'][i - 1]]))
-
-# Relatives in Stockholm
-s.add(day_15)
-s.add(day_16)
-
-# City days for Stockholm
-for i in range(1, 17):
-    s.add(Or([city_days['Stockholm'][i], city_days['Stockholm'][i - 1]]))
-
-# Direct flights
-direct_flights = {
-    'Hamburg': ['Stockholm', 'Vienna'],
-    'Vienna': ['Stockholm', 'Barcelona'],
-    'Paris': ['Edinburgh', 'Riga'],
-    'Riga': ['Barcelona', 'Edinburgh'],
-    'Krakow': ['Barcelona', 'Paris', 'Stockholm'],
-    'Edinburgh': ['Stockholm', 'Krakow', 'Hamburg', 'Barcelona'],
-    'Barcelona': ['Stockholm', 'Vienna', 'Hamburg'],
-    'Stockholm': ['Hamburg', 'Vienna', 'Paris', 'Krakow'],
-    'Riga': ['Hamburg', 'Paris']
-}
-for city in cities:
-    for flight in direct_flights[city]:
-        if city == flight:
-            continue
-        for i in range(1, 17):
-            s.add(Or([city_days[city][i] & city_days[flight][i]]))
-
-# Minimum and maximum days in each city
-min_days = {
-    'Vienna': 4,
-    'Barcelona': 2,
-    'Edinburgh': 4,
-    'Krakow': 3,
-    'Riga': 4,
-    'Hamburg': 2,
-    'Paris': 2,
-    'Stockholm': 2
-}
-max_days = {
-    'Vienna': 4,
-    'Barcelona': 2,
-    'Edinburgh': 4,
-    'Krakow': 3,
-    'Riga': 4,
-    'Hamburg': 2,
-    'Paris': 2,
-    'Stockholm': 2
-}
-for city in cities:
-    for i in range(1, min_days[city] + 1):
-        s.add(city_days[city][i])
-    for i in range(max_days[city], 17):
-        s.add(city_days[city][i])
-
-# Total days
-s.add(Or([day_1, day_2, day_3, day_4, day_5, day_6, day_7, day_8, day_9, day_10, day_11, day_12, day_13, day_14, day_15, day_16]))
-s.add(Not(And([day_1, day_2, day_3, day_4, day_5, day_6, day_7, day_8, day_9, day_10, day_11, day_12, day_13, day_14, day_15, day_16])))
-s.add(And([day_1, day_2, day_3, day_4, day_5, day_6, day_7, day_8, day_9, day_10, day_11, day_12, day_13, day_14, day_15, day_16]).Count() == 16)
+# Add constraint to assign a city to each day
+for i in range(len(days)):
+    solver.add(Or([stay[i], flight[i]]))
 
 # Solve the problem
-if s.check() == sat:
-    model = s.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = [day for day in range(1, 17) if model.evaluate(city_days[city][day]).as_bool().value()]
-    for city, days in trip_plan.items():
-        print(f'{city}: {days}')
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for i in range(len(days)):
+        if model.evaluate(stay[i]).as_bool():
+            if model.evaluate(flight[i-1]).as_bool():
+                itinerary.append({"day_range": f"Day {i-1}-{i}", "place": cities[model.evaluate(place[i-1]).as_int() - 1]})
+            itinerary.append({"day_range": f"Day {i}-{i+1}", "place": cities[model.evaluate(place[i]).as_int() - 1]})
+        else:
+            itinerary.append({"day_range": f"Day {i}-{i+1}", "place": cities[model.evaluate(place[i]).as_int() - 1]})
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
+    print("No solution found")

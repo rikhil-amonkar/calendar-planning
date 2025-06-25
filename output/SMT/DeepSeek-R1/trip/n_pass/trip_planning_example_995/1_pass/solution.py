@@ -3,153 +3,136 @@ import json
 
 def main():
     # Define the city mapping
-    cities = ["Barcelona", "Oslo", "Stuttgart", "Venice", "Split", "Brussels", "Copenhagen"]
-    city_to_int = {name: idx for idx, name in enumerate(cities)}
+    cities = {
+        'Barcelona': 0,
+        'Stuttgart': 1,
+        'Venice': 2,
+        'Split': 3,
+        'Brussels': 4,
+        'Copenhagen': 5,
+        'Oslo': 6
+    }
     
-    # Define direct flights as a set of tuples (sorted)
-    flight_pairs = [
-        ("Venice", "Stuttgart"),
-        ("Oslo", "Brussels"),
-        ("Split", "Copenhagen"),
-        ("Barcelona", "Copenhagen"),
-        ("Barcelona", "Venice"),
-        ("Brussels", "Venice"),
-        ("Barcelona", "Stuttgart"),
-        ("Copenhagen", "Brussels"),
-        ("Oslo", "Split"),
-        ("Oslo", "Venice"),
-        ("Barcelona", "Split"),
-        ("Oslo", "Copenhagen"),
-        ("Barcelona", "Oslo"),
-        ("Copenhagen", "Stuttgart"),
-        ("Split", "Stuttgart"),
-        ("Copenhagen", "Venice"),
-        ("Barcelona", "Brussels")
+    # Reverse mapping for output
+    city_names = {v: k for k, v in cities.items()}
+    
+    # Required days per city (by index)
+    req_days = {
+        0: 3,  # Barcelona
+        1: 3,  # Stuttgart
+        2: 4,  # Venice
+        3: 4,  # Split
+        4: 3,  # Brussels
+        5: 3,  # Copenhagen
+        6: 2   # Oslo
+    }
+    
+    # Undirected edges
+    edges_list = [
+        (0,1), (0,2), (0,3), (0,4), (0,5), (0,6),
+        (1,2), (1,3), (1,5),
+        (2,4), (2,5), (2,6),
+        (3,5), (3,6),
+        (4,5), (4,6),
+        (5,6)
     ]
-    flights_set = set()
-    for a, b in flight_pairs:
-        int_a = city_to_int[a]
-        int_b = city_to_int[b]
-        flights_set.add((int_a, int_b))
     
-    # Define variables
-    e2 = Int('e2')
-    e3 = Int('e3')
-    e4 = Int('e4')
-    e5 = Int('e5')
-    e6 = Int('e6')
+    n = 7  # number of cities
     
-    s2 = Int('s2')
-    s3 = Int('s3')
-    s4 = Int('s4')
-    s5 = Int('s5')
-    s6 = Int('s6')
-    s7 = Int('s7')
-    
-    s = [0, s2, s3, s4, s5, s6, s7]  # s0 is Barcelona (0)
-    ends = [3, e2, e3, e4, e5, e6, 16]  # ends[0] is end of segment0 (Barcelona) = 3, segment7 ends at 16.
-    starts = [1, 3, e2, e3, e4, e5, e6]  # starts[0]=1, starts[1]=3, starts[2]=e2, ... starts[6]=e6.
+    # Create Z3 variables
+    c = [Int(f'c_{i}') for i in range(n)]  # city sequence
+    s = [Int(f's_{i}') for i in range(n)]  # start days
+    e = [Int(f'e_{i}') for i in range(n)]  # end days
     
     solver = Solver()
     
-    # Constraints for end days: increasing and within [3,16]
-    solver.add(e2 >= 3, e2 <= 16)
-    solver.add(e3 >= e2, e3 <= 16)
-    solver.add(e4 >= e3, e4 <= 16)
-    solver.add(e5 >= e4, e5 <= 16)
-    solver.add(e6 >= e5, e6 <= 16)
+    # Fix the first city as Barcelona
+    solver.add(c[0] == 0)
     
-    # Constraints for city assignments: distinct and in 1..6
-    solver.add(Distinct(s2, s3, s4, s5, s6, s7))
-    for x in [s2, s3, s4, s5, s6, s7]:
-        solver.add(x >= 1, x <= 6)
+    # All cities are distinct and in the range [0,6]
+    solver.add(Distinct(c))
+    for i in range(1, n):
+        solver.add(c[i] >= 1, c[i] <= 6)
     
-    # Duration constraints for segments 1 to 6 (index1 to 6 in s, which are segments1 to 6)
-    for i in range(1, 7):  # i from 1 to 6: segments1 to 6
-        # duration = ends[i] - starts[i] + 1 = ends[i] - ends[i-1] + 1
-        # And we set it to the required days for the city s[i]
-        solver.add(
-            If(s[i] == 1, ends[i] == ends[i-1] + 1,  # Oslo: 2 days -> duration=2 -> ends[i] = ends[i-1] + 1
-            If(s[i] == 2, ends[i] == ends[i-1] + 2,  # Stuttgart: 3 days -> ends[i] = ends[i-1] + 2
-            If(s[i] == 3, ends[i] == ends[i-1] + 3,  # Venice: 4 days -> ends[i] = ends[i-1] + 3
-            If(s[i] == 4, ends[i] == ends[i-1] + 3,  # Split: 4 days
-            If(s[i] == 5, ends[i] == ends[i-1] + 2,  # Brussels: 3 days
-            If(s[i] == 6, ends[i] == ends[i-1] + 2,  # Copenhagen: 3 days
-            BoolVal(False))))))
-        )
-    
-    # Duration constraint for segment7 (index6 in s, which is the last segment)
-    # duration = 16 - starts[6] + 1 = 17 - starts[6] = 17 - e6 (since starts[6]=e6)
-    solver.add(
-        If(s[6] == 1, 17 - e6 == 2,  # Oslo: 2 days -> e6=15
-        If(s[6] == 2, 17 - e6 == 3,   # Stuttgart: 3 days -> e6=14
-        If(s[6] == 3, 17 - e6 == 4,   # Venice: 4 days -> e6=13
-        If(s[6] == 4, 17 - e6 == 4,   # Split: 4 days -> e6=13
-        If(s[6] == 5, 17 - e6 == 3,   # Brussels: 3 days -> e6=14
-        If(s[6] == 6, 17 - e6 == 3,   # Copenhagen: 3 days -> e6=14
-        BoolVal(False))))))
-    )
-    
-    # Meeting constraints for Oslo and Brussels (for segments1 to 6, i.e., i=1 to 6 in s)
-    for i in range(1, 7):  # i=1 to 6: segments1 to 6 (second to seventh)
-        # For Oslo (city1): if segment i is Oslo, then starts[i] <=4 -> starts[i] = ends[i-1] <=4
-        solver.add(If(s[i] == 1, ends[i-1] <= 4, True))
-        # For Brussels (city5): if segment i is Brussels, then starts[i] <=11 and ends[i] >=9
-        solver.add(If(s[i] == 5, And(ends[i-1] <= 11, ends[i] >= 9), True))
-    
-    # Meeting constraints for the last segment (segment7, i=6 in s)
-    # For Oslo: if segment7 is Oslo, then starts[6] <=4 -> starts[6]=e5 <=4
-    solver.add(If(s[6] == 1, e5 <= 4, True))
-    # For Brussels: if segment7 is Brussels, then starts[6] <=11 -> e5<=11 (and ends[6]=16>=9, always true)
-    solver.add(If(s[6] == 5, e5 <= 11, True))
-    
-    # Flight connections between consecutive segments
-    for i in range(6):  # i from 0 to 5: pairs (s[i], s[i+1])
-        c1 = s[i]
-        c2 = s[i+1]
+    # Flight constraints: consecutive cities must have a direct flight
+    for i in range(n-1):
         conds = []
-        for (a, b) in flights_set:
-            conds.append(And(c1 == a, c2 == b))
-            conds.append(And(c1 == b, c2 == a))
+        for edge in edges_list:
+            a, b = edge
+            conds.append(Or(
+                And(c[i] == a, c[i+1] == b),
+                And(c[i] == b, c[i+1] == a)
+            ))
         solver.add(Or(conds))
+    
+    # Day constraints
+    solver.add(s[0] == 1)  # Barcelona starts on day 1
+    solver.add(e[0] == 3)  # Barcelona ends on day 3
+    
+    # For each subsequent city, start day is the end day of the previous city
+    for i in range(1, n):
+        solver.add(s[i] == e[i-1])
+    
+    # The last city ends on day 16
+    solver.add(e[n-1] == 16)
+    
+    # Length of stay for each city: end - start + 1 = required days
+    for i in range(n):
+        solver.add(e[i] - s[i] + 1 == req_days[c[i]])
+    
+    # Constraints for Oslo (city 6) and Brussels (city 4)
+    oslo_constraints = []
+    brussels_constraints = []
+    for i in range(n):
+        # Oslo must be visited between day 3 and 4
+        oslo_constraints.append(And(c[i] == 6, s[i] <= 4, e[i] >= 3))
+        # Brussels must be visited between day 9 and 11
+        brussels_constraints.append(And(c[i] == 4, s[i] <= 11, e[i] >= 9))
+    solver.add(Or(oslo_constraints))
+    solver.add(Or(brussels_constraints))
+    
+    # Ensure days are within bounds
+    for i in range(n):
+        solver.add(s[i] >= 1, s[i] <= 16)
+        solver.add(e[i] >= 1, e[i] <= 16)
     
     # Solve the problem
     if solver.check() == sat:
         model = solver.model()
-        # Extract the values for the city assignments and end days
-        s_val = [0]  # segment0 is Barcelona
-        s_val.append(model.evaluate(s2).as_long())
-        s_val.append(model.evaluate(s3).as_long())
-        s_val.append(model.evaluate(s4).as_long())
-        s_val.append(model.evaluate(s5).as_long())
-        s_val.append(model.evaluate(s6).as_long())
-        s_val.append(model.evaluate(s7).as_long())
+        c_val = [model.evaluate(c[i]).as_long() for i in range(n)]
+        s_val = [model.evaluate(s[i]).as_long() for i in range(n)]
+        e_val = [model.evaluate(e[i]).as_long() for i in range(n)]
         
-        ends_val = [3]  # end of segment0
-        ends_val.append(model.evaluate(e2).as_long())
-        ends_val.append(model.evaluate(e3).as_long())
-        ends_val.append(model.evaluate(e4).as_long())
-        ends_val.append(model.evaluate(e5).as_long())
-        ends_val.append(model.evaluate(e6).as_long())
-        ends_val.append(16)  # end of segment7
-        
-        starts_val = [1]  # start of segment0
-        for i in range(1, 7):
-            starts_val.append(ends_val[i-1])  # start of segment i = end of segment i-1
-        
-        # Build the itinerary
+        # Build itinerary
         itinerary = []
-        for i in range(7):  # for each segment
-            start = starts_val[i]
-            end = ends_val[i]
-            city_name = cities[s_val[i]]
-            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_name})
-            if i < 6:  # not the last segment: add flight day records
-                departure_city = cities[s_val[i]]
-                arrival_city = cities[s_val[i+1]]
-                itinerary.append({"day_range": f"Day {end}", "place": departure_city})
-                itinerary.append({"day_range": f"Day {end}", "place": arrival_city})
         
+        # First city: entire block
+        start0 = s_val[0]
+        end0 = e_val[0]
+        if start0 == end0:
+            day_str0 = f"Day {start0}"
+        else:
+            day_str0 = f"Day {start0}-{end0}"
+        itinerary.append({"day_range": day_str0, "place": city_names[c_val[0]]})
+        
+        # Subsequent cities: flight records and entire blocks
+        for i in range(0, n-1):
+            flight_day = e_val[i]
+            # Departure from current city
+            itinerary.append({"day_range": f"Day {flight_day}", "place": city_names[c_val[i]]})
+            # Arrival at next city
+            itinerary.append({"day_range": f"Day {flight_day}", "place": city_names[c_val[i+1]]})
+            
+            # Entire block for next city
+            start_next = s_val[i+1]
+            end_next = e_val[i+1]
+            if start_next == end_next:
+                day_str_next = f"Day {start_next}"
+            else:
+                day_str_next = f"Day {start_next}-{end_next}"
+            itinerary.append({"day_range": day_str_next, "place": city_names[c_val[i+1]]})
+        
+        # Output as JSON
         result = {"itinerary": itinerary}
         print(json.dumps(result))
     else:

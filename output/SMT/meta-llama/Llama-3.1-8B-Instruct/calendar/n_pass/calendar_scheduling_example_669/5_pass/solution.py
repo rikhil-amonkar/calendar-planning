@@ -1,80 +1,47 @@
-YOUR_CODE
 from z3 import *
 
 # Define the variables
 day = Int('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
+start_time = Real('start_time')
+end_time = Real('end_time')
 
 # Define the constraints
-monday = 1
-tuesday = 2
-meeting_duration = 30
+day_constraints = [day == 1]  # Try to schedule the meeting on Monday
 
-# Define the schedules for Jean and Doris
-jean_monday = [9, 17]
-jean_tuesday = [9, 17]
+start_time_constraints = [start_time >= 9, start_time < 11]  # Jean is busy on Tuesday during 11:30 to 12:00
+start_time_constraints.append(And(Not(start_time < 11), Not(start_time >= 16)))  # Jean is busy on Tuesday during 11:30 to 12:00
+start_time_constraints.append(Or(start_time < 9, start_time >= 11))  # Jean is busy on Tuesday during 11:30 to 12:00
+start_time_constraints.append(Or(start_time < 11, start_time >= 16))  # Jean is busy on Tuesday during 16:00 to 16:30
+start_time_constraints.append(And(Or(start_time < 9, start_time >= 13.5), start_time < 16.5))  # Doris is busy on Monday during 13:30 to 16:00
+start_time_constraints.append(And(Or(start_time < 13.5, start_time >= 16.5), start_time < 17))  # Doris is busy on Monday during 16:30 to 17:00
+start_time_constraints.append(Or(start_time < 9, start_time >= 9))  # Doris is busy on Tuesday during 9:00 to 17:00
+start_time_constraints.append(start_time >= 14)  # Doris would rather not meet on Monday after 14:00
 
-doris_monday = [9, 11, 30, 16, 17]
-doris_tuesday = [9, 17]
+end_time_constraints = [end_time > start_time, end_time - start_time == 0.5]  # Meeting duration is half an hour
 
-# Define the constraints for Doris' preferences
-doris_preference = [monday, 14]
-
-# Define the meeting duration in minutes
-meeting_duration_minutes = meeting_duration * 60
+# Define the meeting duration
+meeting_duration = 0.5
 
 # Define the solver
 solver = Solver()
 
-# Define the constraints for the start and end times
-for day_value in [monday, tuesday]:
-    for start_time_value in range(9 * 60, 17 * 60):
-        for end_time_value in range(start_time_value + meeting_duration_minutes, 17 * 60 + 1):
-            day_var = day_value
-            start_time_var = start_time_value
-            end_time_var = end_time_value
-            # Define the constraints for Jean's schedule
-            jean_schedule = If(day_var == monday, jean_monday, jean_tuesday)
-            for i in range(len(jean_schedule)):
-                if jean_schedule[i] * 60 <= start_time_var and start_time_var + meeting_duration_minutes <= (jean_schedule[i] + 1) * 60:
-                    break
-            else:
-                continue
-            # Define the constraints for Doris' schedule
-            doris_schedule = If(day_var == monday, doris_monday, doris_tuesday)
-            for i in range(len(doris_schedule)):
-                if doris_schedule[i]!= 14 and doris_schedule[i] * 60 <= start_time_var and start_time_var + meeting_duration_minutes <= (doris_schedule[i] + 1) * 60:
-                    break
-            else:
-                continue
-            # Solve the problem
-            solver.push()
-            solver.add(day_var == day_value)
-            solver.add(start_time_var == start_time_value)
-            solver.add(end_time_var == end_time_value)
-            solver.add(9 * 60 <= start_time_var)
-            solver.add(start_time_var <= 17 * 60)
-            solver.add(start_time_var + meeting_duration_minutes <= 17 * 60)
-            if solver.check() == sat:
-                model = solver.model()
-                day_value = model[day_var]
-                start_time_value = model[start_time_var]
-                end_time_value = model[end_time_var]
-                start_time_str = str(start_time_value // 60).zfill(2) + str(start_time_value % 60).zfill(2)
-                end_time_str = str(end_time_value // 60).zfill(2) + str(end_time_value % 60).zfill(2)
-                print('SOLUTION:')
-                print(f'Day: {["Monday", "Tuesday"][day_value - 1]}')
-                print(f'Start Time: {start_time_str}')
-                print(f'End Time: {end_time_str}')
-                solver.pop()
-                break
-            solver.pop()
+# Add the constraints to the solver
+solver.add(And(day_constraints))
+solver.add(And(start_time >= 9, start_time <= 17))  # Meeting time is between 9:00 and 17:00
+solver.add(And(start_time_constraints))
+solver.add(And(end_time_constraints))
+
+# Solve the constraints
 if solver.check() == sat:
-    print('No solution found.')
+    model = solver.model()
+    day_value = model[day].as_long()
+    start_time_value = model[start_time].numerator_as_long() / 3600
+    end_time_value = model[end_time].numerator_as_long() / 3600
+
+    # Print the solution
+    print(f"SOLUTION:")
+    print(f"Day: {'Monday' if day_value == 1 else 'Tuesday'}")
+    print(f"Start Time: {int(start_time_value * 24):02d}:{int((start_time_value * 24 - int(start_time_value * 24)) * 60):02d}")
+    print(f"End Time: {int(end_time_value * 24):02d}:{int((end_time_value * 24 - int(end_time_value * 24)) * 60):02d}")
 else:
-    print('SOLUTION:')
-    print('Day: Tuesday')
-    print('Start Time: 12:00')
-    print('End Time: 12:30')
-print('END')
+    print("No solution found")

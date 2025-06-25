@@ -1,80 +1,94 @@
 from z3 import *
 
 # Define the variables
+time = [9, 12, 7, 11]  # Arrival times for each friend
+duration = [30, 90, 75, 105]  # Minimum duration for each meeting
+locations = ['Nob Hill', 'Haight-Ashbury', 'Chinatown', 'Marina District']
+distances = {
+    'Nob Hill': {'Union Square': 7, 'Haight-Ashbury': 15, 'Chinatown': 6, 'Marina District': 11},
+    'Haight-Ashbury': {'Union Square': 17, 'Nob Hill': 13, 'Chinatown': 19, 'Marina District': 17},
+    'Chinatown': {'Union Square': 7, 'Nob Hill': 8, 'Haight-Ashbury': 19, 'Marina District': 12},
+    'Marina District': {'Union Square': 16, 'Nob Hill': 12, 'Haight-Ashbury': 16, 'Chinatown': 16}
+}
+start_time = 9 * 60  # Start time in minutes
+karen_end_time = 9 * 60 + 45  # End time for Karen in minutes
+joseph_start_time = 12 * 60 + 30  # Start time for Joseph in minutes
+nancy_start_time = 11 * 60  # Start time for Nancy in minutes
+
+# Define the solver
+solver = Optimize()
+
+# Define the variables for meeting times
 meet_karen = Int('meet_karen')
 meet_joseph = Int('meet_joseph')
 meet_sandra = Int('meet_sandra')
 meet_nancy = Int('meet_nancy')
 
 # Define the constraints
-travel_times = {
-    ('Union Square', 'Nob Hill'): 9,
-    ('Union Square', 'Haight-Ashbury'): 18,
-    ('Union Square', 'Chinatown'): 7,
-    ('Union Square', 'Marina District'): 18,
-    ('Nob Hill', 'Union Square'): 7,
-    ('Nob Hill', 'Haight-Ashbury'): 13,
-    ('Nob Hill', 'Chinatown'): 6,
-    ('Nob Hill', 'Marina District'): 11,
-    ('Haight-Ashbury', 'Union Square'): 17,
-    ('Haight-Ashbury', 'Nob Hill'): 15,
-    ('Haight-Ashbury', 'Chinatown'): 19,
-    ('Haight-Ashbury', 'Marina District'): 17,
-    ('Chinatown', 'Union Square'): 7,
-    ('Chinatown', 'Nob Hill'): 8,
-    ('Chinatown', 'Haight-Ashbury'): 19,
-    ('Chinatown', 'Marina District'): 12,
-    ('Marina District', 'Union Square'): 16,
-    ('Marina District', 'Nob Hill'): 12,
-    ('Marina District', 'Haight-Ashbury'): 16,
-    ('Marina District', 'Chinatown'): 16
-}
+solver.add(meet_karen >= time[0])
+solver.add(meet_karen <= karen_end_time - duration[0])
+solver.add(meet_joseph >= time[1])
+solver.add(meet_joseph <= 19 * 60 - duration[1])
+solver.add(meet_sandra >= time[2])
+solver.add(meet_sandra <= min(19 * 60, time[2] + duration[2]))  # Ensure meeting time with Sandra is within their availability
+solver.add(meet_nancy >= time[3])
+solver.add(meet_nancy <= 20 * 60 - duration[3])
 
-karen_arrive = 9 * 60 + 15  # 9:15 AM
-karen_leave = 9 * 60 + 45   # 9:45 AM
-joseph_arrive = 12 * 60 + 30 # 12:30 PM
-joseph_leave = 19 * 60 + 45  # 7:45 PM
-sandra_arrive = 7 * 60      # 7:00 AM
-sandra_leave = 19 * 60       # 7:15 PM
-nancy_arrive = 11 * 60      # 11:00 AM
-nancy_leave = 20 * 60 + 15  # 8:15 PM
-
-# Define the constraints
-s = Solver()
-
-# Karen
-s.add(meet_karen >= 30)
-
-# Joseph
-s.add(meet_joseph >= 90)
-
-# Sandra
-s.add(meet_sandra >= 75)
-
-# Nancy
-s.add(meet_nancy >= 105)
-
-# Meet exactly 4 people
-s.add(meet_karen + meet_joseph + meet_sandra + meet_nancy == 4 * 60)
-
-# Travel times
-locations = ['Union Square', 'Nob Hill', 'Haight-Ashbury', 'Chinatown', 'Marina District']
-for i in range(len(locations)):
-    for j in range(i + 1, len(locations)):
-        start = locations[i]
-        end = locations[j]
-        if start == 'Union Square':
-            s.add(meet_karen + meet_joseph + meet_sandra + meet_nancy >= travel_times[(start, end)])
-        else:
-            s.add(meet_karen + meet_joseph + meet_sandra + meet_nancy + travel_times[(start, 'Union Square')] >= travel_times[(start, end)])
+# Define the objective function
+solver.minimize(meet_karen + meet_joseph + meet_sandra + meet_nancy)
 
 # Solve the problem
-if s.check() == sat:
-    m = s.model()
-    print("SOLUTION:")
-    print(f"Meet Karen at Nob Hill: {m[meet_karen].as_long()} minutes")
-    print(f"Meet Joseph at Haight-Ashbury: {m[meet_joseph].as_long()} minutes")
-    print(f"Meet Sandra at Chinatown: {m[meet_sandra].as_long()} minutes")
-    print(f"Meet Nancy at Marina District: {m[meet_nancy].as_long()} minutes")
+result = solver.check()
+if result == sat:
+    model = solver.model()
+    print(f"Meet Karen at {model[meet_karen].as_long()} minutes.")
+    print(f"Meet Joseph at {model[meet_joseph].as_long()} minutes.")
+    print(f"Meet Sandra at {model[meet_sandra].as_long()} minutes.")
+    print(f"Meet Nancy at {model[meet_nancy].as_long()} minutes.")
+    # Calculate the optimal schedule
+    schedule = []
+    for i in range(4):
+        if model[meet_karen].as_long() < model[meet_joseph].as_long():
+            schedule.append((locations[0], time[0], model[meet_karen].as_long() - time[0]))
+            schedule.append((locations[0], model[meet_karen].as_long(), model[meet_karen].as_long() + duration[0]))
+            schedule.append((locations[0], model[meet_karen].as_long() + duration[0], model[meet_joseph].as_long()))
+        elif model[meet_karen].as_long() > model[meet_joseph].as_long():
+            schedule.append((locations[0], time[0], model[meet_joseph].as_long() - time[0]))
+            schedule.append((locations[0], model[meet_joseph].as_long(), model[meet_joseph].as_long() + duration[1]))
+            schedule.append((locations[0], model[meet_joseph].as_long() + duration[1], model[meet_karen].as_long()))
+        else:
+            schedule.append((locations[0], time[0], model[meet_karen].as_long() - time[0]))
+            schedule.append((locations[0], model[meet_karen].as_long(), model[meet_karen].as_long() + duration[0]))
+            schedule.append((locations[0], model[meet_karen].as_long() + duration[0], model[meet_karen].as_long() + duration[0] + duration[1]))
+
+        if model[meet_sandra].as_long() < model[meet_karen].as_long():
+            schedule.append((locations[2], model[meet_sandra].as_long(), model[meet_sandra].as_long() + duration[2]))
+            schedule.append((locations[2], model[meet_sandra].as_long() + duration[2], model[meet_karen].as_long()))
+        elif model[meet_sandra].as_long() > model[meet_karen].as_long():
+            schedule.append((locations[2], time[2], model[meet_karen].as_long() - time[2]))
+            schedule.append((locations[2], model[meet_karen].as_long(), model[meet_karen].as_long() + duration[0]))
+            schedule.append((locations[2], model[meet_karen].as_long() + duration[0], model[meet_sandra].as_long()))
+        else:
+            schedule.append((locations[2], time[2], model[meet_karen].as_long() - time[2]))
+            schedule.append((locations[2], model[meet_karen].as_long(), model[meet_karen].as_long() + duration[0]))
+            schedule.append((locations[2], model[meet_karen].as_long() + duration[0], model[meet_karen].as_long() + duration[0]))
+
+        if model[meet_nancy].as_long() < model[meet_karen].as_long():
+            schedule.append((locations[3], model[meet_nancy].as_long(), model[meet_nancy].as_long() + duration[3]))
+            schedule.append((locations[3], model[meet_nancy].as_long() + duration[3], model[meet_karen].as_long()))
+        elif model[meet_nancy].as_long() > model[meet_karen].as_long():
+            schedule.append((locations[3], time[3], model[meet_karen].as_long() - time[3]))
+            schedule.append((locations[3], model[meet_karen].as_long(), model[meet_karen].as_long() + duration[0]))
+            schedule.append((locations[3], model[meet_karen].as_long() + duration[0], model[meet_nancy].as_long()))
+        else:
+            schedule.append((locations[3], time[3], model[meet_karen].as_long() - time[3]))
+            schedule.append((locations[3], model[meet_karen].as_long(), model[meet_karen].as_long() + duration[0]))
+            schedule.append((locations[3], model[meet_karen].as_long() + duration[0], model[meet_karen].as_long() + duration[0]))
+
+    # Print the optimal schedule
+    print("Optimal schedule:")
+    for i in range(len(schedule)):
+        print(f"Time {schedule[i][2]}: Visit {schedule[i][0]}")
+
 else:
     print("No solution found")

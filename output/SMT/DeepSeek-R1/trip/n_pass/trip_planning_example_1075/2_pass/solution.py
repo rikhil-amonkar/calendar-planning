@@ -1,121 +1,91 @@
-from z3 import *
 import json
+from z3 import *
 
 def main():
+    # Cities and their required stay durations
     city_names = ["Vienna", "Lyon", "Edinburgh", "Reykjavik", "Stuttgart", "Manchester", "Split", "Prague"]
-    days_arr = [4, 3, 4, 5, 5, 2, 5, 4]
-    index_dict = {city: idx for idx, city in enumerate(city_names)}
-    
-    flight_strings = [
-        "from Reykjavik to Stuttgart",
-        "Stuttgart and Split",
-        "Stuttgart and Vienna",
-        "Prague and Manchester",
-        "Edinburgh and Prague",
-        "from Manchester to Split",
-        "Prague and Vienna",
-        "Vienna and Manchester",
-        "Prague and Split",
-        "Vienna and Lyon",
-        "Stuttgart and Edinburgh",
-        "Split and Lyon",
-        "Stuttgart and Manchester",
-        "Prague and Lyon",
-        "Reykjavik and Vienna",
-        "Prague and Reykjavik",
-        "Vienna and Split"
+    L = [4, 3, 4, 5, 5, 2, 5, 4]  # days for each city in the order of city_names
+
+    # Build the set of allowed flight connections (as unordered pairs of indices)
+    edges_by_index = [
+        (3,4), (4,6), (4,0), (7,5), (2,7), (5,6), (7,0), (0,5), (7,6), (0,1), (4,2), (6,1), (4,5), (7,1), (3,0), (7,3), (0,6)
     ]
-    
-    directed_edges = set()
-    for s in flight_strings:
-        if s.startswith("from"):
-            parts = s.split()
-            A = parts[1]
-            B = parts[3]
-            directed_edges.add((A, B))
-        else:
-            parts = s.split(' and ')
-            A = parts[0].strip()
-            B = parts[1].strip()
-            directed_edges.add((A, B))
-            directed_edges.add((B, A))
-    
-    directed_index_edges = set()
-    for (A, B) in directed_edges:
-        iA = index_dict[A]
-        iB = index_dict[B]
-        directed_index_edges.add((iA, iB))
-    
-    order = [Int(f"order_{i}") for i in range(8)]
-    
-    constraints = [Distinct(order)]
-    for i in range(8):
-        constraints.append(And(order[i] >= 0, order[i] < 8))
-    
-    for i in range(7):
-        options = []
-        for (a, b) in directed_index_edges:
-            options.append(And(order[i] == a, order[i+1] == b))
-        constraints.append(Or(options))
-    
-    S = [Int(f"S_{i}") for i in range(9)]
-    constraints.append(S[0] == 0)
-    for i in range(1, 9):
-        day_expr = Int(f"day_{i-1}")
-        options = []
-        for idx in range(8):
-            options.append(And(order[i-1] == idx, day_expr == days_arr[idx]))
-        constraints.append(Or(options))
-        constraints.append(S[i] == S[i-1] + day_expr)
-    
-    edinburgh_cons = Or([And(order[k] == index_dict["Edinburgh"], S[k] - k == 4) for k in range(8)])
-    constraints.append(edinburgh_cons)
-    
-    split_cons = Or([And(order[k] == index_dict["Split"], S[k] - k == 18) for k in range(8)])
-    constraints.append(split_cons)
-    
+    allowed_edges_set = set()
+    for (u, v) in edges_by_index:
+        a, b = min(u, v), max(u, v)
+        allowed_edges_set.add((a, b))
+
+    # Create Z3 solver and variables
     s = Solver()
-    s.add(constraints)
+    order = [Int(f'o_{i}') for i in range(8)]
+    start = [Int(f'start_{i}') for i in range(8)]
+    end = [Int(f'end_{i}') for i in range(8)]
+
+    # Constraints: each order variable is between 0 and 7 and all are distinct
+    s.add([And(order[i] >= 0, order[i] < 8) for i in range(8)])
+    s.add(Distinct(order))
+
+    # Create a Z3 array for durations
+    dur_array = Array('dur_array', IntSort(), IntSort())
+    for idx, duration in enumerate(L):
+        s.add(dur_array[idx] == duration)
+
+    # Start and end day constraints
+    s.add(start[0] == 1)
+    s.add(end[0] == start[0] + Select(dur_array, order[0]) - 1)
+    for i in range(1, 8):
+        s.add(start[i] == end[i-1])
+        s.add(end[i] == start[i] + Select(dur_array, order[i]) - 1)
+    s.add(end[7] == 25)  # total days must be 25
+
+    # Fixed events: Edinburgh (index 2) must be from day 5 to 8, Split (index 6) from day 19 to 23
+    s.add(Or([And(order[i] == 2, start[i] == 5, end[i] == 8) for i in range(8)]))
+    s.add(Or([And(order[i] == 6, start[i] == 19, end[i] == 23) for i in range(8)]))
+
+    # Flight constraints: consecutive cities must have a direct flight
+    for i in range(7):
+        u = order[i]
+        v = order[i+1]
+        a = If(u < v, u, v)
+        b = If(u < v, v, u)
+        # Create disjunction over all allowed edges
+        edge_constraints = []
+        for edge in allowed_edges_set:
+            edge_constraints.append(And(a == edge[0], b == edge[1]))
+        s.add(Or(edge_constraints))
+
+    # Solve the constraints
     if s.check() == sat:
         m = s.model()
-        order_vals = [m.evaluate(order[i]) for i in range(8)]
-        order_indices = [val.as_long() for val in order_vals]
-        prefix = [0] * 9
-        for i in range(1, 9):
-            city_idx = order_indices[i-1]
-            prefix[i] = prefix[i-1] + days_arr[city_idx]
+        order_val = [m.evaluate(order[i]).as_long() for i in range(8)]
+        start_val = [m.evaluate(start[i]).as_long() for i in range(8)]
+        end_val = [m.evaluate(end[i]).as_long() for i in range(8)]
         
-        itinerary = []
-        s0 = 1
-        d0 = days_arr[order_indices[0]]
-        e0 = s0 + d0 - 1
-        city0 = city_names[order_indices[0]]
-        itinerary.append({"day_range": f"Day {s0}-{e0}", "place": city0})
-        if 0 < 7:
-            itinerary.append({"day_range": f"Day {e0}", "place": city0})
+        # Helper function to format day ranges
+        def format_day_range(s, e):
+            if s == e:
+                return f"Day {s}"
+            else:
+                return f"Day {s}-{e}"
         
-        for i in range(1, 7):
-            s_i = 1 + prefix[i] - i
-            d_i = days_arr[order_indices[i]]
-            e_i = s_i + d_i - 1
-            city_i = city_names[order_indices[i]]
-            itinerary.append({"day_range": f"Day {s_i}", "place": city_i})
-            itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": city_i})
+        # Build itinerary
+        itinerary_list = []
+        for i in range(8):
+            s_i = start_val[i]
+            e_i = end_val[i]
+            city = city_names[order_val[i]]
+            itinerary_list.append({"day_range": format_day_range(s_i, e_i), "place": city})
             if i < 7:
-                itinerary.append({"day_range": f"Day {e_i}", "place": city_i})
+                # Travel day: same day for departure and arrival
+                next_city = city_names[order_val[i+1]]
+                itinerary_list.append({"day_range": f"Day {e_i}", "place": city})
+                itinerary_list.append({"day_range": f"Day {e_i}", "place": next_city})
         
-        i = 7
-        s_i = 1 + prefix[i] - i
-        d_i = days_arr[order_indices[i]]
-        e_i = s_i + d_i - 1
-        city_i = city_names[order_indices[i]]
-        itinerary.append({"day_range": f"Day {s_i}", "place": city_i})
-        itinerary.append({"day_range": f"Day {s_i}-{e_i}", "place": city_i})
-        
-        result = {"itinerary": itinerary}
+        # Output as JSON
+        result = {"itinerary": itinerary_list}
         print(json.dumps(result))
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

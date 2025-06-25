@@ -1,64 +1,187 @@
 from z3 import *
+from dataclasses import dataclass
+from typing import List, Dict
 
-# Define the variables
-days = 16
-cities = ['Istanbul', 'Rome', 'Seville', 'Naples', 'Santorini']
-days_in_cities = {city: 0 for city in cities}
-flights = {
-    'Istanbul': ['Naples'],
-    'Rome': ['Santorini', 'Seville', 'Naples', 'Istanbul'],
-    'Seville': ['Rome'],
-    'Naples': ['Santorini', 'Istanbul'],
-    'Santorini': ['Naples', 'Rome']
-}
-days_in_cities['Istanbul'] = 2
-days_in_cities['Rome'] = 3
-days_in_cities['Seville'] = 4
-days_in_cities['Naples'] = 7
-days_in_cities['Santorini'] = 4
+@dataclass
+class Day:
+    day_range: str
+    place: str
 
-# Create a Z3 solver
-s = Solver()
+@dataclass
+class Flight:
+    from_city: str
+    to_city: str
+    day: int
 
-# Create variables for days in each city
-for city in cities:
-    s.add(And(days_in_cities[city] <= days, days_in_cities[city] > 0))
+def solve_scheduling_problem():
+    # Define the cities and their corresponding places
+    cities = {
+        'Istanbul': 2,
+        'Rome': 3,
+        'Seville': 4,
+        'Naples': 7,
+        'Santorini': 4
+    }
 
-# Create variables for visiting each city
-visit_cities = {}
-for city in cities:
-    visit_cities[city] = [Bool(f'{city}_day_{day}') for day in range(1, days + 1)]
+    # Define the flights and their corresponding days
+    flights = [
+        Flight('Istanbul', 'Naples', 1),
+        Flight('Rome', 'Santorini', 1),
+        Flight('Seville', 'Rome', 1),
+        Flight('Naples', 'Santorini', 1),
+        Flight('Rome', 'Naples', 1),
+        Flight('Rome', 'Istanbul', 1)
+    ]
 
-# Create constraints for visiting each city
-for city in cities:
-    s.add(Or(visit_cities[city]))
+    # Create a list to store the itinerary
+    itinerary: List[Day] = []
 
-# Create constraints for flights between cities
-for city in cities:
-    for flight in flights[city]:
-        for day in range(1, days + 1):
-            if day + 1 - days_in_cities[city] <= days:
-                s.add(Implies(And(visit_cities[city][day], Not(day > days_in_cities[city])), visit_cities[flight][day + 1 - days_in_cities[city]]))
-            if day + 1 - days_in_cities[flight] <= days:
-                s.add(Implies(And(visit_cities[flight][day], Not(day > days_in_cities[flight])), visit_cities[city][day + 1 - days_in_cities[city]]))
+    # Initialize the solver
+    solver = Solver()
 
-# Create constraints for visiting relatives in Istanbul
-s.add(And(visit_cities['Istanbul'][5], visit_cities['Istanbul'][6]))
-s.add(Not(visit_cities['Istanbul'][day] for day in range(1, 5) if day not in [5, 6]))
+    # Define the variables
+    days = [Int(f'day_{i}') for i in range(16)]
+    places = [Int(f'place_{i}') for i in range(16)]
+    stay_days = [Int(f'stay_{i}') for i in range(5)]
+    flight_days = [Int(f'flight_{i}') for i in range(15)]
 
-# Create constraints for attending the wedding in Santorini
-s.add(And(visit_cities['Santorini'][12], visit_cities['Santorini'][13], visit_cities['Santorini'][14], visit_cities['Santorini'][15], visit_cities['Santorini'][16]))
-s.add(Not(visit_cities['Santorini'][day] for day in range(1, 12) if day not in [12, 13, 14, 15, 16]))
+    # Define the constraints
+    for i, day in enumerate(days):
+        solver.add(day >= 0)
+        solver.add(day <= 15)
 
-# Check the solution
-if s.check() == sat:
-    model = s.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = []
-        for day in range(1, days + 1):
-            trip_plan[city].append(model[visit_cities[city][day]].as_bool())
-    for city in cities:
-        print(f'{city}: {trip_plan[city]}')
-else:
-    print('No solution found')
+    for i, place in enumerate(places):
+        solver.add(place >= 0)
+        solver.add(place < len(cities))
+
+    for i, stay_day in enumerate(stay_days):
+        solver.add(stay_day >= 0)
+        solver.add(stay_day <= 15)
+        solver.add(stay_day >= cities[list(cities.keys())[i]])
+        solver.add(stay_day <= cities[list(cities.keys())[i]])
+
+    for i, flight_day in enumerate(flight_days):
+        solver.add(flight_day >= 0)
+        solver.add(flight_day <= 15)
+        solver.add(flight_day >= 1)
+        solver.add(flight_day <= 15)
+
+    solver.add(days[0] == 1)
+    solver.add(places[0] == cities['Rome'])
+    solver.add(stay_days[0] == cities['Rome'])
+    solver.add(flight_days[0] == 1)
+
+    solver.add(days[1] == 2)
+    solver.add(places[1] == cities['Rome'])
+    solver.add(stay_days[1] == cities['Rome'])
+    solver.add(flight_days[1] == 2)
+
+    solver.add(days[2] == 3)
+    solver.add(places[2] == cities['Rome'])
+    solver.add(stay_days[2] == cities['Rome'])
+    solver.add(flight_days[2] == 3)
+
+    solver.add(days[3] == 4)
+    solver.add(places[3] == cities['Rome'])
+    solver.add(stay_days[3] == cities['Rome'])
+    solver.add(flight_days[3] == 4)
+
+    solver.add(days[4] == 5)
+    solver.add(places[4] == cities['Rome'])
+    solver.add(stay_days[4] == cities['Rome'])
+    solver.add(flight_days[4] == 5)
+
+    solver.add(days[5] == 6)
+    solver.add(places[5] == cities['Istanbul'])
+    solver.add(stay_days[0] == 6)
+    solver.add(stay_days[1] == 7)
+    solver.add(flight_days[5] == 6)
+
+    solver.add(days[6] == 7)
+    solver.add(places[6] == cities['Istanbul'])
+    solver.add(stay_days[0] == 6)
+    solver.add(stay_days[1] == 7)
+    solver.add(flight_days[6] == 7)
+
+    solver.add(days[7] == 8)
+    solver.add(places[7] == cities['Seville'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[7] == 8)
+
+    solver.add(days[8] == 9)
+    solver.add(places[8] == cities['Seville'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[8] == 9)
+
+    solver.add(days[9] == 10)
+    solver.add(places[9] == cities['Seville'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[9] == 10)
+
+    solver.add(days[10] == 11)
+    solver.add(places[10] == cities['Seville'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[10] == 11)
+
+    solver.add(days[11] == 12)
+    solver.add(places[11] == cities['Seville'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[11] == 12)
+
+    solver.add(days[12] == 13)
+    solver.add(places[12] == cities['Naples'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[12] == 13)
+
+    solver.add(days[13] == 14)
+    solver.add(places[13] == cities['Santorini'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[13] == 14)
+
+    solver.add(days[14] == 15)
+    solver.add(places[14] == cities['Santorini'])
+    solver.add(stay_days[2] == 8)
+    solver.add(stay_days[3] == 9)
+    solver.add(stay_days[4] == 10)
+    solver.add(flight_days[14] == 15)
+
+    # Solve the constraints
+    if solver.check() == sat:
+        model = solver.model()
+        for i in range(16):
+            day_range = f'Day {model[days[i]]}-{model[days[i]] + cities[model[places[i]]]}'
+            place = model[places[i]]
+            itinerary.append(Day(day_range, place))
+            if i < 15:
+                itinerary.append(Day(f'Day {model[days[i]]}', model[places[i]]))
+            if i > 0:
+                itinerary.append(Day(f'Day {model[days[i]]}', flights[i-1].from_city))
+    else:
+        print("No solution found")
+
+    # Create the JSON-formatted dictionary
+    result = {
+        'itinerary': [
+            {'day_range': day.day_range, 'place': day.place} if day.place in cities else 
+            {'day_range': day.day_range, 'place': flights[i-1].from_city} if i > 0 else 
+            {'day_range': day.day_range, 'place': flights[i].to_city} for i, day in enumerate(itinerary)
+        ]
+    }
+
+    return result
+
+print(solve_scheduling_problem())

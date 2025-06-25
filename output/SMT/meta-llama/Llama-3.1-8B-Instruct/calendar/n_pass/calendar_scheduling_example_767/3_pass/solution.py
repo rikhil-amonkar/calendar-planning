@@ -1,74 +1,71 @@
 from z3 import *
 
-# Define the variables
+# Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday']
-times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
 
-# Create a Z3 solver
-solver = Solver()
+# Define the participants
+participants = ['Martha', 'Beverly']
 
-# Define the existing schedules for Martha and Beverly
-martha_schedule = [
-    ('Monday', '16:00', '17:00'),
-    ('Tuesday', '15:00', '15:30'),
-    ('Wednesday', '10:00', '11:00'),
-    ('Wednesday', '14:00', '14:30')
-]
-
-beverly_schedule = [
-    ('Monday', '09:00', '13:30'),
-    ('Monday', '14:00', '17:00'),
-    ('Tuesday', '09:00', '17:00'),
-    ('Wednesday', '09:30', '15:30'),
-    ('Wednesday', '16:30', '17:00')
-]
+# Define the start and end times
+start_time = 9
+end_time = 17
 
 # Define the meeting duration
-meeting_duration = 1  # hour
+meeting_duration = 1
 
-# Define the possible meeting times
-meeting_times = []
-for day in days:
-    for i in range(len(times) - meeting_duration):
-        start_time = times[i]
-        end_time = times[i + meeting_duration]
-        meeting_times.append((day, start_time, end_time))
+# Define the existing schedules
+schedules = {
+    'Martha': {
+        'Monday': [(16, 17)],
+        'Tuesday': [(15, 15.5)],
+        'Wednesday': [(10, 11), (14, 14.5)]
+    },
+    'Beverly': {
+        'Monday': [(9, 13.5), (14, 17)],
+        'Tuesday': [(9, 17)],
+        'Wednesday': [(9.5, 15.5), (16.5, 17)]
+    }
+}
 
-# Check if a meeting time conflicts with the existing schedules
-def is_conflict(meeting_time, schedules):
-    day, start_time, end_time = meeting_time
-    for schedule in schedules:
-        schedule_day, schedule_start_time, schedule_end_time = schedule
-        if day == schedule_day and start_time < schedule_end_time and end_time > schedule_start_time:
-            return True
-    return False
+# Define the solver
+solver = Solver()
 
-# Add constraints to the solver
-for day in days:
-    for i in range(len(times) - meeting_duration):
-        start_time = times[i]
-        end_time = times[i + meeting_duration]
-        meeting_time = (day, start_time, end_time)
-        if is_conflict(meeting_time, martha_schedule) or is_conflict(meeting_time, beverly_schedule):
-            continue
-        else:
-            solver.assert_and_track(Bool(f'meeting_{day}_{start_time}'), f'meeting_{day}_{start_time}')
+# Define the variables
+day = [Bool(participant + '_day') for participant in participants]
+start_time_var = [Real(participant + '_start_time') for participant in participants]
+end_time_var = [Real(participant + '_end_time') for participant in participants]
+
+# Add constraints for the day
+for i, participant in enumerate(participants):
+    for day_val in days:
+        solver.add(Implies(participant + '_day', participant == day_val))
+        solver.add(Implies(participant!= day_val, Not(participant + '_day')))
+
+# Add constraints for the start and end times
+for i, participant in enumerate(participants):
+    for day_val in days:
+        for start, end in schedules[participant][day_val]:
+            solver.add(Or([Not(And(participant + '_day', participant == day_val, start_time_var[i] >= start, start_time_var[i] < end))]))
+            solver.add(Or([Not(And(participant + '_day', participant == day_val, end_time_var[i] > start, end_time_var[i] <= end))]))
+
+# Add constraints for the meeting duration
+for i, participant in enumerate(participants):
+    solver.add(Implies(participant + '_day', And(start_time_var[i] >= start_time, start_time_var[i] < end_time, end_time_var[i] > start_time_var[i] + meeting_duration)))
 
 # Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    for day in days:
-        for i in range(len(times) - meeting_duration):
-            start_time = times[i]
-            end_time = times[i + meeting_duration]
-            if model.evaluate(Bool(f'meeting_{day}_{start_time}')):
-                print(f'SOLUTION:')
-                print(f'Day: {day}')
-                print(f'Start Time: {start_time}')
-                print(f'End Time: {end_time}')
-                break
-        else:
-            continue
-        break
+    day_val = [model.evaluate(participant + '_day').as_bool() for participant in participants]
+    start_time_val = [model.evaluate(start_time_var[i]).numeral().as_int() for i in range(len(participants))]
+    end_time_val = [model.evaluate(end_time_var[i]).numeral().as_int() for i in range(len(participants))]
+    
+    # Print the solution
+    print('SOLUTION:')
+    for i, participant in enumerate(participants):
+        if day_val[i]:
+            print(f'Day: {participant}')
+            print(f'Start Time: {str(start_time_val[i]).zfill(2)}:00')
+            print(f'End Time: {str(end_time_val[i]).zfill(2)}:00')
+            print()
 else:
-    print('No solution found')
+    print('No solution exists')

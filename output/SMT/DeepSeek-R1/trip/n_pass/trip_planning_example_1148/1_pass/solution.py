@@ -1,11 +1,18 @@
-from z3 import *
+import z3
 
 def main():
-    cities = ["Lisbon", "Dubrovnik", "Copenhagen", "Prague", "Tallinn", "Stockholm", "Split", "Lyon"]
-    required_days = [2, 5, 5, 3, 2, 4, 3, 2]
-    city_to_index = {city: idx for idx, city in enumerate(cities)}
-    
-    direct_flights = [
+    cities = ["Tallinn", "Prague", "Lisbon", "Copenhagen", "Dubrovnik", "Stockholm", "Split", "Lyon"]
+    dur_dict = {
+        "Tallinn": 2,
+        "Prague": 3,
+        "Lisbon": 2,
+        "Copenhagen": 5,
+        "Dubrovnik": 5,
+        "Stockholm": 4,
+        "Split": 3,
+        "Lyon": 2
+    }
+    edges = [
         ("Dubrovnik", "Stockholm"),
         ("Lisbon", "Copenhagen"),
         ("Lisbon", "Lyon"),
@@ -24,75 +31,74 @@ def main():
         ("Tallinn", "Copenhagen"),
         ("Tallinn", "Prague")
     ]
+    edge_set = set()
+    for u, v in edges:
+        edge_set.add((u, v))
+        edge_set.add((v, u))
     
-    allowed_pairs = set()
-    for city1, city2 in direct_flights:
-        idx1 = city_to_index[city1]
-        idx2 = city_to_index[city2]
-        allowed_pairs.add((min(idx1, idx2), max(idx1, idx2)))
+    s = z3.Solver()
+    n = 8
+    p = [z3.Int(f'p_{i}') for i in range(n)]
     
-    s = [Int(f's_{i}') for i in range(8)]
-    e = [Int(f'e_{i}') for i in range(8)]
-    order = [Int(f'order_{i}') for i in range(8)]
+    for i in range(n):
+        s.add(p[i] >= 0)
+        s.add(p[i] < n)
+    s.add(z3.Distinct(p))
     
-    solver = Solver()
+    idx_Tallinn = cities.index("Tallinn")
+    idx_Lyon = cities.index("Lyon")
+    idx_Lisbon = cities.index("Lisbon")
+    s.add(p[0] == idx_Tallinn)
+    s.add(p[7] == idx_Lyon)
+    s.add(p[2] == idx_Lisbon)
     
-    for i in range(8):
-        solver.add(s[i] >= 1)
-        solver.add(e[i] <= 19)
-        solver.add(e[i] == s[i] + required_days[i] - 1)
+    start_days = [z3.Int(f's_{i}') for i in range(n)]
+    s.add(start_days[0] == 1)
+    for i in range(1, n):
+        prev_city_idx = p[i-1]
+        prev_city = cities[prev_city_idx]
+        prev_dur = dur_dict[prev_city]
+        s.add(start_days[i] == start_days[i-1] + prev_dur - 1)
     
-    solver.add(Distinct(order))
-    for i in range(8):
-        solver.add(order[i] >= 0)
-        solver.add(order[i] < 8)
+    last_city_idx = p[7]
+    last_city = cities[last_city_idx]
+    last_dur = dur_dict[last_city]
+    s.add(start_days[7] + last_dur - 1 == 19)
     
-    solver.add(order[7] == city_to_index["Lyon"])
+    s.add(start_days[2] == 4)
     
-    solver.add(s[order[0]] == 1)
+    idx_Stockholm = cities.index("Stockholm")
+    for i in range(n):
+        is_stockholm = z3.If(p[i] == idx_Stockholm, z3.And(start_days[i] <= 16, start_days[i] >= 10), True)
+        s.add(is_stockholm)
     
-    for i in range(7):
-        solver.add(e[order[i]] == s[order[i+1]])
+    for i in range(n-1):
+        city_i = p[i]
+        city_j = p[i+1]
+        edge_exists = z3.BoolVal(False)
+        for u in range(len(cities)):
+            for v in range(len(cities)):
+                if (cities[u], cities[v]) in edge_set:
+                    edge_exists = z3.Or(edge_exists, z3.And(city_i == u, city_j == v))
+        s.add(edge_exists)
     
-    solver.add(s[city_to_index["Lisbon"]] <= 5)
-    solver.add(e[city_to_index["Lisbon"]] >= 4)
-    
-    solver.add(s[city_to_index["Tallinn"]] <= 2)
-    solver.add(e[city_to_index["Tallinn"]] >= 1)
-    
-    solver.add(s[city_to_index["Stockholm"]] <= 16)
-    solver.add(e[city_to_index["Stockholm"]] >= 13)
-    
-    solver.add(s[city_to_index["Lyon"]] == 18)
-    solver.add(e[city_to_index["Lyon"]] == 19)
-    
-    for i in range(7):
-        x = order[i]
-        y = order[i+1]
-        constraints = []
-        for pair in allowed_pairs:
-            a, b = pair
-            constraints.append(Or(And(x == a, y == b), And(x == b, y == a)))
-        solver.add(Or(constraints))
-    
-    if solver.check() == sat:
-        model = solver.model()
-        order_vals = [model.eval(order[i]).as_long() for i in range(8)]
-        s_vals = [model.eval(s[i]).as_long() for i in range(8)]
-        e_vals = [model.eval(e[i]).as_long() for i in range(8)]
+    if s.check() == z3.sat:
+        model = s.model()
+        order = [model.evaluate(p[i]).as_long() for i in range(n)]
+        start_vals = [model.evaluate(start_days[i]).as_long() for i in range(n)]
         
         itinerary = []
-        for i in range(8):
-            city_idx = order_vals[i]
-            city = cities[city_idx]
-            start_val = s_vals[city_idx]
-            end_val = e_vals[city_idx]
-            itinerary.append({"day_range": f"Day {start_val}-{end_val}", "place": city})
-            if i < 7:
-                next_city_idx = order_vals[i+1]
-                next_city = cities[next_city_idx]
-                itinerary.append({"day_range": f"Day {end_val}", "place": city})
-                itinerary.append({"day_range": f"Day {end_val}", "place": next_city})
+        for i in range(n):
+            city_name = cities[order[i]]
+            start = start_vals[i]
+            duration = dur_dict[city_name]
+            end = start + duration - 1
+            
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_name})
+            if i < n-1:
+                next_city_name = cities[order[i+1]]
+                itinerary.append({"day_range": f"Day {end}", "place": city_name})
+                itinerary.append({"day_range": f"Day {end}", "place": next_city_name})
         
         result = {"itinerary": itinerary}
         print(result)

@@ -1,67 +1,94 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 24 * 60  # 24 hours in minutes
-locations = ['Pacific Heights', 'Nob Hill', 'Russian Hill', 'The Castro', 'Sunset District', 'Haight-Ashbury']
-travel_times = {
-    'Pacific Heights': {'Nob Hill': 8, 'Russian Hill': 7, 'The Castro': 16, 'Sunset District': 21, 'Haight-Ashbury': 11},
-    'Nob Hill': {'Pacific Heights': 8, 'Russian Hill': 5, 'The Castro': 17, 'Sunset District': 25, 'Haight-Ashbury': 13},
-    'Russian Hill': {'Pacific Heights': 7, 'Nob Hill': 5, 'The Castro': 21, 'Sunset District': 23, 'Haight-Ashbury': 17},
-    'The Castro': {'Pacific Heights': 16, 'Nob Hill': 16, 'Russian Hill': 18, 'Sunset District': 17, 'Haight-Ashbury': 6},
-    'Sunset District': {'Pacific Heights': 21, 'Nob Hill': 27, 'Russian Hill': 24, 'The Castro': 17, 'Haight-Ashbury': 15},
-    'Haight-Ashbury': {'Pacific Heights': 12, 'Nob Hill': 15, 'Russian Hill': 17, 'The Castro': 6, 'Sunset District': 15}
-}
-meetings = {
-    'Ronald': {'location': 'Nob Hill','start_time': 10 * 60, 'end_time': 17 * 60,'min_time': 105},
-    'Sarah': {'location': 'Russian Hill','start_time': 0, 'end_time': 9 * 60,'min_time': 45},
-    'Helen': {'location': 'The Castro','start_time': 1 * 60, 'end_time': 17 * 60,'min_time': 120},
-    'Joshua': {'location': 'Sunset District','start_time': 2 * 60, 'end_time': 22 * 60,'min_time': 90},
-    'Margaret': {'location': 'Haight-Ashbury','start_time': 10 * 60, 'end_time': 24 * 60,'min_time': 60}
+# Define the travel distances in minutes
+travel_distances = {
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Russian Hill'): 7,
+    ('Pacific Heights', 'The Castro'): 16,
+    ('Pacific Heights', 'Sunset District'): 21,
+    ('Pacific Heights', 'Haight-Ashbury'): 11,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Russian Hill'): 5,
+    ('Nob Hill', 'The Castro'): 17,
+    ('Nob Hill', 'Sunset District'): 25,
+    ('Nob Hill', 'Haight-Ashbury'): 13,
+    ('Russian Hill', 'Pacific Heights'): 7,
+    ('Russian Hill', 'Nob Hill'): 5,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Sunset District'): 23,
+    ('Russian Hill', 'Haight-Ashbury'): 17,
+    ('The Castro', 'Pacific Heights'): 16,
+    ('The Castro', 'Nob Hill'): 16,
+    ('The Castro', 'Russian Hill'): 18,
+    ('The Castro', 'Sunset District'): 17,
+    ('The Castro', 'Haight-Ashbury'): 6,
+    ('Sunset District', 'Pacific Heights'): 21,
+    ('Sunset District', 'Nob Hill'): 27,
+    ('Sunset District', 'Russian Hill'): 24,
+    ('Sunset District', 'The Castro'): 17,
+    ('Sunset District', 'Haight-Ashbury'): 15,
+    ('Haight-Ashbury', 'Pacific Heights'): 12,
+    ('Haight-Ashbury', 'Nob Hill'): 15,
+    ('Haight-Ashbury', 'Russian Hill'): 17,
+    ('Haight-Ashbury', 'The Castro'): 6,
+    ('Haight-Ashbury', 'Sunset District'): 15,
 }
 
-# Create the solver
+# Define the time constraints
+start_time = 9 * 60  # 9:00 AM
+ronald_start_time = 10 * 60  # 10:00 AM
+ronald_end_time = 17 * 60  # 5:00 PM
+sarah_start_time = 7 * 60  # 7:15 AM
+sarah_end_time = 9 * 60  # 9:30 AM
+helen_start_time = 13 * 60  # 1:30 PM
+helen_end_time = 17 * 60  # 5:00 PM
+joshua_start_time = 14 * 60  # 2:15 PM
+joshua_end_time = 20 * 60  # 7:30 PM
+margaret_start_time = 10 * 60  # 10:15 AM
+margaret_end_time = 24 * 60  # 10:00 PM
+
+# Define the minimum meeting times
+min_meeting_time_ronald = 105
+min_meeting_time_sarah = 45
+min_meeting_time_helen = 120
+min_meeting_time_joshua = 90
+min_meeting_time_margaret = 60
+
+# Create a Z3 solver
 solver = Solver()
 
-# Create the variables
-times = [Int('t_' + str(i)) for i in range(len(locations) + 1)]
-locations_at_time = [Int('l_' + str(i)) for i in range(len(locations) + 1)]
-meetings_satisfied = [Bool('m_' + str(i)) for i in range(len(meetings))]
+# Define the variables
+visit_nob_hill = Bool('visit_nob_hill')
+visit_russian_hill = Bool('visit_russian_hill')
+visit_castro = Bool('visit_castro')
+visit_sunset_district = Bool('visit_sunset_district')
+visit_haight_ashbury = Bool('visit_haight_ashbury')
 
-# Add the constraints
-for i in range(len(locations) + 1):
-    solver.add(0 <= times[i])
-    solver.add(times[i] <= end_time)
-    solver.add(locations_at_time[i] >= 0)
-    solver.add(locations_at_time[i] <= len(locations))
+# Define the constraints
+solver.add(visit_nob_hill >= start_time)
+solver.add(visit_nob_hill <= ronald_end_time)
+solver.add(visit_russian_hill >= sarah_start_time)
+solver.add(visit_russian_hill <= sarah_end_time)
+solver.add(visit_castro >= helen_start_time)
+solver.add(visit_castro <= helen_end_time)
+solver.add(visit_sunset_district >= joshua_start_time)
+solver.add(visit_sunset_district <= joshua_end_time)
+solver.add(visit_haight_ashbury >= margaret_start_time)
+solver.add(visit_haight_ashbury <= margaret_end_time)
+solver.add(If(visit_nob_hill, And(start_time + 8 <= visit_nob_hill, visit_nob_hill + min_meeting_time_ronald <= ronald_end_time), True))
+solver.add(If(visit_russian_hill, And(sarah_start_time + 7 <= visit_russian_hill, visit_russian_hill + min_meeting_time_sarah <= sarah_end_time), True))
+solver.add(If(visit_castro, And(helen_start_time + 16 <= visit_castro, visit_castro + min_meeting_time_helen <= helen_end_time), True))
+solver.add(If(visit_sunset_district, And(joshua_start_time + 21 <= visit_sunset_district, visit_sunset_district + min_meeting_time_joshua <= joshua_end_time), True))
+solver.add(If(visit_haight_ashbury, And(margaret_start_time + 11 <= visit_haight_ashbury, visit_haight_ashbury + min_meeting_time_margaret <= margaret_end_time), True))
 
-for i in range(len(locations)):
-    solver.add(locations_at_time[i] == locations_at_time[i + 1])
-
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            solver.add(times[i + 1] >= times[i] + travel_times[locations[i]][locations[j]])
-
-for i, meeting in enumerate(meetings.values()):
-    solver.add(meetings_satisfied[i] == (times[0] + travel_times[meeting['location']]['Pacific Heights'] >= meeting['start_time'] and
-                                        times[len(locations)] - travel_times[meeting['location']]['Pacific Heights'] <= meeting['end_time'] and
-                                        times[0] + travel_times[meeting['location']]['Pacific Heights'] + meeting['min_time'] <= times[len(locations)] - travel_times[meeting['location']]['Pacific Heights']))
-
-# Add the objective function
-objective = 0
-for i in range(len(meetings)):
-    objective += If(meetings_satisfied[i], meeting['min_time'], 0)
-
-# Solve the problem
-solver.add(And([locations_at_time[0] == 0]))
-solver.minimize(objective)
-result = solver.check()
-
-if result == sat:
+# Solve the constraints
+if solver.check() == sat:
     model = solver.model()
-    print('SOLUTION:')
-    for i in range(len(meetings)):
-        print(f'Meeting with {list(meetings.keys())[i]} at {model[locations_at_time[0]].as_long()}:{model[times[len(locations)] - travel_times[meetings[list(meetings.keys())[i]]["location"]]["Pacific Heights"]].as_long()}')
+    print("SOLUTION:")
+    print(f"Visit Nob Hill: {model.evaluate(visit_nob_hill).as_long()}")
+    print(f"Visit Russian Hill: {model.evaluate(visit_russian_hill).as_long()}")
+    print(f"Visit The Castro: {model.evaluate(visit_castro).as_long()}")
+    print(f"Visit Sunset District: {model.evaluate(visit_sunset_district).as_long()}")
+    print(f"Visit Haight-Ashbury: {model.evaluate(visit_haight_ashbury).as_long()}")
 else:
-    print('No solution found')
+    print("No solution found")

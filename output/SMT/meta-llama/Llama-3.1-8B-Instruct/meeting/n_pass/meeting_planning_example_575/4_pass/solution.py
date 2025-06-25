@@ -1,78 +1,102 @@
 from z3 import *
 
-# Define the travel distances
-distances = {
-    'The Castro': {'Presidio': 20, 'Sunset District': 17, 'Haight-Ashbury': 6, 'Mission District': 7, 'Golden Gate Park': 11, 'Russian Hill': 18},
-    'Presidio': {'The Castro': 21, 'Sunset District': 15, 'Haight-Ashbury': 15, 'Mission District': 26, 'Golden Gate Park': 12, 'Russian Hill': 14},
-    'Sunset District': {'The Castro': 17, 'Presidio': 16, 'Haight-Ashbury': 15, 'Mission District': 24, 'Golden Gate Park': 11, 'Russian Hill': 24},
-    'Haight-Ashbury': {'The Castro': 6, 'Presidio': 15, 'Sunset District': 15, 'Mission District': 11, 'Golden Gate Park': 7, 'Russian Hill': 17},
-    'Mission District': {'The Castro': 7, 'Presidio': 25, 'Sunset District': 24, 'Haight-Ashbury': 12, 'Golden Gate Park': 17, 'Russian Hill': 15},
-    'Golden Gate Park': {'The Castro': 13, 'Presidio': 11, 'Sunset District': 10, 'Haight-Ashbury': 7, 'Mission District': 17, 'Russian Hill': 19},
-    'Russian Hill': {'The Castro': 18, 'Presidio': 14, 'Sunset District': 23, 'Haight-Ashbury': 17, 'Mission District': 16, 'Golden Gate Park': 21}
+# Define the travel distances in minutes
+travel_distances = {
+    ('The Castro', 'Presidio'): 20,
+    ('The Castro', 'Sunset District'): 17,
+    ('The Castro', 'Haight-Ashbury'): 6,
+    ('The Castro', 'Mission District'): 7,
+    ('The Castro', 'Golden Gate Park'): 11,
+    ('The Castro', 'Russian Hill'): 18,
+    ('Presidio', 'The Castro'): 21,
+    ('Presidio', 'Sunset District'): 15,
+    ('Presidio', 'Haight-Ashbury'): 15,
+    ('Presidio', 'Mission District'): 26,
+    ('Presidio', 'Golden Gate Park'): 12,
+    ('Presidio', 'Russian Hill'): 14,
+    ('Sunset District', 'The Castro'): 17,
+    ('Sunset District', 'Presidio'): 16,
+    ('Sunset District', 'Haight-Ashbury'): 15,
+    ('Sunset District', 'Mission District'): 24,
+    ('Sunset District', 'Golden Gate Park'): 11,
+    ('Sunset District', 'Russian Hill'): 24,
+    ('Haight-Ashbury', 'The Castro'): 6,
+    ('Haight-Ashbury', 'Presidio'): 15,
+    ('Haight-Ashbury', 'Sunset District'): 15,
+    ('Haight-Ashbury', 'Mission District'): 11,
+    ('Haight-Ashbury', 'Golden Gate Park'): 7,
+    ('Haight-Ashbury', 'Russian Hill'): 17,
+    ('Mission District', 'The Castro'): 7,
+    ('Mission District', 'Presidio'): 25,
+    ('Mission District', 'Sunset District'): 24,
+    ('Mission District', 'Haight-Ashbury'): 12,
+    ('Mission District', 'Golden Gate Park'): 17,
+    ('Mission District', 'Russian Hill'): 15,
+    ('Golden Gate Park', 'The Castro'): 13,
+    ('Golden Gate Park', 'Presidio'): 11,
+    ('Golden Gate Park', 'Sunset District'): 10,
+    ('Golden Gate Park', 'Haight-Ashbury'): 7,
+    ('Golden Gate Park', 'Mission District'): 17,
+    ('Golden Gate Park', 'Russian Hill'): 19,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Presidio'): 14,
+    ('Russian Hill', 'Sunset District'): 23,
+    ('Russian Hill', 'Haight-Ashbury'): 17,
+    ('Russian Hill', 'Mission District'): 16,
+    ('Russian Hill', 'Golden Gate Park'): 21
 }
 
-# Define the friends and their availability
-friends = {
-    'Rebecca': {'location': 'Presidio','start': 6*60, 'end': 8*60,'min_time': 60},
-    'Linda': {'location': 'Sunset District','start': 3*60, 'end': 7*60,'min_time': 30},
-    'Elizabeth': {'location': 'Haight-Ashbury','start': 5*60, 'end': 7*60,'min_time': 105},
-    'William': {'location': 'Mission District','start': 1*60, 'end': 7*60,'min_time': 30},
-    'Robert': {'location': 'Golden Gate Park','start': 2*60, 'end': 9*60,'min_time': 45},
-    'Mark': {'location': 'Russian Hill','start': 0, 'end': 9*60,'min_time': 75}
+# Define the start time
+start_time = 9 * 60  # 9:00 AM in minutes
+
+# Define the end times for each friend
+end_times = {
+    'Rebecca': 6 * 60 + 45,  # 6:45 PM in minutes
+    'Linda': 3 * 60 + 45,  # 3:45 PM in minutes
+    'Elizabeth': 5 * 60 + 45,  # 5:45 PM in minutes
+    'William': 1 * 60 + 45,  # 1:45 PM in minutes
+    'Robert': 2 * 60 + 45,  # 2:45 PM in minutes
+    'Mark': 10 * 60  # 10:00 AM in minutes
 }
 
-# Define the solver
-solver = Solver()
+# Define the minimum meeting times
+min_meeting_times = {
+    'Rebecca': 60,
+    'Linda': 30,
+    'Elizabeth': 105,
+    'William': 30,
+    'Robert': 45,
+    'Mark': 75
+}
 
 # Define the variables
-locations = list(distances.keys())
-times = [9*60]  # start time
-variables = [Bool(f'meet_{location}') for location in locations]
-times_list = [Int(f'time_{i}') for i in range(len(locations))]
-meetings = [Bool(f'meet_{i}') for i in range(6)]
-locations_list = [locations[i] for i in range(len(locations))]
+friends = list(min_meeting_times.keys())
+times = [Int(f + '_time') for f in friends]
+locations = [Int(f + '_location') for f in friends]
+meeting_times = [Int(f + '_meeting_time') for f in friends]
 
-# Add constraints
-for location in locations:
-    solver.add(Or([variables[i] for i, loc in enumerate(locations) if loc == location]))
+# Define the constraints
+s = Optimize()
 
-# Add constraints for each friend
-for friend, info in friends.items():
-    location = info['location']
-    start = info['start']
-    end = info['end']
-    min_time = info['min_time']
-    for i in range(len(locations)):
-        if locations[i] == location:
-            solver.add(variables[i])
-            solver.add(start <= times_list[i] + min_time)
-            solver.add(times_list[i] + min_time <= end)
+for f in friends:
+    s.add(times[f] >= end_times[f] - min_meeting_times[f])
+    s.add(times[f] <= end_times[f])
+    s.add(locations[f] >= 1)
+    s.add(locations[f] <= 8)
 
-# Add constraint for total time
-for i in range(len(locations)):
-    solver.add(times_list[i] >= times[0])
-    solver.add(times_list[i] <= 9*60 + 60)
+for f in friends:
+    for g in friends:
+        if f!= g:
+            s.add(meeting_times[f] + travel_distances[(str(locations[f]), str(locations[g]))] <= times[f])
 
-# Add constraint for exactly 6 meetings
-for i in range(6):
-    solver.add(meetings[i])
-
-# Add constraint for exactly 6 meetings
-solver.add(Sum([If(meetings[i], 1, 0) for i in range(6)]) == 6)
-
-# Add constraint for meeting at exactly 6 locations
-solver.add(Sum([If(variables[locations.index(loc)], 1, 0) for loc in locations_list]) == 6)
+s.add(Sum([meeting_times[f] for f in friends]) >= 0)
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    schedule = []
-    for i, location in enumerate(locations):
-        if model.evaluate(variables[i]).as_bool():
-            schedule.append((location, model.evaluate(times_list[i]).as_long()))
-    schedule.sort(key=lambda x: x[1])
-    print('SOLUTION:')
-    for location, time in schedule:
-        print(f'Meet at {location} at {time//60}:{(time%60):02d}')
+solution = s.check()
+if solution == sat:
+    model = s.model()
+    print("SOLUTION:")
+    for f in friends:
+        print(f"Meet {f} at location {model[locations[f]].as_long()} for {model[meeting_times[f]].as_long()} minutes")
 else:
-    print('No solution found')
+    print("No solution found")

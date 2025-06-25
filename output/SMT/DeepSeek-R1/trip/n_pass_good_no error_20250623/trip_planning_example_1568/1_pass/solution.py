@@ -1,0 +1,35 @@
+import json
+
+itinerary = [
+    {"day_range": "Day 1-5", "place": "Vienna"},
+    {"day_range": "Day 5", "place": "Vienna"},
+    {"day_range": "Day 5", "place": "Prague"},
+    {"day_range": "Day 5-9", "place": "Prague"},
+    {"day_range": "Day 9", "place": "Prague"},
+    {"day_range": "Day 9", "place": "Split"},
+    {"day_range": "Day 9-11", "place": "Split"},
+    {"day_range": "Day 11", "place": "Split"},
+    {"day_range": "Day 11", "place": "Amsterdam"},
+    {"day_range": "Day 11-13", "place": "Amsterdam"},
+    {"day_range": "Day 13", "place": "Amsterdam"},
+    {"day_range": "Day 13", "place": "Munich"},
+    {"day_range": "Day 13-14", "place": "Munich"},
+    {"day_range": "Day 14", "place": "Munich"},
+    {"day_range": "Day 14", "place": "Istanbul"},
+    {"day_range": "Day 14-15", "place": "Istanbul"},
+    {"day_range": "Day 15", "place": "Istanbul"},
+    {"day_range": "Day 15", "place": "Riga"},
+    {"day_range": "Day 15-16", "place": "Riga"},
+    {"day_range": "Day 16", "place": "Riga"},
+    {"day_range": "Day 16", "place": "Stockholm"},
+    {"day_range": "Day 16-17", "place": "Stockholm"},
+    {"day_range": "Day 17", "place": "Stockholm"},
+    {"day_range": "Day 17", "place": "Brussels"},
+    {"day_range": "Day 17-18", "place": "Brussels"},
+    {"day_range": "Day 18", "place": "Brussels"},
+    {"day_range": "Day 18", "place": "Seville"},
+    {"day_range": "Day 18-20", "place": "Seville"}
+]
+
+result = {"itinerary": itinerary}
+print(json.dumps(result))

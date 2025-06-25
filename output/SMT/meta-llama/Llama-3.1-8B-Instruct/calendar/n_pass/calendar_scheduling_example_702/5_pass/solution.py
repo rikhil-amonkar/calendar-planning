@@ -8,72 +8,79 @@ days = ['Monday', 'Tuesday', 'Wednesday']
 start_time = 9
 end_time = 17
 
-# Define the meeting duration in minutes
+# Define the duration of the meeting
 meeting_duration = 30
 
-# Define the existing schedules for everyone during the days: 
+# Define the existing schedules for Robert and Ralph
 robert_schedule = {
-    'Monday': [(11, 11, 30), (14, 14, 30), (15, 30, 16, 0),],
-    'Tuesday': [(10, 30, 11), (15, 0, 15, 30),],
-    'Wednesday': [(10, 0, 11), (11, 30, 12, 0), (12, 30, 13, 0), (13, 30, 14, 0), (15, 0, 15, 30), (16, 0, 16, 30),]
+    'Monday': [(11, 30), (14, 30), (15, 30, 16)],
+    'Tuesday': [(10, 30), (15, 0, 15, 30)],
+    'Wednesday': [(10, 0, 11), (11, 30, 12), (12, 30, 13), (13, 30, 14), (15, 0, 15, 30), (16, 0, 16, 30)]
 }
 
 ralph_schedule = {
-    'Monday': [(10, 0, 13, 30), (14, 0, 14, 30), (15, 0, 17, 0),],
-    'Tuesday': [(9, 0, 9, 30), (10, 0, 10, 30), (11, 0, 11, 30), (12, 0, 13, 0), (14, 0, 15, 30), (16, 0, 17, 0),],
-    'Wednesday': [(10, 30, 11, 0), (11, 30, 12, 0), (13, 0, 14, 30), (16, 30, 17, 0),]
+    'Monday': [(10, 0, 13, 30), (14, 0, 14, 30), (15, 0, 17)],
+    'Tuesday': [(9, 0, 9, 30), (10, 0, 10, 30), (11, 0, 11, 30), (12, 0, 13), (14, 0, 15, 30), (16, 0, 17)],
+    'Wednesday': [(10, 30, 11), (11, 30, 12), (13, 0, 14, 30), (16, 30, 17)]
 }
 
-# Define the preferences for Robert
-robert_preferences = ['Monday', 'Tuesday', 'Wednesday']
+# Define the preferences of Robert
+robert_preferences = {
+    'Monday': False
+}
 
-# Create a Z3 solver
+# Define the solver
 solver = Solver()
 
 # Define the variables
-day = [Bool(f'day_{i}') for i in range(len(days))]
-start_time_var = [Int(f'start_time_{i}') for i in range(len(days))]
-end_time_var = [Int(f'end_time_{i}') for i in range(len(days))]
+day = [Bool('day_' + str(i)) for i in range(len(days))]
+start_time_var = [Int('start_time_' + str(i)) for i in range(len(days))]
+end_time_var = [Int('end_time_' + str(i)) for i in range(len(days))]
 
-# Add constraints for the day
+# Add constraints
 for i in range(len(days)):
-    solver.add(day[i] == False)
-solver.add(Or([day[i] for i in range(len(days))]))
-
-# Add constraints for the start and end times
-for i in range(len(days)):
-    solver.add(start_time_var[i] >= 9)
-    solver.add(start_time_var[i] <= 17)
-    solver.add(end_time_var[i] >= start_time_var[i])
-    solver.add(end_time_var[i] <= 17)
-
-# Add constraints for the meeting duration
-for i in range(len(days)):
-    solver.add(end_time_var[i] - start_time_var[i] >= 30)
+    solver.add(Or([day[i]]))
+    solver.add(Implies(day[i], start_time_var[i] >= 9))
+    solver.add(Implies(day[i], start_time_var[i] <= 17))
+    solver.add(Implies(day[i], end_time_var[i] >= start_time_var[i]))
+    solver.add(Implies(day[i], end_time_var[i] <= 17))
 
 # Add constraints for Robert's schedule
-for i, day in enumerate(robert_schedule):
-    for j, (start, end) in enumerate(day):
-        solver.add(Or([start_time_var[i] + 30 > start, start_time_var[i] + 30 <= end]))
-        solver.add(Or([end_time_var[i] - 30 < end, end_time_var[i] - 30 >= start]))
+for i in range(len(days)):
+    for time in robert_schedule[days[i]]:
+        if isinstance(time, tuple):
+            start, end = time
+        else:
+            start = time
+            end = time + meeting_duration
+        solver.add(Implies(day[i], start_time_var[i] > end))
+        solver.add(Implies(day[i], end_time_var[i] < start))
 
 # Add constraints for Ralph's schedule
-for i, day in enumerate(ralph_schedule):
-    for j, (start, end) in enumerate(day):
-        solver.add(Or([start_time_var[i] + 30 > start, start_time_var[i] + 30 <= end]))
-        solver.add(Or([end_time_var[i] - 30 < end, end_time_var[i] - 30 >= start]))
+for i in range(len(days)):
+    for time in ralph_schedule[days[i]]:
+        if isinstance(time, tuple):
+            start, end = time
+        else:
+            start = time
+            end = time + meeting_duration
+        solver.add(Implies(day[i], start_time_var[i] > end))
+        solver.add(Implies(day[i], end_time_var[i] < start))
 
 # Add constraints for Robert's preferences
-for i, day in enumerate(robert_preferences):
-    solver.add(day in [d for d, b in zip(days, day) if b])
+for i in range(len(days)):
+    solver.add(Implies(robert_preferences[days[i]], Not(day[i])))
+
+# Add constraints for meeting duration
+for i in range(len(days)):
+    solver.add(Implies(day[i], end_time_var[i] - start_time_var[i] == 30))
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    day_index = [i for i, b in enumerate([model[day[0]].as_bool() for day in days]) if b][0]
-    print(f'SOLUTION:')
-    print(f'Day: {days[day_index]}')
-    print(f'Start Time: {(model[start_time_var[day_index]].as_long()) // 60:02d}:00')
-    print(f'End Time: {(model[start_time_var[day_index]].as_long() + 30) // 60:02d}:00')
+    day_to_meet = [days[i] for i in range(len(days)) if model.evaluate(day[i]).as_bool() == True][0]
+    start_time_to_meet = model.evaluate(start_time_var[days.index(day_to_meet)]).as_long()
+    end_time_to_meet = model.evaluate(end_time_var[days.index(day_to_meet)]).as_long()
+    print(f'SOLUTION:\nDay: {day_to_meet}\nStart Time: {str(start_time_to_meet).zfill(2)}:{str((start_time_to_meet % 60)).zfill(2)}\nEnd Time: {str(end_time_to_meet).zfill(2)}:{str((end_time_to_meet % 60)).zfill(2)}')
 else:
     print('No solution found')

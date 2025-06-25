@@ -1,55 +1,85 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = 12
+# Define the cities and their direct flights
 cities = ['Hamburg', 'Zurich', 'Helsinki', 'Bucharest', 'Split']
-days_in_city = {city: 0 for city in cities}
-arrival_day = {city: 0 for city in cities}
+flights = {
+    'Zurich': ['Helsinki', 'Hamburg', 'Bucharest', 'Split'],
+    'Helsinki': ['Zurich', 'Hamburg', 'Split'],
+    'Hamburg': ['Zurich', 'Helsinki', 'Bucharest'],
+    'Bucharest': ['Hamburg', 'Zurich'],
+    'Split': ['Zurich', 'Helsinki', 'Hamburg']
+}
 
 # Define the constraints
-for city in cities:
-    if city == 'Hamburg':
-        days_in_city[city] = 2
-    elif city == 'Zurich':
-        days_in_city[city] = 3
-    elif city == 'Helsinki':
-        days_in_city[city] = 2
-    elif city == 'Bucharest':
-        days_in_city[city] = 2
-    elif city == 'Split':
-        days_in_city[city] = 7
+def constraint(day, place, days_in_place):
+    return And(day >= days_in_place[place], day <= days_in_place[place] + 1)
 
-# Define the constraints for direct flights
-flights = [('Zurich', 'Helsinki'), ('Hamburg', 'Bucharest'), ('Helsinki', 'Hamburg'), ('Zurich', 'Hamburg'), ('Zurich', 'Bucharest'), ('Zurich', 'Split'), ('Helsinki', 'Split'), ('Split', 'Hamburg')]
-for flight in flights:
-    city1, city2 = flight
-    arrival_day[city1] = If(arrival_day[city2] + 1 > arrival_day[city1], arrival_day[city2] + 1, arrival_day[city1])
+def flight_constraint(day, place, destination):
+    return Or(day == days_in_place[place], day == days_in_place[place] + 1)
 
-# Define the constraints for conference and wedding
-arrival_day['Split'] = If(arrival_day['Split'] + 1 > arrival_day['Split'], arrival_day['Split'] + 1, arrival_day['Split'])
-arrival_day['Split'] = If(arrival_day['Split'] + 1 > arrival_day['Split'], arrival_day['Split'] + 1, arrival_day['Split'])
-arrival_day['Zurich'] = If(arrival_day['Zurich'] + 1 > arrival_day['Zurich'], arrival_day['Zurich'] + 1, arrival_day['Zurich'])
-arrival_day['Zurich'] = If(arrival_day['Zurich'] + 1 > arrival_day['Zurich'], arrival_day['Zurich'] + 1, arrival_day['Zurich'])
+def wedding_constraint(day, place):
+    return And(place == 'Zurich', day >= 1, day <= 3)
 
-# Define the solver
-solver = Solver()
+def conference_constraint(day, place):
+    return And(place == 'Split', day == 4 or day == 10)
 
-# Define the variables for the solver
-x = [Int(f'x_{city}') for city in cities]
+def solve():
+    # Create the solver
+    s = Solver()
 
-# Define the constraints for the solver
-for city in cities:
-    solver.add(x[city] >= arrival_day[city])
-    solver.add(x[city] <= days_in_city[city] + arrival_day[city] - 1)
-    solver.add(x[city] >= 0)
+    # Define the variables
+    days_in_place = {city: Int(f'days_in_{city}') for city in cities}
+    flight_days = {(city, dest): Int(f'days_from_{city}_to_{dest}') for city, dests in flights.items() for dest in dests}
+    day = Int('day')
 
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    trip_plan = {}
+    # Add the constraints
     for city in cities:
-        trip_plan[city] = model[x[city]].as_long()
-    for city in trip_plan:
-        print(f'{city}: {trip_plan[city]}')
-else:
-    print('No solution found')
+        s.add(days_in_place[city] >= 0)
+    for city in cities:
+        for dest in flights[city]:
+            s.add(flight_days[(city, dest)] >= 0)
+    for city in cities:
+        s.add(Or([days_in_place[city] == 2, days_in_place[city] == 3, days_in_place[city] == 7]))
+    for city in cities:
+        s.add(Or([days_in_place[city] == 2, days_in_place[city] == 3, days_in_place[city] == 7, days_in_place[city] == 9]))
+    for city in cities:
+        for dest in flights[city]:
+            s.add(Implies(flight_days[(city, dest)] >= 0, flight_days[(city, dest)] <= days_in_place[city]))
+    for city in cities:
+        for dest in flights[city]:
+            s.add(Implies(flight_days[(city, dest)] >= 0, flight_days[(city, dest)] >= days_in_place[dest]))
+    for city in cities:
+        s.add(Or([constraint(day, city, days_in_place), flight_constraint(day, city, dest)] for dest in flights[city]))
+    for city in cities:
+        s.add(Not(Or([constraint(day, city, days_in_place), flight_constraint(day, city, dest)] for dest in flights[city] if dest!= 'Zurich' and dest!= 'Split' and dest!= 'Helsinki' and dest!= 'Bucharest' and dest!= 'Hamburg' and day!= 4 and day!= 10))
+              for city in cities)
+    for city in cities:
+        s.add(Or([wedding_constraint(day, city), flight_constraint(day, city, dest)] for dest in flights[city]))
+    for city in cities:
+        s.add(Not(Or([wedding_constraint(day, city), flight_constraint(day, city, dest)] for dest in flights[city] if dest!= 'Zurich' and day!= 1 and day!= 2 and day!= 3))
+              for city in cities)
+    for city in cities:
+        s.add(Or([conference_constraint(day, city), flight_constraint(day, city, dest)] for dest in flights[city]))
+    for city in cities:
+        s.add(Not(Or([conference_constraint(day, city), flight_constraint(day, city, dest)] for dest in flights[city] if dest!= 'Split' and day!= 4 and day!= 10))
+              for city in cities)
+
+    # Solve the problem
+    s.check()
+
+    # Extract the solution
+    m = s.model()
+    days_in_place_dict = {city: m[days_in_place[city]].as_long() for city in cities}
+    flight_days_dict = {(city, dest): m[flight_days[(city, dest)]].as_long() for city, dests in flights.items() for dest in dests}
+    solution = []
+    for city in cities:
+        day_range = f'Day {days_in_place_dict[city]}-{days_in_place_dict[city] + 1}'
+        solution.append({'day_range': day_range, 'place': city})
+        if city in flight_days_dict and flight_days_dict[(city, dest)] == days_in_place_dict[city]:
+            solution.append({'day_range': day_range, 'place': dest})
+        if city in flight_days_dict and flight_days_dict[(city, dest)] == days_in_place_dict[city] + 1:
+            solution.append({'day_range': f'Day {days_in_place_dict[city] + 1}-{days_in_place_dict[city] + 2}', 'place': dest})
+    return {'itinerary': solution}
+
+print(solve())

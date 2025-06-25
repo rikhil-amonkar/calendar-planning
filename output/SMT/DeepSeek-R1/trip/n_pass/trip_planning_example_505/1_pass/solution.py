@@ -1,84 +1,103 @@
 from z3 import *
 import json
 
-def main():
-    cities = ["Prague", "Stuttgart", "Split", "Krakow", "Florence"]
-    n_days = 8
-    start_city = [Int(f'start_{i}') for i in range(n_days)]
-    end_city = [Int(f'end_{i}') for i in range(n_days)]
+# Define city indices
+Prague, Stuttgart, Split, Krakow, Florence = 0, 1, 2, 3, 4
+index_to_city = {
+    0: 'Prague',
+    1: 'Stuttgart',
+    2: 'Split',
+    3: 'Krakow',
+    4: 'Florence'
+}
+dur = [4, 2, 2, 2, 2]  # Durations for each city
 
-    s = Solver()
+# Define direct flights as unordered pairs
+flight_set = set()
+flight_set.add((0, 2))  # Prague-Split
+flight_set.add((0, 3))  # Prague-Krakow
+flight_set.add((0, 4))  # Prague-Florence
+flight_set.add((1, 2))  # Stuttgart-Split
+flight_set.add((1, 3))  # Stuttgart-Krakow
+flight_set.add((2, 3))  # Split-Krakow
 
-    for i in range(n_days):
-        s.add(start_city[i] >= 0)
-        s.add(start_city[i] < 5)
-        s.add(end_city[i] >= 0)
-        s.add(end_city[i] < 5)
+s = Solver()
 
-    for i in range(n_days - 1):
-        s.add(end_city[i] == start_city[i + 1])
+# Order variables for unknown positions
+order0 = Int('order0')  # First city
+order3 = Int('order3')  # Fourth city
+order4 = Int('order4')  # Fifth city
 
-    s.add(end_city[1] == 1)
-    s.add(start_city[2] == 1)
-    s.add(end_city[2] == 2)
+# Order list (second and third are fixed as Stuttgart and Split)
+order = [order0, Stuttgart, Split, order3, order4]
 
-    allowed_pairs = [
-        (1, 2), (2, 1),
-        (0, 4), (4, 0),
-        (3, 1), (1, 3),
-        (3, 2), (2, 3),
-        (2, 0), (0, 2),
-        (3, 0), (0, 3)
-    ]
-    for i in range(n_days):
-        flight_day = Or([And(start_city[i] == a, end_city[i] == b) for (a, b) in allowed_pairs])
-        s.add(If(start_city[i] != end_city[i], flight_day, True))
+# Constraints: all cities in order must be distinct
+s.add(Distinct(order))
 
-    city_days = [4, 2, 2, 2, 2]
-    for c, req_days in enumerate(city_days):
-        total = 0
-        for i in range(n_days):
-            total += If(Or(start_city[i] == c, end_city[i] == c), 1, 0)
-        s.add(total == req_days)
+# First city must be Krakow or Florence (both have 2-day duration)
+s.add(Or(order0 == 3, order0 == 4))
 
-    if s.check() == sat:
-        m = s.model()
-        start_vals = [m.eval(start_city[i]).as_long() for i in range(n_days)]
-        end_vals = [m.eval(end_city[i]).as_long() for i in range(n_days)]
+# Helper function to check flight connectivity
+def are_connected(a, b):
+    conditions = []
+    for (i, j) in flight_set:
+        conditions.append(And(a == i, b == j))
+        conditions.append(And(a == j, b == i))
+    return Or(conditions)
 
-        blocks = []
-        current_city = start_vals[0]
-        start_day = 0
-        for i in range(n_days):
-            if start_vals[i] != current_city:
-                current_city = start_vals[i]
-            if start_vals[i] != end_vals[i]:
-                blocks.append((start_day, i, current_city))
-                current_city = end_vals[i]
-                start_day = i
-        blocks.append((start_day, n_days - 1, current_city))
+# Flight constraints between consecutive cities
+s.add(are_connected(order0, Stuttgart))  # First to second
+s.add(are_connected(Split, order3))      # Third to fourth
+s.add(are_connected(order3, order4))     # Fourth to fifth
 
-        itinerary = []
-        for s_day, e_day, c in blocks:
-            city_name = cities[c]
-            if s_day == e_day:
-                day_range_str = f"Day {s_day + 1}"
-            else:
-                day_range_str = f"Day {s_day + 1}-{e_day + 1}"
-            itinerary.append({"day_range": day_range_str, "place": city_name})
+# One of the last two cities must be Prague (to satisfy duration sum)
+s.add(Or(order3 == 0, order4 == 0))
 
-        for i in range(n_days):
-            if start_vals[i] != end_vals[i]:
-                dep_city = cities[start_vals[i]]
-                arr_city = cities[end_vals[i]]
-                day_str = f"Day {i + 1}"
-                itinerary.append({"day_range": day_str, "place": dep_city})
-                itinerary.append({"day_range": day_str, "place": arr_city})
-
-        result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
-    else:
-        print("No solution found")
-
-if __name__ == "__main__":
-    main()
+if s.check() == sat:
+    m = s.model()
+    order0_val = m[order0].as_long()
+    order3_val = m[order3].as_long()
+    order4_val = m[order4].as_long()
+    order_vals = [order0_val, Stuttgart, Split, order3_val, order4_val]
+    
+    # Compute start and end days for each city
+    start_vals = [0] * 5
+    end_vals = [0] * 5
+    
+    # Fixed stays for Stuttgart and Split
+    start_vals[Stuttgart] = 2
+    end_vals[Stuttgart] = 3
+    start_vals[Split] = 3
+    end_vals[Split] = 4
+    
+    # First city
+    start_vals[order0_val] = 1
+    end_vals[order0_val] = 2
+    
+    # Fourth city
+    start_vals[order3_val] = 4
+    end_vals[order3_val] = start_vals[order3_val] + dur[order3_val] - 1
+    
+    # Fifth city
+    start_vals[order4_val] = end_vals[order3_val]
+    end_vals[order4_val] = 8
+    
+    # Build itinerary
+    itinerary = []
+    for i, city_idx in enumerate(order_vals):
+        city_name = index_to_city[city_idx]
+        s_val = start_vals[city_idx]
+        e_val = end_vals[city_idx]
+        itinerary.append({"day_range": f"Day {s_val}-{e_val}", "place": city_name})
+        
+        if i < 4:  # Not the last city
+            next_city_idx = order_vals[i+1]
+            next_city_name = index_to_city[next_city_idx]
+            flight_day = e_val
+            itinerary.append({"day_range": f"Day {flight_day}", "place": city_name})
+            itinerary.append({"day_range": f"Day {flight_day}", "place": next_city_name})
+    
+    result = {"itinerary": itinerary}
+    print(json.dumps(result))
+else:
+    print(json.dumps({"itinerary": []}))

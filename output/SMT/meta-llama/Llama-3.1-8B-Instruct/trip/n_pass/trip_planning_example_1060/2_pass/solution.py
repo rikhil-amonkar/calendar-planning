@@ -1,4 +1,5 @@
 from z3 import *
+import json
 
 # Define the cities
 cities = ['Stuttgart', 'Istanbul', 'Vilnius', 'Seville', 'Geneva', 'Valencia', 'Munich', 'Reykjavik']
@@ -6,60 +7,130 @@ cities = ['Stuttgart', 'Istanbul', 'Vilnius', 'Seville', 'Geneva', 'Valencia', '
 # Define the days
 days = range(1, 26)
 
-# Define the flight connections
-flights = {
-    ('Geneva', 'Istanbul'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Reykjavik', 'Munich'): [1, 2, 3],
-    ('Stuttgart', 'Valencia'): [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Reykjavik', 'Stuttgart'): [1, 2, 3],
-    ('Stuttgart', 'Istanbul'): [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Munich', 'Geneva'): [13, 14, 15],
-    ('Istanbul', 'Vilnius'): [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Valencia', 'Seville'): [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Valencia', 'Istanbul'): [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Vilnius', 'Munich'): [10, 11, 12, 13, 14, 15],
-    ('Seville', 'Munich'): [7, 8, 9, 10, 11, 12, 13, 14, 15],
-    ('Munich', 'Istanbul'): [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Valencia', 'Geneva'): [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
-    ('Valencia', 'Munich'): [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-}
+# Define the variables
+place = [Bool(f'place_{city}_{day}') for city in cities for day in days]
 
 # Define the constraints
-s = Optimize()
-
-# Define the variables
-x = [[Bool(f'{city}{day}') for day in days] for city in cities]
-
-# Add constraints
-for city in cities:
-    s.add(Sum([x[city][day].as_bool() for day in days]) == 4)
+constraints = []
 for day in days:
-    s.add(Sum([x[city][day].as_bool() for city in cities]) <= 1)
+    # Each person can only be in one place at a time
+    for i in range(len(cities)):
+        for j in range(i + 1, len(cities)):
+            constraints.append(Not(And(place[i * len(days) + day], place[j * len(days) + day])))
+    
+    # If a person is in a place, they must have arrived the day before
+    for city in cities:
+        for day in days:
+            if day > 1:
+                constraints.append(Implies(place[city * len(days) + day], place[city * len(days) + day - 1]))
 
-# Add constraints for conferences and workshops
-s.add(x['Stuttgart'][4].as_bool() == 1)
-s.add(x['Stuttgart'][7].as_bool() == 1)
-s.add(x['Istanbul'][19].as_bool() == 1)
-s.add(x['Istanbul'][22].as_bool() == 1)
-s.add(x['Reykjavik'][1].as_bool() == 1)
-s.add(x['Reykjavik'][4].as_bool() == 1)
-s.add(x['Munich'][13].as_bool() == 1)
-s.add(x['Munich'][14].as_bool() == 1)
-s.add(x['Munich'][15].as_bool() == 1)
+    # If a person is in a place, they must have departed the day before if they are not staying
+    for city in cities:
+        for day in days:
+            if day > 1:
+                constraints.append(Implies(And(place[city * len(days) + day], Not(place[city * len(days) + day - 1])), place[city * len(days) + day - 1]))
 
-# Add constraints for flight connections
-for (city1, city2), days in flights.items():
-    for day in days:
-        s.add(Implies(x[city1][day].as_bool(), x[city2][day].as_bool()))
+    # Stay in Stuttgart for 4 days
+    if day <= 4:
+        constraints.append(place[cities.index('Stuttgart') * len(days) + day])
+    if day == 4 or day == 7:
+        constraints.append(place[cities.index('Stuttgart') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Stuttgart') * len(days) + day]))
 
-# Solve the optimization problem
-s.check()
-model = s.model()
+    # Visit Istanbul for 4 days
+    if 5 <= day <= 8:
+        constraints.append(place[cities.index('Istanbul') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Istanbul') * len(days) + day]))
 
-# Print the solution
-for city in cities:
-    print(f'{city}: {sum(model[x[city][day]].as_bool() for day in days)} days')
-for (city1, city2), days in flights.items():
-    for day in days:
-        if model[x[city1][day]].as_bool() and model[x[city2][day]].as_bool():
-            print(f'{city1} to {city2} on day {day}')
+    # Visit relatives in Istanbul between day 19 and day 22
+    if 19 <= day <= 22:
+        constraints.append(place[cities.index('Istanbul') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Istanbul') * len(days) + day]))
+
+    # Visit Vilnius for 4 days
+    if 9 <= day <= 12:
+        constraints.append(place[cities.index('Vilnius') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Vilnius') * len(days) + day]))
+
+    # Visit Seville for 3 days
+    if 13 <= day <= 15:
+        constraints.append(place[cities.index('Seville') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Seville') * len(days) + day]))
+
+    # Visit Geneva for 5 days
+    if 16 <= day <= 20:
+        constraints.append(place[cities.index('Geneva') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Geneva') * len(days) + day]))
+
+    # Visit Valencia for 5 days
+    if 21 <= day <= 25:
+        constraints.append(place[cities.index('Valencia') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Valencia') * len(days) + day]))
+
+    # Visit Munich for 3 days
+    if 13 <= day <= 15:
+        constraints.append(place[cities.index('Munich') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Munich') * len(days) + day]))
+
+    # Visit Reykjavik for 4 days
+    if day <= 4:
+        constraints.append(place[cities.index('Reykjavik') * len(days) + day])
+    else:
+        constraints.append(Not(place[cities.index('Reykjavik') * len(days) + day]))
+
+# Define the direct flights
+flights = [
+    ('Geneva', 'Istanbul'),
+    ('Reykjavik', 'Munich'),
+    ('Stuttgart', 'Valencia'),
+    ('Reykjavik', 'Stuttgart'),
+    ('Stuttgart', 'Istanbul'),
+    ('Istanbul', 'Vilnius'),
+    ('Valencia', 'Seville'),
+    ('Valencia', 'Istanbul'),
+    ('Vilnius', 'Munich'),
+    ('Seville', 'Munich'),
+    ('Munich', 'Istanbul'),
+    ('Valencia', 'Geneva'),
+    ('Valencia', 'Munich')
+]
+
+# Add constraints for direct flights
+for flight in flights:
+    constraints.append(Implies(And(place[cities.index(flight[0]) * len(days) + 1], place[cities.index(flight[1]) * len(days) + 1]), Not(place[cities.index(flight[0]) * len(days) + 1])))
+    constraints.append(Implies(And(place[cities.index(flight[1]) * len(days) + 1], place[cities.index(flight[0]) * len(days) + 1]), Not(place[cities.index(flight[1]) * len(days) + 1])))
+
+# Solve the constraints
+solver = Solver()
+for constraint in constraints:
+    solver.add(constraint)
+
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for city in cities:
+        day_range = []
+        for day in days:
+            if model[place[city * len(days) + day]].as_bool():
+                day_range.append(day)
+        if day_range:
+            if day_range[0] == day_range[-1]:
+                itinerary.append({"day_range": f"Day {day_range[0]}", "place": city})
+            else:
+                itinerary.append({"day_range": f"Day {day_range[0]}-{day_range[-1]}", "place": city})
+    for flight in flights:
+        if model[place[cities.index(flight[0]) * len(days) + 1]].as_bool() and model[place[cities.index(flight[1]) * len(days) + 1]].as_bool():
+            itinerary.append({"day_range": f"Day {1}", "place": flight[0]})
+            itinerary.append({"day_range": f"Day {1}", "place": flight[1]})
+            itinerary.append({"day_range": f"Day {1}-2", "place": flight[1]})
+    print(json.dumps({"itinerary": itinerary}, indent=4))
+else:
+    print("No solution found")

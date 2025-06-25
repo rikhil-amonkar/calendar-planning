@@ -1,46 +1,74 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the variables
+def schedule_meeting(participants, duration):
+    # Define the day
     day = 'Monday'
-    start_time = Int('start_time')
-    end_time = Int('end_time')
-    meeting_duration = 30  # Meeting duration in minutes
 
-    # Define the constraints for each participant
-    stephen_blocked = Or(And(start_time >= 10, start_time < 10 + 30), And(start_time >= 12, start_time < 12 + 30))
-    brittany_blocked = Or(And(start_time >= 11, start_time < 11 + 30), And(start_time >= 13 + 30, start_time < 14), And(start_time >= 15 + 30, start_time < 16), And(start_time >= 16 + 30, start_time < 17))
-    dorothy_blocked = Or(And(start_time >= 9, start_time < 9 + 30), And(start_time >= 10, start_time < 10 + 30), And(start_time >= 11, start_time < 12 + 30), And(start_time >= 13, start_time < 15), And(start_time >= 15 + 30, start_time < 17))
-    rebecca_blocked = Or(And(start_time >= 9 + 30, start_time < 10 + 30), And(start_time >= 11, start_time < 11 + 30), And(start_time >= 12, start_time < 12 + 30), And(start_time >= 13, start_time < 17))
-    jordan_blocked = Or(And(start_time >= 9, start_time < 9 + 30), And(start_time >= 10, start_time < 11), And(start_time >= 11 + 30, start_time < 12), And(start_time >= 13, start_time < 15), And(start_time >= 15 + 30, start_time < 16 + 30))
+    # Define the start and end time
+    start_time = 9 * 60  # 9:00 in minutes
+    end_time = 17 * 60  # 17:00 in minutes
+    duration_minutes = int(duration * 60)  # Convert duration to minutes
 
-    # Define the constraints for the meeting duration
-    meeting_constraints = And(start_time + meeting_duration <= 17 * 60)
+    # Create a boolean variable for each time slot
+    time_slots = [Bool(f'time_slot_{i}') for i in range((end_time - start_time) // 60 + 1)]
 
-    # Define the solver
-    solver = Solver()
+    # Create a constraint for each participant
+    constraints = []
+    for participant, schedule in participants.items():
+        for time in schedule:
+            start = time[0] * 60
+            end = time[1] * 60
+            for i in range(start, end):
+                constraints.append(Not(time_slots[i]))
 
-    # Add the constraints to the solver
-    solver.add(And(day == 'Monday', start_time >= 9 * 60 + 30, start_time < 17 * 60))
-    solver.add(Not(stephen_blocked))
-    solver.add(Not(brittany_blocked))
-    solver.add(Not(dorothy_blocked))
-    solver.add(Not(rebecca_blocked))
-    solver.add(Not(jordan_blocked))
-    solver.add(meeting_constraints)
+    # Add the constraint that the meeting must last for at least the given duration
+    for i in range(len(time_slots) - duration_minutes + 1):
+        constraints.append(Or([time_slots[j] for j in range(i, i + duration_minutes)]))
+
+    # Add the constraint that the meeting must start before the end time
+    for i in range(len(time_slots) - duration_minutes):
+        constraints.append(And(time_slots[i], Not(time_slots[i + duration_minutes])))
+
+    # Add the constraint that the meeting must start after the start time
+    for i in range(duration_minutes):
+        constraints.append(Not(time_slots[i]))
 
     # Solve the constraints
+    solver = Solver()
+    for constraint in constraints:
+        solver.add(constraint)
     if solver.check() == sat:
         model = solver.model()
-        start_time_value = model[start_time].as_long()
-        end_time_value = start_time_value + meeting_duration
-        return f'SOLUTION:\nDay: {day}\nStart Time: {str(start_time_value // 60).zfill(2)}:{str(start_time_value % 60).zfill(2)}\nEnd Time: {str((start_time_value + meeting_duration) // 60).zfill(2)}:{str((start_time_value + meeting_duration) % 60).zfill(2)}'
+        for i, slot in enumerate(model.evaluate(time_slots)):
+            if slot:
+                start_time_index = i
+                break
+        if start_time_index is None:
+            return 'No solution found'
+        end_time_index = start_time_index + duration_minutes
+        if end_time_index > len(time_slots) - 1:
+            return 'No solution found'
+        start_time_minutes = start_time_index
+        end_time_minutes = end_time_index
+        start_time_hours = start_time_minutes // 60
+        start_time_minutes %= 60
+        end_time_hours = end_time_minutes // 60
+        end_time_minutes %= 60
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_hours:02d}:{start_time_minutes:02d}\nEnd Time: {end_time_hours:02d}:{end_time_minutes:02d}'
     else:
-        # If no solution is found, try to find a solution by iterating over possible start times
-        for start_time_value in range(9 * 60 + 30, 17 * 60):
-            end_time_value = start_time_value + meeting_duration
-            if Not(stephen_blocked.substitute(start_time, start_time_value)).is_true() and Not(brittany_blocked.substitute(start_time, start_time_value)).is_true() and Not(dorothy_blocked.substitute(start_time, start_time_value)).is_true() and Not(rebecca_blocked.substitute(start_time, start_time_value)).is_true() and Not(jordan_blocked.substitute(start_time, start_time_value)).is_true() and (start_time_value + meeting_duration <= 17 * 60):
-                return f'SOLUTION:\nDay: {day}\nStart Time: {str(start_time_value // 60).zfill(2)}:{str(start_time_value % 60).zfill(2)}\nEnd Time: {str(end_time_value // 60).zfill(2)}:{str(end_time_value % 60).zfill(2)}'
         return 'No solution found'
 
-print(schedule_meeting())
+# Define the participants and their schedules
+participants = {
+    'Ronald': [],
+    'Stephen': [(10 * 60, 10 * 60 + 30), (12 * 60, 12 * 60 + 30)],
+    'Brittany': [(11 * 60, 11 * 60 + 30), (13 * 60 + 30, 14 * 60), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)],
+    'Dorothy': [(9 * 60, 9 * 60 + 30), (10 * 60, 10 * 60 + 30), (11 * 60, 12 * 60 + 30), (13 * 60, 15 * 60), (15 * 60 + 30, 17 * 60)],
+    'Rebecca': [(9 * 60 + 30, 10 * 60 + 30), (11 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (13 * 60, 17 * 60)],
+    'Jordan': [(9 * 60, 9 * 60 + 30), (10 * 60, 11 * 60), (11 * 60 + 30, 12 * 60), (13 * 60, 15 * 60), (15 * 60 + 30, 16 * 60 + 30)]
+}
+
+# Define the meeting duration
+duration = 0.5
+
+print(schedule_meeting(participants, duration))

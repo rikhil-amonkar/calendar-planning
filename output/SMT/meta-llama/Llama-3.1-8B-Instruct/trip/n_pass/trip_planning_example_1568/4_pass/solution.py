@@ -1,100 +1,107 @@
 from z3 import *
+from collections import defaultdict
+
+# Define the cities and their corresponding days
+cities = {
+    'Prague': [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'Brussels': [2, 3, 18, 19, 20],
+    'Riga': [2, 4, 14, 15, 16, 17, 18, 19, 20],
+    'Munich': [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'Seville': [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'Stockholm': [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'Istanbul': [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'Amsterdam': [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'Vienna': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'Split': [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+}
+
+# Define the direct flights between cities
+flights = {
+    'Riga': ['Stockholm'],
+    'Stockholm': ['Brussels'],
+    'Stockholm': ['Riga'],
+    'Istanbul': ['Munich'],
+    'Istanbul': ['Riga'],
+    'Prague': ['Split'],
+    'Vienna': ['Brussels'],
+    'Vienna': ['Riga'],
+    'Split': ['Stockholm'],
+    'Munich': ['Amsterdam'],
+    'Split': ['Amsterdam'],
+    'Amsterdam': ['Stockholm'],
+    'Amsterdam': ['Riga'],
+    'Vienna': ['Stockholm'],
+    'Vienna': ['Istanbul'],
+    'Vienna': ['Seville'],
+    'Istanbul': ['Amsterdam'],
+    'Munich': ['Brussels'],
+    'Prague': ['Munich'],
+    'Riga': ['Munich'],
+    'Prague': ['Amsterdam'],
+    'Prague': ['Brussels'],
+    'Prague': ['Istanbul'],
+    'Istanbul': ['Stockholm'],
+    'Vienna': ['Prague'],
+    'Munich': ['Split'],
+    'Vienna': ['Amsterdam'],
+    'Prague': ['Stockholm'],
+    'Brussels': ['Seville'],
+    'Munich': ['Stockholm'],
+    'Istanbul': ['Brussels'],
+    'Amsterdam': ['Seville'],
+    'Vienna': ['Split'],
+    'Munich': ['Seville'],
+    'Riga': ['Brussels']
+}
+
+# Create a Z3 solver
+solver = Solver()
 
 # Define the variables
-days = 20
-cities = ['Vienna', 'Stockholm', 'Brussels', 'Istanbul', 'Amsterdam', 'Split', 'Seville', 'Munich', 'Riga', 'Prague']
-city_days = {city: [Bool(f'{city}_{i}') for i in range(days)] for city in cities}
+places = cities.keys()
+days = range(1, 21)
+place_days = {place: [day for day in days if day in cities[place]] for place in places}
 
-# Define the constraints
-for city in cities:
-    # Each city can be visited at most once
-    for i in range(days):
-        for j in range(i + 1, days):
-            if city_days[city][i] == city_days[city][j]:
-                assert False, f"Cannot visit {city} twice"
+# Create a dictionary to store the constraints
+constraints = defaultdict(list)
 
-# Constraints for each city
-for city in cities:
-    # At least one day in the city
-    s = Solver()
-    for i in range(days):
-        s.add(Implies(Or([city_days[city][j] for j in range(days)]), city_days[city][i]))
-    s.check()
-    if s.check()!= sat:
-        assert False, f"Must visit {city} at least once"
+# Add constraints for each day
+for day in days:
+    # Each place can only be visited on certain days
+    for place in places:
+        if day not in place_days[place]:
+            constraints[place].append(Not(Bool(f'place_{place}_{day}')))
 
-# Constraints for the annual show in Prague
-prague_show = Or([city_days['Prague'][i] for i in range(5, 9)])
-assert prague_show, "Must attend the annual show in Prague"
+    # If a place is visited on a certain day, all its flights must be taken on that day
+    for place in places:
+        if day in place_days[place]:
+            for flight in flights.get(place, []):
+                constraints[place].append(Bool(f'place_{place}_{day}') == Bool(f'place_{flight}_{day}'))
+                constraints[flight].append(Bool(f'place_{flight}_{day}') == Bool(f'place_{place}_{day}'))
 
-# Constraints for the conference in Stockholm
-stockholm_conf = Or([city_days['Stockholm'][i] for i in range(16, 18)])
-assert stockholm_conf, "Must attend the conference in Stockholm"
+# Add constraints for each flight
+for place in places:
+    for flight in flights.get(place, []):
+        constraints[place].append(Bool(f'place_{place}_1') == Bool(f'place_{flight}_1'))
+        constraints[flight].append(Bool(f'place_{flight}_1') == Bool(f'place_{place}_1'))
 
-# Constraints for visiting friends and relatives
-friends_in_riga = Or([city_days['Riga'][i] for i in range(15, 16)])
-assert friends_in_riga, "Must meet friends in Riga"
+# Add the constraints to the solver
+for place in places:
+    solver.add(Or(constraints[place]))
 
-relatives_in_split = Or([city_days['Split'][i] for i in range(11, 13)])
-assert relatives_in_split, "Must visit relatives in Split"
-
-# Constraints for direct flights
-for city1, city2 in [('Riga', 'Stockholm'), ('Stockholm', 'Brussels'), ('Istanbul', 'Munich'), ('Istanbul', 'Riga'),
-                     ('Prague', 'Split'), ('Vienna', 'Brussels'), ('Vienna', 'Riga'), ('Split', 'Stockholm'),
-                     ('Munich', 'Amsterdam'), ('Split', 'Amsterdam'), ('Amsterdam', 'Stockholm'), ('Amsterdam', 'Riga'),
-                     ('Vienna', 'Stockholm'), ('Vienna', 'Istanbul'), ('Vienna', 'Seville'), ('Istanbul', 'Amsterdam'),
-                     ('Munich', 'Brussels'), ('Prague', 'Munich'), ('Riga', 'Munich'), ('Prague', 'Amsterdam'),
-                     ('Prague', 'Brussels'), ('Prague', 'Istanbul'), ('Istanbul', 'Stockholm'), ('Vienna', 'Prague'),
-                     ('Munich', 'Split'), ('Vienna', 'Amsterdam'), ('Prague', 'Stockholm'), ('Brussels', 'Seville'),
-                     ('Munich', 'Stockholm'), ('Istanbul', 'Brussels'), ('Amsterdam', 'Seville'), ('Vienna', 'Split'),
-                     ('Munich', 'Seville'), ('Riga', 'Brussels')]:
-    if city1 == city2:
-        continue
-    for i in range(days - 1):
-        s = Solver()
-        s.add(Implies(city_days[city1][i], city_days[city2][i + 1]))
-        s.check()
-        if s.check() == sat:
-            break
-    else:
-        assert False, f"Must take direct flight from {city1} to {city2}"
-
-# Solve the constraints
-s = Solver()
-for city in cities:
-    for i in range(days - 1):
-        s.add(Implies(city_days[city][i], city_days[city][i + 1] | city_days[city][i + 1]))
-for city in cities:
-    for i in range(days - 1):
-        s.add(Implies(city_days[city][i], city_days[city][i + 1] | city_days[city][i]))
-for city in cities:
-    for i in range(days - 1):
-        s.add(Implies(city_days[city][i], city_days[city][i + 1] | city_days[city][i + 1]))
-for city in cities:
-    for i in range(days - 1):
-        s.add(Implies(city_days[city][i], city_days[city][i + 1] | city_days[city][i + 1]))
-for city in cities:
-    for i in range(days - 1):
-        s.add(Implies(city_days[city][i], city_days[city][i + 1] | city_days[city][i + 1]))
-for city in cities:
-    for i in range(days - 1):
-        s.add(Implies(city_days[city][i], city_days[city][i + 1] | city_days[city][i + 1]))
-
-s.add(Or([city_days['Prague'][i] for i in range(days)]))
-s.add(Or([city_days['Stockholm'][i] for i in range(days)]))
-s.add(Or([city_days['Brussels'][i] for i in range(days)]))
-s.add(Or([city_days['Istanbul'][i] for i in range(days)]))
-s.add(Or([city_days['Amsterdam'][i] for i in range(days)]))
-s.add(Or([city_days['Split'][i] for i in range(days)]))
-s.add(Or([city_days['Seville'][i] for i in range(days)]))
-s.add(Or([city_days['Munich'][i] for i in range(days)]))
-s.add(Or([city_days['Riga'][i] for i in range(days)]))
-s.add(Or([city_days['Prague'][i] for i in range(days)]))
-s.add(Or([city_days['Vienna'][i] for i in range(days)]))
-
-s.check()
-model = s.model()
-
-# Print the solution
-for city in cities:
-    print(f"{city}: {', '.join([str(i + 1) for i in range(days) if model.evaluate(city_days[city][i]).as_bool()])}")
+# Check the solution
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for place in places:
+        days = [day for day in days if model.evaluate(Bool(f'place_{place}_{day}')).as_bool()]
+        if days:
+            if len(days) > 1:
+                itinerary.append({'day_range': f'Day {min(days)}-{max(days)}', 'place': place})
+                for day in days:
+                    itinerary.append({'day_range': f'Day {day}', 'place': place})
+            else:
+                itinerary.append({'day_range': f'Day {days[0]}-{days[0]}', 'place': place})
+    print({'itinerary': itinerary})
+else:
+    print('No solution found')

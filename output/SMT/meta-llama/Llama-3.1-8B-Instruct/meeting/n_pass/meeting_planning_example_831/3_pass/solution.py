@@ -20,90 +20,45 @@ travel_times = {
 # Define the constraints
 s = Optimize()
 
-# Variables for meeting times
-jeffrey_meeting = Int('jeffrey_meeting')
-ronald_meeting = Int('ronald_meeting')
-jason_meeting = Int('jason_meeting')
-melissa_meeting = Int('melissa_meeting')
-elizabeth_meeting = Int('elizabeth_meeting')
-margaret_meeting = Int('margaret_meeting')
-george_meeting = Int('george_meeting')
-richard_meeting = Int('richard_meeting')
-laura_meeting = Int('laura_meeting')
-
-# Variables for location
-jeffrey_location = Int('jeffrey_location')
-ronald_location = Int('ronald_location')
-jason_location = Int('jason_location')
-melissa_location = Int('melissa_location')
-elizabeth_location = Int('elizabeth_location')
-margaret_location = Int('margaret_location')
-george_location = Int('george_location')
-richard_location = Int('richard_location')
-laura_location = Int('laura_location')
+# Define the variables
+x = [Int(f'x_{i}') for i in range(len(locations))]
+y = [Int(f'y_{i}') for i in range(len(locations))]
+z = [Int(f'z_{i}') for i in range(len(locations))]
 
 # Define the constraints
-s.add(And(
-    And(jeffrey_meeting >= 90, jeffrey_meeting <= 180),
-    And(ronald_meeting >= 120, ronald_meeting <= 240),
-    And(jason_meeting >= 105, jason_meeting <= 210),
-    And(melissa_meeting >= 15, melissa_meeting <= 30),
-    And(elizabeth_meeting >= 105, elizabeth_meeting <= 210),
-    And(margaret_meeting >= 90, margaret_meeting <= 210),
-    And(george_meeting >= 75, george_meeting <= 180),
-    And(richard_meeting >= 15, richard_meeting <= 30),
-    And(laura_meeting >= 60, laura_meeting <= 120)
-))
+for i in range(len(locations)):
+    s.add(x[i] >= start_time)
+    s.add(x[i] <= end_time)
+    s.add(y[i] >= start_time)
+    s.add(y[i] <= end_time)
+    s.add(z[i] >= start_time)
+    s.add(z[i] <= end_time)
+    for j in locations:
+        if j!= locations[i]:
+            s.add(x[i] + travel_times[locations[i]][j] <= y[locations.index(j)])
 
-# Define the constraints for meeting locations
-s.add(And(
-    And(jeffrey_meeting + 315 >= 315 + 60 * travel_times['Presidio'][locations[jeffrey_location].as_string()]),
-    And(jeffrey_meeting + 315 <= 450 + 60 * travel_times['Presidio'][locations[jeffrey_location].as_string()]),
-    And(ronald_meeting + 285 >= 285 + 60 * travel_times['Presidio'][locations[ronald_location].as_string()]),
-    And(ronald_meeting + 285 <= 450 + 60 * travel_times['Presidio'][locations[ronald_location].as_string()]),
-    And(jason_meeting + 345 >= 345 + 60 * travel_times['Presidio'][locations[jason_location].as_string()]),
-    And(jason_meeting + 345 <= 450 + 60 * travel_times['Presidio'][locations[jason_location].as_string()]),
-    And(melissa_meeting + 585 >= 585 + 60 * travel_times['Presidio'][locations[melissa_location].as_string()]),
-    And(melissa_meeting + 585 <= 600 + 60 * travel_times['Presidio'][locations[melissa_location].as_string()]),
-    And(elizabeth_meeting + 345 >= 345 + 60 * travel_times['Presidio'][locations[elizabeth_location].as_string()]),
-    And(elizabeth_meeting + 345 <= 450 + 60 * travel_times['Presidio'][locations[elizabeth_location].as_string()]),
-    And(margaret_meeting + 315 >= 315 + 60 * travel_times['Presidio'][locations[margaret_location].as_string()]),
-    And(margaret_meeting + 315 <= 450 + 60 * travel_times['Presidio'][locations[margaret_location].as_string()]),
-    And(george_meeting + 420 >= 420 + 60 * travel_times['Presidio'][locations[george_location].as_string()]),
-    And(george_meeting + 420 <= 600 + 60 * travel_times['Presidio'][locations[george_location].as_string()]),
-    And(richard_meeting + 285 >= 285 + 60 * travel_times['Presidio'][locations[richard_location].as_string()]),
-    And(richard_meeting + 285 <= 450 + 60 * travel_times['Presidio'][locations[richard_location].as_string()]),
-    And(laura_meeting + 285 >= 285 + 60 * travel_times['Presidio'][locations[laura_location].as_string()]),
-    And(laura_meeting + 285 <= 450 + 60 * travel_times['Presidio'][locations[laura_location].as_string()])
-))
-
-# Define the objective function
-s.add(jeffrey_meeting + ronald_meeting + jason_meeting + melissa_meeting + elizabeth_meeting + margaret_meeting + george_meeting + richard_meeting + laura_meeting)
+# Define the meeting constraints
+s.add(x[locations.index('Presidio')] + 90 <= y[locations.index('Fisherman\'s Wharf')])
+s.add(x[locations.index('Presidio')] + 120 <= y[locations.index('Alamo Square')])
+s.add(x[locations.index('Presidio')] + 105 <= y[locations.index('Financial District')])
+s.add(x[locations.index('Presidio')] + 15 <= y[locations.index('Union Square')])
+s.add(x[locations.index('Presidio')] + 105 <= y[locations.index('Sunset District')])
+s.add(x[locations.index('Presidio')] + 90 <= y[locations.index('Embarcadero')])
+s.add(x[locations.index('Presidio')] + 75 <= y[locations.index('Golden Gate Park')])
+s.add(x[locations.index('Presidio')] + 15 <= y[locations.index('Chinatown')])
+s.add(x[locations.index('Presidio')] + 60 <= y[locations.index('Richmond District')])
 
 # Solve the problem
-s.check()
+max_time = x[locations.index('Presidio')] + x[locations.index('Fisherman\'s Wharf')] + x[locations.index('Alamo Square')] + x[locations.index('Financial District')] + x[locations.index('Union Square')] + x[locations.index('Sunset District')] + x[locations.index('Embarcadero')] + x[locations.index('Golden Gate Park')] + x[locations.index('Chinatown')] + x[locations.index('Richmond District')]
+s.maximize(max_time)
 
-# Print the solution
+# Check if an optimal solution exists
 if s.check() == sat:
+    # Get the model
     m = s.model()
+    # Print the solution
     print('SOLUTION:')
-    print('Jeffrey meeting time:', m[jeffrey_meeting].as_long())
-    print('Ronald meeting time:', m[ronald_meeting].as_long())
-    print('Jason meeting time:', m[jason_meeting].as_long())
-    print('Melissa meeting time:', m[melissa_meeting].as_long())
-    print('Elizabeth meeting time:', m[elizabeth_meeting].as_long())
-    print('Margaret meeting time:', m[margaret_meeting].as_long())
-    print('George meeting time:', m[george_meeting].as_long())
-    print('Richard meeting time:', m[richard_meeting].as_long())
-    print('Laura meeting time:', m[laura_meeting].as_long())
-    print('Jeffrey location:', locations[m[jeffrey_location].as_long()])
-    print('Ronald location:', locations[m[ronald_location].as_long()])
-    print('Jason location:', locations[m[jason_location].as_long()])
-    print('Melissa location:', locations[m[melissa_location].as_long()])
-    print('Elizabeth location:', locations[m[elizabeth_location].as_long()])
-    print('Margaret location:', locations[m[margaret_location].as_long()])
-    print('George location:', locations[m[george_location].as_long()])
-    print('Richard location:', locations[m[richard_location].as_long()])
-    print('Laura location:', locations[m[laura_location].as_long()])
+    for i in range(len(locations)):
+        print(f'Location: {locations[i]}, Time: {m[x[i]].as_long()}')
 else:
-    print('No solution found')
+    print('No solution exists')

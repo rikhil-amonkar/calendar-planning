@@ -1,149 +1,108 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = [Bool(f'day_{i}') for i in range(1, 22)]
-cities = ['Manchester', 'Venice', 'Istanbul', 'Krakow', 'Lyon']
+# Define the cities
+cities = ['Manchester', 'Istanbul', 'Venice', 'Krakow', 'Lyon']
+
+# Define the days
+days = range(1, 22)
+
+# Define the durations for each city
+durations = {'Manchester': 3, 'Istanbul': 7, 'Venice': 7, 'Krakow': 6, 'Lyon': 2}
+
+# Define the direct flights
+flights = [('Manchester', 'Venice'), ('Manchester', 'Istanbul'), ('Venice', 'Istanbul'), 
+           ('Istanbul', 'Krakow'), ('Venice', 'Lyon'), ('Lyon', 'Istanbul'), ('Manchester', 'Krakow')]
+
+# Create a Z3 solver
+solver = Solver()
+
+# Create variables for each city and day
+city_days = {(city, day): Int(f'{city}_{day}') for city in cities for day in days}
+
+# Create variables for each flight
+flight_days = {(src, dst, day): Int(f'{src}_{dst}_{day}') for src, dst in flights for day in days}
 
 # Define the constraints
-# Each day is either true or false
-for i in range(1, 22):
-    constraints = [Or(days[i], Not(days[i]))]
+for city in cities:
+    # Each city has a fixed duration
+    duration = durations[city]
+    for day in range(1, duration + 1):
+        solver.add(city_days[(city, day)] == 1)
+    for day in range(duration + 1, 22):
+        solver.add(city_days[(city, day)] == 0)
 
-# Manchester
-constraints.append(days[1] == days[3])  # Attend wedding
-constraints.append(days[3] == days[4])
+for src, dst in flights:
+    # Each flight has a fixed duration
+    for day in range(1, 22):
+        solver.add(flight_days[(src, dst, day)] >= 0)
 
-# Venice
-constraints.append(days[3] == days[9])  # Attend workshop
-constraints.append(days[9] == days[10])
-for i in range(10, 22):
-    constraints.append(days[i] == days[i-9])
+# Wedding in Manchester
+solver.add(city_days[('Manchester', 1)] == 1)
+solver.add(city_days[('Manchester', 2)] == 1)
+solver.add(city_days[('Manchester', 3)] == 1)
+solver.add(city_days[('Manchester', day)] == 0 for day in range(4, 22))
 
-# Istanbul
-constraints.append(days[4] == days[11])  # Attend workshop
-constraints.append(days[11] == days[12])
-for i in range(12, 22):
-    constraints.append(days[i] == days[i-9])
+# Workshop in Venice
+solver.add(city_days[('Venice', 1)] == 1)
+solver.add(city_days[('Venice', 2)] == 1)
+solver.add(city_days[('Venice', 3)] == 1)
+solver.add(city_days[('Venice', 4)] == 1)
+solver.add(city_days[('Venice', 5)] == 1)
+solver.add(city_days[('Venice', 6)] == 1)
+solver.add(city_days[('Venice', 7)] == 1)
+solver.add(city_days[('Venice', 8)] == 1)
+solver.add(city_days[('Venice', 9)] == 1)
+solver.add(city_days[('Venice', day)] == 0 for day in range(10, 22))
 
-# Krakow
-constraints.append(days[5] == days[12])  # Attend workshop
-constraints.append(days[12] == days[13])
-for i in range(13, 18):
-    constraints.append(days[i] == days[i-9])
+# Flight from Manchester to Venice
+solver.add(flight_days[('Manchester', 'Venice', 1)] == 1)
+solver.add(flight_days[('Manchester', 'Venice', 2)] == 1)
+solver.add(flight_days[('Manchester', 'Venice', 3)] == 1)
+solver.add(flight_days[('Manchester', 'Venice', day)] == 0 for day in range(4, 22))
+solver.add(city_days[('Venice', 3)] == 1)
 
-# Lyon
-constraints.append(days[6] == days[8])
+# Flight from Venice to Istanbul
+solver.add(flight_days[('Venice', 'Istanbul', 3)] == 1)
+solver.add(flight_days[('Venice', 'Istanbul', day)] == 0 for day in range(1, 22))
+solver.add(city_days[('Istanbul', 3)] == 1)
 
-# Direct flights
-constraints.append(Implies(days[1] & days[4], days[2]))
-constraints.append(Implies(days[3] & days[10], days[4]))
-constraints.append(Implies(days[4] & days[11], days[5]))
-constraints.append(Implies(days[5] & days[12], days[6]))
-constraints.append(Implies(days[6] & days[13], days[7]))
-constraints.append(Implies(days[7] & days[14], days[8]))
-constraints.append(Implies(days[8] & days[15], days[9]))
-constraints.append(Implies(days[9] & days[16], days[10]))
-constraints.append(Implies(days[10] & days[17], days[11]))
-constraints.append(Implies(days[11] & days[18], days[12]))
-constraints.append(Implies(days[12] & days[19], days[13]))
-constraints.append(Implies(days[13] & days[20], days[14]))
-constraints.append(Implies(days[14] & days[21], days[15]))
+# Flight from Istanbul to Krakow
+solver.add(flight_days[('Istanbul', 'Krakow', 3)] == 1)
+solver.add(flight_days[('Istanbul', 'Krakow', day)] == 0 for day in range(1, 22))
+solver.add(city_days[('Krakow', 3)] == 1)
 
-# Solve the problem
-solver = Solver()
-for c in constraints:
-    solver.add(c)
+# Flight from Venice to Lyon
+solver.add(flight_days[('Venice', 'Lyon', 3)] == 1)
+solver.add(flight_days[('Venice', 'Lyon', day)] == 0 for day in range(1, 22))
+solver.add(city_days[('Lyon', 3)] == 1)
 
-result = solver.check()
-if result == sat:
+# Flight from Lyon to Istanbul
+solver.add(flight_days[('Lyon', 'Istanbul', 3)] == 1)
+solver.add(flight_days[('Lyon', 'Istanbul', day)] == 0 for day in range(1, 22))
+solver.add(city_days[('Istanbul', 3)] == 1)
+
+# Flight from Manchester to Krakow
+solver.add(flight_days[('Manchester', 'Krakow', 3)] == 1)
+solver.add(flight_days[('Manchester', 'Krakow', day)] == 0 for day in range(1, 22))
+solver.add(city_days[('Krakow', 3)] == 1)
+
+# Check if the solution satisfies all constraints
+if solver.check() == sat:
     model = solver.model()
-    for i in range(1, 22):
-        if model.eval(days[i]):
-            print(f'Day {i}:')
-            for city in cities:
-                if city == 'Manchester':
-                    if model.eval(days[i] & days[i+1]):
-                        print(f'  - Attend wedding in Manchester')
-                    if model.eval(days[i] & days[i+2]):
-                        print(f'  - Attend wedding in Manchester')
-                    if model.eval(days[i] & days[i+3]):
-                        print(f'  - Visit Manchester')
-                elif city == 'Venice':
-                    if model.eval(days[i] & days[i+3]):
-                        print(f'  - Attend workshop in Venice')
-                    if model.eval(days[i] & days[i+9]):
-                        print(f'  - Attend workshop in Venice')
-                    if model.eval(days[i] & days[i+10]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+11]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+12]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+13]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+14]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+15]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+16]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+17]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+18]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+19]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+20]):
-                        print(f'  - Visit Venice')
-                    if model.eval(days[i] & days[i+21]):
-                        print(f'  - Visit Venice')
-                elif city == 'Istanbul':
-                    if model.eval(days[i] & days[i+4]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+11]):
-                        print(f'  - Attend workshop in Istanbul')
-                    if model.eval(days[i] & days[i+12]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+13]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+14]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+15]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+16]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+17]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+18]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+19]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+20]):
-                        print(f'  - Visit Istanbul')
-                    if model.eval(days[i] & days[i+21]):
-                        print(f'  - Visit Istanbul')
-                elif city == 'Krakow':
-                    if model.eval(days[i] & days[i+5]):
-                        print(f'  - Visit Krakow')
-                    if model.eval(days[i] & days[i+12]):
-                        print(f'  - Attend workshop in Krakow')
-                    if model.eval(days[i] & days[i+13]):
-                        print(f'  - Visit Krakow')
-                    if model.eval(days[i] & days[i+14]):
-                        print(f'  - Visit Krakow')
-                    if model.eval(days[i] & days[i+15]):
-                        print(f'  - Visit Krakow')
-                    if model.eval(days[i] & days[i+16]):
-                        print(f'  - Visit Krakow')
-                    if model.eval(days[i] & days[i+17]):
-                        print(f'  - Visit Krakow')
-                elif city == 'Lyon':
-                    if model.eval(days[i] & days[i+6]):
-                        print(f'  - Visit Lyon')
-                    if model.eval(days[i] & days[i+7]):
-                        print(f'  - Visit Lyon')
-                    if model.eval(days[i] & days[i+8]):
-                        print(f'  - Visit Lyon')
-            print()
+    itinerary = []
+    for city in cities:
+        for day in range(1, 22):
+            if model.evaluate(city_days[(city, day)]).as_bool():
+                if day == 1:
+                    itinerary.append({"day_range": f"Day {day}-{day + durations[city] - 1}", "place": city})
+                else:
+                    itinerary.append({"day_range": f"Day {day}", "place": city})
+    for src, dst in flights:
+        for day in range(1, 22):
+            if model.evaluate(flight_days[(src, dst, day)]).as_bool():
+                itinerary.append({"day_range": f"Day {day}", "place": src})
+                itinerary.append({"day_range": f"Day {day}", "place": dst})
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
+    print("No solution found")

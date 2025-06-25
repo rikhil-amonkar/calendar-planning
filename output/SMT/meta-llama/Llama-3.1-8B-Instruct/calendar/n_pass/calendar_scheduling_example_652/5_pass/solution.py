@@ -3,75 +3,69 @@ from z3 import *
 # Define the days of the week
 days = ['Monday', 'Tuesday']
 
-# Define the hours of the day
-hours = [9, 10, 11, 12, 13, 14, 15, 16, 17]
+# Define the start and end times
+start_times = [9, 10, 11, 12, 13, 14, 15, 16]
+end_times = [9, 10, 11, 12, 13, 14, 15, 16, 17]
 
-# Define the meeting duration in hours
-meeting_duration = 0.5
+# Define the meeting duration
+meeting_duration = 30
 
-# Define the constraints for Jesse's schedule
-jesse_schedule = [
-    (13, 14, 'Monday'),
-    (14, 15, 'Monday'),
-    (9, 9.5, 'Tuesday'),
-    (13, 13.5, 'Tuesday'),
-    (14, 15, 'Tuesday')
-]
+# Define the existing schedules
+jessie_schedules = {
+    0: [13, 14, 14.5, 15],
+    1: [9, 13, 14, 15]
+}
 
-# Define the constraints for Lawrence's schedule
-lawrence_schedule = [
-    (9, 17, 'Monday'),
-    (9.5, 10.5, 'Tuesday'),
-    (11.5, 12.5, 'Tuesday'),
-    (13, 13.5, 'Tuesday'),
-    (14.5, 15.5, 'Tuesday'),
-    (15.5, 16.5, 'Tuesday')
-]
-
-# Define the solver
-s = Solver()
-
-# Define the variables
-day = [Bool(f'day_{i}') for i in range(2)]
-start_time = [Real(f'start_time_{i}') for i in range(2)]
-end_time = [start_time[i] + meeting_duration for i in range(2)]
+lawrence_schedules = {
+    0: [9, 17],
+    1: [9, 10, 11, 12, 13, 14, 15, 16]
+}
 
 # Define the constraints
-for i in range(2):
-    s.add(day[i] == False)  # Initialize day to False
+def constraints(day_value, start, end):
+    day = days[day_value]
+    # Check if the meeting time is within the work hours
+    if day == 'Monday':
+        return And(start >= 9, start <= 17, end <= 17)
+    elif day == 'Tuesday':
+        return And(start >= 9, start <= 17, end <= 17)
 
-for i in range(2):
-    s.add(Implies(day[i], And(9 <= start_time[i], start_time[i] < 17)))  # Ensure start time is within work hours
+    # Check if the meeting time conflicts with existing schedules
+    jessie_schedules_day = jessie_schedules[day_value]
+    lawrence_schedules_day = lawrence_schedules[day_value]
+    for schedule in jessie_schedules_day:
+        if And(start >= schedule, start < schedule + 1, end > schedule, end <= schedule + 1).as_bool():
+            return False
+    for schedule in lawrence_schedules_day:
+        if And(start >= schedule, start < schedule + 1, end > schedule, end <= schedule + 1).as_bool():
+            return False
+    return True
 
-for i in range(2):
-    s.add(Implies(day[i], And(9 <= end_time[i], end_time[i] < 17)))  # Ensure end time is within work hours
+def solve():
+    # Create the solver
+    solver = Solver()
 
-for i in range(2):
-    for j in jesse_schedule:
-        if j[2] == days[i]:
-            s.add(Implies(day[i], And(start_time[i] > j[1], end_time[i] < j[0])))  # Ensure meeting time does not conflict with Jesse's schedule
+    # Define the variables
+    day_value = Int('day')
+    start = Int('start')
+    end = Int('end')
 
-for i in range(2):
-    for j in lawrence_schedule:
-        if j[2] == days[i]:
-            s.add(Implies(day[i], And(start_time[i] > j[1], end_time[i] < j[0])))  # Ensure meeting time does not conflict with Lawrence's schedule
+    # Add the constraints
+    solver.add(Or(day_value == 0, day_value == 1))
+    solver.add(And(9 <= start, start <= 17))
+    solver.add(And(start + meeting_duration <= end, end <= 17))
+    solver.add(constraints(day_value, start, end))
 
-    # Ensure meeting time does not conflict with Lawrence's schedule after 16:30 on Tuesday
-    s.add(Implies(day[1], And(start_time[1] > 16.5, start_time[1] < 17)))  # Ensure Tuesday meeting starts after 16:30
+    # Solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        day_value = model[day_value].as_long()
+        start_value = model[start].as_long()
+        end_value = model[end].as_long()
+        print(f'Day: {days[day_value]}')
+        print(f'Start Time: {start_value:02d}:00')
+        print(f'End Time: {(start_value + meeting_duration):02d}:00')
+    else:
+        print('No solution found')
 
-# Find a solution
-s.add(day[1])  # Ensure Tuesday is chosen
-
-if s.check() == sat:
-    model = s.model()
-    day_value = [int(model.evaluate(day[i]).as_bool()) for i in range(2)]
-    start_time_value = [model.evaluate(start_time[i]).as_real().as_decimal('2.2').value() for i in range(2)]
-    end_time_value = [model.evaluate(end_time[i]).as_real().as_decimal('2.2').value() for i in range(2)]
-
-    # Print the solution
-    print(f"SOLUTION:")
-    print(f"Day: {days[day_value.index(1)]}")
-    print(f"Start Time: {int(start_time_value[day_value.index(1)])}:{int((start_time_value[day_value.index(1)] - int(start_time_value[day_value.index(1)])) * 60):02d}")
-    print(f"End Time: {int(end_time_value[day_value.index(1)])}:{int((end_time_value[day_value.index(1)] - int(end_time_value[day_value.index(1)])) * 60):02d}")
-else:
-    print("No solution found.")
+solve()

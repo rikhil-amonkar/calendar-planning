@@ -1,78 +1,110 @@
 from z3 import *
 
-# Define the locations and their corresponding indices
-locations = ["Russian Hill", "Marina District", "Financial District", "Alamo Square", "Golden Gate Park", "The Castro", "Bayview", "Sunset District", "Haight-Ashbury", "Nob Hill"]
-location_indices = {location: i for i, location in enumerate(locations)}
+# Define the locations
+locations = ['Russian Hill', 'Marina District', 'Financial District', 'Alamo Square', 
+             'Golden Gate Park', 'The Castro', 'Bayview', 'Sunset District', 'Haight-Ashbury', 'Nob Hill']
 
-# Define the travel times between locations
-travel_times = {}
-for location1 in locations:
-    for location2 in locations:
-        travel_time = eval(f"{location1} to {location2}")
-        travel_times[(location_indices[location1], location_indices[location2])] = travel_time
+# Define the travel times
+travel_times = {
+    'Russian Hill': {'Marina District': 7, 'Financial District': 11, 'Alamo Square': 15, 
+                     'Golden Gate Park': 21, 'The Castro': 21, 'Bayview': 23, 'Sunset District': 23, 
+                     'Haight-Ashbury': 17, 'Nob Hill': 5},
+    'Marina District': {'Russian Hill': 8, 'Financial District': 17, 'Alamo Square': 15, 
+                        'Golden Gate Park': 18, 'The Castro': 22, 'Bayview': 27, 'Sunset District': 19, 
+                        'Haight-Ashbury': 16, 'Nob Hill': 12},
+    'Financial District': {'Russian Hill': 11, 'Marina District': 15, 'Alamo Square': 17, 
+                           'Golden Gate Park': 23, 'The Castro': 20, 'Bayview': 19, 'Sunset District': 30, 
+                           'Haight-Ashbury': 19, 'Nob Hill': 8},
+    'Alamo Square': {'Russian Hill': 13, 'Marina District': 15, 'Financial District': 17, 
+                     'Golden Gate Park': 9, 'The Castro': 8, 'Bayview': 16, 'Sunset District': 16, 
+                     'Haight-Ashbury': 5, 'Nob Hill': 11},
+    'Golden Gate Park': {'Russian Hill': 19, 'Marina District': 16, 'Financial District': 26, 
+                         'Alamo Square': 9, 'The Castro': 13, 'Bayview': 23, 'Sunset District': 10, 
+                         'Haight-Ashbury': 7, 'Nob Hill': 20},
+    'The Castro': {'Russian Hill': 18, 'Marina District': 21, 'Financial District': 21, 
+                   'Alamo Square': 8, 'Golden Gate Park': 11, 'Bayview': 19, 'Sunset District': 17, 
+                   'Haight-Ashbury': 6, 'Nob Hill': 16},
+    'Bayview': {'Russian Hill': 23, 'Marina District': 27, 'Financial District': 19, 
+                'Alamo Square': 16, 'Golden Gate Park': 22, 'The Castro': 19, 'Sunset District': 23, 
+                'Haight-Ashbury': 19, 'Nob Hill': 20},
+    'Sunset District': {'Russian Hill': 24, 'Marina District': 21, 'Financial District': 30, 
+                        'Alamo Square': 17, 'Golden Gate Park': 11, 'The Castro': 17, 'Bayview': 22, 
+                        'Haight-Ashbury': 15, 'Nob Hill': 27},
+    'Haight-Ashbury': {'Russian Hill': 17, 'Marina District': 17, 'Financial District': 21, 
+                       'Alamo Square': 5, 'Golden Gate Park': 7, 'The Castro': 6, 'Bayview': 18, 
+                       'Sunset District': 15, 'Nob Hill': 15},
+    'Nob Hill': {'Russian Hill': 5, 'Marina District': 11, 'Financial District': 9, 
+                 'Alamo Square': 11, 'Golden Gate Park': 17, 'The Castro': 17, 'Bayview': 19, 
+                 'Sunset District': 24, 'Haight-Ashbury': 13}
+}
 
 # Define the constraints
-s = Solver()
+constraints = []
+friends = {
+    'Mark': {'location': 'Marina District','start_time': 6*60+45, 'end_time': 9*60,'min_time': 90*60},
+    'Karen': {'location': 'Financial District','start_time': 9*60, 'end_time': 12*60+45,'min_time': 90*60},
+    'Barbara': {'location': 'Alamo Square','start_time': 10*60, 'end_time': 19*60+30,'min_time': 90*60},
+    'Nancy': {'location': 'Golden Gate Park','start_time': 16*60+45, 'end_time': 20*60,'min_time': 105*60},
+    'David': {'location': 'The Castro','start_time': 9*60, 'end_time': 18*60,'min_time': 120*60},
+    'Linda': {'location': 'Bayview','start_time': 18*60+15, 'end_time': 19*60+45,'min_time': 45*60},
+    'Kevin': {'location': 'Sunset District','start_time': 10*60, 'end_time': 17*60+45,'min_time': 120*60},
+    'Matthew': {'location': 'Haight-Ashbury','start_time': 10*60+15, 'end_time': 16*60+30,'min_time': 45*60},
+    'Andrew': {'location': 'Nob Hill','start_time': 11*60+45, 'end_time': 17*60+45,'min_time': 105*60}
+}
 
-# Define the variables
-start_time = 0
-end_time = 24 * 60  # 24 hours
-friend_meetings = [Bool(f"friend_{i}") for i in range(9)]
-meeting_times = [Int(f"meeting_time_{i}") for i in range(9)]
-meeting_durations = [Int(f"meeting_duration_{i}") for i in range(9)]
-travel_times_used = [Bool(f"travel_time_used_{i}") for i in range(9)]
+for friend in friends:
+    location = friends[friend]['location']
+    start_time = friends[friend]['start_time']
+    end_time = friends[friend]['end_time']
+    min_time = friends[friend]['min_time']
 
-# Add constraints for each friend
-for i, friend_meeting in enumerate(friend_meetings):
-    s.add(And(friend_meeting, meeting_times[i] >= 90))  # 90 minutes
-    if i == 0:
-        s.add(meeting_times[i] >= 9 * 60 + 45)  # Mark is available from 6:45PM
-        s.add(meeting_times[i] <= 9 * 60 + 90)  # Mark is available until 9:00PM
-    elif i == 1:
-        s.add(meeting_times[i] >= 9 * 60)  # Karen is available from 9:30AM
-        s.add(meeting_times[i] <= 12 * 60 + 45)  # Karen is available until 12:45PM
-    elif i == 2:
-        s.add(meeting_times[i] >= 10 * 60)  # Barbara is available from 10:00AM
-        s.add(meeting_times[i] <= 19 * 60 + 30)  # Barbara is available until 7:30PM
-    elif i == 3:
-        s.add(meeting_times[i] >= 4 * 60 + 45)  # Nancy is available from 4:45PM
-        s.add(meeting_times[i] <= 8 * 60)  # Nancy is available until 8:00PM
-    elif i == 4:
-        s.add(meeting_times[i] >= 9 * 60)  # David is available from 9:00AM
-        s.add(meeting_times[i] <= 18 * 60)  # David is available until 6:00PM
-    elif i == 5:
-        s.add(meeting_times[i] >= 6 * 60 + 15)  # Linda is available from 6:15PM
-        s.add(meeting_times[i] <= 7 * 60 + 45)  # Linda is available until 7:45PM
-    elif i == 6:
-        s.add(meeting_times[i] >= 10 * 60)  # Kevin is available from 10:00AM
-        s.add(meeting_times[i] <= 17 * 60 + 45)  # Kevin is available until 5:45PM
-    elif i == 7:
-        s.add(meeting_times[i] >= 10 * 60)  # Matthew is available from 10:15AM
-        s.add(meeting_times[i] <= 15 * 60 + 45)  # Matthew is available until 3:30PM
-    elif i == 8:
-        s.add(meeting_times[i] >= 11 * 60 + 45)  # Andrew is available from 11:45AM
-        s.add(meeting_times[i] <= 17 * 60)  # Andrew is available until 4:45PM
+    # Create a variable for the arrival time at the friend's location
+    arrival_time = Int(f'arrival_time_{friend}')
 
-# Add constraints for meeting durations
-for i in range(9):
-    s.add(And(meeting_durations[i] >= 0, meeting_durations[i] <= 24 * 60))
+    # Create a constraint for the arrival time
+    constraints.append(And(arrival_time >= start_time, arrival_time <= end_time))
 
-# Add constraints for travel times
-for i in range(9):
-    s.add(And(travel_times_used[i], meeting_times[i] + meeting_durations[i] + travel_times[i] >= start_time))
-    s.add(And(travel_times_used[i], meeting_times[i] + meeting_durations[i] + travel_times[i] <= end_time))
+    # Create a constraint for the duration of the meeting
+    constraints.append(And(arrival_time + min_time <= end_time, arrival_time + min_time >= start_time))
 
-# Add constraints for visiting each location
-for i in range(9):
-    s.add(Or([friend_meetings[i]]))
+# Create a variable for the arrival time at Mark's location
+arrival_time_mark = Int('arrival_time_mark')
+
+# Create a constraint for the arrival time at Mark's location
+constraints.append(arrival_time_mark >= 6*60+45)
+constraints.append(arrival_time_mark <= 9*60)
+
+# Create a variable for the arrival time at Russian Hill
+arrival_time_russian_hill = Int('arrival_time_russian_hill')
+
+# Create a constraint for the arrival time at Russian Hill
+constraints.append(arrival_time_russian_hill == 9*60)
+
+# Create a solver
+solver = Solver()
+
+# Add the constraints to the solver
+for constraint in constraints:
+    solver.add(constraint)
 
 # Solve the problem
-s.check()
-model = s.model()
+if solver.check() == sat:
+    model = solver.model()
+    arrival_times = {}
+    for friend in friends:
+        arrival_times[friend] = model[getattr(model, f'arrival_time_{friend}')].as_long()
 
-# Print the solution
-print("SOLUTION:")
-for i in range(9):
-    if model.evaluate(friend_meetings[i]):
-        print(f"Meet {locations[i]} at {model.evaluate(meeting_times[i]) // 60}:{model.evaluate(meeting_times[i]) % 60} for {model.evaluate(meeting_durations[i]) // 60} hours and {model.evaluate(meeting_durations[i]) % 60} minutes")
-        print(f"Travel time: {travel_times[(location_indices['Russian Hill'], location_indices[locations[i]])]} minutes")
+    # Calculate the total travel time
+    total_travel_time = 0
+    for i in range(len(locations) - 1):
+        current_location = locations[i]
+        next_location = locations[i + 1]
+        travel_time = travel_times[current_location][next_location]
+        total_travel_time += travel_time
+
+    # Print the solution
+    print('SOLUTION:')
+    print(f'Arrival times: {arrival_times}')
+    print(f'Total travel time: {total_travel_time} minutes')
+else:
+    print('No solution found')

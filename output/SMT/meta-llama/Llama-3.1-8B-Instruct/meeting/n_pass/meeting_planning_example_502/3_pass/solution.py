@@ -1,6 +1,11 @@
 from z3 import *
 
-# Define the travel times
+# Define the variables
+start_time = 0
+end_time = 720  # 720 minutes in a day
+locations = ['Financial District', 'Golden Gate Park', 'Chinatown', 'Union Square', 'Fisherman\'s Wharf', 'Pacific Heights', 'North Beach']
+friends = ['Stephanie', 'Karen', 'Brian', 'Rebecca', 'Joseph', 'Steven']
+min_meeting_time = {'Stephanie': 105, 'Karen': 15, 'Brian': 30, 'Rebecca': 30, 'Joseph': 60, 'Steven': 120}
 travel_times = {
     'Financial District': {'Golden Gate Park': 23, 'Chinatown': 5, 'Union Square': 9, 'Fisherman\'s Wharf': 10, 'Pacific Heights': 13, 'North Beach': 7},
     'Golden Gate Park': {'Financial District': 26, 'Chinatown': 23, 'Union Square': 22, 'Fisherman\'s Wharf': 24, 'Pacific Heights': 16, 'North Beach': 24},
@@ -11,60 +16,54 @@ travel_times = {
     'North Beach': {'Financial District': 8, 'Golden Gate Park': 22, 'Chinatown': 6, 'Union Square': 7, 'Fisherman\'s Wharf': 5, 'Pacific Heights': 8}
 }
 
-# Define the constraints
+# Create the solver
 s = Solver()
 
-# Define the variables
-start_time = 9 * 60  # 9:00 AM in minutes
-stephanie_start_time = 11 * 60  # 11:00 AM in minutes
-stephanie_end_time = 15 * 60  # 3:00 PM in minutes
-karen_start_time = 1 * 60 + 45  # 1:45 PM in minutes
-karen_end_time = 4 * 60 + 30  # 4:30 PM in minutes
-brian_start_time = 3 * 60  # 3:00 PM in minutes
-brian_end_time = 5 * 60 + 15  # 5:15 PM in minutes
-rebecca_start_time = 8 * 60  # 8:00 AM in minutes
-rebecca_end_time = 11 * 60 + 15  # 11:15 AM in minutes
-joseph_start_time = 8 * 60 + 15  # 8:15 AM in minutes
-joseph_end_time = 9 * 60  # 9:00 AM in minutes
-steven_start_time = 2 * 60 + 30  # 2:30 PM in minutes
-steven_end_time = 20 * 60 + 45  # 8:45 PM in minutes
-
-# Define the meet times as variables
-meet_times = [Int(f'meet_time_{i}') for i in range(5)]
-
-# Define the locations as variables
-locations = [Int(f'location_{i}') for i in range(5)]
+# Define the decision variables
+locations_decisions = [Bool(f'visit_{location}') for location in locations]
+meeting_times = [Int(f'meet_{friend}') for friend in friends]
 
 # Define the constraints
-s.add(And([meet_times[i] >= 0 for i in range(5)]))
-s.add(And([meet_times[i] <= 12 * 60 for i in range(5)]))
-s.add(And([locations[i] >= 0 for i in range(5)]))
-s.add(And([locations[i] <= 6 for i in range(5)]))
+for friend in friends:
+    s.add(meeting_times[friends.index(friend)] >= min_meeting_time[friend])
 
-# Define the meet time constraints
-for i in range(5):
-    for j in range(5):
+for location in locations:
+    s.add(Or([locations_decisions[locations.index(location)]]))
+
+# Define the constraints for each friend
+s.add(meeting_times[friends.index('Stephanie')] >= 11 * 60 + 0)  # Stephanie is available from 11:00AM
+s.add(meeting_times[friends.index('Stephanie')] <= 15 * 60 + 0)  # Stephanie is available until 3:00PM
+s.add(meeting_times[friends.index('Karen')] >= 1 * 60 + 45)  # Karen is available from 1:45PM
+s.add(meeting_times[friends.index('Karen')] <= 4 * 60 + 30)  # Karen is available until 4:30PM
+s.add(meeting_times[friends.index('Brian')] >= 3 * 60 + 0)  # Brian is available from 3:00PM
+s.add(meeting_times[friends.index('Brian')] <= 5 * 60 + 15)  # Brian is available until 5:15PM
+s.add(meeting_times[friends.index('Rebecca')] >= 0)  # Rebecca is available from 8:00AM
+s.add(meeting_times[friends.index('Rebecca')] <= 2 * 60 + 15)  # Rebecca is available until 11:15AM
+s.add(meeting_times[friends.index('Joseph')] >= 0)  # Joseph is available from 8:15AM
+s.add(meeting_times[friends.index('Joseph')] <= 1 * 60 + 30)  # Joseph is available until 9:30AM
+s.add(meeting_times[friends.index('Steven')] >= 2 * 60 + 30)  # Steven is available from 2:30PM
+s.add(meeting_times[friends.index('Steven')] <= 8 * 60 + 45)  # Steven is available until 8:45PM
+
+# Define the constraints for visiting locations
+for i, location in enumerate(locations):
+    for j, other_location in enumerate(locations):
         if i!= j:
-            s.add(meet_times[i] + travel_times['Financial District'][str(locations[i].as_long())] + travel_times[str(locations[i].as_long())][str(locations[j].as_long())] >= start_time)
-            s.add(meet_times[i] + travel_times['Financial District'][str(locations[i].as_long())] + travel_times[str(locations[i].as_long())][str(locations[j].as_long())] <= start_time + 120)
+            s.add(Or([locations_decisions[i], locations_decisions[j]]))
+            s.add(If(locations_decisions[i], travel_times[location][other_location] + start_time <= meeting_times[friends.index('Stephanie')], True))
+            s.add(If(locations_decisions[i], travel_times[location][other_location] + start_time <= meeting_times[friends.index('Karen')], True))
+            s.add(If(locations_decisions[i], travel_times[location][other_location] + start_time <= meeting_times[friends.index('Brian')], True))
+            s.add(If(locations_decisions[i], travel_times[location][other_location] + start_time <= meeting_times[friends.index('Rebecca')], True))
+            s.add(If(locations_decisions[i], travel_times[location][other_location] + start_time <= meeting_times[friends.index('Joseph')], True))
+            s.add(If(locations_decisions[i], travel_times[location][other_location] + start_time <= meeting_times[friends.index('Steven')], True))
 
-# Define the meet duration constraints
-s.add(meet_times[0] + 60 >= stephanie_start_time)
-s.add(meet_times[0] + 60 <= stephanie_end_time)
-s.add(meet_times[1] + 15 >= karen_start_time)
-s.add(meet_times[1] + 15 <= karen_end_time)
-s.add(meet_times[2] + 30 >= brian_start_time)
-s.add(meet_times[2] + 30 <= brian_end_time)
-s.add(meet_times[3] + 30 >= rebecca_start_time)
-s.add(meet_times[3] + 30 <= rebecca_end_time)
-s.add(meet_times[4] + 120 >= steven_start_time)
-s.add(meet_times[4] + 120 <= steven_end_time)
-
-# Solve the constraints
+# Check the solution
 if s.check() == sat:
     model = s.model()
-    print("SOLUTION:")
-    for i in range(5):
-        print(f"Meet at {model[locations[i]].as_long()} at {model[meet_times[i]]} minutes after 9:00 AM")
+    print('SOLUTION:')
+    for i, friend in enumerate(friends):
+        print(f'Meet {friend} for {model[meeting_times[i]].as_long()} minutes')
+    for i, location in enumerate(locations):
+        if model[locations_decisions[i]].decl().name() == f'visit_{location}':
+            print(f'Visit {location}')
 else:
-    print("No solution found")
+    print('No solution found')

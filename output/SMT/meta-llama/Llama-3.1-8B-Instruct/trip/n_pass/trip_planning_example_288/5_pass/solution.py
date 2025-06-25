@@ -1,88 +1,93 @@
 from z3 import *
 
-# Define the cities
-cities = ['Stuttgart', 'Manchester', 'Madrid', 'Vienna']
-
-# Define the days
-days = range(1, 16)
-
 # Define the variables
-stay = {}
-for city in cities:
-    stay[city] = Int(city + '_stay')
-    stay[city + '_start'] = Int(city + '_start')
-    stay[city + '_end'] = Int(city + '_end')
+days = [Bool(f'day_{i}') for i in range(1, 16)]
+places = [Bool(f'place_{i}') for i in range(4)]
+
+# Define the initial places constraints
+initial_places_constraints = []
+for i in range(4):
+    initial_places_constraints.append(places[i])
 
 # Define the constraints
+# Each day is either in one of the places or is a flight day
 constraints = []
-for city in cities:
-    constraints.append(stay[city] >= 0)
-    constraints.append(stay[city + '_start'] >= 0)
-    constraints.append(stay[city + '_end'] >= 0)
+for i in range(1, 16):
+    for place in places:
+        constraints.append(days[i] == place)
+
+# Flight constraints
+flight_constraints = []
+for i in range(1, 15):
+    # If flying from A to B, then A is in the departure city and B is in the arrival city
+    for a in range(4):
+        for b in range(4):
+            if a!= b and (a == 0 and b == 1 or a == 0 and b == 2 or a == 0 and b == 3 or a == 1 and b == 2 or a == 2 and b == 3):
+                flight_constraints.append(Implies(days[i] == places[a], places[b]))
+                flight_constraints.append(Implies(days[i] == places[b], places[a]))
 
 # Stuttgart constraints
-constraints.append(stay['Stuttgart'] == 5)
-constraints.append(Or([stay['Stuttgart'] == 11, stay['Stuttgart'] == 12, stay['Stuttgart'] == 13, stay['Stuttgart'] == 14, stay['Stuttgart'] == 15]))
-constraints.append(stay['Stuttgart_start'] == 1)
-constraints.append(stay['Stuttgart_end'] == 5)
+stuttgart_constraints = []
+for i in range(1, 16):
+    stuttgart_constraints.append(Or([days[i] == places[3]]))
 
 # Manchester constraints
-constraints.append(stay['Manchester'] == 7)
-constraints.append(Or([stay['Manchester'] == 1, stay['Manchester'] == 2, stay['Manchester'] == 3, stay['Manchester'] == 4, stay['Manchester'] == 5, stay['Manchester'] == 6, stay['Manchester'] == 7]))
-constraints.append(stay['Manchester_start'] == 1)
-constraints.append(stay['Manchester_end'] == 7)
+manchester_constraints = []
+for i in range(1, 16):
+    manchester_constraints.append(Or([days[i] == places[0]]))
 
 # Madrid constraints
-constraints.append(stay['Madrid'] == 4)
+madrid_constraints = []
+for i in range(1, 16):
+    madrid_constraints.append(Or([days[i] == places[1]]))
 
 # Vienna constraints
-constraints.append(stay['Vienna'] == 2)
+vienna_constraints = []
+for i in range(1, 16):
+    vienna_constraints.append(Or([days[i] == places[2]]))
 
-# Direct flights constraints
-constraints.append(Or([stay['Stuttgart_start'] == 1, stay['Stuttgart_start'] == 8, stay['Stuttgart_start'] == 9, stay['Stuttgart_start'] == 10, stay['Stuttgart_start'] == 11, stay['Stuttgart_start'] == 12, stay['Stuttgart_start'] == 13, stay['Stuttgart_start'] == 14, stay['Stuttgart_start'] == 15]))
-constraints.append(Or([stay['Manchester_start'] == 1, stay['Manchester_start'] == 8, stay['Manchester_start'] == 9, stay['Manchester_start'] == 10, stay['Manchester_start'] == 11, stay['Manchester_start'] == 12, stay['Manchester_start'] == 13, stay['Manchester_start'] == 14, stay['Manchester_start'] == 15]))
-constraints.append(Or([stay['Madrid_start'] == 1, stay['Madrid_start'] == 6, stay['Madrid_start'] == 7, stay['Madrid_start'] == 8, stay['Madrid_start'] == 9, stay['Madrid_start'] == 10, stay['Madrid_start'] == 11, stay['Madrid_start'] == 12, stay['Madrid_start'] == 13, stay['Madrid_start'] == 14, stay['Madrid_start'] == 15]))
-constraints.append(Or([stay['Vienna_start'] == 1, stay['Vienna_start'] == 3, stay['Vienna_start'] == 4, stay['Vienna_start'] == 5, stay['Vienna_start'] == 6, stay['Vienna_start'] == 7, stay['Vienna_start'] == 8, stay['Vienna_start'] == 9, stay['Vienna_start'] == 10, stay['Vienna_start'] == 11, stay['Vienna_start'] == 12, stay['Vienna_start'] == 13, stay['Vienna_start'] == 14, stay['Vienna_start'] == 15]))
+# Wedding and workshop constraints
+wedding_constraints = []
+workshop_constraints = []
+for i in range(1, 16):
+    wedding_constraints.append(Not(days[i] == places[0] and days[i] > 7))
+    workshop_constraints.append(Not(days[i] == places[3] and (days[i] < 11 or days[i] > 15)))
 
-# Stay constraints
-for city in cities:
-    if city == 'Stuttgart':
-        constraints.append(stay['Stuttgart_start'] + stay['Stuttgart'] - 1 == stay['Stuttgart_end'])
-    elif city == 'Manchester':
-        constraints.append(stay['Manchester_start'] + stay['Manchester'] - 1 == stay['Manchester_end'])
-    elif city == 'Madrid':
-        constraints.append(stay['Madrid_start'] + stay['Madrid'] - 1 == stay['Madrid_end'])
-    elif city == 'Vienna':
-        constraints.append(stay['Vienna_start'] + stay['Vienna'] - 1 == stay['Vienna_end'])
+# Combine all constraints
+s = Solver()
+for c in constraints + flight_constraints + stuttgart_constraints + manchester_constraints + madrid_constraints + vienna_constraints + wedding_constraints + workshop_constraints + initial_places_constraints:
+    s.add(c)
 
-# Total days constraint
-total_days = 0
-for city in cities:
-    total_days += stay[city + '_end'] - stay[city + '_start'] + 1
-constraints.append(total_days == 15)
+# Solve the problem
+if s.check() == sat:
+    model = s.model()
+    itinerary = []
+    for i in range(1, 16):
+        places_in_day = [place for place in places if model[days[i]] == place]
+        if places_in_day:
+            if places_in_day[0] == places[0]:
+                if i >= 1 and i <= 7:
+                    itinerary.append({"day_range": f"Day {i}-7", "place": places_in_day[0].name})
+                else:
+                    itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0].name})
+            elif places_in_day[0] == places[1]:
+                itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0].name})
+            elif places_in_day[0] == places[2]:
+                itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0].name})
+            elif places_in_day[0] == places[3]:
+                if i >= 11 and i <= 15:
+                    itinerary.append({"day_range": f"Day {i}-15", "place": places_in_day[0].name})
+                else:
+                    itinerary.append({"day_range": f"Day {i}", "place": places_in_day[0].name})
+            # If flying from A to B, add a record for the flight day
+            for a in range(4):
+                for b in range(4):
+                    if a!= b and (a == 0 and b == 1 or a == 0 and b == 2 or a == 0 and b == 3 or a == 1 and b == 2 or a == 2 and b == 3):
+                        if model[days[i]] == places[a]:
+                            itinerary.append({"day_range": f"Day {i}", "place": places[a].name})
+                        elif model[days[i]] == places[b]:
+                            itinerary.append({"day_range": f"Day {i}", "place": places[b].name})
 
-# Solve the constraints
-solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
-if solver.check() == sat:
-    model = solver.model()
-    for city in cities:
-        print(f"{city}: {model[city + '_stay']}")
-        print(f"{city}_start: {model[city + '_start']}")
-        print(f"{city}_end: {model[city + '_end']}")
+    print({"itinerary": itinerary})
 else:
     print("No solution found")
-
-# Find a valid solution by hand
-# Start in Stuttgart on day 1
-# Stay in Stuttgart for 5 days
-# Fly to Manchester on day 6
-# Stay in Manchester for 7 days
-# Fly to Madrid on day 13
-# Stay in Madrid for 4 days
-# Fly to Vienna on day 17 (not possible, so stay in Madrid for 2 more days)
-# Stay in Vienna for 2 days
-# Total days: 17 (not possible, so stay in Madrid for 1 more day)
-# Stay in Vienna for 1 day
-# Total days: 15

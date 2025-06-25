@@ -1,63 +1,56 @@
 from z3 import *
 
-# Define the day of the week (Monday = 0, Sunday = 6)
-day_of_week = [0]
+def schedule_meeting(lisa_schedule, bobby_schedule, randy_schedule, meeting_duration, bobby_preference):
+    # Create a Z3 solver
+    s = Solver()
 
-# Define the start and end times (9:00 to 17:00)
-start_time = 9
-end_time = 17
+    # Define the day and time variables
+    days = ['Monday']
+    times = [str(i) + ':00' for i in range(9, 17)] + [str(i) + ':30' for i in range(9, 17)]
+    times = [t +'to'+ t2 if i < len(times) - 1 else t for i, (t, t2) in enumerate(zip(times, times[1:] + [times[-1] +'to 17:00']))]
 
-# Define the duration of the meeting (30 minutes)
+    # Define the meeting time variables
+    day = Int('day')
+    start_time = Int('start_time')
+    end_time = Int('end_time')
+
+    # Define the constraints for each participant's schedule
+    for i, (schedule, name) in enumerate(zip([lisa_schedule, bobby_schedule, randy_schedule], ['Lisa', 'Bobby', 'Randy'])):
+        for time in schedule:
+            start, end = time.split(' to ')
+            start = int(start[:-3]) * 60 + int(start[-2:])
+            end = int(end[:-3]) * 60 + int(end[-2:])
+            s.add(Or(And(start_time >= start, end_time <= end), 
+                     And(start_time >= end, end_time <= start)))
+
+    # Define the constraints for the meeting duration
+    s.add(And(start_time + 30 <= end_time, start_time >= 0, end_time <= 17 * 60))
+
+    # Define the constraint for Bobby's preference
+    if bobby_preference:
+        s.add(end_time <= 15 * 60)
+
+    # Define the constraints for the day
+    s.add(day == 0)  # Monday is 0
+
+    # Define the objective function
+    s.add(Implies(day == 0, And(start_time >= 9 * 60, start_time <= 16 * 60)))
+
+    # Solve the problem
+    if s.check() == sat:
+        model = s.model()
+        day = days[model[day].as_long()]
+        start_time = str(model[start_time].as_long() // 60) + ':' + str(model[start_time].as_long() % 60).zfill(2)
+        end_time = str(model[end_time].as_long() // 60) + ':' + str(model[end_time].as_long() % 60).zfill(2)
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time}\nEnd Time: {end_time}'
+    else:
+        return 'No solution found'
+
+# Example usage
+lisa_schedule = ['09:00 to 10:00', '10:30 to 11:30', '12:30 to 13:00', '16:00 to 16:30']
+bobby_schedule = ['09:00 to 09:30', '10:00 to 10:30', '11:30 to 12:00', '15:00 to 15:30']
+randy_schedule = ['09:30 to 10:00', '10:30 to 11:00', '11:30 to 12:30', '13:00 to 13:30', '14:30 to 15:30', '16:00 to 16:30']
 meeting_duration = 30
+bobby_preference = True
 
-# Define the schedules for each participant
-schedules = {
-    'Lisa': [(9, 10), (10.5, 11.5), (12.5, 13), (16, 16.5)],
-    'Bobby': [(9, 9.5), (10, 10.5), (11.5, 12), (15, 15.5)],
-    'Randy': [(9.5, 10), (10.5, 11), (11.5, 12.5), (13, 13.5), (14.5, 15.5), (16, 16.5)]
-}
-
-# Define the preferences for Bobby (avoid meetings after 15:00)
-bobby_preferences = [(15, 17)]
-
-# Create a Z3 solver
-solver = Solver()
-
-# Define the variables for the start and end times of the meeting
-day = Int('day')
-start_time_var = Int('start_time')
-end_time_var = Int('end_time')
-
-# Add constraints for the day of the week
-solver.add(day == 0)
-
-# Add constraints for the start and end times
-solver.add(start_time_var >= start_time)
-solver.add(end_time_var <= end_time)
-solver.add(end_time_var - start_time_var == meeting_duration)
-
-# Add constraints for the schedules of each participant
-for participant, participant_schedule in schedules.items():
-    for start, end in participant_schedule:
-        solver.add(start_time_var >= start)
-        solver.add(end_time_var <= end)
-
-# Add constraints for Bobby's preferences
-for start, end in bobby_preferences:
-    solver.add(end_time_var <= start)
-
-# Check if there is a solution
-if solver.check() == sat:
-    # Get the values of the variables
-    model = solver.model()
-    day_value = model[day].as_long()
-    start_time_value = model[start_time_var].as_long() / 60
-    end_time_value = model[end_time_var].as_long() / 60
-
-    # Print the solution
-    print('SOLUTION:')
-    print(f'Day: {day_of_week[day_value]}')
-    print(f'Start Time: {int(start_time_value):02d}:{int((start_time_value - int(start_time_value)) * 60):02d}')
-    print(f'End Time: {int(end_time_value):02d}:{int((end_time_value - int(end_time_value)) * 60):02d}')
-else:
-    print('No solution found')
+print(schedule_meeting(lisa_schedule, bobby_schedule, randy_schedule, meeting_duration, bobby_preference))

@@ -1,95 +1,89 @@
 from z3 import *
 
-# Define the cities and their durations
-cities = {
-    'Prague': 3,
-    'Warsaw': 4,
-    'Dublin': 3,
-    'Athens': 3,
-    'Vilnius': 4,
-    'Porto': 5,
-    'London': 3,
-    'Lisbon': 5,
-    'Seville': 2,
-    'Dubrovnik': 3
-}
+# Define cities and their corresponding variables
+cities = ['Prague', 'Warsaw', 'Dublin', 'Athens', 'Vilnius', 'Porto', 'London', 'Seville', 'Lisbon', 'Dubrovnik']
+days = 26
+city_vars = [Bool(f'city_{i}') for i in range(len(cities))]
 
-# Define the direct flights
-flights = {
-    ('Warsaw', 'Vilnius'): True,
-    ('Prague', 'Athens'): True,
-    ('London', 'Lisbon'): True,
-    ('Lisbon', 'Porto'): True,
-    ('Prague', 'Lisbon'): True,
-    ('London', 'Dublin'): True,
-    ('Athens', 'Vilnius'): True,
-    ('Athens', 'Dublin'): True,
-    ('Prague', 'London'): True,
-    ('London', 'Warsaw'): True,
-    ('Dublin', 'Seville'): True,
-    ('Seville', 'Porto'): True,
-    ('Lisbon', 'Athens'): True,
-    ('Dublin', 'Porto'): True,
-    ('Athens', 'Warsaw'): True,
-    ('Lisbon', 'Warsaw'): True,
-    ('Porto', 'Warsaw'): True,
-    ('Prague', 'Warsaw'): True,
-    ('Prague', 'Dublin'): True,
-    ('Athens', 'Dubrovnik'): True,
-    ('Lisbon', 'Dublin'): True,
-    ('Dubrovnik', 'Dublin'): True,
-    ('Lisbon', 'Seville'): True
-}
+# Define constraints for each city
+constraints = [
+    # Prague
+    Implies(city_vars[0], And(1 <= 10, 10 <= 13)),
+    # Warsaw
+    Implies(city_vars[1], And(20 <= 10, 23 <= 13)),
+    # Dublin
+    Implies(city_vars[2], And(1 <= 10, 3 <= 13)),
+    # Athens
+    Implies(city_vars[3], And(1 <= 10, 3 <= 13)),
+    # Vilnius
+    Implies(city_vars[4], And(1 <= 10, 4 <= 13)),
+    # Porto
+    Implies(city_vars[5], And(16 <= 10, 20 <= 13)),
+    # London
+    Implies(city_vars[6], And(3 <= 10, 5 <= 13)),
+    # Seville
+    Implies(city_vars[7], And(1 <= 10, 2 <= 13)),
+    # Lisbon
+    Implies(city_vars[8], And(5 <= 10, 9 <= 13)),
+    # Dubrovnik
+    Implies(city_vars[9], And(1 <= 10, 3 <= 13)),
+]
 
-# Define the constraints
-def constraint(days, city, duration):
-    return And([days[city] >= i for i in range(duration)])
+# Define direct flights between cities
+flights = [
+    ('Warsaw', 'Vilnius'),
+    ('Prague', 'Athens'),
+    ('London', 'Lisbon'),
+    ('Lisbon', 'Porto'),
+    ('Prague', 'Lisbon'),
+    ('London', 'Dublin'),
+    ('Athens', 'Vilnius'),
+    ('Athens', 'Dublin'),
+    ('Prague', 'London'),
+    ('London', 'Warsaw'),
+    ('Dublin', 'Seville'),
+    ('Seville', 'Porto'),
+    ('Lisbon', 'Athens'),
+    ('Dublin', 'Porto'),
+    ('Athens', 'Warsaw'),
+    ('Lisbon', 'Warsaw'),
+    ('Porto', 'Warsaw'),
+    ('Prague', 'Warsaw'),
+    ('Prague', 'Dublin'),
+    ('Athens', 'Dubrovnik'),
+    ('Lisbon', 'Dublin'),
+    ('Dubrovnik', 'Dublin'),
+    ('Lisbon', 'Seville'),
+    ('London', 'Athens'),
+]
 
-def constraint_workshop(days, city, duration):
-    return And([days[city] >= 1, days[city] <= 3])
+# Define constraints for direct flights
+for city1, city2 in flights:
+    index1 = cities.index(city1)
+    index2 = cities.index(city2)
+    constraints.append(Implies(city_vars[index1], city_vars[index2]))
 
-def constraint_meeting(days, city, duration):
-    return And([days[city] >= 20, days[city] <= 23])
-
-def constraint_conference(days, city, duration):
-    return And([days[city] >= 16, days[city] <= 20])
-
-def constraint_wedding(days, city, duration):
-    return And([days[city] >= 3, days[city] <= 5])
-
-def constraint_relative(days, city, duration):
-    return And([days[city] >= 5, days[city] <= 9])
-
-def constraint_flight(days, city1, city2):
-    return Or([days[city1] == days[city2], days[city1] == days[city2] - 1])
-
-# Create the solver
+# Define the solver
 solver = Solver()
 
-# Create the variables
-days = {city: Int(f'days_{city}') for city in cities}
+# Add constraints to the solver
+for constraint in constraints:
+    solver.add(constraint)
 
-# Add the constraints
-for city in cities:
-    solver.add(constraint(days, city, cities[city]))
+# Add constraints for total days
+solver.add(Or([city_vars[i] for i in range(len(cities))]))
+solver.add(Not(Or([city_vars[i] for i in range(len(cities))])))
+for i in range(len(cities)):
+    solver.add(If(city_vars[i], 13 >= days, True))
+for i in range(len(cities)):
+    solver.add(If(city_vars[i], days >= 10, True))
 
-solver.add(constraint_workshop(days, 'Prague', 3))
-solver.add(constraint_meeting(days, 'Warsaw', 4))
-solver.add(constraint_conference(days, 'Porto', 5))
-solver.add(constraint_wedding(days, 'London', 3))
-solver.add(constraint_relative(days, 'Lisbon', 5))
-
-for city1, city2 in flights:
-    solver.add(constraint_flight(days, city1, city2))
-
-# Add the constraint for the total duration
-total_duration = Sum([days[city] for city in cities])
-solver.add(total_duration == 26)
-
-# Solve the problem
+# Check the solution
 if solver.check() == sat:
     model = solver.model()
-    for city in cities:
-        print(f'{city}: {model[days[city]].as_long()} days')
+    print('Trip plan:')
+    for i in range(len(cities)):
+        if model.evaluate(city_vars[i]).as_bool():
+            print(f'Day {model.evaluate(If(city_vars[i], 10, 0)) + 1}: {cities[i]}')
 else:
     print('No solution found')

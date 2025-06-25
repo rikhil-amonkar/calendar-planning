@@ -1,86 +1,105 @@
 from z3 import *
+import json
 
-# Define the variables
-days = 12
-cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
-stays = {city: days // len(cities) for city in cities}
-stays['Berlin'] += 2  # Berlin has 2 extra days for the conference
-stays['Tallinn'] -= 3  # Tallinn has 3 days less because of the conference and relatives
-stays['Tallinn'] += 3  # Tallinn has 3 days more because of relatives
-stays['Prague'] -= 2  # Prague has 2 days less because it's only visited for 2 days
-stays['Stockholm'] -= 5  # Stockholm has 5 days less because it's only visited for 5 days
+# Define the cities and their corresponding durations
+cities = {
+    'Prague': 2,
+    'Berlin': 3,
+    'Tallinn': 5,
+    'Stockholm': 5
+}
 
-# Create the solver
-solver = Solver()
-
-# Create the variables
-x = [Int(f'day_{city}') for city in cities]
-x += [Bool(f'visit_{city}') for city in cities]
+# Define the direct flights
+flights = {
+    ('Berlin', 'Tallinn'): 1,
+    ('Tallinn', 'Berlin'): 1,
+    ('Prague', 'Tallinn'): 1,
+    ('Tallinn', 'Prague'): 1,
+    ('Stockholm', 'Tallinn'): 1,
+    ('Tallinn', 'Stockholm'): 1,
+    ('Prague', 'Stockholm'): 1,
+    ('Stockholm', 'Prague'): 1,
+    ('Stockholm', 'Berlin'): 1,
+    ('Berlin', 'Stockholm'): 1
+}
 
 # Define the constraints
-for i, city in enumerate(cities):
-    solver.add(x[i] == stays[city])
-solver.add(x[0] == 2)  # Prague is visited for 2 days
-solver.add(x[1] == 3)  # Berlin is visited for 3 days
-solver.add(x[2] == 5)  # Tallinn is visited for 5 days
-solver.add(x[3] == 5)  # Stockholm is visited for 5 days
-solver.add(Or([x[0] >= 1, x[0] <= 2]))  # Prague can only be visited on day 1 or 2
-solver.add(Or([x[1] >= 3, x[1] <= 5]))  # Berlin can only be visited on day 3, 4 or 5
-solver.add(Or([x[2] >= 6, x[2] <= 12]))  # Tallinn can be visited on day 6 or later
-solver.add(Or([x[3] >= 6, x[3] <= 12]))  # Stockholm can be visited on day 6 or later
-solver.add(And([x[1] == 6, x[1] == 8]))  # Berlin is visited on day 6 and 8
-solver.add(And([x[2] == 9, x[2] == 12]))  # Tallinn is visited on day 9 to 12
-solver.add(Not(And([x[1], x[0] >= x[1]])))  # If Berlin is visited, Prague must be visited before
-solver.add(Not(And([x[2], Or([x[0] >= x[2], x[1] >= x[2]])])))  # If Tallinn is visited, Prague or Berlin must be visited before
-solver.add(Not(And([x[3], Or([x[0] >= x[3], x[1] >= x[3], x[2] >= x[3]])])))  # If Stockholm is visited, Prague, Berlin or Tallinn must be visited before
-solver.add(Not(And([x[0], Or([x[1] >= x[0], x[2] >= x[0], x[3] >= x[0]])])))  # If Prague is visited, Berlin, Tallinn or Stockholm must be visited before
+def constraints(model):
+    day = 0
+    itinerary = []
+    for city in cities:
+        duration = cities[city]
+        for _ in range(duration):
+            itinerary.append({"day_range": f"Day {day+1}", "place": city})
+            day += 1
+
+        for flight in flights:
+            if flight[0] == 'Berlin' and flight[1] == 'Tallinn' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Tallinn' and flight[1] == 'Berlin' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Tallinn' and flight[1] == 'Prague' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Prague' and flight[1] == 'Tallinn' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Tallinn' and flight[1] == 'Stockholm' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Stockholm' and flight[1] == 'Tallinn' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Prague' and flight[1] == 'Stockholm' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Stockholm' and flight[1] == 'Prague' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Stockholm' and flight[1] == 'Berlin' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+            elif flight[0] == 'Berlin' and flight[1] == 'Stockholm' and model[flight[0] + '->' + flight[1]]:
+                itinerary.append({"day_range": f"Day {day+1}", "place": flight[1]})
+                day += 1
+
+    return itinerary
+
+# Define the solver
+solver = Solver()
+
+# Define the variables
+days = [Bool(f'day_{i}') for i in range(12)]
+places = [Bool(f'place_{i}') for i in range(12)]
+flights = [Bool(f'{i[0]}->{i[1]}') for i in flights.keys()]
+
+# Add the constraints
+for i in range(12):
+    solver.add(Or([days[i]]))
+    solver.add(Implies(days[i], Or([places[i]])))
+
+for i in range(12):
+    solver.add(Implies(Or([places[i]]), days[i]))
 
 # Solve the problem
+solver.add(days[5])
+solver.add(days[7])
+solver.add(flights[('Berlin', 'Tallinn')])
+solver.add(flights[('Tallinn', 'Berlin')])
+solver.add(flights[('Prague', 'Tallinn')])
+solver.add(flights[('Tallinn', 'Prague')])
+solver.add(flights[('Stockholm', 'Tallinn')])
+solver.add(flights[('Tallinn', 'Stockholm')])
+solver.add(flights[('Prague', 'Stockholm')])
+solver.add(flights[('Stockholm', 'Prague')])
+solver.add(flights[('Stockholm', 'Berlin')])
+solver.add(flights[('Berlin', 'Stockholm')])
+
 if solver.check() == sat:
     model = solver.model()
-    for i, city in enumerate(cities):
-        print(f'{city}: {model.evaluate(x[i])}')
-    for i, city in enumerate(cities):
-        print(f'Visit {city}: {model.evaluate(x[i+4])}')
+    itinerary = constraints(model)
+    print(json.dumps({"itinerary": itinerary}, indent=4))
 else:
-    print('No solution found')
-
-# Define the constraints for direct flights
-solver.add(Implies(x[0], Or([x[1] < x[0], x[2] < x[0], x[3] < x[0]])))  # If Prague is visited, Berlin, Tallinn or Stockholm must be visited before
-solver.add(Implies(x[1], Or([x[0] < x[1], x[2] < x[1], x[3] < x[1]])))  # If Berlin is visited, Prague, Tallinn or Stockholm must be visited before
-solver.add(Implies(x[2], Or([x[0] < x[2], x[1] < x[2], x[3] < x[2]])))  # If Tallinn is visited, Prague, Berlin or Stockholm must be visited before
-solver.add(Implies(x[3], Or([x[0] < x[3], x[1] < x[3], x[2] < x[3]])))  # If Stockholm is visited, Prague, Berlin or Tallinn must be visited before
-
-# Solve the problem again
-if solver.check() == sat:
-    model = solver.model()
-    for i, city in enumerate(cities):
-        print(f'{city}: {model.evaluate(x[i])}')
-    for i, city in enumerate(cities):
-        print(f'Visit {city}: {model.evaluate(x[i+4])}')
-else:
-    print('No solution found')
-
-# Define the constraints for direct flights between cities
-solver.add(Implies(x[0] == 1, x[1] == 0))  # If Prague is visited on day 1, Berlin must not be visited
-solver.add(Implies(x[0] == 1, x[2] == 0))  # If Prague is visited on day 1, Tallinn must not be visited
-solver.add(Implies(x[0] == 1, x[3] == 0))  # If Prague is visited on day 1, Stockholm must not be visited
-solver.add(Implies(x[1] == 3, x[0] == 0))  # If Berlin is visited on day 3, Prague must not be visited
-solver.add(Implies(x[1] == 3, x[2] == 0))  # If Berlin is visited on day 3, Tallinn must not be visited
-solver.add(Implies(x[1] == 3, x[3] == 0))  # If Berlin is visited on day 3, Stockholm must not be visited
-solver.add(Implies(x[2] == 6, x[0] == 0))  # If Tallinn is visited on day 6, Prague must not be visited
-solver.add(Implies(x[2] == 6, x[1] == 0))  # If Tallinn is visited on day 6, Berlin must not be visited
-solver.add(Implies(x[2] == 6, x[3] == 0))  # If Tallinn is visited on day 6, Stockholm must not be visited
-solver.add(Implies(x[3] == 6, x[0] == 0))  # If Stockholm is visited on day 6, Prague must not be visited
-solver.add(Implies(x[3] == 6, x[1] == 0))  # If Stockholm is visited on day 6, Berlin must not be visited
-solver.add(Implies(x[3] == 6, x[2] == 0))  # If Stockholm is visited on day 6, Tallinn must not be visited
-
-# Solve the problem again
-if solver.check() == sat:
-    model = solver.model()
-    for i, city in enumerate(cities):
-        print(f'{city}: {model.evaluate(x[i])}')
-    for i, city in enumerate(cities):
-        print(f'Visit {city}: {model.evaluate(x[i+4])}')
-else:
-    print('No solution found')
+    print("No solution found")

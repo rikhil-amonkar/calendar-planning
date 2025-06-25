@@ -1,63 +1,68 @@
 from z3 import *
+import json
 
-# Define the cities and their durations
-cities = ['Frankfurt', 'Naples', 'Helsinki', 'Lyon', 'Prague']
-durations = {'Frankfurt': 3, 'Naples': 4, 'Helsinki': 4, 'Lyon': 3, 'Prague': 2}
+# Define the cities
+cities = ['Prague', 'Lyon', 'Frankfurt', 'Helsinki', 'Naples']
+
+# Define the number of days in each city
+days_in_city = {'Prague': 2, 'Lyon': 3, 'Frankfurt': 3, 'Helsinki': 4, 'Naples': 4}
 
 # Define the direct flights
-flights = [('Prague', 'Lyon'), ('Prague', 'Frankfurt'), ('Frankfurt', 'Lyon'), 
-           ('Helsinki', 'Naples'), ('Helsinki', 'Frankfurt'), ('Naples', 'Frankfurt'), 
-           ('Prague', 'Helsinki')]
-
-# Define the variables
-days = Int('days')
-day_in_city = [Int(f'day_in_{city}') for city in cities]
-attend_workshop = Int('attend_workshop')
-attend_show = Int('attend_show')
+flights = [('Prague', 'Lyon'), ('Prague', 'Frankfurt'), ('Frankfurt', 'Lyon'), ('Helsinki', 'Naples'), ('Helsinki', 'Frankfurt'), ('Naples', 'Frankfurt'), ('Prague', 'Helsinki')]
 
 # Define the constraints
+def constraints(day, city):
+    if city == 'Helsinki':
+        return day >= 2 and day <= 5
+    return True
+
+def flight_constraint(day, city, flight):
+    if flight == ('Prague', 'Lyon'):
+        return And(day == 1, city == 'Prague')
+    elif flight == ('Prague', 'Frankfurt'):
+        return And(day == 1, city == 'Prague')
+    elif flight == ('Frankfurt', 'Lyon'):
+        return And(day == 2, city == 'Frankfurt')
+    elif flight == ('Helsinki', 'Naples'):
+        return And(day == 3, city == 'Helsinki')
+    elif flight == ('Helsinki', 'Frankfurt'):
+        return And(day == 3, city == 'Helsinki')
+    elif flight == ('Naples', 'Frankfurt'):
+        return And(day == 4, city == 'Naples')
+    elif flight == ('Prague', 'Helsinki'):
+        return And(day == 1, city == 'Prague')
+
+# Define the solver
 solver = Solver()
 
-# Each day must be between 1 and 12
-solver.add(1 <= days, days <= 12)
+# Define the variables
+day = Int('day')
+city = Int('city')
 
-# Each city must be visited for its required duration
+# Define the constraints
 for city in cities:
-    solver.add(day_in_city[cities.index(city)] == durations[city])
+    solver.add(And(1 <= day, day <= 12, Or([day >= days_in_city[city]])))
+    for flight in flights:
+        solver.add(Or([flight_constraint(day, city, flight)]))
 
-# The workshop must be attended between day 1 and day 2
-solver.add(attend_workshop == 1)
-solver.add(1 <= day_in_city[cities.index('Prague')] - attend_workshop)
-solver.add(day_in_city[cities.index('Prague')] - attend_workshop <= 2)
+# Define the initial place
+solver.add(And(day == 1, city == 'Prague'))
 
-# The show must be attended between day 2 and day 5
-solver.add(attend_show == 1)
-solver.add(2 <= day_in_city[cities.index('Helsinki')] - attend_workshop - attend_show)
-solver.add(day_in_city[cities.index('Helsinki')] - attend_workshop - attend_show <= 3)
-
-# The day of arrival must be before the day of departure
-for city1, city2 in flights:
-    solver.add(day_in_city[cities.index(city1)] <= day_in_city[cities.index(city2)])
-
-# The solver must find a solution
-solver.check()
-
-# Print the solution
-model = solver.model()
-print('Days:', model[days])
-for city in cities:
-    print(f'Days in {city}:', model[day_in_city[cities.index(city)]])
-
-# Find the trip plan
-trip_plan = []
-current_day = model[days]
-for city in cities:
-    day_in_city_value = model[day_in_city[cities.index(city)]]
-    for i in range(day_in_city_value):
-        trip_plan.append((city, current_day - i))
-    current_day -= day_in_city_value
-
-# Print the trip plan
-print('\nTrip Plan:')
-for city, day in trip_plan:
-    print(f'Day {day}: Visit {city}')
+# Solve the constraints
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    current_day = 1
+    current_city = 'Prague'
+    while current_day <= 12:
+        place = model[current_city].as_string()
+        if model[current_day].as_long() == current_day:
+            itinerary.append({'day_range': f"Day {current_day}-{current_day + days_in_city[place] - 1}", 'place': place})
+            current_day += days_in_city[place]
+        else:
+            itinerary.append({'day_range': f"Day {current_day}", 'place': place})
+            itinerary.append({'day_range': f"Day {current_day}", 'place': place})
+            current_day += 1
+    print(json.dumps({'itinerary': itinerary}))
+else:
+    print("No solution found")

@@ -1,82 +1,80 @@
+YOUR_CODE
 from z3 import *
 
-# Define the variables
-start_time = 9 * 60  # 9:00 AM
-end_time = 24 * 60  # 24:00 PM
-time_step = 15  # 15 minutes
-num_locations = 10
-num_people = 9
-
-# Define the locations and people
-locations = [BitVec(f'location_{i}', 32) for i in range(num_locations)]
-people = [BitVec(f'person_{i}', 32) for i in range(num_people)]
+# Define the locations
+locations = ['Marina District', 'Bayview', 'Sunset District', 'Richmond District', 'Nob Hill', 'Chinatown', 'Haight-Ashbury', 'North Beach', 'Russian Hill', 'Embarcadero']
 
 # Define the travel times
-travel_times = [
-    [27, 19, 11, 12, 15, 16, 11, 8, 14, 27],
-    [27, 23, 25, 20, 19, 19, 22, 23, 19, 27],
-    [21, 22, 12, 24, 30, 15, 28, 24, 30, 21],
-    [9, 27, 11, 14, 20, 10, 17, 13, 19, 9],
-    [11, 19, 24, 14, 9, 13, 8, 5, 9, 11],
-    [12, 20, 29, 20, 9, 19, 3, 7, 5, 12],
-    [17, 18, 15, 10, 19, 19, 18, 17, 20, 17],
-    [9, 25, 27, 18, 6, 18, 4, 5, 6, 9],
-    [7, 23, 23, 14, 9, 17, 5, 5, 8, 7],
-    [12, 21, 30, 19, 7, 21, 5, 8, 8, 12]
-]
+travel_times = {
+    'Marina District': {'Bayview': 27, 'Sunset District': 19, 'Richmond District': 11, 'Nob Hill': 12, 'Chinatown': 15, 'Haight-Ashbury': 16, 'North Beach': 11, 'Russian Hill': 8, 'Embarcadero': 14},
+    'Bayview': {'Marina District': 27, 'Sunset District': 23, 'Richmond District': 25, 'Nob Hill': 20, 'Chinatown': 19, 'Haight-Ashbury': 19, 'North Beach': 22, 'Russian Hill': 23, 'Embarcadero': 19},
+    'Sunset District': {'Marina District': 21, 'Bayview': 22, 'Richmond District': 12, 'Nob Hill': 27, 'Chinatown': 30, 'Haight-Ashbury': 15, 'North Beach': 28, 'Russian Hill': 24, 'Embarcadero': 30},
+    'Richmond District': {'Marina District': 9, 'Bayview': 27, 'Sunset District': 11, 'Nob Hill': 17, 'Chinatown': 20, 'Haight-Ashbury': 10, 'North Beach': 17, 'Russian Hill': 13, 'Embarcadero': 19},
+    'Nob Hill': {'Marina District': 11, 'Bayview': 19, 'Sunset District': 24, 'Richmond District': 14, 'Chinatown': 6, 'Haight-Ashbury': 13, 'North Beach': 8, 'Russian Hill': 5, 'Embarcadero': 9},
+    'Chinatown': {'Marina District': 12, 'Bayview': 20, 'Sunset District': 29, 'Richmond District': 20, 'Nob Hill': 9, 'Haight-Ashbury': 19, 'North Beach': 3, 'Russian Hill': 7, 'Embarcadero': 5},
+    'Haight-Ashbury': {'Marina District': 17, 'Bayview': 18, 'Sunset District': 15, 'Richmond District': 10, 'Nob Hill': 15, 'Chinatown': 19, 'North Beach': 19, 'Russian Hill': 17, 'Embarcadero': 20},
+    'North Beach': {'Marina District': 9, 'Bayview': 25, 'Sunset District': 27, 'Richmond District': 18, 'Nob Hill': 7, 'Chinatown': 6, 'Haight-Ashbury': 18, 'Russian Hill': 4, 'Embarcadero': 6},
+    'Russian Hill': {'Marina District': 7, 'Bayview': 23, 'Sunset District': 23, 'Richmond District': 14, 'Nob Hill': 5, 'Chinatown': 9, 'Haight-Ashbury': 17, 'North Beach': 5, 'Embarcadero': 8},
+    'Embarcadero': {'Marina District': 12, 'Bayview': 21, 'Sunset District': 30, 'Richmond District': 21, 'Nob Hill': 10, 'Chinatown': 7, 'Haight-Ashbury': 21, 'North Beach': 5, 'Russian Hill': 8}
+}
 
-# Define the constraints
-constraints = [
-    locations[0] == 0,  # Marina District is the starting location
-    locations[0] == start_time  # Start at 9:00 AM
-]
+# Define the meeting times
+meeting_times = {
+    'Charles': (11*60, 2*60),
+    'Robert': (4*60+45, 9*60),
+    'Karen': (7*60+15, 9*60),
+    'Rebecca': (4*60, 8*60),
+    'Margaret': (2*60+15, 7*60+45),
+    'Patricia': (2*60, 8*60),
+    'Mark': (2*60, 6*60+30),
+    'Melissa': (1*60, 7*60+45),
+    'Laura': (0, 1*60+15)
+}
 
-for i in range(num_locations):
-    for j in range(num_locations):
-        if i!= j:
-            constraints.append(locations[i] + travel_times[i][j] * time_step >= locations[j])
+# Define the meeting durations
+meeting_durations = {
+    'Charles': 45,
+    'Robert': 30,
+    'Karen': 60,
+    'Rebecca': 90,
+    'Margaret': 120,
+    'Patricia': 45,
+    'Mark': 105,
+    'Melissa': 30,
+    'Laura': 105
+}
 
-for person in people:
-    constraints.append(person >= start_time)
-
-# Define the meeting constraints
-meeting_constraints = [
-    [people[0], 1.5 * 60, 2.5 * 60, 27, 0],
-    [people[1], 4.75 * 60, 9 * 60, 19, 1],
-    [people[2], 7.25 * 60, 9.5 * 60, 25, 2],
-    [people[3], 4.25 * 60, 8.5 * 60, 20, 3],
-    [people[4], 2.25 * 60, 7.75 * 60, 19, 4],
-    [people[5], 2.5 * 60, 8.5 * 60, 19, 5],
-    [people[6], 2 * 60, 6.5 * 60, 25, 6],
-    [people[7], 1 * 60, 7.75 * 60, 23, 7],
-    [people[8], 7.75 * 60, 9 * 60, 19, 8]
-]
-
-for person, start_time, end_time, travel_time, location in meeting_constraints:
-    constraints.append(locations[location] + travel_time * time_step >= person)
-    constraints.append(person + 1.5 * 60 >= end_time)
-
-# Create the solver
+# Create a Z3 solver
 solver = Solver()
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Define the variables
+current_location = [locations[0]]
+time = [0]
+
+# Add constraints for each person
+for person in meeting_times:
+    start_time, end_time = meeting_times[person]
+    duration = meeting_durations[person]
+    for i in range(len(locations)):
+        for j in range(len(locations)):
+            if locations[i]!= locations[j]:
+                solver.add(Or(current_location[i] == locations[j], time[i] >= travel_times[current_location[i]][locations[j]]))
+                solver.add(Or(current_location[j] == locations[i], time[j] >= travel_times[locations[j]][current_location[i]]))
+                solver.add(time[j] - time[i] >= duration)
+
+# Add constraint for Laura
+solver.add(current_location[0] == 'Embarcadero')
+solver.add(time[0] >= 0)
+solver.add(time[0] + 105 <= 1*60+15)
 
 # Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    print("Solution:")
-    for i in range(num_locations):
-        print(f"Location {i+1}: {model[locations[i]] / time_step}")
+    schedule = []
+    for i in range(len(locations)):
+        schedule.append((current_location[i], time[i]))
+    print('SOLUTION:')
+    for i in range(len(schedule)):
+        print(f'Visit {schedule[i][0]} at {schedule[i][1]} minutes')
 else:
-    print("No solution exists")
-
-# Print the optimal schedule
-optimal_schedule = []
-for i in range(num_locations):
-    optimal_schedule.append(model[locations[i]] / time_step)
-
-print("Optimal schedule:")
-for i in range(num_locations):
-    print(f"Location {i+1}: {optimal_schedule[i]}")
+    print('No solution found')

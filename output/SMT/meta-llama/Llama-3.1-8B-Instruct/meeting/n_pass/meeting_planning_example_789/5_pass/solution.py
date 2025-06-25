@@ -1,19 +1,10 @@
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 720  # 720 minutes in a day
-num_locations = 9
-num_people = 8
-
 # Define the locations
 locations = ['Union Square', 'Russian Hill', 'Alamo Square', 'Haight-Ashbury', 'Marina District', 'Bayview', 'Chinatown', 'Presidio', 'Sunset District']
 
-# Define the people
-people = ['Betty', 'Melissa', 'Joshua', 'Jeffrey', 'James', 'Anthony', 'Timothy', 'Emily']
-
-# Define the travel times
-travel_times = {
+# Define the travel distances
+travel_distances = {
     ('Union Square', 'Russian Hill'): 13,
     ('Union Square', 'Alamo Square'): 15,
     ('Union Square', 'Haight-Ashbury'): 18,
@@ -88,149 +79,95 @@ travel_times = {
     ('Sunset District', 'Presidio'): 16
 }
 
-# Define the constraints
-s = Optimize()
+# Define the arrival and departure times for each friend
+friend_arrival_times = {
+    'Betty': (7, 0, 4, 45),
+    'Melissa': (9, 30, 17, 30),
+    'Joshua': (12, 15, 19, 0),
+    'Jeffrey': (12, 15, 18, 0),
+    'James': (7, 30, 20, 0),
+    'Anthony': (11, 45, 13, 30),
+    'Timothy': (12, 30, 15, 45),
+    'Emily': (19, 30, 21, 30)
+}
 
-# Define the variables for the schedule
-schedule = [Bool(f'schedule_{i}') for i in range(num_locations)]
+# Define the minimum meeting times for each friend
+friend_minimum_meeting_times = {
+    'Betty': 105,
+    'Melissa': 105,
+    'Joshua': 90,
+    'Jeffrey': 45,
+    'James': 90,
+    'Anthony': 75,
+    'Timothy': 90,
+    'Emily': 120
+}
+
+# Create a Z3 solver
+solver = Solver()
 
 # Define the variables for the meeting times
-meeting_times = [Bool(f'meeting_time_{i}') for i in range(num_people)]
-
-# Define the constraints for the schedule
-for i in range(num_locations):
-    s.add(schedule[i] == False)  # Initially, no location is visited
-    s.add(schedule[i] == Or([schedule[j] for j in range(i)]))  # A location is visited after its predecessors
+meeting_times = {}
+for friend, arrival_time in friend_arrival_times.items():
+    start_hour, start_minute, end_hour, end_minute = arrival_time
+    start_time = (start_hour * 60) + start_minute
+    end_time = (end_hour * 60) + end_minute
+    meeting_times[friend] = [Bool(f'meeting_time_{friend}_{i}') for i in range(end_time - start_time + 1)]
 
 # Define the constraints for the meeting times
-for i in range(num_people):
-    s.add(meeting_times[i] == False)  # Initially, no meeting is scheduled
-    s.add(meeting_times[i] == Or([schedule[j] for j in range(num_locations)]))  # A meeting is scheduled after the corresponding location is visited
+for friend, meeting_time_vars in meeting_times.items():
+    start_time = (friend_arrival_times[friend][0] * 60) + friend_arrival_times[friend][1]
+    end_time = (friend_arrival_times[friend][2] * 60) + friend_arrival_times[friend][3]
+    for i, var in enumerate(meeting_time_vars):
+        if i < end_time - start_time:
+            solver.add(var)
+        else:
+            solver.add(Not(var))
 
 # Define the constraints for the travel times
-for i in range(num_locations):
-    for j in range(num_locations):
-        if (locations[i], locations[j]) in travel_times:
-            s.add(schedule[i] + travel_times[(locations[i], locations[j])] > schedule[j])
+for friend, meeting_time_vars in meeting_times.items():
+    start_time = (friend_arrival_times[friend][0] * 60) + friend_arrival_times[friend][1]
+    end_time = (friend_arrival_times[friend][2] * 60) + friend_arrival_times[friend][3]
+    for i, var in enumerate(meeting_time_vars):
+        if var:
+            travel_time = 0
+            for hour in range(start_time, end_time):
+                if hour < 9:
+                    travel_time += 0
+                elif hour < 12:
+                    travel_time += 60
+                elif hour < 15:
+                    travel_time += 60
+                elif hour < 18:
+                    travel_time += 60
+                else:
+                    travel_time += 60
+                if i + travel_time <= end_time:
+                    solver.add(And([Not(var) for var in meeting_time_vars[i + 1:]]))
+                    break
 
-# Define the constraints for the meeting times
-for i in range(num_people):
-    person = people[i]
-    location = None
-    if person == 'Betty':
-        location = 'Russian Hill'
-    elif person == 'Melissa':
-        location = 'Alamo Square'
-    elif person == 'Joshua':
-        location = 'Haight-Ashbury'
-    elif person == 'Jeffrey':
-        location = 'Marina District'
-    elif person == 'James':
-        location = 'Bayview'
-    elif person == 'Anthony':
-        location = 'Chinatown'
-    elif person == 'Timothy':
-        location = 'Presidio'
-    elif person == 'Emily':
-        location = 'Sunset District'
-    start_time_person = None
-    end_time_person = None
-    if person == 'Betty':
-        start_time_person = 7*60
-        end_time_person = 4*60 + 45
-    elif person == 'Melissa':
-        start_time_person = 9*60 + 30
-        end_time_person = 5*60 + 15
-    elif person == 'Joshua':
-        start_time_person = 12*60 + 15
-        end_time_person = 19*60
-    elif person == 'Jeffrey':
-        start_time_person = 12*60 + 15
-        end_time_person = 18*60
-    elif person == 'James':
-        start_time_person = 7*60 + 30
-        end_time_person = 20*60
-    elif person == 'Anthony':
-        start_time_person = 11*60 + 45
-        end_time_person = 13*60 + 30
-    elif person == 'Timothy':
-        start_time_person = 12*60 + 30
-        end_time_person = 14*60 + 45
-    elif person == 'Emily':
-        start_time_person = 19*60 + 30
-        end_time_person = 21*60 + 30
-    s.add(meeting_times[i] == Or([schedule[j] for j in range(num_locations)]))  # A meeting is scheduled after the corresponding location is visited
-    s.add(meeting_times[i] == And([schedule[j] for j in range(num_locations)]))  # A meeting is scheduled after all locations are visited
-    s.add(And([schedule[j] for j in range(num_locations)]))  # A meeting is scheduled after all locations are visited
-    s.add(Or([schedule[j] for j in range(num_locations)]))  # A meeting is scheduled after all locations are visited
-    s.add(start_time + travel_times[('Union Square', location)] + 105 > schedule[num_locations-1].as_long())  # Meeting with Betty for at least 105 minutes
-    s.add(start_time + travel_times[('Union Square', location)] + 105 > schedule[num_locations-1])  # Meeting with Melissa for at least 105 minutes
-    s.add(start_time + travel_times[('Union Square', location)] + 90 > schedule[num_locations-1])  # Meeting with Joshua for at least 90 minutes
-    s.add(start_time + travel_times[('Union Square', location)] + 45 > schedule[num_locations-1])  # Meeting with Jeffrey for at least 45 minutes
-    s.add(start_time + travel_times[('Union Square', location)] + 90 > schedule[num_locations-1])  # Meeting with James for at least 90 minutes
-    s.add(start_time + travel_times[('Union Square', location)] + 75 > schedule[num_locations-1])  # Meeting with Anthony for at least 75 minutes
-    s.add(start_time + travel_times[('Union Square', location)] + 90 > schedule[num_locations-1])  # Meeting with Timothy for at least 90 minutes
-    s.add(start_time + travel_times[('Union Square', location)] + 120 > schedule[num_locations-1])  # Meeting with Emily for at least 120 minutes
-
-# Define the objective function
-s.set_objective(Max([schedule[num_locations-1]]))
+# Define the constraints for the minimum meeting times
+for friend, meeting_time_vars in meeting_times.items():
+    total_meeting_time = 0
+    for var in meeting_time_vars:
+        if solver.model()[var]:
+            total_meeting_time += 1
+    solver.add(total_meeting_time >= friend_minimum_meeting_times[friend])
 
 # Solve the problem
-result = s.check()
-
-if result == sat:
-    model = s.model()
-    print('Schedule:')
-    for i in range(num_locations):
-        print(f'Location {i+1}: {locations[i]}')
-        print(f'Start time: {model[schedule[i]].as_long()}')
-        print(f'End time: {model[schedule[i]].as_long() + travel_times[(locations[i], locations[i+1])]}')
-    print('Meeting times:')
-    for i in range(num_people):
-        person = people[i]
-        location = None
-        if person == 'Betty':
-            location = 'Russian Hill'
-        elif person == 'Melissa':
-            location = 'Alamo Square'
-        elif person == 'Joshua':
-            location = 'Haight-Ashbury'
-        elif person == 'Jeffrey':
-            location = 'Marina District'
-        elif person == 'James':
-            location = 'Bayview'
-        elif person == 'Anthony':
-            location = 'Chinatown'
-        elif person == 'Timothy':
-            location = 'Presidio'
-        elif person == 'Emily':
-            location = 'Sunset District'
-        start_time_person = None
-        end_time_person = None
-        if person == 'Betty':
-            start_time_person = 7*60
-            end_time_person = 4*60 + 45
-        elif person == 'Melissa':
-            start_time_person = 9*60 + 30
-            end_time_person = 5*60 + 15
-        elif person == 'Joshua':
-            start_time_person = 12*60 + 15
-            end_time_person = 19*60
-        elif person == 'Jeffrey':
-            start_time_person = 12*60 + 15
-            end_time_person = 18*60
-        elif person == 'James':
-            start_time_person = 7*60 + 30
-            end_time_person = 20*60
-        elif person == 'Anthony':
-            start_time_person = 11*60 + 45
-            end_time_person = 13*60 + 30
-        elif person == 'Timothy':
-            start_time_person = 12*60 + 30
-            end_time_person = 14*60 + 45
-        elif person == 'Emily':
-            start_time_person = 19*60 + 30
-            end_time_person = 21*60 + 30
-        print(f'Meeting with {person} at {location} from {start_time_person + travel_times[("Union Square", location)]} to {end_time_person}')
+if solver.check() == sat:
+    model = solver.model()
+    meeting_schedule = {}
+    for friend, meeting_time_vars in meeting_times.items():
+        meeting_schedule[friend] = []
+        for i, var in enumerate(meeting_time_vars):
+            if model.evaluate(var) == True:
+                meeting_schedule[friend].append(i)
+    print('MEETING SCHEDULE:')
+    for friend, meeting_times in meeting_schedule.items():
+        print(friend + ':')
+        for meeting_time in meeting_times:
+            print(f'{meeting_time}:00')
+        print()
 else:
     print('No solution found')

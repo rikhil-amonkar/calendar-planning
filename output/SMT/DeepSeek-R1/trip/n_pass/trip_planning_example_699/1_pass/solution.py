@@ -1,135 +1,123 @@
-import z3
+from z3 import *
 import json
 
 def main():
-    days_total = 16
-    cities = ["Hamburg", "Dublin", "Helsinki", "Reykjavik", "London", "Mykonos"]
-    required_days = {
-        "Hamburg": 2,
-        "Dublin": 5,
-        "Helsinki": 4,
-        "Reykjavik": 2,
-        "London": 5,
-        "Mykonos": 3
-    }
+    cities = ['Dublin', 'Helsinki', 'Hamburg', 'London', 'Mykonos', 'Reykjavik']
     
-    direct_flights = [
-        ("Dublin", "London"),
-        ("Hamburg", "Dublin"),
-        ("Helsinki", "Reykjavik"),
-        ("Hamburg", "London"),
-        ("Dublin", "Helsinki"),
-        ("Reykjavik", "London"),
-        ("London", "Mykonos"),
-        ("Dublin", "Reykjavik"),
-        ("Hamburg", "Helsinki"),
-        ("Helsinki", "London")
+    edges = [
+        ('Dublin', 'London'),
+        ('Hamburg', 'Dublin'),
+        ('Helsinki', 'Reykjavik'),
+        ('Hamburg', 'London'),
+        ('Dublin', 'Helsinki'),
+        ('Reykjavik', 'London'),
+        ('London', 'Mykonos'),
+        ('Dublin', 'Reykjavik'),
+        ('Hamburg', 'Helsinki'),
+        ('Helsinki', 'London')
     ]
-    allowed_pairs = set()
-    for a, b in direct_flights:
-        allowed_pairs.add((a, b))
-        allowed_pairs.add((b, a))
     
-    s = z3.Solver()
+    graph = {c: set() for c in cities}
+    for (u, v) in edges:
+        graph[u].add(v)
+        graph[v].add(u)
     
-    present = {}
-    for city in cities:
-        for day in range(1, days_total + 1):
-            present[(city, day)] = z3.Bool(f"present_{city}_{day}")
-            
-    flight_day = [z3.Bool(f"flight_day_{day}") for day in range(1, days_total + 1)]
+    non_edges = []
+    for i in range(len(cities)):
+        for j in range(i+1, len(cities)):
+            c1 = cities[i]
+            c2 = cities[j]
+            if c2 not in graph[c1]:
+                non_edges.append((c1, c2))
     
-    for day in range(1, days_total + 1):
-        count = z3.Sum([z3.If(present[(city, day)], 1, 0) for city in cities])
-        s.add(z3.Or(
-            z3.And(flight_day[day - 1], count == 2),
-            z3.And(z3.Not(flight_day[day - 1]), count == 1)
-        ))
+    s = Solver()
+    
+    In = {}
+    for c in cities:
+        for d in range(1, 17):
+            In[(c, d)] = Bool(f'In_{c}_{d}')
+    
+    for d in range(1, 17):
+        total = Sum([If(In[(c, d)], 1, 0) for c in cities])
+        s.add(Or(total == 1, total == 2))
         
-    s.add(z3.Sum([z3.If(flight_day[i], 1, 0) for i in range(days_total)]) == 5)
+        for (c1, c2) in non_edges:
+            s.add(Not(And(In[(c1, d)], In[(c2, d)])))
     
-    s.add(present[("Hamburg", 1)] == True)
-    s.add(present[("Hamburg", 2)] == True)
-    for day in [2, 3, 4, 5, 6]:
-        s.add(present[("Dublin", day)] == True)
-    s.add(present[("Reykjavik", 9)] == True)
-    s.add(present[("Reykjavik", 10)] == True)
+    flight_day_indicators = []
+    for d in range(1, 17):
+        flight_day_indicators.append(If(Sum([If(In[(c, d)], 1, 0) for c in cities]) == 2, 1, 0))
+    s.add(Sum(flight_day_indicators) == 5)
     
-    for city in cities:
-        total = z3.Sum([z3.If(present[(city, day)], 1, 0) for day in range(1, days_total + 1)])
-        s.add(total == required_days[city])
-        
-    for day in range(1, days_total + 1):
-        for A in cities:
-            for B in cities:
-                if A != B:
-                    if (A, B) not in allowed_pairs:
-                        s.add(z3.Implies(
-                            z3.And(flight_day[day - 1], present[(A, day)], present[(B, day)]),
-                            False
-                        ))
+    for d in range(1, 17):
+        if 2 <= d <= 6:
+            s.add(In[('Dublin', d)] == True)
+        else:
+            s.add(In[('Dublin', d)] == False)
     
-    start = {city: z3.Int(f"start_{city}") for city in cities}
-    end = {city: z3.Int(f"end_{city}") for city in cities}
+    for d in range(1, 17):
+        if d in [9, 10]:
+            s.add(In[('Reykjavik', d)] == True)
+        else:
+            s.add(In[('Reykjavik', d)] == False)
     
-    for city in cities:
-        s.add(start[city] >= 1, start[city] <= days_total)
-        s.add(end[city] >= 1, end[city] <= days_total)
-        s.add(start[city] <= end[city])
-        for day in range(1, days_total + 1):
-            s.add(z3.Implies(day >= start[city] and day <= end[city], present[(city, day)]))
-            s.add(z3.Implies(day < start[city], z3.Not(present[(city, day)]))
-            s.add(z3.Implies(day > end[city], z3.Not(present[(city, day)]))
+    s.add(Sum([If(In[('Hamburg', d)], 1, 0) for d in range(1,17)]) == 2)
+    s.add(Or(In[('Hamburg', 1)], In[('Hamburg', 2)]))
     
-    s.add(start["Hamburg"] == 1)
-    s.add(end["Hamburg"] == 2)
-    s.add(start["Dublin"] == 2)
-    s.add(end["Dublin"] == 6)
-    s.add(start["Reykjavik"] == 9)
-    s.add(end["Reykjavik"] == 10)
+    s.add(Sum([If(In[('Mykonos', d)], 1, 0) for d in range(1,17)]) == 3)
+    s.add(Sum([If(In[('London', d)], 1, 0) for d in range(1,17)]) == 5)
+    s.add(Sum([If(In[('Helsinki', d)], 1, 0) for d in range(1,17)]) == 4)
     
-    if s.check() == z3.sat:
+    if s.check() == sat:
         m = s.model()
-        itinerary = []
-        
-        for city in cities:
-            start_val = m[start[city]].as_long()
-            end_val = m[end[city]].as_long()
-            if start_val == end_val:
-                day_range_str = f"Day {start_val}"
-            else:
-                day_range_str = f"Day {start_val}-{end_val}"
-            itinerary.append({"day_range": day_range_str, "place": city})
+        flight_days = []
+        for d in range(1, 17):
+            count = 0
+            for c in cities:
+                if m.evaluate(In[(c, d)]):
+                    count += 1
+            if count == 2:
+                flight_days.append(d)
+                
+        records = []
+        for c in cities:
+            days_present = []
+            for d in range(1, 17):
+                if m.evaluate(In[(c, d)], model_completion=True):
+                    days_present.append(d)
+            if not days_present:
+                continue
+            days_present.sort()
+            blocks = []
+            start = days_present[0]
+            end = start
+            for i in range(1, len(days_present)):
+                if days_present[i] == end + 1:
+                    end = days_present[i]
+                else:
+                    blocks.append((start, end))
+                    start = days_present[i]
+                    end = days_present[i]
+            blocks.append((start, end))
             
-        for day in range(1, days_total + 1):
-            if z3.is_true(m[flight_day[day - 1]]):
-                for city in cities:
-                    if z3.is_true(m[present[(city, day)]]):
-                        itinerary.append({"day_range": f"Day {day}", "place": city})
-                        
-        def get_first_day(record):
-            s = record['day_range']
-            parts = s.split()
-            num_part = parts[1]
-            if '-' in num_part:
-                a, _ = num_part.split('-')
-                return int(a)
-            else:
-                return int(num_part)
-                
-        def get_type_order(record):
-            s = record['day_range']
-            if '-' in s:
-                return 0
-            else:
-                return 1
-                
-        itinerary.sort(key=lambda x: (get_first_day(x), get_type_order(x)))
+            for (s_block, e_block) in blocks:
+                if s_block == e_block:
+                    day_str = f"Day {s_block}"
+                else:
+                    day_str = f"Day {s_block}-{e_block}"
+                records.append((s_block, e_block, day_str, c))
         
-        result = {"itinerary": itinerary}
+        for d in flight_days:
+            for c in cities:
+                if m.evaluate(In[(c, d)], model_completion=True):
+                    records.append((d, d, f"Day {d}", c))
+        
+        records.sort(key=lambda x: (x[0], x[1]))
+        itinerary_list = [{"day_range": day_str, "place": c} for s_val, e_val, day_str, c in records]
+        result = {"itinerary": itinerary_list}
         print(json.dumps(result))
     else:
         print('{"itinerary": []}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

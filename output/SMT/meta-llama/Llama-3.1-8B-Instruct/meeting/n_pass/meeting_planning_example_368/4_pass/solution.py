@@ -1,80 +1,88 @@
 from z3 import *
 
 # Define the variables
-start_time = 0
-end_time = 12 * 60  # 12 hours in minutes
-friends = ['Joseph', 'Nancy', 'Jason', 'Jeffrey']
-locations = ['Bayview', 'Russian Hill', 'Alamo Square', 'North Beach', 'Financial District']
-travel_times = {
-    'Bayview': {'Russian Hill': 23, 'Alamo Square': 16, 'North Beach': 21, 'Financial District': 19},
-    'Russian Hill': {'Bayview': 23, 'Alamo Square': 15, 'North Beach': 5, 'Financial District': 11},
-    'Alamo Square': {'Bayview': 16, 'Russian Hill': 13, 'North Beach': 15, 'Financial District': 17},
-    'North Beach': {'Bayview': 22, 'Russian Hill': 4, 'Alamo Square': 16, 'Financial District': 8},
-    'Financial District': {'Bayview': 19, 'Russian Hill': 10, 'Alamo Square': 17, 'North Beach': 7}
-}
+time = [0] * 24  # Time slots (0-23)
+meet_joseph = [Bool('meet_joseph_' + str(i)) for i in range(24)]  # Meet Joseph at time i
+meet_nancy = [Bool('meet_nancy_' + str(i)) for i in range(24)]  # Meet Nancy at time i
+meet_jason = [Bool('meet_jason_' + str(i)) for i in range(24)]  # Meet Jason at time i
+meet_jeffrey = [Bool('meet_jeffrey_' + str(i)) for i in range(24)]  # Meet Jeffrey at time i
+schedules = [Bool('schedule_' + str(i)) for i in range(24)]  # Schedule at time i
+locations = [Bool('location_' + str(i)) for i in range(24)]  # Location at time i
+
+# Define the distances between locations
+distances = [
+    [0, 23, 16, 21, 19],
+    [23, 0, 15, 5, 11],
+    [16, 13, 0, 15, 17],
+    [21, 4, 16, 0, 8],
+    [19, 10, 17, 7, 0]
+]
 
 # Define the constraints
-s = Optimize()
-friend_availability = {
-    'Joseph': (8 * 60 + 30, 7 * 60 + 15),
-    'Nancy': (11 * 60, 4 * 60),
-    'Jason': (4 * 60 + 45, 9 * 60 + 45),
-    'Jeffrey': (10 * 60 + 30, 3 * 60 + 45)
-}
+s = Solver()
 
-# Create variables for arrival times at each location
-arrival_times = {}
-for friend in friends:
-    for location in locations:
-        arrival_times[friend, location] = Int(f'{friend}_{location}_arrival')
+# Joseph is available from 8:30AM to 7:15PM
+for i in range(8, 19):
+    s.add(Or(meet_joseph[i], meet_joseph[i+1]))  # Joseph must be met at least once in this time slot
+    s.add(And(meet_joseph[i], And(time[i] + 60 >= 9, time[i] + 60 <= 19)))  # Joseph must be met at least 60 minutes after 9:00AM
 
-# Create variables for meeting times
-meeting_times = {}
-for friend in friends:
-    meeting_times[friend] = Int(f'meeting_{friend}')
+# Nancy is available from 11:00AM to 4:00PM
+for i in range(11, 16):
+    s.add(Or(meet_nancy[i], meet_nancy[i+1]))  # Nancy must be met at least once in this time slot
+    s.add(And(meet_nancy[i], And(time[i] + 90 >= 11, time[i] + 90 <= 16)))  # Nancy must be met at least 90 minutes after 11:00AM
 
-# Add constraints for arrival times
-for friend in friends:
-    for location in locations:
-        s.add(arrival_times[friend, location] >= 9 * 60)  # Arrive at Bayview at 9:00 AM
-        s.add(arrival_times[friend, location] >= friend_availability[friend][0])
-        s.add(arrival_times[friend, location] <= friend_availability[friend][1])
+# Jason is available from 4:45PM to 9:45PM
+for i in range(17, 22):
+    s.add(Or(meet_jason[i], meet_jason[i+1]))  # Jason must be met at least once in this time slot
 
-# Add constraints for meeting times
-for friend in friends:
-    s.add(meeting_times[friend] >= friend_availability[friend][0])
-    s.add(meeting_times[friend] <= friend_availability[friend][1])
+# Jeffrey is available from 10:30AM to 3:45PM
+for i in range(10, 16):
+    s.add(Or(meet_jeffrey[i], meet_jeffrey[i+1]))  # Jeffrey must be met at least once in this time slot
+    s.add(And(meet_jeffrey[i], And(time[i] + 45 >= 10, time[i] + 45 <= 16)))  # Jeffrey must be met at least 45 minutes after 10:30AM
 
-# Add constraints for travel times
-for friend in friends:
-    for location in locations:
-        for other_location in locations:
-            if location!= other_location:
-                s.add(arrival_times[friend, other_location] >= arrival_times[friend, location] + travel_times[location][other_location])
+# Meet Joseph at Bayview
+s.add(meet_joseph[9] == True)
 
-# Add constraints for meeting durations
-s.add(meeting_times['Joseph'] >= 60)
-s.add(meeting_times['Nancy'] >= 90)
-s.add(meeting_times['Jason'] >= 15)
-s.add(meeting_times['Jeffrey'] >= 45)
+# Meet Jeffrey at Financial District
+s.add(meet_jeffrey[10] == True)
 
-# Minimize the total travel time
-total_travel_time_expr = 0
-for friend in friends:
-    for location in locations:
-        for other_location in locations:
-            if location!= other_location:
-                total_travel_time_expr += travel_times[location][other_location]
+# Meet Jason at North Beach
+s.add(meet_jason[17] == True)
 
-# Solve the problem
-s.maximize(total_travel_time_expr)
+# Meet Nancy at Alamo Square
+s.add(meet_nancy[11] == True)
 
-# Print the solution
+# Meet exactly 4 people
+s.add(And([Or(meet_joseph[i], meet_nancy[i], meet_jason[i], meet_jeffrey[i]) for i in range(24)]))
+
+# Meet friends at the same location
+for i in range(24):
+    s.add(Or(Not(meet_joseph[i]) | Not(meet_nancy[i]) | Not(meet_jason[i]) | Not(meet_jeffrey[i])))
+    s.add(Or(Not(meet_nancy[i]) | Not(meet_joseph[i]) | Not(meet_jason[i]) | Not(meet_jeffrey[i])))
+    s.add(Or(Not(meet_jason[i]) | Not(meet_joseph[i]) | Not(meet_nancy[i]) | Not(meet_jeffrey[i])))
+    s.add(Or(Not(meet_jeffrey[i]) | Not(meet_joseph[i]) | Not(meet_nancy[i]) | Not(meet_jason[i])))
+
+# Optimize the schedule
+s.add(And([Or(schedules[i], meet_joseph[i], meet_nancy[i], meet_jason[i], meet_jeffrey[i]) for i in range(24)]))
+
+# Check the solution
 if s.check() == sat:
-    model = s.model()
-    print('SOLUTION:')
-    for friend in friends:
-        meeting_time = model[meeting_times[friend]].as_long()
-        print(f'Meet {friend} from {meeting_time // 60}:{meeting_time % 60} to {min(meeting_time + friend_availability[friend][1] - friend_availability[friend][0], end_time) // 60}:{min(meeting_time + friend_availability[friend][1] - friend_availability[friend][0], end_time) % 60}')
+    m = s.model()
+    schedule = []
+    for i in range(24):
+        if m.evaluate(schedules[i]):
+            schedule.append(i)
+    print("SCHEDULE:")
+    for time_slot in schedule:
+        print(f"Time: {time_slot}:00")
+        if m.evaluate(meet_joseph[time_slot]):
+            print(f"Meet Joseph at Bayview at {time_slot}:00")
+        if m.evaluate(meet_nancy[time_slot]):
+            print(f"Meet Nancy at Alamo Square at {time_slot}:00")
+        if m.evaluate(meet_jason[time_slot]):
+            print(f"Meet Jason at North Beach at {time_slot}:00")
+        if m.evaluate(meet_jeffrey[time_slot]):
+            print(f"Meet Jeffrey at Financial District at {time_slot}:00")
+        print()
 else:
-    print('No solution found')
+    print("No solution found")

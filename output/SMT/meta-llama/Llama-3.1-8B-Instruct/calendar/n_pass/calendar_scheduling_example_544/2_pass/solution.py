@@ -1,70 +1,46 @@
 from z3 import *
 
-def schedule_meeting(deborah_schedule, albert_schedule, meeting_duration, max_meeting_time):
-    # Create Z3 solver
-    solver = Solver()
+# Define the variables
+day = Int('day')
+start_time = Real('start_time')
+end_time = Real('end_time')
+meeting_duration = Real('meeting_duration')
 
-    # Define variables
-    day = [Int(f'day_{i}') for i in range(24)]
-    start_time = [Int(f'start_time_{i}') for i in range(24)]
-    end_time = [Int(f'end_time_{i}') for i in range(24)]
+# Define the constraints
+# Deborah is free the entire day
+deborah_free = True
 
-    # Add constraints for day
-    for i in range(24):
-        solver.add(day[i] == 1)  # Assume day is Monday
-        solver.add(Or(day[i] == 0, day[i] == 1))  # Day is either 0 (not Monday) or 1 (Monday)
+# Albert has blocked their calendar on Monday during 9:00 to 10:00, 10:30 to 12:00, 15:00 to 16:30
+albert_blocked = Or(
+    And(start_time >= 9, start_time < 10),
+    And(start_time >= 10.5, start_time < 12),
+    And(start_time >= 15, start_time < 16.5)
+)
 
-    # Add constraints for Deborah's schedule
-    for i in range(24):
-        solver.add(Or(deborah_schedule[i], day[i] == 0))  # Deborah is free if day is not Monday
+# Albert can not meet on Monday after 11:00
+albert_after_11 = start_time < 11.5
 
-    # Add constraints for Albert's schedule
-    for i in range(24):
-        if i in albert_schedule:
-            albert_block_start = albert_schedule[i]
-            solver.add(Or(Not(start_time[i] >= albert_block_start), Not(end_time[i] <= albert_block_start)))  # Albert is busy if start_time >= albert_block_start and end_time <= albert_block_start
-        else:
-            solver.add(Not(albert_schedule[i]))  # Albert is free if day is not in albert_schedule
+# Meeting duration is half an hour
+meeting_duration_val = 0.5
+meeting_duration_constraint = Abs(start_time - end_time) == meeting_duration_val
 
-    # Add constraints for max meeting time
-    for i in range(24):
-        solver.add(Not(And(start_time[i] >= 11, end_time[i] <= 17)))  # Meeting cannot be scheduled after 11:00
+# Meeting time should be between 9:00 to 17:00
+meeting_time = And(start_time >= 9, start_time < 17)
 
-    # Add constraints for meeting duration
-    for i in range(24):
-        solver.add(Not(And(start_time[i] >= 9, end_time[i] >= 9 + meeting_duration)))  # Meeting cannot be scheduled for more than 30 minutes
+# Solve the constraints
+solver = Solver()
+solver.add([deborah_free, albert_blocked, albert_after_11, meeting_time, 
+            meeting_duration_constraint, 
+            day == 1,  # 1 represents Monday
+            start_time + meeting_duration_val >= 9,
+            start_time + meeting_duration_val <= 17])
 
-    # Add constraints for start and end time
-    for i in range(24):
-        solver.add(Implies(day[i] == 1, And(start_time[i] >= 9, start_time[i] <= 17)))  # Start time must be between 9:00 and 17:00
-        solver.add(Implies(day[i] == 1, And(end_time[i] >= 9, end_time[i] <= 17)))  # End time must be between 9:00 and 17:00
-
-    # Add constraints for start and end time relationship
-    for i in range(24):
-        solver.add(Implies(day[i] == 1, start_time[i] <= end_time[i]))  # Start time must be less than or equal to end time
-
-    # Solve the problem
-    if solver.check() == sat:
-        model = solver.model()
-        day_to_meet = model[day[0]].as_long()
-        start_time_to_meet = model[start_time[0]].as_long()
-        end_time_to_meet = model[end_time[0]].as_long()
-
-        # Convert times to string
-        start_time_str = f"{start_time_to_meet // 100:02d}:{start_time_to_meet % 100:02d}"
-        end_time_str = f"{end_time_to_meet // 100:02d}:{end_time_to_meet % 100:02d}"
-
-        # Print the solution
-        print(f"SOLUTION:")
-        print(f"Day: Monday")
-        print(f"Start Time: {start_time_str}")
-        print(f"End Time: {end_time_str}")
-    else:
-        print("No solution exists.")
-
-# Example usage
-deborah_schedule = [False] * 24  # Deborah is free the entire day
-albert_schedule = [True, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]  # Albert is busy from 9:00 to 10:00, 10:30 to 12:00, 15:00 to 16:30
-meeting_duration = 30
-max_meeting_time = 11
-schedule_meeting(deborah_schedule, albert_schedule, meeting_duration, max_meeting_time)
+# Check if there is a solution
+if solver.check() == sat:
+    model = solver.model()
+    print(f"SOLUTION:")
+    print(f"Day: {model[day].as_long()}")
+    print(f"Start Time: {model[start_time].as_real().as_decimal(2)}")
+    print(f"End Time: {model[end_time].as_real().as_decimal(2)}")
+else:
+    print("No solution exists")

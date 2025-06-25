@@ -1,0 +1,1 @@
+s.add(AtMost([stay_in_city[city][day] for day in days], 1, f'stay_in_{city}'))

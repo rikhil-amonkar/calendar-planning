@@ -1,61 +1,78 @@
 from z3 import *
 
-def schedule_meeting(day, start_time, end_time, participants, preferences):
+def schedule_meeting(day, start_time, end_time, participants, constraints, preferences):
     # Create a Z3 solver
     s = Solver()
 
-    # Define variables for each participant's availability
-    participant_vars = {}
+    # Define the variables
+    meeting_time = [Bool(f'meeting_time_{i}') for i in range(len(participants))]
+    for i in range(len(participants)):
+        s.add(meeting_time[i] == False)
+
+    # Add constraints for each participant
     for participant in participants:
-        participant_vars[participant] = [Bool(f'{participant}_busy_{i}') for i in range(start_time, end_time)]
+        if participant in constraints:
+            for constraint in constraints[participant]:
+                start, end = constraint
+                for i in range(len(participants)):
+                    s.add(Implies(meeting_time[i], start <= start_time + (i * 30) <= end))
 
-    # Define constraints for each participant's schedule
-    for participant, vars in participant_vars.items():
-        for i, var in enumerate(vars):
-            s.add(var == False)  # Assume the participant is not busy initially
-            if participant == 'Daniel':
-                continue
-            if participant == 'Kathleen' and (start_time + i) == 14 * 60 + 30:
-                s.add(var)  # Kathleen is busy from 14:30 to 15:30
-            elif participant == 'Carolyn' and ((start_time + i) == 12 * 60 + 0 or (start_time + i) == 13 * 60 + 0):
-                s.add(var)  # Carolyn is busy from 12:00 to 12:30 and 13:00 to 13:30
-            elif participant == 'Cheryl' and ((start_time + i) < 9 * 60 + 30 or (start_time + i) == 10 * 60 or (start_time + i) < 12 * 60 + 30 or (start_time + i) < 14 * 60 or (start_time + i) >= 14 * 60 + 0):
-                s.add(var)  # Cheryl is busy from 9:00 to 9:30, 10:00 to 11:30, 12:30 to 13:30, 14:00 to 17:00
-            elif participant == 'Virginia' and ((start_time + i) < 9 * 60 + 30 or (start_time + i) == 9 * 60 + 30 or (start_time + i) < 12 * 60 + 30 or (start_time + i) == 14 * 60 + 30 or (start_time + i) >= 16 * 60):
-                s.add(var)  # Virginia is busy from 9:30 to 11:30, 12:00 to 12:30, 13:00 to 13:30, 14:30 to 15:30, 16:00 to 17:00
-            elif participant == 'Angela' and ((start_time + i) < 9 * 60 + 30 or (start_time + i) == 9 * 60 + 30 or (start_time + i) < 10 * 60 + 30 or (start_time + i) == 12 * 60 + 0 or (start_time + i) == 13 * 60 + 0 or (start_time + i) < 14 * 60 + 0):
-                s.add(var)  # Angela is busy from 9:30 to 10:00, 10:30 to 11:30, 12:00 to 12:30, 13:00 to 13:30, 14:00 to 16:30
-            elif participant == 'Roger' and (start_time + i) < 12 * 60 + 30:
-                s.add(var)  # Roger prefers not to meet before 12:30
+    # Add constraints for the meeting duration
+    for i in range(len(participants)):
+        s.add(Implies(meeting_time[i], start_time + (i * 30) <= end_time))
 
-    # Add constraint for meeting duration
-    s.add(30 <= (end_time - start_time))  # Meeting duration is at least 30 minutes
+    # Add constraints for the day
+    s.add(start_time >= 9 * 60)
+    s.add(end_time <= 17 * 60)
 
-    # Check if there's a solution
+    # Add constraints for the preferences
+    for participant in participants:
+        if participant in preferences:
+            for preference in preferences[participant]:
+                start, end = preference
+                for i in range(len(participants)):
+                    s.add(Implies(meeting_time[i], start <= start_time + (i * 30) <= end))
+
+    # Add constraints to ensure a meeting is scheduled
+    s.add(Or(*meeting_time))
+
+    # Check the solver
     if s.check() == sat:
         # Get the model
         m = s.model()
-        # Get the participant's availability
-        participant_availability = {}
-        for participant, vars in participant_vars.items():
-            participant_availability[participant] = [m[var] for var in vars]
-        # Find the first time slot where all participants are available
-        for i in range(start_time, end_time):
-            if all(participant_availability[participant][i - start_time] == False for participant in participants):
-                return f'Day: {day}\nStart Time: {i // 60:02d}:{i % 60:02d}\nEnd Time: {(i + 30) // 60:02d}:{(i + 30) % 60:02d}'
+
+        # Get the meeting time
+        meeting_time_value = []
+        for i in range(len(participants)):
+            meeting_time_value.append(m[meeting_time[i]].as_long())
+
+        # Find the first meeting time that is True
+        for i in range(len(participants)):
+            if meeting_time_value[i] == 1:
+                start_time_value = start_time + (i * 30)
+                end_time_value = start_time_value + 30
+                break
+
+        # Print the solution
+        print(f'SOLUTION:')
+        print(f'Day: {day}')
+        print(f'Start Time: {start_time_value // 60:02d}:{start_time_value % 60:02d}')
+        print(f'End Time: {end_time_value // 60:02d}:{end_time_value % 60:02d}')
     else:
-        return 'No solution found'
+        print('No solution found')
 
-# Define the day, start time, end time, participants, and preferences
-day = 'Monday'
-start_time = 9 * 60
-end_time = 17 * 60
+# Define the participants, constraints, and preferences
 participants = ['Daniel', 'Kathleen', 'Carolyn', 'Roger', 'Cheryl', 'Virginia', 'Angela']
-preferences = {}
+constraints = {
+    'Kathleen': [(14 * 60 + 30, 15 * 60 + 30)],
+    'Carolyn': [(12 * 60 + 0, 12 * 60 + 30), (13 * 60 + 0, 13 * 60 + 30)],
+    'Cheryl': [(9 * 60 + 0, 9 * 60 + 30), (10 * 60 + 0, 11 * 60 + 30), (12 * 60 + 30, 13 * 60 + 30), (14 * 60 + 0, 17 * 60 + 0)],
+    'Virginia': [(9 * 60 + 30, 11 * 60 + 30), (12 * 60 + 0, 12 * 60 + 30), (13 * 60 + 0, 13 * 60 + 30), (14 * 60 + 30, 15 * 60 + 30), (16 * 60 + 0, 17 * 60 + 0)],
+    'Angela': [(9 * 60 + 30, 10 * 60 + 0), (10 * 60 + 30, 11 * 60 + 30), (12 * 60 + 0, 12 * 60 + 30), (13 * 60 + 0, 13 * 60 + 30), (14 * 60 + 0, 16 * 60 + 30)]
+}
+preferences = {
+    'Roger': [(12 * 60 + 30, 17 * 60 + 0)]
+}
 
-# Call the function to schedule the meeting
-solution = schedule_meeting(day, start_time, end_time, participants, preferences)
-
-# Print the solution
-print('SOLUTION:')
-print(solution)
+# Schedule the meeting
+schedule_meeting('Monday', 9 * 60, 17 * 60, participants, constraints, preferences)

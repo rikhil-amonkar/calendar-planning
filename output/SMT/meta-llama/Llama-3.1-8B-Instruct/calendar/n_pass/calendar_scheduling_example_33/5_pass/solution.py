@@ -1,79 +1,174 @@
 from z3 import *
 
-# Define the day of the week (Monday = 0, Sunday = 6)
-day_of_week = [0]
+def schedule_meeting(lisa_schedule, bobby_schedule, randy_schedule, meeting_duration, bobby_preference):
+    # Create a Z3 solver
+    s = Solver()
 
-# Define the start and end times (9:00 to 17:00)
-start_time = 9
-end_time = 17
+    # Define the day and time variables
+    days = ['Monday']
+    times = [str(i) + ':00' for i in range(9, 17)] + [str(i) + ':30' for i in range(9, 17)]
+    times = [t +'to'+ t2 if i < len(times) - 1 else t for i, (t, t2) in enumerate(zip(times, times[1:] + [times[-1] +'to 17:00']))]
 
-# Define the duration of the meeting (30 minutes)
+    # Define the meeting time variables
+    day = Int('day')
+    start_time = Int('start_time')
+    end_time = Int('end_time')
+
+    # Define the constraints for each participant's schedule
+    for i, (schedule, name) in enumerate(zip([lisa_schedule, bobby_schedule, randy_schedule], ['Lisa', 'Bobby', 'Randy'])):
+        for time in schedule:
+            start, end = time.split(' to ')
+            start = int(start[:-3]) * 60 + int(start[-2:])
+            end = int(end[:-3]) * 60 + int(end[-2:])
+            s.add(Or(And(start_time >= start, end_time <= end), 
+                     And(start_time >= end, end_time <= start)))
+
+    # Define the constraints for the meeting duration
+    s.add(And(start_time + 30 <= end_time, start_time >= 0, end_time <= 17 * 60))
+
+    # Define the constraint for Bobby's preference
+    if bobby_preference:
+        s.add(And(start_time >= 0, end_time <= 15 * 60))
+
+    # Define the constraints for the day
+    s.add(day == 0)  # Monday is 0
+
+    # Define the objective function
+    s.add(Implies(day == 0, And(start_time >= 9 * 60, start_time <= 16 * 60)))
+
+    # Define the objective function
+    s.add(Or(And(start_time >= 9 * 60, start_time < 9 * 60 + 30), 
+             And(start_time >= 9 * 60 + 30, start_time < 10 * 60), 
+             And(start_time >= 10 * 60, start_time < 10 * 60 + 30), 
+             And(start_time >= 10 * 60 + 30, start_time < 11 * 60), 
+             And(start_time >= 11 * 60, start_time < 11 * 60 + 30), 
+             And(start_time >= 11 * 60 + 30, start_time < 12 * 60), 
+             And(start_time >= 12 * 60, start_time < 12 * 60 + 30), 
+             And(start_time >= 12 * 60 + 30, start_time < 13 * 60), 
+             And(start_time >= 13 * 60, start_time < 13 * 60 + 30), 
+             And(start_time >= 13 * 60 + 30, start_time < 14 * 60), 
+             And(start_time >= 14 * 60, start_time < 14 * 60 + 30), 
+             And(start_time >= 14 * 60 + 30, start_time < 15 * 60), 
+             And(start_time >= 15 * 60, start_time < 15 * 60 + 30), 
+             And(start_time >= 15 * 60 + 30, start_time < 16 * 60)))
+
+    # Solve the problem
+    if s.check() == sat:
+        model = s.model()
+        day = days[model[day].as_long()]
+        start_time = str(model[start_time].as_long() // 60) + ':' + str(model[start_time].as_long() % 60).zfill(2)
+        end_time = str(model[end_time].as_long() // 60) + ':' + str(model[end_time].as_long() % 60).zfill(2)
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time}\nEnd Time: {end_time}'
+    else:
+        # Try to find a solution by relaxing the constraints
+        s = Solver()
+        day = Int('day')
+        start_time = Int('start_time')
+        end_time = Int('end_time')
+
+        # Define the constraints for each participant's schedule
+        for i, (schedule, name) in enumerate(zip([lisa_schedule, bobby_schedule, randy_schedule], ['Lisa', 'Bobby', 'Randy'])):
+            for time in schedule:
+                start, end = time.split(' to ')
+                start = int(start[:-3]) * 60 + int(start[-2:])
+                end = int(end[:-3]) * 60 + int(end[-2:])
+                s.add(Or(And(start_time >= start, end_time <= end), 
+                         And(start_time >= end, end_time <= start)))
+
+        # Define the constraints for the meeting duration
+        s.add(And(start_time + 30 <= end_time, start_time >= 0, end_time <= 17 * 60))
+
+        # Define the constraint for Bobby's preference
+        if bobby_preference:
+            s.add(And(start_time >= 0, end_time <= 15 * 60))
+
+        # Define the constraints for the day
+        s.add(day == 0)  # Monday is 0
+
+        # Define the objective function
+        s.add(Implies(day == 0, And(start_time >= 9 * 60, start_time <= 16 * 60)))
+
+        # Solve the problem
+        if s.check() == sat:
+            model = s.model()
+            day = days[model[day].as_long()]
+            start_time = str(model[start_time].as_long() // 60) + ':' + str(model[start_time].as_long() % 60).zfill(2)
+            end_time = str(model[end_time].as_long() // 60) + ':' + str(model[end_time].as_long() % 60).zfill(2)
+            return f'SOLUTION:\nDay: {day}\nStart Time: {start_time}\nEnd Time: {end_time}'
+        else:
+            # Try to find a solution by relaxing the constraints further
+            s = Solver()
+            day = Int('day')
+            start_time = Int('start_time')
+            end_time = Int('end_time')
+
+            # Define the constraints for each participant's schedule
+            for i, (schedule, name) in enumerate(zip([lisa_schedule, bobby_schedule, randy_schedule], ['Lisa', 'Bobby', 'Randy'])):
+                for time in schedule:
+                    start, end = time.split(' to ')
+                    start = int(start[:-3]) * 60 + int(start[-2:])
+                    end = int(end[:-3]) * 60 + int(end[-2:])
+                    s.add(Or(And(start_time >= start, end_time <= end), 
+                             And(start_time >= end, end_time <= start)))
+
+            # Define the constraints for the meeting duration
+            s.add(And(start_time + 30 <= end_time, start_time >= 0, end_time <= 17 * 60))
+
+            # Define the constraint for Bobby's preference
+            if bobby_preference:
+                s.add(And(start_time >= 0, end_time <= 15 * 60))
+
+            # Define the constraints for the day
+            s.add(day == 0)  # Monday is 0
+
+            # Solve the problem
+            if s.check() == sat:
+                model = s.model()
+                day = days[model[day].as_long()]
+                start_time = str(model[start_time].as_long() // 60) + ':' + str(model[start_time].as_long() % 60).zfill(2)
+                end_time = str(model[end_time].as_long() // 60) + ':' + str(model[end_time].as_long() % 60).zfill(2)
+                return f'SOLUTION:\nDay: {day}\nStart Time: {start_time}\nEnd Time: {end_time}'
+            else:
+                # Try to find a solution by relaxing the constraints further
+                s = Solver()
+                day = Int('day')
+                start_time = Int('start_time')
+                end_time = Int('end_time')
+
+                # Define the constraints for each participant's schedule
+                for i, (schedule, name) in enumerate(zip([lisa_schedule, bobby_schedule, randy_schedule], ['Lisa', 'Bobby', 'Randy'])):
+                    for time in schedule:
+                        start, end = time.split(' to ')
+                        start = int(start[:-3]) * 60 + int(start[-2:])
+                        end = int(end[:-3]) * 60 + int(end[-2:])
+                        s.add(Or(And(start_time >= start, end_time <= end), 
+                                 And(start_time >= end, end_time <= start)))
+
+                # Define the constraints for the meeting duration
+                s.add(And(start_time + 30 <= end_time, start_time >= 0, end_time <= 17 * 60))
+
+                # Define the constraint for Bobby's preference
+                if bobby_preference:
+                    s.add(And(start_time >= 0, end_time <= 15 * 60))
+
+                # Define the constraints for the day
+                s.add(day == 0)  # Monday is 0
+
+                # Solve the problem
+                if s.check() == sat:
+                    model = s.model()
+                    day = days[model[day].as_long()]
+                    start_time = str(model[start_time].as_long() // 60) + ':' + str(model[start_time].as_long() % 60).zfill(2)
+                    end_time = str(model[end_time].as_long() // 60) + ':' + str(model[end_time].as_long() % 60).zfill(2)
+                    return f'SOLUTION:\nDay: {day}\nStart Time: {start_time}\nEnd Time: {end_time}'
+                else:
+                    return 'No solution found'
+
+# Example usage
+lisa_schedule = ['09:00 to 10:00', '10:30 to 11:30', '12:30 to 13:00', '16:00 to 16:30']
+bobby_schedule = ['09:00 to 09:30', '10:00 to 10:30', '11:30 to 12:00', '15:00 to 15:30']
+randy_schedule = ['09:30 to 10:00', '10:30 to 11:00', '11:30 to 12:30', '13:00 to 13:30', '14:30 to 15:30', '16:00 to 16:30']
 meeting_duration = 30
+bobby_preference = True
 
-# Define the schedules for each participant
-schedules = {
-    'Lisa': [(9, 10), (10.5, 11.5), (12.5, 13), (16, 16.5)],
-    'Bobby': [(9, 9.5), (10, 10.5), (11.5, 12), (15, 15.5)],
-    'Randy': [(9.5, 10), (10.5, 11), (11.5, 12.5), (13, 13.5), (14.5, 15.5), (16, 16.5)]
-}
-
-# Define the preferences for Bobby (avoid meetings after 15:00)
-bobby_preferences = [(15, 17)]
-
-# Create a Z3 solver
-solver = Solver()
-
-# Define the variables for the start and end times of the meeting
-day = Int('day')
-start_hour = Int('start_hour')
-start_minute = Int('start_minute')
-end_hour = Int('end_hour')
-end_minute = Int('end_minute')
-
-# Add constraints for the day of the week
-solver.add(day == 0)
-
-# Add constraints for the start and end times
-solver.add(start_hour >= start_time)
-solver.add(end_hour <= end_time)
-solver.add(end_hour == start_hour + meeting_duration // 60)
-solver.add(end_minute == start_minute + meeting_duration % 60)
-
-# Add constraints to find a valid time slot
-for hour in range(start_time, end_time):
-    for minute in range(0, 60):
-        if minute + meeting_duration <= 60:
-            start_hour_value = hour
-            start_minute_value = minute
-            end_hour_value = hour + meeting_duration // 60
-            end_minute_value = minute + meeting_duration % 60
-            # Add constraints for the schedules of each participant
-            valid_solution = True
-            for participant, participant_schedule in schedules.items():
-                for start_hour_p, start_minute_p in participant_schedule:
-                    if start_hour_value >= start_hour_p and end_hour_value > start_hour_p and end_minute_value > start_minute_p:
-                        valid_solution = False
-                        break
-                if not valid_solution:
-                    break
-                for end_hour_p, end_minute_p in participant_schedule:
-                    if end_hour_value < end_hour_p and start_hour_value < end_minute_p:
-                        valid_solution = False
-                        break
-                if not valid_solution:
-                    break
-            if valid_solution:
-                # Add constraints to check Bobby's preferences
-                for start_hour_p, end_hour_p in bobby_preferences:
-                    if end_hour_value < start_hour_p:
-                        valid_solution = False
-                        break
-                if valid_solution:
-                    # Print the solution
-                    print('SOLUTION:')
-                    print(f'Day: {day_of_week[0]}')
-                    print(f'Start Time: {int(start_hour_value):02d}:{int(start_minute_value):02d}')
-                    print(f'End Time: {int(end_hour_value):02d}:{int(end_minute_value):02d}')
-                    exit()
-
-print('No solution found')
+print(schedule_meeting(lisa_schedule, bobby_schedule, randy_schedule, meeting_duration, bobby_preference))

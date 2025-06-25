@@ -1,96 +1,110 @@
 from z3 import *
 
-# Define the cities and their corresponding days
-cities = ['Santorini', 'Madrid', 'Seville', 'Bucharest', 'Vienna', 'Riga', 'Tallinn', 'Krakow', 'Frankfurt', 'Valencia']
+def generate_itinerary():
+    # Define cities and days
+    cities = ['Santorini', 'Madrid', 'Seville', 'Bucharest', 'Vienna', 'Riga', 'Tallinn', 'Krakow', 'Frankfurt', 'Valencia']
+    days = 27
 
-# Define the direct flights between cities
-flights = {
-    ('Santorini', 'Madrid'): 1,
-    ('Santorini', 'Bucharest'): 1,
-    ('Madrid', 'Santorini'): 1,
-    ('Madrid', 'Bucharest'): 1,
-    ('Madrid', 'Valencia'): 1,
-    ('Madrid', 'Seville'): 1,
-    ('Seville', 'Madrid'): 1,
-    ('Seville', 'Valencia'): 1,
-    ('Bucharest', 'Madrid'): 1,
-    ('Bucharest', 'Santorini'): 1,
-    ('Bucharest', 'Riga'): 1,
-    ('Bucharest', 'Valencia'): 1,
-    ('Vienna', 'Bucharest'): 1,
-    ('Vienna', 'Seville'): 1,
-    ('Vienna', 'Madrid'): 1,
-    ('Vienna', 'Valencia'): 1,
-    ('Vienna', 'Krakow'): 1,
-    ('Vienna', 'Frankfurt'): 1,
-    ('Vienna', 'Riga'): 1,
-    ('Riga', 'Vienna'): 1,
-    ('Riga', 'Bucharest'): 1,
-    ('Riga', 'Tallinn'): 1,
-    ('Tallinn', 'Riga'): 1,
-    ('Tallinn', 'Frankfurt'): 1,
-    ('Krakow', 'Vienna'): 1,
-    ('Krakow', 'Valencia'): 1,
-    ('Krakow', 'Frankfurt'): 1,
-    ('Frankfurt', 'Vienna'): 1,
-    ('Frankfurt', 'Tallinn'): 1,
-    ('Frankfurt', 'Bucharest'): 1,
-    ('Frankfurt', 'Krakow'): 1,
-    ('Frankfurt', 'Riga'): 1,
-    ('Valencia', 'Krakow'): 1,
-    ('Valencia', 'Frankfurt'): 1,
-    ('Valencia', 'Bucharest'): 1,
-    ('Valencia', 'Madrid'): 1,
-    ('Valencia', 'Seville'): 1
-}
+    # Create solver
+    solver = Solver()
 
-# Define the constraints for each city
-constraints = [
-    ('Santorini', 1, 3),  # 3 days in Santorini
-    ('Madrid', 4, 6),  # 2 days in Madrid
-    ('Madrid', 6, 7),  # Attend annual show
-    ('Seville', 8, 10),  # 2 days in Seville
-    ('Bucharest', 11, 14),  # 3 days in Bucharest
-    ('Vienna', 2, 6),  # 4 days in Vienna, minus 2 days for wedding
-    ('Vienna', 6, 10),  # 4 days in Vienna
-    ('Riga', 15, 19),  # 4 days in Riga
-    ('Riga', 20, 23),  # Attend conference
-    ('Tallinn', 24, 27),  # 3 days in Tallinn, minus 3 days for workshop
-    ('Krakow', 16, 21),  # 5 days in Krakow
-    ('Krakow', 11, 15),  # Meet friends
-    ('Frankfurt', 22, 26)  # 4 days in Frankfurt
-]
+    # Define variables
+    places = [Int(f'place_{i}') for i in range(days + 1)]
 
-# Define the solver
-solver = Optimize()
+    # Define constraints
+    for i in range(days + 1):
+        solver.add(places[i].sort() == IntSort())
 
-# Define the variables
-days = [SolverVariable(solver, Int(f'{city}_days')) for city in cities]
+    # Define direct flights
+    flights = {
+        'Santorini': ['Madrid', 'Bucharest'],
+        'Madrid': ['Santorini', 'Valencia', 'Seville', 'Bucharest'],
+        'Seville': ['Madrid', 'Valencia'],
+        'Bucharest': ['Santorini', 'Vienna', 'Riga', 'Valencia', 'Madrid'],
+        'Vienna': ['Bucharest', 'Seville', 'Riga', 'Krakow', 'Frankfurt'],
+        'Riga': ['Bucharest', 'Vienna', 'Tallinn'],
+        'Tallinn': ['Riga', 'Frankfurt'],
+        'Krakow': ['Valencia', 'Vienna', 'Frankfurt'],
+        'Frankfurt': ['Tallinn', 'Krakow', 'Bucharest', 'Riga', 'Madrid', 'Valencia'],
+        'Valencia': ['Madrid', 'Seville', 'Bucharest', 'Krakow', 'Frankfurt']
+    }
 
-# Add constraints for each city
-for city, start, end in constraints:
-    solver.add(days[cities.index(city)] >= start)
-    solver.add(days[cities.index(city)] <= end)
+    for i in range(days):
+        for city in cities:
+            if i + 1 in flights[city]:
+                solver.add(places[i] == city)
+                solver.add(places[i + 1] == flights[city][flights[city].index(i + 1)])
 
-# Add constraints for direct flights
-for (city1, city2), days in flights.items():
-    solver.add(days[cities.index(city1)] == days[cities.index(city2)])
+    # Define day constraints
+    for i in range(days):
+        if i < 3:
+            solver.add(places[i] == 'Santorini')
+        elif i < 6:
+            solver.add(places[i] == 'Madrid')
+        elif i < 7:
+            solver.add(places[i] == 'Madrid')
+        elif i < 9:
+            solver.add(places[i] == 'Seville')
+        elif i < 13:
+            solver.add(places[i] == 'Bucharest')
+        elif i < 17:
+            solver.add(places[i] == 'Vienna')
+        elif i < 18:
+            solver.add(places[i] == 'Vienna')
+        elif i < 21:
+            solver.add(places[i] == 'Vienna')
+        elif i < 22:
+            solver.add(places[i] == 'Riga')
+        elif i < 23:
+            solver.add(places[i] == 'Riga')
+        elif i < 25:
+            solver.add(places[i] == 'Tallinn')
+        elif i < 26:
+            solver.add(places[i] == 'Tallinn')
+        elif i < 27:
+            solver.add(places[i] == 'Krakow')
+        else:
+            solver.add(places[i] == 'Frankfurt')
 
-# Solve the problem
-result = solver.check()
+    # Solve
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for i in range(days + 1):
+            place = model[places[i]]
+            if i == 0:
+                itinerary.append({"day_range": "Day 1-3", "place": place})
+            elif i == 3:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 6:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 7:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 9:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 13:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 17:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 18:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 21:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 22:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 23:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 25:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 26:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            elif i == 27:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+            else:
+                itinerary.append({"day_range": f"Day {i}-{i + 1}", "place": place})
 
-if result == sat:
-    model = solver.model()
-    print('Optimal solution:')
-    for city, days in zip(cities, model.decls()):
-        print(f'{city}: {model[city].as_long()} days')
-else:
-    print('No solution found')
+        return {"itinerary": itinerary}
+    else:
+        return None
 
-# Print the optimal solution in a more readable format
-print('\nOptimal itinerary:')
-current_day = 0
-for city in cities:
-    days_in_city = model[f'{city}_days'].as_long()
-    print(f'Day {current_day+1} to {current_day+days_in_city}: {city}')
-    current_day += days_in_city
+print(generate_itinerary())

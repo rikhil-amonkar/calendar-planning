@@ -1,59 +1,58 @@
 from z3 import *
 
-def schedule_meeting(shirley_schedule, albert_schedule, meeting_duration, preferences):
+def schedule_meeting(shirley_schedule, albert_schedule, meeting_duration, day, preference):
+    # Create a Z3 solver
+    solver = Solver()
+
     # Define the variables
-    day = Int('day')
-    start_time = Real('start_time')
-    end_time = Real('end_time')
+    day_var = Int('day')
+    shirley_start_var = Int('shirley_start')
+    albert_start_var = Int('albert_start')
+    end_time_var = Int('end_time')
 
     # Define the constraints
-    constraints = [
-        day == 1,  # Monday
-        And(9 <= start_time, start_time <= 17),  # 9:00 to 17:00
-        And(9 <= end_time, end_time <= 17),
-        start_time + meeting_duration <= end_time,
-        Or(start_time == 9, start_time == 10, start_time == 11, start_time == 12, start_time == 13, start_time == 14, start_time == 15, start_time == 16),
-        start_time!= 10.5,  # Shirley's first block
-        start_time!= 12,  # Shirley's second block
-        start_time!= 16,  # Shirley's third block
-        start_time!= 9,  # Albert's block on Monday
-        Or(start_time == 9, start_time == 10, start_time == 11, start_time == 12, start_time == 13, start_time == 14, start_time == 15, start_time == 16),
-        start_time!= 9.5,  # Albert's block on Tuesday
-        start_time!= 11,  # Albert's block on Tuesday
-        start_time!= 11.5,  # Albert's block on Tuesday
-        start_time!= 13,  # Albert's block on Tuesday
-        start_time!= 16,  # Albert's block on Tuesday
-        start_time!= 16.5,  # Albert's block on Tuesday
-        day!= 2 or start_time < 10.5  # Shirley's preference
-    ]
+    solver.add(day_var == day)
+    solver.add(shirley_start_var >= 9 * 60)
+    solver.add(shirley_start_var <= 17 * 60)
+    solver.add(albert_start_var >= 9 * 60)
+    solver.add(albert_start_var <= 17 * 60)
+    solver.add(shirley_start_var + meeting_duration <= 17 * 60)
+    solver.add(albert_start_var + meeting_duration <= 17 * 60)
 
-    # Add the constraints for the schedules
-    for schedule in [shirley_schedule, albert_schedule]:
-        for time in schedule:
-            constraints.append(Or(start_time!= time, day!= 1 or time < 9, day!= 1 or time > 17))
+    # Add constraints based on the schedules
+    for shirley_time in shirley_schedule:
+        solver.add(shirley_start_var!= shirley_time[0] * 60 + shirley_time[1])
+    for albert_time in albert_schedule:
+        solver.add(albert_start_var!= albert_time[0] * 60 + albert_time[1])
 
-    # Solve the constraints
-    solver = Solver()
-    solver.add(constraints)
-    solver.add(day == 1 or day == 2)  # Ensure day is either Monday or Tuesday
-    solver.add(start_time == 9 or start_time == 10 or start_time == 11 or start_time == 12 or start_time == 13 or start_time == 14 or start_time == 15 or start_time == 16)  # Ensure start time is between 9:00 and 17:00
+    # Add constraints based on the preference
+    if preference:
+        for shirley_time in shirley_schedule:
+            if shirley_time[0] == 1 and shirley_time[1] >= 30:
+                solver.add(shirley_start_var!= shirley_time[0] * 60 + shirley_time[1])
 
-    # Check if a solution exists
+    # Add constraints to ensure the meeting duration
+    solver.add(end_time_var == shirley_start_var + meeting_duration)
+
+    # Add constraints to ensure the meeting time is within the work hours
+    solver.add(shirley_start_var >= 9 * 60)
+    solver.add(shirley_start_var + meeting_duration <= 17 * 60)
+
+    # Check if there is a solution
     if solver.check() == sat:
         model = solver.model()
-        day_value = model[day].as_long()
-        start_time_value = model[start_time].as_real().numerator().as_long()
-        end_time_value = model[end_time].as_real().numerator().as_long()
-
-        # Return the solution
-        return f"SOLUTION:\nDay: {['Monday', 'Tuesday'][day_value - 1]}\nStart Time: {start_time_value:02d}:00\nEnd Time: {(start_time_value + meeting_duration):02d}:00"
+        day_to_meet = model[day_var]
+        start_time = model[shirley_start_var]
+        end_time = model[end_time_var]
+        return f'Day: {day_to_meet}, Start Time: {(start_time // 60):02d}:{(start_time % 60):02d}, End Time: {(end_time // 60):02d}:{(end_time % 60):02d}'
     else:
-        return "No solution exists"
+        return 'No solution found'
 
 # Example usage
-shirley_schedule = [10.5, 12, 16]
-albert_schedule = [9, 10.5, 11.5, 13, 16, 16.5]
-meeting_duration = 0.5
-preferences = ["Tuesday after 10:30"]
+shirley_schedule = [(1, 30), (1, 60), (1, 120), (2, 30)]
+albert_schedule = [(1, 0), (1, 120), (1, 150), (2, 30), (2, 90), (2, 180)]
+meeting_duration = 30
+day = 1
+preference = True
 
-print(schedule_meeting(shirley_schedule, albert_schedule, meeting_duration, preferences))
+print(schedule_meeting(shirley_schedule, albert_schedule, meeting_duration, day, preference))

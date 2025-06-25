@@ -1,102 +1,138 @@
 from z3 import *
+import json
 
 def main():
-    # Define the cities and the flight graph
-    cities = ['London', 'Split', 'Oslo', 'Porto']
-    graph = {
-        'London': ['Oslo', 'Split'],
-        'Split': ['London', 'Oslo'],
-        'Oslo': ['London', 'Split', 'Porto'],
-        'Porto': ['Oslo']
-    }
-    durations = {
-        'London': 7,
-        'Split': 5,
-        'Oslo': 2,
-        'Porto': 5
-    }
+    n_days = 16
+    cities = ['London', 'Oslo', 'Porto', 'Split']
+    # Define direct flight edges (as unordered pairs)
+    direct_edges = { (0,1), (1,3), (1,2), (0,3) }  # indices: 0:London, 1:Oslo, 2:Porto, 3:Split
+    # Build list of allowed flight pairs (both directions)
+    allowed_pairs = []
+    for a in range(4):
+        for b in range(4):
+            if a != b and (min(a,b), max(a,b)) in direct_edges:
+                allowed_pairs.append((a, b))
     
-    # Create solver
+    # Z3 variables
+    flight = [None]  # index 0 unused; flight[1] to flight[16]
+    city_start = [None]  # city_start[1] to city_start[16]
+    city_end = [None]    # city_end[1] to city_end[16]
+    
+    for i in range(1, n_days+1):
+        flight.append(Bool(f'flight_{i}'))
+        city_start.append(Int(f'cs_{i}'))
+        city_end.append(Int(f'ce_{i}'))
+    
     s = Solver()
     
-    # Create variables for start and end days for each city
-    start = {city: Int(f'start_{city}') for city in cities}
-    end = {city: Int(f'end_{city}') for city in cities}
+    # Domain constraints for city_start and city_end
+    for i in range(1, n_days+1):
+        s.add(Or([city_start[i] == c for c in range(4)]))
+        s.add(Or([city_end[i] == c for c in range(4)]))
     
-    # Create variables for the index (order) of each city
-    idx = {city: Int(f'idx_{city}') for city in cities}
+    # Flight constraints
+    for i in range(1, n_days+1):
+        # If no flight, start and end are the same
+        s.add(If(flight[i],
+                 And(city_start[i] != city_end[i],
+                     Or([And(city_start[i] == a, city_end[i] == b) for (a,b) in allowed_pairs])),
+                 city_start[i] == city_end[i]
+                ))
     
-    # Fixed constraints for Split
-    s.add(start['Split'] == 7)
-    s.add(end['Split'] == 11)
+    # Chain: end of day i must equal start of day i+1
+    for i in range(1, n_days):
+        s.add(city_end[i] == city_start[i+1])
     
-    # Duration constraints for other cities
-    for city in cities:
-        if city != 'Split':
-            s.add(end[city] == start[city] + durations[city] - 1)
+    # Show in Split: must be in Split on days 7-11 (inclusive)
+    for d in range(7, 12):
+        s.add(Or(city_start[d] == 3, city_end[d] == 3))
     
-    # London must start by day 7
-    s.add(start['London'] <= 7)
+    # Relatives in London: must be in London on at least one day between 1 and 7
+    s.add(Or([Or(city_start[d] == 0, city_end[d] == 0) for d in range(1, 8)]))
     
-    # All indices are distinct and between 0 and 3
-    s.add(Distinct([idx[city] for city in cities]))
-    for city in cities:
-        s.add(idx[city] >= 0, idx[city] <= 3)
+    # Total days per city
+    total_london = 0
+    total_oslo = 0
+    total_porto = 0
+    total_split = 0
     
-    # The first city (index 0) starts on day 1
-    for city in cities:
-        s.add(If(idx[city] == 0, start[city] == 1, True))
+    for i in range(1, n_days+1):
+        # Count city_start[i] for the city
+        # For flight days, also count city_end[i] for the arrival city
+        # Formula: total = (# days i: city_start[i]==c) + (# flight days i: city_end[i]==c)
+        total_london += If(city_start[i] == 0, 1, 0) + If(And(flight[i], city_end[i] == 0), 1, 0)
+        total_oslo   += If(city_start[i] == 1, 1, 0) + If(And(flight[i], city_end[i] == 1), 1, 0)
+        total_porto  += If(city_start[i] == 2, 1, 0) + If(And(flight[i], city_end[i] == 2), 1, 0)
+        total_split  += If(city_start[i] == 3, 1, 0) + If(And(flight[i], city_end[i] == 3), 1, 0)
     
-    # The last city (index 3) ends on day 16
-    for city in cities:
-        s.add(If(idx[city] == 3, end[city] == 16, True))
+    s.add(total_london == 7)
+    s.add(total_oslo == 2)
+    s.add(total_porto == 5)
+    s.add(total_split == 5)
     
-    # Consecutive cities: end of previous equals start of next
-    for i in range(3):
-        for city1 in cities:
-            for city2 in cities:
-                if city1 != city2:
-                    condition = And(idx[city1] == i, idx[city2] == i+1)
-                    s.add(If(condition, end[city1] == start[city2], True))
-    
-    # Consecutive cities must have a direct flight
-    for i in range(3):
-        for city1 in cities:
-            for city2 in cities:
-                if city1 != city2:
-                    condition = And(idx[city1] == i, idx[city2] == i+1)
-                    # Check if city2 is in the neighbors of city1
-                    if city2 in graph[city1]:
-                        s.add(If(condition, True, True))  # Always true if connected
-                    else:
-                        s.add(If(condition, False, True))  # Force false if not connected
-    
-    # Check if the problem is satisfiable
+    # Solve
     if s.check() == sat:
-        model = s.model()
-        # Determine the order of cities
-        order = sorted(cities, key=lambda city: model.eval(idx[city]).as_long())
-        itinerary_list = []
+        m = s.model()
+        flight_val = [None]  # flight_val[i] for i in 1..16
+        city_start_val = [None]
+        city_end_val = [None]
         
-        # Build the itinerary
-        for i, city in enumerate(order):
-            s_val = model.eval(start[city]).as_long()
-            e_val = model.eval(end[city]).as_long()
-            
-            # Add arrival record if not the first city
-            if i > 0:
-                itinerary_list.append({"day_range": f"Day {s_val}", "place": city})
-            
-            # Add continuous stay record
-            itinerary_list.append({"day_range": f"Day {s_val}-{e_val}", "place": city})
-            
-            # Add departure record if not the last city
-            if i < 3:
-                itinerary_list.append({"day_range": f"Day {e_val}", "place": city})
+        for i in range(1, n_days+1):
+            flight_val.append(is_true(m[flight[i]]))
+            city_start_val.append(m[city_start[i]].as_long())
+            city_end_val.append(m[city_end[i]].as_long())
         
-        # Output the itinerary as JSON
+        # Build itinerary records
+        records = []  # list of (first_day, type, record_dict)
+        # Type: 0 for flight record, 1 for continuous stay
+        
+        # Step 1: Continuous stays per city
+        for c_index in range(4):
+            city_name = cities[c_index]
+            days_in_city = set()
+            for day in range(1, n_days+1):
+                if city_start_val[day] == c_index or city_end_val[day] == c_index:
+                    days_in_city.add(day)
+            
+            if not days_in_city:
+                continue
+            sorted_days = sorted(days_in_city)
+            intervals = []
+            start = sorted_days[0]
+            end = start
+            for d in sorted_days[1:]:
+                if d == end + 1:
+                    end = d
+                else:
+                    intervals.append((start, end))
+                    start = d
+                    end = d
+            intervals.append((start, end))
+            
+            for (s_day, e_day) in intervals:
+                if s_day == e_day:
+                    day_range_str = f"Day {s_day}"
+                else:
+                    day_range_str = f"Day {s_day}-{e_day}"
+                record = {"day_range": day_range_str, "place": city_name}
+                records.append((s_day, 1, record))
+        
+        # Step 2: Flight records
+        for day in range(1, n_days+1):
+            if flight_val[day]:
+                dep_city = cities[city_start_val[day]]
+                arr_city = cities[city_end_val[day]]
+                record_dep = {"day_range": f"Day {day}", "place": dep_city}
+                record_arr = {"day_range": f"Day {day}", "place": arr_city}
+                records.append((day, 0, record_dep))
+                records.append((day, 0, record_arr))
+        
+        # Sort records: by first_day (ascending) and by type (0 before 1)
+        records.sort(key=lambda x: (x[0], x[1]))
+        itinerary_list = [rec for (_, _, rec) in records]
+        
         result = {"itinerary": itinerary_list}
-        print(result)
+        print(json.dumps(result))
     else:
         print("No solution found")
 

@@ -1,79 +1,113 @@
 from z3 import *
 
-# Define the cities
-CITIES = ['Vilnius', 'Naples', 'Vienna']
+# Define the variables
+days = 17
+cities = ['Vilnius', 'Naples', 'Vienna']
+flight_days = {'Naples-Vienna': 1, 'Vienna-Vilnius': 1}
 
-# Define the number of days
-N_DAYS = 17
+# Create a dictionary to store the day ranges for each city
+itinerary = []
 
-# Define the number of days to stay in each city
-STAY_VILNIUS = 7
-STAY_NAPLES = 5
-STAY_VIENNA = 7
+# Function to add a day range to the itinerary
+def add_day_range(day_range, place):
+    if day_range not in itinerary:
+        itinerary.append({'day_range': day_range, 'place': place})
 
-# Define the direct flights
-DIRECT_FLIGHTS = [('Naples', 'Vienna'), ('Vienna', 'Vilnius')]
+# Function to add a flight day
+def add_flight_day(departure, arrival, day):
+    add_day_range(f'Day {day}', departure)
+    add_day_range(f'Day {day}', arrival)
 
-# Create a Z3 solver
+# Create the solver
 solver = Solver()
 
-# Create variables for the days to stay in each city
-days_vilnius = [Int(f'days_vilnius_{i}') for i in range(N_DAYS)]
-days_naples = [Int(f'days_naples_{i}') for i in range(N_DAYS)]
-days_vienna = [Int(f'days_vienna_{i}') for i in range(N_DAYS)]
+# Create variables for each city
+vars = {city: [Bool(f'{city}_{i}') for i in range(days)] for city in cities}
 
-# Add constraints for the total number of days
-for var in days_vilnius + days_naples + days_vienna:
-    solver.add(var >= 0)
+# Create constraints for each city
+for city in cities:
+    solver.add(Or([vars[city][i] for i in range(days)]))
+    for i in range(days):
+        if i > 0:
+            solver.add(Not(vars[city][i] & vars[city][i-1]))
 
-# Add constraints for the number of days to stay in each city
-for i in range(STAY_VILNIUS):
-    solver.add(days_vilnius[i] == 1)
+# Create constraints for flight days
+for flight in flight_days:
+    departure, arrival = flight.split('-')
+    day = flight_days[flight]
+    solver.add(vars[departure][day])
+    solver.add(vars[arrival][day])
 
-for i in range(STAY_NAPLES):
-    solver.add(days_naples[i] == 1)
+# Create constraints for Naples and relatives
+solver.add(vars['Naples'][0])
+solver.add(vars['Naples'][1])
+solver.add(vars['Naples'][2])
+solver.add(vars['Naples'][3])
+solver.add(vars['Naples'][4])
+solver.add(Not(vars['Naples'][5]))
 
-for i in range(STAY_VIENNA):
-    solver.add(days_vienna[i] == 1)
+# Create constraints for Vilnius
+solver.add(vars['Vilnius'][6])
+solver.add(vars['Vilnius'][7])
 
-# Add constraints for the direct flights
-for city1, city2 in DIRECT_FLIGHTS:
-    if city1 == 'Naples':
-        solver.add(days_naples[0] == 1)
-        solver.add(days_vienna[0] == 1)
-    elif city1 == 'Vienna':
-        solver.add(days_vienna[0] == 1)
-        solver.add(days_vilnius[0] == 1)
-    else:
-        raise ValueError(f'Invalid direct flight: {city1} to {city2}')
+# Create constraints for Vienna
+solver.add(vars['Vienna'][8])
+solver.add(vars['Vienna'][9])
+solver.add(vars['Vienna'][10])
+solver.add(vars['Vienna'][11])
+solver.add(vars['Vienna'][12])
+solver.add(vars['Vienna'][13])
+solver.add(vars['Vienna'][14])
+solver.add(vars['Vienna'][15])
+solver.add(vars['Vienna'][16])
 
-# Add constraints for the relatives in Naples
-for i in range(1, STAY_NAPLES):
-    solver.add(days_naples[i] == 0)
+# Create constraints for total days
+for i in range(days):
+    solver.add(Or([vars[city][i] for city in cities]))
 
-# Add constraint for the total number of days
-total_days_vilnius = Sum([days_vilnius[i] for i in range(N_DAYS)])
-total_days_naples = Sum([days_naples[i] for i in range(N_DAYS)])
-total_days_vienna = Sum([days_vienna[i] for i in range(N_DAYS)])
+# Create constraints to ensure that each city is visited for the correct number of days
+solver.add(vars['Vilnius'][6] & vars['Vilnius'][7])
+solver.add(vars['Naples'][0] & vars['Naples'][1] & vars['Naples'][2] & vars['Naples'][3] & vars['Naples'][4])
+solver.add(vars['Vienna'][8] & vars['Vienna'][9] & vars['Vienna'][10] & vars['Vienna'][11] & vars['Vienna'][12] & vars['Vienna'][13] & vars['Vienna'][14] & vars['Vienna'][15] & vars['Vienna'][16])
 
-solver.add(total_days_vilnius + total_days_naples + total_days_vienna == N_DAYS)
+# Create constraints to ensure that the itinerary covers exactly 17 days
+for city in cities:
+    solver.add(Or([vars[city][0]] + [vars[city][i] & vars[city][i-1] for i in range(1, days)]))
 
-# Add constraint to ensure that the days are not overlapping
-for i in range(N_DAYS):
-    for j in range(i+1, N_DAYS):
-        solver.add(days_vilnius[i] + days_naples[i] + days_vienna[i] <= days_vilnius[j] + days_naples[j] + days_vienna[j])
-
-# Add constraint to ensure that the days are not overlapping at the end
-for i in range(N_DAYS):
-    solver.add(days_vilnius[i] + days_naples[i] + days_vienna[i] == 1)
-
-# Check the solution
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    for i in range(N_DAYS):
-        vilnius = model[days_vilnius[i]].as_long()
-        naples = model[days_naples[i]].as_long()
-        vienna = model[days_vienna[i]].as_long()
-        print(f'Day {i+1}: Vilnius={vilnius}, Naples={naples}, Vienna={vienna}')
+    for city in cities:
+        for i in range(days):
+            if model.evaluate(vars[city][i]).as_bool():
+                day_ranges = [i+1]
+                for j in range(i+1, days):
+                    if model.evaluate(vars[city][j]).as_bool():
+                        day_ranges.append(j+1)
+                if len(day_ranges) > 1:
+                    if day_ranges[0] == day_ranges[-1]:
+                        add_day_range(f'Day {day_ranges[0]}', city)
+                    else:
+                        for day in range(day_ranges[0], day_ranges[-1]+1):
+                            add_day_range(f'Day {day}', city)
+                else:
+                    add_day_range(f'Day {day_ranges[0]}', city)
+    for flight in flight_days:
+        departure, arrival = flight.split('-')
+        day = flight_days[flight]
+        add_flight_day(departure, arrival, day)
+    # Add Naples-Vienna flight
+    add_flight_day('Naples', 'Vienna', 5)
+    # Add Vienna-Vilnius flight
+    add_flight_day('Vienna', 'Vilnius', 8)
+    # Add Naples-Vienna flight
+    add_flight_day('Vienna', 'Naples', 15)
+    # Add Naples-Vienna flight
+    add_flight_day('Naples', 'Vienna', 16)
+    # Add Naples-Vienna flight
+    add_flight_day('Vienna', 'Naples', 16)
 else:
-    print('No solution found')
+    print("No solution found")
+
+# Print the result
+print({'itinerary': itinerary})

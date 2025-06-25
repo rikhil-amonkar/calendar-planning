@@ -1,37 +1,41 @@
 from z3 import *
 
-# Define the time slots for Barbara's availability
-barbara_start = 7 * 60  # 7:15AM in minutes
-barbara_end = 10 * 60  # 10:00PM in minutes
-min_meeting_time = 60  # minimum meeting time in minutes
-
-# Define the time slots for the day
-start_time = 9 * 60  # 9:00AM in minutes
-end_time = 12 * 60  # 12:00PM in minutes
-
-# Define the travel times
-travel_time_russian_to_pacific = 7
-travel_time_pacific_to_russian = 7
+# Define the variables
+start_time = 0  # start time of the day (in minutes)
+end_time = 1440  # end time of the day (in minutes)
+barbara_available_start = 465  # Barbara's available start time (in minutes)
+barbara_available_end = 600  # Barbara's available end time (in minutes)
+min_meeting_duration = 60  # minimum meeting duration (in minutes)
+russian_hill_to_pacific_heights = 7  # travel time from Russian Hill to Pacific Heights (in minutes)
+pacific_heights_to_russian_hill = 7  # travel time from Pacific Heights to Russian Hill (in minutes)
 
 # Define the decision variables
-x = Int('x')  # whether to meet Barbara
-y = Int('y')  # time to meet Barbara
+x = Int('x')  # meeting start time (in minutes)
+y = Int('y')  # meeting end time (in minutes)
+t = Int('t')  # travel time (in minutes)
 
 # Define the constraints
-s = Solver()
-s.add(And(And(0 <= x, x <= 1),  # x is a boolean variable
-          And(barbara_start + min_meeting_time <= y, y <= barbara_end - min_meeting_time),  # y is the time to meet Barbara
-          And(start_time + travel_time_russian_to_pacific <= y, y <= end_time - travel_time_pacific_to_russian)))  # time to meet Barbara is within the day
+s = Optimize()
+s.add(9 <= x)  # start time constraint
+s.add(x <= y)  # meeting duration constraint
+s.add(y <= 600)  # end time constraint
+s.add(x + min_meeting_duration <= y)  # minimum meeting duration constraint
+s.add(y + russian_hill_to_pacific_heights <= 600)  # travel time constraint
+s.add(x + russian_hill_to_pacific_heights + min_meeting_duration <= 600)  # travel time and meeting duration constraint
 
-# Define the objective function (maximize the time to meet Barbara)
-s.add(If(x == 1, y, 0) > If(x == 0, 0, y))
+# Objective function: maximize the meeting duration
+s.maximize(y - x)
 
-# Solve the problem
-s.check()
-model = s.model()
-
-# Print the solution
-if model[x] == 1:
-    print(f"Meet Barbara at {model[y] / 60} hours.")
+# Solve the optimization problem
+result = s.check()
+if result == sat:
+    model = s.model()
+    print(f"Optimal meeting start time: {model[x].as_long()} minutes")
+    print(f"Optimal meeting end time: {model[y].as_long()} minutes")
+    print(f"Optimal travel time: {model[t].as_long()} minutes")
 else:
-    print("Do not meet Barbara.")
+    print("No solution found")
+
+# Print the optimal schedule
+SOLUTION: 
+print(f"Meet Barbara from {model[x].as_long()} to {model[y].as_long()} minutes at Pacific Heights.")

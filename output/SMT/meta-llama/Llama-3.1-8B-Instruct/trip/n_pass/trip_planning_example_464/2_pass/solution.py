@@ -1,63 +1,72 @@
 from z3 import *
+import json
 
-# Define the cities
-CITIES = ['Krakow', 'Frankfurt', 'Oslo', 'Dubrovnik', 'Naples']
+# Define the cities and their corresponding codes
+cities = {
+    'Krakow': 'K',
+    'Frankfurt': 'F',
+    'Oslo': 'O',
+    'Dubrovnik': 'D',
+    'Naples': 'N'
+}
 
-# Define the days
-DAYS = range(1, 19)
+# Define the direct flights
+flights = {
+    'DK': [('K', 'O'), ('O', 'K')],
+    'KF': [('F', 'K'), ('K', 'F')],
+    'FO': [('F', 'O'), ('O', 'F')],
+    'DF': [('D', 'F'), ('F', 'D')],
+    'KD': [('K', 'D'), ('D', 'K')],
+    'NO': [('N', 'O'), ('O', 'N')],
+    'DN': [('D', 'N'), ('N', 'D')],
+    'NF': [('N', 'F'), ('F', 'N')]
+}
+
+# Define the number of days in each city
+days_in_city = {
+    'K': 5,
+    'F': 4,
+    'O': 3,
+    'D': 5,
+    'N': 5
+}
+
+# Define the solver
+s = Solver()
 
 # Define the variables
-x = {}
-for city in CITIES:
-    x[city] = [Bool(f'{city}_{day}') for day in DAYS]
+day = [Int(f'd{i}') for i in range(19)]
+place = [String(f'p{i}') for i in range(19)]
+for i in range(19):
+    s.add(day[i] >= 1)
+    s.add(day[i] <= 18)
+    s.add(place[i] == 'K' or place[i] == 'F' or place[i] == 'O' or place[i] == 'D' or place[i] == 'N')
 
 # Define the constraints
-# Each city can be visited on at most one day
-constraints = []
-for day in DAYS:
-    constraint = Or([x[city][day] for city in CITIES])
-    constraints.append(Not(constraint))
+for i in range(19):
+    if i > 0:
+        s.add(day[i] >= day[i-1])
+    s.add(place[i] == 'K' or place[i] == 'F' or place[i] == 'O' or place[i] == 'D' or place[i] == 'N')
 
-# Direct flights between cities
-direct_flights = [
-    [x['Krakow'][day] == x['Frankfurt'][day] for day in DAYS],
-    [x['Frankfurt'][day] == x['Krakow'][day] for day in DAYS],
-    [x['Frankfurt'][day] == x['Oslo'][day] for day in DAYS],
-    [x['Krakow'][day] == x['Oslo'][day] for day in DAYS],
-    [x['Dubrovnik'][day] == x['Frankfurt'][day] for day in DAYS],
-    [x['Dubrovnik'][day] == x['Frankfurt'][day] for day in DAYS],
-    [x['Krakow'][day] == x['Oslo'][day] for day in DAYS],
-    [x['Naples'][day] == x['Oslo'][day] for day in DAYS],
-    [x['Naples'][day] == x['Dubrovnik'][day] for day in DAYS],
-    [x['Naples'][day] == x['Frankfurt'][day] for day in DAYS]
-]
+for i in range(19):
+    for flight in flights.values():
+        if i >= flight[0][0] and i <= flight[1][0]:
+            s.add(Or(place[i] == flight[0][0], place[i] == flight[0][1]))
 
-# Stay in each city for at least the specified number of days
-stay_constraints = [
-    [x['Krakow'][day] == True for day in range(6, 11)],
-    [x['Frankfurt'][day] == True for day in range(2, 6)],
-    [x['Oslo'][day] == True for day in range(4, 7)],
-    [x['Dubrovnik'][day] == True for day in range(6, 11)],
-    [x['Naples'][day] == True for day in range(6, 11)]
-]
-
-# Meet friends in Dubrovnik between day 5 and day 9
-friends_constraints = [x['Dubrovnik'][day] == True for day in range(5, 10)]
-
-# Visit relatives in Oslo between day 16 and day 18
-relatives_constraints = [x['Oslo'][day] == True for day in range(16, 19)]
-
-# Combine all constraints
-s = Solver()
-for c in constraints + direct_flights + stay_constraints + friends_constraints + relatives_constraints:
-    s.add(c)
+for i in range(19):
+    for city, days in days_in_city.items():
+        s.add(day[i] >= days if place[i] == city else day[i] < days)
 
 # Solve the problem
-if s.check() == sat:
-    m = s.model()
-    trip_plan = {}
-    for city in CITIES:
-        trip_plan[city] = [day for day in DAYS if m[x[city][day]].as_bool()]
-    print(trip_plan)
-else:
-    print("No solution found")
+s.check()
+model = s.model()
+
+# Print the solution
+itinerary = []
+for i in range(19):
+    if model.evaluate(day[i]).as_long()!= model.evaluate(day[i-1]).as_long() if i > 0 else True:
+        itinerary.append({"day_range": f"Day {model.evaluate(day[i-1]).as_long()}-{model.evaluate(day[i]).as_long()}" if i > 0 else f"Day {model.evaluate(day[i]).as_long()}", "place": model.evaluate(place[i]).decode()})
+for i in range(19):
+    if model.evaluate(day[i]).as_long() == model.evaluate(day[i-1]).as_long() if i > 0 else True:
+        itinerary.append({"day_range": f"Day {model.evaluate(day[i]).as_long()}" if i > 0 else f"Day {model.evaluate(day[i]).as_long()}", "place": model.evaluate(place[i]).decode()})
+print(json.dumps({"itinerary": itinerary}))

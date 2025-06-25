@@ -1,0 +1,186 @@
+from z3 import *
+
+# Define the variables
+start_time = 0
+end_time = 720  # 12 hours in minutes
+travel_times = {
+    ('Embarcadero', 'Richmond District'): 21,
+    ('Embarcadero', 'Union Square'): 10,
+    ('Embarcadero', 'Financial District'): 5,
+    ('Embarcadero', 'Pacific Heights'): 11,
+    ('Embarcadero', 'Nob Hill'): 10,
+    ('Embarcadero', 'Bayview'): 21,
+    ('Richmond District', 'Embarcadero'): 19,
+    ('Richmond District', 'Union Square'): 21,
+    ('Richmond District', 'Financial District'): 22,
+    ('Richmond District', 'Pacific Heights'): 10,
+    ('Richmond District', 'Nob Hill'): 17,
+    ('Richmond District', 'Bayview'): 26,
+    ('Union Square', 'Embarcadero'): 11,
+    ('Union Square', 'Richmond District'): 20,
+    ('Union Square', 'Financial District'): 9,
+    ('Union Square', 'Pacific Heights'): 15,
+    ('Union Square', 'Nob Hill'): 9,
+    ('Union Square', 'Bayview'): 15,
+    ('Financial District', 'Embarcadero'): 4,
+    ('Financial District', 'Richmond District'): 21,
+    ('Financial District', 'Union Square'): 9,
+    ('Financial District', 'Pacific Heights'): 13,
+    ('Financial District', 'Nob Hill'): 8,
+    ('Financial District', 'Bayview'): 19,
+    ('Pacific Heights', 'Embarcadero'): 10,
+    ('Pacific Heights', 'Richmond District'): 12,
+    ('Pacific Heights', 'Union Square'): 12,
+    ('Pacific Heights', 'Financial District'): 13,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Bayview'): 22,
+    ('Nob Hill', 'Embarcadero'): 9,
+    ('Nob Hill', 'Richmond District'): 14,
+    ('Nob Hill', 'Union Square'): 7,
+    ('Nob Hill', 'Financial District'): 9,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Bayview'): 19,
+    ('Bayview', 'Embarcadero'): 19,
+    ('Bayview', 'Richmond District'): 25,
+    ('Bayview', 'Union Square'): 17,
+    ('Bayview', 'Financial District'): 19,
+    ('Bayview', 'Pacific Heights'): 23,
+    ('Bayview', 'Nob Hill'): 20
+}
+
+locations = ['Embarcadero', 'Richmond District', 'Union Square', 'Financial District', 'Pacific Heights', 'Nob Hill', 'Bayview']
+
+# Define the constraints
+s = Optimize()
+
+# Time variables
+meet_kenneth = [Bool('meet_kenneth_%s' % i) for i in range(len(locations))]
+meet_lisa = [Bool('meet_lisa_%s' % i) for i in range(len(locations))]
+meet_joshua = [Bool('meet_joshua_%s' % i) for i in range(len(locations))]
+meet_nancy = [Bool('meet_nancy_%s' % i) for i in range(len(locations))]
+meet_andrew = [Bool('meet_andrew_%s' % i) for i in range(len(locations))]
+meet_john = [Bool('meet_john_%s' % i) for i in range(len(locations))]
+travel_times_to_kenneth = [Int('travel_times_to_kenneth_%s' % i) for i in range(len(locations))]
+travel_times_to_lisa = [Int('travel_times_to_lisa_%s' % i) for i in range(len(locations))]
+travel_times_to_joshua = [Int('travel_times_to_joshua_%s' % i) for i in range(len(locations))]
+travel_times_to_nancy = [Int('travel_times_to_nancy_%s' % i) for i in range(len(locations))]
+travel_times_to_andrew = [Int('travel_times_to_andrew_%s' % i) for i in range(len(locations))]
+travel_times_to_john = [Int('travel_times_to_john_%s' % i) for i in range(len(locations))]
+
+# Constraints
+for i, loc in enumerate(locations):
+    s.add(Or(meet_kenneth[i], meet_lisa[i], meet_joshua[i], meet_nancy[i], meet_andrew[i], meet_john[i]))
+
+for i, loc in enumerate(locations):
+    if loc == 'Richmond District':
+        s.add(If(meet_kenneth[i], And(start_time + travel_times[('Embarcadero', 'Richmond District')] <= 900, 900 + 45 <= end_time), True))
+    elif loc == 'Union Square':
+        s.add(If(meet_lisa[i], And(start_time <= 450, 450 + 90 <= end_time), True))
+    elif loc == 'Financial District':
+        s.add(If(meet_joshua[i], And(start_time + 60 <= 450, 450 + 15 <= end_time), True))
+    elif loc == 'Pacific Heights':
+        s.add(If(meet_nancy[i], And(start_time + travel_times[('Embarcadero', 'Pacific Heights')] <= 570, 570 + 180 <= end_time), True))
+    elif loc == 'Nob Hill':
+        s.add(If(meet_andrew[i], And(start_time + travel_times[('Embarcadero', 'Nob Hill')] <= 630, 630 + 180 <= end_time), True))
+    elif loc == 'Bayview':
+        s.add(If(meet_john[i], And(start_time + travel_times[('Embarcadero', 'Bayview')] <= 630, 630 + 225 <= end_time), True))
+
+s.add(If(meet_kenneth[0], start_time + 45 <= 900, True))
+s.add(If(meet_lisa[0], start_time <= 450, True))
+s.add(If(meet_joshua[0], start_time + 60 <= 450, True))
+s.add(If(meet_nancy[0], start_time + travel_times[('Embarcadero', 'Pacific Heights')] <= 570, True))
+s.add(If(meet_andrew[0], start_time + travel_times[('Embarcadero', 'Nob Hill')] <= 630, True))
+s.add(If(meet_john[0], start_time + travel_times[('Embarcadero', 'Bayview')] <= 630, True))
+
+# Objective function
+s.minimize(Sum([travel_times_to_kenneth[i] * meet_kenneth[i] for i in range(len(locations))]))
+s.minimize(Sum([travel_times_to_lisa[i] * meet_lisa[i] for i in range(len(locations))]))
+s.minimize(Sum([travel_times_to_joshua[i] * meet_joshua[i] for i in range(len(locations))]))
+s.minimize(Sum([travel_times_to_nancy[i] * meet_nancy[i] for i in range(len(locations))]))
+s.minimize(Sum([travel_times_to_andrew[i] * meet_andrew[i] for i in range(len(locations))]))
+s.minimize(Sum([travel_times_to_john[i] * meet_john[i] for i in range(len(locations))]))
+
+# Assign travel times to meet friends
+for i, loc in enumerate(locations):
+    if loc == 'Richmond District':
+        s.add(If(meet_kenneth[i], travel_times_to_kenneth[i] == travel_times[('Embarcadero', 'Richmond District')], travel_times_to_kenneth[i] == 0))
+    elif loc == 'Union Square':
+        s.add(If(meet_lisa[i], travel_times_to_lisa[i] == 0, travel_times_to_lisa[i] == 0))
+    elif loc == 'Financial District':
+        s.add(If(meet_joshua[i], travel_times_to_joshua[i] == 0, travel_times_to_joshua[i] == 0))
+    elif loc == 'Pacific Heights':
+        s.add(If(meet_nancy[i], travel_times_to_nancy[i] == travel_times[('Embarcadero', 'Pacific Heights')], travel_times_to_nancy[i] == 0))
+    elif loc == 'Nob Hill':
+        s.add(If(meet_andrew[i], travel_times_to_andrew[i] == travel_times[('Embarcadero', 'Nob Hill')], travel_times_to_andrew[i] == 0))
+    elif loc == 'Bayview':
+        s.add(If(meet_john[i], travel_times_to_john[i] == travel_times[('Embarcadero', 'Bayview')], travel_times_to_john[i] == 0))
+
+# Ensure Lisa is met within her availability
+for i, loc in enumerate(locations):
+    if loc == 'Union Square':
+        s.add(If(meet_lisa[i], travel_times_to_lisa[i] >= 0, True))
+
+# Ensure Kenneth is met at Richmond District between 9:15 PM and 10:00 PM
+for i, loc in enumerate(locations):
+    if loc == 'Richmond District':
+        s.add(If(meet_kenneth[i], And(900 + travel_times[('Embarcadero', 'Richmond District')] >= 645, 900 + travel_times[('Embarcadero', 'Richmond District')] <= 600), True))
+
+# Ensure Joshua is met at Financial District between 12:00 PM and 3:15 PM
+for i, loc in enumerate(locations):
+    if loc == 'Financial District':
+        s.add(If(meet_joshua[i], And(450 + 60 >= 720, 450 + 60 <= 600), True))
+
+# Ensure Nancy is met at Pacific Heights between 8:00 AM and 11:30 AM
+for i, loc in enumerate(locations):
+    if loc == 'Pacific Heights':
+        s.add(If(meet_nancy[i], And(570 + travel_times[('Embarcadero', 'Pacific Heights')] >= 480, 570 + travel_times[('Embarcadero', 'Pacific Heights')] <= 630), True))
+
+# Ensure Andrew is met at Nob Hill between 11:30 AM and 8:15 PM
+for i, loc in enumerate(locations):
+    if loc == 'Nob Hill':
+        s.add(If(meet_andrew[i], And(630 + travel_times[('Embarcadero', 'Nob Hill')] >= 630, 630 + travel_times[('Embarcadero', 'Nob Hill')] <= 720), True))
+
+# Ensure John is met at Bayview between 4:45 PM and 9:30 PM
+for i, loc in enumerate(locations):
+    if loc == 'Bayview':
+        s.add(If(meet_john[i], And(630 + travel_times[('Embarcadero', 'Bayview')] >= 285, 630 + travel_times[('Embarcadero', 'Bayview')] <= 570), True))
+
+# Ensure Kenneth is met at a location where he is available
+for i, loc in enumerate(locations):
+    if loc!= 'Richmond District':
+        s.add(If(meet_kenneth[i], travel_times_to_kenneth[i] == 0, travel_times_to_kenneth[i] == 0))
+
+# Solve the problem
+result = s.check()
+if result == sat:
+    model = s.model()
+    print("Locations to visit:")
+    for i, loc in enumerate(locations):
+        if model.evaluate(meet_kenneth[i]):
+            print("Kenneth at %s" % loc)
+        if model.evaluate(meet_lisa[i]):
+            print("Lisa at %s" % loc)
+        if model.evaluate(meet_joshua[i]):
+            print("Joshua at %s" % loc)
+        if model.evaluate(meet_nancy[i]):
+            print("Nancy at %s" % loc)
+        if model.evaluate(meet_andrew[i]):
+            print("Andrew at %s" % loc)
+        if model.evaluate(meet_john[i]):
+            print("John at %s" % loc)
+    print("Travel times to meet friends:")
+    for i, loc in enumerate(locations):
+        if model.evaluate(meet_kenneth[i]):
+            print("Kenneth at %s: %s minutes" % (loc, model.evaluate(travel_times_to_kenneth[i])))
+        if model.evaluate(meet_lisa[i]):
+            print("Lisa at %s: %s minutes" % (loc, model.evaluate(travel_times_to_lisa[i])))
+        if model.evaluate(meet_joshua[i]):
+            print("Joshua at %s: %s minutes" % (loc, model.evaluate(travel_times_to_joshua[i])))
+        if model.evaluate(meet_nancy[i]):
+            print("Nancy at %s: %s minutes" % (loc, model.evaluate(travel_times_to_nancy[i])))
+        if model.evaluate(meet_andrew[i]):
+            print("Andrew at %s: %s minutes" % (loc, model.evaluate(travel_times_to_andrew[i])))
+        if model.evaluate(meet_john[i]):
+            print("John at %s: %s minutes" % (loc, model.evaluate(travel_times_to_john[i])))
+else:
+    print("No solution found")

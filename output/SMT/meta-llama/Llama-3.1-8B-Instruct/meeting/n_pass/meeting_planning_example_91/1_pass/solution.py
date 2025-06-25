@@ -3,31 +3,50 @@ from z3 import *
 # Define the variables
 start_time = Int('start_time')
 end_time = Int('end_time')
-richmond_time = Int('richmond_time')
-daniel_meet_time = Int('daniel_meet_time')
+travel_time_russian_hill_to_richmond_district = 14
+travel_time_richmond_district_to_russian_hill = 13
+min_meeting_duration = 75
 
 # Define the constraints
-s = Optimize()
-s.add(9 <= start_time)  # You arrive at Russian Hill at 9:00AM
-s.add(start_time <= end_time)  # You need to meet Daniel before the end of the day
-s.add(end_time <= 20)  # You need to end the day by 8:15PM
-s.add(richmond_time >= 7)  # Daniel will be at Richmond District from 7:00PM
-s.add(richmond_time <= 8 * 60 + 15)  # Daniel will be at Richmond District until 8:15PM
-s.add(daniel_meet_time >= 75)  # You'd like to meet Daniel for a minimum of 75 minutes
-s.add(daniel_meet_time <= 14 + 13)  # You can travel from Russian Hill to Richmond District and back
-s.add(daniel_meet_time == (richmond_time - start_time) + 14)  # The travel time from Russian Hill to Richmond District is 14 minutes
-s.add(daniel_meet_time == (end_time - richmond_time) + 13)  # The travel time from Richmond District to Russian Hill is 13 minutes
+solver = Optimize()
 
-# Define the objective function
-s.minimize(end_time)
+# Daniel is available from 7:00PM to 8:15PM
+daniel_available_start = 19 * 60  # 7:00PM in minutes
+daniel_available_end = 19 * 60 + 15 * 60  # 8:15PM in minutes
+
+# You arrive at Russian Hill at 9:00AM
+arrival_time = 9 * 60  # 9:00AM in minutes
+
+# You must meet Daniel for at least 75 minutes
+meeting_duration = (end_time - start_time) >= min_meeting_duration
+
+# You must travel to Richmond District and back
+travel_time = If(start_time < daniel_available_start,
+                 travel_time_russian_hill_to_richmond_district + travel_time_richmond_district_to_russian_hill,
+                 travel_time_russian_hill_to_richmond_district)
+
+# Daniel is not available before 7:00PM
+daniel_unavailable_before = start_time >= daniel_available_start
+
+# Daniel is available after 7:00PM
+daniel_available_after = end_time <= daniel_available_end
+
+# Meeting duration must be at least 75 minutes
+meeting_duration = (end_time - start_time) >= min_meeting_duration
+
+# Add the constraints to the solver
+solver.add([meeting_duration, daniel_unavailable_before, daniel_available_after, travel_time])
+
+# Minimize the total time spent
+solver.minimize(end_time - arrival_time)
 
 # Solve the optimization problem
-opt_result = s.check()
-if opt_result == sat:
-    opt_model = s.model()
-    print(f"Start time: {opt_model[start_time].as_long()}")
-    print(f"End time: {opt_model[end_time].as_long()}")
-    print(f"Richmond time: {opt_model[richmond_time].as_long()}")
-    print(f"Daniel meet time: {opt_model[daniel_meet_time].as_long()}")
+solution = solver.check()
+
+if solution == sat:
+    model = solver.model()
+    start_time_value = model[start_time].as_long()
+    end_time_value = model[end_time].as_long()
+    print(f"Best schedule: Meet Daniel from {start_time_value // 60}:{start_time_value % 60} to {end_time_value // 60}:{end_time_value % 60}")
 else:
     print("No solution found")

@@ -1,100 +1,67 @@
 from z3 import *
 
-# Define the travel times
-travel_times = {
-    ('Presidio', 'Richmond District'): 7,
-    ('Presidio', 'North Beach'): 18,
-    ('Presidio', 'Financial District'): 23,
-    ('Presidio', 'Golden Gate Park'): 12,
-    ('Presidio', 'Union Square'): 22,
-    ('Richmond District', 'Presidio'): 7,
-    ('Richmond District', 'North Beach'): 17,
-    ('Richmond District', 'Financial District'): 22,
-    ('Richmond District', 'Golden Gate Park'): 9,
-    ('Richmond District', 'Union Square'): 21,
-    ('North Beach', 'Presidio'): 17,
-    ('North Beach', 'Richmond District'): 18,
-    ('North Beach', 'Financial District'): 8,
-    ('North Beach', 'Golden Gate Park'): 22,
-    ('North Beach', 'Union Square'): 7,
-    ('Financial District', 'Presidio'): 22,
-    ('Financial District', 'Richmond District'): 21,
-    ('Financial District', 'North Beach'): 7,
-    ('Financial District', 'Golden Gate Park'): 23,
-    ('Financial District', 'Union Square'): 9,
-    ('Golden Gate Park', 'Presidio'): 11,
-    ('Golden Gate Park', 'Richmond District'): 7,
-    ('Golden Gate Park', 'North Beach'): 24,
-    ('Golden Gate Park', 'Financial District'): 26,
-    ('Golden Gate Park', 'Union Square'): 22,
-    ('Union Square', 'Presidio'): 24,
-    ('Union Square', 'Richmond District'): 20,
-    ('Union Square', 'North Beach'): 10,
-    ('Union Square', 'Financial District'): 9,
-    ('Union Square', 'Golden Gate Park'): 22
+# Define the travel distances
+travel_distances = {
+    'Presidio': {'Richmond District': 7, 'North Beach': 18, 'Financial District': 23, 'Golden Gate Park': 12, 'Union Square': 22},
+    'Richmond District': {'Presidio': 7, 'North Beach': 17, 'Financial District': 22, 'Golden Gate Park': 9, 'Union Square': 21},
+    'North Beach': {'Presidio': 17, 'Richmond District': 18, 'Financial District': 8, 'Golden Gate Park': 22, 'Union Square': 7},
+    'Financial District': {'Presidio': 22, 'Richmond District': 21, 'North Beach': 7, 'Golden Gate Park': 23, 'Union Square': 9},
+    'Golden Gate Park': {'Presidio': 12, 'Richmond District': 7, 'North Beach': 24, 'Financial District': 26, 'Union Square': 22},
+    'Union Square': {'Presidio': 22, 'Richmond District': 20, 'North Beach': 10, 'Financial District': 9, 'Golden Gate Park': 22}
 }
 
 # Define the constraints
-s = Solver()
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+
+# Define the friends' availability
+friends = {
+    'Jason': {'start': 1 * 60, 'end': 8 * 60 + 45, 'duration': 90},
+    'Melissa': {'start': 6 * 60 + 45, 'end': 8 * 60 + 15, 'duration': 45},
+    'Brian': {'start': 9 * 60 + 45, 'end': 9 * 60 + 45, 'duration': 15},
+    'Elizabeth': {'start': 8 * 60 + 45, 'end': 9 * 60 + 30, 'duration': 105},
+    'Laura': {'start': 2 * 60 + 15, 'end': 7 * 60 + 30, 'duration': 75}
+}
 
 # Define the variables
-time = [Int('t_{}'.format(i)) for i in range(13)]  # 13 time points (9:00AM to 9:00PM)
-meet_jason = [Bool('m_j_{}'.format(i)) for i in range(13)]  # Meet Jason at each time point
-meet_melissa = [Bool('m_m_{}'.format(i)) for i in range(13)]  # Meet Melissa at each time point
-meet_brian = [Bool('m_b_{}'.format(i)) for i in range(13)]  # Meet Brian at each time point
-meet_elizabeth = [Bool('m_e_{}'.format(i)) for i in range(13)]  # Meet Elizabeth at each time point
-meet_laura = [Bool('m_l_{}'.format(i)) for i in range(13)]  # Meet Laura at each time point
+x = [Bool(f'x_{i}') for i in range(6)]  # x_i: visit location i
+t = [Int(f't_{i}') for i in range(6)]  # t_i: time spent at location i
 
-# Define the constraints
-s.add(time[0] == 0)  # 9:00AM
-for i in range(1, 13):
-    s.add(time[i] == time[i-1] + 15)  # 15-minute intervals
+# Define the solver
+solver = Solver()
 
-# Jason's availability
-s.add(And(meet_jason[1], time[1] + 90 >= time[4]))  # Meet Jason from 1:00PM to 8:45PM
-s.add(Or(meet_jason[1], meet_jason[2], meet_jason[3], meet_jason[4], meet_jason[5], meet_jason[6], meet_jason[7], meet_jason[8], meet_jason[9], meet_jason[10], meet_jason[11], meet_jason[12]))
+# Add constraints
+for i in range(6):
+    solver.add(0 <= t[i])
+    solver.add(t[i] <= 24 * 60)  # Time spent at each location cannot exceed 24 hours
+    solver.add(t[i] >= x[i] * 60)  # Time spent at each location is at least 60 minutes if visited
+    solver.add(t[i] <= (1 - x[i]) * 60)  # Time spent at each location is at most 60 minutes if not visited
 
-# Melissa's availability
-s.add(And(meet_melissa[6], time[6] + 45 >= time[10]))  # Meet Melissa from 6:45PM to 8:15PM
-s.add(Or(meet_melissa[6], meet_melissa[7], meet_melissa[8], meet_melissa[9], meet_melissa[10], meet_melissa[11]))
+# Add constraints for friends' availability
+for friend in friends:
+    start = friends[friend]['start']
+    end = friends[friend]['end']
+    duration = friends[friend]['duration']
+    solver.add(And([x[0] == 0], t[0] == 0))  # Start at Presidio at 9:00 AM
+    for i in range(1, 6):
+        solver.add(Implies(x[i], t[i] >= start))
+        solver.add(Implies(x[i], t[i] <= end))
+        solver.add(Implies(x[i], t[i] >= duration))
+        solver.add(Implies(x[i], t[i] <= end - start + duration))
+    solver.add(Or([x[1], x[2], x[3], x[4], x[5]]))  # Must visit at least one location
 
-# Brian's availability
-s.add(And(meet_brian[0], time[0] + 15 >= time[1]))  # Meet Brian from 9:45AM to 9:45PM
-s.add(Or(meet_brian[0], meet_brian[1], meet_brian[2], meet_brian[3], meet_brian[4], meet_brian[5], meet_brian[6], meet_brian[7], meet_brian[8], meet_brian[9], meet_brian[10], meet_brian[11], meet_brian[12]))
+# Add constraints for travel times
+for i in range(6):
+    for j in range(6):
+        if i!= j:
+            solver.add(Implies(x[i], x[j] == x[i] + (travel_distances['Presidio'][j] - travel_distances['Presidio'][i]) > 0))
 
-# Elizabeth's availability
-s.add(And(meet_elizabeth[8], time[8] + 105 >= time[12]))  # Meet Elizabeth from 8:45AM to 9:30PM
-s.add(Or(meet_elizabeth[0], meet_elizabeth[1], meet_elizabeth[2], meet_elizabeth[3], meet_elizabeth[4], meet_elizabeth[5], meet_elizabeth[6], meet_elizabeth[7], meet_elizabeth[8], meet_elizabeth[9], meet_elizabeth[10], meet_elizabeth[11], meet_elizabeth[12]))
-
-# Laura's availability
-s.add(And(meet_laura[2], time[2] + 75 >= time[5]))  # Meet Laura from 2:15PM to 7:30PM
-s.add(Or(meet_laura[2], meet_laura[3], meet_laura[4], meet_laura[5], meet_laura[6], meet_laura[7], meet_laura[8], meet_laura[9], meet_laura[10], meet_laura[11]))
-
-# Travel times
-for i in range(1, 13):
-    s.add(If(meet_jason[i], time[i-1] + travel_times[('Presidio', 'Richmond District')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_melissa[i], time[i-1] + travel_times[('Presidio', 'North Beach')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_brian[i], time[i-1] + travel_times[('Presidio', 'Financial District')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_elizabeth[i], time[i-1] + travel_times[('Presidio', 'Golden Gate Park')] >= time[i], time[i-1] == time[i]))
-    s.add(If(meet_laura[i], time[i-1] + travel_times[('Presidio', 'Union Square')] >= time[i], time[i-1] == time[i]))
-
-# Check if a solution exists
-if s.check() == sat:
-    model = s.model()
-    solution = []
-    for i in range(13):
-        if model.evaluate(meet_jason[i]).as_bool():
-            solution.append('Meet Jason at {}'.format(time[i]))
-        if model.evaluate(meet_melissa[i]).as_bool():
-            solution.append('Meet Melissa at {}'.format(time[i]))
-        if model.evaluate(meet_brian[i]).as_bool():
-            solution.append('Meet Brian at {}'.format(time[i]))
-        if model.evaluate(meet_elizabeth[i]).as_bool():
-            solution.append('Meet Elizabeth at {}'.format(time[i]))
-        if model.evaluate(meet_laura[i]).as_bool():
-            solution.append('Meet Laura at {}'.format(time[i]))
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
     print('SOLUTION:')
-    for s in solution:
-        print(s)
+    for i in range(6):
+        print(f'Location {i+1}: {model[x[i]].as_long()}')
+        print(f'Time spent: {model[t[i]].as_long()} minutes')
 else:
-    print('No solution exists')
+    print('No solution found')

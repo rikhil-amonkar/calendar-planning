@@ -1,100 +1,130 @@
 from z3 import *
 
-# Define the cities
-cities = ['Venice', 'Barcelona', 'Copenhagen', 'Lyon', 'Reykjavik', 'Dubrovnik', 'Athens', 'Tallinn', 'Munich']
+# Define cities and their corresponding durations
+cities = {
+    'Venice': 4,
+    'Barcelona': 3,
+    'Copenhagen': 4,
+    'Lyon': 4,
+    'Reykjavik': 4,
+    'Dubrovnik': 5,
+    'Athens': 2,
+    'Tallinn': 5,
+    'Munich': 3
+}
 
-# Define the days
-days = range(26)
+# Define direct flights
+flights = {
+    ('Copenhagen', 'Athens'): 1,
+    ('Copenhagen', 'Dubrovnik'): 1,
+    ('Munich', 'Tallinn'): 1,
+    ('Copenhagen', 'Munich'): 1,
+    ('Venice', 'Munich'): 1,
+    ('Reykjavik', 'Athens'): 1,
+    ('Athens', 'Dubrovnik'): 1,
+    ('Venice', 'Athens'): 1,
+    ('Lyon', 'Barcelona'): 1,
+    ('Copenhagen', 'Reykjavik'): 1,
+    ('Reykjavik', 'Munich'): 1,
+    ('Athens', 'Munich'): 1,
+    ('Lyon', 'Munich'): 1,
+    ('Barcelona', 'Reykjavik'): 1,
+    ('Venice', 'Copenhagen'): 1,
+    ('Barcelona', 'Dubrovnik'): 1,
+    ('Barcelona', 'Athens'): 1,
+    ('Copenhagen', 'Barcelona'): 1,
+    ('Venice', 'Barcelona'): 1,
+    ('Barcelona', 'Munich'): 1,
+    ('Barcelona', 'Tallinn'): 1,
+    ('Copenhagen', 'Tallinn'): 1
+}
 
-# Define the durations of each city visit
-durations = {'Venice': 4, 'Barcelona': 3, 'Copenhagen': 4, 'Lyon': 4, 'Reykjavik': 4, 'Dubrovnik': 5, 'Athens': 2, 'Tallinn': 5, 'Munich': 3}
-
-# Create a variable for each city and day
-city_days = {city: [Bool(city + '_day_' + str(day)) for day in days] for city in cities}
-
-# Define the constraints for each city visit
-constraints = []
-for city in cities:
-    for day in days:
-        if day >= durations[city]:
-            constraints.append(city_days[city][day])
-
-# Define the constraints for meeting a friend in Barcelona
-barcelona_friend = [day for day in days if 10 <= day <= 12]
-for day in barcelona_friend:
-    constraints.append(city_days['Barcelona'][day])
-
-# Define the constraints for visiting relatives in Copenhagen
-copenhagen_relatives = [day for day in days if 7 <= day <= 10]
-for day in copenhagen_relatives:
-    constraints.append(city_days['Copenhagen'][day])
-
-# Define the constraints for visiting Reykjavik
-reykjavik_visit = [day for day in days if day >= 13]
-for day in reykjavik_visit:
-    constraints.append(city_days['Reykjavik'][day])
-
-# Define the constraints for visiting Dubrovnik
-dubrovnik_visit = [day for day in days if day >= 16]
-for day in dubrovnik_visit:
-    constraints.append(city_days['Dubrovnik'][day])
-
-# Define the constraints for direct flights
-direct_flights = [
-    ('Copenhagen', 'Athens'),
-    ('Copenhagen', 'Dubrovnik'),
-    ('Munich', 'Tallinn'),
-    ('Copenhagen', 'Munich'),
-    ('Venice', 'Munich'),
-    ('Reykjavik', 'Athens'),
-    ('Athens', 'Dubrovnik'),
-    ('Venice', 'Athens'),
-    ('Lyon', 'Barcelona'),
-    ('Copenhagen', 'Reykjavik'),
-    ('Reykjavik', 'Munich'),
-    ('Athens', 'Munich'),
-    ('Lyon', 'Munich'),
-    ('Barcelona', 'Reykjavik'),
-    ('Venice', 'Copenhagen'),
-    ('Barcelona', 'Dubrovnik'),
-    ('Barcelona', 'Athens'),
-    ('Copenhagen', 'Barcelona'),
-    ('Venice', 'Barcelona'),
-    ('Barcelona', 'Munich'),
-    ('Barcelona', 'Tallinn'),
-    ('Copenhagen', 'Tallinn')
-]
-for flight in direct_flights:
-    for day in days:
-        constraints.append(Not(And(city_days[flight[0]][day], city_days[flight[1]][day])))
-
-# Define the constraint for the total number of days
-total_days = [Bool('total_days')]
-for day in days:
-    total_days.append(Or([city_days[city][day] for city in cities]))
-constraints.append(Implies(total_days[-1], total_days[-2]))
-constraints.append(total_days[-1])
-constraints.append(Not(total_days[0]))
-
-# Create the Z3 solver
+# Initialize solver and variables
 solver = Solver()
+days = [Bool(f'day_{i}') for i in range(1, 27)]
+places = [Int(f'place_{i}') for i in range(1, 27)]
+for i in range(1, 27):
+    solver.add(days[i] == False)
+for i in range(1, 27):
+    solver.add(places[i] >= 0)
+    solver.add(places[i] <= len(cities))
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Define constraints
+for i in range(1, 27):
+    for j in range(1, i):
+        solver.add(places[i]!= places[j])
 
-# Solve the problem
-result = solver.check()
+# Venice
+solver.add(days[1] == True)
+solver.add(places[1] == 0)
+solver.add(And(days[2] == True, days[3] == True))
+solver.add(And(places[2] == 0, places[3] == 0))
 
-# Print the result
-if result == sat:
+# Barcelona
+solver.add(And(days[4] == True, days[5] == True, days[6] == True))
+solver.add(And(places[4] == 0, places[5] == 0, places[6] == 0))
+solver.add(And(days[10] == True, days[11] == True, days[12] == True))
+solver.add(And(places[10] == 0, places[11] == 0, places[12] == 0))
+
+# Copenhagen
+solver.add(And(days[7] == True, days[8] == True, days[9] == True))
+solver.add(And(places[7] == 0, places[8] == 0, places[9] == 0))
+solver.add(And(days[13] == True, days[14] == True, days[15] == True))
+solver.add(And(places[13] == 0, places[14] == 0, places[15] == 0))
+
+# Lyon
+solver.add(And(days[16] == True, days[17] == True, days[18] == True))
+solver.add(And(places[16] == 0, places[17] == 0, places[18] == 0))
+
+# Reykjavik
+solver.add(And(days[19] == True, days[20] == True, days[21] == True, days[22] == True))
+solver.add(And(places[19] == 0, places[20] == 0, places[21] == 0, places[22] == 0))
+
+# Dubrovnik
+solver.add(And(days[23] == True, days[24] == True, days[25] == True, days[26] == True))
+solver.add(And(places[23] == 0, places[24] == 0, places[25] == 0, places[26] == 0))
+
+# Athens
+solver.add(And(days[2] == True, days[3] == True, days[4] == True, days[5] == True))
+solver.add(And(places[2] == 1, places[3] == 1, places[4] == 1, places[5] == 1))
+
+# Tallinn
+solver.add(And(days[16] == True, days[17] == True, days[18] == True, days[19] == True))
+solver.add(And(places[16] == 1, places[17] == 1, places[18] == 1, places[19] == 1))
+
+# Munich
+solver.add(And(days[4] == True, days[5] == True, days[6] == True))
+solver.add(And(places[4] == 2, places[5] == 2, places[6] == 2))
+
+# Flight days
+for flight, duration in flights.items():
+    solver.add(Implies(days[int(flight[0][0]) + duration - 1], places[int(flight[0][0]) + duration - 1] == int(flight[1][0])))
+    solver.add(Implies(days[int(flight[1][0]) - duration + 1], places[int(flight[1][0]) - duration + 1] == int(flight[0][0])))
+
+# Check solution
+if solver.check() == sat:
     model = solver.model()
-    print("A valid trip plan exists:")
-    for city in cities:
-        print(city + ":")
-        for day in days:
-            if model.evaluate(city_days[city][day]).as_bool():
-                print(day)
-        print()
+    itinerary = []
+    for i in range(1, 27):
+        if model.evaluate(days[i]).as_bool():
+            if model.evaluate(places[i]).as_long() == 0:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Venice"})
+            elif model.evaluate(places[i]).as_long() == 1:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Athens"})
+            elif model.evaluate(places[i]).as_long() == 2:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Munich"})
+            elif model.evaluate(places[i]).as_long() == 3:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Barcelona"})
+            elif model.evaluate(places[i]).as_long() == 4:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Copenhagen"})
+            elif model.evaluate(places[i]).as_long() == 5:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Lyon"})
+            elif model.evaluate(places[i]).as_long() == 6:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Reykjavik"})
+            elif model.evaluate(places[i]).as_long() == 7:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Dubrovnik"})
+            elif model.evaluate(places[i]).as_long() == 8:
+                itinerary.append({"day_range": f"Day {model.evaluate(places[i-1]).as_long()}-{model.evaluate(places[i]).as_long()}", "place": "Tallinn"})
+    print({"itinerary": itinerary})
 else:
-    print("No valid trip plan exists.")
+    print("No solution found")

@@ -2,31 +2,32 @@ from z3 import *
 
 # Define the variables
 start_time = Int('start_time')
-meet_time = Int('meet_time')
 end_time = Int('end_time')
+meet_time = Int('meet_time')
 
 # Define the constraints
 s = Optimize()
-s.add(Start(start_time) >= 0)
-s.add(End(end_time) >= 0)
-s.add(Start(meet_time) >= start_time)
-s.add(End(meet_time) <= end_time)
-s.add(Start(meet_time) >= 9*60)  # Start meeting after 9:00 AM
-s.add(End(meet_time) <= 21*60)  # End meeting before 9:00 PM
-s.add(Start(end_time) >= meet_time + 105)  # Meet for at least 105 minutes
-s.add(Start(end_time) <= 21*60)  # End of the day
-s.add(Start(end_time) - Start(meet_time) >= 23*60)  # Travel from Golden Gate Park to Chinatown
-s.add(Start(meet_time) - Start(end_time) >= 23*60)  # Travel from Chinatown to Golden Gate Park
+s.add(And(start_time >= 0, start_time <= 12*60))  # You arrive at Golden Gate Park at 9:00AM, so start time is between 0 and 12 hours
+s.add(meet_time >= 105)  # You'd like to meet David for a minimum of 105 minutes
+s.add(meet_time <= (9*60) + 45)  # You arrive at Golden Gate Park at 9:00AM, so meet time is between 9:00AM and 9:45PM
+s.add(If(start_time + 23 <= meet_time, meet_time - (start_time + 23), 0) >= 0)  # Travel distance from Golden Gate Park to Chinatown is 23 minutes
+s.add(If(meet_time - 23 >= start_time, meet_time - 23 - start_time, 0) >= 0)  # Travel distance from Chinatown to Golden Gate Park is 23 minutes
+s.add(If(start_time + 23 + 23 <= meet_time, meet_time - (start_time + 23 + 23), 0) >= 0)  # Travel distance from Golden Gate Park to Chinatown and back is 46 minutes
+s.add(If(meet_time - 23 - 23 >= start_time, meet_time - 23 - 23 - start_time, 0) >= 0)  # Travel distance from Chinatown to Golden Gate Park and back is 46 minutes
+s.add(And(meet_time >= 4*60, meet_time <= 21*60))  # David will be at Chinatown from 4:00PM to 9:45PM
 
 # Define the objective function
-s.add(Obj( meet_time + 4*60 + 23*60 + 23*60 ))
+s.minimize((meet_time - (start_time + 23 + 23)) + (meet_time - 23 - 23 - start_time))  # Meet David for the maximum amount of time
 
 # Solve the optimization problem
-s.check()
-model = s.model()
+if s.check() == sat:
+    solution = s.model()
+    print(f"Best schedule: Meet David at {solution[meet_time].as_long() // 60}:{solution[meet_time].as_long() % 60} at Golden Gate Park")
+else:
+    print("No solution found")
 
-# Print the result
-print("Optimal schedule:")
-print("Start time:", model[start_time].as_long() // 60, ":", model[start_time].as_long() % 60)
-print("Meet time:", model[meet_time].as_long() // 60, ":", model[meet_time].as_long() % 60)
-print("End time:", model[end_time].as_long() // 60, ":", model[end_time].as_long() % 60)
+# Print the optimal solution
+print("Optimal solution:")
+print(f"Start time: {solution[start_time].as_long() // 60}:{solution[start_time].as_long() % 60}")
+print(f"End time: {solution[end_time].as_long() // 60}:{solution[end_time].as_long() % 60}")
+print(f"Meet time: {solution[meet_time].as_long() // 60}:{solution[meet_time].as_long() % 60}")

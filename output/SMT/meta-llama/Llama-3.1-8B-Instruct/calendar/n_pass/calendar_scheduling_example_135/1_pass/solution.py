@@ -1,80 +1,46 @@
 from z3 import *
 
-# Define the variables
-day = Int('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
+def solve_meeting():
+    # Define the day of the week
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    day = days[0]  # We are only interested in Monday
 
-# Define the constraints
-day_val = If(day == 0, 'Monday', 'Tuesday')  # Assuming Tuesday is the next day
-start_time_val = If(day == 0, 9, 9)  # Start time is 9:00 on Monday
-end_time_val = If(day == 0, 17, 17)  # End time is 17:00 on Monday
-meeting_duration = 30  # Meeting duration is 30 minutes
+    # Define the start and end times of the work hours
+    start_time = 9 * 60  # 9:00 in minutes
+    end_time = 17 * 60  # 17:00 in minutes
+    meeting_duration = 30  # 30 minutes
 
-# Define the constraints for Ashley
-ashley_busy = [10, 11, 12, 15]  # Busy times for Ashley in 30-minute increments
-for t in ashley_busy:
-    start_time_constraint = If(start_time == t, start_time + 30 > t + 30, True)
-    end_time_constraint = If(start_time == t, end_time <= t + 30, True)
-    Add(And(start_time_constraint, end_time_constraint))
+    # Define the existing schedules for each participant
+    ashley_busy = [10 * 60, 10 * 60 + 30, 11 * 60, 11 * 60 + 60, 12 * 60 + 30, 12 * 60 + 60, 15 * 60]
+    ronald_busy = [9 * 60, 9 * 60 + 30, 10 * 60, 10 * 60 + 30, 12 * 60 + 30, 12 * 60 + 60, 14 * 60 + 30, 14 * 60 + 60, 16 * 60, 16 * 60 + 30, 16 * 60 + 60]
+    larry_blocked = [9 * 60, 9 * 60 + 30, 10 * 60, 10 * 60 + 30, 11 * 60, 11 * 60 + 30, 13 * 60, 13 * 60 + 30, 14 * 60, 14 * 60 + 30, 15 * 60, 15 * 60 + 30, 16 * 60, 16 * 60 + 30, 16 * 60 + 60]
 
-# Define the constraints for Ronald
-ronald_busy = [9, 10, 12, 14]  # Busy times for Ronald in 30-minute increments
-for t in ronald_busy:
-    start_time_constraint = If(start_time == t, start_time + 30 > t + 30, True)
-    end_time_constraint = If(start_time == t, end_time <= t + 30, True)
-    Add(And(start_time_constraint, end_time_constraint))
+    # Define the variables for the start and end times of the meeting
+    start_time_var = Int('start_time')
+    end_time_var = Int('end_time')
 
-# Define the constraints for Larry
-larry_blocked = [9, 13]  # Blocked times for Larry in 30-minute increments
-for t in larry_blocked:
-    start_time_constraint = If(start_time == t, start_time + 30 > t + 30, True)
-    end_time_constraint = If(start_time == t, end_time <= t + 30, True)
-    Add(And(start_time_constraint, end_time_constraint))
+    # Define the constraints for the meeting
+    constraints = [
+        And(start_time_var >= start_time, start_time_var < end_time),
+        And(end_time_var > start_time_var, end_time_var <= end_time),
+        Or(start_time_var + meeting_duration > ashley_busy[i] for i in range(len(ashley_busy))),
+        Or(start_time_var + meeting_duration > ronald_busy[i] for i in range(len(ronald_busy))),
+        Or(start_time_var + meeting_duration > larry_blocked[i] for i in range(len(larry_blocked)))
+    ]
 
-# Define the constraints for the meeting duration
-meeting_duration_constraint = start_time + 30 == end_time
-Add(meeting_duration_constraint)
+    # Solve the constraints
+    solver = Solver()
+    solver.add(constraints)
+    solver.add(start_time_var + meeting_duration <= end_time)
+    solver.add(And(start_time_var >= 9 * 60, end_time_var <= 17 * 60))
+    if solver.check() == sat:
+        model = solver.model()
+        start_time = model[start_time_var].as_long()
+        end_time = model[end_time_var].as_long()
+        print(f'Day: {day}')
+        print(f'Start Time: {start_time // 60:02d}:{start_time % 60:02d}')
+        print(f'End Time: {end_time // 60:02d}:{end_time % 60:02d}')
+    else:
+        print('No solution found')
 
-# Define the constraints for the work hours
-work_hours = [9, 10, 11, 12, 13, 14, 15, 16]  # Work hours in 30-minute increments
-for t in work_hours:
-    start_time_constraint = If(start_time == t, start_time + 30 <= 17, True)
-    end_time_constraint = If(start_time == t, start_time + 30 >= 9, True)
-    Add(And(start_time_constraint, end_time_constraint))
-
-# Solve the constraints
-s = Solver()
-s.add(And(day >= 0, day <= 1))
-s.add(And(start_time >= 9, start_time <= 16))
-s.add(And(end_time >= 9, end_time <= 17))
-s.add(And(start_time + 30 <= end_time, start_time + 30 >= 30))
-s.add(And(end_time - start_time == 30))
-s.add(And(start_time >= 9, end_time <= 17))
-s.add(And(start_time + 30 >= 9, end_time <= 17))
-s.add(And(start_time + 30 <= 17, end_time - start_time == 30))
-s.add(Not(start_time == 10))
-s.add(Not(start_time == 11))
-s.add(Not(start_time == 12))
-s.add(Not(start_time == 15))
-s.add(Not(start_time == 9))
-s.add(Not(start_time == 10))
-s.add(Not(start_time == 12))
-s.add(Not(start_time == 14))
-s.add(Not(start_time == 9))
-s.add(Not(start_time == 13))
-s.add(Not(start_time == 9))
-s.add(Not(start_time == 12))
-s.check()
-
-# Print the solution
-if s.model():
-    day_val = s.model()[day].as_long()
-    start_time_val = s.model()[start_time].as_long()
-    end_time_val = s.model()[end_time].as_long()
-    print(f"SOLUTION:")
-    print(f"Day: {day_val}")
-    print(f"Start Time: {start_time_val:02d}:00")
-    print(f"End Time: {end_time_val:02d}:00")
-else:
-    print("No solution exists.")
+solve_meeting()

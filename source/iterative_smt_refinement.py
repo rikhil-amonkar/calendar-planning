@@ -247,16 +247,56 @@ def evaluate_trip(constraints, pred_dict):
         if not event_covered:
             return False, {"event_range": ev}
 
-    # Fix: Check flight constraints, but skip consecutive segments that are the same place on the same day
+    # Fix: Check flight constraints by identifying flight days properly
     allowed = [(d["from"], d["to"]) for d in constraints.get("direct_flights")]
-    for a, b in zip(segments, segments[1:]):
-        # Skip if both segments are the same place and overlap in time (same day)
-        if a["place"] == b["place"]:
+    
+    # Group segments by day
+    day_cities = {}
+    for seg in segments:
+        for day in range(seg["start"], seg["end"] + 1):
+            if day not in day_cities:
+                day_cities[day] = set()
+            day_cities[day].add(seg["place"])
+    
+    # Check only flight days (days with more than 1 city)
+    sorted_days = sorted(day_cities.keys())
+    for i, flight_day in enumerate(sorted_days):
+        cities_on_flight_day = day_cities[flight_day]
+        
+        # Skip if not a flight day (only 1 city or no cities)
+        if len(cities_on_flight_day) <= 1:
             continue
         
-        pair = (a["place"], b["place"])
-        if pair not in allowed:
-            return False, {"flight": {"from": a["place"], "to": b["place"]}}
+        departure_city = None
+        arrival_city = None
+        
+        if i == 0:
+            # First day flight - check day after for arrival city
+            if i < len(sorted_days) - 1:
+                next_day = sorted_days[i+1]
+                cities_next_day = day_cities[next_day]
+                # Arrival city is one that's in next day
+                arrived_cities = cities_on_flight_day & cities_next_day
+                if arrived_cities:
+                    arrival_city = list(arrived_cities)[0]
+                    # Departure city is the other city on flight day
+                    departure_city = list(cities_on_flight_day - {arrival_city})[0]
+        else:
+            # Regular flight day - check day before for departure city
+            prev_day = sorted_days[i-1]
+            cities_prev_day = day_cities[prev_day]
+            # Departure city is one that was in previous day
+            departed_cities = cities_on_flight_day & cities_prev_day
+            if departed_cities:
+                departure_city = list(departed_cities)[0]
+                # Arrival city is the other city on flight day
+                arrival_city = list(cities_on_flight_day - {departure_city})[0]
+        
+        # Check flight constraint if we found both departure and arrival
+        if departure_city and arrival_city:
+            pair = (departure_city, arrival_city)
+            if pair not in allowed:
+                return False, {"flight": {"from": departure_city, "to": arrival_city}}
 
     return True, {}
 
@@ -345,7 +385,32 @@ def evaluate_meeting(constraints, pred_dict):
 def format_constraint_feedback(violated_constraints, task):
     """Format constraint violations into human-readable feedback"""
     if not violated_constraints:
-        return ""
+        # If no specific violated constraints, provide a default message listing all required constraints for the task
+        if task == "calendar":
+            return ("\nYour solution did not produce a valid meeting time. "
+                    "Please ensure your solution satisfies ALL of the following constraints:\n"
+                    "- The meeting must be scheduled within the available time slots.\n"
+                    "- The meeting duration must be exactly as required.\n"
+                    "- The meeting must not overlap with unavailable times.\n"
+                    )
+        elif task == "trip":
+            return ("\nYour solution did not produce a valid itinerary. "
+                    "Please ensure your solution satisfies ALL of the following constraints:\n"
+                    "- The itinerary must cover the required number of days.\n"
+                    "- You must stay in each required city for the specified number of days.\n"
+                    "- Only allowed direct flights between cities may be used.\n"
+                    "- There must be no gaps or overlaps in the itinerary.\n"
+                    )
+        elif task == "meeting":
+            return ("\nYour solution did not produce a valid meeting schedule. "
+                    "Please ensure your solution satisfies ALL of the following constraints:\n"
+                    "- You must meet with all required people.\n"
+                    "- Meeting times must be within each person's availability.\n"
+                    "- There must be enough time to travel between meetings.\n"
+                    "- Meeting times must be in a valid format.\n"
+                    )
+        else:
+            return "\nYour solution did not produce a valid output."
 
     feedback = "\nYour solution violates the following constraints:\n"
 
@@ -392,7 +457,7 @@ def format_constraint_feedback(violated_constraints, task):
             travel = violated_constraints["travel_start"]
             feedback += f"- Not enough time to travel from start location to {travel['to_person']} at {travel['to_location']} (need {travel['travel_time']} minutes)\n"
 
-    feedback += "\nPlease revise your solution to satisfy these constraints."
+   
     return feedback
 
 def execute_python_code(code_path):
@@ -529,6 +594,14 @@ def main():
                 continue
         
         try:
+            gold_formatted = {}
+            pred_formatted = {}
+            violated_constraints = {}
+            is_exact_match = False
+            constraints_satisfied = False
+            execution_output = ""
+            pass_num = 0
+            
             result = process_single_example(
                 args.model,
                 model_short_name,

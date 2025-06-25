@@ -1,73 +1,100 @@
-YOUR_CODE
 from z3 import *
 
 # Define the cities
-cities = ['Porto', 'Amsterdam', 'Munich', 'Reykjavik', 'Prague', 'Santorini']
+cities = ['Porto', 'Prague', 'Reykjavik', 'Santorini', 'Amsterdam', 'Munich']
 
 # Define the days
 days = range(1, 17)
 
+# Define the variables
+place = [Int(f'place_{day}') for day in days]
+wedding = [Bool(f'wedding_{day}') for day in days]
+meeting = [Bool(f'meeting_{day}') for day in days]
+conference = [Bool(f'conference_{day}') for day in days]
+
 # Define the constraints
-constraints = []
+s = Solver()
 
-# Initialize the days in each city
-for city in cities:
-    constraints.append(Bool(f'days_in_{city}'))
+# Porto is the starting point
+place[0] = 0
+s.add(place[0] == 0)
 
-# Define the constraints for each city
-for city in cities:
-    constraints.append(Not(And([Bool(f'days_in_{city}') == 0] + [Bool(f'days_in_{city}')!= i for i in days])))
+# Porto to Amsterdam
+s.add(Implies(place[1] == 0, place[1] == 1))
 
-# Define the constraints for the given city stays
-constraints.append(Bool(f'days_in_Porto') >= 5)
-constraints.append(Bool(f'days_in_Porto') <= 5)
-constraints.append(Bool(f'days_in_Prague') >= 4)
-constraints.append(Bool(f'days_in_Prague') <= 4)
-constraints.append(Bool(f'days_in_Reykjavik') >= 4)
-constraints.append(Bool(f'days_in_Reykjavik') <= 4)
-constraints.append(Bool(f'days_in_Santorini') >= 2)
-constraints.append(Bool(f'days_in_Santorini') <= 2)
-constraints.append(Bool(f'days_in_Amsterdam') >= 4)
-constraints.append(Bool(f'days_in_Amsterdam') <= 4)
-constraints.append(Bool(f'days_in_Munich') >= 4)
-constraints.append(Bool(f'days_in_Munich') <= 4)
+# Porto stays for 5 days
+for day in range(1, 6):
+    s.add(Or([place[day] == i for i in range(len(cities))]))
 
-# Define the constraints for the wedding and conference
-constraints.append(Bool(f'days_in_Reykjavik') >= 4)
-constraints.append(Bool(f'days_in_Reykjavik') <= 7)
-constraints.append(Bool(f'days_in_Amsterdam') >= 14)
-constraints.append(Bool(f'days_in_Amsterdam') <= 15)
+# Reykjavik stays for 4 days
+for day in range(1, 5):
+    s.add(Or([place[day] == i for i in range(len(cities))]))
+s.add(wedding[4] == True)
+s.add(wedding[5] == True)
+s.add(wedding[6] == True)
+s.add(wedding[7] == True)
 
-# Define the constraints for the meeting in Munich
-constraints.append(Bool(f'days_in_Munich') >= 7)
-constraints.append(Bool(f'days_in_Munich') <= 10)
+# Prague stays for 4 days
+for day in range(1, 5):
+    s.add(Or([place[day] == i for i in range(len(cities))]))
+s.add(meeting[7] == True)
+s.add(meeting[8] == True)
+s.add(meeting[9] == True)
+s.add(meeting[10] == True)
+s.add(place[10] == 1)
 
-# Define the constraints for the direct flights
-flights = {
-    ('Porto', 'Amsterdam'): 1,
-    ('Munich', 'Amsterdam'): 1,
-    ('Reykjavik', 'Amsterdam'): 1,
-    ('Munich', 'Porto'): 1,
-    ('Prague', 'Reykjavik'): 1,
-    ('Reykjavik', 'Munich'): 1,
-    ('Amsterdam', 'Santorini'): 1,
-    ('Prague', 'Amsterdam'): 1,
-    ('Prague', 'Munich'): 1
-}
-for (city1, city2) in flights:
-    constraints.append(Bool(f'days_in_{city1}') + Bool(f'days_in_{city2}') >= flights[(city1, city2)])
+# Santorini stays for 2 days
+for day in range(1, 3):
+    s.add(Or([place[day] == i for i in range(len(cities))]))
+s.add(place[13] == 2)
+s.add(place[14] == 2)
+s.add(place[15] == 3)
 
-# Create the solver
-solver = Solver()
+# Amsterdam stays for 2 days
+for day in range(1, 3):
+    s.add(Or([place[day] == i for i in range(len(cities))]))
+s.add(conference[14] == True)
+s.add(conference[15] == True)
+s.add(place[12] == 3)
+s.add(place[11] == 3)
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+# Munich stays for 4 days
+for day in range(1, 5):
+    s.add(Or([place[day] == i for i in range(len(cities))]))
 
-# Solve the constraints
-if solver.check() == sat:
-    model = solver.model()
-    for city in cities:
-        print(f'You will spend {model[Bool(f"days_in_{city}")].as_long()} days in {city}')
+# Direct flights
+s.add(Implies(place[2] == 0, place[2] == 2))
+s.add(Implies(place[2] == 2, place[2] == 0))
+s.add(Implies(place[2] == 0, place[2] == 3))
+s.add(Implies(place[2] == 3, place[2] == 0))
+s.add(Implies(place[2] == 2, place[2] == 3))
+s.add(Implies(place[2] == 3, place[2] == 2))
+s.add(Implies(place[2] == 0, place[2] == 4))
+s.add(Implies(place[2] == 4, place[2] == 0))
+s.add(Implies(place[3] == 2, place[3] == 0))
+s.add(Implies(place[3] == 0, place[3] == 2))
+s.add(Implies(place[3] == 3, place[3] == 0))
+s.add(Implies(place[3] == 0, place[3] == 3))
+s.add(Implies(place[3] == 3, place[3] == 2))
+s.add(Implies(place[3] == 2, place[3] == 3))
+s.add(Implies(place[4] == 3, place[4] == 2))
+s.add(Implies(place[4] == 2, place[4] == 3))
+
+# Check if the solution is valid
+if s.check() == sat:
+    model = s.model()
+    # Create the itinerary
+    itinerary = []
+    for day in days:
+        place_value = model[place[day]].as_long()
+        if place_value == 0:
+            itinerary.append({"day_range": "Day 1-5", "place": "Porto"})
+        elif place_value == 1:
+            itinerary.append({"day_range": "Day 1-4", "place": "Prague"})
+        elif place_value == 2:
+            itinerary.append({"day_range": "Day 1-2", "place": "Santorini"})
+        elif place_value == 3:
+            itinerary.append({"day_range": "Day 1-2", "place": "Amsterdam"})
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
+    print("No solution found")

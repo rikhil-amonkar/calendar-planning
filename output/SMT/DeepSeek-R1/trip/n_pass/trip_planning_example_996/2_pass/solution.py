@@ -1,74 +1,74 @@
-def create_itinerary(events):
-    # Sort events by start date and then by end date to ensure chronological processing
-    events_sorted = sorted(events, key=lambda x: (x['start'], x['end']))
-    
-    # Create a list to hold the itinerary
-    itinerary = []
-    current_day = 1
-    last_city = None
-    
-    # Process each event to generate continuous stays
-    for event in events_sorted:
-        city = event['city']
-        start = event['start']
-        end = event['end']
-        
-        # If there's a gap between current_day and the event start, we need to fill it
-        if current_day < start:
-            # This should not happen if events are contiguous, but handle for safety
-            gap_start = current_day
-            gap_end = start - 1
-            if last_city is not None:
-                itinerary.append({
-                    'day_range': f'Day {gap_start}-{gap_end}',
-                    'place': last_city
-                })
-            current_day = start
-        
-        # If switching cities, add the transition at the start date
-        if last_city is not None and last_city != city:
-            itinerary.append({
-                'day_range': f'Day {start}',
-                'place': last_city
-            })
-            itinerary.append({
-                'day_range': f'Day {start}',
-                'place': city
-            })
-        
-        # Add the continuous stay for the event duration
-        itinerary.append({
-            'day_range': f'Day {start}-{end}',
-            'place': city
-        })
-        
-        # Add the last day of the event explicitly for clarity
-        itinerary.append({
-            'day_range': f'Day {end}',
-            'place': city
-        })
-        
-        current_day = end + 1
-        last_city = city
-    
-    # If there are remaining days after the last event, extend the stay in the last city
-    if current_day <= 22:
-        itinerary.append({
-            'day_range': f'Day {current_day}-22',
-            'place': last_city
-        })
-    
-    return {'itinerary': itinerary}
+from z3 import *
+import json
 
-events = [
-    {'city': 'Mykonos', 'start': 1, 'end': 3},
-    {'city': 'Nice', 'start': 3, 'end': 4},
-    {'city': 'Riga', 'start': 4, 'end': 6},  # Adjusted to end on day 6
-    {'city': 'Prague', 'start': 7, 'end': 9},
-    {'city': 'Bucharest', 'start': 10, 'end': 14},
-    {'city': 'Zurich', 'start': 14, 'end': 18},
-    {'city': 'Valencia', 'start': 18, 'end': 22}
-]
+def main():
+    cities = ["Mykonos", "Nice", "Zurich", "Prague", "Bucharest", "Riga", "Valencia"]
+    days = [3, 2, 5, 3, 5, 5, 5]
+    dminus = [d - 1 for d in days]
+    
+    adj = [
+        [0, 1, 1, 0, 0, 0, 0],
+        [1, 0, 1, 0, 0, 1, 0],
+        [1, 1, 0, 1, 1, 1, 1],
+        [0, 0, 1, 0, 1, 1, 1],
+        [0, 0, 1, 1, 0, 1, 1],
+        [0, 1, 1, 1, 1, 0, 0],
+        [0, 0, 1, 1, 1, 0, 0]
+    ]
+    
+    directed_edges = []
+    for a in range(7):
+        for b in range(7):
+            if adj[a][b] == 1:
+                directed_edges.append((a, b))
+    
+    solver = Solver()
+    city_vars = [Int('city%d' % i) for i in range(7)]
+    
+    for i in range(7):
+        solver.add(city_vars[i] >= 0, city_vars[i] <= 6)
+    solver.add(Distinct(city_vars))
+    
+    solver.add(city_vars[0] == 0)
+    
+    dminus_arr = Array('dminus_arr', IntSort(), IntSort())
+    for idx, d_val in enumerate(dminus):
+        solver.add(dminus_arr[idx] == d_val)
+    
+    s = [Int('s%d' % i) for i in range(7)]
+    solver.add(s[0] == 1)
+    for i in range(1, 7):
+        solver.add(s[i] == s[i-1] + dminus_arr[city_vars[i-1]])
+    
+    for i in range(7):
+        solver.add(If(city_vars[i] == 3, s[i] == 7, True))
+    
+    for i in range(6):
+        edge_conds = []
+        for (a, b) in directed_edges:
+            edge_conds.append(And(city_vars[i] == a, city_vars[i+1] == b))
+        solver.add(Or(edge_conds))
+    
+    if solver.check() == sat:
+        model = solver.model()
+        order = [model.evaluate(city_vars[i]).as_long() for i in range(7)]
+        s_val = [model.evaluate(s[i]).as_long() for i in range(7)]
+        
+        itinerary = []
+        for i in range(7):
+            c_index = order[i]
+            start = s_val[i]
+            end = start + days[c_index] - 1
+            itinerary.append({"day_range": "Day {}-{}".format(start, end), "place": cities[c_index]})
+            if i < 6:
+                itinerary.append({"day_range": "Day {}".format(end), "place": cities[c_index]})
+                next_index = order[i+1]
+                itinerary.append({"day_range": "Day {}".format(end), "place": cities[next_index]})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
+    else:
+        print(json.dumps({"error": "No solution found"}))
 
-itinerary = create_itinerary(events)
-print(itinerary)
+if __name__ == '__main__':
+    main()

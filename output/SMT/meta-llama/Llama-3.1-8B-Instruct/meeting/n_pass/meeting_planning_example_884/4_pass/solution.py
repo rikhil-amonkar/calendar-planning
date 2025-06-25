@@ -1,74 +1,114 @@
-YOUR_CODE
 from z3 import *
+
+# Define the locations
+locations = ['Richmond District', 'Chinatown', 'Sunset District', 'Alamo Square', 
+             'Financial District', 'North Beach', 'Embarcadero', 'Presidio', 
+             'Golden Gate Park', 'Bayview']
+
+# Define the people
+people = ['Robert', 'David', 'Matthew', 'Jessica', 'Melissa', 'Mark', 'Deborah', 'Karen', 'Laura']
 
 # Define the travel times
 travel_times = {
-    'Richmond District': {'Chinatown': 20, 'Sunset District': 11, 'Alamo Square': 13, 'Financial District': 22, 'North Beach': 17, 'Embarcadero': 19, 'Presidio': 7, 'Golden Gate Park': 9, 'Bayview': 27},
-    'Chinatown': {'Richmond District': 20, 'Sunset District': 29, 'Alamo Square': 17, 'Financial District': 5, 'North Beach': 3, 'Embarcadero': 5, 'Presidio': 19, 'Golden Gate Park': 23, 'Bayview': 20},
-    'Sunset District': {'Richmond District': 12, 'Chinatown': 30, 'Alamo Square': 17, 'Financial District': 30, 'North Beach': 28, 'Embarcadero': 30, 'Presidio': 16, 'Golden Gate Park': 11, 'Bayview': 22},
-    'Alamo Square': {'Richmond District': 13, 'Chinatown': 17, 'Sunset District': 16, 'Financial District': 17, 'North Beach': 15, 'Embarcadero': 16, 'Presidio': 17, 'Golden Gate Park': 9, 'Bayview': 16},
-    'Financial District': {'Richmond District': 22, 'Chinatown': 5, 'Sunset District': 30, 'Alamo Square': 17, 'North Beach': 7, 'Embarcadero': 4, 'Presidio': 22, 'Golden Gate Park': 23, 'Bayview': 19},
-    'North Beach': {'Richmond District': 17, 'Chinatown': 3, 'Sunset District': 27, 'Alamo Square': 16, 'Financial District': 8, 'Embarcadero': 6, 'Presidio': 17, 'Golden Gate Park': 22, 'Bayview': 25},
-    'Embarcadero': {'Richmond District': 19, 'Chinatown': 5, 'Sunset District': 30, 'Alamo Square': 19, 'Financial District': 5, 'North Beach': 5, 'Presidio': 20, 'Golden Gate Park': 25, 'Bayview': 21},
-    'Presidio': {'Richmond District': 7, 'Chinatown': 19, 'Sunset District': 15, 'Alamo Square': 19, 'Financial District': 23, 'North Beach': 18, 'Embarcadero': 20, 'Golden Gate Park': 12, 'Bayview': 31},
-    'Golden Gate Park': {'Richmond District': 9, 'Chinatown': 23, 'Sunset District': 10, 'Alamo Square': 9, 'Financial District': 26, 'North Beach': 23, 'Embarcadero': 25, 'Presidio': 11, 'Bayview': 23},
-    'Bayview': {'Richmond District': 27, 'Chinatown': 20, 'Sunset District': 23, 'Alamo Square': 16, 'Financial District': 19, 'North Beach': 22, 'Embarcadero': 19, 'Presidio': 32, 'Golden Gate Park': 22}
+    'Richmond District': {'Chinatown': 20, 'Sunset District': 11, 'Alamo Square': 13, 
+                         'Financial District': 22, 'North Beach': 17, 'Embarcadero': 19, 
+                         'Presidio': 7, 'Golden Gate Park': 9, 'Bayview': 27},
+    'Chinatown': {'Richmond District': 20, 'Sunset District': 29, 'Alamo Square': 17, 
+                  'Financial District': 5, 'North Beach': 3, 'Embarcadero': 5, 
+                  'Presidio': 19, 'Golden Gate Park': 23, 'Bayview': 20},
+    'Sunset District': {'Richmond District': 12, 'Chinatown': 30, 'Alamo Square': 17, 
+                        'Financial District': 30, 'North Beach': 28, 'Embarcadero': 30, 
+                        'Presidio': 16, 'Golden Gate Park': 11, 'Bayview': 22},
+    'Alamo Square': {'Richmond District': 11, 'Chinatown': 15, 'Sunset District': 16, 
+                     'Financial District': 17, 'North Beach': 15, 'Embarcadero': 16, 
+                     'Presidio': 17, 'Golden Gate Park': 9, 'Bayview': 16},
+    'Financial District': {'Richmond District': 21, 'Chinatown': 5, 'Sunset District': 30, 
+                           'Alamo Square': 17, 'North Beach': 7, 'Embarcadero': 4, 
+                           'Presidio': 22, 'Golden Gate Park': 23, 'Bayview': 19},
+    'North Beach': {'Richmond District': 18, 'Chinatown': 6, 'Sunset District': 27, 
+                    'Alamo Square': 16, 'Financial District': 8, 'Embarcadero': 6, 
+                    'Presidio': 17, 'Golden Gate Park': 22, 'Bayview': 25},
+    'Embarcadero': {'Richmond District': 21, 'Chinatown': 7, 'Sunset District': 30, 
+                    'Alamo Square': 19, 'Financial District': 5, 'North Beach': 5, 
+                    'Presidio': 20, 'Golden Gate Park': 25, 'Bayview': 21},
+    'Presidio': {'Richmond District': 7, 'Chinatown': 21, 'Sunset District': 15, 
+                 'Alamo Square': 19, 'Financial District': 23, 'North Beach': 18, 
+                 'Embarcadero': 20, 'Golden Gate Park': 12, 'Bayview': 31},
+    'Golden Gate Park': {'Richmond District': 7, 'Chinatown': 23, 'Sunset District': 10, 
+                         'Alamo Square': 9, 'Financial District': 26, 'North Beach': 23, 
+                         'Embarcadero': 25, 'Presidio': 11, 'Bayview': 23},
+    'Bayview': {'Richmond District': 25, 'Chinatown': 19, 'Sunset District': 23, 
+                'Alamo Square': 16, 'Financial District': 19, 'North Beach': 22, 
+                'Embarcadero': 19, 'Presidio': 32, 'Golden Gate Park': 22}
 }
 
 # Define the constraints
-s = Optimize()
+constraints = []
+for person in people:
+    if person == 'Robert':
+        constraints.append(And(9 <= 9 + 20, 9 + 20 + 120 <= 17.5))
+    elif person == 'David':
+        constraints.append(And(12.5 <= 9 + 11 + 30, 9 + 11 + 30 + 45 <= 17.5))
+    elif person == 'Matthew':
+        constraints.append(And(9 <= 9 + 13, 9 + 13 + 90 <= 10.75))
+    elif person == 'Jessica':
+        constraints.append(And(9.5 <= 9 + 22 + 5, 9 + 22 + 5 + 45 <= 17.5))
+    elif person == 'Melissa':
+        constraints.append(And(7.25 <= 9 + 17 + 6, 9 + 17 + 6 + 45 <= 17.5))
+    elif person == 'Mark':
+        constraints.append(And(15.25 <= 9 + 19 + 5 + 30, 9 + 19 + 5 + 30 + 45 <= 17.5))
+    elif person == 'Deborah':
+        constraints.append(And(19.5 <= 9 + 19 + 20 + 30, 9 + 19 + 20 + 30 + 45 <= 20))
+    elif person == 'Karen':
+        constraints.append(And(19.5 <= 9 + 9 + 23 + 30 + 25, 9 + 9 + 23 + 30 + 25 + 120 <= 22.5))
+    elif person == 'Laura':
+        constraints.append(And(21.25 <= 9 + 27 + 20 + 21 + 19, 9 + 27 + 20 + 21 + 19 + 15 <= 23))
+
+# Define the solver
+solver = Solver()
 
 # Define the variables
-x = [Bool(f'x_{i}') for i in range(10)]
-y = [Bool(f'y_{i}') for i in range(10)]
+times = {}
+for person in people:
+    for location in locations:
+        times[(person, location)] = Int(f'{person}_{location}')
 
-# Define the objective function
-objective = [If(x[i], 1, 0) + If(y[i], 1, 0) for i in range(10)]
-s.add(Maximize(Sum(objective)))  # Define Maximize here
+# Add constraints
+for person in people:
+    for location in locations:
+        solver.add(times[(person, location)] >= 0)
+        solver.add(times[(person, location)] <= 24)
+for person in people:
+    for location1 in locations:
+        for location2 in locations:
+            if location1!= location2:
+                solver.add(times[(person, location1)] + travel_times[location1][location2] + times[(person, location2)] >= 9)
 
-# Define the constraints for Robert
-s.add(And(x[0], 0 <= 60 + travel_times['Richmond District']['Chinatown'] - 90))
-s.add(And(x[0], 0 <= 60 + travel_times['Chinatown']['Richmond District'] - 90))
+# We need to meet with exactly 8 people, so we introduce a new variable to count the number of meetings
+meetings = [Bool(f'meeting_{person}') for person in people]
 
-# Define the constraints for David
-s.add(And(x[1], 0 <= 120 + travel_times['Richmond District']['Sunset District'] - 45))
-s.add(And(x[1], 0 <= 120 + travel_times['Sunset District']['Richmond District'] - 45))
-
-# Define the constraints for Matthew
-s.add(And(x[2], 0 <= 120 + travel_times['Richmond District']['Alamo Square'] - 90))
-s.add(And(x[2], 0 <= 120 + travel_times['Alamo Square']['Richmond District'] - 90))
-
-# Define the constraints for Jessica
-s.add(And(x[3], 0 <= 60 + travel_times['Richmond District']['Financial District'] - 45))
-s.add(And(x[3], 0 <= 60 + travel_times['Financial District']['Richmond District'] - 45))
-
-# Define the constraints for Melissa
-s.add(And(x[4], 0 <= 60 + travel_times['Richmond District']['North Beach'] - 45))
-s.add(And(x[4], 0 <= 60 + travel_times['North Beach']['Richmond District'] - 45))
-
-# Define the constraints for Mark
-s.add(And(x[5], 0 <= 60 + travel_times['Richmond District']['Embarcadero'] - 45))
-s.add(And(x[5], 0 <= 60 + travel_times['Embarcadero']['Richmond District'] - 45))
-
-# Define the constraints for Deborah
-s.add(And(x[6], 0 <= 60 + travel_times['Richmond District']['Presidio'] - 45))
-s.add(And(x[6], 0 <= 60 + travel_times['Presidio']['Richmond District'] - 45))
-
-# Define the constraints for Karen
-s.add(And(x[7], 0 <= 180 + travel_times['Richmond District']['Golden Gate Park'] - 120))
-s.add(And(x[7], 0 <= 180 + travel_times['Golden Gate Park']['Richmond District'] - 120))
-
-# Define the constraints for Laura
-s.add(And(x[8], 0 <= 15 + travel_times['Richmond District']['Bayview'] - 15))
-s.add(And(x[8], 0 <= 15 + travel_times['Bayview']['Richmond District'] - 15))
+# Add constraints
+for person in people:
+    solver.add(Or([times[(person, location)]!= -1 for location in locations]))
+for i in range(len(people)):
+    solver.add(meetings[i] == Or([times[(people[i], location)]!= -1 for location in locations]))
+solver.add(And([meetings[i] == meetings[j] for i in range(len(people)) for j in range(i + 1, len(people))]))
+solver.add(And([meetings[i] == True for i in range(len(people))]))
+solver.add(And([meetings[i]!= meetings[j] for i in range(len(people)) for j in range(i + 1, len(people))]))
+solver.add(And([meetings[i] == False for i in range(8, len(people))]))
+solver.add(And([meetings[i] == False for i in range(len(people) - 8, len(people))]))
+solver.add(And([meetings[i]!= False for i in range(len(people) - 8)]))
+solver.add(And([meetings[i]!= False for i in range(8)]))
+solver.add(And([meetings[i] == True for i in range(8)]))
 
 # Solve the problem
-s.check()
-model = s.model()
-
-# Print the solution
-for i in range(10):
-    if model.evaluate(x[i]):
-        print(f'Meet at {i+1} at {travel_times[list(travel_times.keys())[i]]["Richmond District"]} minutes from Richmond District')
-
-print(f'Total time: {model.evaluate(Sum(objective))}')
+if solver.check() == sat:
+    model = solver.model()
+    meetings_model = [model[meetings[i]] for i in range(len(people))]
+    people_meeting = [people[i] for i in range(len(people)) if meetings_model[i]]
+    for person in people_meeting:
+        for location in locations:
+            if model[times[(person, location)]]!= -1:
+                print(f'{person} will visit {location} at {model[times[(person, location)]]} hours')
+else:
+    print('No solution found')

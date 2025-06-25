@@ -1,88 +1,88 @@
 from z3 import *
-
-# Define the cities
-cities = ['Oslo', 'Helsinki', 'Edinburgh', 'Riga', 'Tallinn', 'Budapest', 'Vilnius', 'Porto', 'Geneva']
-
-# Define the days
-days = range(1, 26)
-
-# Define the direct flights
-flights = {
-    ('Oslo', 'Helsinki'): [1],
-    ('Oslo', 'Edinburgh'): [1],
-    ('Oslo', 'Geneva'): [1],
-    ('Edinburgh', 'Helsinki'): [1],
-    ('Edinburgh', 'Riga'): [1],
-    ('Edinburgh', 'Budapest'): [1],
-    ('Edinburgh', 'Geneva'): [1],
-    ('Edinburgh', 'Porto'): [1],
-    ('Riga', 'Tallinn'): [1],
-    ('Tallinn', 'Helsinki'): [1],
-    ('Tallinn', 'Vilnius'): [1],
-    ('Vilnius', 'Helsinki'): [1],
-    ('Riga', 'Helsinki'): [1],
-    ('Riga', 'Vilnius'): [1],
-    ('Budapest', 'Geneva'): [1],
-    ('Helsinki', 'Budapest'): [1],
-    ('Helsinki', 'Geneva'): [1],
-    ('Helsinki', 'Oslo'): [1],
-    ('Geneva', 'Porto'): [1],
-    ('Budapest', 'Oslo'): [1],
-    ('Tallinn', 'Oslo'): [1],
-    ('Vilnius', 'Oslo'): [1],
-    ('Riga', 'Oslo'): [1],
-    ('Edinburgh', 'Oslo'): [1],
-    ('Edinburgh', 'Helsinki'): [1],
-    ('Helsinki', 'Vilnius'): [1],
-    ('Tallinn', 'Oslo'): [1],
-    ('Vilnius', 'Oslo'): [1],
-    ('Riga', 'Oslo'): [1],
-    ('Geneva', 'Oslo'): [1]
-}
-
-# Define the constraints
-solver = Solver()
+from itertools import combinations
 
 # Define the variables
-visit = {city: [Bool(f'{city}_day_{day}') for day in days] for city in cities}
+days = 25
+cities = ['Oslo', 'Helsinki', 'Edinburgh', 'Riga', 'Tallinn', 'Budapest', 'Vilnius', 'Porto', 'Geneva']
+flight_days = {
+    'Oslo': 0,
+    'Helsinki': 0,
+    'Edinburgh': 0,
+    'Riga': 0,
+    'Tallinn': 0,
+    'Budapest': 0,
+    'Vilnius': 0,
+    'Porto': 0,
+    'Geneva': 0
+}
+flight_days['Oslo'] = 2
+flight_days['Helsinki'] = 2
+flight_days['Edinburgh'] = 3
+flight_days['Riga'] = 2
+flight_days['Tallinn'] = 5
+flight_days['Budapest'] = 5
+flight_days['Vilnius'] = 5
+flight_days['Porto'] = 5
+flight_days['Geneva'] = 4
+min_days_in_city = {city: flight_days[city] for city in cities}
 
-# Add constraints for each city
-for city in cities:
-    for day in days:
-        solver.add(visit[city][day - 1] if day >= 2 else False)
-    solver.add(Or(*[visit[city][day] for day in days]))
-    solver.add(Implies(Or(*[visit[city][day] for day in days]), Or(*[visit[city][day - 1] for day in days if day >= 2])))
-    solver.add(Or(*[visit[city][day] for day in days]))
+# Define the constraints
+s = Optimize()
+stay_in_city = [Bool(f'stay_in_{i}') for i in cities]
+flight = [[Bool(f'flight_{i}_{j}') for j in cities] for i in cities]
+for i in range(days):
+    s.add(Or([stay_in_city[city] for city in range(len(cities))]))
+    for city1 in range(len(cities)):
+        for city2 in range(len(cities)):
+            if city1!= city2:
+                s.add(flight[city1][city2] == flight[city2][city1])
+    for city in range(len(cities)):
+        s.add(stay_in_city[city] >= If(i < flight_days[cities[city]], flight_days[cities[city]] - i - 1, 0))
+    for city in range(len(cities)):
+        s.add(stay_in_city[city] == If(i < flight_days[cities[city]], flight_days[cities[city]] - i, 0))
+    for city in range(len(cities)):
+        if i >= flight_days[cities[city]] - 1:
+            s.add(stay_in_city[city] == 0)
+    for city1 in range(len(cities)):
+        for city2 in range(len(cities)):
+            if city1!= city2:
+                s.add(flight[city1][city2] <= i)
+                s.add(flight[city1][city2] >= i - flight_days[cities[city1]] + 1)
+                s.add(flight[city1][city2] >= i - flight_days[cities[city2]] + 1)
+                s.add(flight[city1][city2] <= i - flight_days[cities[city2]] + flight_days[cities[city1]])
+    # Ensure that the friend is met in Oslo between day 24 and 25
+    s.add(stay_in_city[cities.index('Oslo')] >= 1)
+    s.add(stay_in_city[cities.index('Oslo')] <= 2)
+    s.add(flight[cities.index('Oslo')][cities.index('Oslo')] == 1)
+    # Ensure that the wedding is attended in Tallinn between day 4 and 8
+    s.add(stay_in_city[cities.index('Tallinn')] >= 4)
+    s.add(stay_in_city[cities.index('Tallinn')] <= 8)
+    s.add(flight[cities.index('Tallinn')][cities.index('Tallinn')] == 1)
+    # Ensure that the direct flights are used
+    for city1, city2 in [('Porto', 'Oslo'), ('Edinburgh', 'Budapest'), ('Edinburgh', 'Geneva'), ('Edinburgh', 'Oslo'), ('Edinburgh', 'Helsinki'), ('Vilnius', 'Helsinki'), ('Tallinn', 'Vilnius'), ('Riga', 'Tallinn'), ('Riga', 'Helsinki'), ('Riga', 'Oslo'), ('Edinburgh', 'Riga'), ('Edinburgh', 'Porto'), ('Geneva', 'Porto'), ('Budapest', 'Geneva'), ('Helsinki', 'Geneva'), ('Helsinki', 'Budapest'), ('Helsinki', 'Oslo'), ('Tallinn', 'Helsinki'), ('Tallinn', 'Oslo')]:
+        s.add(flight[cities.index(city1)][cities.index(city2)] == 1)
+        s.add(flight[cities.index(city2)][cities.index(city1)] == 1)
 
-# Add constraints for each flight
-for (city1, city2), days in flights.items():
-    for day in days:
-        solver.add(Implies(visit[city1][day], visit[city2][day]))
-
-# Add constraints for each city's duration
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Oslo'][1], visit['Oslo'][2])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Helsinki'][1], visit['Helsinki'][2])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Edinburgh'][1], visit['Edinburgh'][2], visit['Edinburgh'][3])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Riga'][1], visit['Riga'][2])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Tallinn'][1], visit['Tallinn'][2], visit['Tallinn'][3], visit['Tallinn'][4], visit['Tallinn'][5])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Budapest'][1], visit['Budapest'][2], visit['Budapest'][3], visit['Budapest'][4], visit['Budapest'][5])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Vilnius'][1], visit['Vilnius'][2], visit['Vilnius'][3], visit['Vilnius'][4], visit['Vilnius'][5])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Porto'][1], visit['Porto'][2], visit['Porto'][3], visit['Porto'][4], visit['Porto'][5])))
-solver.add(ForAll([city, day], visit[city][day] == False) | (And(visit['Geneva'][1], visit['Geneva'][2], visit['Geneva'][3], visit['Geneva'][4])))
-
-# Add constraints for meeting a friend in Oslo
-solver.add(Implies(visit['Oslo'][24], visit['Oslo'][25]))
-
-# Check the solution
-if solver.check() == sat:
-    model = solver.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = []
-        for day in days:
-            if model.evaluate(visit[city][day]).as_bool():
-                trip_plan[city].append(day)
-    for city in trip_plan:
-        print(f'{city}: {trip_plan[city]}')
+# Solve the problem
+s.set_objective(1,'minimize')
+result = s.check()
+if result == sat:
+    model = s.model()
+    itinerary = []
+    for i, city in enumerate(cities):
+        stay = model[stay_in_city[i]]
+        if stay!= 0:
+            start_day = days - stay + 1
+            end_day = days - stay
+            itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+            for j in range(start_day, end_day):
+                itinerary.append({"day_range": f"Day {j}", "place": city})
+        for j, city2 in enumerate(cities):
+            if i!= j:
+                flight_value = model[flight[i][j]]
+                if flight_value!= 0:
+                    itinerary.append({"day_range": f"Day {days - flight_value + 1}", "place": city})
+                    itinerary.append({"day_range": f"Day {days - flight_value + 1}", "place": city2})
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
+    print("No solution found")

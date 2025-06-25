@@ -1,68 +1,87 @@
+YOUR_CODE
 from z3 import *
 
-def schedule_meeting(brian_schedule, julia_schedule, preferred_day=None):
-    # Create a Z3 solver
-    s = Solver()
+# Define the days of the week
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-    # Define the days and time slots
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    time_slots = [9, 10, 11, 12, 13, 14, 15, 16, 17]
+# Define the start and end times
+times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
 
-    # Define the variables
-    day = Int('day')
-    start_time = Int('start_time')
-    end_time = Int('end_time')
+# Define the meeting duration
+meeting_duration = 1
 
-    # Define the constraints
-    s.add(day >= 0)
-    s.add(day < 5)  # day is an index of the days list
-    s.add(start_time >= 9)
-    s.add(start_time < 18)
-    s.add(end_time >= 9)
-    s.add(end_time < 18)
-    s.add(end_time > start_time)  # end time is after start time
+# Define the constraints for Brian's schedule
+brian_constraints = [
+    ('Monday', '09:30', '10:00'), ('Monday', '12:30', '14:30'), ('Monday', '15:30', '16:00'),
+    ('Tuesday', '09:00', '09:30'), ('Wednesday', '12:30', '14:00'), ('Wednesday', '16:30', '17:00'),
+    ('Thursday', '11:00', '11:30'), ('Thursday', '13:00', '13:30'), ('Thursday', '16:30', '17:00'),
+    ('Friday', '09:30', '10:00'), ('Friday', '10:30', '11:00'), ('Friday', '13:00', '13:30'), ('Friday', '15:00', '16:00'), ('Friday', '16:30', '17:00')
+]
 
-    # Add constraints based on Brian's schedule
-    for day_index, schedule in enumerate(brian_schedule):
-        for t in time_slots:
-            s.add(Implies(day == day_index, Not(t in schedule)))
+# Define the constraints for Julia's schedule
+julia_constraints = [
+    ('Monday', '09:00', '10:00'), ('Monday', '11:00', '11:30'), ('Monday', '12:30', '13:00'), ('Monday', '15:30', '16:00'),
+    ('Tuesday', '13:00', '14:00'), ('Tuesday', '16:00', '16:30'),
+    ('Wednesday', '09:00', '11:30'), ('Wednesday', '12:00', '12:30'), ('Wednesday', '13:00', '17:00'),
+    ('Thursday', '09:00', '10:30'), ('Thursday', '11:00', '17:00'),
+    ('Friday', '09:00', '10:00'), ('Friday', '10:30', '11:30'), ('Friday', '12:30', '14:00'), ('Friday', '14:30', '15:00'), ('Friday', '15:30', '16:00')
+]
 
-    # Add constraints based on Julia's schedule
-    for day_index, schedule in enumerate(julia_schedule):
-        for t in time_slots:
-            s.add(Implies(day == day_index, Not(t in schedule)))
+# Define the preferences for Brian
+brian_preferences = []
 
-    # Add constraints to find the earliest available time slot
-    s.add(Implies(day == 0, And(start_time >= 10, start_time <= 16)))
-    s.add(Implies(day == 1, And(start_time >= 9, start_time <= 14)))
-    s.add(Implies(day == 2, And(start_time >= 9, start_time <= 16)))
-    s.add(Implies(day == 3, And(start_time >= 10, start_time <= 16)))
-    s.add(Implies(day == 4, And(start_time >= 9, start_time <= 16)))
+# Convert constraints and preferences to Z3 format
+brian_constraints_z3 = []
+julia_constraints_z3 = []
+for day, start, end in brian_constraints + julia_constraints:
+    start_hour = int(start[:2])
+    start_minute = int(start[3:])
+    end_hour = int(end[:2])
+    end_minute = int(end[3:])
+    for i in range(len(days)):
+        if days[i] == day:
+            day_index = i
+            break
+    brian_constraints_z3.append((day_index, start_hour, start_minute, end_hour, end_minute))
 
-    # Add constraints based on the preferred day
-    if preferred_day:
-        s.add(day == days.index(preferred_day))
+# Create Z3 solver
+s = Solver()
 
-    # Add constraints to ensure the meeting duration is 1 hour
-    s.add(Implies(day == 0, end_time == start_time + 1))
-    s.add(Implies(day == 1, end_time == start_time + 1))
-    s.add(Implies(day == 2, end_time == start_time + 1))
-    s.add(Implies(day == 3, end_time == start_time + 1))
-    s.add(Implies(day == 4, end_time == start_time + 1))
+# Define the variables
+day = Int('day')
+start_hour = Int('start_hour')
+start_minute = Int('start_minute')
+end_hour = Int('end_hour')
+end_minute = Int('end_minute')
 
-    # Solve the constraints
-    if s.check() == sat:
-        model = s.model()
-        day_value = days[model[day].as_long()]
-        start_time_value = model[start_time].as_long()
-        end_time_value = model[end_time].as_long()
-        return f'SOLUTION:\nDay: {day_value}\nStart Time: {start_time_value:02d}:00\nEnd Time: {end_time_value:02d}:00'
-    else:
-        return 'No solution found'
+# Add constraints
+for day_index, start_hour, start_minute, end_hour, end_minute in brian_constraints_z3 + julia_constraints_z3:
+    s.add(And(day!= day_index, start_hour > start_hour, start_hour < end_hour, start_minute > start_minute, start_minute < end_minute))
+    s.add(Or(day!= day_index, start_hour > start_hour, start_hour < end_hour, start_minute > start_minute, start_minute < end_minute))
 
-# Define the schedules
-brian_schedule = [[], [9, 10], [9, 10, 12, 13, 14, 15, 16], [11, 13, 16], [9, 10, 10, 11, 13, 15, 16]]
-julia_schedule = [[9, 11, 12, 15, 16], [13, 16], [9, 10, 12, 13, 16], [9, 10, 11, 16], [9, 10, 10, 11, 12, 14, 15, 16]]
+# Add the meeting duration constraint
+s.add(And(start_hour > 8, start_hour < 17, end_hour > start_hour, end_hour < 17, end_hour - start_hour == meeting_duration))
 
-# Find a solution
-print(schedule_meeting(brian_schedule, julia_schedule, preferred_day='Monday'))
+# Add a constraint to avoid Monday
+s.add(day>0)
+s.add(day<5)
+
+# Check the solver
+if s.check() == sat:
+    # Get the model
+    model = s.model()
+
+    # Get the values of the variables
+    day_value = model[day].as_long()
+    start_hour_value = model[start_hour].as_long()
+    start_minute_value = model[start_minute].as_long()
+    end_hour_value = model[end_hour].as_long()
+    end_minute_value = model[end_minute].as_long()
+
+    # Print the solution
+    print('SOLUTION:')
+    print(f'Day: {days[day_value]}')
+    print(f'Start Time: {str(start_hour_value).zfill(2)}:{str(start_minute_value).zfill(2)}')
+    print(f'End Time: {str(end_hour_value).zfill(2)}:{str(end_minute_value).zfill(2)}')
+else:
+    print('No solution found')

@@ -1,48 +1,86 @@
 from z3 import *
+from collections import defaultdict
 
-# Define the cities
+# Define the cities and their direct flights
 cities = ['Oslo', 'Stuttgart', 'Venice', 'Split', 'Barcelona', 'Brussels', 'Copenhagen']
+flights = {
+    'Oslo': ['Stuttgart', 'Venice', 'Split', 'Copenhagen', 'Barcelona'],
+    'Stuttgart': ['Oslo', 'Venice', 'Barcelona'],
+    'Venice': ['Oslo', 'Stuttgart', 'Brussels', 'Barcelona'],
+    'Split': ['Oslo', 'Copenhagen', 'Barcelona'],
+    'Barcelona': ['Oslo', 'Stuttgart', 'Venice', 'Split', 'Copenhagen', 'Brussels'],
+    'Brussels': ['Oslo', 'Venice', 'Copenhagen', 'Barcelona'],
+    'Copenhagen': ['Oslo', 'Split', 'Barcelona', 'Brussels', 'Stuttgart']
+}
 
-# Define the days
-days = range(1, 17)
+# Define the days and their constraints
+days = 16
+constraints = {
+    'Oslo': [2, (3, 4)],  # Visit Oslo for 2 days, meet friends between day 3 and 4
+    'Stuttgart': [3],
+    'Venice': [4],
+    'Split': [4],
+    'Barcelona': [3, (1, 3)],  # Attend annual show from day 1 to 3
+    'Brussels': [3, (9, 11)],  # Meet friend between day 9 and 11
+    'Copenhagen': [3]
+}
 
-# Define the constraints
-constraints = []
+# Create a dictionary to store the itinerary
+itinerary = {}
 
-# Define the variables
-x = {city: [Bool(f'{city}_{day}') for day in days] for city in cities}
-
-# Each day, you can only be in one city
-for day in days:
-    constraints.append(Or([x['Oslo'][day], x['Stuttgart'][day], x['Venice'][day], x['Split'][day], x['Barcelona'][day], x['Brussels'][day], x['Copenhagen'][day]]))
-    constraints.append(Not(Or([x['Oslo'][day] for day in days])))
-    constraints.append(Not(Or([x['Stuttgart'][day] for day in days])))
-    constraints.append(Not(Or([x['Venice'][day] for day in days])))
-    constraints.append(Not(Or([x['Split'][day] for day in days])))
-    constraints.append(Not(Or([x['Barcelona'][day] for day in days])))
-    constraints.append(Not(Or([x['Brussels'][day] for day in days])))
-    constraints.append(Not(Or([x['Copenhagen'][day] for day in days])))
-
-# You visit each city for the specified number of days
-for city in cities:
-    for day in days:
-        constraints.append(x[city][day] == (city == 'Oslo' and day >= 1 and day <= 2) or (city == 'Stuttgart' and day >= 3 and day <= 5) or (city == 'Venice' and day >= 6 and day <= 9) or (city == 'Split' and day >= 10 and day <= 13) or (city == 'Barcelona' and (day >= 1 and day <= 3) or (day >= 14 and day <= 16)) or (city == 'Brussels' and (day >= 4 and day <= 6) or (day >= 9 and day <= 11)) or (city == 'Copenhagen' and day >= 14 and day <= 16))
-
-# You can only fly between cities that have direct flights
-for city1, city2 in [('Venice', 'Stuttgart'), ('Oslo', 'Brussels'), ('Split', 'Copenhagen'), ('Barcelona', 'Copenhagen'), ('Barcelona', 'Venice'), ('Brussels', 'Venice'), ('Barcelona', 'Stuttgart'), ('Copenhagen', 'Brussels'), ('Oslo', 'Split'), ('Oslo', 'Venice'), ('Barcelona', 'Split'), ('Oslo', 'Copenhagen'), ('Barcelona', 'Oslo'), ('Copenhagen', 'Stuttgart'), ('Split', 'Stuttgart'), ('Copenhagen', 'Venice'), ('Barcelona', 'Brussels')]:
-    for day in days:
-        constraints.append(Implies(x[city1][day - 1], x[city2][day]))
-
-# Solve the constraints
+# Create a Z3 solver
 solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
 
+# Create a dictionary to store the variables
+vars = defaultdict(lambda: [Bool(f'visit_{city}_{day}') for day in range(1, days + 1)])
+
+# Create a dictionary to store the constraints
+constrs = defaultdict(list)
+
+# Add constraints for each city
+for city, constraints in constraints.items():
+    for day, duration in constraints:
+        for day_range in range(day, day + duration):
+            constrs[city].append(Or([vars[city][i] for i in range(day_range - (day_range - day) + 1, day_range + 1)]))
+
+# Add constraints for each flight
+for city, flights in flights.items():
+    for flight in flights:
+        for day in range(1, days + 1):
+            constrs[city].append(Not(And([vars[city][day], vars[flight][day]])))
+            constrs[flight].append(Not(And([vars[flight][day], vars[city][day]])))
+
+# Add constraints for each city's visit duration
+for city, constraints in constraints.items():
+    for day, duration in constraints:
+        for day_range in range(day, day + duration):
+            solver.add(And([vars[city][i] for i in range(day_range - (day_range - day) + 1, day_range + 1)]))
+
+# Add constraints for each flight's day
+for city, flights in flights.items():
+    for flight in flights:
+        for day in range(1, days + 1):
+            solver.add(Or([vars[city][day], vars[flight][day]]))
+
+# Add constraints for each city's total visit duration
+for city in cities:
+    solver.add(Sum([vars[city][i] for i in range(1, days + 1)]) >= constraints[city][0])
+
+# Check the solution
 if solver.check() == sat:
     model = solver.model()
     for city in cities:
-        for day in days:
-            if model[x[city][day]]:
-                print(f'Day {day}: {city}')
+        itinerary[city] = []
+        for day in range(1, days + 1):
+            if model.evaluate(vars[city][day]).as_bool():
+                itinerary[city].append({'day_range': f'Day {day - (day - 1) + 1}-{day}', 'place': city})
+                if day < days:
+                    for flight in flights[city]:
+                        if model.evaluate(vars[flight][day]).as_bool():
+                            itinerary[city].append({'day_range': f'Day {day}', 'place': flight})
+                            itinerary[flight].append({'day_range': f'Day {day}', 'place': flight})
+                            itinerary[flight].append({'day_range': f'Day {day + 1}-{day + Sum([model.evaluate(vars[flight][i]) for i in range(day + 1, days + 1)])}', 'place': flight})
+                            break
+    print(json.dumps({'itinerary': itinerary}, indent=4))
 else:
     print('No solution found')

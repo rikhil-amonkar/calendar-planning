@@ -1,148 +1,73 @@
 from z3 import *
+import json
 
-# Define the cities
-cities = ['Istanbul', 'Vienna', 'Riga', 'Brussels', 'Madrid', 'Vilnius', 'Venice', 'Geneva', 'Munich', 'Reykjavik']
-
-# Define the days
-days = range(1, 28)
-
-# Define the direct flights
-flights = {
-    'Istanbul': ['Brussels', 'Geneva', 'Vienna', 'Vilnius', 'Madrid'],
-    'Vienna': ['Istanbul', 'Brussels', 'Riga', 'Vilnius', 'Munich', 'Reykjavik'],
-    'Riga': ['Brussels', 'Istanbul', 'Vienna'],
-    'Brussels': ['Istanbul', 'Riga', 'Vienna', 'Vilnius', 'Madrid', 'Venice', 'Geneva', 'Munich', 'Reykjavik'],
-    'Madrid': ['Brussels', 'Vienna', 'Istanbul', 'Munich', 'Venice', 'Geneva', 'Reykjavik'],
-    'Vilnius': ['Istanbul', 'Brussels', 'Vienna', 'Munich'],
-    'Venice': ['Brussels', 'Madrid', 'Vienna', 'Istanbul', 'Munich'],
-    'Geneva': ['Istanbul', 'Brussels', 'Vienna', 'Munich', 'Madrid'],
-    'Munich': ['Vienna', 'Brussels', 'Riga', 'Reykjavik', 'Istanbul', 'Venice', 'Geneva'],
-    'Reykjavik': ['Brussels', 'Vienna', 'Munich', 'Madrid']
-}
+# Define the days and cities
+days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+cities = ['Geneva', 'Vienna', 'Istanbul', 'Riga', 'Brussels', 'Madrid', 'Vilnius', 'Venice', 'Munich', 'Reykjavik']
 
 # Define the constraints
-x = [Int(f'{city}_{day}') for city in cities for day in days]
-constraints = []
-for city in cities:
-    total_days = 0
-    for day in days:
-        if city == 'Istanbul' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Istanbul' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Vienna' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Vienna' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Vienna' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Riga' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Riga' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Brussels' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Brussels' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Brussels' and (day >= 20 and day <= 23):
-            total_days += 1
-        elif city == 'Brussels' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Madrid' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Madrid' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Madrid' and (day >= 20 and day <= 23):
-            total_days += 1
-        elif city == 'Madrid' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Vilnius' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Vilnius' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Vilnius' and (day >= 20 and day <= 23):
-            total_days += 1
-        elif city == 'Vilnius' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Venice' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Venice' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Venice' and (day >= 20 and day <= 23):
-            total_days += 1
-        elif city == 'Venice' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Geneva' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Geneva' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Geneva' and (day >= 20 and day <= 23):
-            total_days += 1
-        elif city == 'Geneva' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Munich' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Munich' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Munich' and (day >= 20 and day <= 23):
-            total_days += 1
-        elif city == 'Munich' and (day >= 26 and day <= 27):
-            total_days += 1
-        elif city == 'Reykjavik' and (day >= 1 and day <= 4):
-            total_days += 1
-        elif city == 'Reykjavik' and (day >= 7 and day <= 11):
-            total_days += 1
-        elif city == 'Reykjavik' and (day >= 20 and day <= 23):
-            total_days += 1
-        elif city == 'Reykjavik' and (day >= 26 and day <= 27):
-            total_days += 1
-    constraints.append(x[city * 27 + day] == total_days)
-for city in cities:
-    for day in days:
-        constraints.append(x[city * 27 + day] >= 0)
-for day in days:
-    constraints.append(Sum([x[city * 27 + day] for city in cities]) == 1)
-for city in cities:
-    for day in days:
-        if city not in ['Istanbul', 'Vienna', 'Madrid', 'Vilnius', 'Venice', 'Geneva', 'Brussels', 'Riga']:
-            constraints.append(x[city * 27 + day] == 0)
-for city in cities:
-    for day in days:
-        if city in ['Istanbul', 'Vienna', 'Madrid', 'Vilnius', 'Venice', 'Geneva']:
-            constraints.append(x[city * 27 + day] <= 4)
-        elif city in ['Riga', 'Brussels']:
-            constraints.append(x[city * 27 + day] <= 2)
-        elif city == 'Munich':
-            constraints.append(x[city * 27 + day] <= 5)
-        elif city == 'Reykjavik':
-            constraints.append(x[city * 27 + day] <= 2)
-for day in range(1, 4):
-    for city in cities:
-        constraints.append(x[city * 27 + day] == 0)
-for day in range(7, 12):
-    for city in cities:
-        if city not in ['Venice']:
-            constraints.append(x[city * 27 + day] == 0)
-for day in range(20, 24):
-    for city in cities:
-        if city not in ['Vilnius']:
-            constraints.append(x[city * 27 + day] == 0)
-for day in range(26, 28):
-    for city in cities:
-        if city not in ['Brussels']:
-            constraints.append(x[city * 27 + day] == 0)
+flight_days = {
+    'Geneva': [1],
+    'Vienna': [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    'Istanbul': [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    'Riga': [4, 5, 6],
+    'Brussels': [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    'Madrid': [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    'Vilnius': [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    'Venice': [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    'Munich': [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],
+    'Reykjavik': [20, 21]
+}
 
-# Solve the constraints
-solver = Solver()
-for city in cities:
-    for day in days:
-        solver.add(x[city * 27 + day])
-for constraint in constraints:
-    solver.add(constraint)
-solver.check()
-model = solver.model()
+# Define the solver
+s = Solver()
 
-# Print the solution
+# Define the variables
+itinerary = [[Bool('itinerary_%s_%s' % (city, day)) for day in days] for city in cities]
+
+# Define the constraints
 for city in cities:
-    for day in days:
-        print(f'{city} on day {day}: {model[x[city * 27 + day]]}')
+    for day in flight_days[city]:
+        s.add(itinerary[cities.index(city)][day - 1])
+
+# Add constraints for each city
+s.add(And([itinerary[cities.index('Geneva')][0], itinerary[cities.index('Vienna')][3]]))
+s.add(And([itinerary[cities.index('Istanbul')][0], itinerary[cities.index('Riga')][3], itinerary[cities.index('Brussels')][6]]))
+s.add(And([itinerary[cities.index('Madrid')][13], itinerary[cities.index('Vilnius')][9], itinerary[cities.index('Venice')][6]]))
+s.add(And([itinerary[cities.index('Venice')][6], itinerary[cities.index('Munich')][6]]))
+s.add(And([itinerary[cities.index('Munich')][4], itinerary[cities.index('Reykjavik')][19]]))
+s.add(And([itinerary[cities.index('Vienna')][3], itinerary[cities.index('Istanbul')][3]]))
+s.add(And([itinerary[cities.index('Riga')][3], itinerary[cities.index('Istanbul')][3]]))
+s.add(And([itinerary[cities.index('Reykjavik')][19], itinerary[cities.index('Vienna')][19]]))
+s.add(And([itinerary[cities.index('Venice')][6], itinerary[cities.index('Munich')][6]]))
+s.add(And([itinerary[cities.index('Munich')][4], itinerary[cities.index('Brussels')][4]]))
+s.add(And([itinerary[cities.index('Madrid')][13], itinerary[cities.index('Brussels')][13]]))
+s.add(And([itinerary[cities.index('Geneva')][0], itinerary[cities.index('Brussels')][0]]))
+s.add(And([itinerary[cities.index('Geneva')][0], itinerary[cities.index('Madrid')][0]]))
+s.add(And([itinerary[cities.index('Munich')][4], itinerary[cities.index('Brussels')][4]]))
+s.add(And([itinerary[cities.index('Vilnius')][9], itinerary[cities.index('Brussels')][9]]))
+s.add(And([itinerary[cities.index('Vilnius')][9], itinerary[cities.index('Munich')][9]]))
+
+# Add constraints for meeting friends and wedding
+s.add(And([itinerary[cities.index('Vilnius')][19], itinerary[cities.index('Vilnius')][20], itinerary[cities.index('Vilnius')][21], itinerary[cities.index('Vilnius')][22]]))
+s.add(And([itinerary[cities.index('Venice')][6], itinerary[cities.index('Venice')][7], itinerary[cities.index('Venice')][8], itinerary[cities.index('Venice')][9], itinerary[cities.index('Venice')][10], itinerary[cities.index('Venice')][11], itinerary[cities.index('Venice')][12], itinerary[cities.index('Venice')][13], itinerary[cities.index('Venice')][14], itinerary[cities.index('Venice')][15], itinerary[cities.index('Venice')][16], itinerary[cities.index('Venice')][17], itinerary[cities.index('Venice')][18], itinerary[cities.index('Venice')][19], itinerary[cities.index('Venice')][20], itinerary[cities.index('Venice')][21], itinerary[cities.index('Venice')][22], itinerary[cities.index('Venice')][23]]))
+s.add(And([itinerary[cities.index('Brussels')][25], itinerary[cities.index('Brussels')][26]]))
+
+# Check if the solver found a solution
+if s.check() == sat:
+    # Get the model
+    model = s.model()
+    # Create the itinerary
+    itinerary_dict = {}
+    for city in cities:
+        city_itinerary = []
+        for day in days:
+            if model[itinerary[cities.index(city)][day - 1]].decl().name() == 'itinerary_%s_%s' % (city, day):
+                city_itinerary.append({'day_range': 'Day %s-%s' % (day, day) if day in flight_days[city] else 'Day %s' % day, 'place': city})
+                if day in flight_days[city]:
+                    city_itinerary.append({'day_range': 'Day %s' % day, 'place': city})
+        itinerary_dict[city] = city_itinerary
+    # Print the itinerary
+    print(json.dumps({'itinerary': itinerary_dict}, indent=4))
+else:
+    print('No solution found')

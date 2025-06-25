@@ -1,9 +1,11 @@
 from z3 import *
 
-# Define the locations
+# Define the variables
+start_time = 9 * 60  # 9:00 AM in minutes
+end_time = 24 * 60  # 24:00 in minutes
+num_friends = 7
+friends = ['Stephanie', 'Kevin', 'Robert', 'Steven', 'Anthony', 'Sandra', 'Meeting Point']
 locations = ['Haight-Ashbury', 'Russian Hill', 'Fisherman\'s Wharf', 'Nob Hill', 'Golden Gate Park', 'Alamo Square', 'Pacific Heights']
-
-# Define the travel times
 travel_times = {
     'Haight-Ashbury': {'Russian Hill': 17, 'Fisherman\'s Wharf': 23, 'Nob Hill': 15, 'Golden Gate Park': 7, 'Alamo Square': 5, 'Pacific Heights': 12},
     'Russian Hill': {'Haight-Ashbury': 17, 'Fisherman\'s Wharf': 7, 'Nob Hill': 5, 'Golden Gate Park': 21, 'Alamo Square': 15, 'Pacific Heights': 7},
@@ -15,71 +17,54 @@ travel_times = {
 }
 
 # Define the constraints
-start_time = 0
-stephanie_arrival = 8 * 60
-stephanie_departure = 8 * 60 + 45
-kevin_arrival = 7 * 60 + 15
-kevin_departure = 9 * 45
-robert_arrival = start_time
-robert_departure = 10 * 30
-steven_arrival = start_time
-steven_departure = 17 * 60
-anthony_arrival = start_time
-anthony_departure = 19 * 60
-sandra_arrival = 14 * 60 + 45
-sandra_departure = 21 * 60 + 45
-
-# Define the meeting times
-meeting_times = {
-    'Stephanie': (stephanie_arrival, stephanie_departure, 15),
-    'Kevin': (kevin_arrival, kevin_departure, 75),
-    'Robert': (robert_arrival, robert_departure, 90),
-    'Steven': (steven_arrival, steven_departure, 75),
-    'Anthony': (anthony_arrival, anthony_departure, 15),
-    'Sandra': (sandra_arrival, sandra_departure, 45)
-}
-
-# Define the solver
-solver = Optimize()
+s = Solver()
 
 # Define the variables
-x = [Bool(f'meet_{loc}') for loc in locations]
-y = [Int(f'time_{i}') for i in range(len(locations))]
+meetings = [Int(friends[i] + '_start') for i in range(num_friends)]
+meeting_durations = [Int(friends[i] + '_duration') for i in range(num_friends)]
+meeting_locations = [Int(friends[i] + '_location') for i in range(num_friends)]
 
-# Define the constraints
-for i in range(len(locations)):
-    solver.add(y[i] >= start_time)
-    solver.add(y[i] <= 24 * 60)  # assume you will leave by 10 PM
+# Add constraints for each friend
+for i in range(num_friends):
+    s.add(meetings[i] >= start_time)
+    s.add(meetings[i] + meeting_durations[i] <= end_time)
+    s.add(meeting_durations[i] >= 0)
+    s.add(meeting_locations[i] >= 0)
+    s.add(meeting_locations[i] < len(locations))
 
-for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            solver.add(y[i] + travel_times[locations[i]][locations[j]] <= y[j])
+# Add constraints for meeting Stephanie
+s.add(meetings[0] + meeting_durations[0] >= 8 * 60 + 15)
+s.add(meetings[0] + meeting_durations[0] <= 8 * 60 + 45)
 
-for i in range(len(locations)):
-    solver.add(y[i] >= start_time + travel_times['Haight-Ashbury'][locations[i]])
+# Add constraints for meeting Kevin
+s.add(meetings[1] + meeting_durations[1] >= 7 * 60 + 75)
+s.add(meetings[1] + meeting_durations[1] <= 9 * 60 + 45)
 
-for person, (arrival, departure, min_time) in meeting_times.items():
-    for i in range(len(locations)):
-        if locations[i]!= 'Haight-Ashbury':
-            solver.add(y[i] >= arrival - min_time)
-            solver.add(y[i] <= departure + min_time)
+# Add constraints for meeting Robert
+s.add(meetings[2] + meeting_durations[2] >= 7 * 60 + 90)
+s.add(meetings[2] + meeting_durations[2] <= 10 * 60)
 
-for i in range(len(locations)):
-    solver.add(x[i] == 1)  # assume you will meet everyone
+# Add constraints for meeting Steven
+s.add(meetings[3] + meeting_durations[3] >= 8 * 60 + 75)
+s.add(meetings[3] + meeting_durations[3] <= 17 * 60)
 
-# Define the objective function
-solver.minimize(sum(y[i] for i in range(len(locations))))
+# Add constraints for meeting Anthony
+s.add(meetings[4] + meeting_durations[4] >= 7 * 60 + 15)
+s.add(meetings[4] + meeting_durations[4] <= 19 * 60)
+
+# Add constraints for meeting Sandra
+s.add(meetings[5] + meeting_durations[5] >= 14 * 60 + 45)
+s.add(meetings[5] + meeting_durations[5] <= 21 * 60)
+
+# Add constraints for travel times
+for i in range(num_friends - 1):
+    s.add(meetings[i+1] >= meetings[i] + travel_times[locations[meeting_locations[i]]][locations[meeting_locations[i+1]]])
 
 # Solve the problem
-result = solver.check()
-if result == sat:
-    model = solver.model()
-    schedule = {}
-    for i, loc in enumerate(locations):
-        schedule[loc] = model[y[i]].as_long()
-    print('SCHEDULE:')
-    for loc, time in schedule.items():
-        print(f'{loc}: {time // 60}:{time % 60}')
+if s.check() == sat:
+    model = s.model()
+    print("SOLUTION:")
+    for i in range(num_friends):
+        print(f"Meet {friends[i]} at {model[meetings[i]].as_long()} at {locations[model[meeting_locations[i]].as_long()]} for {model[meeting_durations[i]].as_long()} minutes")
 else:
-    print('No solution found')
+    print("No solution found")

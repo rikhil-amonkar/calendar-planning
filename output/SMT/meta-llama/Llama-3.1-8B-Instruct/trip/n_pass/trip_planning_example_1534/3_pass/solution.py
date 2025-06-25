@@ -1,114 +1,78 @@
 from z3 import *
 
-# Define the cities and their corresponding numbers
+# Define the cities and their corresponding day ranges
 cities = {
-    'Warsaw': 0,
-    'Venice': 1,
-    'Vilnius': 2,
-    'Salzburg': 3,
-    'Amsterdam': 4,
-    'Barcelona': 5,
-    'Paris': 6,
-    'Hamburg': 7,
-    'Florence': 8,
-    'Tallinn': 9
+    'Warsaw': [1, 4],
+    'Venice': [1, 3, 5, 8, 9],
+    'Vilnius': [1, 3, 6],
+    'Salzburg': [7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    'Amsterdam': [1, 2, 6, 9],
+    'Barcelona': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    'Hamburg': [1, 4, 5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    'Florence': [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    'Tallinn': [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+}
+
+# Define the flights and their corresponding day ranges
+flights = {
+    ('Paris', 'Venice'): [1],
+    ('Barcelona', 'Amsterdam'): [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Amsterdam', 'Warsaw'): [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Amsterdam', 'Vilnius'): [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Barcelona', 'Warsaw'): [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Paris', 'Hamburg'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Paris', 'Vilnius'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Paris', 'Amsterdam'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Florence', 'Amsterdam'): [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Vilnius', 'Warsaw'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Barcelona', 'Tallinn'): [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Paris', 'Tallinn'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Paris', 'Barcelona'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Venice', 'Hamburg'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Warsaw', 'Hamburg'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Hamburg', 'Salzburg'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ('Amsterdam', 'Venice'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 }
 
 # Define the constraints
-n_days = 25
-city_stays = {
-    'Warsaw': 4,
-    'Venice': 3,
-    'Vilnius': 3,
-    'Salzburg': 4,
-    'Amsterdam': 2,
-    'Barcelona': 5,
-    'Paris': 2,
-    'Hamburg': 4,
-    'Florence': 5,
-    'Tallinn': 2
-}
-
-direct_flights = {
-    (0, 1): 1, (1, 0): 1, (0, 4): 1, (4, 0): 1, (0, 2): 1, (2, 0): 1,
-    (4, 1): 1, (1, 4): 1, (4, 2): 1, (2, 4): 1, (5, 4): 1, (4, 5): 1,
-    (5, 0): 1, (0, 5): 1, (5, 7): 1, (7, 5): 1, (5, 8): 1, (8, 5): 1,
-    (5, 1): 1, (1, 5): 1, (6, 7): 1, (7, 6): 1, (6, 4): 1, (4, 6): 1,
-    (6, 2): 1, (2, 6): 1, (6, 1): 1, (1, 6): 1, (8, 4): 1, (4, 8): 1,
-    (7, 3): 1, (3, 7): 1, (4, 9): 1, (9, 4): 1, (6, 9): 1, (9, 6): 1,
-    (6, 5): 1, (5, 6): 1, (1, 9): 1, (9, 1): 1, (2, 9): 1, (9, 2): 1
-}
-
-# Create the solver
 s = Solver()
 
-# Create the variables
-days = [Int(f'day_{i}') for i in range(n_days)]
-city = [Int(f'city_{i}') for i in range(n_days)]
-wedding = [Bool(f'wedding_{i}') for i in range(n_days)]
-conference = [Bool(f'conference_{i}') for i in range(n_days)]
-workshop = [Bool(f'workshop_{i}') for i in range(n_days)]
+# Define the variables
+days = [Bool(f'day_{i}') for i in range(1, 26)]
+places = {city: [Bool(f'place_{city}_{i}') for i in range(1, 26)] for city in cities.keys()}
 
-# Add constraints
-for i in range(n_days):
-    s.add(days[i] >= 0)
-    s.add(days[i] <= n_days - 1)
-    s.add(city[i] >= 0)
-    s.add(city[i] <= 9)
-    s.add(wedding[i] == False)
-    s.add(conference[i] == False)
-    s.add(workshop[i] == False)
+# Define the constraints for each city
+for city, day_ranges in cities.items():
+    for day_range in day_ranges:
+        s.add(Implies(days[day_range-1], And([places[city][i] for i in range(day_range-1, 26)])))
 
-s.add(days[0] == 0)
-s.add(city[0] == cities['Paris'])
-s.add(workshop[0] == True)
+# Define the constraints for each flight
+for (city1, city2), day_ranges in flights.items():
+    for day_range in day_ranges:
+        s.add(Implies(days[day_range-1], And([places[city1][i] for i in range(day_range-1, 26)])))
+        s.add(Implies(days[day_range-1], And([places[city2][i] for i in range(day_range-1, 26)])))
 
-for i in range(n_days - 1):
-    s.add(days[i] < days[i + 1])
-    s.add(city[i] == city[i + 1])
-    s.add(wedding[i] == wedding[i + 1])
-    s.add(conference[i] == conference[i + 1])
-    s.add(workshop[i] == workshop[i + 1])
-
-# Add constraints for city stays
-for city_name, stay in city_stays.items():
-    city_num = cities[city_name]
-    s.add(ForAll([days[i] for i in range(n_days)], Implies(city[i] == city_num, days[i] >= stay)))
-
-# Add constraints for direct flights
-for (city1, city2), duration in direct_flights.items():
-    city1_num, city2_num = cities[city1], cities[city2]
-    s.add(ForAll([days[i] for i in range(n_days)], Implies(
-        And(city[i] == city1_num, city[i + duration] == city2_num), 
-        Or(city[i + 1] == city2_num, city[i + 1] == city1_num))))
-
-# Add constraints for workshop and conference
-s.add(ForAll([days[i] for i in range(n_days)], Implies(
-    And(workshop[i], days[i] < 2), city[i] == cities['Paris'])))
-
-s.add(ForAll([days[i] for i in range(n_days)], Implies(
-    And(conference[i], And(days[i] >= 19, days[i] < 22)), city[i] == cities['Hamburg']))
-
-
-# Add constraints for wedding
-s.add(ForAll([days[i] for i in range(n_days)], Implies(
-    And(wedding[i], And(days[i] >= 22, days[i] < 25)), city[i] == cities['Salzburg']))
-
-
-# Add constraints for meeting friends
-s.add(ForAll([days[i] for i in range(n_days)], Implies(
-    And(days[i] >= 2, days[i] < 6, city[i] == cities['Barcelona']), wedding[i] == False))
-)
-
-s.add(ForAll([days[i] for i in range(n_days)], Implies(
-    And(days[i] >= 11, days[i] < 12, city[i] == cities['Tallinn']), wedding[i] == False))
-)
-
-# Solve the problem
-s.check()
-
-# Print the solution
-m = s.model()
-print("Day\tCity\tWedding\tConference\tWorkshop")
-for i in range(n_days):
-    print(f'{m[days[i]]}\t{m[city[i]]}\t{m[wedding[i]]}\t{m[conference[i]]}\t{m[workshop[i]]}')
+# Solve the constraints
+s.add(Or([days[i] for i in range(1, 26)]))
+if s.check() == sat:
+    model = s.model()
+    itinerary = []
+    for i in range(1, 26):
+        day_range = []
+        for j in range(1, 26):
+            if model[days[j]]:
+                day_range.append(j)
+        for city in cities.keys():
+            if model[places[city][i-1]]:
+                if len(day_range) == 1:
+                    itinerary.append({'day_range': f'Day {day_range[0]}', 'place': city})
+                else:
+                    itinerary.append({'day_range': f'Day {min(day_range)}-{max(day_range)}', 'place': city})
+    for (city1, city2), day_ranges in flights.items():
+        if model[places[city1][i-1]] and model[places[city2][i-1]]:
+            for day_range in day_ranges:
+                itinerary.append({'day_range': f'Day {day_range}', 'place': city1})
+                itinerary.append({'day_range': f'Day {day_range}', 'place': city2})
+    print({'itinerary': itinerary})
+else:
+    print('No solution exists')

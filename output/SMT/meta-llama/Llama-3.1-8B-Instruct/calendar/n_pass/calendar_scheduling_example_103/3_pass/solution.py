@@ -1,59 +1,55 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the day to meet
+def schedule_meeting(diane_blocked, jack_blocked, eugene_blocked, patricia_blocked, meeting_duration):
+    # Define the day of the meeting
     day = 'Monday'
 
-    # Define the start and end time of the work hours
-    start_time = 9 * 60
-    end_time = 17 * 60
+    # Define the start time of the meeting
+    start_time = Int('start_time')
 
-    # Define the meeting duration
-    meeting_duration = 30
+    # Define the constraints for the start time
+    constraints = [
+        And(9 * 60 <= start_time, start_time <= 17 * 60),  # Meeting time is between 9:00 and 17:00
+        start_time % 60 == 0,  # Start time is on the hour
+        start_time + meeting_duration <= 17 * 60  # Meeting duration is less than or equal to 17:00
+    ]
 
-    # Define the existing schedules for each participant
-    diane_schedule = [9 * 60 + 30, 10 * 60, 14 * 60 + 30, 15 * 60]
-    jack_schedule = [13 * 60 + 30, 14 * 60, 14 * 60 + 30, 15 * 60]
-    eugene_schedule = [9 * 60, 10 * 60, 10 * 60 + 30, 11 * 60 + 30, 12 * 60, 14 * 60 + 30, 15 * 60, 16 * 60 + 30]
-    patricia_schedule = [9 * 60 + 30, 10 * 60 + 30, 11 * 60, 12 * 60, 12 * 60 + 30, 14 * 60, 15 * 60, 16 * 60 + 30]
+    # Define the constraints for each participant's blocked times
+    for blocked in [diane_blocked, jack_blocked, eugene_blocked, patricia_blocked]:
+        for i in range(0, len(blocked), 2):
+            constraints.append(Or(start_time + meeting_duration > blocked[i] + blocked[i+1], 
+                                  start_time + meeting_duration < blocked[i]))
 
-    # Create a Z3 solver
+    # Solve the constraints
     solver = Solver()
-
-    # Define the start and end time of the meeting as variables
-    start_time_var = Int('start_time')
-    end_time_var = Int('end_time')
-
-    # Add constraints to ensure the meeting time is within the work hours
-    solver.add(start_time_var >= start_time)
-    solver.add(end_time_var <= end_time)
-    solver.add(end_time_var - start_time_var >= meeting_duration)
-
-    # Add constraints to ensure the meeting time does not conflict with the existing schedules
-    for schedule in [diane_schedule, jack_schedule, eugene_schedule, patricia_schedule]:
-        for i in range(len(schedule) - 1):
-            start = schedule[i]
-            end = schedule[i + 1]
-            solver.add(Or(start_time_var + meeting_duration > start, end_time_var < start))
-            solver.add(Or(start_time_var + meeting_duration > end, end_time_var < end))
-
-    # Add constraints to ensure the meeting time does not conflict with the unavailable time slot from 9.5 to 10
-    solver.add(start_time_var >= 9 * 60 + 30)
-    solver.add(end_time_var <= 10 * 60)
-
-    # Check if a solution exists
+    solver.add(constraints)
     if solver.check() == sat:
-        # Get the solution
         model = solver.model()
-        start_time_var_val = model[start_time_var].as_long()
-        end_time_var_val = model[end_time_var].as_long()
-
-        # Print the solution
-        print('SOLUTION:')
-        print(f'Day: {day}')
-        print(f'Start Time: {start_time_var_val // 60:02d}:{start_time_var_val % 60:02d}')
-        print(f'End Time: {end_time_var_val // 60:02d}:{end_time_var_val % 60:02d}')
+        start_time_val = model[start_time].as_long()
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_val // 60:02d}:{start_time_val % 60:02d}\nEnd Time: {(start_time_val // 60 + 1) * 60 + (start_time_val % 60 + meeting_duration) % 60:02d}:{((start_time_val // 60 + 1) * 60 + (start_time_val % 60 + meeting_duration) % 60) % 60:02d}'
     else:
-        print('No solution exists.')
+        # If no solution is found, try to find a time slot that works for everyone
+        for hour in range(9, 17):
+            start_time_val = hour * 60
+            end_time_val = start_time_val + meeting_duration
+            works_for_everyone = True
+            for blocked in [diane_blocked, jack_blocked, eugene_blocked, patricia_blocked]:
+                for i in range(0, len(blocked), 2):
+                    if start_time_val < blocked[i] + blocked[i+1] and start_time_val + meeting_duration > blocked[i]:
+                        works_for_everyone = False
+                        break
+                if not works_for_everyone:
+                    break
+            if works_for_everyone:
+                return f'SOLUTION:\nDay: {day}\nStart Time: {hour:02d}:{start_time_val % 60:02d}\nEnd Time: {(hour + 1) % 24:02d}:{(end_time_val % 60):02d}'
 
-schedule_meeting()
+# Define the blocked times for each participant
+diane_blocked = [9 * 60 + 30, 10 * 60, 14 * 60 + 30, 15 * 60]
+jack_blocked = [13 * 60 + 30, 14 * 60, 14 * 60 + 30, 15 * 60]
+eugene_blocked = [9 * 60, 10 * 60, 10 * 60 + 30, 11 * 60 + 30, 12 * 60, 14 * 60 + 30, 15 * 60, 16 * 60 + 30]
+patricia_blocked = [9 * 60 + 30, 10 * 60 + 30, 11 * 60, 12 * 60, 12 * 60 + 30, 14 * 60, 15 * 60, 16 * 60 + 30]
+
+# Define the meeting duration
+meeting_duration = 30
+
+print(schedule_meeting(diane_blocked, jack_blocked, eugene_blocked, patricia_blocked, meeting_duration))

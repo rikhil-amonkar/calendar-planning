@@ -2,151 +2,117 @@ from z3 import *
 import json
 
 def main():
-    cities = ["Venice", "Reykjavik", "Munich", "Santorini", "Manchester", "Porto", "Bucharest", "Tallinn", "Valencia", "Vienna"]
-    n_cities = len(cities)
-    n_days = 24
-
-    edges = [
-        ("Bucharest", "Manchester"), 
-        ("Munich", "Venice"), 
-        ("Santorini", "Manchester"), 
-        ("Vienna", "Reykjavik"), 
-        ("Venice", "Santorini"), 
-        ("Munich", "Porto"), 
-        ("Valencia", "Vienna"), 
-        ("Manchester", "Vienna"), 
-        ("Porto", "Vienna"), 
-        ("Venice", "Manchester"), 
-        ("Santorini", "Vienna"), 
-        ("Munich", "Manchester"), 
-        ("Munich", "Reykjavik"), 
-        ("Bucharest", "Valencia"), 
-        ("Venice", "Vienna"), 
-        ("Bucharest", "Vienna"), 
-        ("Porto", "Manchester"), 
-        ("Munich", "Vienna"), 
-        ("Valencia", "Porto"), 
-        ("Munich", "Bucharest"), 
-        ("Tallinn", "Munich"), 
-        ("Santorini", "Bucharest"), 
-        ("Munich", "Valencia")
+    # Define the cities and their required days
+    cities = ['Venice', 'Reykjavik', 'Munich', 'Santorini', 'Manchester', 'Porto', 'Bucharest', 'Tallinn', 'Valencia', 'Vienna']
+    req_days = [3, 2, 3, 3, 3, 3, 5, 4, 2, 5]  # corresponding to the cities above
+    
+    # Index for fixed cities
+    idx_munich = cities.index('Munich')  # 2
+    idx_santorini = cities.index('Santorini')  # 3
+    idx_valencia = cities.index('Valencia')  # 8
+    
+    # Direct flights as tuples of indices (undirected, so we include both directions)
+    direct_flights_tuples = [
+        ('Bucharest', 'Manchester'),
+        ('Munich', 'Venice'),
+        ('Santorini', 'Manchester'),
+        ('Vienna', 'Reykjavik'),
+        ('Venice', 'Santorini'),
+        ('Munich', 'Porto'),
+        ('Valencia', 'Vienna'),
+        ('Manchester', 'Vienna'),
+        ('Porto', 'Vienna'),
+        ('Venice', 'Manchester'),
+        ('Santorini', 'Vienna'),
+        ('Munich', 'Manchester'),
+        ('Munich', 'Reykjavik'),
+        ('Bucharest', 'Valencia'),
+        ('Venice', 'Vienna'),
+        ('Bucharest', 'Vienna'),
+        ('Porto', 'Manchester'),
+        ('Munich', 'Vienna'),
+        ('Valencia', 'Porto'),
+        ('Munich', 'Bucharest'),
+        ('Tallinn', 'Munich'),
+        ('Santorini', 'Bucharest'),
+        ('Munich', 'Valencia')
     ]
-
-    city_to_index = {city: idx for idx, city in enumerate(cities)}
-    directed_flights_set = set()
-    for (a, b) in edges:
-        a_fixed = "Munich" if a == "Munich" else a
-        b_fixed = "Munich" if b == "Munich" else b
-        a_fixed = "Venice" if a == "Venice" else a_fixed
-        b_fixed = "Venice" if b == "Venice" else b_fixed
-        a_fixed = "Vienna" if a == "Vienna" else a_fixed
-        b_fixed = "Vienna" if b == "Vienna" else b_fixed
-        if a_fixed in city_to_index and b_fixed in city_to_index:
-            i1 = city_to_index[a_fixed]
-            i2 = city_to_index[b_fixed]
-            directed_flights_set.add((i1, i2))
-            directed_flights_set.add((i2, i1))
-
+    
+    # Convert city names to indices for the direct flights
+    direct_flights_indices = []
+    for a, b in direct_flights_tuples:
+        idx_a = cities.index(a)
+        idx_b = cities.index(b)
+        direct_flights_indices.append((idx_a, idx_b))
+        direct_flights_indices.append((idx_b, idx_a))
+    
+    n = len(cities)
     s = Solver()
-
-    city_start = [Int(f'city_start_{i}') for i in range(n_days)]
-    flight = [Bool(f'flight_{i}') for i in range(n_days-1)]
-    dest = [Int(f'dest_{i}') for i in range(n_days-1)]
-
-    for i in range(n_days):
-        s.add(city_start[i] >= 0, city_start[i] < n_cities)
-    for i in range(n_days-1):
-        s.add(dest[i] >= 0, dest[i] < n_cities)
-
-    for i in range(n_days-1):
-        flight_condition = And(
-            city_start[i+1] == dest[i],
-            Or([And(city_start[i] == a, dest[i] == b) for (a, b) in directed_flights_set])
-        )
-        s.add(If(flight[i], flight_condition, city_start[i+1] == city_start[i]))
-
-    munich_index = city_to_index["Munich"]
-    s.add(city_start[3] == munich_index)
-    s.add(Not(flight[3]))
-    s.add(Not(flight[4]))
-    s.add(Not(flight[5]))
-
-    santorini_index = city_to_index["Santorini"]
-    conds_santorini = []
-    for d in [7, 8, 9]:
-        cond = Or(city_start[d] == santorini_index, And(flight[d], dest[d] == santorini_index))
-        conds_santorini.append(cond)
-    s.add(Or(conds_santorini))
-
-    valencia_index = city_to_index["Valencia"]
-    conds_valencia = []
-    for d in [13, 14]:
-        cond = Or(city_start[d] == valencia_index, And(flight[d], dest[d] == valencia_index))
-        conds_valencia.append(cond)
-    s.add(Or(conds_valencia))
-
-    required_days = [
-        3,  # Venice
-        2,  # Reykjavik
-        3,  # Munich
-        3,  # Santorini
-        3,  # Manchester
-        3,  # Porto
-        5,  # Bucharest
-        4,  # Tallinn
-        2,  # Valencia
-        5   # Vienna
-    ]
-    for c in range(n_cities):
-        total = 0
-        for i in range(n_days-1):
-            in_city = Or(city_start[i] == c, And(flight[i], dest[i] == c))
-            total += If(in_city, 1, 0)
-        total += If(city_start[n_days-1] == c, 1, 0)
-        s.add(total == required_days[c])
-
+    
+    # Sequence of cities: array of n integers, each in [0, n-1], distinct
+    seq = [Int(f'seq_{i}') for i in range(n)]
+    for i in range(n):
+        s.add(seq[i] >= 0, seq[i] < n)
+    s.add(Distinct(seq))
+    
+    # Start day for each position in the sequence
+    start_day = [Int(f'start_{i}') for i in range(n)]
+    s.add(start_day[0] == 1)  # first city starts on day 1
+    
+    # Array for required days (Z3 array)
+    req_array = Array('req_array', IntSort(), IntSort())
+    for j in range(n):
+        s.add(req_array[j] == req_days[j])
+    
+    # Chain the start days: start_day[i+1] = start_day[i] + (req_days[seq[i]] - 1)
+    for i in range(n-1):
+        s.add(start_day[i+1] == start_day[i] + (req_array[seq[i]] - 1))
+    
+    # Fixed start days for specific cities
+    for i in range(n):
+        s.add(Implies(seq[i] == idx_munich, start_day[i] == 4))
+        s.add(Implies(seq[i] == idx_santorini, start_day[i] == 8))
+        s.add(Implies(seq[i] == idx_valencia, start_day[i] == 14))
+    
+    # Last city must end at day 24
+    last_end = start_day[n-1] + (req_array[seq[n-1]] - 1)
+    s.add(last_end == 24)
+    
+    # Direct flight constraints between consecutive cities
+    for i in range(n-1):
+        constraints = []
+        for (a, b) in direct_flights_indices:
+            constraints.append(And(seq[i] == a, seq[i+1] == b))
+        s.add(Or(constraints))
+    
+    # Solve the problem
     if s.check() == sat:
-        m = s.model()
-        city_start_val = [m.evaluate(city_start[i]).as_long() for i in range(n_days)]
-        flight_val = [is_true(m.evaluate(flight[i])) for i in range(n_days-1)]
-        dest_val = [m.evaluate(dest[i]).as_long() for i in range(n_days-1)]
-
-        stays = []
-        flights = []
-        current_city = city_start_val[0]
-        start_day = 1
-        for i in range(n_days-1):
-            if flight_val[i]:
-                end_day = i+1
-                stays.append((start_day, end_day, current_city))
-                flights.append((i+1, current_city, dest_val[i]))
-                current_city = dest_val[i]
-                start_day = i+1
-        stays.append((start_day, n_days, current_city))
-
+        model = s.model()
+        seq_val = [model.evaluate(seq[i]).as_long() for i in range(n)]
+        start_day_val = [model.evaluate(start_day[i]).as_long() for i in range(n)]
+        
+        # Build itinerary
         itinerary = []
-        for (s, e, c) in stays:
-            if s == e:
-                itinerary.append({"day_range": f"Day {s}", "place": cities[c], "type": "stay"})
+        for i in range(n):
+            city_idx = seq_val[i]
+            city_name = cities[city_idx]
+            s_i = start_day_val[i]
+            e_i = s_i + req_days[city_idx] - 1
+            if s_i == e_i:
+                day_range_str = f"Day {s_i}"
             else:
-                itinerary.append({"day_range": f"Day {s}-{e}", "place": cities[c], "type": "stay"})
-        for (d, from_c, to_c) in flights:
-            itinerary.append({"day_range": f"Day {d}", "place": cities[from_c], "type": "flight"})
-            itinerary.append({"day_range": f"Day {d}", "place": cities[to_c], "type": "flight"})
-
-        def get_start_day(record):
-            s = record['day_range']
-            if s.startswith('Day '):
-                parts = s[4:].split('-')
-                return int(parts[0])
-            return 0
-
-        itinerary.sort(key=lambda r: (get_start_day(r), 0 if r['type'] == 'flight' else 1))
-        for record in itinerary:
-            del record['type']
-
-        result = {'itinerary': itinerary}
-        print(json.dumps(result, indent=2))
+                day_range_str = f"Day {s_i}-{e_i}"
+            itinerary.append({"day_range": day_range_str, "place": city_name})
+            
+            if i < n-1:
+                flight_day = start_day_val[i+1]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": city_name})
+                next_city_idx = seq_val[i+1]
+                next_city_name = cities[next_city_idx]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": next_city_name})
+        
+        result = {"itinerary": itinerary}
+        print(json.dumps(result))
     else:
         print("No solution found")
 

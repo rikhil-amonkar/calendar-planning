@@ -1,70 +1,49 @@
 from z3 import *
 
-def schedule_meeting(available_days, start_times, end_times, meeting_duration, preferences=None):
+def schedule_meeting(day, start_time, end_time, schedules):
     # Create a Z3 solver
     solver = Solver()
 
-    # Define the meeting duration in minutes
-    meeting_duration_minutes = int(meeting_duration * 60)
+    # Define the variables for the meeting time
+    meeting_start = Int('meeting_start')
 
-    # Define the time slots for each day
-    time_slots = []
-    for day in available_days:
-        for hour in range(9, 17):
-            for minute in range(0, 60, 30):
-                start_time = hour * 60 + minute
-                end_time = start_time + meeting_duration_minutes
-                if (day, start_time, end_time) not in time_slots:
-                    time_slots.append((day, start_time, end_time))
+    # Add constraints for the meeting time
+    solver.add(meeting_start >= start_time)
+    solver.add(meeting_start + 30 <= end_time)
 
-    # Define the variables for each time slot
-    time_slot_vars = []
-    for i, (day, start_time, end_time) in enumerate(time_slots):
-        var = Bool(f'time_slot_{i}')
-        solver.add(var)
-        time_slot_vars.append(var)
+    # Add constraints for each participant's schedule
+    for participant, schedule in schedules.items():
+        # Check if the meeting time conflicts with the participant's schedule
+        for time in schedule:
+            solver.add(meeting_start + 30 <= time[0] or meeting_start >= time[1])
 
-    # Define the constraints for each participant
-    for participant in preferences:
-        for time_slot in preferences[participant]:
-            day, start_time, end_time = time_slot
-            index = next((i for i, (d, s, e) in enumerate(time_slots) if d == day and s == start_time and e == end_time), None)
-            if index is not None:
-                solver.add(Not(time_slot_vars[index]))
-            else:
-                print(f"Warning: Time slot {time_slot} not found in time slots.")
+    # Check if a solution exists
+    if solver.check() == sat:
+        # Get the solution
+        model = solver.model()
+        # Extract the meeting time from the solution
+        meeting_start_value = model[meeting_start].as_long()
+        # Calculate the end time
+        meeting_end_value = meeting_start_value + 30
+        # Format the output
+        output = f'SOLUTION:\nDay: {day}\nStart Time: {meeting_start_value:02d}:00\nEnd Time: {meeting_end_value:02d}:30'
+    else:
+        output = 'No solution exists'
 
-    # Define the constraints for the meeting duration
-    for i in range(len(time_slots) - 1):
-        solver.add(Or(time_slot_vars[i], Not(time_slot_vars[i+1])))
+    return output
 
-    # Solve the problem
-    solver.check()
 
-    # Get the solution
-    model = solver.model()
-
-    # Find the first time slot that is True
-    for i, var in enumerate(time_slot_vars):
-        if model.evaluate(var).as_bool():
-            day, start_time, end_time = time_slots[i]
-            break
-
-    # Print the solution
-    print(f'SOLUTION:')
-    print(f'Day: {day}')
-    print(f'Start Time: {start_time // 60:02d}:{start_time % 60:02d}')
-    print(f'End Time: {(start_time + meeting_duration_minutes) // 60:02d}:{(start_time + meeting_duration_minutes) % 60:02d}')
-
-# Example usage
-available_days = ['Monday']
-start_times = [9 * 60 + 0, 9 * 60 + 0, 9 * 60 + 0]
-end_times = [17 * 60 + 0, 17 * 60 + 0, 17 * 60 + 0]
-meeting_duration = 0.5
-preferences = {
+# Define the schedules for each participant
+schedules = {
     'Andrew': [],
     'Grace': [],
-    'Samuel': [(9 * 60 + 0, 9 * 60 + 30), (11 * 60 + 30, 11 * 60 + 60), (13 * 60 + 0, 13 * 60 + 30), (14 * 60 + 0, 16 * 60 + 0), (16 * 60 + 30, 17 * 60 + 0)]
+    'Samuel': [(9, 10.5), (10.5, 11), (11, 11.5), (11.5, 12), (12, 13), (13, 13.5), (13.5, 14), (14, 16), (16, 16.5), (16.5, 17)]
 }
 
-schedule_meeting(available_days, start_times, end_times, meeting_duration, preferences)
+# Define the day and time range
+day = 'Monday'
+start_time = 9
+end_time = 17
+
+# Call the function to schedule the meeting
+print(schedule_meeting(day, start_time, end_time, schedules))

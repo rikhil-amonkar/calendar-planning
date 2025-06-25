@@ -1,116 +1,102 @@
-import json
 from z3 import *
+import json
 
 def main():
-    # Define city indices and names
-    cities = [0, 1, 2, 3, 4, 5]
-    city_names = {
-        0: "Helsinki",
-        1: "Valencia",
-        2: "Dubrovnik",
-        3: "Porto",
-        4: "Prague",
-        5: "Reykjavik"
-    }
-    days_required = [4, 5, 4, 3, 3, 4]  # Helsinki, Valencia, Dubrovnik, Porto, Prague, Reykjavik
-    
-    # Allowed flight connections (symmetric)
-    allowed_edges = [
-        (0, 4), (4, 0),  # Helsinki <-> Prague
-        (4, 1), (1, 4),  # Prague <-> Valencia
-        (1, 3), (3, 1),  # Valencia <-> Porto
-        (0, 5), (5, 0),  # Helsinki <-> Reykjavik
-        (2, 0), (0, 2),  # Dubrovnik <-> Helsinki
-        (5, 4), (4, 5)   # Reykjavik <-> Prague
+    # City mapping
+    cities = ["Helsinki", "Valencia", "Dubrovnik", "Porto", "Prague", "Reykjavik"]
+    # City numbers: 0,1,2,3,4,5
+
+    # Days required for each city
+    days_req = [4, 5, 4, 3, 3, 4]  # index 0 to 5
+
+    # Allowed direct flights (both directions)
+    allowed_pairs = [
+        (0,4), (4,0), # H-Prague
+        (4,1), (1,4), # Prague-Valencia
+        (1,3), (3,1), # Valencia-Porto
+        (0,5), (5,0), # H-Reykjavik
+        (2,0), (0,2), # Dubrovnik-H
+        (5,4), (4,5)  # Reykjavik-Prague
     ]
-    
-    # Create Z3 solver
+
+    # Create the sequence: 6 positions
+    seq = [Int(f"seq_{i}") for i in range(6)]
+    s = [Int(f"s_{i}") for i in range(6)]   # start days for each position
+
     solver = Solver()
-    
-    # Sequence variables: seq[0] to seq[5] represent the order of cities
-    seq = [Int(f'seq_{i}') for i in range(6)]
-    
-    # Start and end day variables for each city (by city index)
-    s = [Int(f's_{i}') for i in range(6)]
-    e = [Int(f'e_{i}') for i in range(6)]
-    
-    # Constraints: each seq variable is between 0 and 5 and all are distinct
-    solver.add([And(seq_i >= 0, seq_i <= 5) for seq_i in seq])
+
+    # Each element in seq must be between 0 and 5
+    for i in range(6):
+        solver.add(And(seq[i] >= 0, seq[i] < 6))
+
+    # Distinct constraint for seq
     solver.add(Distinct(seq))
-    
-    # Duration constraints: e[i] = s[i] + (days_required[i] - 1)
-    for i in range(6):
-        solver.add(e[i] == s[i] + days_required[i] - 1)
-    
-    # First city starts on day 1, last city ends on day 18
-    solver.add(s[seq[0]] == 1)
-    solver.add(e[seq[5]] == 18)
-    
-    # Consecutive cities: end day of current equals start day of next
+
+    # Consecutive constraint: for each i from 0 to 4, (seq[i], seq[i+1]) must be in allowed_pairs.
     for i in range(5):
-        solver.add(e[seq[i]] == s[seq[i+1]])
-    
-    # Flight connections: consecutive cities must have a direct flight
-    for i in range(5):
-        a = seq[i]
-        b = seq[i+1]
-        edge_constraints = []
-        for edge in allowed_edges:
-            edge_constraints.append(And(a == edge[0], b == edge[1]))
-        solver.add(Or(edge_constraints))
-    
-    # Porto constraint: start day between 14 and 16 (inclusive)
-    porto_index = 3
-    solver.add(s[porto_index] >= 14)
-    solver.add(s[porto_index] <= 16)
-    
-    # All start and end days between 1 and 18
+        conds = []
+        for pair in allowed_pairs:
+            conds.append(And(seq[i] == pair[0], seq[i+1] == pair[1]))
+        solver.add(Or(conds))
+
+    # Define a function to get the required days for a city (symbolic)
+    def day(city):
+        return If(city == 0, days_req[0],
+               If(city == 1, days_req[1],
+               If(city == 2, days_req[2],
+               If(city == 3, days_req[3],
+               If(city == 4, days_req[4], days_req[5]))))
+
+    # Start day for the first city
+    solver.add(s[0] == 1)
+
+    # For the next cities
+    for i in range(1, 6):
+        solver.add(s[i] == s[i-1] + (day(seq[i-1]) - 1))
+
+    # Porto constraint: find the position where seq[i] == 3 (Porto) and then require s[i] >= 14, s[i] <= 16
+    porto_constraint = []
     for i in range(6):
-        solver.add(s[i] >= 1)
-        solver.add(s[i] <= 18)
-        solver.add(e[i] >= 1)
-        solver.add(e[i] <= 18)
-    
-    # Solve the constraints
+        porto_constraint.append(And(seq[i] == 3, s[i] >= 14, s[i] <= 16))
+    solver.add(Or(porto_constraint))
+
+    # Check and get model
     if solver.check() == sat:
         model = solver.model()
-        # Extract sequence as integers
-        seq_val = [model.evaluate(seq_i).as_long() for seq_i in seq]
-        # Extract start and end days for each city
-        s_val = [model.evaluate(s_i).as_long() for s_i in s]
-        e_val = [model.evaluate(e_i).as_long() for e_i in e]
+        # Get the sequence and start days
+        seq_val = [model.evaluate(seq[i]).as_long() for i in range(6)]
+        s_val = [model.evaluate(s[i]).as_long() for i in range(6)]
         
-        # Build itinerary
-        itinerary = []
+        # Compute end days: e[i] = s_val[i] + (days_req[seq_val[i]] - 1)
+        e_val = []
+        for i in range(6):
+            city_index = seq_val[i]
+            end = s_val[i] + days_req[city_index] - 1
+            e_val.append(end)
         
-        # First city in sequence
-        first_city = seq_val[0]
-        s0 = s_val[first_city]
-        e0 = e_val[first_city]
-        itinerary.append({"day_range": f"Day {s0}-{e0}", "place": city_names[first_city]})
-        itinerary.append({"day_range": f"Day {e0}", "place": city_names[first_city]})  # Departure
+        # Build the itinerary list
+        itinerary_list = []
+        for i in range(6):
+            city_index = seq_val[i]
+            city_name = cities[city_index]
+            if s_val[i] == e_val[i]:
+                day_range_str = f"Day {s_val[i]}"
+            else:
+                day_range_str = f"Day {s_val[i]}-{e_val[i]}"
+            itinerary_list.append({"day_range": day_range_str, "place": city_name})
+            
+            if i < 5:
+                # Departure from current city on the last day of stay
+                itinerary_list.append({"day_range": f"Day {e_val[i]}", "place": city_name})
+                # Arrival to next city on the same day
+                next_city_index = seq_val[i+1]
+                next_city_name = cities[next_city_index]
+                itinerary_list.append({"day_range": f"Day {e_val[i]}", "place": next_city_name})
         
-        # Middle cities (positions 1 to 4 in sequence)
-        for i in range(1, 5):
-            city_idx = seq_val[i]
-            sc = s_val[city_idx]
-            ec = e_val[city_idx]
-            itinerary.append({"day_range": f"Day {sc}", "place": city_names[city_idx]})  # Arrival
-            itinerary.append({"day_range": f"Day {sc}-{ec}", "place": city_names[city_idx]})
-            itinerary.append({"day_range": f"Day {ec}", "place": city_names[city_idx]})  # Departure
-        
-        # Last city in sequence
-        last_city = seq_val[5]
-        s_last = s_val[last_city]
-        e_last = e_val[last_city]
-        itinerary.append({"day_range": f"Day {s_last}", "place": city_names[last_city]})  # Arrival
-        itinerary.append({"day_range": f"Day {s_last}-{e_last}", "place": city_names[last_city]})
-        
-        # Output as JSON
-        result = {"itinerary": itinerary}
+        result = {"itinerary": itinerary_list}
         print(json.dumps(result))
     else:
-        print('{"error": "No solution found"}')
+        print('{"itinerary": []}')
 
 if __name__ == "__main__":
     main()

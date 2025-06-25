@@ -1,91 +1,89 @@
 from z3 import *
+from collections import defaultdict
 
-# Define the cities
-cities = ['Reykjavik', 'Riga', 'Oslo', 'Lyon', 'Dubrovnik', 'Madrid', 'Warsaw', 'London']
-
-# Define the days
-days = range(1, 19)
-
-# Define the direct flights
-flights = {
-    'Reykjavik': ['Warsaw'],
-    'Riga': ['Warsaw'],
-    'Oslo': ['Madrid', 'Warsaw', 'Reykjavik', 'Lyon', 'London'],
-    'Lyon': ['London'],
-    'Dubrovnik': ['Madrid'],
-    'Madrid': ['Lyon', 'London'],
-    'Warsaw': ['Riga', 'Oslo', 'London'],
-    'London': ['Reykjavik']
+# Define the cities and their connections
+cities = {
+    'Reykjavik': ['Warsaw', 'Oslo'],
+    'Warsaw': ['Reykjavik', 'Riga', 'Oslo', 'London', 'Madrid'],
+    'Riga': ['Warsaw', 'Oslo'],
+    'Oslo': ['Warsaw', 'Riga', 'Dubrovnik', 'Lyon', 'London'],
+    'Dubrovnik': ['Oslo', 'Madrid'],
+    'Lyon': ['Oslo', 'London', 'Madrid'],
+    'Madrid': ['Warsaw', 'Oslo', 'Dubrovnik', 'Lyon', 'London'],
+    'London': ['Warsaw', 'Oslo', 'Dubrovnik', 'Lyon', 'Madrid'],
+    'Warsaw': ['Reykjavik', 'Riga', 'Oslo', 'London', 'Madrid']
 }
 
+# Define the day constraints
+day_constraints = {
+    'Reykjavik': 4,
+    'Riga': 2,
+    'Oslo': 3,
+    'Lyon': 5,
+    'Dubrovnik': 2,
+    'Madrid': 2,
+    'Warsaw': 4,
+    'London': 3
+}
+
+# Define the meeting constraint
+meeting_constraint = {'Riga': [4, 5]}
+
+# Define the wedding constraint
+wedding_constraint = {'Dubrovnik': [7, 8]}
+
+# Create a dictionary to store the flight days
+flight_days = defaultdict(list)
+
+# Define the solver
+solver = Optimize()
+
+# Define the variables
+days = [Bool(f'day_{i}') for i in range(19)]
+places = [Int(f'place_{i}') for i in range(19)]
+
 # Define the constraints
-x = [Int(f'{city}') for city in cities]
-y = [Int(f'{city}_day') for city in cities]
-constraints = []
+for i in range(19):
+    solver.add(days[i] == 0)
 
-# Each day, exactly one city is visited
-for day in days:
-    constraints.append(Sum([If(x[city] == day, 1, 0) for city in cities]) == 1)
+for i in range(1, 19):
+    solver.add(days[i] > days[i-1])
 
-# Reykjavik is visited for 4 days
-constraints.append(x['Reykjavik'] >= 1)
-constraints.append(x['Reykjavik'] <= 4)
+for city in cities:
+    solver.add(days[0] == 1)  # Start in the first city
+    solver.add(places[0] == city)
+    for day in range(1, 19):
+        for next_city in cities[city]:
+            if day in meeting_constraint.get(next_city, []) or day in wedding_constraint.get(next_city, []):
+                solver.add(days[day] == 0)
+            elif day >= day_constraints[city] and day <= day_constraints[city] + (day_constraints[city] == 4):
+                solver.add(days[day] == 0)
+            else:
+                solver.add(days[day] >= 1)
+                solver.add(Or([places[day] == city, places[day] == next_city]))
+        solver.add(Implies(Or([places[day] == city for city in cities[city]]), days[day] == 1))
+        solver.add(Implies(Not(Or([places[day] == city for city in cities[city]])), days[day] == 0))
 
-# Riga is visited for 2 days
-constraints.append(x['Riga'] >= 4)
-constraints.append(x['Riga'] <= 5)
+# Define the flight days
+for i in range(1, 19):
+    for city in cities:
+        if i in meeting_constraint.get(city, []) or i in wedding_constraint.get(city, []):
+            flight_days[city].append(i)
+        elif i >= day_constraints[city] and i <= day_constraints[city] + (day_constraints[city] == 4):
+            flight_days[city].append(i)
+        else:
+            flight_days[city].append(i)
 
-# Meet a friend in Riga between day 4 and day 5
-constraints.append(And(x['Riga'] == 4, x['Reykjavik'] == 4))
-constraints.append(And(x['Riga'] == 5, x['Reykjavik'] == 5))
-
-# Oslo is visited for 3 days
-constraints.append(x['Oslo'] >= 5)
-constraints.append(x['Oslo'] <= 8)
-
-# Lyon is visited for 5 days
-constraints.append(x['Lyon'] >= 9)
-constraints.append(x['Lyon'] <= 14)
-
-# Dubrovnik is visited for 2 days
-constraints.append(x['Dubrovnik'] >= 7)
-constraints.append(x['Dubrovnik'] <= 8)
-
-# Attend a wedding in Dubrovnik between day 7 and day 8
-constraints.append(And(x['Dubrovnik'] == 7, x['Reykjavik'] == 7))
-constraints.append(And(x['Dubrovnik'] == 8, x['Reykjavik'] == 8))
-
-# Madrid is visited for 2 days
-constraints.append(x['Madrid'] >= 6)
-constraints.append(x['Madrid'] <= 7)
-
-# Warsaw is visited for 4 days
-constraints.append(x['Warsaw'] >= 2)
-constraints.append(x['Warsaw'] <= 6)
-
-# London is visited for 3 days
-constraints.append(x['London'] >= 10)
-constraints.append(x['London'] <= 13)
-
-# Direct flights
-for city, destinations in flights.items():
-    for destination in destinations:
-        constraints.append(And(x[city] + 1 == x[destination], x[city] + 1 >= 1))
+# Define the output
+output = {'itinerary': []}
 
 # Solve the problem
-solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
+solver.minimize(0)
 
-if solver.check() == sat:
+result = solver.check()
+if result == sat:
     model = solver.model()
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = []
-        for day in days:
-            if model[x[city]].as_long() == day:
-                trip_plan[city].append(day)
-    for city, days in trip_plan.items():
-        print(f'Visit {city} on days {days}')
-else:
-    print('No solution found')
+    for i in range(19):
+        output['itinerary'].append({'day_range': f'Day {model[days[i]].as_long()}-{model[days[i+1]].as_long()-1 if i < 18 else "Day 18"}', 'place': model[places[i]].as_string()})
+
+print(output)

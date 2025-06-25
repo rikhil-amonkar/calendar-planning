@@ -1,42 +1,36 @@
 from z3 import *
 
-# Define the locations
-locations = ['Marina District', 'Mission District', 'Fisherman\'s Wharf', 'Presidio', 'Union Square', 'Sunset District', 'Financial District', 'Haight-Ashbury', 'Russian Hill']
-
-# Define the times
-times = ['9:00AM', '10:00AM', '11:30AM', '11:45AM', '2:15PM', '2:30PM', '2:45PM', '9:45PM', '10:00PM', '10:45PM']
-
 # Define the travel times
 travel_times = {
     ('Marina District', 'Mission District'): 19,
-    ('Marina District', 'Fisherman\'s Wharf'): 10,
+    ('Marina District', 'Fisherman\'s Wharf'): 9,
     ('Marina District', 'Presidio'): 10,
-    ('Marina District', 'Union Square'): 16,
-    ('Marina District', 'Sunset District'): 19,
-    ('Marina District', 'Financial District'): 17,
-    ('Marina District', 'Haight-Ashbury'): 16,
-    ('Marina District', 'Russian Hill'): 8,
+    ('Marina District', 'Union Square'): 18,
+    ('Marina District', 'Sunset District'): 21,
+    ('Marina District', 'Financial District'): 15,
+    ('Marina District', 'Haight-Ashbury'): 17,
+    ('Marina District', 'Russian Hill'): 7,
     ('Mission District', 'Marina District'): 19,
     ('Mission District', 'Fisherman\'s Wharf'): 22,
-    ('Mission District', 'Presidio'): 25,
-    ('Mission District', 'Union Square'): 15,
-    ('Mission District', 'Sunset District'): 24,
-    ('Mission District', 'Financial District'): 15,
-    ('Mission District', 'Haight-Ashbury'): 12,
+    ('Mission District', 'Presidio'): 26,
+    ('Mission District', 'Union Square'): 14,
+    ('Mission District', 'Sunset District'): 25,
+    ('Mission District', 'Financial District'): 17,
+    ('Mission District', 'Haight-Ashbury'): 11,
     ('Mission District', 'Russian Hill'): 15,
     ('Fisherman\'s Wharf', 'Marina District'): 9,
     ('Fisherman\'s Wharf', 'Mission District'): 22,
-    ('Fisherman\'s Wharf', 'Presidio'): 17,
-    ('Fisherman\'s Wharf', 'Union Square'): 13,
-    ('Fisherman\'s Wharf', 'Sunset District'): 27,
-    ('Fisherman\'s Wharf', 'Financial District'): 11,
-    ('Fisherman\'s Wharf', 'Haight-Ashbury'): 22,
+    ('Fisherman\'s Wharf', 'Presidio'): 19,
+    ('Fisherman\'s Wharf', 'Union Square'): 15,
+    ('Fisherman\'s Wharf', 'Sunset District'): 29,
+    ('Fisherman\'s Wharf', 'Financial District'): 10,
+    ('Fisherman\'s Wharf', 'Haight-Ashbury'): 23,
     ('Fisherman\'s Wharf', 'Russian Hill'): 7,
     ('Presidio', 'Marina District'): 11,
     ('Presidio', 'Mission District'): 26,
     ('Presidio', 'Fisherman\'s Wharf'): 19,
-    ('Presidio', 'Union Square'): 22,
-    ('Presidio', 'Sunset District'): 15,
+    ('Presidio', 'Union Square'): 24,
+    ('Presidio', 'Sunset District'): 16,
     ('Presidio', 'Financial District'): 23,
     ('Presidio', 'Haight-Ashbury'): 15,
     ('Presidio', 'Russian Hill'): 14,
@@ -44,9 +38,9 @@ travel_times = {
     ('Union Square', 'Mission District'): 14,
     ('Union Square', 'Fisherman\'s Wharf'): 15,
     ('Union Square', 'Presidio'): 24,
-    ('Union Square', 'Sunset District'): 27,
+    ('Union Square', 'Sunset District'): 30,
     ('Union Square', 'Financial District'): 9,
-    ('Union Square', 'Haight-Ashbury'): 18,
+    ('Union Square', 'Haight-Ashbury'): 19,
     ('Union Square', 'Russian Hill'): 13,
     ('Sunset District', 'Marina District'): 21,
     ('Sunset District', 'Mission District'): 25,
@@ -62,7 +56,7 @@ travel_times = {
     ('Financial District', 'Presidio'): 22,
     ('Financial District', 'Union Square'): 9,
     ('Financial District', 'Sunset District'): 30,
-    ('Financial District', 'Haight-Ashbury'): 19,
+    ('Financial District', 'Haight-Ashbury'): 21,
     ('Financial District', 'Russian Hill'): 11,
     ('Haight-Ashbury', 'Marina District'): 17,
     ('Haight-Ashbury', 'Mission District'): 11,
@@ -82,86 +76,69 @@ travel_times = {
     ('Russian Hill', 'Haight-Ashbury'): 17
 }
 
-# Define the constraints
+# Define the friends and their availability
+friends = {
+    'Karen': (15 * 60 + 2 * 60, 20 * 60 + 0 * 60),
+    'Richard': (2.5 * 60 + 30 * 60, 5.5 * 60 + 0 * 60),
+    'Robert': (21.75 * 60 + 1 * 60, 22.75 * 60 + 0 * 60),
+    'Joseph': (11.75 * 60 + 2 * 60, 14.75 * 60 + 0 * 60),
+    'Helen': (2.75 * 60 + 1.75 * 60, 8.75 * 60 + 0 * 60),
+    'Elizabeth': (10 * 60 + 0 * 60, 12.75 * 60 + 0 * 60),
+    'Kimberly': (2.25 * 60 + 1.75 * 60, 5.5 * 60 + 0 * 60),
+    'Ashley': (11.5 * 60 + 0 * 60, 21.5 * 60 + 0 * 60)
+}
+
+# Define the minimum meeting times
+min_meeting_times = {
+    'Karen': 30,
+    'Richard': 30,
+    'Robert': 60,
+    'Joseph': 120,
+    'Helen': 105,
+    'Elizabeth': 75,
+    'Kimberly': 105,
+    'Ashley': 45
+}
+
+# Create a Z3 solver
 s = Solver()
 
 # Define the variables
-start_time = 0
-end_time = 24 * 60  # 24 hours in minutes
-location = [None] * len(times)
-time_spent = [None] * len(times)
-location[0] = 'Marina District'  # Start at Marina District
-time_spent[0] = 0
+x = [Int(friend) for friend in friends]
+y = [Int(friend + '_end') for friend in friends]
 
-# Add constraints for each person
-for i, time in enumerate(times):
-    if time == '9:00AM':
-        location[i] = 'Marina District'
-        time_spent[i] = 0
-    elif time == '10:00AM':
-        location[i] = 'Marina District'
-        time_spent[i] = 0
-    elif time == '11:30AM':
-        location[i] = 'Russian Hill'
-        time_spent[i] = 0
-    elif time == '11:45AM':
-        location[i] = 'Union Square'
-        time_spent[i] = 120
-    elif time == '2:15PM':
-        location[i] = 'Mission District'
-        time_spent[i] = 0
-    elif time == '2:30PM':
-        location[i] = 'Fisherman\'s Wharf'
-        time_spent[i] = 0
-    elif time == '2:45PM':
-        location[i] = 'Sunset District'
-        time_spent[i] = 0
-    elif time == '9:45PM':
-        location[i] = 'Presidio'
-        time_spent[i] = 60
-    elif time == '10:00PM':
-        location[i] = 'Mission District'
-        time_spent[i] = 0
-    elif time == '10:45PM':
-        location[i] = 'Presidio'
-        time_spent[i] = 0
+# Add constraints for the start times
+for i, friend in enumerate(friends):
+    s.add(x[i] >= 9 * 60)  # Start at 9:00 AM
+    s.add(x[i] <= friends[friend][0])  # End before the friend's availability starts
 
-# Add constraints for travel times
-for i in range(1, len(times)):
-    location[i] = Int('location_%d' % i)
-    time_spent[i] = Int('time_spent_%d' % i)
-    s.add(Or([location[i] == loc for loc in locations]))
-    s.add(And([time_spent[i] >= 0, time_spent[i] <= 24 * 60]))
+# Add constraints for the end times
+for i, friend in enumerate(friends):
+    s.add(y[i] >= x[i] + min_meeting_times[friend])  # End at least the minimum meeting time after the start
+    s.add(y[i] <= friends[friend][1])  # End before the friend's availability ends
 
-# Add constraints for meeting each person
-for i, time in enumerate(times):
-    if time == '11:45AM':
-        s.add(And([location[i] == 'Union Square', time_spent[i] >= 120]))
-    elif time == '2:15PM':
-        s.add(And([location[i] == 'Mission District', time_spent[i] >= 30]))
-    elif time == '2:30PM':
-        s.add(And([location[i] == 'Fisherman\'s Wharf', time_spent[i] >= 30]))
-    elif time == '2:45PM':
-        s.add(And([location[i] == 'Sunset District', time_spent[i] >= 105]))
-    elif time == '9:45PM':
-        s.add(And([location[i] == 'Presidio', time_spent[i] >= 60]))
-    elif time == '10:00PM':
-        s.add(And([location[i] == 'Mission District', time_spent[i] >= 0]))
-    elif time == '10:45PM':
-        s.add(And([location[i] == 'Presidio', time_spent[i] >= 0]))
+# Add constraints for the friends' availability
+for i, friend in enumerate(friends):
+    s.add(x[i] >= friends[friend][0])
+    s.add(y[i] <= friends[friend][1])
 
-# Add constraints for travel times
-for i in range(1, len(times)):
-    s.add(Implies(location[i] == location[i-1], time_spent[i] == time_spent[i-1] + travel_times[(location[i-1], location[i])]))
-    s.add(Implies(location[i]!= location[i-1], time_spent[i] == travel_times[(location[i-1], location[i])]))
+# Solve the problem
+s.check()
+model = s.model()
 
-# Check if the solution is feasible
-if s.check() == sat:
-    m = s.model()
-    print("Solution:")
-    for i in range(len(times)):
-        print("%s: %s, %d" % (times[i], m[location[i]].as_string(), m[time_spent[i]].as_long()))
-else:
-    print("No solution exists")
+# Print the solution
+print("SOLUTION:")
+for i, friend in enumerate(friends):
+    print(f"{friend}: {model[x[i]].as_long()} - {model[y[i]].as_long()}")
 
-# Now, the constraints are added correctly, and the code should run without errors.
+# Calculate the total travel time
+total_travel_time = 0
+for i, friend in enumerate(friends):
+    for j, other_friend in enumerate(friends):
+        if i!= j:
+            start_time = max(model[x[i]].as_long(), model[x[j]].as_long())
+            end_time = min(model[y[i]].as_long(), model[y[j]].as_long())
+            travel_time = (end_time - start_time) / 60
+            if travel_time > 0:
+                total_travel_time += travel_times[(friends[other_friend][0], friends[friend][0])]
+print(f"Total travel time: {total_travel_time} minutes")

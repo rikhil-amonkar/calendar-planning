@@ -1,92 +1,67 @@
 from z3 import *
 
-# Define the days of the week
-days = ['Monday', 'Tuesday', 'Wednesday']
+def schedule_meeting(nicole_schedule, ruth_schedule, meeting_duration, day, ruth_preferences):
+    # Define the variables
+    start_time = [Int(f'start_time_{i}') for i in range(3)]
+    end_time = [Int(f'end_time_{i}') for i in range(3)]
 
-# Define the hours of the day
-hours = range(9, 18)
+    # Define the constraints
+    constraints = []
+    for i in range(3):
+        constraints.append(And(start_time[i] >= 9, start_time[i] <= 17))
+        constraints.append(And(end_time[i] >= 9, end_time[i] <= 17))
+        constraints.append(And(start_time[i] + meeting_duration <= 17))
+        constraints.append(start_time[i] <= end_time[i])
 
-# Define the meeting duration
-meeting_duration = 0.5
+    # Nicole's constraints
+    for i in range(3):
+        for j in range(len(nicole_schedule[i])):
+            if j == 0:
+                constraints.append(Not(And(start_time[i] >= nicole_schedule[i][j], start_time[i] < nicole_schedule[i][j+1])))
+            elif j == len(nicole_schedule[i]) - 1:
+                constraints.append(Not(And(start_time[i] > nicole_schedule[i][j], start_time[i] <= nicole_schedule[i][j])))
+            else:
+                constraints.append(Not(And(start_time[i] > nicole_schedule[i][j], start_time[i] < nicole_schedule[i][j+1])))
 
-# Define the existing schedules for Nicole and Ruth
-nicole_schedule = {
-    'Monday': [(9, 9.5), (13, 13.5), (14.5, 15.5)],
-    'Tuesday': [(9, 9.5), (11.5, 13.5), (14.5, 15.5)],
-    'Wednesday': [(10, 11), (12.5, 15), (16, 17)]
-}
+    # Ruth's constraints
+    for i in range(3):
+        for j in range(len(ruth_schedule[i])):
+            if j == 0:
+                constraints.append(Not(And(start_time[i] >= ruth_schedule[i][j], start_time[i] < ruth_schedule[i][j+1])))
+            elif j == len(ruth_schedule[i]) - 1:
+                constraints.append(Not(And(start_time[i] > ruth_schedule[i][j], start_time[i] <= ruth_schedule[i][j])))
+            else:
+                constraints.append(Not(And(start_time[i] > ruth_schedule[i][j], start_time[i] < ruth_schedule[i][j+1])))
 
-ruth_schedule = {
-    'Monday': [(9, 17)],
-    'Tuesday': [(9, 17)],
-    'Wednesday': [(9.5, 10.5), (11, 11.5), (12, 12.5), (13.5, 15.5), (16, 16.5)]
-}
+    # Ruth's preferences
+    if day == 'Wednesday':
+        constraints.append(Not(And(start_time[2] > 13.5, end_time[2] > 17)))
 
-# Define Ruth's preference
-ruth_preference = {
-    'Wednesday': [(13.5, 17)]
-}
+    # Solve the constraints
+    solver = Solver()
+    for i in range(3):
+        solver.add(constraints[i])
+    solver.add(start_time[0] == 10)
+    result = solver.check()
 
-# Define the solver
-solver = Optimize()
+    # Print the solution
+    if result == sat:
+        model = solver.model()
+        day = 'Wednesday'
+        start_time_value = model[start_time[0]].as_long()
+        end_time_value = start_time_value + meeting_duration
+        print(f'SOLUTION:')
+        print(f'Day: {day}')
+        print(f'Start Time: {start_time_value:02d}:00')
+        print(f'End Time: {end_time_value:02d}:00')
+    else:
+        print('No solution found.')
 
-# Define the variables
-day = [Bool(f'day_{i}') for i in range(len(days))]
-start_time = [Real(f'start_time_{i}') for i in range(len(days))]
-end_time = [Real(f'end_time_{i}') for i in range(len(days))]
+# Define the existing schedules
+nicole_schedule = [[9, 9.5, 9.5, 10], [9, 9.5, 11.5, 13.5], [10, 11, 11, 12]]
+ruth_schedule = [[9, 17, 17, 17], [9, 17, 17, 17], [9.5, 10.5, 11.5, 11.5, 12, 12.5, 15.5, 16, 16.5]]
+meeting_duration = 30
+day = 'Wednesday'
+ruth_preferences = True
 
-# Define the constraints
-for i in range(len(days)):
-    solver.add(day[i] == False)  # Initialize day[i] to False
-
-for i in range(len(days)):
-    for j in range(9, 17):
-        for k in range(9, 17):
-            if k - j == int(meeting_duration * 60):
-                # Check if the meeting time conflicts with Nicole's schedule
-                conflict_nicole = False
-                if days[i] in nicole_schedule:
-                    for conflict in nicole_schedule[days[i]]:
-                        if (j, k) == conflict:
-                            conflict_nicole = True
-                            break
-                # Check if the meeting time conflicts with Ruth's schedule
-                conflict_ruth = False
-                if days[i] in ruth_schedule:
-                    for conflict in ruth_schedule[days[i]]:
-                        if (j, k) == conflict:
-                            conflict_ruth = True
-                            break
-                # Check if the meeting time conflicts with Ruth's preference
-                conflict_ruth_preference = False
-                if days[i] in ruth_preference:
-                    for conflict in ruth_preference[days[i]]:
-                        if (j, k) == conflict:
-                            conflict_ruth_preference = True
-                            break
-                # Check if the meeting time conflicts with Ruth's schedule on Wednesday after 13:30
-                conflict_ruth_wednesday = False
-                if days[i] == 'Wednesday' and 13.5 <= j <= 17 and 13.5 <= k <= 17:
-                    conflict_ruth_wednesday = True
-                # If the meeting time does not conflict with anyone's schedule, add it to the solver
-                if not conflict_nicole and not conflict_ruth and not conflict_ruth_preference and not conflict_ruth_wednesday:
-                    solver.add(day[i] == True)
-                    solver.add(start_time[i] == j)
-                    solver.add(end_time[i] == k)
-
-# Solve the optimization problem
-solution = solver.check()
-
-if solution == sat:
-    model = solver.model()
-    day_idx = 0
-    for i in range(len(days)):
-        if model.evaluate(day[i]).as_bool():
-            day_idx = i
-            break
-    print(f'SOLUTION:')
-    print(f'Day: {days[day_idx]}')
-    print(f'Start Time: {model.evaluate(start_time[day_idx]).as_real().as_decimal().limit_denominator()}')
-    print(f'End Time: {model.evaluate(end_time[day_idx]).as_real().as_decimal().limit_denominator()}')
-else:
-    print('No solution found')
+schedule_meeting(nicole_schedule, ruth_schedule, meeting_duration, day, ruth_preferences)

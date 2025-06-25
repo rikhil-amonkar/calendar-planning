@@ -1,55 +1,49 @@
 from z3 import *
 
-def schedule_meeting(danielle_schedule, bruce_schedule, eric_schedule, duration):
-    # Define the day of the meeting
-    day = 'Monday'
+# Define the variables
+day = 'Monday'
+start_time = 9
+end_time = 17
+meeting_duration = 1
 
-    # Define the start time of the meeting
-    start_time = Real('start_time')
+# Define the time slots for each participant
+danielle_slots = [(9, 10), (10.5, 11), (14.5, 15), (15.5, 16), (16.5, 17)]
+bruce_slots = [(11, 11.5), (12.5, 13), (14, 14.5), (15.5, 16)]
+eric_slots = [(9, 9.5), (10, 11), (11.5, 13), (14.5, 15.5)]
 
-    # Define the constraints for each person's schedule
-    danielle_constraints = []
-    for time in danielle_schedule:
-        danielle_constraints.append(If(start_time >= time, start_time + duration > time, True))
-    danielle_constraints.append(start_time + duration <= 17)  # Ensure the meeting ends before 17:00
+# Create Z3 solver
+solver = Solver()
 
-    bruce_constraints = []
-    for time in bruce_schedule:
-        bruce_constraints.append(If(start_time >= time, start_time + duration > time, True))
-    bruce_constraints.append(start_time + duration <= 17)  # Ensure the meeting ends before 17:00
+# Define the variables for the meeting time
+t = Int('t')
 
-    eric_constraints = []
-    for time in eric_schedule:
-        eric_constraints.append(If(start_time >= time, start_time + duration > time, True))
-    eric_constraints.append(start_time + duration <= 17)  # Ensure the meeting ends before 17:00
+# Define the variables for the meeting end time
+t_end = Int('t_end')
 
-    # Add the constraints to the solver
-    solver = Solver()
-    solver.add(danielle_constraints)
-    solver.add(bruce_constraints)
-    solver.add(eric_constraints)
+# Define the constraints
+for start, end in danielle_slots:
+    solver.add(Or(t < start, t + meeting_duration > end))
+for start, end in bruce_slots:
+    solver.add(Or(t < start, t + meeting_duration > end))
+for start, end in eric_slots:
+    solver.add(Or(t < start, t + meeting_duration > end))
 
-    # Check if a solution exists
+# Add constraints for the meeting duration
+solver.add(t + meeting_duration <= end_time)
+
+# Find the earliest possible start time for the meeting
+earliest_start = 9
+while earliest_start < end_time - meeting_duration:
+    solver.push()
+    solver.add(t == earliest_start)
     if solver.check() == sat:
-        # Extract the solution
         model = solver.model()
-        start_time_value = float(model[start_time])
-
-        # Print the solution
-        print('SOLUTION:')
-        print(f'Day: {day}')
-        print(f'Start Time: {int(start_time_value):02d}:{int((start_time_value % 1) * 60):02d}')
-        print(f'End Time: {int(start_time_value + duration):02d}:{int(((start_time_value + duration) % 1) * 60):02d}')
-    else:
-        print('No solution exists.')
-
-# Define the existing schedules
-danielle_schedule = [9, 10, 10.5, 11, 14.5, 15, 15.5, 16, 16.5, 17]
-bruce_schedule = [11, 11.5, 12.5, 13, 14, 14.5, 15.5, 16]
-eric_schedule = [9.5, 10, 11, 11.5, 11.5, 13, 14.5, 15.5]
-
-# Define the meeting duration
-duration = 1
-
-# Call the function to schedule the meeting
-schedule_meeting(danielle_schedule, bruce_schedule, eric_schedule, duration)
+        start_time = int(earliest_start / 60)
+        end_time = start_time + meeting_duration
+        print(f'SOLUTION:\nDay: {day}\nStart Time: {start_time:02d}:00\nEnd Time: {end_time:02d}:00')
+        solver.pop()
+        break
+    solver.pop()
+    earliest_start += 0.5  # Try every half hour
+else:
+    print('No solution found.')

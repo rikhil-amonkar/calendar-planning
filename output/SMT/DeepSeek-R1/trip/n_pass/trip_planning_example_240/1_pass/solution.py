@@ -1,131 +1,78 @@
 from z3 import *
+import json
 
 def main():
-    cities = ['Prague', 'Berlin', 'Tallinn', 'Stockholm']
-    flights = { 
-        ('Berlin', 'Tallinn'), 
-        ('Prague', 'Tallinn'), 
-        ('Stockholm', 'Tallinn'), 
-        ('Prague', 'Stockholm'), 
-        ('Stockholm', 'Berlin')
+    # Define the city mapping
+    city_map = {
+        0: 'Prague',
+        1: 'Berlin',
+        2: 'Tallinn',
+        3: 'Stockholm'
     }
     
-    # Create a 2D array of Bool variables: In[day][city]
-    In = {}
-    for d in range(1, 13):
-        In[d] = {}
-        for c in cities:
-            In[d][c] = Bool(f"In_day{d}_{c}")
+    # Flight pairs: bidirectional direct flights
+    flight_pairs = [(0,2), (2,0), (1,2), (2,1), (3,2), (2,3), (0,3), (3,0), (3,1), (1,3)]
     
+    # Create solver
     s = Solver()
     
-    # Constraint: Each day has either 1 or 2 cities.
-    for d in range(1, 13):
-        total = Sum([If(In[d][c], 1, 0) for c in cities])
-        s.add(Or(total == 1, total == 2))
+    # City variables for each segment
+    c1, c2, c3, c4 = Ints('c1 c2 c3 c4')
     
-    # Constraint: If two cities are present on the same day, they must be connected by a direct flight.
-    for d in range(1, 13):
-        for i in range(len(cities)):
-            for j in range(i+1, len(cities)):
-                c1 = cities[i]
-                c2 = cities[j]
-                if (c1, c2) not in flights and (c2, c1) not in flights:
-                    s.add(Not(And(In[d][c1], In[d][c2])))
+    # Constraints: each city variable must be between 0 and 3
+    s.add(c1 >= 0, c1 <= 3)
+    s.add(c2 >= 0, c2 <= 3)
+    s.add(c3 >= 0, c3 <= 3)
+    s.add(c4 >= 0, c4 <= 3)
     
-    # Fixed constraints for Berlin: must be present on day 6 and 8.
-    s.add(In[6]['Berlin'] == True)
-    s.add(In[8]['Berlin'] == True)
+    # All cities in segments must be distinct
+    s.add(Distinct(c1, c2, c3, c4))
     
-    # Fixed constraints for Tallinn: must be present on days 8 to 12.
-    for d in [8, 9, 10, 11, 12]:
-        s.add(In[d]['Tallinn'] == True)
+    # Fixed segments: last segment is Tallinn (2), third segment is Berlin (1)
+    s.add(c4 == 2)  # Tallinn
+    s.add(c3 == 1)  # Berlin
     
-    # Total days per city
-    s.add(Sum([If(In[d]['Prague'], 1, 0) for d in range(1,13)]) == 2)
-    s.add(Sum([If(In[d]['Berlin'], 1, 0) for d in range(1,13)]) == 3)
-    s.add(Sum([If(In[d]['Tallinn'], 1, 0) for d in range(1,13)]) == 5)
-    s.add(Sum([If(In[d]['Stockholm'], 1, 0) for d in range(1,13)]) == 5)
+    # Flight constraints: consecutive segments must have direct flights
+    # Flight from segment1 to segment2
+    s.add(Or([And(c1 == a, c2 == b) for (a, b) in flight_pairs]))
+    # Flight from segment2 to segment3
+    s.add(Or([And(c2 == a, c3 == b) for (a, b) in flight_pairs]))
+    # Flight from segment3 to segment4
+    s.add(Or([And(c3 == a, c4 == b) for (a, b) in flight_pairs]))
     
-    # Check and get the model
+    # Check if a solution exists
     if s.check() == sat:
         m = s.model()
-        records = []  # List to hold all records
+        c1_val = m[c1].as_long()
+        c2_val = m[c2].as_long()
+        c3_val = m[c3].as_long()
+        c4_val = m[c4].as_long()
         
-        # Step 1: Segment records for contiguous stays in each city.
-        for city in cities:
-            days_present = []
-            for d in range(1, 13):
-                if m.evaluate(In[d][city]) == True:
-                    days_present.append(d)
-            if not days_present:
-                continue
-            days_present.sort()
-            segments = []
-            start = days_present[0]
-            end = days_present[0]
-            for i in range(1, len(days_present)):
-                if days_present[i] == end + 1:
-                    end = days_present[i]
-                else:
-                    segments.append((start, end))
-                    start = days_present[i]
-                    end = days_present[i]
-            segments.append((start, end))
+        # Segment boundaries (fixed based on constraints)
+        segments = [
+            (1, 2, city_map[c1_val]),  # Segment 1: start day, end day, city
+            (2, 6, city_map[c2_val]),  # Segment 2
+            (6, 8, city_map[c3_val]),  # Segment 3
+            (8, 12, city_map[c4_val])  # Segment 4
+        ]
+        
+        # Build itinerary
+        itinerary = []
+        for idx, (start, end, city) in enumerate(segments):
+            # Add contiguous block for the segment
+            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
             
-            for (s_start, s_end) in segments:
-                if s_start == s_end:
-                    day_range_str = f"Day {s_start}"
-                else:
-                    day_range_str = f"Day {s_start}-{s_end}"
-                records.append({
-                    'type': 'segment',
-                    'start_day': s_start,
-                    'day_range': day_range_str,
-                    'place': city
-                })
+            # If not the last segment, add flight day records
+            if idx < len(segments) - 1:
+                next_city = segments[idx+1][2]
+                itinerary.append({"day_range": f"Day {end}", "place": city})
+                itinerary.append({"day_range": f"Day {end}", "place": next_city})
         
-        # Step 2: Flight day records for days with two cities.
-        flight_days = []
-        for d in range(1, 13):
-            count = 0
-            for c in cities:
-                if m.evaluate(In[d][c]) == True:
-                    count += 1
-            if count == 2:
-                flight_days.append(d)
-                
-        for d in flight_days:
-            cities_on_d = []
-            for c in cities:
-                if m.evaluate(In[d][c]) == True:
-                    cities_on_d.append(c)
-            cities_on_d.sort()
-            for c in cities_on_d:
-                records.append({
-                    'type': 'flight_day',
-                    'start_day': d,
-                    'day_range': f"Day {d}",
-                    'place': c
-                })
-        
-        # Sort records by start_day, then by type (segment first, then flight_day), then by place.
-        def get_sort_key(rec):
-            # For segment records, we have the start_day. For flight_day, it's the day itself.
-            start = rec['start_day']
-            # Type: segment -> 0, flight_day -> 1
-            type_val = 0 if rec['type'] == 'segment' else 1
-            place = rec['place']
-            return (start, type_val, place)
-        
-        records_sorted = sorted(records, key=get_sort_key)
-        itinerary = [{'day_range': rec['day_range'], 'place': rec['place']} for rec in records_sorted]
-        
-        # Output the result as JSON
-        result = {'itinerary': itinerary}
-        print(result)
+        # Output the itinerary as a JSON dictionary
+        result = {"itinerary": itinerary}
+        print(json.dumps(result, indent=2))
     else:
         print("No solution found")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

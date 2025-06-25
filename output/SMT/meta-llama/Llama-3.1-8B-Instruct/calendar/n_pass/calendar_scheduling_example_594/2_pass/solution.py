@@ -1,66 +1,73 @@
 from z3 import *
 
 def schedule_meeting(adam_schedule, roy_schedule, meeting_duration):
+    """
+    Schedules a meeting between Adam and Roy.
+
+    Args:
+    adam_schedule (list): Adam's schedule as a list of tuples (start_time, end_time).
+    roy_schedule (list): Roy's schedule as a list of tuples (start_time, end_time).
+    meeting_duration (int): The duration of the meeting in hours.
+
+    Returns:
+    str: A string describing the scheduled meeting in the format 'SOLUTION:\nDay: <day>\nStart Time: <HH:MM>\nEnd Time: <HH:MM>'.
+    """
     # Define the day of the meeting
     day = 'Monday'
 
-    # Define the start and end time of the work hours
-    start_time = 9
-    end_time = 17
+    # Define the start and end times of the meeting
+    start_time = Int('start_time')
+    end_time = Int('end_time')
 
-    # Create a Z3 solver
-    solver = Solver()
-
-    # Define the possible start times for the meeting
-    start_times = [i for i in range(start_time, end_time - meeting_duration + 1)]
-
-    # Define the variables for the start and end time of the meeting
-    start_time_var = Int('start_time')
-    end_time_var = Int('end_time')
-
-    # Add the constraints for the start and end time
-    solver.add(And(start_time <= start_time_var, start_time_var <= end_time))
-    solver.add(And(start_time_var + meeting_duration <= end_time, end_time_var <= end_time))
+    # Define the constraints for the start and end times
+    constraints = [
+        And(start_time >= 9*60, start_time < 17*60),  # Between 9:00 and 17:00
+        And(end_time > start_time, end_time - start_time == meeting_duration * 60),  # Meeting duration
+    ]
 
     # Define the constraints for Adam's schedule
-    adam_busy_intervals = [(9*60 + 30, 10*60), (12*60 + 30, 13*60), (14*60 + 30, 15*60), (16*60 + 30, 17*60)]
-    for start, end in adam_busy_intervals:
-        solver.add(Or(start_time_var < start, end_time_var > end))
+    adam_constraints = [
+        Or(start_time >= 9*60 + 30, start_time < 9*60 + 30 + 30),  # Not between 9:30 and 10:00
+        Or(start_time >= 12*60 + 30, start_time < 12*60 + 30 + 30),  # Not between 12:30 and 13:00
+        Or(start_time >= 14*60 + 30, start_time < 14*60 + 30 + 30),  # Not between 14:30 and 15:00
+        Or(start_time >= 16*60 + 30, start_time < 16*60 + 30 + 30),  # Not between 16:30 and 17:00
+    ]
 
     # Define the constraints for Roy's schedule
-    roy_busy_intervals = [(10*60, 11*60), (11*60 + 30, 13*60), (13*60 + 30, 14*60 + 30), (16*60 + 30, 17*60)]
-    for start, end in roy_busy_intervals:
-        solver.add(Or(start_time_var < start, end_time_var > end))
+    roy_constraints = [
+        Or(start_time >= 10*60, start_time < 10*60 + 60),  # Not between 10:00 and 11:00
+        Or(start_time >= 11*60 + 30, start_time < 11*60 + 30 + 90),  # Not between 11:30 and 13:00
+        Or(start_time >= 13*60 + 30, start_time < 13*60 + 30 + 60),  # Not between 13:30 and 14:30
+        Or(start_time >= 16*60 + 30, start_time < 16*60 + 30 + 30),  # Not between 16:30 and 17:00
+    ]
 
-    # Define a variable to store the solution
-    solution = Bool('solution')
+    # Add the constraints to the solver
+    solver = Solver()
+    solver.add(constraints + adam_constraints + roy_constraints)
 
-    # Add a constraint to check if a solution exists
-    solver.add(solution == (start_time_var >= 9*60) & (start_time_var + meeting_duration <= 17*60) & 
-                (start_time_var >= 10*60 + 30) | (start_time_var >= 11*60 + 30) | 
-                (start_time_var >= 13*60 + 30) | (start_time_var >= 14*60) | 
-                (start_time_var >= 16*60))
-
-    # Check if a solution exists
+    # Check if there is a solution
     if solver.check() == sat:
-        # Get the solution
+        # Get the model
         model = solver.model()
-        solution_val = model[solution].as_bool()
-
-        if solution_val:
-            start_time_val = model[start_time_var].as_long()
-            end_time_val = model[end_time_var].as_long()
-
-            # Return the solution
-            return f"SOLUTION:\nDay: {day}\nStart Time: {start_time_val // 60:02d}:{start_time_val % 60:02d}\nEnd Time: {(start_time_val + meeting_duration) // 60:02d}:{(start_time_val + meeting_duration) % 60:02d}"
-        else:
-            return "No solution exists"
+        # Extract the start and end times
+        start_time_value = model[start_time].as_long()
+        end_time_value = model[end_time].as_long()
+        # Format the times as strings
+        start_time_str = f'{start_time_value // 60:02d}:{start_time_value % 60:02d}'
+        end_time_str = f'{end_time_value // 60:02d}:{end_time_value % 60:02d}'
+        # Return the solution
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}'
     else:
-        return "No solution exists"
+        # Return a message indicating that there is no solution
+        return 'No solution found'
 
-# Example usage:
-adam_schedule = [(9*60 + 30, 10*60), (12*60 + 30, 13*60), (14*60 + 30, 15*60), (16*60 + 30, 17*60)]
-roy_schedule = [(10*60, 11*60), (11*60 + 30, 13*60), (13*60 + 30, 14*60 + 30), (16*60 + 30, 17*60)]
-meeting_duration = 30
+# Define the schedules for Adam and Roy
+adam_schedule = [(9*60 + 30, 9*60 + 30 + 30), (12*60 + 30, 12*60 + 30 + 30), (14*60 + 30, 14*60 + 30 + 30), (16*60 + 30, 16*60 + 30 + 30)]
+roy_schedule = [(10*60, 10*60 + 60), (11*60 + 30, 11*60 + 30 + 90), (13*60 + 30, 13*60 + 30 + 60), (16*60 + 30, 16*60 + 30 + 30)]
 
-print(schedule_meeting(adam_schedule, roy_schedule, meeting_duration))
+# Define the meeting duration
+meeting_duration = 0.5
+
+# Schedule the meeting
+solution = schedule_meeting(adam_schedule, roy_schedule, meeting_duration)
+print(solution)

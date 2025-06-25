@@ -1,80 +1,64 @@
 from z3 import *
 
-def schedule_meeting(day, start_time, end_time, constraints):
-    # Define the variables
-    times = [Int(f"t_{i}") for i in range(96)]  # 96 possible time slots
-    attendees = [Bool(f"att_{i}") for i in range(6)]  # 6 attendees
+def schedule_meeting(participants, meeting_duration, preferences=None):
+    # Create a Z3 solver
+    solver = Solver()
 
-    # Define the constraints
-    for i in range(96):
-        t = times[i]
-        constraints.append(t >= start_time * 60 + i)
-        constraints.append(t <= end_time * 60 + i)
+    # Define the day and time variables
+    day = [Bool(f'day_{i}') for i in range(1)]
+    time = [Int(f'time_{i}') for i in range(1)]
+    for i in range(1):
+        time[i] = If(day[i], Int('time'), 0)
 
-    for i in range(6):
-        constraints.append(attendees[i] >= Or([times[j] >= start_time * 60 + i * 30 for j in range(96)]))
-        constraints.append(attendees[i] >= Or([times[j] <= end_time * 60 + i * 30 for j in range(96)]))
+    # Define the constraints for the day
+    solver.add(Or(day[0]))
 
-    for i in range(6):
-        for j in range(96):
-            t = times[j]
-            constraints.append(And(attendees[i], t < start_time * 60 + (i + 1) * 30) == False)
-            constraints.append(And(attendees[i], t >= end_time * 60 + i * 30) == False)
+    # Define the constraints for the time
+    for i in range(1):
+        solver.add(And(9 * 60 <= time[i], time[i] <= 17 * 60))
 
-    for attendee in range(6):
-        constraints.append(Or(attendees[attendee], Not(attendees[attendee])))
+    # Define the constraints for the participants
+    for participant, schedule in participants.items():
+        for time_slot in schedule:
+            start, end = time_slot
+            for i in range(1):
+                solver.add(If(day[i], And(start * 60 <= time[i], time[i] <= end * 60), True))
 
-    for attendee in range(6):
-        for time in range(96):
-            t = times[time]
-            constraints.append(And(attendees[attendee], t >= start_time * 60 + attendee * 30, t <= end_time * 60 + attendee * 30) == False)
+    # Define the constraints for the meeting duration
+    start_time = Int('start_time')
+    end_time = start_time + meeting_duration * 60
+    solver.add(And(9 * 60 <= start_time, start_time <= 17 * 60))
+    solver.add(And(start_time <= end_time, end_time <= 17 * 60))
 
-    for attendee, schedule in enumerate(constraints[6:]):
-        for time in range(96):
-            t = times[time]
-            constraints.append(And(attendees[attendee], t >= schedule[0], t <= schedule[1]) == False)
+    # Define the constraints for the preferences
+    if preferences:
+        for participant, time in preferences.items():
+            solver.add(If(participant in participants and day[0], Not(time * 60 <= time[0]), True))
 
     # Solve the constraints
-    solver = Solver()
-    for constraint in constraints:
-        solver.add(constraint)
     if solver.check() == sat:
         model = solver.model()
-        start_time = 9
-        for time in range(96):
-            if model.eval(times[time]) == 1:
-                break
-        end_time = (time // 2) + 9
-        return f"SOLUTION: Day: {day}\nStart Time: {start_time:02d}:00\nEnd Time: {end_time:02d}:30"
+        day = model.evaluate(day[0]).as_long()
+        time = model.evaluate(time[0]).as_long()
+        return f'SOLUTION:\nDay: {["Monday"][0]}\nStart Time: {time // 60:02d}:{time % 60:02d}\nEnd Time: {(time // 60 + meeting_duration) % 24:02d}:{(time // 60 + meeting_duration) % 60:02d}'
     else:
-        return "No solution found"
+        return 'No solution found'
 
-# Define the existing schedules and preferences
-schedules = {
-    "Jose": [(11, 11.5), (12.5, 13)],
-    "Keith": [(14, 14.5), (15, 15.5)],
-    "Logan": [(9, 10), (12, 12.5), (15, 15.5)],
-    "Megan": [(9, 10.5), (11, 12), (13, 13.5), (14.5, 16.5)],
-    "Gary": [(9, 9.5), (10, 10.5), (11.5, 13), (13.5, 14), (14.5, 16.5)],
-    "Bobby": [(11, 11.5), (12, 12.5), (13, 16)]
+# Define the participants and their schedules
+participants = {
+    'Jose': [(11, 11.5), (12.5, 13)],
+    'Keith': [(14, 14.5), (15, 15.5)],
+    'Logan': [(9, 10), (12, 12.5), (15, 15.5)],
+    'Megan': [(9, 10.5), (11, 12), (13, 13.5), (14.5, 16.5)],
+    'Gary': [(9, 9.5), (10, 10.5), (11.5, 13), (13.5, 14), (14.5, 16.5)],
+    'Bobby': [(11, 11.5), (12, 12.5), (13, 16)]
 }
 
-# Define the preferences
-preferences = {
-    "Jose": "No meeting after 15:30"
-}
-
-# Find a time that works for everyone's schedule and constraints
-day = "Monday"
-start_time = 9
-end_time = 17
+# Define the meeting duration and preferences
 meeting_duration = 0.5
-constraints = []
-for attendee, schedule in schedules.items():
-    for start, end in schedule:
-        constraints.append((start, end))
-for attendee, preference in preferences.items():
-    if preference == "No meeting after 15:30":
-        constraints.append((15.5, 17))
+preferences = {
+    'Jose': 15.5
+}
 
-print(schedule_meeting(day, start_time, end_time, constraints))
+# Print the solution
+print(schedule_meeting(participants, meeting_duration, preferences))

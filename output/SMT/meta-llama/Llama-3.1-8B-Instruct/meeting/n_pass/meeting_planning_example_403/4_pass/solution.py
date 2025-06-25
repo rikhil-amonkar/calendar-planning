@@ -1,111 +1,91 @@
 from z3 import *
 
+# Define the variables
+time_slots = [
+    '9:00-10:00', '10:00-11:00', '11:00-11:45', '11:45-12:45', '12:45-2:30',
+    '2:30-4:15', '4:15-5:30', '5:30-6:45', '6:45-7:15', '7:15-9:30'
+]
+num_time_slots = len(time_slots)
+friends = ['Andrew', 'Sarah', 'Nancy', 'Rebecca', 'Robert']
+locations = ['Union Square', 'Golden Gate Park', 'Pacific Heights', 'Presidio', 'Chinatown', 'The Castro']
+
 # Define the travel times
 travel_times = {
-    ('Union Square', 'Golden Gate Park'): 22,
-    ('Union Square', 'Pacific Heights'): 15,
-    ('Union Square', 'Presidio'): 24,
-    ('Union Square', 'Chinatown'): 7,
-    ('Union Square', 'The Castro'): 19,
-    ('Golden Gate Park', 'Union Square'): 22,
-    ('Golden Gate Park', 'Pacific Heights'): 16,
-    ('Golden Gate Park', 'Presidio'): 11,
-    ('Golden Gate Park', 'Chinatown'): 23,
-    ('Golden Gate Park', 'The Castro'): 13,
-    ('Pacific Heights', 'Union Square'): 12,
-    ('Pacific Heights', 'Golden Gate Park'): 15,
-    ('Pacific Heights', 'Presidio'): 11,
-    ('Pacific Heights', 'Chinatown'): 11,
-    ('Pacific Heights', 'The Castro'): 16,
-    ('Presidio', 'Union Square'): 22,
-    ('Presidio', 'Golden Gate Park'): 12,
-    ('Presidio', 'Pacific Heights'): 11,
-    ('Presidio', 'Chinatown'): 21,
-    ('Presidio', 'The Castro'): 21,
-    ('Chinatown', 'Union Square'): 7,
-    ('Chinatown', 'Golden Gate Park'): 23,
-    ('Chinatown', 'Pacific Heights'): 10,
-    ('Chinatown', 'Presidio'): 19,
-    ('Chinatown', 'The Castro'): 22,
-    ('The Castro', 'Union Square'): 19,
-    ('The Castro', 'Golden Gate Park'): 11,
-    ('The Castro', 'Pacific Heights'): 16,
-    ('The Castro', 'Presidio'): 20,
-    ('The Castro', 'Chinatown'): 20
+    'Union Square': {'Golden Gate Park': 22, 'Pacific Heights': 15, 'Presidio': 24, 'Chinatown': 7, 'The Castro': 19},
+    'Golden Gate Park': {'Union Square': 22, 'Pacific Heights': 16, 'Presidio': 11, 'Chinatown': 23, 'The Castro': 13},
+    'Pacific Heights': {'Union Square': 12, 'Golden Gate Park': 15, 'Presidio': 11, 'Chinatown': 11, 'The Castro': 16},
+    'Presidio': {'Union Square': 22, 'Golden Gate Park': 12, 'Pacific Heights': 11, 'Chinatown': 21, 'The Castro': 21},
+    'Chinatown': {'Union Square': 7, 'Golden Gate Park': 23, 'Pacific Heights': 10, 'Presidio': 19, 'The Castro': 22},
+    'The Castro': {'Union Square': 19, 'Golden Gate Park': 11, 'Pacific Heights': 16, 'Presidio': 20, 'Chinatown': 20}
 }
 
 # Define the constraints
-start_time = 9 * 60  # 9:00 AM
-end_time = 24 * 60   # 12:00 AM
-andrew_start = 11 * 60 + 45  # 11:45 AM
-andrew_end = 14 * 60 + 30   # 2:30 PM
-sarah_start = 16 * 60 + 15  # 4:15 PM
-sarah_end = 18 * 60 + 45   # 6:45 PM
-nancy_start = 17 * 60 + 30  # 5:30 PM
-nancy_end = 19 * 60 + 15   # 7:15 PM
-rebecca_start = start_time  # 9:45 AM
-rebecca_end = 21 * 60      # 9:30 PM
-robert_start = 8 * 60 + 30  # 8:30 AM
-robert_end = 14 * 60 + 15  # 2:15 PM
+s = Optimize()
+x = [Bool(f'{friend}_{location}') for friend in friends for location in locations]
 
-# Define the variables
-s = Solver()
+# Meet Andrew for at least 75 minutes
+andrew_meeting = 0
+for i in range(num_time_slots):
+    if time_slots[i] == '11:45-12:45' or time_slots[i] == '11:45-2:30':
+        andrew_meeting += If(x[friends.index('Andrew')*6 + locations.index('Golden Gate Park')], 75, 0)
+    else:
+        andrew_meeting += 0
+s.add(andrew_meeting >= 75)
 
-# Define the visit times
-visit_times = [Int(f'visit_time_{i}') for i in range(5)]
-visit_times[0] = start_time  # Union Square
-visit_times[1] = If(visit_times[0] + 7 <= end_time, visit_times[0] + 7, end_time)  # Chinatown
-visit_times[2] = If(visit_times[1] + 13 <= end_time, visit_times[1] + 13, end_time)  # The Castro
-visit_times[3] = If(visit_times[2] + 11 <= end_time, visit_times[2] + 11, end_time)  # Golden Gate Park
-visit_times[4] = If(visit_times[3] + 16 <= end_time, visit_times[3] + 16, end_time)  # Pacific Heights
+# Meet Sarah for at least 15 minutes
+sarah_meeting = 0
+for i in range(num_time_slots):
+    if time_slots[i] == '4:15-5:30' or time_slots[i] == '4:15-6:45':
+        sarah_meeting += If(x[friends.index('Sarah')*6 + locations.index('Pacific Heights')], 15, 0)
+    else:
+        sarah_meeting += 0
+s.add(sarah_meeting >= 15)
 
-# Define the meet times
-meet_times = [0] * 5
-meet_times[0] = visit_times[0]
-meet_times[1] = visit_times[1]
-meet_times[2] = visit_times[2]
-meet_times[3] = visit_times[3]
-meet_times[4] = visit_times[4]
+# Meet Nancy for at least 60 minutes
+nancy_meeting = 0
+for i in range(num_time_slots):
+    if time_slots[i] == '5:30-6:45' or time_slots[i] == '5:30-7:15':
+        nancy_meeting += If(x[friends.index('Nancy')*6 + locations.index('Presidio')], 60, 0)
+    else:
+        nancy_meeting += 0
+s.add(nancy_meeting >= 60)
 
-# Add constraints for Andrew
-s.add(visit_times[3] >= andrew_start)
-s.add(visit_times[3] <= andrew_end)
-s.add(visit_times[3] - visit_times[0] >= 75)
+# Meet Rebecca for at least 90 minutes
+rebecca_meeting = 0
+for i in range(num_time_slots):
+    if time_slots[i] == '9:00-10:00' or time_slots[i] == '9:00-9:30':
+        rebecca_meeting += If(x[friends.index('Rebecca')*6 + locations.index('Chinatown')], 90, 0)
+    else:
+        rebecca_meeting += 0
+s.add(rebecca_meeting >= 90)
 
-# Add constraints for Sarah
-s.add(visit_times[4] >= sarah_start)
-s.add(visit_times[4] <= sarah_end)
-s.add(visit_times[4] - visit_times[0] >= 15)
+# Meet Robert for at least 30 minutes
+robert_meeting = 0
+for i in range(num_time_slots):
+    if time_slots[i] == '9:00-10:00' or time_slots[i] == '8:30-10:00':
+        robert_meeting += If(x[friends.index('Robert')*6 + locations.index('The Castro')], 30, 0)
+    else:
+        robert_meeting += 0
+s.add(robert_meeting >= 30)
 
-# Add constraints for Nancy
-s.add(visit_times[3] >= nancy_start)
-s.add(visit_times[3] <= nancy_end)
-s.add(visit_times[3] - visit_times[0] >= 60)
+# Ensure that you visit each location at most once
+for i in range(num_time_slots):
+    locations_visited = [x[k*6 + locations.index(time_slots[i].split('-')[0])] for k in range(len(friends))]
+    s.add(Or([Not(loc) for loc in locations_visited]))
 
-# Add constraints for Rebecca
-s.add(visit_times[4] >= rebecca_start)
-s.add(visit_times[4] <= rebecca_end)
-s.add(visit_times[4] - visit_times[0] >= 90)
+# Ensure that you don't visit a location before arriving
+for i in range(num_time_slots):
+    for j in range(num_time_slots):
+        if time_slots[j].split('-')[0] < time_slots[i].split('-')[0]:
+            s.add(Implies(x[friends.index('Andrew')*6 + locations.index(time_slots[i].split('-')[0])], Not(x[friends.index('Andrew')*6 + locations.index(time_slots[j].split('-')[0])])))
 
-# Add constraints for Robert
-s.add(visit_times[2] >= robert_start)
-s.add(visit_times[2] <= robert_end)
-s.add(visit_times[2] - visit_times[0] >= 30)
+# Solve the problem
+s.check()
+model = s.model()
 
-# Add constraints for exactly 5 people
-s.add(Or(visit_times[0] - visit_times[1] >= 7, visit_times[0] - visit_times[2] >= 13, visit_times[0] - visit_times[3] >= 22, visit_times[0] - visit_times[4] >= 12))
-
-# Add constraints for the order of visits
-s.add(visit_times[1] > visit_times[0])
-s.add(visit_times[2] > visit_times[1])
-s.add(visit_times[3] > visit_times[2])
-s.add(visit_times[4] > visit_times[3])
-
-# Check if the solution exists
-if s.check() == sat:
-    model = s.model()
-    print("SOLUTION:")
-    for i in range(5):
-        print(f"Visit {i+1}: {model[visit_times[i]].as_long() // 60}:{model[visit_times[i]].as_long() % 60}")
-else:
-    print("No solution exists")
+# Print the solution
+print('SOLUTION:')
+for friend in friends:
+    for location in locations:
+        if model.evaluate(x[friends.index(friend)*6 + locations.index(location)]).as_bool():
+            print(f'Meet {friend} at {location} for {model.evaluate(If(x[friends.index(friend)*6 + locations.index(location)], 1, 0)) * 60} minutes')

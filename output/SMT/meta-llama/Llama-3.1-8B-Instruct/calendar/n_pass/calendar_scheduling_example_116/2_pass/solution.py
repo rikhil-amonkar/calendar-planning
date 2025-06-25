@@ -1,61 +1,54 @@
 from z3 import *
 
-def schedule_meeting(day, schedules, duration, preferences=None):
-    # Define the time slots
-    start_time = 9 * 60  # 9:00
-    end_time = 17 * 60  # 17:00
-    time_slots = [i for i in range(start_time, end_time, 30)]
+# Define the variables
+day = 'Monday'
+start_time = 9 * 60  # Convert 9:00 to minutes
+end_time = 17 * 60   # Convert 17:00 to minutes
+duration = 30        # Meeting duration in minutes
+adam_schedule = [14 * 60, 15 * 60]
+john_schedule = [13 * 60, 13 * 60 + 30, 14 * 60, 14 * 60 + 30, 15 * 60 + 30, 16 * 60]
+stephanie_schedule = [9 * 60 + 30, 10 * 60, 10 * 60 + 30, 11 * 60, 11 * 60 + 30, 16 * 60]
+anna_schedule = [9 * 60 + 30, 12 * 60, 13 * 60, 15 * 60 + 30, 16 * 60]
+anna_preference = 14 * 60  # Anna would rather not meet before 14:30
 
-    # Create the solver
-    s = Solver()
+# Create Z3 solver
+solver = Solver()
 
-    # Create the variables
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+# Define the start time variable
+start = Int('start')
+solver.add(start >= 9 * 60)  # Start time must be after 9:00
+solver.add(start <= 16 * 60)  # Start time must be before 16:00
 
-    # Add the constraints
-    s.add(meeting_start >= start_time)
-    s.add(meeting_start <= end_time - duration)
-    s.add(meeting_end >= meeting_start + duration)
-    s.add(meeting_end <= end_time)
+# Define the end time variable
+end = start + duration
 
-    # Add the constraints for each participant
-    for participant, schedule in schedules.items():
-        for time in schedule:
-            s.add(meeting_start + duration > time[0] * 60 + time[1])
-            s.add(meeting_end < (time[0] + 1) * 60 + time[1])
+# Add constraints for each participant
+solver.add(start + duration > adam_schedule[0])
+solver.add(end <= adam_schedule[1])
 
-    # Add the preference constraint
-    if preferences is not None:
-        for participant, pref in preferences.items():
-            for time in pref:
-                s.add(meeting_start + duration > time[0] * 60 + time[1])
+solver.add(start + duration > john_schedule[0])
+solver.add(start + duration <= john_schedule[1])
 
-    # Add the constraint that the meeting duration is 30 minutes
-    s.add(meeting_end - meeting_start == duration)
+solver.add(start + duration > stephanie_schedule[0])
+solver.add(end <= min(stephanie_schedule[1], 16 * 60))  # End time must be before 16:00
 
-    # Add constraints to ensure the meeting time is not before 14:30 for Anna
-    s.add(meeting_start >= 14 * 60 + 30)
+solver.add(start + duration > anna_schedule[0])
+solver.add(end <= anna_schedule[1])
 
-    # Solve the problem
-    if s.check() == sat:
-        model = s.model()
-        meeting_start_value = model[meeting_start].as_long()
-        meeting_end_value = model[meeting_end].as_long()
-        return f'SOLUTION:\nDay: {day}\nStart Time: {meeting_start_value // 60:02d}:{meeting_start_value % 60:02d}\nEnd Time: {meeting_end_value // 60:02d}:{meeting_end_value % 60:02d}'
-    else:
-        return 'No solution found'
+# Add constraint for Anna's preference
+solver.add(start >= anna_preference)
 
-# Define the schedules and preferences
-schedules = {
-    'Adam': [(14, 0), (15, 0)],
-    'John': [(13, 0), (13, 30), (14, 0), (14, 30), (15, 30), (16, 0), (16, 30), (17, 0)],
-    'Stephanie': [(9, 30), (10, 0), (10, 30), (11, 0), (11, 30), (16, 0), (16, 30), (17, 0)],
-    'Anna': [(9, 30), (12, 0), (12, 30), (13, 0), (15, 30), (16, 30), (17, 0)]
-}
-preferences = {
-    'Anna': [(9, 30), (12, 0)]
-}
+# Add constraint to ensure the meeting is not too long
+solver.add(start + duration <= 16 * 60)
 
-# Call the function
-print(schedule_meeting('Monday', schedules, 30, preferences))
+# Check if a solution exists
+if solver.check() == sat:
+    model = solver.model()
+    start_time = model[start].as_long()
+    end_time = model[end].as_long()
+    print(f'SOLUTION:')
+    print(f'Day: {day}')
+    print(f'Start Time: {start_time // 60:02d}:{start_time % 60:02d}')
+    print(f'End Time: {end_time // 60:02d}:{end_time % 60:02d}')
+else:
+    print('No solution exists.')

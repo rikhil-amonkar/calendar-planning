@@ -1,77 +1,92 @@
 from z3 import *
 
-# Define the travel times
-travel_times = {
-    ('Sunset District', 'North Beach'): 29,
-    ('Sunset District', 'Union Square'): 30,
-    ('Sunset District', 'Alamo Square'): 17,
-    ('North Beach', 'Sunset District'): 27,
-    ('North Beach', 'Union Square'): 7,
-    ('North Beach', 'Alamo Square'): 16,
-    ('Union Square', 'Sunset District'): 26,
-    ('Union Square', 'North Beach'): 10,
-    ('Union Square', 'Alamo Square'): 15,
-    ('Alamo Square', 'Sunset District'): 16,
-    ('Alamo Square', 'North Beach'): 15,
-    ('Alamo Square', 'Union Square'): 14
-}
+# Define the variables
+start_time = 9 * 60  # 9:00 AM in minutes
+sarah_start = 4 * 60
+sarah_end = 6 * 60 + 15
+jeffrey_start = 3 * 60
+jeffrey_end = 10 * 60
+brian_start = 4 * 60
+brian_end = 5 * 60 + 30
+meet_sarah = Bool('meet_sarah')
+meet_jeffrey = Bool('meet_jeffrey')
+meet_brian = Bool('meet_brian')
+time = Int('time')
 
 # Define the constraints
-def meet_sarah(s, n):
-    return s + 60 >= 4*60 and n >= 6*60
-
-def meet_jeffrey(s, n):
-    return s + 60 >= 3*60 and n + 60 >= 7.75*60
-
-def meet_brian(s, n):
-    return s + 60 >= 4*60 and n + 60 >= 7.5*60
-
-# Define the variables
-s, n, u, a = Ints('s n u a')
-times = [s, n, u, a]
+s = Solver()
+s.add(0 <= time - start_time)
+s.add(time - start_time <= 12 * 60)  # You can meet people until 9:00 PM
+s.add(If(meet_sarah, sarah_start <= time, True) == True)
+s.add(If(meet_sarah, time <= sarah_end, True) == True)
+s.add(If(meet_jeffrey, jeffrey_start <= time, True) == True)
+s.add(If(meet_jeffrey, time <= jeffrey_end, True) == True)
+s.add(If(meet_brian, brian_start <= time, True) == True)
+s.add(If(meet_brian, time <= brian_end, True) == True)
+s.add(If(meet_sarah, time - sarah_start >= 60, False) == True)
+s.add(If(meet_jeffrey, time - jeffrey_start >= 75, False) == True)
+s.add(If(meet_brian, time - brian_start >= 75, False) == True)
+s.add(If(meet_sarah, time - sarah_end <= 0, False) == True)
+s.add(If(meet_jeffrey, time - jeffrey_end <= 0, False) == True)
+s.add(If(meet_brian, time - brian_end <= 0, False) == True)
 
 # Define the objective function
-def objective(x):
-    return x
+travel_times = {
+    'Sunset District to North Beach': 29,
+    'Sunset District to Union Square': 30,
+    'Sunset District to Alamo Square': 17,
+    'North Beach to Sunset District': 27,
+    'North Beach to Union Square': 7,
+    'North Beach to Alamo Square': 16,
+    'Union Square to Sunset District': 26,
+    'Union Square to North Beach': 10,
+    'Union Square to Alamo Square': 15,
+    'Alamo Square to Sunset District': 16,
+    'Alamo Square to North Beach': 15,
+    'Alamo Square to Union Square': 14
+}
+travel_time_sarah = Int('travel_time_sarah')
+travel_time_jeffrey = Int('travel_time_jeffrey')
+travel_time_brian = Int('travel_time_brian')
+s.add(travel_time_sarah >= 0)
+s.add(travel_time_jeffrey >= 0)
+s.add(travel_time_brian >= 0)
+for key in travel_times:
+    if 'to' in key:
+        person1, person2 = key.split(' to ')
+        if meet_sarah and person1 == 'Sunset District' and person2 == 'North Beach':
+            s.add(travel_time_sarah >= travel_times[key])
+        if meet_sarah and person1 == 'North Beach' and person2 == 'Sunset District':
+            s.add(travel_time_sarah >= travel_times[key])
+        if meet_jeffrey and person1 == 'Sunset District' and person2 == 'Union Square':
+            s.add(travel_time_jeffrey >= travel_times[key])
+        if meet_jeffrey and person1 == 'Union Square' and person2 == 'Sunset District':
+            s.add(travel_time_jeffrey >= travel_times[key])
+        if meet_brian and person1 == 'Sunset District' and person2 == 'Alamo Square':
+            s.add(travel_time_brian >= travel_times[key])
+        if meet_brian and person1 == 'Alamo Square' and person2 == 'Sunset District':
+            s.add(travel_time_brian >= travel_times[key])
 
-# Define the constraints
-constraints = [
-    s >= 0,
-    n >= 0,
-    u >= 0,
-    a >= 0,
-    s + travel_times[('Sunset District', 'North Beach')] <= n,
-    n + travel_times[('North Beach', 'Union Square')] <= u,
-    u + travel_times[('Union Square', 'Alamo Square')] <= a,
-    meet_sarah(s, n),
-    meet_jeffrey(s, n),
-    meet_brian(s, n),
-    meet_sarah(n, u),
-    meet_jeffrey(n, u),
-    meet_brian(n, u),
-    meet_sarah(u, a),
-    meet_jeffrey(u, a),
-    meet_brian(u, a),
-    meet_sarah(a, s),
-    meet_jeffrey(a, s),
-    meet_brian(a, s)
-]
-
-# Define the solver
-solver = Optimize()
-
-# Add the variables and constraints to the solver
-solver.add(And(constraints))
-solver.minimize(objective([s, n, u, a]))
+# Add the objective function to the solver
+s.add(If(meet_sarah, meet_jeffrey, False) == True)
+s.add(If(meet_sarah, meet_brian, False) == True)
+s.add(If(meet_jeffrey, meet_brian, False) == True)
+s.add(If(meet_sarah, travel_time_sarah, 0) <= If(meet_jeffrey, If(meet_brian, 2 * 60 * 60, 0), 0))
+s.add(If(meet_jeffrey, travel_time_jeffrey, 0) <= If(meet_brian, 2 * 60 * 60, 0))
+s.add(If(meet_brian, travel_time_brian, 0) <= 2 * 60 * 60)
 
 # Solve the problem
-result = solver.check()
-
-if result == sat:
-    model = solver.model()
-    print(f"Best schedule: Sunset District at {model[s]/60:.0f}:00, North Beach at {model[n]/60:.0f}:00, Union Square at {model[u]/60:.0f}:00, Alamo Square at {model[a]/60:.0f}:00")
+s.add(Not(Or(meet_sarah, meet_jeffrey, meet_brian)))
+if s.check() == sat:
+    m = s.model()
+    meet_sarah_val = m[meet_sarah].as_bool().is_true()
+    meet_jeffrey_val = m[meet_jeffrey].as_bool().is_true()
+    meet_brian_val = m[meet_brian].as_bool().is_true()
+    if meet_sarah_val:
+        print(f"Meet Sarah at North Beach from {sarah_start // 60}:{sarah_start % 60} to {sarah_end // 60}:{sarah_end % 60}")
+    if meet_jeffrey_val:
+        print(f"Meet Jeffrey at Union Square from {jeffrey_start // 60}:{jeffrey_start % 60} to {jeffrey_end // 60}:{jeffrey_end % 60}")
+    if meet_brian_val:
+        print(f"Meet Brian at Alamo Square from {brian_start // 60}:{brian_start % 60} to {brian_end // 60}:{brian_end % 60}")
 else:
     print("No solution found")
-
-print("SOLUTION:")
-print(f"Best schedule: Sunset District at {model[s]/60:.0f}:00, North Beach at {model[n]/60:.0f}:00, Union Square at {model[u]/60:.0f}:00, Alamo Square at {model[a]/60:.0f}:00")

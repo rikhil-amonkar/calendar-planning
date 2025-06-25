@@ -1,90 +1,228 @@
 from z3 import *
+import json
 
 # Define the cities and their corresponding durations
 cities = {
-    'Bucharest': 2,
-    'Krakow': 4,
-    'Munich': 3,
-    'Barcelona': 5,
-    'Warsaw': 5,
-    'Budapest': 5,
-    'Stockholm': 2,
-    'Riga': 5,
-    'Edinburgh': 5,
-    'Vienna': 5
+    "Bucharest": 2,
+    "Krakow": 4,
+    "Munich": 3,
+    "Barcelona": 5,
+    "Warsaw": 5,
+    "Budapest": 5,
+    "Stockholm": 2,
+    "Riga": 5,
+    "Edinburgh": 5,
+    "Vienna": 5
 }
 
-# Define the constraints for each city
-constraints = {
-    'Bucharest': [2],
-    'Krakow': [4],
-    'Munich': [3, 18, 19, 20],
-    'Barcelona': [5],
-    'Warsaw': [5, 25, 29],
-    'Budapest': [5, 9, 10, 11, 12, 13],
-    'Stockholm': [17, 18],
-    'Riga': [5],
-    'Edinburgh': [1, 2, 3, 4, 5],
-    'Vienna': [5]
-}
-
-# Define the direct flights between cities
+# Define the direct flights
 flights = {
-    ('Budapest', 'Munich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Bucharest', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Munich', 'Krakow'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Munich', 'Warsaw'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Munich', 'Bucharest'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Edinburgh', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Barcelona', 'Warsaw'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Edinburgh', 'Krakow'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Barcelona', 'Munich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Stockholm', 'Krakow'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Budapest', 'Vienna'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Barcelona', 'Stockholm'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Stockholm', 'Munich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Edinburgh', 'Budapest'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Barcelona', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Edinburgh', 'Barcelona'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Vienna', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Barcelona', 'Vienna'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Budapest', 'Bucharest'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Vienna', 'Munich'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Riga', 'Warsaw'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Stockholm', 'Riga'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-    ('Stockholm', 'Warsaw'): [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+    ("Budapest", "Munich"): 1,
+    ("Bucharest", "Riga"): 1,
+    ("Munich", "Krakow"): 1,
+    ("Munich", "Warsaw"): 1,
+    ("Munich", "Bucharest"): 1,
+    ("Edinburgh", "Stockholm"): 1,
+    ("Barcelona", "Warsaw"): 1,
+    ("Edinburgh", "Krakow"): 1,
+    ("Barcelona", "Munich"): 1,
+    ("Stockholm", "Krakow"): 1,
+    ("Budapest", "Vienna"): 1,
+    ("Barcelona", "Stockholm"): 1,
+    ("Stockholm", "Munich"): 1,
+    ("Edinburgh", "Budapest"): 1,
+    ("Barcelona", "Riga"): 1,
+    ("Edinburgh", "Barcelona"): 1,
+    ("Vienna", "Riga"): 1,
+    ("Barcelona", "Budapest"): 1,
+    ("Budapest", "Bucharest"): 1,
+    ("Vienna", "Munich"): 1,
+    ("Riga", "Warsaw"): 1,
+    ("Stockholm", "Riga"): 1,
+    ("Stockholm", "Warsaw"): 1
 }
 
-# Create a Z3 solver
-s = Solver()
+# Define the constraints
+def constraints(day, place):
+    if place in ["Bucharest", "Krakow", "Munich", "Barcelona", "Warsaw", "Budapest", "Stockholm", "Riga", "Edinburgh", "Vienna"]:
+        return day >= cities[place]
+    elif place in ["Bucharest", "Krakow", "Munich", "Barcelona", "Warsaw", "Budapest", "Stockholm", "Riga", "Edinburgh", "Vienna"]:
+        return day <= cities[place] + cities[place]
+    elif place in ["Bucharest", "Krakow", "Munich", "Barcelona", "Warsaw", "Budapest", "Stockholm", "Riga", "Edinburgh", "Vienna"]:
+        return day <= cities[place]
+    else:
+        return True
 
-# Create a variable for each city
-city_vars = {city: Int(f'{city}_days') for city in cities}
+def workshop_constraint(day):
+    return day >= 18 and day <= 20
 
-# Add constraints for each city
-for city, constraints in constraints.items():
-    s.add(And([city_vars[city] >= c for c in constraints]))
+def conference_constraint(day):
+    return day >= 25 or day >= 29
 
-# Add constraints for each flight
-for (city1, city2), days in flights.items():
-    s.add(Or([city_vars[city1] == day for day in days]))
-    s.add(Or([city_vars[city2] == day for day in days]))
+def annual_show_constraint(day):
+    return day >= 9 and day <= 13
 
-# Solve the constraints
-s.check()
+def meet_friend_constraint(day, place):
+    if place == "Edinburgh":
+        return day >= 1 and day <= 5
+    elif place == "Stockholm":
+        return day >= 17 and day <= 18
+    else:
+        return True
 
-# Get the solution
-model = s.model()
+def solve():
+    day = Int('day')
+    place = Int('place')
+
+    # Define the solver
+    solver = Solver()
+
+    # Add constraints
+    for city in cities:
+        solver.add(constraints(day, city))
+
+    # Add workshop constraint
+    solver.add(workshop_constraint(day))
+
+    # Add conference constraint
+    solver.add(conference_constraint(day))
+
+    # Add annual show constraint
+    solver.add(annual_show_constraint(day))
+
+    # Add meet friend constraint
+    solver.add(meet_friend_constraint(day, "Edinburgh"))
+    solver.add(meet_friend_constraint(day, "Stockholm"))
+
+    # Define the itinerary
+    itinerary = []
+
+    # Initialize the current day and place
+    current_day = 1
+    current_place = "Vienna"
+
+    # Loop through the days
+    for i in range(32):
+        # Add the current day and place to the itinerary
+        itinerary.append({"day_range": f"Day {current_day}", "place": current_place})
+
+        # Check if we need to change the current place
+        for flight in flights:
+            if flight[0] == current_place and flight[1] == "Vienna":
+                continue
+            elif flight[0] == current_place and flight[1]!= "Vienna":
+                # Check if we can take the flight
+                if solver.check(And(day == current_day + flights[flight], place == flight[1])):
+                    # Update the current day and place
+                    current_day += flights[flight]
+                    current_place = flight[1]
+                    # Add the flight to the itinerary
+                    itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+                    itinerary.append({"day_range": f"Day {current_day}", "place": current_place})
+                else:
+                    continue
+            elif flight[1] == current_place and flight[0]!= "Vienna":
+                # Check if we can take the flight
+                if solver.check(And(day == current_day + flights[flight], place == flight[0])):
+                    # Update the current day and place
+                    current_day += flights[flight]
+                    current_place = flight[0]
+                    # Add the flight to the itinerary
+                    itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+                    itinerary.append({"day_range": f"Day {current_day}", "place": current_place})
+                else:
+                    continue
+            else:
+                continue
+
+        # Check if we need to change the current place due to constraints
+        if solver.check(And(day == current_day + 2, place == "Bucharest")):
+            current_day += 2
+            current_place = "Bucharest"
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 4, place == "Krakow")):
+            current_day += 4
+            current_place = "Krakow"
+            itinerary.append({"day_range": f"Day {current_day - 4}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 3, place == "Munich")):
+            current_day += 3
+            current_place = "Munich"
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 5, place == "Barcelona")):
+            current_day += 5
+            current_place = "Barcelona"
+            itinerary.append({"day_range": f"Day {current_day - 5}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 4}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 5, place == "Warsaw")):
+            current_day += 5
+            current_place = "Warsaw"
+            itinerary.append({"day_range": f"Day {current_day - 5}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 4}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 5, place == "Budapest")):
+            current_day += 5
+            current_place = "Budapest"
+            itinerary.append({"day_range": f"Day {current_day - 5}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 4}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 2, place == "Stockholm")):
+            current_day += 2
+            current_place = "Stockholm"
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 5, place == "Riga")):
+            current_day += 5
+            current_place = "Riga"
+            itinerary.append({"day_range": f"Day {current_day - 5}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 4}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 5, place == "Edinburgh")):
+            current_day += 5
+            current_place = "Edinburgh"
+            itinerary.append({"day_range": f"Day {current_day - 5}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 4}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+        elif solver.check(And(day == current_day + 5, place == "Vienna")):
+            current_day += 5
+            current_place = "Vienna"
+            itinerary.append({"day_range": f"Day {current_day - 5}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 4}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 3}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 2}", "place": current_place})
+            itinerary.append({"day_range": f"Day {current_day - 1}", "place": current_place})
+
+        # Increment the day
+        current_day += 1
+
+    # Check if the solver is unsat
+    if solver.check() == unsat:
+        return None
+
+    # Return the itinerary
+    return {"itinerary": itinerary}
+
+# Solve the problem
+solution = solve()
 
 # Print the solution
-for city, days in model.decls():
-    print(f'{city}: {model[city].as_long()} days')
-
-# Create a schedule based on the solution
-schedule = {}
-for city, days in model.decls():
-    schedule[city] = model[city].as_long()
-
-# Print the schedule
-for i, (city, days) in enumerate(schedule.items()):
-    print(f'Day {i+1}: {city} ({days} days)')
+if solution:
+    print(json.dumps(solution, indent=4))
+else:
+    print("No solution found")

@@ -1,57 +1,66 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the day
-    day = 'Monday'
+def schedule_meeting(juan_schedule, marilyn_schedule, ronald_schedule, meeting_duration, end_time):
+    # Create a Z3 solver
+    s = Solver()
 
-    # Define the start and end time of work hours
-    start_time = 9 * 60
-    end_time = 17 * 60
+    # Define the day (in this case, Monday)
+    day = 0
 
-    # Define the meeting duration
-    meeting_duration = 30
+    # Define the start time and end time
+    start_time = [Int(f'start_time_{i}') for i in range(3)]
+    end_time = [start_time[i] + meeting_duration for i in range(3)]
 
-    # Define the existing schedules for each participant
-    juan_schedules = [9 * 60, 10 * 30], [15 * 60, 16 * 60]
-    marilyn_schedules = [11 * 60, 11 * 60 + 30], [12 * 60 + 30, 13 * 60]
-    ronald_schedules = [9 * 60, 10 * 30], [12 * 60, 12 * 60 + 30], [13 * 60, 13 * 60 + 30], [14 * 60, 16 * 60 + 30]
+    # Add constraints for Juan's schedule
+    for i in range(3):
+        s.add(Or(start_time[i] < 9*60, start_time[i] > 17*60))
+        for time in juan_schedule:
+            s.add(Or(start_time[i] < time[0]*60 + time[1], start_time[i] > time[0]*60 + time[2]))
 
-    # Define the variables for the start time of the meeting
-    start_time_var = Int('start_time')
-    start_time_var = If(start_time_var < 9 * 60, start_time_var, If(start_time_var > 16 * 60, 16 * 60, start_time_var))
+    # Add constraints for Marilyn's schedule
+    for i in range(3):
+        for time in marilyn_schedule:
+            s.add(Or(start_time[i] < time[0]*60 + time[1], start_time[i] > time[0]*60 + time[2]))
 
-    # Define the constraints for the start time of the meeting
-    constraints = [
-        start_time_var + meeting_duration > 9 * 60,
-        start_time_var + meeting_duration > 10 * 30,
-        start_time_var + meeting_duration > 11 * 60,
-        start_time_var + meeting_duration > 12 * 60 + 30,
-        start_time_var + meeting_duration > 12 * 60,
-        start_time_var + meeting_duration > 13 * 60,
-        start_time_var + meeting_duration > 13 * 60 + 30,
-        start_time_var + meeting_duration > 14 * 60,
-        start_time_var + meeting_duration > 15 * 60,
-        start_time_var + meeting_duration > 16 * 60,
-        start_time_var >= 9 * 60,
-        start_time_var <= 16 * 60
-    ]
+    # Add constraints for Ronald's schedule
+    for i in range(3):
+        for time in ronald_schedule:
+            s.add(Or(start_time[i] < time[0]*60 + time[1], start_time[i] > time[0]*60 + time[2]))
 
-    # Add constraints for each participant's schedule
-    for schedule in juan_schedules + marilyn_schedules + ronald_schedules:
-        constraints.append(start_time_var + meeting_duration <= schedule[1])
+    # Add constraints for meeting duration
+    for i in range(3):
+        s.add(start_time[i] + meeting_duration < 18*60)
 
-    # Solve the constraints
-    solver = Solver()
-    solver.add(constraints)
-    if solver.check() == sat:
-        model = solver.model()
-        start_time_value = model[start_time_var].as_long()
-        end_time_value = start_time_value + meeting_duration
-        print(f'SOLUTION:')
-        print(f'Day: {day}')
-        print(f'Start Time: {start_time_value // 60:02d}:{start_time_value % 60:02d}')
-        print(f'End Time: {end_time_value // 60:02d}:{end_time_value % 60:02d}')
+    # Add constraints for end time
+    for i in range(3):
+        s.add(end_time[i] < 18*60)
+
+    # Add constraints for unique start time
+    for i in range(3):
+        for j in range(i+1, 3):
+            s.add(Or(start_time[i]!= start_time[j], start_time[i] > end_time[j]))
+
+    # Check if the solver found a solution
+    if s.check() == sat:
+        # Get the model (i.e., the solution)
+        m = s.model()
+        # Extract the start time and end time from the model
+        start_time_value = [m[start_time[i]].as_long() for i in range(3)]
+        end_time_value = [m[end_time[i]].as_long() for i in range(3)]
+        # Find the first available start time
+        for i in range(3):
+            if start_time_value[i] >= 9*60 and start_time_value[i] < 17*60:
+                return f"SOLUTION:\nDay: Monday\nStart Time: {str(start_time_value[i] // 60).zfill(2)}:{str(start_time_value[i] % 60).zfill(2)}\nEnd Time: {str(end_time_value[i] // 60).zfill(2)}:{str(end_time_value[i] % 60).zfill(2)}"
     else:
-        print('No solution found')
+        return "No solution found"
 
-schedule_meeting()
+# Define the existing schedules
+juan_schedule = [(9, 30), (15, 30, 16)]
+marilyn_schedule = [(11, 30, 11), (12, 30, 13)]
+ronald_schedule = [(9, 30, 10), (12, 0, 12), (13, 0, 13), (14, 0, 16)]
+
+# Define the meeting duration and end time
+meeting_duration = 30
+end_time = 17*60
+
+print(schedule_meeting(juan_schedule, marilyn_schedule, ronald_schedule, meeting_duration, end_time))

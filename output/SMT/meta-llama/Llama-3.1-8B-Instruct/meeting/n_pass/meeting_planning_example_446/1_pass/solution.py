@@ -1,74 +1,96 @@
 from z3 import *
 
-# Define the travel times between locations
+# Define the variables
+times = [9, 12, 1, 7]  # arrival times for Margaret, Robert, Kimberly, Kenneth
+durations = [30, 15, 15, 75, 75]  # minimum meeting durations
+locations = ['Richmond District', 'Marina District', 'Chinatown', 'Financial District', 'Bayview', 'Union Square']
 travel_times = {
-    'Richmond District': {'Marina District': 9, 'Chinatown': 20, 'Financial District': 22, 'Bayview': 26, 'Union Square': 21},
-    'Marina District': {'Richmond District': 11, 'Chinatown': 16, 'Financial District': 17, 'Bayview': 27, 'Union Square': 16},
-    'Chinatown': {'Richmond District': 20, 'Marina District': 12, 'Financial District': 5, 'Bayview': 22, 'Union Square': 7},
-    'Financial District': {'Richmond District': 21, 'Marina District': 15, 'Chinatown': 5, 'Bayview': 19, 'Union Square': 9},
-    'Bayview': {'Richmond District': 25, 'Marina District': 25, 'Chinatown': 18, 'Financial District': 19, 'Union Square': 17},
-    'Union Square': {'Richmond District': 20, 'Marina District': 18, 'Chinatown': 7, 'Financial District': 9, 'Bayview': 15}
+    ('Richmond District', 'Marina District'): 9,
+    ('Richmond District', 'Chinatown'): 20,
+    ('Richmond District', 'Financial District'): 22,
+    ('Richmond District', 'Bayview'): 26,
+    ('Richmond District', 'Union Square'): 21,
+    ('Marina District', 'Richmond District'): 11,
+    ('Marina District', 'Chinatown'): 16,
+    ('Marina District', 'Financial District'): 17,
+    ('Marina District', 'Bayview'): 27,
+    ('Marina District', 'Union Square'): 16,
+    ('Chinatown', 'Richmond District'): 20,
+    ('Chinatown', 'Marina District'): 12,
+    ('Chinatown', 'Financial District'): 5,
+    ('Chinatown', 'Bayview'): 22,
+    ('Chinatown', 'Union Square'): 7,
+    ('Financial District', 'Richmond District'): 21,
+    ('Financial District', 'Marina District'): 15,
+    ('Financial District', 'Chinatown'): 5,
+    ('Financial District', 'Bayview'): 19,
+    ('Financial District', 'Union Square'): 9,
+    ('Bayview', 'Richmond District'): 25,
+    ('Bayview', 'Marina District'): 25,
+    ('Bayview', 'Chinatown'): 18,
+    ('Bayview', 'Financial District'): 19,
+    ('Bayview', 'Union Square'): 17,
+    ('Union Square', 'Richmond District'): 20,
+    ('Union Square', 'Marina District'): 18,
+    ('Union Square', 'Chinatown'): 7,
+    ('Union Square', 'Financial District'): 9,
+    ('Union Square', 'Bayview'): 15
 }
 
-# Define the constraints
-locations = ['Richmond District', 'Marina District', 'Chinatown', 'Financial District', 'Bayview', 'Union Square']
-friends = ['Kimberly', 'Robert', 'Rebecca', 'Margaret', 'Kenneth']
-times = [1.15, 12.15, 1.15, 9.30, 7.30]
-durations = [15, 15, 75, 30, 75]
-
-# Create a Z3 solver
-solver = Solver()
+# Define the solver
+s = Optimize()
 
 # Define the variables
-location = [Bool(f'location_{i}') for i in range(len(locations))]
-time = [Real(f'time_{i}') for i in range(len(locations))]
-duration = [Real(f'duration_{i}') for i in range(len(locations))]
+x = [Int(f'x_{i}') for i in range(len(locations))]
+y = [Int(f'y_{i}') for i in range(len(locations))]
 
-# Add constraints for each friend
-for i, friend in enumerate(friends):
-    if friend == 'Kimberly':
-        solver.add(And(time[0] >= 1.15, time[0] <= 4.45, time[0] >= 15))
-    elif friend == 'Robert':
-        solver.add(And(time[1] >= 12.15, time[1] <= 8.15, time[1] >= 15))
-    elif friend == 'Rebecca':
-        solver.add(And(time[2] >= 1.15, time[2] <= 4.45, time[2] >= 75))
-    elif friend == 'Margaret':
-        solver.add(And(time[3] >= 9.30, time[3] <= 1.30, time[3] >= 30))
-    elif friend == 'Kenneth':
-        solver.add(And(time[4] >= 7.30, time[4] <= 9.15, time[4] >= 75))
-
-# Add constraints for travel times
+# Add the constraints
 for i in range(len(locations)):
-    for j in range(len(locations)):
-        if i!= j:
-            solver.add(Or(Not(location[i]) | Not(location[j]), time[i] + travel_times[locations[i]][locations[j]] >= time[j]))
+    s.add(x[i] >= 0)
+    s.add(y[i] >= 0)
 
-# Add constraints for location
-for i in range(len(locations)):
-    solver.add(Or(location[i], Not(location[i])))
+s.add(x[0] == 0)  # start at Richmond District
 
-# Add constraints for time
-for i in range(len(locations)):
-    solver.add(time[i] >= 0)
+for i in range(1, len(locations)):
+    s.add(x[i] >= x[i-1] + travel_times[(locations[i-1], locations[i])])
 
-# Add constraints for duration
+s.add(y[0] == 0)  # start at Richmond District
+
+for i in range(1, len(locations)):
+    s.add(y[i] >= y[i-1] + travel_times[(locations[i-1], locations[i])])
+
 for i in range(len(locations)):
-    solver.add(duration[i] >= 0)
+    s.add(y[i] >= x[i])
+
+for i in range(len(times)):
+    s.add(y[locations.index('Marina District')] >= times[i] + durations[i])
+    s.add(y[locations.index('Marina District')] <= times[i] + durations[i] + 60)
+
+for i in range(len(times)):
+    s.add(y[locations.index('Financial District')] >= times[i] + durations[i])
+    s.add(y[locations.index('Financial District')] <= times[i] + durations[i] + 60)
+
+for i in range(len(times)):
+    s.add(y[locations.index('Bayview')] >= times[i] + durations[i])
+    s.add(y[locations.index('Bayview')] <= times[i] + durations[i] + 60)
+
+for i in range(len(times)):
+    s.add(y[locations.index('Union Square')] >= times[i] + durations[i])
+    s.add(y[locations.index('Union Square')] <= times[i] + durations[i] + 60)
 
 # Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    print("SOLUTION:")
-    for i, friend in enumerate(friends):
-        if friend == 'Kimberly':
-            print(f"Meet Kimberly at {locations[0]} from {model[time[0]].as_real().as_float():.2f} to {model[time[0]].as_real().as_float() + model[duration[0]].as_real().as_float():.2f}")
-        elif friend == 'Robert':
-            print(f"Meet Robert at {locations[1]} from {model[time[1]].as_real().as_float():.2f} to {model[time[1]].as_real().as_float() + model[duration[1]].as_real().as_float():.2f}")
-        elif friend == 'Rebecca':
-            print(f"Meet Rebecca at {locations[2]} from {model[time[2]].as_real().as_float():.2f} to {model[time[2]].as_real().as_float() + model[duration[2]].as_real().as_float():.2f}")
-        elif friend == 'Margaret':
-            print(f"Meet Margaret at {locations[3]} from {model[time[3]].as_real().as_float():.2f} to {model[time[3]].as_real().as_float() + model[duration[3]].as_real().as_float():.2f}")
-        elif friend == 'Kenneth':
-            print(f"Meet Kenneth at {locations[4]} from {model[time[4]].as_real().as_float():.2f} to {model[time[4]].as_real().as_float() + model[duration[4]].as_real().as_float():.2f}")
-else:
-    print("No solution found")
+s.check()
+
+# Get the solution
+model = s.model()
+
+# Print the solution
+print('SOLUTION:')
+print(f'Meeting Margaret at {locations[model[x[1]].as_long()]} at {model[y[1]].as_long() - 60} minutes')
+print(f'Meeting Robert at {locations[model[x[2]].as_long()]} at {model[y[2]].as_long() - 60} minutes')
+print(f'Meeting Kimberly at {locations[model[x[3]].as_long()]} at {model[y[3]].as_long() - 60} minutes')
+print(f'Meeting Rebecca at {locations[model[x[4]].as_long()]} at {model[y[4]].as_long() - 60} minutes')
+print(f'Meeting Kenneth at {locations[model[x[5]].as_long()]} at {model[y[5]].as_long() - 60} minutes')
+
+# Print the total time
+print(f'Total time: {model[y[-1]].as_long()} minutes')

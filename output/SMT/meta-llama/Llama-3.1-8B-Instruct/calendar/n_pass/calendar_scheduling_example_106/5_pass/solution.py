@@ -1,65 +1,52 @@
 from z3 import *
 
-# Define the time slots
-time_slots = [
-    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
-    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-    "17:00"
-]
+def schedule_meeting(olivia_schedule, anna_schedule, virginia_schedule, paul_schedule, meeting_duration):
+    # Define the day
+    day = 'Monday'
 
-# Convert time slots to minutes
-time_slots_minutes = [int(time_slot[:2]) * 60 + int(time_slot[3:]) for time_slot in time_slots]
+    # Define the start and end times
+    start_time = 9 * 60  # 9:00 in minutes
+    end_time = 17 * 60  # 17:00 in minutes
 
-# Define the existing schedules
-schedules = {
-    "Olivia": [time_slots_minutes[6], time_slots_minutes[7], time_slots_minutes[9], time_slots_minutes[15]],
-    "Anna": [],
-    "Virginia": [time_slots_minutes[0], time_slots_minutes[5], time_slots_minutes[10], time_slots_minutes[15]],
-    "Paul": [time_slots_minutes[0], time_slots_minutes[3], time_slots_minutes[6], time_slots_minutes[9], time_slots_minutes[10], time_slots_minutes[15]]
-}
+    # Create Z3 variables for the meeting start time
+    start = Int('start')
 
-# Define the meeting duration
-meeting_duration = 60
+    # Create Z3 constraints
+    # The meeting must start and end within the work hours
+    constraints = [
+        And(start >= start_time, start <= end_time - meeting_duration),
+        # The meeting must not conflict with Olivia's schedule
+        Or(start >= olivia_schedule[0][1], start >= olivia_schedule[-1][1] + 1),
+        Or(start + meeting_duration <= olivia_schedule[0][0], start + meeting_duration <= olivia_schedule[-1][0] + 1),
+        # The meeting must not conflict with Anna's schedule
+        Or(start >= 9 * 60, start >= 17 * 60 + 1) if not anna_schedule else Or(start >= anna_schedule[0][1], start >= anna_schedule[-1][1] + 1),
+        Or(start + meeting_duration <= 9 * 60, start + meeting_duration <= 17 * 60 + 1) if not anna_schedule else Or(start + meeting_duration <= anna_schedule[0][0], start + meeting_duration <= anna_schedule[-1][0] + 1),
+        # The meeting must not conflict with Virginia's schedule
+        Or(start >= virginia_schedule[0][1], start >= virginia_schedule[-1][1] + 1),
+        Or(start + meeting_duration <= virginia_schedule[0][0], start + meeting_duration <= virginia_schedule[-1][0] + 1),
+        # The meeting must not conflict with Paul's schedule
+        Or(start >= paul_schedule[0][1], start >= paul_schedule[-1][1] + 1),
+        Or(start + meeting_duration <= paul_schedule[0][0], start + meeting_duration <= paul_schedule[-1][0] + 1),
+        # The meeting must not conflict with the unavailable time slot from 11:30 to 16:00
+        And(start >= 11 * 60 + 30, start + meeting_duration <= 16 * 60),
+    ]
 
-# Define the solver
-solver = Solver()
+    # Solve the constraints
+    solver = Solver()
+    solver.add(constraints)
+    if solver.check() == sat:
+        model = solver.model()
+        start_time = model[start].as_long()
+        end_time = start_time + meeting_duration
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time // 60:02d}:{start_time % 60:02d}\nEnd Time: {end_time // 60:02d}:{end_time % 60:02d}'
+    else:
+        return 'No solution found'
 
-# Define the variables
-day = "Monday"
-start_time = Int("start_time")
+# Example usage
+olivia_schedule = [(12*60 + 30, 13*60 + 30), (14*60 + 30, 15*60 + 0), (16*60 + 30, 17*60 + 0)]
+anna_schedule = []
+virginia_schedule = [(9*60, 10*60), (11*60 + 30, 16*60 + 0), (16*60 + 30, 17*60 + 0)]
+paul_schedule = [(9*60, 9*60 + 30), (11*60, 11*60 + 30), (13*60, 14*60), (14*60 + 30, 16*60 + 0), (16*60 + 30, 17*60 + 0)]
+meeting_duration = 120  # Increased meeting duration to 2 hours
 
-# Add constraints for each participant
-for participant in schedules:
-    for time in schedules[participant]:
-        solver.add(start_time + meeting_duration > time)
-
-# Add constraints for the day
-solver.add(start_time >= time_slots_minutes[0])
-solver.add(start_time + meeting_duration <= time_slots_minutes[-1])
-
-# Add constraints for the meeting duration
-solver.add(start_time % 60 == 0)
-
-# Check if a solution exists
-if solver.check() == sat:
-    # Get the solution
-    model = solver.model()
-    start_time_value = model[start_time].as_long()
-
-    # Find a valid end time
-    for i in range(time_slots_minutes[-1] - 59):
-        if i // 60 == start_time_value // 60:
-            end_time_value = i + 60
-            break
-
-    # Convert the start and end times back to the original format
-    start_time_str = time_slots[start_time_value // 60] + ":" + str(start_time_value % 60).zfill(2)
-    end_time_str = time_slots[end_time_value // 60] + ":" + str(end_time_value % 60).zfill(2)
-
-    # Print the solution
-    print("SOLUTION:")
-    print(f"Day: {day}")
-    print(f"Start Time: {start_time_str}")
-    print(f"End Time: {end_time_str}")
-else:
-    print("No solution exists.")
+print(schedule_meeting(olivia_schedule, anna_schedule, virginia_schedule, paul_schedule, meeting_duration))

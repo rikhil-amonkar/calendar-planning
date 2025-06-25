@@ -1,73 +1,107 @@
 from z3 import *
-import json
 
 def main():
-    s_G, s_M, s_B, s_V, s_S = Ints('s_G s_M s_B s_V s_S')
-    e_G = s_G + 3  # Geneva: 4 days
-    e_M = s_M + 6  # Munich: 7 days
-    e_B = s_B + 1  # Bucharest: 2 days
-    e_V = s_V + 5  # Valencia: 6 days
-    e_S = s_S + 1  # Stuttgart: 2 days
-
-    solver = Solver()
-
-    # Geneva constraints: must be within [1,4]
-    solver.add(s_G >= 1, e_G <= 4)
+    # Cities and their indices
+    cities = ["Geneva", "Munich", "Bucharest", "Valencia", "Stuttgart"]
+    # Index mapping: Geneva:0, Munich:1, Bucharest:2, Valencia:3, Stuttgart:4
     
-    # Munich constraints: must cover [4,10]
-    solver.add(s_M <= 4, e_M >= 10)
+    # Create solver
+    s = Solver()
     
-    # Sequence constraints (flight connections)
-    solver.add(e_G == s_M)  # Fly from Geneva to Munich on day 4
-    solver.add(e_M == s_B)  # Fly from Munich to Bucharest on day 10
-    solver.add(e_B == s_V)  # Fly from Bucharest to Valencia on day 11
-    solver.add(e_V == s_S)  # Fly from Valencia to Stuttgart on day 16
+    # Sequence of cities (order of visit)
+    seq = [Int('seq0'), Int('seq1'), Int('seq2'), Int('seq3'), Int('seq4')]
     
-    # Total trip must be 17 days
-    min_start = Min(s_G, s_M, s_B, s_V, s_S)
-    max_end = Max(e_G, e_M, e_B, e_V, e_S)
-    solver.add(min_start == 1, max_end == 17)
+    # Start and end days for each city
+    start = [Int(f'start_{i}') for i in range(5)]
+    end = [Int(f'end_{i}') for i in range(5)]
     
-    if solver.check() == sat:
-        model = solver.model()
-        s_G_val = model[s_G].as_long()
-        s_M_val = model[s_M].as_long()
-        s_B_val = model[s_B].as_long()
-        s_V_val = model[s_V].as_long()
-        s_S_val = model[s_S].as_long()
+    # Constraints for sequence: must be distinct and within [0,4]
+    s.add(Distinct(seq))
+    for i in range(5):
+        s.add(seq[i] >= 0)
+        s.add(seq[i] < 5)
+    
+    # First city must be Geneva (index 0)
+    s.add(seq[0] == 0)
+    
+    # Geneva: start on day 1, duration 4 days -> end on day 4
+    s.add(start[0] == 1)
+    s.add(end[0] == 4)  # 1 + 3 = 4
+    
+    # For the sequence: the start of next city = end of previous
+    for i in range(1, 5):
+        s.add(start[seq[i]] == end[seq[i-1]])
+    
+    # Last city ends on day 17
+    s.add(end[seq[4]] == 17)
+    
+    # Durations for other cities
+    # Munich: 7 days -> end = start + 6
+    s.add(end[1] == start[1] + 6)
+    # Bucharest: 2 days -> end = start + 1
+    s.add(end[2] == start[2] + 1)
+    # Valencia: 6 days -> end = start + 5
+    s.add(end[3] == start[3] + 5)
+    # Stuttgart: 2 days -> end = start + 1
+    s.add(end[4] == start[4] + 1)
+    
+    # Munich must be the second city (since it starts at day 4, immediately after Geneva)
+    s.add(seq[1] == 1)
+    
+    # Direct flight constraints: allowed pairs (undirected)
+    allowed_pairs = [
+        (0, 1), (1, 0),
+        (1, 3), (3, 1),
+        (2, 3), (3, 2),
+        (1, 2), (2, 1),
+        (3, 4), (4, 3),
+        (0, 3), (3, 0)
+    ]
+    
+    # Consecutive cities in the sequence must have direct flights
+    for i in range(4):
+        c1 = seq[i]
+        c2 = seq[i+1]
+        constraints = []
+        for a, b in allowed_pairs:
+            constraints.append(And(c1 == a, c2 == b))
+        s.add(Or(constraints))
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        seq_val = [m.evaluate(seq[i]).as_long() for i in range(5)]
+        start_val = [m.evaluate(start[i]).as_long() for i in range(5)]
+        end_val = [m.evaluate(end[i]).as_long() for i in range(5)]
         
-        s_val = {
-            'Geneva': s_G_val,
-            'Munich': s_M_val,
-            'Bucharest': s_B_val,
-            'Valencia': s_V_val,
-            'Stuttgart': s_S_val
-        }
-        
-        e_val = {
-            'Geneva': s_val['Geneva'] + 3,
-            'Munich': s_val['Munich'] + 6,
-            'Bucharest': s_val['Bucharest'] + 1,
-            'Valencia': s_val['Valencia'] + 5,
-            'Stuttgart': s_val['Stuttgart'] + 1
-        }
-        
-        route = ['Geneva', 'Munich', 'Bucharest', 'Valencia', 'Stuttgart']
+        # Map indices to city names
+        seq_cities = [cities[idx] for idx in seq_val]
         itinerary = []
         
-        for i, city in enumerate(route):
-            start = s_val[city]
-            end = e_val[city]
-            if i > 0:
-                itinerary.append({"day_range": f"Day {start}", "place": city})
-            itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
-            if i < len(route) - 1:
-                itinerary.append({"day_range": f"Day {end}", "place": city})
+        for i in range(5):
+            city = seq_cities[i]
+            s_start = start_val[seq_val[i]]
+            s_end = end_val[seq_val[i]]
+            
+            # Entire stay block
+            if s_start == s_end:
+                day_range = f"Day {s_start}"
+            else:
+                day_range = f"Day {s_start}-{s_end}"
+            itinerary.append({"day_range": day_range, "place": city})
+            
+            # If not the last city, add flight day entries
+            if i < 4:
+                # Departure from current city
+                itinerary.append({"day_range": f"Day {s_end}", "place": city})
+                # Arrival in next city
+                next_city = seq_cities[i+1]
+                itinerary.append({"day_range": f"Day {s_end}", "place": next_city})
         
         result = {"itinerary": itinerary}
-        print(json.dumps(result))
+        print(result)
     else:
-        print('{"itinerary": []}')
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

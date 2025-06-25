@@ -1,62 +1,60 @@
 from z3 import *
 
-# Define the time slots
-slots = []
-for h in range(9, 17):
-    for m in range(0, 60, 30):
-        slots.append((h, m))
+# Define the day and meeting duration
+day = 'Monday'
+meeting_duration = 0.5  # in hours
 
-# Define the participants and their constraints
-participants = {
-    'Joan': [(11, 30), (14, 30)],
-    'Megan': [(9, 0), (14, 0), (16, 0)],
+# Define the time intervals for each person
+intervals = {
+    'Joan': [(11.5, 12), (14.5, 15)],
+    'Megan': [(9, 10), (14, 14.5), (16, 16.5)],
     'Austin': [],
-    'Betty': [(9, 30), (11, 30), (13, 30), (16, 0)],
-    'Judith': [(9, 0), (12, 0), (14, 0)],
-    'Terry': [(9, 30), (11, 30), (13, 0), (15, 0), (16, 0)],
-    'Kathryn': [(9, 30), (10, 30), (11, 30), (14, 0), (16, 0), (16, 30)]
+    'Betty': [(9.5, 10), (11.5, 12), (13.5, 14), (16, 16.5)],
+    'Judith': [(9, 11), (12, 13), (14, 15)],
+    'Terry': [(9.5, 10), (11.5, 12.5), (13, 14), (15, 15.5), (16, 17)],
+    'Kathryn': [(9.5, 10), (10.5, 11), (11.5, 13), (14, 16), (16.5, 17)]
 }
 
-# Define the variables
-day = 'Monday'
-meeting_duration = 30
-start_time, end_time = 9, 17
-solver = Solver()
+# Define the start and end times for the meeting
+start_time = 9
+end_time = 17
 
-# Define the variables for the meeting time
-meeting_start, meeting_end = Int('meeting_start'), Int('meeting_end')
-meeting_start_var = [Bool(f'meeting_start_{i}') for i in range(len(slots))]
-meeting_end_var = [Bool(f'meeting_end_{i}') for i in range(len(slots))]
+# Create a Z3 solver
+s = Solver()
+
+# Define the variables
+time = [Real('t' + str(i)) for i in range(100)]  # assume 100 time points
+person = [Bool('p' + str(i)) for i in range(7)]  # 7 people
 
 # Define the constraints
-for i, (h, m) in enumerate(slots):
-    meeting_start_var[i] = meeting_start >= h * 60 + m
-    meeting_end_var[i] = meeting_end <= (h + 1) * 60 + m
+for i in range(len(time) - 1):
+    s.add(time[i] < time[i + 1])  # time is increasing
 
-    # Ensure the meeting duration is 30 minutes
-    meeting_duration_var = meeting_end_var[i] - meeting_start_var[i] == meeting_duration
+for person_i, person_name in enumerate(person):
+    for i in range(len(time) - 1):
+        s.add(Implies(person[person_i], time[i] < intervals[person_name][0][0]))
+        s.add(Implies(person[person_i], time[i + 1] > intervals[person_name][0][1]))
+        for interval in intervals[person_name][1:]:
+            s.add(Implies(person[person_i], time[i] < interval[0]))
+            s.add(Implies(person[person_i], time[i + 1] > interval[1]))
 
-    # Ensure the meeting does not conflict with any participant's schedule
-    for participant, constraints in participants.items():
-        for constraint in constraints:
-            conflict_start, conflict_end = constraint
-            conflict_start_var = conflict_start * 60
-            conflict_end_var = conflict_end * 60
-            conflict_start_var = If(meeting_start_var[i], meeting_start_var[i], h * 60 + m)
-            conflict_end_var = If(meeting_end_var[i], meeting_end_var[i], (h + 1) * 60 + m)
-            conflict = And(conflict_start_var <= meeting_start_var[i], meeting_end_var[i] <= conflict_end_var)
-            solver.add(Not(conflict))
+s.add(ForAll([time[i] for i in range(len(time) - 1)], time[i] >= start_time))
+s.add(ForAll([time[i] for i in range(len(time) - 1)], time[i] <= end_time))
+s.add(ForAll([time[i] for i in range(len(time) - 1)], time[i + 1] - time[i] >= meeting_duration))
 
-# Solve the constraints
-solver.add(meeting_duration_var)
-solver.add(meeting_start >= 9 * 60)
-solver.add(meeting_end <= 17 * 60)
-solver.add(meeting_start <= meeting_end)
+# Find a solution
+if s.check() == sat:
+    model = s.model()
+    time_values = [model.evaluate(time[i]).as_real() for i in range(len(time))]
+    start_index = next(i for i in range(len(time_values) - 1) if time_values[i] + meeting_duration >= time_values[i + 1])
+    end_index = next(i for i in range(start_index, len(time_values) - 1) if time_values[i] + meeting_duration >= time_values[i + 1])
+    start_time = time_values[start_index]
+    end_time = time_values[end_index]
 
-if solver.check() == sat:
-    model = solver.model()
-    start_time = model[meeting_start].as_long() // 60
-    end_time = model[meeting_end].as_long() // 60
-    print(f"SOLUTION:\nDay: {day}\nStart Time: {start_time:02d}:00\nEnd Time: {end_time:02d}:00")
+    # Print the solution
+    print('SOLUTION:')
+    print(f'Day: {day}')
+    print(f'Start Time: {start_time:.2f}:00')
+    print(f'End Time: {end_time:.2f}:00')
 else:
-    print("No solution found.")
+    print('No solution found')

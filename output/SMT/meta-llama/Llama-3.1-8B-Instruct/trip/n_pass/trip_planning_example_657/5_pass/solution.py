@@ -1,280 +1,94 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = [Bool(f'day_{i}') for i in range(16)]
-cities = ['Valencia', 'Frankfurt', 'Manchester', 'Naples', 'Oslo', 'Vilnius']
-stays = {city: 0 for city in cities}
-stays['Frankfurt'] = 4
-stays['Manchester'] = 4
-stays['Valencia'] = 4
-stays['Naples'] = 4
-stays['Oslo'] = 3
-stays['Vilnius'] = 2
+# Define the cities
+cities = ['Frankfurt', 'Manchester', 'Valencia', 'Naples', 'Oslo', 'Vilnius']
+
+# Define the days
+days = range(1, 17)
+
+# Define the flight connections
+flights = {
+    'Frankfurt': ['Valencia', 'Manchester', 'Naples', 'Oslo', 'Vilnius'],
+    'Manchester': ['Frankfurt', 'Naples', 'Oslo'],
+    'Valencia': ['Frankfurt', 'Naples'],
+    'Naples': ['Frankfurt', 'Manchester', 'Oslo'],
+    'Oslo': ['Frankfurt', 'Manchester', 'Vilnius', 'Naples'],
+    'Vilnius': ['Frankfurt', 'Oslo']
+}
 
 # Define the constraints
-s = Optimize()
+def is_valid_day(day):
+    return day >= 1 and day <= 16
 
-for i in range(16):
-    # Each day, you can be in at most one city
-    s.add(Sum([days[j] for j in range(16)]) == 1)
+def is_valid_city(city, day):
+    return city in cities and (day >= 1 and day <= 16)
 
-    # You want to spend 4 days in Frankfurt
-    s.add(days[0] + days[5] + days[8] + days[13] >= stays['Frankfurt'])
+def is_valid_flight(departure, arrival, day):
+    return is_valid_day(day) and departure in flights and arrival in flights[departure] and day >= 1 and day <= 16
 
-    # You want to spend 4 days in Manchester
-    s.add(days[1] + days[5] + days[9] + days[14] >= stays['Manchester'])
+def is_valid_stay(city, day):
+    return is_valid_day(day) and is_valid_city(city, day)
 
-    # You want to spend 4 days in Valencia
-    s.add(days[2] + days[6] >= stays['Valencia'])
+def is_valid_trip(itinerary):
+    for i in range(len(itinerary) - 1):
+        if itinerary[i]['day_range'].split('-')[1] == itinerary[i+1]['day_range'].split('-')[0]:
+            return False
+    return True
 
-    # You want to spend 4 days in Naples
-    s.add(days[3] + days[7] + days[10] + days[15] >= stays['Naples'])
+# Create the solver
+s = Solver()
 
-    # You plan to stay in Oslo for 3 days
-    s.add(days[4] + days[11] >= stays['Oslo'])
+# Create the variables
+places = [[Bool(f'{city}_{day}') for day in days] for city in cities]
+flights_taken = [[[Bool(f'flight_{departure}_{arrival}_{day}') for day in days] for arrival in flights[departure]] for departure in flights.keys()]
 
-    # You plan to stay in Vilnius for 2 days
-    s.add(days[12] + days[15] >= stays['Vilnius'])
+# Add the constraints
+for day in days:
+    s.add(Or([places[city][day - 1] for city in range(len(cities))]))
+    for departure in flights.keys():
+        for arrival in flights[departure]:
+            s.add(flights_taken[departure][arrival][day - 1] == flights_taken[arrival][departure][day - 1])
+    for departure in flights.keys():
+        for arrival in flights[departure]:
+            s.add(Sum([If(flights_taken[departure][arrival][day - 1], 1, 0) for day in days]) == 1)
+    for departure in flights.keys():
+        for arrival in flights.keys():
+            s.add(Sum([If(flights_taken[departure][arrival][day - 1], 1, 0) for day in days if departure!= arrival]) == 1)
+    for city in range(len(cities)):
+        s.add(If(places[city][day - 1], is_valid_stay(cities[city], day), True))
+    for departure in flights.keys():
+        for arrival in flights[departure]:
+            s.add(If(flights_taken[departure][arrival][day - 1], is_valid_flight(departure, arrival, day), True))
+    s.add(If(places[0][0], True, is_valid_day(1)))
+    s.add(If(places[5][11], True, is_valid_day(12)))
 
-    # You can only fly from Frankfurt to other cities after day 4
-    if i < 4:
-        s.add(Or([days[5] == False, days[8] == False, days[9] == False, days[10] == False, days[11] == False, days[12] == False]))
-    # You can only fly from other cities to Frankfurt after day 4
-    elif i == 4:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-    else:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
+# Add the specific constraints
+s.add(places[0][3] == True)
+s.add(places[1][3] == True)
+s.add(places[2][3] == True)
+s.add(places[3][3] == True)
+s.add(places[4][2] == True)
+s.add(places[5][1] == True)
+s.add(And([places[0][day] for day in range(13, 17)]))
+s.add(And([places[1][day] for day in range(13, 17)]))
 
-    # You can only fly from Manchester to other cities after day 4
-    if i < 4:
-        s.add(Or([days[9] == False, days[10] == False]))
-    # You can only fly from other cities to Manchester after day 4
-    elif i == 4:
-        s.add(Or([days[1] == False, days[2] == False, days[3] == False]))
-    else:
-        s.add(Or([days[1] == False, days[2] == False, days[3] == False]))
-
-    # You can only fly from Naples to other cities after day 4
-    if i < 4:
-        s.add(Or([days[10] == False, days[11] == False]))
-    # You can only fly from other cities to Naples after day 4
-    elif i == 4:
-        s.add(Or([days[3] == False, days[7] == False]))
-    else:
-        s.add(Or([days[3] == False, days[7] == False]))
-
-    # You can only fly from Oslo to other cities after day 4
-    if i < 4:
-        s.add(Or([days[11] == False, days[12] == False]))
-    # You can only fly from other cities to Oslo after day 4
-    elif i == 4:
-        s.add(Or([days[4] == False, days[7] == False]))
-    else:
-        s.add(Or([days[4] == False, days[7] == False]))
-
-    # You can only fly from Vilnius to other cities after day 4
-    if i < 4:
-        s.add(Or([days[12] == False]))
-    # You can only fly from other cities to Vilnius after day 4
-    elif i == 4:
-        s.add(Or([days[5] == False]))
-    else:
-        s.add(Or([days[5] == False]))
-
-    # You can only fly from Valencia to other cities after day 4
-    if i < 4:
-        s.add(Or([days[6] == False]))
-    # You can only fly from other cities to Valencia after day 4
-    elif i == 4:
-        s.add(Or([days[2] == False]))
-    else:
-        s.add(Or([days[2] == False]))
-
-    # You can only fly from Frankfurt to other cities after day 4
-    if i < 4:
-        s.add(Or([days[5] == False, days[8] == False, days[9] == False, days[10] == False, days[11] == False, days[12] == False]))
-    # You can only fly from other cities to Frankfurt after day 4
-    elif i == 4:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-    else:
-        s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-
-    # You can only attend the wedding in Vilnius between day 12 and day 13
-    if i < 12:
-        s.add(days[12] == False)
-    elif i > 13:
-        s.add(days[12] == False)
-
-    # You can only attend the annual show in Frankfurt between day 13 and day 16
-    if i < 13:
-        s.add(days[13] == False)
-    elif i > 16:
-        s.add(days[13] == False)
-
-# Solve the optimization problem
-s.add(Sum([If(days[i], 1, 0) for i in range(16)]) == 16)
-solution = s.check()
-if solution == sat:
+# Check the solution
+if s.check() == sat:
     model = s.model()
-    trip_plan = {city: 0 for city in cities}
-    for i in range(16):
-        for j in range(6):
-            if model[days[i] * 6 + j].as_long() == 1:
-                trip_plan[cities[j]] = i
-    for city in trip_plan:
-        print(f"You will visit {city} on days {trip_plan[city]}-{trip_plan[city]+stays[city]-1}")
+    itinerary = []
+    for day in range(1, 17):
+        places_in_day = [model.evaluate(places[city][day - 1]).as_bool() for city in range(len(cities))]
+        flight_in_day = [[model.evaluate(flights_taken[departure][arrival][day - 1]).as_bool() for arrival in flights[departure]] for departure in flights.keys()]
+        for i, place in enumerate(places_in_day):
+            if place:
+                itinerary.append({'day_range': f'Day {day}-{day+1 if day!= 16 else day}', 'place': cities[i]})
+        for i, departure in enumerate(flights.keys()):
+            for j, flight in enumerate(flight_in_day[i]):
+                if flight:
+                    arrival = [k for k, v in enumerate(flights.keys()) if i == v][0]
+                    itinerary.append({'day_range': f'Day {day}', 'place': cities[departure]})
+                    itinerary.append({'day_range': f'Day {day}', 'place': cities[arrival]})
+    print({'itinerary': itinerary})
 else:
-    print("No solution found")
-
-# Try to find a solution that satisfies all constraints
-for i in range(16):
-    for j in range(16):
-        for k in range(16):
-            for l in range(16):
-                for m in range(16):
-                    for n in range(16):
-                        for o in range(16):
-                            for p in range(16):
-                                for q in range(16):
-                                    for r in range(16):
-                                        for s in range(16):
-                                            for t in range(16):
-                                                for u in range(16):
-                                                    for v in range(16):
-                                                        for w in range(16):
-                                                            for x in range(16):
-                                                                for y in range(16):
-                                                                    for z in range(16):
-                                                                        for a in range(16):
-                                                                            for b in range(16):
-                                                                                for c in range(16):
-                                                                                    for d in range(16):
-                                                                                        for e in range(16):
-                                                                                            for f in range(16):
-                                                                                                for g in range(16):
-                                                                                                    for h in range(16):
-                                                                                                        for i in range(16):
-                                                                                                            days = [Bool(f'day_{j}') for j in range(16)]
-                                                                                                            cities = ['Valencia', 'Frankfurt', 'Manchester', 'Naples', 'Oslo', 'Vilnius']
-                                                                                                            stays = {city: 0 for city in cities}
-                                                                                                            stays['Frankfurt'] = 4
-                                                                                                            stays['Manchester'] = 4
-                                                                                                            stays['Valencia'] = 4
-                                                                                                            stays['Naples'] = 4
-                                                                                                            stays['Oslo'] = 3
-                                                                                                            stays['Vilnius'] = 2
-
-                                                                                                            # Define the constraints
-                                                                                                            s = Optimize()
-
-                                                                                                            for k in range(16):
-                                                                                                                # Each day, you can be in at most one city
-                                                                                                                s.add(Sum([days[j] for j in range(16)]) == 1)
-
-                                                                                                                # You want to spend 4 days in Frankfurt
-                                                                                                                s.add(days[0] + days[5] + days[8] + days[13] >= stays['Frankfurt'])
-
-                                                                                                                # You want to spend 4 days in Manchester
-                                                                                                                s.add(days[1] + days[5] + days[9] + days[14] >= stays['Manchester'])
-
-                                                                                                                # You want to spend 4 days in Valencia
-                                                                                                                s.add(days[2] + days[6] >= stays['Valencia'])
-
-                                                                                                                # You want to spend 4 days in Naples
-                                                                                                                s.add(days[3] + days[7] + days[10] + days[15] >= stays['Naples'])
-
-                                                                                                                # You plan to stay in Oslo for 3 days
-                                                                                                                s.add(days[4] + days[11] >= stays['Oslo'])
-
-                                                                                                                # You plan to stay in Vilnius for 2 days
-                                                                                                                s.add(days[12] + days[15] >= stays['Vilnius'])
-
-                                                                                                                # You can only fly from Frankfurt to other cities after day 4
-                                                                                                                if k < 4:
-                                                                                                                    s.add(Or([days[5] == False, days[8] == False, days[9] == False, days[10] == False, days[11] == False, days[12] == False]))
-                                                                                                                # You can only fly from other cities to Frankfurt after day 4
-                                                                                                                elif k == 4:
-                                                                                                                    s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-                                                                                                                else:
-                                                                                                                    s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-
-                                                                                                                # You can only fly from Manchester to other cities after day 4
-                                                                                                                if k < 4:
-                                                                                                                    s.add(Or([days[9] == False, days[10] == False]))
-                                                                                                                # You can only fly from other cities to Manchester after day 4
-                                                                                                                elif k == 4:
-                                                                                                                    s.add(Or([days[1] == False, days[2] == False, days[3] == False]))
-                                                                                                                else:
-                                                                                                                    s.add(Or([days[1] == False, days[2] == False, days[3] == False]))
-
-                                                                                                                # You can only fly from Naples to other cities after day 4
-                                                                                                                if k < 4:
-                                                                                                                    s.add(Or([days[10] == False, days[11] == False]))
-                                                                                                                # You can only fly from other cities to Naples after day 4
-                                                                                                                elif k == 4:
-                                                                                                                    s.add(Or([days[3] == False, days[7] == False]))
-                                                                                                                else:
-                                                                                                                    s.add(Or([days[3] == False, days[7] == False]))
-
-                                                                                                                # You can only fly from Oslo to other cities after day 4
-                                                                                                                if k < 4:
-                                                                                                                    s.add(Or([days[11] == False, days[12] == False]))
-                                                                                                                # You can only fly from other cities to Oslo after day 4
-                                                                                                                elif k == 4:
-                                                                                                                    s.add(Or([days[4] == False, days[7] == False]))
-                                                                                                                else:
-                                                                                                                    s.add(Or([days[4] == False, days[7] == False]))
-
-                                                                                                                # You can only fly from Vilnius to other cities after day 4
-                                                                                                                if k < 4:
-                                                                                                                    s.add(Or([days[12] == False]))
-                                                                                                                # You can only fly from other cities to Vilnius after day 4
-                                                                                                                elif k == 4:
-                                                                                                                    s.add(Or([days[5] == False]))
-                                                                                                                else:
-                                                                                                                    s.add(Or([days[5] == False]))
-
-                                                                                                                # You can only fly from Valencia to other cities after day 4
-                                                                                                                if k < 4:
-                                                                                                                    s.add(Or([days[6] == False]))
-                                                                                                                # You can only fly from other cities to Valencia after day 4
-                                                                                                                elif k == 4:
-                                                                                                                    s.add(Or([days[2] == False]))
-                                                                                                                else:
-                                                                                                                    s.add(Or([days[2] == False]))
-
-                                                                                                                # You can only fly from Frankfurt to other cities after day 4
-                                                                                                                if k < 4:
-                                                                                                                    s.add(Or([days[5] == False, days[8] == False, days[9] == False, days[10] == False, days[11] == False, days[12] == False]))
-                                                                                                                # You can only fly from other cities to Frankfurt after day 4
-                                                                                                                elif k == 4:
-                                                                                                                    s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-                                                                                                                else:
-                                                                                                                    s.add(Or([days[0] == False, days[1] == False, days[2] == False, days[3] == False]))
-
-                                                                                                                # You can only attend the wedding in Vilnius between day 12 and day 13
-                                                                                                                if k < 12:
-                                                                                                                    s.add(days[12] == False)
-                                                                                                                elif k > 13:
-                                                                                                                    s.add(days[12] == False)
-
-                                                                                                                # You can only attend the annual show in Frankfurt between day 13 and day 16
-                                                                                                                if k < 13:
-                                                                                                                    s.add(days[13] == False)
-                                                                                                                elif k > 16:
-                                                                                                                    s.add(days[13] == False)
-
-                                                                                                            # Solve the optimization problem
-                                                                                                            s.add(Sum([If(days[j], 1, 0) for j in range(16)]) == 16)
-                                                                                                            solution = s.check()
-                                                                                                            if solution == sat:
-                                                                                                                model = s.model()
-                                                                                                                trip_plan = {city: 0 for city in cities}
-                                                                                                                for j in range(16):
-                                                                                                                    for l in range(6):
-                                                                                                                        if model[days[j] * 6 + l].as_long() == 1:
-                                                                                                                            trip_plan[cities[l]] = j
-                                                                                                                for city in trip_plan:
-                                                                                                                    print(f"You will visit {city} on days {trip_plan[city]}-{trip_plan[city]+stays[city]-1}")
-                                                                                                            else:
-                                                                                                                print("No solution found")
+    print('No solution found')

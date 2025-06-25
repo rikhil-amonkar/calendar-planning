@@ -1,84 +1,57 @@
 from z3 import *
 
-def schedule_meeting(schedules, duration):
-    # Create a solver
-    solver = Solver()
+# Define the day of the week (Monday = 0, Tuesday = 1,..., Sunday = 6)
+day_of_week = [0]
 
-    # Define the day
-    day = 0  # Monday
+# Define the start and end times (9:00 = 9, 17:00 = 17)
+start_time = [9]
+end_time = [17]
 
-    # Define the start and end times
-    start_time = [Int(f'start_{i}') for i in range(len(schedules))]
-    end_time = [start_time[i] + duration for i in range(len(schedules))]
+# Define the meeting duration (30 minutes)
+meeting_duration = 30
 
-    # Define the constraints
-    for i in range(len(schedules)):
-        # The start time must be within the work hours
-        solver.add(And(9 <= start_time[i], start_time[i] <= 17))
+# Define the existing schedules for each participant
+schedules = {
+    'Walter': [],
+    'Cynthia': [(9, 9.5), (10, 10.5), (13.5, 14.5), (15, 16)],
+    'Ann': [(10, 11), (13, 13.5), (14, 15), (16, 16.5)],
+    'Catherine': [(9, 11.5), (12.5, 13.5), (14.5, 17)],
+    'Kyle': [(9, 9.5), (10, 11.5), (12, 12.5), (13, 14.5), (15, 16)]
+}
 
-        # The end time must be within the work hours
-        solver.add(And(start_time[i] + duration >= 9, start_time[i] + duration <= 17))
+# Define the solver
+s = Solver()
 
-        # The start time must not conflict with the existing schedule
-        for j in range(len(schedules)):
-            if i!= j:
-                # Convert the existing schedule to a list of time intervals
-                existing_schedule = schedules[j]
-                existing_intervals = []
-                for k in range(len(existing_schedule) - 1):
-                    existing_intervals.append((existing_schedule[k][1], existing_schedule[k+1][0]))
+# Define the variables
+day = Int('day')
+start = Real('start')
+end = Real('end')
 
-                # Check if the start time conflicts with the existing schedule
-                for interval in existing_intervals:
-                    solver.add(Or(start_time[i] >= interval[1], start_time[i] + duration <= interval[0]))
+# Add the constraints
+s.add(day == 0)  # Monday
+s.add(start >= 9)  # Start time must be at least 9:00
+s.add(end <= 17)  # End time must be at most 17:00
+s.add(end - start >= meeting_duration)  # Meeting duration must be at least 30 minutes
 
-                # Check if the end time conflicts with the existing schedule
-                for interval in existing_intervals:
-                    solver.add(Or(end_time[i] >= interval[1], end_time[i] <= interval[0]))
+# Check if the meeting time conflicts with anyone's schedule
+for participant, schedule in schedules.items():
+    for start_time_slot, end_time_slot in schedule:
+        s.add(Or(start + meeting_duration < start_time_slot, end < start_time_slot))
 
-    # Solve the constraints
-    if solver.check() == sat:
-        # Get the model
-        model = solver.model()
+# Check if the meeting time is within the work hours
+s.add(And(start >= 9, end <= 17))
 
-        # Get the start time
-        start_time_val = model[start_time[0]].as_long()
+# Check if the meeting time is a multiple of 30 minutes
+s.add(start == IntVal(int(start)))
+s.add(end == IntVal(int(end)))
+s.add((end - start) % 30 == 0)
 
-        # Find the end time that satisfies the constraints
-        for i in range(len(schedules)):
-            end_time_val = start_time_val + duration
-            for j in range(len(schedules)):
-                if i!= j:
-                    existing_schedule = schedules[j]
-                    existing_intervals = []
-                    for k in range(len(existing_schedule) - 1):
-                        existing_intervals.append((existing_schedule[k][1], existing_schedule[k+1][0]))
-                    for interval in existing_intervals:
-                        if end_time_val >= interval[1] and end_time_val <= interval[0]:
-                            break
-                    else:
-                        continue
-                    break
-            else:
-                # The end time satisfies the constraints, so print the solution
-                print(f'SOLUTION:')
-                print(f'Day: Monday')
-                print(f'Start Time: {start_time_val:02d}:{(start_time_val // 60):02d}')
-                print(f'End Time: {end_time_val:02d}:{(end_time_val // 60):02d}')
-                return
-    else:
-        print('No solution found.')
-
-# Define the schedules
-schedules = [
-    [(9, 9), (9, 9.5), (10, 10.5), (13.5, 14.5), (15, 16)],
-    [(10, 11), (13, 13.5), (14, 15), (16, 16.5)],
-    [(9, 11.5), (12.5, 13.5), (14.5, 17)],
-    [(9, 9), (10, 11.5), (12, 12.5), (13, 14.5), (15, 16)]
-]
-
-# Define the duration
-duration = 0.5
-
-# Schedule the meeting
-schedule_meeting(schedules, duration)
+# Solve the constraints
+if s.check() == sat:
+    model = s.model()
+    print('SOLUTION:')
+    print(f'Day: {model[day]}')
+    print(f'Start Time: {model[start]:.2f}')
+    print(f'End Time: {model[end]:.2f}')
+else:
+    print('No solution found.')

@@ -1,84 +1,62 @@
 from z3 import *
 
-def schedule_meeting():
-    # Define the days of the week
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-
-    # Define the start and end times of the work hours
-    start_time = 9
-    end_time = 17
-
-    # Define the meeting duration
-    meeting_duration = 0.5
-
-    # Define the existing schedules for Cheryl and James
-    cheryl_schedule = [False] * 24
-    james_schedule = [False] * 24
-    for day in days:
-        if day == 'Monday':
-            for time in [9, 10, 12, 14, 16]:
-                james_schedule[time] = True
-        elif day == 'Tuesday':
-            for time in [9, 11, 11, 12, 16]:
-                james_schedule[time] = True
-        elif day == 'Wednesday':
-            for time in [10, 12, 13, 15]:
-                james_schedule[time] = True
-        elif day == 'Thursday':
-            for time in [9, 12, 13, 14, 16]:
-                james_schedule[time] = True
-
-    # Define the preferences for Cheryl
-    cheryl_preferences = [day for day in days if day!= 'Wednesday' and day!= 'Thursday']
-
-    # Define the Z3 solver
-    s = Solver()
-
-    # Define the variables for the meeting time
-    day_var = Int('day')
-    start_time_var = Int('start_time')
-    end_time_var = Int('end_time')
-
-    # Define the constraints for the meeting time
-    s.add(day_var >= 0)
-    s.add(day_var < len(days))
-    s.add(start_time_var >= 9)
-    s.add(start_time_var < 17)
-    s.add(end_time_var > start_time_var)
-    s.add(end_time_var <= 17)
-
-    # Define the constraints for the existing schedules
-    for i in range(9, 17):
-        s.add(Or(cheryl_schedule[i], Not(start_time_var == i)))
-        s.add(Or(james_schedule[i], Not(start_time_var == i)))
-        s.add(Or(james_schedule[i + 1], Not(start_time_var + 30 == i + 1)))
-
-    # Define the constraints for Cheryl's preferences
-    s.add(Or([day_var == i for i in range(len(days)) if days[i] in cheryl_preferences]))
-
-    # Solve the constraints
-    if s.check() == sat:
-        model = s.model()
-        print('SOLUTION:')
-        print(f'Day: {days[model[day_var].as_long()]}')
-        print(f'Start Time: {model[start_time_var].as_long()}:00')
-        print(f'End Time: {model[start_time_var].as_long() + 30}:00')
+def schedule_meeting(cheryl_schedule, james_schedule, day, duration):
+    # Create Z3 variables
+    start_time = [Bool(f'start_time_{day}_{i}') for i in range(len(james_schedule[day]))]
+    
+    # Create Z3 constraints
+    constraints = []
+    for i in range(len(james_schedule[day])):
+        constraints.append(Implies(start_time[i], james_schedule[day][i][0] < start_time[i] + duration))
+        constraints.append(Implies(start_time[i], start_time[i] + duration <= james_schedule[day][i][1]))
+    
+    # Ensure the meeting doesn't conflict with Cheryl's schedule
+    for i in range(len(james_schedule[day])):
+        for j in range(len(cheryl_schedule[day])):
+            constraints.append(Implies(start_time[i], Not(cheryl_schedule[day][j][0] < start_time[i] + duration and start_time[i] + duration <= cheryl_schedule[day][j][1])))
+    
+    # Ensure the meeting doesn't conflict with Cheryl's preferences
+    if day == 'Wednesday' or day == 'Thursday':
+        constraints.append(Not(Or(*[start_time[i] for i in range(len(james_schedule[day]))])))
+    
+    # Find a valid solution
+    solver = Solver()
+    solver.add(constraints)
+    solver.add(Or(*start_time))
+    if solver.check() == sat:
+        model = solver.model()
+        start_index = [i for i, x in enumerate(model.evaluate(start_time).as_bool()) if x == True][0]
+        return f'Day: {day}\nStart Time: {james_schedule[day][start_index][0]:02d}:{james_schedule[day][start_index][1]:02d}\nEnd Time: {(james_schedule[day][start_index][0] + duration):02d}:{(james_schedule[day][start_index][1] + duration):02d}'
     else:
-        # Try all possible days
-        for day in days:
-            s.add(day_var == days.index(day))
-            if s.check() == sat:
-                model = s.model()
-                print('SOLUTION:')
-                print(f'Day: {day}')
-                for i in range(9, 17):
-                    if s.model().evaluate(Or(cheryl_schedule[i], Not(model[start_time_var].as_long() == i))).as_bool():
-                        print(f'Start Time: {model[start_time_var].as_long()}:00')
-                        print(f'End Time: {model[start_time_var].as_long() + 30}:00')
-                        break
-                break
-            s.add(day_var!= days.index(day))
-        else:
-            print('NO SOLUTION FOUND')
+        return 'No solution found'
 
-schedule_meeting()
+# Define Cheryl's and James' schedules
+cheryl_schedule = {
+    'Monday': [(9, 0), (11, 0), (12, 0), (16, 0)],
+    'Tuesday': [(9, 0), (11, 0), (12, 0), (16, 0)],
+    'Wednesday': [(9, 0), (11, 30), (12, 30), (16, 0)],
+    'Thursday': [(9, 30), (12, 0), (13, 0), (14, 0), (16, 30)]
+}
+
+james_schedule = {
+    'Monday': [(9, 30), (10, 30), (12, 30), (14, 30), (16, 30)],
+    'Tuesday': [(9, 0), (11, 30), (12, 30), (16, 0)],
+    'Wednesday': [(10, 0), (12, 0), (13, 30)],
+    'Thursday': [(9, 30), (12, 0), (13, 0), (14, 0), (16, 30)]
+}
+
+# Find the earliest available time
+solutions = []
+for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday']:
+    if james_schedule[day]:
+        solution = schedule_meeting(cheryl_schedule, james_schedule, day, 30)
+        if solution!= 'No solution found':
+            solutions.append(solution)
+
+# Print the solution
+if solutions:
+    print('SOLUTION:')
+    for solution in solutions:
+        print(solution)
+else:
+    print('No solution found')

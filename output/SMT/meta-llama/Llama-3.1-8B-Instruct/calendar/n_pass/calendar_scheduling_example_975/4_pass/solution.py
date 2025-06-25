@@ -1,71 +1,99 @@
-YOUR_CODE
 from z3 import *
 
 # Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-# Define the participants
-participants = ['Nicole', 'Daniel']
+# Define the start and end times
+start_times = [9, 10, 11, 12, 13, 14, 15, 16]
+end_times = [16, 17]
 
-# Define the meeting duration in hours
+# Define the meeting duration
 meeting_duration = 1
 
-# Define the existing schedules for each participant
-schedules = {
-    'Nicole': {
-        'Monday': [(9, 17), (10, 12), (13, 17)],
-        'Tuesday': [(9, 17), (15, 16.5), (16, 16.5)],
-        'Wednesday': [(9, 17), (14, 15.5), (15, 15.5)],
-        'Thursday': [(9, 17)],
-        'Friday': [(9, 17), (11, 12), (15, 15.5), (15.5, 16)]
-    },
-    'Daniel': {
-        'Monday': [(9, 12.5), (12.5, 13), (13, 14), (14, 16.5), (16.5, 17)],
-        'Tuesday': [(9, 10.5), (10.5, 11.5), (11.5, 12.5), (12.5, 13), (13, 13), (13, 16), (16, 17)],
-        'Wednesday': [(9, 10), (10, 12.5), (12.5, 13), (13, 13), (13, 14), (14, 14.5), (14.5, 17)],
-        'Thursday': [(10, 12), (12, 14), (14, 14.5), (14.5, 15)],
-        'Friday': [(9, 11), (11, 12), (12, 14.5), (14.5, 15), (15, 15), (15, 16), (16, 16.5)]
-    }
+# Define the existing schedules for Nicole and Daniel
+nicole_schedule = {
+    'Monday': [(9, 17)],
+    'Tuesday': [(9, 17), (16, 16.5)],
+    'Wednesday': [(9, 17), (15, 15.5)],
+    'Thursday': [(9, 17)],
+    'Friday': [(9, 17), (12, 12.5), (15.5, 16)]
 }
 
-# Define the solver
-solver = Optimize()
+daniel_schedule = {
+    'Monday': [(9, 12.5), (13, 13.5), (14, 16.5)],
+    'Tuesday': [(9, 10.5), (11.5, 12.5), (13, 13.5), (15, 16), (16.5, 17)],
+    'Wednesday': [(9, 10), (11, 12.5), (13, 13.5), (14, 14.5), (16.5, 17)],
+    'Thursday': [(11, 12), (13, 14), (15, 15.5)],
+    'Friday': [(10, 11), (11.5, 12), (12.5, 14.5), (15, 15.5), (16, 16.5)]
+}
+
+# Create the Z3 solver
+solver = Solver()
 
 # Define the variables
-day = [Bool(f'day_{i}') for i in range(5)]
-start_time = [Real(f'start_time_{i}') for i in range(5)]
-end_time = [Real(f'end_time_{i}') for i in range(5)]
+day = Int('day')
+start_time = Int('start_time')
+end_time = Int('end_time')
 
-# Add constraints for each participant
-for participant in participants:
-    for day_name in days:
-        for i in range(5):
-            if (day_name, participant) in schedules[participant].keys():
-                for start, end in schedules[participant][(day_name)]:
-                    solver.add(Implies(day[i], start <= start_time[i] + 0.5) == False)
-                    solver.add(Implies(day[i], end >= end_time[i] - 0.5) == False)
+# Add constraints for the day
+solver.add(day >= 0)
+solver.add(day < len(days))
 
-# Add constraints for the meeting duration
-for i in range(5):
-    solver.add(start_time[i] + 1 >= end_time[i])
+# Add constraints for the start and end times
+solver.add(start_time >= 9)
+solver.add(start_time < 17)
+solver.add(end_time >= 9)
+solver.add(end_time < 17)
+solver.add(end_time > start_time + meeting_duration)
 
-# Add constraints for the day of the week
-for i in range(5):
-    solver.add(day[i] == Or([day[i] for i in range(5)]))
+# Add constraints for Nicole's schedule
+for day_name, schedule in nicole_schedule.items():
+    day_index = days.index(day_name)
+    for start, end in schedule:
+        solver.add(If(day == day_index, start_time > end, True))
+        solver.add(If(day == day_index, end_time < start, True))
 
-# Add the objective function
-solver.minimize((start_time[0] + 0.5) * 100 + (end_time[0] - 0.5) * 100)
+# Add constraints for Daniel's schedule
+for day_name, schedule in daniel_schedule.items():
+    day_index = days.index(day_name)
+    for start, end in schedule:
+        solver.add(If(day == day_index, start_time > end, True))
+        solver.add(If(day == day_index, end_time < start, True))
+
+# Ensure that the start time is not 17:00
+solver.add(start_time!= 17)
+
+# Ensure that the end time is not 17:00
+solver.add(end_time!= 17)
+
+# Ensure that the meeting is not scheduled on the same day as a conflict
+for day_name, schedule in nicole_schedule.items():
+    day_index = days.index(day_name)
+    for start, end in schedule:
+        solver.add(If(day == day_index, start_time > end, True))
+        solver.add(If(day == day_index, end_time < start, True))
+
+for day_name, schedule in daniel_schedule.items():
+    day_index = days.index(day_name)
+    for start, end in schedule:
+        solver.add(If(day == day_index, start_time > end, True))
+        solver.add(If(day == day_index, end_time < start, True))
+
+# Ensure that the start time is not later than 16:00
+solver.add(start_time <= 16)
+
+# Ensure that the end time is not later than 16:00
+solver.add(end_time <= 16)
 
 # Solve the problem
-solution = solver.check()
-
-# Print the solution
-if solution == sat:
+if solver.check() == sat:
     model = solver.model()
-    day_index = [i for i, x in enumerate([model.eval(day[i]).as_bool() for i in range(5)]) if x][0]
+    day_value = days[model[day].as_long()]
+    start_time_value = model[start_time].as_long()
+    end_time_value = model[end_time].as_long()
     print(f'SOLUTION:')
-    print(f'Day: {days[day_index]}')
-    print(f'Start Time: {model.eval(start_time[day_index]).as_real().as_decimal(2)}')
-    print(f'End Time: {model.eval(end_time[day_index]).as_real().as_decimal(2)}')
+    print(f'Day: {day_value}')
+    print(f'Start Time: {start_time_value:02d}:00')
+    print(f'End Time: {end_time_value:02d}:00')
 else:
     print('No solution found')

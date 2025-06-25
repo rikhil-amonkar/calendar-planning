@@ -1,134 +1,88 @@
-import z3
-import json
+from z3 import *
 
 def main():
-    cities = ['Prague', 'Warsaw', 'Dublin', 'Athens', 'Vilnius', 'Porto', 'London', 'Seville', 'Lisbon', 'Dubrovnik']
-    city_index = {city: idx for idx, city in enumerate(cities)}
-    index_city = {idx: city for idx, city in enumerate(cities)}
-    
-    required_days = {
-        'Prague': 3,
-        'Warsaw': 4,
-        'Dublin': 3,
-        'Athens': 3,
-        'Vilnius': 4,
-        'Porto': 5,
-        'London': 3,
-        'Seville': 2,
-        'Lisbon': 5,
-        'Dubrovnik': 3
+    # Define city mapping and durations
+    city_map = {
+        'Prague': 0, 'Warsaw': 1, 'Dublin': 2, 'Athens': 3, 'Vilnius': 4, 'Porto': 5,
+        'London': 6, 'Seville': 7, 'Lisbon': 8, 'Dubrovnik': 9
     }
-    
-    fixed_events = {
-        'Prague': [1, 2, 3],
-        'London': [3, 4, 5],
-        'Lisbon': [5, 6, 7, 8, 9],
-        'Porto': [16, 17, 18, 19, 20],
-        'Warsaw': [20, 21, 22, 23]
-    }
-    
-    direct_flights_str = "Warsaw and Vilnius, Prague and Athens, London and Lisbon, Lisbon and Porto, Prague and Lisbon, London and Dublin, Athens and Vilnius, Athens and Dublin, Prague and London, London and Warsaw, Dublin and Seville, Seville and Porto, Lisbon and Athens, Dublin and Porto, Athens and Warsaw, Lisbon and Warsaw, Porto and Warsaw, Prague and Warsaw, Prague and Dublin, Athens and Dubrovnik, Lisbon and Dublin, Dubrovnik and Dublin, Lisbon and Seville, London and Athens"
-    flight_pairs = []
-    for pair in direct_flights_str.split(','):
-        pair = pair.strip()
-        if pair:
-            parts = pair.split(' and ')
-            if len(parts) == 2:
-                flight_pairs.append((parts[0].strip(), parts[1].strip()))
-                
-    n = len(cities)
-    flight_matrix = [[False] * n for _ in range(n)]
-    for (c1, c2) in flight_pairs:
-        i1 = city_index[c1]
-        i2 = city_index[c2]
-        flight_matrix[i1][i2] = True
-        flight_matrix[i2][i1] = True
-        
-    loc = [z3.Int(f'loc_{i}') for i in range(1, 28)]
-    
-    s = z3.Solver()
-    
-    for i in range(27):
-        s.add(loc[i] >= 0, loc[i] < n)
-    
-    s.add(loc[0] == city_index['Prague'])
-    
-    for i in range(1, 27):
-        start_city = loc[i-1]
-        end_city = loc[i]
-        s.add(z3.Implies(start_city != end_city, 
-                         flight_matrix[start_city.as_long()][end_city.as_long()] if isinstance(start_city, int) and isinstance(end_city, int) else 
-                         z3.Or([z3.And(start_city == idx1, end_city == idx2) for idx1 in range(n) for idx2 in range(n) if flight_matrix[idx1][idx2]])))
-    
-    for city, days in fixed_events.items():
-        c_idx = city_index[city]
-        for d in days:
-            s.add(z3.Or(loc[d-1] == c_idx, loc[d] == c_idx))
-            
-    for city in cities:
-        total = 0
-        c_idx = city_index[city]
-        for d in range(1, 27):
-            in_city = z3.Or(loc[d-1] == c_idx, loc[d] == c_idx)
-            total += z3.If(in_city, 1, 0)
-        s.add(total == required_days[city])
-        
-    if s.check() == z3.sat:
-        m = s.model()
-        loc_vals = [m.evaluate(loc[i]).as_long() for i in range(27)]
-        
-        itinerary = []
-        
-        city_days = {city: [] for city in cities}
-        for day in range(1, 27):
-            for city in cities:
-                c_idx = city_index[city]
-                if loc_vals[day-1] == c_idx or loc_vals[day] == c_idx:
-                    city_days[city].append(day)
-                    
-        for city, days_list in city_days.items():
-            if not days_list:
-                continue
-            days_list.sort()
-            groups = []
-            start = days_list[0]
-            end = days_list[0]
-            for i in range(1, len(days_list)):
-                if days_list[i] == end + 1:
-                    end = days_list[i]
-                else:
-                    groups.append((start, end))
-                    start = days_list[i]
-                    end = days_list[i]
-            groups.append((start, end))
-            
-            for (s_val, e_val) in groups:
-                if s_val == e_val:
-                    day_str = f"Day {s_val}"
-                else:
-                    day_str = f"Day {s_val}-{e_val}"
-                itinerary.append({"day_range": day_str, "place": city})
-                    
-        for day in range(1, 27):
-            if loc_vals[day-1] != loc_vals[day]:
-                city1 = index_city[loc_vals[day-1]]
-                city2 = index_city[loc_vals[day]]
-                itinerary.append({"day_range": f"Day {day}", "place": city1})
-                itinerary.append({"day_range": f"Day {day}", "place": city2})
-                
-        def get_start_day(entry):
-            parts = entry['day_range'].split()
-            num_part = parts[1]
-            if '-' in num_part:
-                return int(num_part.split('-')[0])
-            else:
-                return int(num_part)
-                
-        itinerary_sorted = sorted(itinerary, key=get_start_day)
-        result = {"itinerary": itinerary_sorted}
-        print(json.dumps(result))
-    else:
-        print(json.dumps({"itinerary": []}))
+    dur = [3, 4, 3, 3, 4, 5, 3, 2, 5, 3]  # durations for cities 0 to 9
 
-if __name__ == "__main__":
+    # Define flight connections (bidirectional)
+    edges_str = [
+        "Warsaw and Vilnius", "Prague and Athens", "London and Lisbon", "Lisbon and Porto",
+        "Prague and Lisbon", "London and Dublin", "Athens and Vilnius", "Athens and Dublin",
+        "Prague and London", "London and Warsaw", "Dublin and Seville", "Seville and Porto",
+        "Lisbon and Athens", "Dublin and Porto", "Athens and Warsaw", "Lisbon and Warsaw",
+        "Porto and Warsaw", "Prague and Warsaw", "Prague and Dublin", "Athens and Dubrovnik",
+        "Lisbon and Dublin", "Dubrovnik and Dublin", "Lisbon and Seville", "London and Athens"
+    ]
+    flight_set = set()
+    for s in edges_str:
+        c1, c2 = s.split(' and ')
+        i, j = city_map[c1], city_map[c2]
+        flight_set.add((i, j))
+        flight_set.add((j, i))
+
+    # Initialize Z3 solver
+    s = Solver()
+
+    # Define order variables
+    order = [Int(f'order_{i}') for i in range(10)]
+    for i in range(10):
+        s.add(order[i] >= 0, order[i] < 10)
+    s.add(Distinct(order))
+
+    # Define position array
+    pos = Array('pos', IntSort(), IntSort())
+    for k in range(10):
+        s.add(pos[order[k]] == k)
+
+    # Define start days for each city
+    start = [Int(f'start_{c}') for c in range(10)]
+    for c in range(10):
+        sum_expr = 1
+        for d in range(10):
+            cond = (pos[d] < pos[c])
+            sum_expr = sum_expr + If(cond, dur[d] - 1, 0)
+        s.add(start[c] == sum_expr)
+
+    # Add constraints for specific cities
+    s.add(start[city_map['Lisbon']] == 5)    # Lisbon starts on day 5
+    s.add(start[city_map['Porto']] == 16)    # Porto starts on day 16
+    s.add(start[city_map['Prague']] <= 3)    # Prague starts by day 3
+    s.add(start[city_map['Warsaw']] >= 17, start[city_map['Warsaw']] <= 23)  # Warsaw starts between days 17-23
+
+    # Add flight constraints between consecutive cities
+    for k in range(9):
+        a, b = order[k], order[k+1]
+        s.add(Or([And(a == i, b == j) for (i, j) in flight_set]))
+
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.evaluate(order[i]).as_long() for i in range(10)]
+        start_val = [m.evaluate(start[c]).as_long() for c in range(10)]
+        
+        # Generate itinerary
+        city_names = {v: k for k, v in city_map.items()}
+        itinerary = []
+        for idx, c in enumerate(order_val):
+            name = city_names[c]
+            S = start_val[c]
+            E = S + dur[c] - 1
+            itinerary.append({"day_range": f"Day {S}-{E}", "place": name})
+            if idx < 9:
+                itinerary.append({"day_range": f"Day {E}", "place": name})
+                next_city = order_val[idx+1]
+                next_name = city_names[next_city]
+                itinerary.append({"day_range": f"Day {E}", "place": next_name})
+        
+        # Output result
+        result = {"itinerary": itinerary}
+        print(result)
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
     main()

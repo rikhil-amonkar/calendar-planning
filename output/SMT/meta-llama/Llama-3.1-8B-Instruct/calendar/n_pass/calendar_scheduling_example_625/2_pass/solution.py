@@ -1,86 +1,72 @@
-YOUR_CODE
 from z3 import *
 
-# Define the days of the week
-days = ['Monday', 'Tuesday']
+def schedule_meeting():
+    # Define the days of the week
+    days = ['Monday', 'Tuesday']
+    monday = 0
+    tuesday = 1
 
-# Define the time slots for each day
-time_slots = {
-    'Monday': [(9, 60), (10, 30), (10, 30, 60), (11, 0, 60), (11, 30, 60), (12, 0, 60), (12, 30, 60), (13, 0, 60), (13, 30, 60), (14, 0, 60), (14, 30, 60), (15, 0, 60), (15, 30, 60), (16, 0, 60), (16, 30, 60), (17, 0, 60)],
-    'Tuesday': [(9, 30, 60), (10, 0, 60), (10, 30, 60), (11, 30, 60), (12, 0, 60), (12, 30, 60), (13, 30, 60), (14, 0, 60), (14, 30, 60), (15, 30, 60), (16, 0, 60), (16, 30, 60), (17, 0, 60)]
-}
+    # Define the start and end times of the work hours
+    start_time = 9
+    end_time = 17
 
-# Define the constraints
-def is_available(day, start, end, harold_schedule):
-    for i in range(len(harold_schedule)):
-        if day == harold_schedule[i][0] and start >= harold_schedule[i][1] and end <= harold_schedule[i][2]:
-            return False
-    return True
+    # Define the meeting duration
+    meeting_duration = 0.5  # in hours
 
-def is_before_1430(day, start, harold_schedule):
-    if day == 'Tuesday':
-        for i in range(len(harold_schedule)):
-            if harold_schedule[i][0] == day and start >= harold_schedule[i][1] and start < harold_schedule[i][2] and harold_schedule[i][2] < 14.5:
-                return False
-    return True
+    # Define the constraints for Harold's schedule
+    harold_schedule = [
+        (monday, 9, 10),  # Monday 9:00-10:00
+        (monday, 10.5, 17),  # Monday 10:30-17:00
+        (tuesday, 9, 9.5),  # Tuesday 9:00-9:30
+        (tuesday, 10.5, 11.5),  # Tuesday 10:30-11:30
+        (tuesday, 12.5, 13.5),  # Tuesday 12:30-13:30
+        (tuesday, 14.5, 15.5),  # Tuesday 14:30-15:30
+        (tuesday, 16, 17)  # Tuesday 16:00-17:00
+    ]
 
-def is_not_monday(day):
-    return day!= 'Monday'
+    # Define the constraints for Harold's preferences
+    harold_preferences = [
+        (monday, 0),  # Harold prefers not to meet on Monday
+        (tuesday, 0, 14.5)  # Harold prefers not to meet on Tuesday before 14:30
+    ]
 
-def is_half_hour_duration(start, end):
-    return end - start == 30
+    # Define the solver
+    s = Solver()
 
-# Define the solver
-s = Solver()
+    # Define the variables
+    day = Int('day')
+    start = Real('start')
+    end = Real('end')
 
-# Define the variables
-day = Int('day')
-start = Int('start')
-end = Int('end')
+    # Define the constraints
+    s.add(day in [monday, tuesday])  # day is either Monday or Tuesday
+    s.add(start >= 9)  # start time is at least 9:00
+    s.add(start <= 17)  # start time is at most 17:00
+    s.add(end >= start + 0.5)  # end time is at least 30 minutes after start time
+    s.add(end <= 17)  # end time is at most 17:00
 
-# Add the constraints
-s.add(day in [0, 1])
-s.add(is_available('Monday', 9, 30, time_slots['Monday']))
-s.add(is_available('Monday', 11, 0, time_slots['Monday']))
-s.add(is_available('Monday', 11, 30, time_slots['Monday']))
-s.add(is_available('Monday', 12, 0, time_slots['Monday']))
-s.add(is_available('Monday', 12, 30, time_slots['Monday']))
-s.add(is_available('Monday', 13, 0, time_slots['Monday']))
-s.add(is_available('Monday', 13, 30, time_slots['Monday']))
-s.add(is_available('Monday', 14, 0, time_slots['Monday']))
-s.add(is_available('Monday', 14, 30, time_slots['Monday']))
-s.add(is_available('Monday', 15, 0, time_slots['Monday']))
-s.add(is_available('Monday', 15, 30, time_slots['Monday']))
-s.add(is_available('Monday', 16, 0, time_slots['Monday']))
-s.add(is_available('Monday', 16, 30, time_slots['Monday']))
-s.add(is_available('Monday', 17, 0, time_slots['Monday']))
-s.add(is_available('Tuesday', 9, 30, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 11, 30, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 12, 0, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 12, 30, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 13, 30, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 14, 30, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 15, 30, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 16, 0, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 16, 30, time_slots['Tuesday']))
-s.add(is_available('Tuesday', 17, 0, time_slots['Tuesday']))
-s.add(is_before_1430('Tuesday', 9, time_slots['Tuesday']))
-s.add(is_before_1430('Tuesday', 10, time_slots['Tuesday']))
-s.add(is_before_1430('Tuesday', 11, time_slots['Tuesday']))
-s.add(is_before_1430('Tuesday', 12, time_slots['Tuesday']))
-s.add(is_before_1430('Tuesday', 13, time_slots['Tuesday']))
-s.add(is_not_monday('Monday'))
-s.add(is_half_hour_duration(start, end))
+    # Add constraints for Harold's schedule
+    for d, st, en in harold_schedule:
+        s.add(If(day == d, st <= start, True))
+        s.add(If(day == d, end <= en, True))
 
-# Check the solution
-if s.check() == sat:
-    model = s.model()
-    day_value = days[model[day].as_long()]
-    start_value = model[start].as_long()
-    end_value = model[end].as_long()
-    print('SOLUTION:')
-    print(f'Day: {day_value}')
-    print(f'Start Time: {str(start_value).zfill(2)}:00')
-    print(f'End Time: {str(end_value).zfill(2)}:30')
-else:
-    print('No solution found')
+    # Add constraints for Harold's preferences
+    for d, st in harold_preferences:
+        s.add(If(day == d, start >= st, True))
+
+    # Solve the constraints
+    s.check()
+
+    # Get the solution
+    m = s.model()
+
+    # Print the solution
+    day = days[m[day].as_long()]
+    start = int(m[start].as_real().numerator / m[start].as_real().denominator * 60)
+    end = int(m[end].as_real().numerator / m[end].as_real().denominator * 60)
+    print(f"SOLUTION:")
+    print(f"Day: {day}")
+    print(f"Start Time: {start:02d}:00")
+    print(f"End Time: {int(end + 0.5):02d}:00")
+
+schedule_meeting()

@@ -1,120 +1,91 @@
 from z3 import *
+from itertools import product
 
-# Define the cities and their corresponding days
-cities = {
-    'Prague': 5,
-    'Tallinn': 3,
-    'Warsaw': 2,
-    'Porto': 3,
-    'Naples': 5,
-    'Milan': 3,
-    'Lisbon': 5,
-    'Santorini': 5,
-    'Riga': 4,
-    'Stockholm': 2
+# Define the cities
+cities = ['Prague', 'Tallinn', 'Warsaw', 'Porto', 'Naples', 'Milan', 'Lisbon', 'Santorini', 'Riga', 'Stockholm']
+
+# Define the flight days
+flight_days = {
+    'Riga and Prague': [1], 'Stockholm and Milan': [2], 'Riga and Milan': [3], 'Lisbon and Stockholm': [4],
+    'Stockholm and Santorini': [5], 'Naples and Warsaw': [6], 'Lisbon and Warsaw': [7], 'Naples and Milan': [8],
+    'Lisbon and Naples': [9], 'Riga and Tallinn': [10], 'Tallinn and Prague': [11], 'Stockholm and Warsaw': [12],
+    'Riga and Warsaw': [13], 'Lisbon and Riga': [14], 'Riga and Stockholm': [15], 'Lisbon and Porto': [16],
+    'Lisbon and Prague': [17], 'Milan and Porto': [18], 'Prague and Milan': [19], 'Lisbon and Milan': [20],
+    'Warsaw and Porto': [21], 'Warsaw and Tallinn': [22], 'Santorini and Milan': [23], 'Warsaw and Milan': [24],
+    'Santorini and Naples': [25], 'Warsaw and Prague': [26], 'annual show in Riga': [5, 6, 7, 8]
 }
 
-# Define the constraints for each city
-constraints = {
-    'Prague': [5],
-    'Tallinn': [18, 19, 20],
-    'Warsaw': [0, 1],
-    'Porto': [0, 1, 2, 3],
-    'Naples': [0, 1, 2, 3, 4],
-    'Milan': [0, 1, 2, 3, 4, 24, 25, 26],
-    'Lisbon': [0, 1, 2, 3, 4, 5, 6, 7],
-    'Santorini': [0, 1, 2, 3, 4],
-    'Riga': [0, 1, 2, 3, 4, 5, 6, 7],
-    'Stockholm': [0, 1, 24, 25, 26]
+# Define the visit days
+visit_days = {
+    'Prague': [1, 2, 3, 11, 17, 19, 26],
+    'Tallinn': [10, 11, 12],
+    'Warsaw': [6, 7, 12, 13, 21, 22, 26],
+    'Porto': [16, 20, 21],
+    'Naples': [8, 9, 25],
+    'Milan': [2, 3, 8, 9, 20, 23, 24],
+    'Lisbon': [4, 7, 9, 14, 16, 17, 20],
+    'Santorini': [5, 23, 24],
+    'Riga': [1, 3, 13, 15, 5, 6, 7, 8],
+    'Stockholm': [2, 4, 12, 15, 18]
 }
 
-# Define the direct flights
-flights = {
-    ('Riga', 'Prague'): [0, 1, 2, 3, 4],
-    ('Stockholm', 'Milan'): [0, 1, 2],
-    ('Riga', 'Milan'): [0, 1, 2, 3, 4],
-    ('Lisbon', 'Stockholm'): [0, 1, 2],
-    ('Stockholm', 'Santorini'): [0, 1, 2],
-    ('Naples', 'Warsaw'): [0, 1, 2, 3, 4],
-    ('Lisbon', 'Warsaw'): [0, 1, 2, 3, 4],
-    ('Naples', 'Milan'): [0, 1, 2, 3, 4],
-    ('Lisbon', 'Naples'): [0, 1, 2, 3, 4],
-    ('Riga', 'Tallinn'): [0, 1, 2, 3, 4],
-    ('Tallinn', 'Prague'): [0, 1, 2],
-    ('Stockholm', 'Warsaw'): [0, 1, 2],
-    ('Riga', 'Warsaw'): [0, 1, 2, 3, 4],
-    ('Lisbon', 'Riga'): [0, 1, 2, 3, 4],
-    ('Riga', 'Stockholm'): [0, 1, 2, 3, 4],
-    ('Lisbon', 'Porto'): [0, 1, 2, 3, 4],
-    ('Lisbon', 'Prague'): [0, 1, 2, 3, 4],
-    ('Milan', 'Porto'): [0, 1, 2, 3, 4],
-    ('Prague', 'Milan'): [0, 1, 2],
-    ('Lisbon', 'Milan'): [0, 1, 2, 3, 4],
-    ('Warsaw', 'Porto'): [0, 1, 2, 3, 4],
-    ('Warsaw', 'Tallinn'): [0, 1, 2],
-    ('Santorini', 'Milan'): [0, 1, 2, 3, 4],
-    ('Stockholm', 'Prague'): [0, 1, 2],
-    ('Stockholm', 'Tallinn'): [0, 1, 2],
-    ('Warsaw', 'Milan'): [0, 1, 2, 3, 4],
-    ('Santorini', 'Naples'): [0, 1, 2, 3, 4],
-    ('Warsaw', 'Prague'): [0, 1, 2]
-}
+# Define the relatives visit days
+relatives_visit_days = [18, 19, 20]
 
-# Create the solver
-s = Solver()
+# Define the friend visit days
+friend_visit_days = [24, 25, 26]
 
-# Create the variables
-days = [Int('day_{}'.format(i)) for i in range(28)]
-city = [Int('city_{}'.format(i)) for i in range(28)]
-visited = [Bool('visited_{}'.format(i)) for i in range(28)]
+# Define the solver
+solver = Solver()
 
-# Add the constraints
-for i in range(28):
-    s.add(days[i] >= 0)
-    s.add(days[i] <= 27)
-    s.add(city[i] >= 0)
-    s.add(city[i] <= 9)
+# Define the variables
+days = [Bool(f'day_{i}') for i in range(1, 29)]
+places = [Int(f'place_{i}') for i in range(1, 29)]
 
-for i in range(28):
-    for city_name, days_in_city in cities.items():
-        if i in constraints[city_name]:
-            s.add(And(days[i] == i, city[i] == cities[city_name]))
+# Define the constraints
+for i in range(1, 29):
+    solver.add(Or([days[i]]))
 
-for i in range(28):
-    s.add(Or([visited[i]]))
+for i in range(1, 29):
+    solver.add(Implies(days[i], places[i] >= 1))
+    solver.add(Implies(days[i], places[i] <= 10))
 
-for i in range(28):
-    s.add(Implies(visited[i], city[i] >= 0))
+for i in range(1, 29):
+    solver.add(Implies(days[i], Or([places[i] == j for j in range(1, 11)])))
 
-for i in range(28):
-    for j in range(i+1, 28):
-        if (city[i], city[j]) in flights:
-            s.add(Implies(visited[i], visited[j]))
+for flight_day in flight_days:
+    departure, arrival = flight_day.split(' and ')
+    day = flight_days[flight_day]
+    solver.add(Implies(days[day], Or([places[day] == cities.index(departure)])))
+    solver.add(Implies(days[day], Or([places[day] == cities.index(arrival)])))
 
-# Add the constraints for the annual show in Riga
-for i in range(5, 8):
-    s.add(city[i] == cities['Riga'])
+for city, days_in_city in visit_days.items():
+    for day in days_in_city:
+        solver.add(Implies(days[day], places[day] == cities.index(city)))
 
-# Add the constraints for visiting relatives in Tallinn
-for i in range(18, 21):
-    s.add(city[i] == cities['Tallinn'])
+for day in relatives_visit_days:
+    solver.add(Implies(days[day], places[day] == cities.index('Tallinn')))
 
-# Add the constraints for meeting a friend in Milan
-for i in range(24, 27):
-    s.add(city[i] == cities['Milan'])
+for day in friend_visit_days:
+    solver.add(Implies(days[day], places[day] == cities.index('Milan')))
 
-# Check the solution
-if s.check() == sat:
-    m = s.model()
-    trip_plan = {}
-    for i in range(28):
-        trip_plan[i] = (m[days[i]].as_long(), m[city[i]].as_long())
-    for i in range(28):
-        city_name = ''
-        for city_name_in_cities, days_in_city in cities.items():
-            if m[city[i]].as_long() == cities[city_name_in_cities]:
-                city_name = city_name_in_cities
-                break
-        print('Day {}: Fly to {}.'.format(i, city_name))
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for i in range(1, 29):
+        place_index = model[places[i]].as_long()
+        if place_index == 0:
+            continue
+        place = cities[place_index]
+        if days[i] == model[days[i]]:
+            if i in flight_days.values():
+                departure = cities[flight_days[[day for day in flight_days.values() if day == i][0]].split(' and ')[0]]
+                arrival = cities[flight_days[[day for day in flight_days.values() if day == i][0]].split(' and ')[1]]
+                itinerary.append({"day_range": f"Day {i}", "place": departure})
+                itinerary.append({"day_range": f"Day {i}", "place": arrival})
+            else:
+                itinerary.append({"day_range": f"Day {i}", "place": place})
+    print({"itinerary": itinerary})
 else:
-    print('No solution found.')
+    print("No solution exists")

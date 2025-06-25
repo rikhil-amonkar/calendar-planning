@@ -1,46 +1,68 @@
 from z3 import *
+import json
 
 # Define the variables
-days = [Int('day_{}'.format(i)) for i in range(18)]  # days 1 to 18
+days = 18
 cities = ['London', 'Santorini', 'Split']
-stays = {city: Int('stay_{}'.format(city)) for city in cities}
-days_in_city = {city: [] for city in cities}
+flight_days = [(0, 'London'), (0, 'London'), (0, 'London'), (6, 'London'), (6, 'Split'), (13, 'Santorini'), (13, 'Santorini'), (17, 'Santorini'), (17, 'Santorini')]
+flight_days.extend([(7, 'Split'), (7, 'London'), (14, 'Santorini'), (14, 'London'), (15, 'Santorini'), (15, 'London'), (16, 'Santorini'), (16, 'London')])
+
+# Define the solver
+solver = Solver()
+
+# Define the variables
+days_in_city = {city: Int(f'days_in_{city}') for city in cities}
+stay_in_city = {city: Int(f'stay_in_{city}') for city in cities}
+day_in_city = {city: Int(f'day_in_{city}') for city in cities}
 
 # Define the constraints
-# Each city has a fixed number of days
-constraints = [stays['Split'] == 6, stays['Santorini'] == 7, stays['London'] == 7]
-# The conference in Santorini
-constraints.append(days[11] == 12)
-constraints.append(days[17] == 18)
-# Direct flights between cities
-constraints.append(days[0] == 0)  # Start in London
-constraints.append(And(days[1] == 1, days[1] == 0))  # Fly to Santorini on day 1
-constraints.append(Or(days[1] == 1, days[1] == 0))  # Either in London or Santorini on day 1
-constraints.append(Or(days[6] == 6, days[6] == 5))  # Either in Santorini or Split on day 6
-constraints.append(Or(days[13] == 13, days[13] == 12))  # Either in Split or Santorini on day 13
-constraints.append(And(days[14] == 14, days[14] == 13))  # Fly to London on day 14
-constraints.append(Or(days[14] == 14, days[14] == 13))  # Either in Santorini or London on day 14
-constraints.append(And(days[17] == 17, days[17] == 16))  # Fly to Santorini on day 17
-constraints.append(Or(days[17] == 17, days[17] == 16))  # Either in London or Santorini on day 17
-# The itinerary must cover exactly 18 days
-constraints.append(Or([days[i]!= 0 for i in range(18)]))
+for city in cities:
+    solver.add(days_in_city[city] >= 0)
+    solver.add(days_in_city[city] <= days)
 
-# Solve the constraints
-solver = Solver()
-for constraint in constraints:
-    solver.add(constraint)
+# Define the constraints for flight days
+for i, (day, city) in enumerate(flight_days):
+    solver.add(day_in_city[city] >= day)
+    if i < len(flight_days) - 1:
+        next_day, next_city = flight_days[i + 1]
+        solver.add(day_in_city[city] <= next_day)
 
+# Define the constraints for city stays
+solver.add(stay_in_city['Santorini'] == 7)
+solver.add(stay_in_city['Split'] == 6)
+solver.add(stay_in_city['London'] == 7)
+
+# Define the constraints for conference days
+solver.add(day_in_city['Santorini'] >= 12)
+solver.add(day_in_city['Santorini'] >= 18)
+solver.add(day_in_city['Santorini'] <= 18)
+
+# Define the constraint for total days
+total_days = 0
+for city in cities:
+    total_days += day_in_city[city]
+
+solver.add(total_days == days)
+
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    print("Trip plan:")
-    for i in range(18):
-        print("Day {}: {}".format(i+1, model[days[i]]))
+    itinerary = []
     for city in cities:
-        print("Stay in {}: {}".format(city, model[stays[city]]))
-        for j in range(18):
-            if model[days[j]] == city:
-                days_in_city[city].append(j+1)
-    for city in cities:
-        print("Days in {}: {}".format(city, days_in_city[city]))
+        days_in_city_value = model[days_in_city[city]].as_long()
+        stay_in_city_value = model[stay_in_city[city]].as_long()
+        for i in range(stay_in_city_value):
+            itinerary.append({"day_range": f"Day {i+1}-{stay_in_city_value}", "place": city})
+        for i in range(stay_in_city_value, days_in_city_value):
+            itinerary.append({"day_range": f"Day {stay_in_city_value+1}-{i+1}", "place": city})
+
+    # Add flight days to the itinerary
+    for flight_day in flight_days:
+        day, city = flight_day
+        itinerary.append({"day_range": f"Day {day}", "place": city})
+        if day < len(itinerary) - 1:
+            itinerary.append({"day_range": f"Day {day+1}", "place": city})
+
+    print(json.dumps({"itinerary": itinerary}))
 else:
     print("No solution found")

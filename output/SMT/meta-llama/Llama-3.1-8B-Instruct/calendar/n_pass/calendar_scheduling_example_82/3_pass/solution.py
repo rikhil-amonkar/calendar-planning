@@ -1,41 +1,69 @@
 from z3 import *
 
-def schedule_meeting(michael_schedule, eric_schedule, arthur_schedule, meeting_duration):
-    # Define the day to meet
-    day = 'Monday'
+# Define the day of the week (Monday = 0, Tuesday = 1,..., Sunday = 6)
+days = [Int(f"day_{i}") for i in range(7)]
 
-    # Define the start and end time of work hours
-    start_time = 9 * 60
-    end_time = 17 * 60
+# Define the start and end time of the meetings (9:00 to 17:00 = 9 to 17)
+times = [Int(f"time_{i}") for i in range(24)]
+start_times = [9 + i for i in range(24)]
+end_times = [9 + i for i in range(24)]
 
-    # Create Z3 variables for start time
-    start = Int('start')
-    with Solver() as s:
-        # Add constraints for each participant's schedule
-        for time in michael_schedule:
-            s.add(And(start + 60 >= time[0], start + 60 <= time[1]))
-        for time in eric_schedule:
-            s.add(And(start + 60 >= time[0], start + 60 <= time[1]))
-        for time in arthur_schedule:
-            s.add(And(start + 60 >= time[0], start + 60 <= time[1]))
-        
-        # Add constraints for meeting duration
-        s.add(And(start + 60 >= start, start + 60 + meeting_duration <= end_time))
-        s.add(And(start >= 9 * 60, start + 60 + meeting_duration <= 17 * 60))
+# Define the meeting duration (half an hour = 0.5 hours)
+meeting_duration = 0.5
 
-        # Check if there's a solution
-        if s.check() == sat:
-            model = s.model()
-            start_time = model[start].as_long() // 60
-            end_time = (model[start].as_long() // 60) + meeting_duration
-            return f'SOLUTION:\nDay: {day}\nStart Time: {start_time:02d}:{start_time % 60:02d}\nEnd Time: {end_time:02d}:{end_time % 60:02d}'
-        else:
-            return 'No solution found'
+# Define the existing schedules for Michael, Eric and Arthur
+michael_schedules = [
+    (9.5, 10.5),  # 9:30 to 10:30
+    (15, 15.5),  # 15:00 to 15:30
+    (16, 16.5)  # 16:00 to 16:30
+]
+eric_schedules = []
+arthur_schedules = [
+    (9, 12),  # 9:00 to 12:00
+    (13, 15),  # 13:00 to 15:00
+    (15.5, 16),  # 15:30 to 16:00
+    (16.5, 17)  # 16:30 to 17:00
+]
 
-# Example usage
-michael_schedule = [(9 * 60 + 30, 10 * 60 + 30), (15 * 60, 15 * 60 + 30), (16 * 60, 16 * 60 + 30)]
-eric_schedule = []
-arthur_schedule = [(9 * 60, 12 * 60), (13 * 60, 15 * 60), (15 * 60 + 30, 16 * 60), (16 * 60 + 30, 17 * 60)]
-meeting_duration = 30
+# Define the constraints for the meeting time
+meeting_constraints = [
+    And(days[0] == 0,  # Monday
+        And(times[0] >= 9, times[0] <= 16,  # 9:00 to 17:00
+            times[1] >= times[0], times[1] <= times[0] + meeting_duration,  # half an hour
+            Or(times[0]!= 9.5, times[0]!= 10.5, times[0]!= 11.5, times[0]!= 12.5,  # avoid conflicts with Arthur's schedule
+                times[0]!= 14.5, times[0]!= 15.5, times[0]!= 16.5),
+            Or(times[1]!= 9.5, times[1]!= 10.5, times[1]!= 11.5, times[1]!= 12.5,  # avoid conflicts with Arthur's schedule
+                times[1]!= 14.5, times[1]!= 15.5, times[1]!= 16.5)),
+        And(times[1] >= 9, times[1] <= 16,  # 9:00 to 17:00
+            times[0] >= times[1] - meeting_duration, times[0] <= times[1],  # half an hour
+            Or(times[0]!= 9.5, times[0]!= 10.5, times[0]!= 11.5, times[0]!= 12.5,  # avoid conflicts with Arthur's schedule
+                times[0]!= 14.5, times[0]!= 15.5, times[0]!= 16.5),
+            Or(times[1]!= 9.5, times[1]!= 10.5, times[1]!= 11.5, times[1]!= 12.5,  # avoid conflicts with Arthur's schedule
+                times[1]!= 14.5, times[1]!= 15.5, times[1]!= 16.5)),
+        And(times[0]!= 9.5, times[0]!= 10.5, times[0]!= 11.5, times[0]!= 12.5,  # avoid conflicts with Arthur's schedule
+            times[0]!= 14.5, times[0]!= 15.5, times[0]!= 16.5),
+        And(times[1]!= 9.5, times[1]!= 10.5, times[1]!= 11.5, times[1]!= 12.5,  # avoid conflicts with Arthur's schedule
+            times[1]!= 14.5, times[1]!= 15.5, times[1]!= 16.5)),
+    And(times[0] % 1 == 0, times[1] % 1 == 0),  # meeting time must be an integer
+    times[1] - times[0] == 0.5  # meeting duration is exactly 0.5 hours
+]
 
-print(schedule_meeting(michael_schedule, eric_schedule, arthur_schedule, meeting_duration))
+# Create the Z3 solver
+solver = Solver()
+
+# Add the constraints to the solver
+for constraint in meeting_constraints:
+    solver.add(constraint)
+
+# Check if there is a solution
+if solver.check() == sat:
+    # Get the solution
+    model = solver.model()
+    
+    # Print the solution
+    print(f"SOLUTION:")
+    print(f"Day: Monday")
+    print(f"Start Time: {model[days[0]].as_long() + model[times[0]].as_long()}:00")
+    print(f"End Time: {(model[days[0]].as_long() + model[times[0]].as_long()) + model[times[1]].as_long():00}")
+else:
+    print("No solution found.")

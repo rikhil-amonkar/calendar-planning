@@ -1,0 +1,52 @@
+from z3 import *
+
+def schedule_meeting(deborah_schedule, albert_schedule, meeting_duration, day, end_time):
+    # Create Z3 solver
+    s = Solver()
+
+    # Define start time variables
+    start_time = [Int(f'start_{i}') for i in range(1)]
+
+    # Define day variable
+    day_var = Int('day')
+
+    # Define constraints
+    s.add(day_var == day)
+    for i in range(len(deborah_schedule)):
+        s.add(Or(deborah_schedule[i], start_time[0] >= 9*60 + i*30, start_time[0] + meeting_duration*60 <= (9*60 + i*30 + 30*60)))
+    for i in range(len(albert_schedule)):
+        s.add(Or(albert_schedule[i], start_time[0] >= 9*60 + i*30, start_time[0] + meeting_duration*60 <= (9*60 + i*30 + 30*60)))
+    s.add(start_time[0] + meeting_duration*60 <= end_time)
+
+    # Solve the constraints
+    if s.check() == sat:
+        # Get the solution
+        model = s.model()
+        start_time_value = model[start_time[0]].as_long()
+        # Convert start time to 24-hour format
+        start_time_str = f'{start_time_value // 60:02d}:{start_time_value % 60:02d}'
+        # Calculate end time
+        end_time_value = start_time_value + meeting_duration * 60
+        end_time_str = f'{end_time_value // 60:02d}:{end_time_value % 60:02d}'
+        # Print the solution
+        print(f'DAY: {day}')
+        print(f'START TIME: {start_time_str}')
+        print(f'END TIME: {end_time_str}')
+    else:
+        print('No solution found')
+
+# Existing schedules for everyone during the day
+deborah_schedule = [False]*18  # Deborah is free the entire day
+albert_schedule = [True, False, True, False, False, False, False, False, False, False, False, False, False, False, True, False, False]  # Albert's blocked calendar
+
+# Meeting duration in minutes
+meeting_duration = 30
+
+# Day to meet
+day = 1  # Monday
+
+# End time in minutes
+end_time = 17*60
+
+# Call the function
+schedule_meeting(deborah_schedule, albert_schedule, meeting_duration, day, end_time)

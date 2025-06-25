@@ -1,80 +1,94 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = 12
+# Define the cities
 cities = ['Split', 'Helsinki', 'Reykjavik', 'Vilnius', 'Geneva']
-flight_options = {
-    'Split': ['Helsinki', 'Geneva'],
-    'Helsinki': ['Split', 'Reykjavik', 'Vilnius'],
-    'Reykjavik': ['Helsinki'],
-    'Vilnius': ['Helsinki'],
-    'Geneva': ['Split', 'Helsinki']
-}
-days_in_city = {
-    'Split': 2,
-    'Helsinki': 2,
-    'Reykjavik': 3,
-    'Vilnius': 3,
-    'Geneva': 6
-}
-wedding = (days - 3, days)
-relatives = (days - 6, days)
+
+# Define the days
+days = range(1, 13)
+
+# Define the direct flights
+flights = [
+    ('Split', 'Helsinki'),
+    ('Geneva', 'Split'),
+    ('Geneva', 'Helsinki'),
+    ('Helsinki', 'Reykjavik'),
+    ('Vilnius', 'Helsinki'),
+    ('Split', 'Vilnius')
+]
 
 # Create the solver
-solver = Solver()
+s = Solver()
 
 # Create the variables
-visit_split = [Bool(f'split_{i}') for i in range(days)]
-visit_helsinki = [Bool(f'helsinki_{i}') for i in range(days)]
-visit_reykjavik = [Bool(f'reykjavik_{i}') for i in range(days)]
-visit_vilnius = [Bool(f'vilnius_{i}') for i in range(days)]
-visit_geneva = [Bool(f'geneva_{i}') for i in range(days)]
+itinerary = {}
+for city in cities:
+    itinerary[city] = [Bool(f'{city}_day_{day}') for day in days]
 
-# Add constraints
-for i in range(days):
-    # Split
-    solver.add(Or(visit_split[i], Not(visit_split[i])))
-    if i >= 2:
-        solver.add(visit_split[i] == (i >= 2 and visit_split[i-2]))
+# Create the constraints
+for city in cities:
+    # Each city is visited for the specified number of days
+    s.add(Or(*[itinerary[city][day-1] for day in range(1, len(itinerary[city])+1)]))
+    s.add(And(*[itinerary[city][day-1] for day in range(1, len(itinerary[city])+1)]))
 
-    # Helsinki
-    solver.add(Or(visit_helsinki[i], Not(visit_helsinki[i])))
-    if i >= 2:
-        solver.add(visit_helsinki[i] == (i >= 2 and visit_helsinki[i-2]))
+# Geneva is visited for 6 days
+s.add(Or(*[itinerary['Geneva'][day-1] for day in range(1, 7)]))
+s.add(And(*[itinerary['Geneva'][day-1] for day in range(1, 7)]))
 
-    # Reykjavik
-    solver.add(Or(visit_reykjavik[i], Not(visit_reykjavik[i])))
-    if i >= 2:
-        solver.add(visit_reykjavik[i] == (i >= 2 and visit_reykjavik[i-2]))
+# Split is visited for 2 days
+s.add(Or(*[itinerary['Split'][day-1] for day in range(1, 3)]))
+s.add(And(*[itinerary['Split'][day-1] for day in range(1, 3)]))
 
-    # Vilnius
-    solver.add(Or(visit_vilnius[i], Not(visit_vilnius[i])))
-    if i >= 2:
-        solver.add(visit_vilnius[i] == (i >= 2 and visit_vilnius[i-2]))
+# Helsinki is visited for 2 days
+s.add(Or(*[itinerary['Helsinki'][day-1] for day in range(1, 3)]))
+s.add(And(*[itinerary['Helsinki'][day-1] for day in range(1, 3)]))
 
-    # Geneva
-    solver.add(Or(visit_geneva[i], Not(visit_geneva[i])))
-    if i >= 2:
-        solver.add(visit_geneva[i] == (i >= 2 and visit_geneva[i-2]))
+# Reykjavik is visited for 3 days
+s.add(Or(*[itinerary['Reykjavik'][day-1] for day in range(1, 4)]))
+s.add(And(*[itinerary['Reykjavik'][day-1] for day in range(1, 4)]))
 
-# Add constraints for the given requirements
-for i in range(days):
-    solver.add(visit_split[i] == days_in_city['Split'] <= i + 1)
-    solver.add(visit_helsinki[i] == days_in_city['Helsinki'] <= i + 1)
-    solver.add(visit_reykjavik[i] == days_in_city['Reykjavik'] <= i + 1)
-    solver.add(visit_vilnius[i] == days_in_city['Vilnius'] <= i + 1)
-    solver.add(visit_geneva[i] == days_in_city['Geneva'] <= i + 1)
+# Vilnius is visited for 3 days
+s.add(Or(*[itinerary['Vilnius'][day-1] for day in range(1, 4)]))
+s.add(And(*[itinerary['Vilnius'][day-1] for day in range(1, 4)]))
 
-solver.add(And(visit_reykjavik[9], visit_reykjavik[10], visit_reykjavik[11]))
-solver.add(And(visit_vilnius[6], visit_vilnius[7], visit_vilnius[8]))
+# Wedding in Reykjavik between day 10 and day 12
+s.add(And(itinerary['Reykjavik'][9], itinerary['Reykjavik'][10], itinerary['Reykjavik'][11]))
 
-# Check if the solver has a solution
-if solver.check() == sat:
-    model = solver.model()
-    for i in range(days):
-        print(f'Day {i+1}:')
-        for city in cities:
-            if model.evaluate(visit_split[i] if city == 'Split' else visit_helsinki[i] if city == 'Helsinki' else visit_reykjavik[i] if city == 'Reykjavik' else visit_vilnius[i] if city == 'Vilnius' else visit_geneva[i]).as_bool():
-                print(city)
+# Relatives in Vilnius between day 7 and day 9
+s.add(And(itinerary['Vilnius'][6], itinerary['Vilnius'][7], itinerary['Vilnius'][8]))
+
+# Direct flights
+for departure, arrival in flights:
+    for day in days:
+        s.add(Implies(itinerary[departure][day-1], itinerary[arrival][day-1]))
+
+# Exactly 12 days are used
+days_used = [0] * 12
+for city in cities:
+    for day in days:
+        if model is None:
+            model = s.model()
+        days_used[day-1] += model.evaluate(itinerary[city][day-1]).as_bool()
+s.add(And(*[days_used[i] == 1 for i in range(12)]))
+
+# Solve the constraints
+if s.check() == sat:
+    model = s.model()
+    itinerary_dict = {}
+    for city in cities:
+        itinerary_dict[city] = []
+        for day in days:
+            if model.evaluate(itinerary[city][day-1]).decl().name():
+                itinerary_dict[city].append(f'Day {day}')
+    for city in cities:
+        if itinerary_dict[city]:
+            if itinerary_dict[city][0] == 'Day 1':
+                itinerary_dict[city] = [f'Day {min(itinerary_dict[city])}-{max(itinerary_dict[city])}']
+            else:
+                itinerary_dict[city] = [f'Day {min(itinerary_dict[city])}-{max(itinerary_dict[city])}']
+    itinerary_dict['itinerary'] = []
+    for city in cities:
+        itinerary_dict['itinerary'].extend(itinerary_dict[city])
+    print(itinerary_dict)
 else:
-    print('No solution found.')
+    print('No solution found')

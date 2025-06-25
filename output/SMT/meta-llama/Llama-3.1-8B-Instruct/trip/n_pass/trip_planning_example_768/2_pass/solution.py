@@ -1,66 +1,76 @@
 from z3 import *
+import json
 
 # Define the variables
-days = 16
-cities = ['Mykonos', 'London', 'Copenhagen', 'Tallinn', 'Oslo', 'Nice']
-days_in_city = {city: 0 for city in cities}
-days_in_city['Mykonos'] = 4
-days_in_city['Nice'] = 6  # 3 days for Nice and 3 days for conference
-days_in_city['London'] = 2
-days_in_city['Copenhagen'] = 3
-days_in_city['Tallinn'] = 4
-days_in_city['Oslo'] = 5
+days = [Bool(f'day_{i}') for i in range(1, 17)]
+cities = ['London', 'Copenhagen', 'Tallinn', 'Oslo', 'Mykonos', 'Nice']
+places = cities + [f'{city}_day_{i}' for city in cities for i in range(1, 17)]
 
 # Define the constraints
-x = [Int(f'd_{i}') for i in range(days)]
-x[13] = 1  # must be in Nice on day 14
-x[15] = 1  # must be in Nice on day 16
-x[9] = 1  # must be in Oslo between day 10 and day 14
-x[10] = 1
-x[11] = 1
-x[12] = 1
+solver = Solver()
+for i in range(1, 17):
+    # At least one city must be visited on each day
+    constraint = Or([days[i]])
+    for city in cities:
+        if i == 1:
+            constraint = constraint | days[i] == city
+        elif i == 14 or i == 16:
+            constraint = constraint | days[i] == 'Nice'
+        else:
+            constraint = constraint | days[i] == city
+    solver.add(constraint)
 
-# Define the constraints for each city
-for city in cities:
-    constraint = 0
-    for i in range(days):
-        if days_in_city[city] > 0 and (i + 1) <= days_in_city[city]:
-            constraint += x[i]
-    if city!= 'Nice':
-        solver = Solver()
-        for i in range(days):
-            if days_in_city[city] > 0 and (i + 1) <= days_in_city[city]:
-                solver.add(x[i] == 1)
-            else:
-                solver.add(x[i] == 0)
-        solver.add(constraint > 0)
-        solver.check()
-        if solver.model():
-            for i in range(days):
-                if days_in_city[city] > 0 and (i + 1) <= days_in_city[city]:
-                    print(f'day {i+1}: {solver.model().evaluate(x[i]).as_long()} in {city}')
+# Add constraints for Mykonos, Nice, London, Copenhagen, Oslo, and Tallinn
+solver.add(days[4] == 'Mykonos')
+solver.add(days[5] == 'Mykonos')
+solver.add(days[6] == 'Mykonos')
+solver.add(days[7] == 'Mykonos')
+solver.add(days[8] == 'Nice')
+solver.add(days[9] == 'Nice')
+solver.add(days[10] == 'Nice')
+solver.add(days[11] == 'Nice')
+solver.add(days[2] == 'London')
+solver.add(days[3] == 'London')
+solver.add(days[1] == 'Copenhagen')
+solver.add(days[2] == 'Copenhagen')
+solver.add(days[3] == 'Copenhagen')
+solver.add(days[1] == 'Oslo')
+solver.add(days[2] == 'Oslo')
+solver.add(days[3] == 'Oslo')
+solver.add(days[4] == 'Oslo')
+solver.add(days[5] == 'Oslo')
+solver.add(days[6] == 'Oslo')
+solver.add(days[7] == 'Oslo')
+solver.add(days[1] == 'Tallinn')
+solver.add(days[2] == 'Tallinn')
+solver.add(days[3] == 'Tallinn')
 
-# Define the constraints for flights
-flights = [('London', 'Copenhagen'), ('Copenhagen', 'Tallinn'), ('Tallinn', 'Oslo'),
-           ('Mykonos', 'London'), ('Oslo', 'Nice'), ('London', 'Nice'), ('Mykonos', 'Nice'),
-           ('London', 'Oslo'), ('Copenhagen', 'Nice'), ('Copenhagen', 'Oslo')]
+# Add constraints for direct flights
+direct_flights = [
+    ['London', 'Copenhagen'],
+    ['Copenhagen', 'Tallinn'],
+    ['Tallinn', 'Oslo'],
+    ['Mykonos', 'London'],
+    ['Oslo', 'Nice'],
+    ['London', 'Nice'],
+    ['Mykonos', 'Nice'],
+    ['London', 'Oslo'],
+    ['Copenhagen', 'Nice'],
+    ['Copenhagen', 'Oslo']
+]
+for flight in direct_flights:
+    solver.add(days[1] == flight[0])
+    solver.add(days[2] == flight[1])
 
-for flight in flights:
-    solver = Solver()
-    for i in range(days):
-        if (i + 1) % 2 == 0:  # flight from A to B
-            solver.add(If(x[i] == 1, x[i + 1] == 1, x[i + 1] == 0))
-        else:  # flight from B to A
-            solver.add(If(x[i] == 1, x[i + 1] == 0, x[i + 1] == 1))
-    solver.add(If(x[0] == 1, flight[0] == 'Mykonos', True))
-    solver.add(If(x[0] == 0, flight[0] == 'Mykonos', True))
-    solver.add(If(x[-1] == 1, flight[1] == 'Nice', True))
-    solver.add(If(x[-1] == 0, flight[1] == 'Nice', True))
-    solver.check()
-    if solver.model():
-        print(f'Flight from {solver.model().evaluate(If(x[0] == 1, flight[0], flight[1])).as_long()} to {solver.model().evaluate(If(x[-1] == 1, flight[1], flight[0])).as_long()}')
+# Solve the constraints
+solver.check()
+model = solver.model()
 
-# Print the final trip plan
-print('Trip plan:')
-for i in range(days):
-    print(f'day {i+1}: {"in " + cities[x[i].as_long()] if x[i].as_long() > 0 else ""}')
+# Create the JSON output
+output = {'itinerary': []}
+for i in range(1, 17):
+    if model.evaluate(days[i]).as_bool():
+        output['itinerary'].append({'day_range': f'Day {i}', 'place': model.evaluate(days[i]).as_string()})
+
+# Print the output
+print(json.dumps(output, indent=4))

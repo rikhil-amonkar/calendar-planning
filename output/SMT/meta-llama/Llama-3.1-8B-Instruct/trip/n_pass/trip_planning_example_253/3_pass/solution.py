@@ -1,82 +1,72 @@
 from z3 import *
 
-# Define the variables
+# Define variables
 days = 14
-cities = ['Amsterdam', 'Vienna', 'Santorini', 'Lyon']
-workshop_days = [9, 10, 11]  # Days of the workshop in Amsterdam
-wedding_days = [7, 8, 9]  # Days of the wedding in Lyon
+amsterdam_days = 3
+vienna_days = 7
+santorini_days = 4
+lyon_days = 3
+workshop_start = 9
+workshop_end = 11
+wedding_start = 7
+wedding_end = 9
 
-# Define the constraints
-x = [Int(c) for c in cities]
-constraints = []
+# Define city variables
+amsterdam = Int('amsterdam')
+vienna = Int('vienna')
+santorini = Int('santorini')
+lyon = Int('lyon')
 
-# Each city must be visited for at least the specified number of days
-for i, city in enumerate(cities):
-    constraints.append(x[i] >= 0)
-    constraints.append(x[i] <= days)
+# Define flight variables
+vienna_lyon = Int('vienna_lyon')
+vienna_santorini = Int('vienna_santorini')
+vienna_amsterdam = Int('vienna_amsterdam')
+amsterdam_santorini = Int('amsterdam_santorini')
+amsterdam_lyon = Int('amsterdam_lyon')
 
-# The workshop in Amsterdam must be attended on the specified days
-for day in workshop_days:
-    constraints.append(x[cities.index('Amsterdam')] >= day)
+# Create solver
+solver = Solver()
 
-# The wedding in Lyon must be attended on the specified days
-for day in wedding_days:
-    constraints.append(x[cities.index('Lyon')] >= day)
+# Constraints
+solver.add(amsterdam >= 3)
+solver.add(vienna >= 7)
+solver.add(santorini >= 4)
+solver.add(lyon >= 3)
+solver.add(vienna_lyon >= 0)
+solver.add(vienna_lyon <= 1)
+solver.add(vienna_santorini >= 0)
+solver.add(vienna_santorini <= 1)
+solver.add(vienna_amsterdam >= 0)
+solver.add(vienna_amsterdam <= 1)
+solver.add(amsterdam_santorini >= 0)
+solver.add(amsterdam_santorini <= 1)
+solver.add(amsterdam_lyon >= 0)
+solver.add(amsterdam_lyon <= 1)
 
-# The total number of days must add up to 14
-constraints.append(Sum([x[i] for i in range(len(cities))]) == days)
+# Ensure workshop in Amsterdam is between day 9 and day 11
+solver.add(workshop_start <= amsterdam)
+solver.add(amsterdam <= workshop_end)
 
-# The number of days in Vienna must be at least 7
-constraints.append(x[cities.index('Vienna')] >= 7)
+# Ensure wedding in Lyon is between day 7 and day 9
+solver.add(wedding_start <= lyon)
+solver.add(lyon <= wedding_end)
 
-# The number of days in Santorini must be at least 4
-constraints.append(x[cities.index('Santorini')] >= 4)
+# Ensure total days is 14
+solver.add(vienna_lyon + vienna_santorini + vienna_amsterdam + amsterdam_santorini + amsterdam_lyon == 0)
+solver.add(amsterdam + vienna + santorini + lyon == days)
 
-# The number of days in Lyon must be at least 3
-constraints.append(x[cities.index('Lyon')] >= 3)
-
-# The number of days in Amsterdam must be at least 3
-constraints.append(x[cities.index('Amsterdam')] >= 3)
-
-# The number of days in Vienna cannot be more than 7
-constraints.append(x[cities.index('Vienna')] <= 7)
-
-# The number of days in Santorini cannot be more than 4
-constraints.append(x[cities.index('Santorini')] <= 4)
-
-# The number of days in Lyon cannot be more than 3
-constraints.append(x[cities.index('Lyon')] <= 3)
-
-# The number of days in Amsterdam cannot be more than 3
-constraints.append(x[cities.index('Amsterdam')] <= 3)
-
-# The direct flights between cities must be respected
-constraints.append(Implies(x[cities.index('Vienna')] > 0, x[cities.index('Lyon')] > 0))
-constraints.append(Implies(x[cities.index('Vienna')] > 0, x[cities.index('Santorini')] > 0))
-constraints.append(Implies(x[cities.index('Vienna')] > 0, x[cities.index('Amsterdam')] > 0))
-constraints.append(Implies(x[cities.index('Amsterdam')] > 0, x[cities.index('Santorini')] > 0))
-constraints.append(Implies(x[cities.index('Amsterdam')] > 0, x[cities.index('Lyon')] > 0))
-
-# Ensure that Vienna is visited before Lyon and Santorini
-constraints.append(Implies(x[cities.index('Vienna')] > 0, x[cities.index('Lyon')] <= x[cities.index('Vienna')]))
-constraints.append(Implies(x[cities.index('Vienna')] > 0, x[cities.index('Santorini')] <= x[cities.index('Vienna')]))
-
-# Ensure that Amsterdam is visited before Lyon and Santorini
-constraints.append(Implies(x[cities.index('Amsterdam')] > 0, x[cities.index('Lyon')] <= x[cities.index('Amsterdam')]))
-constraints.append(Implies(x[cities.index('Amsterdam')] > 0, x[cities.index('Santorini')] <= x[cities.index('Amsterdam')]))
-
-# Ensure that the total number of days in Vienna and Amsterdam does not exceed 10
-constraints.append(x[cities.index('Vienna')] + x[cities.index('Amsterdam')] <= 10)
-
-# Solve the constraints
-s = Solver()
-for c in constraints:
-    s.add(c)
-
-if s.check() == sat:
-    m = s.model()
-    print("Trip plan:")
-    for i, city in enumerate(cities):
-        print(f"{city}: {m[x[i]]} days")
+# Check if the solution is feasible
+if solver.check() == sat:
+    model = solver.model()
+    print("Solution:")
+    print("Amsterdam:", model[amsterdam].as_long())
+    print("Vienna:", vienna_days)
+    print("Santorini:", santorini_days)
+    print("Lyon:", lyon_days)
+    print("Vienna-Lyon:", model[vienna_lyon].as_long())
+    print("Vienna-Santorini:", model[vienna_santorini].as_long())
+    print("Vienna-Amsterdam:", model[vienna_amsterdam].as_long())
+    print("Amsterdam-Santorini:", model[amsterdam_santorini].as_long())
+    print("Amsterdam-Lyon:", model[amsterdam_lyon].as_long())
 else:
     print("No solution found")

@@ -1,99 +1,109 @@
 from z3 import *
 
 def main():
-    name_to_int = {
-        'Dublin': 0,
-        'Helsinki': 1,
-        'Riga': 2,
-        'Reykjavik': 3,
-        'Vienna': 4,
-        'Tallinn': 5
-    }
-    int_to_name = {v: k for k, v in name_to_int.items()}
-    
-    days_arr = [5, 3, 3, 2, 2, 5]
-    
-    edges_str = [
-        "Helsinki and Riga",
-        "Riga and Tallinn",
-        "Vienna and Helsinki",
-        "Riga and Dublin",
-        "Vienna and Riga",
-        "Reykjavik and Vienna",
-        "Helsinki and Dublin",
-        "Tallinn and Dublin",
-        "Reykjavik and Helsinki",
-        "Reykjavik and Dublin",
-        "Helsinki and Tallinn",
-        "Vienna and Dublin"
+    cities = ['Dublin', 'Helsinki', 'Riga', 'Reykjavik', 'Vienna', 'Tallinn']
+    days_req = [5, 3, 3, 2, 2, 5]
+
+    edges_raw = [
+        ('Helsinki', 'Riga'),
+        ('Riga', 'Tallinn'),
+        ('Vienna', 'Helsinki'),
+        ('Riga', 'Dublin'),
+        ('Vienna', 'Riga'),
+        ('Reykjavik', 'Vienna'),
+        ('Helsinki', 'Dublin'),
+        ('Tallinn', 'Dublin'),
+        ('Reykjavik', 'Helsinki'),
+        ('Reykjavik', 'Dublin'),
+        ('Helsinki', 'Tallinn'),
+        ('Vienna', 'Dublin')
     ]
-    allowed_edges = set()
-    for e in edges_str:
-        a, b = e.split(' and ')
-        a_int = name_to_int[a]
-        b_int = name_to_int[b]
-        allowed_edges.add((a_int, b_int))
-        allowed_edges.add((b_int, a_int))
     
-    s = IntVector('s', 6)
-    constraints = []
+    edge_set = set()
+    for a, b in edges_raw:
+        key = tuple(sorted([a, b]))
+        edge_set.add(key)
     
-    for i in range(6):
-        constraints.append(And(s[i] >= 0, s[i] < 6))
+    n = len(cities)
+    M = [[False] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                key = tuple(sorted([cities[i], cities[j]]))
+                if key in edge_set:
+                    M[i][j] = True
+
+    s = Solver()
     
-    constraints.append(Distinct(s))
+    order = [Int(f'o{i}') for i in range(n)]
+    for i in range(n):
+        s.add(order[i] >= 0, order[i] < n)
+    s.add(Distinct(order))
     
-    for i in range(5):
-        constraints.append(Or([And(s[i] == a, s[i+1] == b) for (a, b) in allowed_edges]))
+    for k in range(n-1):
+        i = order[k]
+        j = order[k+1]
+        s.add(Or([And(i == idx_i, j == idx_j, M[idx_i][idx_j]) for idx_i in range(n) for idx_j in range(n)]))
     
-    def get_day(city_expr):
-        return If(city_expr == 0, 5,
-              If(city_expr == 1, 3,
-              If(city_expr == 2, 3,
-              If(city_expr == 3, 2,
-              If(city_expr == 4, 2, 5)))))
+    reqs = [Int(f'req_{i}') for i in range(n)]
+    for i in range(n):
+        cases = [And(order[i] == j, reqs[i] == days_req[j]) for j in range(n)]
+        s.add(Or(cases))
     
-    a = IntVector('a', 6)
-    constraints.append(a[0] == 1)
-    for k in range(1, 6):
-        sum_expr = Sum([get_day(s[i]) for i in range(k)])
-        constraints.append(a[k] == 1 - k + sum_expr)
+    prefix_sum = [Int(f'prefix_sum{i}') for i in range(n+1)]
+    s.add(prefix_sum[0] == 0)
+    for i in range(1, n+1):
+        s.add(prefix_sum[i] == prefix_sum[i-1] + (reqs[i-1] - 1))
     
-    for k in range(6):
-        city_k = s[k]
-        constraints.append(If(city_k == 4, And(a[k] >= 1, a[k] <= 3), True))  # Vienna event
-        constraints.append(If(city_k == 5, And(a[k] >= 3, a[k] <= 11), True))  # Tallinn event
-        constraints.append(If(city_k == 1, a[k] <= 5, True))  # Helsinki event
+    s.add(prefix_sum[n] + 1 == 15)
     
-    solver = Solver()
-    solver.add(constraints)
-    if solver.check() == sat:
-        model = solver.model()
-        s_val = [model.evaluate(s[i]).as_long() for i in range(6)]
-        a_val = [model.evaluate(a[i]).as_long() for i in range(6)]
+    # Helsinki: must have a non-travel day (middle day) between 3-5
+    start_helsinki = 1 + Sum([If(order[j] == 1, prefix_sum[j], 0) for j in range(n)])
+    # Middle day of 3-day stay is start_helsinki + 1
+    s.add(start_helsinki + 1 >= 3, start_helsinki + 1 <= 5)
+    
+    # Vienna: original constraint
+    start_vienna = 1 + Sum([If(order[j] == 4, prefix_sum[j], 0) for j in range(n)])
+    end_vienna = start_vienna + 1
+    s.add(start_vienna <= 3, end_vienna >= 2)
+    
+    # Tallinn: original constraint
+    start_tallinn = 1 + Sum([If(order[j] == 5, prefix_sum[j], 0) for j in range(n)])
+    end_tallinn = start_tallinn + 4
+    s.add(start_tallinn <= 11, end_tallinn >= 7)
+    
+    if s.check() == sat:
+        m = s.model()
+        order_val = [m.evaluate(order[i]).as_long() for i in range(n)]
+        prefix_sum_val = [m.evaluate(prefix_sum[i]).as_long() for i in range(n+1)]
         
-        end_val = []
-        for i in range(6):
-            city = s_val[i]
-            dur = days_arr[city]
-            end_val.append(a_val[i] + dur - 1)
+        starts = []
+        ends = []
+        for i in range(n):
+            start_day = 1 + prefix_sum_val[i]
+            city_idx = order_val[i]
+            length = days_req[city_idx]
+            end_day = start_day + length - 1
+            starts.append(start_day)
+            ends.append(end_day)
         
         itinerary = []
-        for i in range(6):
-            city = s_val[i]
-            city_name = int_to_name[city]
-            start = a_val[i]
-            end = end_val[i]
-            itinerary.append({"day_range": f"Day {start}-{end}", "place": city_name})
-            if i < 5:
-                itinerary.append({"day_range": f"Day {end}", "place": city_name})
-                next_city = s_val[i+1]
-                next_city_name = int_to_name[next_city]
-                itinerary.append({"day_range": f"Day {end}", "place": next_city_name})
+        for i in range(n):
+            start_i = starts[i]
+            end_i = ends[i]
+            city_name = cities[order_val[i]]
+            if start_i == end_i:
+                day_range_str = f"Day {start_i}"
+            else:
+                day_range_str = f"Day {start_i}-{end_i}"
+            itinerary.append({"day_range": day_range_str, "place": city_name})
+            if i < n-1:
+                itinerary.append({"day_range": f"Day {end_i}", "place": city_name})
+                next_city_name = cities[order_val[i+1]]
+                itinerary.append({"day_range": f"Day {end_i}", "place": next_city_name})
         
-        import json
         result = {"itinerary": itinerary}
-        print(json.dumps(result, indent=2))
+        print(result)
     else:
         print("No solution found")
 

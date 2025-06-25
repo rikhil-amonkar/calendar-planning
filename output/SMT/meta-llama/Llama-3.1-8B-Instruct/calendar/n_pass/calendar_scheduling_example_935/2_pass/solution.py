@@ -1,108 +1,69 @@
 YOUR_CODE
 from z3 import *
 
-# Define the days of the week
-days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+def schedule_meeting(terry_schedule, frances_schedule, meeting_duration, day_preferences=None, frances_avoid_tuesday=False):
+    # Create Z3 variables for the meeting day, start time, and end time
+    day = [Bool(f'day_{i}') for i in range(5)]
+    start_time = [Int(f'start_time_{i}') for i in range(5)]
+    end_time = [Int(f'end_time_{i}') for i in range(5)]
 
-# Define the participants and their schedules
-schedules = {
-    'Terry': [
-        ('Monday', (10, 30), (11, 0)),
-        ('Monday', (12, 30), (14, 0)),
-        ('Monday', (15, 0), (17, 0)),
-        ('Tuesday', (9, 30), (10, 0)),
-        ('Tuesday', (10, 30), (11, 0)),
-        ('Tuesday', (14, 0), (14, 30)),
-        ('Tuesday', (16, 0), (16, 30)),
-        ('Wednesday', (9, 30), (10, 30)),
-        ('Wednesday', (11, 0), (12, 0)),
-        ('Wednesday', (13, 0), (13, 30)),
-        ('Wednesday', (15, 0), (16, 0)),
-        ('Wednesday', (16, 30), (17, 0)),
-        ('Thursday', (9, 30), (10, 0)),
-        ('Thursday', (12, 0), (12, 30)),
-        ('Thursday', (13, 0), (14, 30)),
-        ('Thursday', (16, 0), (16, 30)),
-        ('Friday', (9, 0), (11, 30)),
-        ('Friday', (12, 0), (12, 30)),
-        ('Friday', (13, 30), (16, 0)),
-        ('Friday', (16, 30), (17, 0)),
-    ],
-    'Frances': [
-        ('Monday', (9, 30), (11, 0)),
-        ('Monday', (11, 30), (13, 0)),
-        ('Monday', (14, 0), (14, 30)),
-        ('Monday', (15, 0), (16, 0)),
-        ('Tuesday', (9, 0), (9, 30)),
-        ('Tuesday', (10, 0), (10, 30)),
-        ('Tuesday', (11, 0), (12, 0)),
-        ('Tuesday', (13, 0), (14, 30)),
-        ('Tuesday', (15, 30), (16, 30)),
-        ('Wednesday', (9, 30), (10, 0)),
-        ('Wednesday', (10, 30), (11, 0)),
-        ('Wednesday', (11, 30), (16, 0)),
-        ('Wednesday', (16, 30), (17, 0)),
-        ('Thursday', (11, 0), (12, 30)),
-        ('Thursday', (14, 30), (17, 0)),
-        ('Friday', (9, 30), (10, 30)),
-        ('Friday', (11, 0), (12, 30)),
-        ('Friday', (13, 0), (16, 0)),
-        ('Friday', (16, 30), (17, 0)),
-    ],
-}
+    # Define the constraints for the meeting day
+    if day_preferences is not None:
+        for i, preferred_day in enumerate(day_preferences):
+            day[i].eq(preferred_day)
+    elif frances_avoid_tuesday:
+        day[1].eq(False)
 
-# Define the meeting duration
-meeting_duration = 30
+    # Define the constraints for the start and end times
+    for i in range(5):
+        for j in range(1440):  # Iterate over all possible start times
+            start_time[i].eq(j)
+            end_time[i].eq(j + meeting_duration)
+            for terry_time in terry_schedule[i]:
+                terry_time_start, terry_time_end = terry_time
+                if And(start_time[i] >= terry_time_start, start_time[i] < terry_time_end):
+                    start_time[i].eq(False)  # Ensure the meeting does not conflict with Terry's schedule
+            for frances_time in frances_schedule[i]:
+                frances_time_start, frances_time_end = frances_time
+                if And(start_time[i] >= frances_time_start, start_time[i] < frances_time_end):
+                    start_time[i].eq(False)  # Ensure the meeting does not conflict with Frances's schedule
 
-# Define the solver
-solver = Solver()
+    # Find a solution that satisfies all the constraints
+    solver = Solver()
+    for i in range(5):
+        solver.add(day[i])
+        solver.add(start_time[i] >= 0)
+        solver.add(start_time[i] <= 720)
+        solver.add(end_time[i] >= 0)
+        solver.add(end_time[i] <= 720)
+    solver.add(Or([day[i] for i in range(5)]))  # Ensure at least one day is selected
+    solver.add(Or([start_time[i]!= 0 for i in range(5)]))  # Ensure at least one start time is selected
+    solution = solver.check()
+    if solution == sat:
+        model = solver.model()
+        day_index = [i for i, val in enumerate(model[day[0]]) if val == True][0]
+        start_time_index = [i for i, val in enumerate(model[start_time[day_index]]) if val!= 0][0]
+        end_time_index = [i for i, val in enumerate(model[end_time[day_index]]) if val!= 0][0]
+        start_time_value = model[start_time[day_index]].as_long() // 60  # Convert minutes to hours
+        end_time_value = (model[end_time[day_index]].as_long() // 60) + meeting_duration  # Convert minutes to hours
+        return f'SOLUTION:\nDay: {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"][day_index]}\nStart Time: {start_time_value:02d}:00\nEnd Time: {end_time_value:02d}:00'
+    else:
+        return 'No solution found'
 
-# Define the variables
-day = [Bool(f'day_{i}') for i in range(len(days))]
-start_time = [Int(f'start_time_{i}') for i in range(len(days))]
-end_time = [Int(f'end_time_{i}') for i in range(len(days))]
+terry_schedule = [
+    [(30 * 60, 60 * 60), (2.5 * 60 * 60, 4 * 60 * 60), (15 * 60, 17 * 60)],
+    [(9.5 * 60, 10 * 60), (10.5 * 60, 11 * 60), (14 * 60, 14.5 * 60), (16 * 60, 16.5 * 60)],
+    [(9.5 * 60, 10 * 60), (11 * 60, 12 * 60), (13 * 60, 13.5 * 60), (15 * 60, 16 * 60), (16.5 * 60, 17 * 60)],
+    [(9.5 * 60, 10 * 60), (12 * 60, 12.5 * 60), (13 * 60, 14.5 * 60), (16 * 60, 16.5 * 60)],
+    [(9 * 60, 11.5 * 60), (12 * 60, 12.5 * 60), (13.5 * 60, 16 * 60), (16.5 * 60, 17 * 60)]
+]
 
-# Add constraints for each participant
-for participant in ['Terry', 'Frances']:
-    for day_name in days:
-        day_index = days.index(day_name)
-        for schedule in schedules[participant]:
-            if schedule[0] == day_name:
-                start_time_index = schedule[1][0] * 60 + schedule[1][1]
-                end_time_index = schedule[2][0] * 60 + schedule[2][1]
-                for i in range(len(days)):
-                    if start_time_index < 17 * 60 and start_time_index >= 9 * 60:
-                        solver.assert(start_time[i] > start_time_index)
-                    if end_time_index < 17 * 60 and end_time_index >= 9 * 60:
-                        solver.assert(end_time[i] < end_time_index)
+frances_schedule = [
+    [(9.5 * 60, 11 * 60), (11.5 * 60, 13 * 60), (14 * 60, 14.5 * 60), (15 * 60, 16 * 60)],
+    [(9 * 60, 9.5 * 60), (10 * 60, 10.5 * 60), (11 * 60, 12 * 60), (13 * 60, 14.5 * 60), (15.5 * 60, 16.5 * 60)],
+    [(9.5 * 60, 10 * 60), (11 * 60, 12 * 60), (11.5 * 60, 16 * 60), (16.5 * 60, 17 * 60)],
+    [(11 * 60, 12.5 * 60), (14.5 * 60, 17 * 60)],
+    [(9.5 * 60, 10.5 * 60), (11 * 60, 12.5 * 60), (13 * 60, 16 * 60), (16.5 * 60, 17 * 60)]
+]
 
-# Add constraints for the meeting duration
-for i in range(len(days)):
-    solver.assert_and_track(end_time[i] - start_time[i] >= meeting_duration, f'meeting_duration_{i}_constraint')
-
-# Add constraints for Frances' preference to avoid more meetings on Tuesday
-solver.assert(day[1] == False)
-
-# Add constraints for the day of the meeting
-solver.assert(Or(day[0], day[1], day[2], day[3], day[4]))
-
-# Add constraints for the start and end times
-for i in range(len(days)):
-    solver.assert(9 * 60 <= start_time[i])
-    solver.assert(end_time[i] <= 17 * 60)
-
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    day_index = 0
-    while model.evaluate(day[day_index]).as_bool().value():
-        day_index += 1
-    day_name = days[day_index]
-    start_time_value = model.evaluate(start_time[day_index]).as_long()
-    end_time_value = model.evaluate(end_time[day_index]).as_long()
-    print(f'SOLUTION:')
-    print(f'Day: {day_name}')
-    print(f'Start Time: {str(start_time_value // 60).zfill(2)}:{str(start_time_value % 60).zfill(2)}')
-    print(f'End Time: {str(end_time_value // 60).zfill(2)}:{str(end_time_value % 60).zfill(2)}')
-else:
-    print('No solution found')
+print(schedule_meeting(terry_schedule, frances_schedule, 30 * 60))

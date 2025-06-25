@@ -1,39 +1,56 @@
 from z3 import *
 
 def schedule_meeting(kayla_schedule, rebecca_schedule, meeting_duration):
-    # Define the day
-    day = 'Monday'
-
-    # Define the start and end times of the work hours
+    # Define the day of the week (Monday)
+    day = 0
+    
+    # Define the start and end time of the work hours
     start_time = 9
     end_time = 17
-
+    
     # Define the meeting duration
-    meeting_start = start_time
-    while meeting_start < end_time - meeting_duration + 1:
-        # Check if the meeting time conflicts with Kayla's schedule
-        if (meeting_start >= 10 and meeting_start < 10 + meeting_duration) or \
-           (meeting_start + meeting_duration > 10 and meeting_start + meeting_duration <= 10 + 30) or \
-           (meeting_start + meeting_duration > 14 * 60 + 30 and meeting_start + meeting_duration <= 16 * 60):
-            meeting_start += 1
-            continue
+    meeting_start = 0
+    meeting_end = meeting_duration
+    
+    # Create a Z3 solver
+    s = Solver()
+    
+    # Define the variables for the start and end time of the meeting
+    start_time_var = Int('start_time')
+    end_time_var = Int('end_time')
+    
+    # Add constraints for the start and end time
+    s.add(And(start_time <= start_time_var, start_time_var <= end_time))
+    
+    # Add constraints for the end time to be at least the meeting duration
+    s.add(end_time_var >= start_time_var + meeting_duration)
+    
+    # Add constraints for Kayla's schedule
+    for block_start, block_end in kayla_schedule:
+        s.add(Or(start_time_var >= block_end, end_time_var <= block_start))
+    
+    # Add constraints for Rebecca's schedule
+    for block_start, block_end in rebecca_schedule:
+        s.add(Or(start_time_var >= block_end, end_time_var <= block_start))
+    
+    # Check if there is a solution
+    if s.check() == sat:
+        # Get the solution
+        model = s.model()
+        start_time = model[start_time_var].as_long()
+        end_time = model[end_time_var].as_long()
+        
+        # Print the solution
+        print(f"SOLUTION:")
+        print(f"Day: {day}")
+        print(f"Start Time: {start_time:02d}:00")
+        print(f"End Time: {end_time:02d}:00")
+    else:
+        print("No solution found")
 
-        # Check if the meeting time conflicts with Rebecca's schedule
-        if (meeting_start >= 9 and meeting_start < 13) or \
-           (meeting_start >= 13 * 60 + 30 and meeting_start < 15 * 60) or \
-           (meeting_start >= 15 * 60 + 30 and meeting_start < 16 * 60):
-            meeting_start += 1
-            continue
-
-        # If the meeting time does not conflict with either Kayla's or Rebecca's schedule, return the meeting time
-        return f"SOLUTION:\nDay: {day}\nStart Time: {meeting_start:02d}:00\nEnd Time: {(meeting_start + meeting_duration - 1):02d}:00"
-
-    # If no meeting time is found, return an error message
-    return "No meeting time found"
-
-# Example usage:
-kayla_schedule = [(10, 10 + 30), (14 * 60 + 30, 16 * 60)]
-rebecca_schedule = [(9, 13), (13 * 60 + 30, 15 * 60), (15 * 60 + 30, 16 * 60)]
+# Example usage
+kayla_schedule = [(10, 10+30), (14*60+30, 16*60)]
+rebecca_schedule = [(9*60, 13*60), (13*60+30, 15*60), (15*60+30, 16*60)]
 meeting_duration = 60
 
-print(schedule_meeting(kayla_schedule, rebecca_schedule, meeting_duration))
+schedule_meeting(kayla_schedule, rebecca_schedule, meeting_duration)

@@ -1,96 +1,81 @@
 from z3 import *
 
-# Define the cities and their corresponding durations
-cities = {
-    'Brussels': 4,
-    'Bucharest': 3,
-    'Stuttgart': 4,
-    'Mykonos': 2,
-    'Madrid': 5,
-    'Helsinki': 5,
-    'Split': 3,
-    'London': 5
-}
+# Define the number of days and cities
+num_days = 21
+num_cities = 8
+
+# Define the cities
+cities = ['Brussels', 'Bucharest', 'Stuttgart', 'Mykonos', 'Madrid', 'Helsinki', 'Split', 'London']
 
 # Define the direct flights
 flights = {
-    ('Helsinki', 'London'): 1,
-    ('Split', 'Madrid'): 1,
-    ('Helsinki', 'Madrid'): 1,
-    ('London', 'Madrid'): 1,
-    ('Brussels', 'London'): 1,
-    ('Bucharest', 'London'): 1,
-    ('Brussels', 'Bucharest'): 1,
-    ('Bucharest', 'Madrid'): 1,
-    ('Split', 'Helsinki'): 1,
-    ('Mykonos', 'Madrid'): 1,
-    ('Stuttgart', 'London'): 1,
-    ('Helsinki', 'Brussels'): 1,
-    ('Brussels', 'Madrid'): 1,
-    ('Split', 'London'): 1,
-    ('Stuttgart', 'Split'): 1,
-    ('London', 'Mykonos'): 1
+    'Helsinki-London': [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Split-Madrid': [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Helsinki-Madrid': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'London-Madrid': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Brussels-London': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Bucharest-London': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Bucharest-Madrid': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Split-Helsinki': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Mykonos-Madrid': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Stuttgart-London': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Helsinki-Brussels': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Brussels-Madrid': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Split-London': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'Stuttgart-Split': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
+    'London-Mykonos': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
 }
 
-# Define the variables
-days = 21
-city_vars = {city: [Bool(f'{city}_day_{i}') for i in range(days)] for city in cities}
-friend_var = Bool('friend_in_stuttgart')
-conference_var = Bool('conference_in_madrid')
-
 # Define the constraints
-for city in cities:
-    # Each city can only be visited for its specified duration
-    for i in range(days - cities[city] + 1):
-        if i == 0:
-            city_vars[city][i] = True
-        else:
-            city_vars[city][i] = Or(city_vars[city][i-1], city_vars[city][i-2])
+s = Optimize()
 
-# Stuttgart constraints
-for i in range(4):
-    city_vars['Stuttgart'][i] = True
+# Define the variables
+x = [[Int(f'x_{i}_{j}') for j in range(num_days + 1)] for i in range(num_cities)]
 
-# Friend in Stuttgart constraint
-city_vars['Stuttgart'][1] = friend_var
+# Define the constraints for each city
+for i in range(num_cities):
+    s.add(x[i][0] == 1)  # Each person starts in city i
 
-# Conference in Madrid constraint
-city_vars['Madrid'][19] = conference_var
+# Define the constraints for each flight
+for flight, days in flights.items():
+    src, dst = flight.split('-')
+    src_idx = cities.index(src)
+    dst_idx = cities.index(dst)
+    for day in days:
+        s.add(x[src_idx][day] == 1)
+        s.add(x[dst_idx][day] == 1)
 
-# Direct flights constraints
-for (city1, city2), duration in flights.items():
-    for i in range(days - duration + 1):
-        city_vars[city1][i] = Implies(city_vars[city2][i + duration - 1], city_vars[city1][i])
+# Define the constraints for the meeting in Stuttgart
+s.add(x[cities.index('Stuttgart')][2] == 1)
 
-# Ensure the itinerary covers exactly 21 days
-total_days = [Bool('total_days_{}'.format(i)) for i in range(days)]
-for i in range(days):
-    total_days[i] = Or(*[city_vars[city][i] for city in cities])
-solver = Solver()
-for i in range(days):
-    solver.add(total_days[i])
-solver.add(Or(*[Not(total_days[i]) for i in range(days)]))
-solver.add(And(*total_days))  # Ensure exactly 21 days are covered
+# Define the constraints for the conference in Madrid
+s.add(x[cities.index('Madrid')][20] == 1)
+s.add(x[cities.index('Madrid')][21] == 1)
 
-# Ensure the total duration of the trip is at least 21 days
-total_duration = 0
-for city in cities:
-    total_duration += cities[city]
-    for i in range(days - cities[city] + 1):
-        total_duration -= 1
-        if model := Solver().add(total_duration >= days).check():
-            if model == sat:
-                break
-        else:
-            print("No solution exists")
-            break
-if model == sat:
-    trip_plan = {}
-    for city in cities:
-        trip_plan[city] = []
-        for i in range(days):
-            if model.evaluate(city_vars[city][i]).as_bool():
-                trip_plan[city].append(i+1)
-    print(trip_plan)
-else:
-    print("No solution exists")
+# Define the constraints for the duration of each visit
+for i in range(num_cities):
+    for j in range(1, num_days):
+        s.add(x[i][j] == x[i][j + 1])
+
+# Define the constraints to cover exactly 21 days
+for i in range(num_cities):
+    s.add(Or([x[i][j] == 0 for j in range(1, num_days + 1)]))
+
+# Solve the problem
+s.check()
+model = s.model()
+
+# Create the itinerary
+itinerary = []
+for i in range(num_cities):
+    for j in range(1, num_days):
+        if model[x[i][j]].as_long() > 0:
+            if j == 1:
+                itinerary.append({"day_range": f"Day {j}-{model[x[i][j + 1]].as_long() - 1}", "place": cities[i]})
+            elif j == model[x[i][j - 1]].as_long():
+                itinerary.append({"day_range": f"Day {j}", "place": cities[i]})
+            elif j + 1 == model[x[i][j + 1]].as_long():
+                itinerary.append({"day_range": f"Day {j}", "place": cities[i]})
+
+# Print the itinerary
+print({"itinerary": itinerary})

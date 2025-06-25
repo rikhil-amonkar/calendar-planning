@@ -1,67 +1,93 @@
 from z3 import *
 
-# Define the cities and their durations
-cities = {
-    'Nice': 5,
-    'Lyon': 4,
-    'Krakow': 6,
-    'Dublin': 7,
-    'Frankfurt': 2
-}
+def find_trip_plan():
+    # Define cities
+    cities = ['Nice', 'Dublin', 'Krakow', 'Lyon', 'Frankfurt']
 
-# Define the direct flights
-flights = {
-    ('Nice', 'Dublin'): 1,
-    ('Dublin', 'Frankfurt'): 1,
-    ('Dublin', 'Krakow'): 1,
-    ('Krakow', 'Frankfurt'): 1,
-    ('Lyon', 'Frankfurt'): 1,
-    ('Nice', 'Frankfurt'): 1,
-    ('Lyon', 'Dublin'): 1,
-    ('Nice', 'Lyon'): 1
-}
+    # Define days
+    days = range(1, 21)
 
-# Define the variables
-days = [Bool(f'day_{i}') for i in range(21)]
+    # Define variables
+    x = [Bool(f'x_{city}_{day}') for city in cities for day in days]
 
-# Define the constraints
-constraints = []
-for i in range(1, 21):
-    constraints.append(Or([days[i]]))
+    # Define constraints
+    constraints = []
     for city in cities:
-        constraints.append(days[i] == days[i - cities[city]])
-    for (a, b), duration in flights.items():
-        if days[i - duration + 1] and days[i]:
-            constraints.append(days[i - duration + 1] == days[i])
-        if days[i - duration] and days[i - duration + 1]:
-            constraints.append(days[i - duration] == days[i - duration + 1])
+        constraints.append(Or([x[city][day] for day in days]))
+    for day in days:
+        constraints.append(Or([x['Nice'][day] for day in range(1, 6)]))
+        constraints.append(Or([x['Krakow'][day] for day in range(6, 12)]))
+        constraints.append(Or([x['Dublin'][day] for day in range(7, 14)]))
+        constraints.append(Or([x['Lyon'][day] for day in range(14, 18)]))
+        constraints.append(Or([x['Frankfurt'][day] for day in range(19, 21)]))
+    for city in cities:
+        for day in days:
+            if day < 6 and city == 'Nice':
+                constraints.append(Not(x[city][day]))
+            elif day < 12 and city == 'Krakow':
+                constraints.append(Not(x[city][day]))
+            elif day < 14 and city == 'Dublin':
+                constraints.append(Not(x[city][day]))
+            elif day < 18 and city == 'Lyon':
+                constraints.append(Not(x[city][day]))
+            elif day < 19 and city == 'Frankfurt':
+                constraints.append(Not(x[city][day]))
+    for day in days:
+        if day < 6:
+            constraints.append(And([Not(x['Nice'][day]) for city in cities if city!= 'Nice']))
+        elif day < 12:
+            constraints.append(And([Not(x['Krakow'][day]) for city in cities if city!= 'Krakow']))
+        elif day < 14:
+            constraints.append(And([Not(x['Dublin'][day]) for city in cities if city!= 'Dublin']))
+        elif day < 18:
+            constraints.append(And([Not(x['Lyon'][day]) for city in cities if city!= 'Lyon']))
+        elif day < 19:
+            constraints.append(And([Not(x['Frankfurt'][day]) for city in cities if city!= 'Frankfurt']))
+    for city1, city2 in [('Nice', 'Dublin'), ('Dublin', 'Frankfurt'), ('Dublin', 'Krakow'), ('Krakow', 'Frankfurt'), ('Lyon', 'Frankfurt'), ('Nice', 'Frankfurt'), ('Lyon', 'Dublin')]:
+        for day in days:
+            if day < 6 and city1 == 'Nice' and city2 == 'Dublin':
+                constraints.append(Not(x[city1][day] & x[city2][day]))
+            elif day < 12 and city1 == 'Dublin' and city2 == 'Frankfurt':
+                constraints.append(Not(x[city1][day] & x[city2][day]))
+            elif day < 14 and city1 == 'Dublin' and city2 == 'Krakow':
+                constraints.append(Not(x[city1][day] & x[city2][day]))
+            elif day < 18 and city1 == 'Krakow' and city2 == 'Frankfurt':
+                constraints.append(Not(x[city1][day] & x[city2][day]))
+            elif day < 18 and city1 == 'Lyon' and city2 == 'Frankfurt':
+                constraints.append(Not(x[city1][day] & x[city2][day]))
+            elif day < 19 and city1 == 'Nice' and city2 == 'Frankfurt':
+                constraints.append(Not(x[city1][day] & x[city2][day]))
+            elif day < 19 and city1 == 'Lyon' and city2 == 'Dublin':
+                constraints.append(Not(x[city1][day] & x[city2][day]))
 
-# Define the objective function
-objective = days[20]
+    # Create solver
+    solver = Solver()
 
-# Define the solver
-solver = Solver()
+    # Add constraints to solver
+    for constraint in constraints:
+        solver.add(constraint)
 
-# Add the constraints to the solver
-for constraint in constraints:
-    solver.add(constraint)
+    # Check if solver has solution
+    if solver.check() == sat:
+        # Get model
+        model = solver.model()
 
-# Solve the problem
-solver.add(Not(days[0]))  # We cannot be in any city on day 0
-solver.add(Not(days[5]))  # We are in Nice on days 1-5
-solver.add(Not(days[19]))  # We are in Frankfurt on days 19-20
-solution = solver.check()
+        # Create itinerary
+        itinerary = []
+        for city in cities:
+            for day in days:
+                if model[x[city][day]]:
+                    if day == 1:
+                        itinerary.append({"day_range": f"Day {day}-{'-'.join([str(d) for d in days if model[x[city][d]]])}", "place": city})
+                    elif day == int(''.join([str(d) for d in days if model[x[city][d]]])):
+                        itinerary.append({"day_range": f"Day {day}", "place": city})
+                    else:
+                        itinerary.append({"day_range": f"Day {day}", "place": city})
+                        itinerary.append({"day_range": f"Day {day}-{'-'.join([str(d) for d in days if model[x[city][d]]])}", "place": city})
 
-if solution == sat:
-    model = solver.model()
-    trip_plan = {}
-    for city, duration in cities.items():
-        trip_plan[city] = []
-    for i in range(1, 21):
-        city = [city for city in cities if model.eval(days[i]) == True]
-        if city:
-            trip_plan[city[0]].append(i)
-    for city, days in trip_plan.items():
-        print(f'{city}: {days}')
-else:
-    print('No solution found')
+        # Print itinerary
+        print({"itinerary": itinerary})
+    else:
+        print("No solution found")
+
+find_trip_plan()

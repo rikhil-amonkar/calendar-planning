@@ -1,69 +1,140 @@
+YOUR_CODE
+
 from z3 import *
 
-# Define the variables
-start_time = 0
-end_time = 24 * 60  # 24 hours in minutes
-friends = ['David', 'Kenneth', 'John', 'Charles', 'Deborah', 'Karen', 'Carol']
-locations = ['Chinatown', 'Mission District', 'Alamo Square', 'Pacific Heights', 'Union Square', 'Golden Gate Park', 'Sunset District', 'Presidio']
+# Define the locations
+locations = ['Chinatown', 'Mission District', 'Alamo Square', 'Pacific Heights', 'Union Square', 
+             'Golden Gate Park', 'Sunset District', 'Presidio']
 
-# Define the travel times
-travel_times = {
-    'Chinatown': {'Mission District': 18, 'Alamo Square': 17, 'Pacific Heights': 10, 'Union Square': 7, 'Golden Gate Park': 23, 'Sunset District': 29, 'Presidio': 19},
-    'Mission District': {'Chinatown': 18, 'Alamo Square': 11, 'Pacific Heights': 16, 'Union Square': 15, 'Golden Gate Park': 17, 'Sunset District': 24, 'Presidio': 25},
-    'Alamo Square': {'Chinatown': 17, 'Mission District': 10, 'Pacific Heights': 10, 'Union Square': 14, 'Golden Gate Park': 9, 'Sunset District': 16, 'Presidio': 18},
-    'Pacific Heights': {'Chinatown': 10, 'Mission District': 15, 'Alamo Square': 10, 'Union Square': 12, 'Golden Gate Park': 15, 'Sunset District': 21, 'Presidio': 11},
-    'Union Square': {'Chinatown': 7, 'Mission District': 14, 'Alamo Square': 15, 'Pacific Heights': 12, 'Golden Gate Park': 22, 'Sunset District': 26, 'Presidio': 24},
-    'Golden Gate Park': {'Chinatown': 23, 'Mission District': 17, 'Alamo Square': 10, 'Pacific Heights': 16, 'Union Square': 22, 'Sunset District': 10, 'Presidio': 11},
-    'Sunset District': {'Chinatown': 29, 'Mission District': 24, 'Alamo Square': 17, 'Pacific Heights': 21, 'Union Square': 30, 'Golden Gate Park': 11, 'Presidio': 16},
-    'Presidio': {'Chinatown': 19, 'Mission District': 25, 'Alamo Square': 18, 'Pacific Heights': 11, 'Union Square': 22, 'Golden Gate Park': 12, 'Sunset District': 15}
+# Define the time intervals
+time_intervals = {
+    'David': (8, 7*60),
+    'Kenneth': (2*60, 7*60),
+    'John': (5*60, 8*60),
+    'Charles': (9*60 + 45, 10*60 + 45),
+    'Deborah': (7*60, 6*60 + 15),
+    'Karen': (5*60 + 45, 9*60 + 15),
+    'Carol': (8*60 + 15, 9*60 + 15)
 }
 
-# Define the constraints
+# Define the minimum meeting times
+min_meeting_times = {
+    'David': 45,
+    'Kenneth': 120,
+    'John': 15,
+    'Charles': 60,
+    'Deborah': 90,
+    'Karen': 15,
+    'Carol': 30
+}
+
+# Create variables for the time spent at each location
+time_spent = {}
+for location in locations:
+    time_spent[location] = [Int(f'time_{location}_{i}') for i in range(24)]
+
+# Create variables for the meeting times
+meeting_times = {}
+for person in time_intervals:
+    meeting_times[person] = [Int(f'meeting_{person}_{i}') for i in range(24)]
+
+# Add constraints
 s = Solver()
 
-# Variables to keep track of the meeting times
-meetings = {}
-for friend in friends:
-    meetings[friend] = [Bool(friend + '_' + location) for location in locations]
+for location in locations:
+    for i in range(24):
+        s.add(0 <= time_spent[location][i])
+        s.add(time_spent[location][i] <= 24)
 
-# Add constraints for each friend
-for friend in friends:
-    # Add constraint for minimum meeting time
-    if friend == 'David':
-        s.add(And([meetings[friend][locations.index('Mission District')], (start_time + 16 <= 945) & (945 <= start_time + 16 + 45)]))
-    elif friend == 'Kenneth':
-        s.add(And([meetings[friend][locations.index('Alamo Square')], (start_time + 10 <= 1745) & (1745 <= start_time + 10 + 120)]))
-    elif friend == 'John':
-        s.add(And([meetings[friend][locations.index('Pacific Heights')], (start_time + 16 <= 800) & (800 <= start_time + 16 + 15)]))
-    elif friend == 'Charles':
-        s.add(And([meetings[friend][locations.index('Union Square')], (start_time + 15 <= 2145) & (2145 <= start_time + 15 + 60)]))
-    elif friend == 'Deborah':
-        s.add(And([meetings[friend][locations.index('Golden Gate Park')], (start_time + 23 <= 615) & (615 <= start_time + 23 + 90)]))
-    elif friend == 'Karen':
-        s.add(And([meetings[friend][locations.index('Sunset District')], (start_time + 21 <= 915) & (915 <= start_time + 21 + 15)]))
-    elif friend == 'Carol':
-        s.add(And([meetings[friend][locations.index('Presidio')], (start_time + 19 <= 915) & (915 <= start_time + 19 + 30)]))
+for person in time_intervals:
+    for i in range(24):
+        s.add(0 <= meeting_times[person][i])
+        s.add(meeting_times[person][i] <= 24)
 
-# Add constraint for travel time
-for location1 in locations:
-    for location2 in locations:
-        if location1!= location2:
-            for friend in friends:
-                s.add(Implies(meetings[friend][locations.index(location1)], meetings[friend][locations.index(location2)] == False))
-                s.add(Implies(meetings[friend][locations.index(location2)], meetings[friend][locations.index(location1)] == False))
-                s.add(Or([meetings[friend][locations.index(location1)], meetings[friend][locations.index(location2)]]))
+for location in locations:
+    for i in range(24):
+        for person in time_intervals:
+            if location == 'Chinatown':
+                s.add(meeting_times[person][i] >= 9*60)
+            elif location == 'Mission District':
+                s.add(meeting_times[person][i] >= 8*60)
+            elif location == 'Alamo Square':
+                s.add(meeting_times[person][i] >= 2*60)
+            elif location == 'Pacific Heights':
+                s.add(meeting_times[person][i] >= 5*60)
+            elif location == 'Union Square':
+                s.add(meeting_times[person][i] >= 9*60 + 45)
+            elif location == 'Golden Gate Park':
+                s.add(meeting_times[person][i] >= 7*60)
+            elif location == 'Sunset District':
+                s.add(meeting_times[person][i] >= 5*60 + 45)
+            elif location == 'Presidio':
+                s.add(meeting_times[person][i] >= 8*60 + 15)
 
-# Add constraint for exactly 6 people
-s.add(Exactly(6, [meetings[friend][locations.index(location)] for friend in friends for location in locations]))
+            if location == 'Chinatown':
+                s.add(meeting_times[person][i] <= 8*60 + time_intervals[person][1])
+            elif location == 'Mission District':
+                s.add(meeting_times[person][i] <= 7*60 + time_intervals[person][1])
+            elif location == 'Alamo Square':
+                s.add(meeting_times[person][i] <= 7*60 + time_intervals[person][1])
+            elif location == 'Pacific Heights':
+                s.add(meeting_times[person][i] <= 8*60 + time_intervals[person][1])
+            elif location == 'Union Square':
+                s.add(meeting_times[person][i] <= 10*60 + 45 + time_intervals[person][1])
+            elif location == 'Golden Gate Park':
+                s.add(meeting_times[person][i] <= 6*60 + 15 + time_intervals[person][1])
+            elif location == 'Sunset District':
+                s.add(meeting_times[person][i] <= 9*60 + 15 + time_intervals[person][1])
+            elif location == 'Presidio':
+                s.add(meeting_times[person][i] <= 9*60 + time_intervals[person][1])
 
-# Check the solution
+for location in locations:
+    for i in range(24):
+        s.add(meeting_times['David'][i] >= 16 * time_spent[location][i] + min_meeting_times['David'])
+        s.add(meeting_times['David'][i] <= 16 * time_spent[location][i] + 16 * 24)
+
+for location in locations:
+    for i in range(24):
+        s.add(meeting_times['Kenneth'][i] >= 9 * time_spent[location][i] + min_meeting_times['Kenneth'])
+        s.add(meeting_times['Kenneth'][i] <= 9 * time_spent[location][i] + 9 * 24)
+
+for location in locations:
+    for i in range(24):
+        s.add(meeting_times['John'][i] >= 1 * time_spent[location][i] + min_meeting_times['John'])
+        s.add(meeting_times['John'][i] <= 1 * time_spent[location][i] + 1 * 24)
+
+for location in locations:
+    for i in range(24):
+        s.add(meeting_times['Charles'][i] >= 1 * time_spent[location][i] + min_meeting_times['Charles'])
+        s.add(meeting_times['Charles'][i] <= 1 * time_spent[location][i] + 1 * 24)
+
+for location in locations:
+    for i in range(24):
+        s.add(meeting_times['Deborah'][i] >= 4 * time_spent[location][i] + min_meeting_times['Deborah'])
+        s.add(meeting_times['Deborah'][i] <= 4 * time_spent[location][i] + 4 * 24)
+
+for location in locations:
+    for i in range(24):
+        s.add(meeting_times['Karen'][i] >= 1 * time_spent[location][i] + min_meeting_times['Karen'])
+        s.add(meeting_times['Karen'][i] <= 1 * time_spent[location][i] + 1 * 24)
+
+for location in locations:
+    for i in range(24):
+        s.add(meeting_times['Carol'][i] >= 2 * time_spent[location][i] + min_meeting_times['Carol'])
+        s.add(meeting_times['Carol'][i] <= 2 * time_spent[location][i] + 2 * 24)
+
+# Solve the problem
+s.add(Or([Sum([time_spent[loc][i] for loc in locations]) for i in range(24)]))
+s.add(Or([Sum([meeting_times[person][i] for person in time_intervals]) for i in range(24)]))
+
 if s.check() == sat:
-    model = s.model()
-    print('SOLUTION:')
-    for friend in friends:
-        print(friend + ':')
+    m = s.model()
+    for i in range(24):
+        print(f'Best schedule at time {i}:')
         for location in locations:
-            if model.evaluate(meetings[friend][locations.index(location)]).as_bool():
-                print(location)
+            print(f'Time spent at {location}: {m.evaluate(time_spent[location][i]).as_long()} minutes')
+        for person in time_intervals:
+            print(f'Meeting time with {person}: {m.evaluate(meeting_times[person][i]).as_long()} minutes')
+        print()
 else:
     print('No solution found')

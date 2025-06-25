@@ -1,101 +1,47 @@
 from z3 import *
 
-def schedule_meeting(schedules, meeting_duration):
-    # Define the day and time intervals
+def schedule_meeting():
+    # Define the variables
     day = 'Monday'
     start_time = 9 * 60
     end_time = 17 * 60
-
-    # Create a list of participants and their available times
+    duration = 30
     participants = ['Jacob', 'Diana', 'Adam', 'Angela', 'Dennis']
-    times = []
+    busy_times = {
+        'Jacob': [(13 * 60, 14 * 60), (14 * 60, 15 * 60)],
+        'Diana': [(9 * 60, 10 * 60), (11 * 60, 12 * 60), (13 * 60, 13 * 60), (16 * 60, 16 * 60)],
+        'Adam': [(9 * 60, 10 * 60), (11 * 60, 12 * 60), (15 * 60, 16 * 60)],
+        'Angela': [(9 * 60, 10 * 60), (10 * 60, 12 * 60), (13 * 60, 15 * 60), (16 * 60, 16 * 60)],
+        'Dennis': [(9 * 60, 9 * 60), (10 * 60, 11 * 60), (13 * 60, 15 * 60), (16 * 60, 17 * 60)]
+    }
+
+    # Create the solver
+    s = Solver()
+
+    # Define the variables for the start time
+    start = Int('start')
+
+    # Define the constraints
     for participant in participants:
-        participant_times = []
-        for time in schedules[participant]:
-            start, end = time
-            start, end = start * 60, end * 60
-            participant_times.append((start, end))
-        times.append(participant_times)
+        for start_time_participant, end_time_participant in busy_times[participant]:
+            s.add(start + duration > start_time_participant)
+            s.add(start + duration <= end_time_participant)
 
-    # Create Z3 variables for the start and end times of the meeting
-    start_time_var = Int('start_time')
-    end_time_var = Int('end_time')
+    # Add the constraints for the day and duration
+    s.add(start >= 9 * 60)
+    s.add(start + duration <= 17 * 60)
 
-    # Create Z3 constraints for the meeting duration and time intervals
-    constraints = [
-        And(start_time_var >= start_time, start_time_var <= end_time),
-        And(end_time_var >= start_time_var, end_time_var <= end_time),
-        And(end_time_var - start_time_var == meeting_duration * 60)
-    ]
+    # Check if a solution exists
+    if s.check() == sat:
+        # Get the model
+        m = s.model()
 
-    # Create Z3 variables for the available times of each participant
-    participant_vars = [Int(f'participant_{i}') for i in range(len(participants))]
-
-    # Create Z3 constraints for the available times of each participant
-    for i, participant_times in enumerate(times):
-        for start, end in participant_times:
-            start, end = start * 60, end * 60
-            constraints.append(Or(
-                start_time_var + meeting_duration * 60 > end,
-                start_time_var < start,
-                end_time_var <= start
-            ))
-
-    # Create Z3 variables for the start and end times of each time slot
-    time_slot_vars = [Int(f'time_slot_{i}') for i in range(len(participants) + 2)]
-
-    # Create Z3 constraints for the time slots
-    for i in range(len(participants) + 1):
-        constraints.append(And(
-            time_slot_vars[i] >= start_time,
-            time_slot_vars[i] <= end_time,
-            If(i < len(participants), time_slot_vars[i + 1] > time_slot_vars[i] + meeting_duration * 60, time_slot_vars[i + 1] == end_time)
-        ))
-
-    # Create Z3 constraints for the meeting time
-    constraints.append(And(
-        start_time_var == time_slot_vars[0],
-        end_time_var == time_slot_vars[1]
-    ))
-
-    # Create Z3 variables for the meeting time slots
-    meeting_time_slot_vars = [Int(f'meeting_time_slot_{i}') for i in range(2)]
-
-    # Create Z3 constraints for the meeting time slots
-    for i in range(2):
-        constraints.append(And(
-            meeting_time_slot_vars[i] >= start_time,
-            meeting_time_slot_vars[i] <= end_time,
-            If(i < 1, meeting_time_slot_vars[i + 1] > meeting_time_slot_vars[i] + meeting_duration * 60, meeting_time_slot_vars[i + 1] == end_time)
-        ))
-
-    # Create Z3 constraints for the meeting time
-    constraints.append(And(
-        start_time_var == meeting_time_slot_vars[0],
-        end_time_var == meeting_time_slot_vars[1]
-    ))
-
-    # Solve the Z3 constraints
-    solver = Solver()
-    solver.add(constraints)
-    if solver.check() == sat:
-        model = solver.model()
-        start_time_value = model[start_time_var].as_long()
-        end_time_value = model[end_time_var].as_long()
-        return f"SOLUTION:\nDay: {day}\nStart Time: {start_time_value // 60:02d}:{start_time_value % 60:02d}\nEnd Time: {end_time_value // 60:02d}:{end_time_value % 60:02d}"
+        # Print the solution
+        print('SOLUTION:')
+        print(f'Day: {day}')
+        print(f'Start Time: {m[start] // 60:02d}:{m[start] % 60:02d}')
+        print(f'End Time: {(m[start] // 60 + duration // 60) % 24:02d}:{(m[start] % 60 + duration % 60) % 60:02d}')
     else:
-        return "No solution found"
+        print('No solution exists.')
 
-# Existing schedules for everyone during the day
-schedules = {
-    'Jacob': [(13.5, 14), (14.5, 15)],
-    'Diana': [(9.5, 10), (11.5, 12), (13, 13.5), (16, 16.5)],
-    'Adam': [(9.5, 10.5), (11, 12.5), (15.5, 16)],
-    'Angela': [(9.5, 10), (10.5, 12), (13, 15.5), (16, 16.5)],
-    'Dennis': [(9, 9.5), (10.5, 11.5), (13, 15), (16.5, 17)]
-}
-
-# Meeting duration (in hours)
-meeting_duration = 0.5
-
-print(schedule_meeting(schedules, meeting_duration))
+schedule_meeting()

@@ -1,67 +1,66 @@
 from z3 import *
 
-# Define the variables
+# Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
+
+# Define the start and end times
+start_times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
+end_times = ['09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30']
+
+# Convert start and end times to minutes
+start_times_minutes = [int(t[:2]) * 60 + int(t[3:]) for t in start_times]
+end_times_minutes = [int(t[:2]) * 60 + int(t[3:]) for t in end_times]
+
+# Define the meeting duration in minutes
 meeting_duration = 30
 
-# Convert time strings to minutes
-time_in_minutes = {}
-for time in times:
-    hours, minutes = map(int, time.split(':'))
-    time_in_minutes[time] = hours * 60 + minutes
-
-# Define the schedules
+# Define the existing schedules for Mary and Alexis
 mary_schedule = {
-    'Monday': [time_in_minutes['09:00'], time_in_minutes['10:00']],
-    'Tuesday': [time_in_minutes['10:00'], time_in_minutes['10:30'], time_in_minutes['15:30'], time_in_minutes['16:00']],
-    'Wednesday': [time_in_minutes['09:30'], time_in_minutes['10:00'], time_in_minutes['15:00'], time_in_minutes['15:30']],
-    'Thursday': [time_in_minutes['09:00'], time_in_minutes['10:00'], time_in_minutes['10:30'], time_in_minutes['11:30']]
+    'Monday': [],
+    'Tuesday': [start_times_minutes[2], start_times_minutes[13], start_times_minutes[14]],
+    'Wednesday': [start_times_minutes[1], start_times_minutes[13]],
+    'Thursday': [start_times_minutes[0], start_times_minutes[5]]
 }
 
 alexis_schedule = {
-    'Monday': [time_in_minutes['09:00'], time_in_minutes['10:00'], time_in_minutes['10:30'], time_in_minutes['12:00'], time_in_minutes['12:30'], time_in_minutes['16:30']],
-    'Tuesday': [time_in_minutes['09:00'], time_in_minutes['10:00'], time_in_minutes['10:30'], time_in_minutes['11:30'], time_in_minutes['12:00'], time_in_minutes['15:30'], time_in_minutes['16:00'], time_in_minutes['17:00']],
-    'Wednesday': [time_in_minutes['09:00'], time_in_minutes['11:00'], time_in_minutes['11:30'], time_in_minutes['17:00']],
-    'Thursday': [time_in_minutes['10:00'], time_in_minutes['12:00'], time_in_minutes['14:00'], time_in_minutes['14:30'], time_in_minutes['15:30'], time_in_minutes['16:00'], time_in_minutes['16:30'], time_in_minutes['17:00']]
+    'Monday': [start_times_minutes[0], start_times_minutes[2], start_times_minutes[8], start_times_minutes[14]],
+    'Tuesday': [start_times_minutes[0], start_times_minutes[2], start_times_minutes[5], start_times_minutes[7], start_times_minutes[13], start_times_minutes[16]],
+    'Wednesday': [start_times_minutes[0], start_times_minutes[2], start_times_minutes[11]],
+    'Thursday': [start_times_minutes[4], start_times_minutes[10], start_times_minutes[13], start_times_minutes[14], start_times_minutes[16]]
 }
 
 # Define the solver
 solver = Solver()
 
 # Define the variables
-day = Int('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
+day = [Bool(f'day_{i}') for i in range(len(days))]
+start_time = [Bool(f'start_time_{i}') for i in range(len(start_times))]
+end_time = [Bool(f'end_time_{i}') for i in range(len(end_times))]
 
-# Add constraints
-for d in days:
-    for t in times:
-        if t in mary_schedule[d] or t in alexis_schedule[d]:
-            solver.assert(And(day!= d, start_time!= time_in_minutes[t], end_time!= time_in_minutes[t]))
+# Define the constraints
+for i, d in enumerate(days):
+    solver.add(Or([day[i]]))
+    for t in mary_schedule[d]:
+        solver.add(Not(And([day[i], start_time[t]])))
+    for t in alexis_schedule[d]:
+        solver.add(Not(And([day[i], start_time[t]])))
+    solver.add(Implies(day[i], Or([start_time[t] for t in range(len(start_times))])))
+    solver.add(Implies(day[i], Or([end_time[t] for t in range(len(end_times))])))
+    solver.add(Implies(day[i], start_time[0] == Or([start_time[t] for t in range(1, len(start_times))])))
+    solver.add(Implies(day[i], end_time[-1] == Or([end_time[t] for t in range(len(end_times) - 1)])))
+    for t in range(len(start_times)):
+        solver.add(Implies(day[i], And([start_time[t], end_time[t] == start_time[t] + meeting_duration])))
+        solver.add(Implies(day[i], And([end_time[t], start_time[t] == end_time[t] - meeting_duration])))
 
-# Meeting duration constraint
-solver.assert(And(start_time < end_time, end_time - start_time == meeting_duration))
-
-# Earliest availability constraint
-solver.assert(Or(day == 'Monday', And(day == 'Tuesday', start_time >= time_in_minutes['10:30']), And(day == 'Wednesday', start_time >= time_in_minutes['09:30']), And(day == 'Thursday', start_time >= time_in_minutes['10:30'])))
-
-# Check if a solution exists
+# Check the solution
 if solver.check() == sat:
-    # Get the solution
     model = solver.model()
-    day_value = days[model[day].as_long()]
-    start_time_value = model[start_time].as_long()
-    end_time_value = model[end_time].as_long()
-
-    # Convert time from minutes to string
-    start_time_str = '{:02d}:{:02d}'.format(*divmod(start_time_value, 60))
-    end_time_str = '{:02d}:{:02d}'.format(*divmod(end_time_value, 60))
-
-    # Print the solution
-    print('SOLUTION:')
-    print(f'Day: {day_value}')
-    print(f'Start Time: {start_time_str}')
-    print(f'End Time: {end_time_str}')
+    day_index = [i for i, d in enumerate(days) if model.evaluate(day[i]).as_bool() == True][0]
+    start_time_index = [i for i, t in enumerate(start_times) if model.evaluate(start_time[i]).as_bool() == True][0]
+    end_time_index = [i for i, t in enumerate(end_times) if model.evaluate(end_time[i]).as_bool() == True][0]
+    print(f"SOLUTION:")
+    print(f"Day: {days[day_index]}")
+    print(f"Start Time: {start_times[start_time_index]}")
+    print(f"End Time: {end_times[end_time_index]}")
 else:
-    print('No solution exists.')
+    print("No solution exists.")

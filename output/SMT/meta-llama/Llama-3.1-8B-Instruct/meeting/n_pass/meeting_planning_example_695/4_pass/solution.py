@@ -1,87 +1,121 @@
 from z3 import *
 
-# Define the travel times
+# Define the variables
+start_time = 0
+end_time = 1440  # 24 hours in minutes
+friend_availability = {
+    'Paul': (4*60 + 15, 9*60 + 15),
+    'Carol': (6*60, 8*60 + 15),
+    'Patricia': (8*60, 9*60 + 30),
+    'Karen': (5*60, 7*60),
+    'Nancy': (11*60 + 45, 10*60),
+    'Jeffrey': (8*60, 8*60 + 45),
+    'Matthew': (3*60 + 45, 9*60 + 45)
+}
+
 travel_times = {
-    'Bayview': {'Nob Hill': 20, 'Union Square': 17, 'Chinatown': 18, 'The Castro': 20, 'Presidio': 31, 'Pacific Heights': 23, 'Russian Hill': 23},
-    'Nob Hill': {'Bayview': 19, 'Union Square': 7, 'Chinatown': 6, 'The Castro': 17, 'Presidio': 17, 'Pacific Heights': 8, 'Russian Hill': 5},
-    'Union Square': {'Bayview': 15, 'Nob Hill': 9, 'Chinatown': 7, 'The Castro': 19, 'Presidio': 24, 'Pacific Heights': 15, 'Russian Hill': 13},
-    'Chinatown': {'Bayview': 22, 'Nob Hill': 8, 'Union Square': 7, 'The Castro': 22, 'Presidio': 19, 'Pacific Heights': 10, 'Russian Hill': 7},
-    'The Castro': {'Bayview': 19, 'Nob Hill': 16, 'Union Square': 19, 'Chinatown': 20, 'Presidio': 20, 'Pacific Heights': 16, 'Russian Hill': 18},
-    'Presidio': {'Bayview': 31, 'Nob Hill': 18, 'Union Square': 22, 'Chinatown': 21, 'The Castro': 21, 'Pacific Heights': 11, 'Russian Hill': 14},
-    'Pacific Heights': {'Bayview': 22, 'Nob Hill': 8, 'Union Square': 12, 'Chinatown': 11, 'The Castro': 16, 'Presidio': 11, 'Russian Hill': 7},
-    'Russian Hill': {'Bayview': 23, 'Nob Hill': 5, 'Union Square': 11, 'Chinatown': 9, 'The Castro': 21, 'Presidio': 14, 'Pacific Heights': 7}
+    ('Bayview', 'Nob Hill'): 20,
+    ('Bayview', 'Union Square'): 17,
+    ('Bayview', 'Chinatown'): 18,
+    ('Bayview', 'The Castro'): 20,
+    ('Bayview', 'Presidio'): 31,
+    ('Bayview', 'Pacific Heights'): 23,
+    ('Bayview', 'Russian Hill'): 23,
+    ('Nob Hill', 'Bayview'): 19,
+    ('Nob Hill', 'Union Square'): 7,
+    ('Nob Hill', 'Chinatown'): 6,
+    ('Nob Hill', 'The Castro'): 17,
+    ('Nob Hill', 'Presidio'): 17,
+    ('Nob Hill', 'Pacific Heights'): 8,
+    ('Nob Hill', 'Russian Hill'): 5,
+    ('Union Square', 'Bayview'): 15,
+    ('Union Square', 'Nob Hill'): 9,
+    ('Union Square', 'Chinatown'): 7,
+    ('Union Square', 'The Castro'): 19,
+    ('Union Square', 'Presidio'): 24,
+    ('Union Square', 'Pacific Heights'): 15,
+    ('Union Square', 'Russian Hill'): 13,
+    ('Chinatown', 'Bayview'): 22,
+    ('Chinatown', 'Nob Hill'): 8,
+    ('Chinatown', 'Union Square'): 7,
+    ('Chinatown', 'The Castro'): 22,
+    ('Chinatown', 'Presidio'): 19,
+    ('Chinatown', 'Pacific Heights'): 10,
+    ('Chinatown', 'Russian Hill'): 7,
+    ('The Castro', 'Bayview'): 19,
+    ('The Castro', 'Nob Hill'): 16,
+    ('The Castro', 'Union Square'): 19,
+    ('The Castro', 'Chinatown'): 20,
+    ('The Castro', 'Presidio'): 20,
+    ('The Castro', 'Pacific Heights'): 16,
+    ('The Castro', 'Russian Hill'): 18,
+    ('Presidio', 'Bayview'): 31,
+    ('Presidio', 'Nob Hill'): 18,
+    ('Presidio', 'Union Square'): 22,
+    ('Presidio', 'Chinatown'): 21,
+    ('Presidio', 'The Castro'): 21,
+    ('Presidio', 'Pacific Heights'): 11,
+    ('Presidio', 'Russian Hill'): 14,
+    ('Pacific Heights', 'Bayview'): 22,
+    ('Pacific Heights', 'Nob Hill'): 8,
+    ('Pacific Heights', 'Union Square'): 12,
+    ('Pacific Heights', 'Chinatown'): 11,
+    ('Pacific Heights', 'The Castro'): 16,
+    ('Pacific Heights', 'Presidio'): 11,
+    ('Pacific Heights', 'Russian Hill'): 7,
+    ('Russian Hill', 'Bayview'): 23,
+    ('Russian Hill', 'Nob Hill'): 5,
+    ('Russian Hill', 'Union Square'): 11,
+    ('Russian Hill', 'Chinatown'): 9,
+    ('Russian Hill', 'The Castro'): 21,
+    ('Russian Hill', 'Presidio'): 14,
+    ('Russian Hill', 'Pacific Heights'): 7
 }
 
-# Define the constraints
-start_time = 9 * 60  # 9:00 AM
-end_time = 23 * 60  # 11:00 PM
-
-# Define the people and their availability
-people = {
-    'Paul': (4 * 60 + 15, 9 * 60 + 15),  # 4:15 PM to 9:15 PM
-    'Carol': (6 * 60, 8 * 60 + 15),  # 6:00 PM to 8:15 PM
-    'Patricia': (20 * 60, 21 * 60 + 30),  # 8:00 PM to 9:30 PM
-    'Karen': (5 * 60, 7 * 60),  # 5:00 PM to 7:00 PM
-    'Nancy': (11 * 60 + 45, 22 * 60),  # 11:45 AM to 10:00 PM
-    'Jeffrey': (20 * 60, 20 * 60 + 45),  # 8:00 PM to 8:45 PM
-    'Matthew': (3 * 60 + 45, 21 * 60 + 45)  # 3:45 PM to 9:45 PM
-}
-
-# Define the minimum meeting times
-min_meeting_times = {
-    'Paul': 60,
-    'Carol': 120,
-    'Patricia': 75,
-    'Karen': 45,
-    'Nancy': 30,
-    'Jeffrey': 45,
-    'Matthew': 75
-}
+# Define the solver
+s = Solver()
 
 # Define the variables
-locations = list(travel_times.keys())
-s = Optimize()
-x = [Bool(f'meet_{person}') for person in people]
-y = [Int(f'time_{person}') for person in people]
-z = [Int(f'distance_{person}') for person in people]
+friends = list(friend_availability.keys())
+times = [Int(f + '_time') for f in friends]
+locations = [Int(f + '_location') for f in friends]
 
-# Sort the people based on their availability
-sorted_people = sorted(people.items(), key=lambda x: x[1][0])
+# Add constraints
+for i, f in enumerate(friends):
+    s.add(times[i] >= start_time)
+    s.add(times[i] <= end_time)
+    s.add(locations[i] >= 0)
+    s.add(locations[i] < len(friend_availability[f]))
 
-# Define the constraints
-for i, (person, availability) in enumerate(sorted_people):
-    s.add(y[i] >= availability[0])
-    s.add(y[i] <= availability[1])
-    s.add(x[i] == BoolVal(True))
-    s.add(y[i] >= start_time)
-    s.add(y[i] <= end_time)
-    s.add(z[i] >= 0)
-    s.add(z[i] <= 2 * 60)  # maximum distance is 2 hours
+# Add constraints for meeting times
+for f in friends:
+    s.add(times[friends.index(f)] >= friend_availability[f][0])
+    s.add(times[friends.index(f)] <= friend_availability[f][1])
 
-for i, (person1, availability1) in enumerate(sorted_people):
-    for j, (person2, availability2) in enumerate(sorted_people):
-        if person1 in travel_times and person2 in travel_times:
-            s.add(z[i] + travel_times[person1][person2] >= y[i])
-            s.add(z[i] + travel_times[person1][person2] >= y[j])
+# Add constraints for meeting durations
+durations = [Int(f + '_duration') for f in friends]
+for i, f in enumerate(friends):
+    s.add(durations[i] >= 30)  # Minimum meeting duration
+    s.add(durations[i] <= 120)  # Maximum meeting duration
 
-for i, (person, availability) in enumerate(sorted_people):
-    if person in min_meeting_times:
-        s.add(y[i] + min_meeting_times[person] >= y[i+1] if i < len(sorted_people) - 1 else y[i])
+# Add constraints for travel times
+travel_times_map = {key: value for key, value in travel_times.items()}
+for i, f in enumerate(friends):
+    for j, other_f in enumerate(friends):
+        if i!= j:
+            s.add(times[i] + travel_times_map[(str(locations[i]), str(locations[j]))] >= times[j])
 
-# Define the objective function
-s.add(x[sorted_people.index(('Paul', people['Paul']))] * 60 + x[sorted_people.index(('Carol', people['Carol']))] * 120 + x[sorted_people.index(('Patricia', people['Patricia']))] * 75 + x[sorted_people.index(('Karen', people['Karen']))] * 45 + x[sorted_people.index(('Nancy', people['Nancy']))] * 30 + x[sorted_people.index(('Jeffrey', people['Jeffrey']))] * 45 + x[sorted_people.index(('Matthew', people['Matthew']))] * 75)
+# Solve the problem
+s.add(Or([And(times[i] + durations[i] >= friend_availability[f][0], times[i] + durations[i] <= friend_availability[f][1]) for f in friends]))
+s.add(Or([And(times[i] + durations[i] >= start_time, times[i] + durations[i] <= end_time) for f in friends]))
 
-# Solve the optimization problem
-s.check()
-model = s.model()
-
-# Print the solution
-print('SOLUTION:')
-for i, (person, availability) in enumerate(sorted_people):
-    if model[x[i]].as_bool():
-        print(f'Meet {person} at {model[y[i]]} minutes after 9:00 AM')
-        print(f'Travel time: {model[z[i]]} minutes')
-        print()
-
-# Print the total score
-print('Total score:', model[x[sorted_people.index(('Paul', people['Paul']))]].as_bool() * 60 + model[x[sorted_people.index(('Carol', people['Carol']))]].as_bool() * 120 + model[x[sorted_people.index(('Patricia', people['Patricia']))]].as_bool() * 75 + model[x[sorted_people.index(('Karen', people['Karen']))]].as_bool() * 45 + model[x[sorted_people.index(('Nancy', people['Nancy']))]].as_bool() * 30 + model[x[sorted_people.index(('Jeffrey', people['Jeffrey']))]].as_bool() * 45 + model[x[sorted_people.index(('Matthew', people['Matthew']))]].as_bool() * 75)
+if s.check() == sat:
+    m = s.model()
+    schedule = {}
+    for f in friends:
+        schedule[f] = (m[times[friends.index(f)]].as_long(), m[locations[friends.index(f)]].as_long(), m[durations[friends.index(f)]].as_long())
+    print('SOLUTION:')
+    for f, (time, location, duration) in schedule.items():
+        print(f'Meet {f} at {time} minutes past 9:00 AM at {location} for {duration} minutes.')
+else:
+    print('No solution found.')

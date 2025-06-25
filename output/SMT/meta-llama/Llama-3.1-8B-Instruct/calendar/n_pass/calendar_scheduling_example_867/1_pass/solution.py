@@ -1,94 +1,85 @@
 from z3 import *
 
-# Define the days and times
+# Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-times = [9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+# Define the start and end times of the day
+start_times = [9, 9, 9, 9]
+end_times = [17, 17, 17, 17]
 
 # Define the existing schedules for Betty and Scott
 betty_schedule = {
-    'Monday': [10, 10, 13, 14, 15, 15, 16, 16],
-    'Tuesday': [9, 9, 11, 12, 12, 13, 13, 16, 16],
-    'Wednesday': [9, 10, 13, 13, 14, 14, 15, 15, 16, 16],
-    'Thursday': [9, 10, 11, 14, 14, 15, 15, 16, 16]
+    'Monday': [(10, 10, 30), (13, 30, 14, 0), (15, 0, 15, 30), (16, 0, 16, 30)],
+    'Tuesday': [(9, 0, 9, 30), (11, 30, 12, 0), (12, 30, 13, 0), (13, 30, 14, 0), (16, 30, 17, 0)],
+    'Wednesday': [(9, 30, 10, 30), (13, 0, 13, 30), (14, 0, 14, 30)],
+    'Thursday': [(9, 30, 10, 0), (11, 30, 12, 0), (14, 0, 14, 30), (15, 0, 15, 30), (16, 30, 17, 0)]
 }
 
 scott_schedule = {
-    'Monday': [9, 9, 15, 15, 16, 16],
-    'Tuesday': [9, 9, 10, 11, 11, 12, 12, 13, 14, 16, 16],
-    'Wednesday': [9, 9, 12, 13, 13, 14, 14, 15, 15, 16, 16],
-    'Thursday': [9, 10, 11, 12, 12, 15, 16, 16]
+    'Monday': [(9, 30, 15, 0), (15, 30, 16, 0), (16, 30, 17, 0)],
+    'Tuesday': [(9, 0, 9, 30), (10, 0, 11, 0), (11, 30, 12, 0), (12, 30, 13, 30), (14, 0, 15, 0), (16, 0, 16, 30)],
+    'Wednesday': [(9, 30, 12, 30), (13, 0, 13, 30), (14, 0, 14, 30), (15, 0, 15, 30), (16, 0, 16, 30)],
+    'Thursday': [(9, 0, 9, 30), (10, 0, 10, 30), (11, 0, 12, 0), (12, 30, 13, 0), (15, 0, 16, 0), (16, 30, 17, 0)]
 }
 
-# Define the constraints
-betty_constraints = [
-    And(Not(betty_schedule['Monday'][0] <= time <= betty_schedule['Monday'][1]),
-       Not(betty_schedule['Monday'][2] <= time <= betty_schedule['Monday'][3]),
-       Not(betty_schedule['Monday'][4] <= time <= betty_schedule['Monday'][5]),
-       Not(betty_schedule['Monday'][6] <= time <= betty_schedule['Monday'][7])),
-    And(Not(betty_schedule['Tuesday'][0] <= time <= betty_schedule['Tuesday'][1]),
-       Not(betty_schedule['Tuesday'][2] <= time <= betty_schedule['Tuesday'][3]),
-       Not(betty_schedule['Tuesday'][4] <= time <= betty_schedule['Tuesday'][5]),
-       Not(betty_schedule['Tuesday'][6] <= time <= betty_schedule['Tuesday'][7]),
-       Not(time < 15)),
-    And(Not(betty_schedule['Thursday'][0] <= time <= betty_schedule['Thursday'][1]),
-       Not(betty_schedule['Thursday'][2] <= time <= betty_schedule['Thursday'][3]),
-       Not(betty_schedule['Thursday'][4] <= time <= betty_schedule['Thursday'][5]),
-       Not(betty_schedule['Thursday'][6] <= time <= betty_schedule['Thursday'][7]),
-       Not(time < 15))
-]
+# Define the meeting duration
+meeting_duration = 30
 
-scott_constraints = [
-    And(Not(scott_schedule['Monday'][0] <= time <= scott_schedule['Monday'][1]),
-       Not(scott_schedule['Monday'][2] <= time <= scott_schedule['Monday'][3]),
-       Not(scott_schedule['Monday'][4] <= time <= scott_schedule['Monday'][5]),
-       Not(scott_schedule['Monday'][6] <= time <= scott_schedule['Monday'][7])),
-    And(Not(scott_schedule['Tuesday'][0] <= time <= scott_schedule['Tuesday'][1]),
-       Not(scott_schedule['Tuesday'][2] <= time <= scott_schedule['Tuesday'][3]),
-       Not(scott_schedule['Tuesday'][4] <= time <= scott_schedule['Tuesday'][5]),
-       Not(scott_schedule['Tuesday'][6] <= time <= scott_schedule['Tuesday'][7]),
-       Not(time < 15)),
-    And(Not(scott_schedule['Wednesday'][0] <= time <= scott_schedule['Wednesday'][1]),
-       Not(scott_schedule['Wednesday'][2] <= time <= scott_schedule['Wednesday'][3]),
-       Not(scott_schedule['Wednesday'][4] <= time <= scott_schedule['Wednesday'][5]),
-       Not(scott_schedule['Wednesday'][6] <= time <= scott_schedule['Wednesday'][7]),
-       Not(scott_schedule['Wednesday'][8] <= time <= scott_schedule['Wednesday'][9]),
-       Not(time < 15)),
-    And(Not(scott_schedule['Thursday'][0] <= time <= scott_schedule['Thursday'][1]),
-       Not(scott_schedule['Thursday'][2] <= time <= scott_schedule['Thursday'][3]),
-       Not(scott_schedule['Thursday'][4] <= time <= scott_schedule['Thursday'][5]),
-       Not(scott_schedule['Thursday'][6] <= time <= scott_schedule['Thursday'][7]),
-       Not(time < 15))
-]
+# Define the constraints
+def constraints(day, start_time, end_time):
+    # Ensure the meeting is within the work hours
+    if start_time < start_times[days.index(day)] or end_time > end_times[days.index(day)]:
+        return False
+
+    # Ensure the meeting does not conflict with Betty's schedule
+    for time in betty_schedule[day]:
+        if (time[0] <= start_time < time[2]) or (time[3] < end_time <= time[1]):
+            return False
+
+    # Ensure the meeting does not conflict with Scott's schedule
+    for time in scott_schedule[day]:
+        if (time[0] <= start_time < time[2]) or (time[3] < end_time <= time[1]):
+            return False
+
+    # Ensure the meeting is not on Monday or Tuesday before 15:00 for Betty
+    if day in ['Monday', 'Tuesday'] and start_time < 15:
+        return False
+
+    # Ensure Scott does not have too many meetings on Wednesday
+    if day == 'Wednesday' and scott_schedule[day].count((start_time, end_time)) > 1:
+        return False
+
+    return True
+
+# Define the solver
+solver = Solver()
 
 # Define the variables
 day = Int('day')
 start_time = Int('start_time')
 end_time = Int('end_time')
 
-# Define the solver
-solver = Solver()
-
-# Add the constraints
-for constraint in betty_constraints:
-    solver.add(constraint)
-for constraint in scott_constraints:
-    solver.add(constraint)
-
-# Add the constraints for the meeting duration
-solver.add(And(0 <= start_time, start_time <= 30, 0 <= end_time, end_time <= 30, end_time - start_time == 30))
-
-# Add the constraints for the meeting day
-solver.add(day in [0, 1, 2, 3])
-
-# Add the constraints for the meeting time
-solver.add(And(9 <= start_time, start_time <= 17, 9 <= end_time, end_time <= 17))
+# Add the constraints to the solver
+solver.add(day >= 0)
+solver.add(day < len(days))
+solver.add(start_time >= start_times[day])
+solver.add(start_time < end_times[day])
+solver.add(end_time > start_time)
+solver.add(end_time <= end_times[day])
+solver.add(ForAll([day, start_time, end_time], Implies(And(day >= 0, day < len(days), start_time >= start_times[day], start_time < end_times[day], end_time > start_time, end_time <= end_times[day]), constraints(days[day], start_time, end_time))))
 
 # Solve the problem
-if solver.check() == sat:
+solution = solver.check()
+
+# Print the solution
+if solution == sat:
     model = solver.model()
-    print('SOLUTION:')
-    print(f'Day: {days[model[day].as_long()]}')
-    print(f'Start Time: {model[start_time].as_long()}:00')
-    print(f'End Time: {(model[start_time].as_long() + 30):02d}:00')
+    day_val = model[day].as_long()
+    start_time_val = model[start_time].as_long()
+    end_time_val = model[end_time].as_long()
+    print(f'SOLUTION:')
+    print(f'Day: {days[day_val]}')
+    print(f'Start Time: {str(start_time_val).zfill(2)}:00')
+    print(f'End Time: {str(end_time_val).zfill(2)}:00')
 else:
-    print('No solution found')
+    print('No solution found.')

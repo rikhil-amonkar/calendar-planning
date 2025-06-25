@@ -1,143 +1,92 @@
 from z3 import *
+from typing import List, Dict
 
-# Define the variables
-days = 32
+# Define the cities
 cities = ['Stockholm', 'Hamburg', 'Florence', 'Istanbul', 'Oslo', 'Vilnius', 'Santorini', 'Munich', 'Frankfurt', 'Krakow']
-days_in_city = {city: 0 for city in cities}
-flight_days = {}
-for i in range(days):
-    flight_days[i] = {}
-    for city in cities:
-        flight_days[i][city] = Int(f'flight_{city}_{i}')
 
-# Define the constraints
+# Define the direct flights
+flights = {
+    'Oslo': ['Stockholm', 'Istanbul', 'Krakow', 'Hamburg'],
+    'Stockholm': ['Oslo', 'Istanbul', 'Munich', 'Hamburg', 'Santorini'],
+    'Hamburg': ['Stockholm', 'Istanbul', 'Munich'],
+    'Florence': ['Frankfurt'],
+    'Istanbul': ['Oslo', 'Krakow', 'Vilnius', 'Stockholm', 'Munich', 'Hamburg'],
+    'Krakow': ['Frankfurt', 'Vilnius', 'Munich', 'Stockholm'],
+    'Vilnius': ['Istanbul', 'Krakow', 'Munich', 'Frankfurt'],
+    'Santorini': ['Oslo', 'Stockholm'],
+    'Munich': ['Stockholm', 'Hamburg', 'Istanbul', 'Krakow', 'Florence', 'Vilnius'],
+    'Frankfurt': ['Florence', 'Istanbul', 'Krakow', 'Vilnius', 'Munich', 'Hamburg'],
+    'Krakow': ['Oslo', 'Istanbul', 'Vilnius', 'Munich']
+}
+
+# Define the stay days for each city
+stay_days = {
+    'Stockholm': 3,
+    'Hamburg': 5,
+    'Florence': 2,
+    'Istanbul': 5,
+    'Oslo': 5,
+    'Vilnius': 5,
+    'Santorini': 2,
+    'Munich': 5,
+    'Frankfurt': 4,
+    'Krakow': 5
+}
+
+# Define the workshop days for Krakow
+workshop_days = [5, 6, 7, 8, 9]
+
+# Define the annual show days for Istanbul
+annual_show_days = [25, 26, 27, 28, 29]
+
+# Create a Z3 solver
 solver = Solver()
 
-# Each city can only be visited once
-for i in range(days):
-    for city in cities:
-        solver.add(flight_days[i][city] == 0)
+# Create variables for each city
+city_vars = {city: Int(city) for city in cities}
 
-# Spend 3 days in Stockholm
-solver.add(flight_days[0]['Stockholm'] == 1)
-solver.add(flight_days[1]['Stockholm'] == 1)
-solver.add(flight_days[2]['Stockholm'] == 1)
-solver.add(flight_days[3]['Stockholm'] == 0)
-solver.add(flight_days[4]['Stockholm'] == 0)
+# Create constraints for each city
+for city in cities:
+    # Ensure the city is visited for the correct number of days
+    solver.add(And(Ge(city_vars[city], 0), Lt(city_vars[city], stay_days[city])))
 
-# Spend 5 days in Hamburg
-solver.add(flight_days[5]['Hamburg'] == 1)
-solver.add(flight_days[6]['Hamburg'] == 1)
-solver.add(flight_days[7]['Hamburg'] == 1)
-solver.add(flight_days[8]['Hamburg'] == 1)
-solver.add(flight_days[9]['Hamburg'] == 1)
-solver.add(flight_days[10]['Hamburg'] == 0)
+# Create constraints for each flight
+for city in cities:
+    for flight in flights[city]:
+        # Ensure the flight is taken on the correct day
+        solver.add(Or(city_vars[city] == city_vars[flight] - 1, city_vars[city] == city_vars[flight] + 1))
 
-# Spend 2 days in Florence
-solver.add(flight_days[11]['Florence'] == 1)
-solver.add(flight_days[12]['Florence'] == 1)
-solver.add(flight_days[13]['Florence'] == 0)
+# Create constraints for the workshop and annual show
+for day in workshop_days:
+    solver.add(city_vars['Krakow'] >= day)
+    solver.add(city_vars['Krakow'] <= day + 4)
 
-# Spend 5 days in Istanbul
-solver.add(flight_days[14]['Istanbul'] == 1)
-solver.add(flight_days[15]['Istanbul'] == 1)
-solver.add(flight_days[16]['Istanbul'] == 1)
-solver.add(flight_days[17]['Istanbul'] == 1)
-solver.add(flight_days[18]['Istanbul'] == 1)
-solver.add(flight_days[19]['Istanbul'] == 0)
+for day in annual_show_days:
+    solver.add(city_vars['Istanbul'] >= day)
+    solver.add(city_vars['Istanbul'] <= day + 4)
 
-# Spend 5 days in Oslo
-solver.add(flight_days[20]['Oslo'] == 1)
-solver.add(flight_days[21]['Oslo'] == 1)
-solver.add(flight_days[22]['Oslo'] == 1)
-solver.add(flight_days[23]['Oslo'] == 1)
-solver.add(flight_days[24]['Oslo'] == 1)
-solver.add(flight_days[25]['Oslo'] == 0)
+# Ensure the total number of days is 32
+solver.add(And(Ge(sum(city_vars.values()), 0), Lt(sum(city_vars.values()), 32)))
 
-# Spend 5 days in Vilnius
-solver.add(flight_days[26]['Vilnius'] == 1)
-solver.add(flight_days[27]['Vilnius'] == 1)
-solver.add(flight_days[28]['Vilnius'] == 1)
-solver.add(flight_days[29]['Vilnius'] == 1)
-solver.add(flight_days[30]['Vilnius'] == 1)
-solver.add(flight_days[31]['Vilnius'] == 0)
-
-# Spend 2 days in Santorini
-solver.add(flight_days[20]['Santorini'] == 1)
-solver.add(flight_days[21]['Santorini'] == 1)
-solver.add(flight_days[22]['Santorini'] == 0)
-
-# Spend 5 days in Munich
-solver.add(flight_days[11]['Munich'] == 1)
-solver.add(flight_days[12]['Munich'] == 1)
-solver.add(flight_days[13]['Munich'] == 1)
-solver.add(flight_days[14]['Munich'] == 1)
-solver.add(flight_days[15]['Munich'] == 1)
-solver.add(flight_days[16]['Munich'] == 0)
-
-# Spend 4 days in Frankfurt
-solver.add(flight_days[17]['Frankfurt'] == 1)
-solver.add(flight_days[18]['Frankfurt'] == 1)
-solver.add(flight_days[19]['Frankfurt'] == 1)
-solver.add(flight_days[20]['Frankfurt'] == 1)
-solver.add(flight_days[21]['Frankfurt'] == 0)
-
-# Spend 5 days in Krakow
-solver.add(flight_days[6]['Krakow'] == 1)
-solver.add(flight_days[7]['Krakow'] == 1)
-solver.add(flight_days[8]['Krakow'] == 1)
-solver.add(flight_days[9]['Krakow'] == 1)
-solver.add(flight_days[10]['Krakow'] == 1)
-solver.add(flight_days[11]['Krakow'] == 0)
-
-# Attend workshop in Krakow between day 5 and day 9
-solver.add(flight_days[5]['Krakow'] == 0)
-solver.add(flight_days[9]['Krakow'] == 0)
-
-# Direct flights
-solver.add(flight_days[0]['Stockholm'] == 1)
-solver.add(flight_days[1]['Oslo'] == 1)
-solver.add(flight_days[2]['Stockholm'] == 1)
-solver.add(flight_days[3]['Hamburg'] == 1)
-solver.add(flight_days[4]['Stockholm'] == 1)
-solver.add(flight_days[5]['Krakow'] == 1)
-solver.add(flight_days[6]['Hamburg'] == 1)
-solver.add(flight_days[7]['Krakow'] == 1)
-solver.add(flight_days[8]['Istanbul'] == 1)
-solver.add(flight_days[9]['Krakow'] == 1)
-solver.add(flight_days[10]['Vilnius'] == 1)
-solver.add(flight_days[11]['Munich'] == 1)
-solver.add(flight_days[12]['Frankfurt'] == 1)
-solver.add(flight_days[13]['Florence'] == 1)
-solver.add(flight_days[14]['Munich'] == 1)
-solver.add(flight_days[15]['Istanbul'] == 1)
-solver.add(flight_days[16]['Oslo'] == 1)
-solver.add(flight_days[17]['Frankfurt'] == 1)
-solver.add(flight_days[18]['Istanbul'] == 1)
-solver.add(flight_days[19]['Stockholm'] == 1)
-solver.add(flight_days[20]['Santorini'] == 1)
-solver.add(flight_days[21]['Oslo'] == 1)
-solver.add(flight_days[22]['Vilnius'] == 1)
-solver.add(flight_days[23]['Frankfurt'] == 1)
-solver.add(flight_days[24]['Hamburg'] == 1)
-solver.add(flight_days[25]['Istanbul'] == 1)
-solver.add(flight_days[26]['Vilnius'] == 1)
-solver.add(flight_days[27]['Munich'] == 1)
-solver.add(flight_days[28]['Krakow'] == 1)
-solver.add(flight_days[29]['Frankfurt'] == 1)
-solver.add(flight_days[30]['Hamburg'] == 1)
-solver.add(flight_days[31]['Stockholm'] == 1)
-
-# Check if the solution is valid
+# Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    trip_plan = {}
+    # Create the itinerary
+    itinerary = []
     for city in cities:
-        trip_plan[city] = []
-        for i in range(days):
-            if model[f'flight_{city}_{i}'] == 1:
-                trip_plan[city].append(i)
-    for city in trip_plan:
-        print(f'{city}: {trip_plan[city]}')
+        start_day = model[city].as_long()
+        end_day = start_day + stay_days[city] - 1
+        if start_day == end_day:
+            itinerary.append({"day_range": f"Day {start_day}", "place": city})
+        else:
+            itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+        for flight in flights[city]:
+            flight_day = model[city].as_long() + 1
+            itinerary.append({"day_range": f"Day {flight_day}", "place": city})
+            itinerary.append({"day_range": f"Day {flight_day}", "place": flight})
+    # Sort the itinerary by day
+    itinerary.sort(key=lambda x: int(x['day_range'].split('-')[0].split(' ')[1]))
+    # Print the itinerary
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
+    print("No solution found")

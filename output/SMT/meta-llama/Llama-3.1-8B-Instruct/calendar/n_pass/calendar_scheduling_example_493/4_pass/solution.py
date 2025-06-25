@@ -1,65 +1,89 @@
 from z3 import *
 
-# Define the day
-day = 'Monday'
+def schedule_meeting(day, start_time, end_time, participants, schedules):
+    # Create a solver
+    solver = Solver()
 
-# Define the start and end times
-start_time = 9 * 60  # 9:00
-end_time = 17 * 60  # 17:00
-meeting_duration = 30  # 30 minutes
+    # Define the variables
+    for participant in participants:
+        # Create a variable for each participant
+        participant_var = Bool(participant)
+        # Add the variable to the solver
+        solver.add(participant_var)
+
+    # Add constraints for each participant
+    for participant, schedule in schedules.items():
+        # Check if the participant has a schedule on the given day
+        if day in schedule:
+            # Get the schedule for the participant on the given day
+            participant_schedule = schedule[day]
+            # Check if the start time is within the participant's schedule
+            solver.add(Or([start_time >= t for t in participant_schedule]))
+            # Check if the end time is within the participant's schedule
+            solver.add(Or([t <= end_time for t in participant_schedule]))
+
+    # Add the constraint that the meeting duration is 30 minutes
+    solver.add(end_time - start_time == 0.5)
+
+    # Add the constraint that the meeting time is within the work hours
+    solver.add(And([9 <= start_time, start_time < 17, 9 <= end_time, end_time < 17]))
+
+    # Check if the solver has a solution
+    if solver.check() == sat:
+        # Get the model from the solver
+        model = solver.model()
+        # Get the start and end times from the model
+        start_time_value = int(model[start_time].as_decimal(10).numerator) / int(model[start_time].as_decimal(10).denominator)
+        end_time_value = int(model[end_time].as_decimal(10).numerator) / int(model[end_time].as_decimal(10).denominator)
+        # Format the start and end times as strings
+        start_time_str = "{:02d}:{:02d}".format(int(start_time_value), int((start_time_value - int(start_time_value)) * 60))
+        end_time_str = "{:02d}:{:02d}".format(int(end_time_value), int((end_time_value - int(end_time_value)) * 60))
+        # Print the solution
+        print("SOLUTION:")
+        print("Day: {}".format(day))
+        print("Start Time: {}".format(start_time_str))
+        print("End Time: {}".format(end_time_str))
+    else:
+        print("No solution found.")
 
 # Define the participants and their schedules
 participants = {
-    'Tyler': [start_time, end_time],
-    'Kelly': [start_time, end_time],
-    'Stephanie': [start_time + 11 * 60, start_time + 11 * 60 + 30],
-    'Hannah': [start_time, end_time],
-    'Joe': [start_time, start_time + 9 * 60, start_time + 10 * 60, start_time + 12 * 60, start_time + 12 * 60 + 30, start_time + 14 * 60, start_time + 17 * 60],
-    'Diana': [start_time, start_time + 9 * 60 + 30, start_time + 11 * 60 + 30, start_time + 12 * 60 + 30, start_time + 14 * 60 + 30, start_time + 16 * 60],
-    'Deborah': [start_time, start_time + 10 * 60, start_time + 12 * 60, start_time + 12 * 60 + 30, start_time + 13 * 60 + 30, start_time + 14 * 60 + 30, start_time + 16 * 60 + 30]
+    "Tyler": None,
+    "Kelly": None,
+    "Stephanie": None,
+    "Hannah": None,
+    "Joe": None,
+    "Diana": None,
+    "Deborah": None
+}
+schedules = {
+    "Tyler": {
+        "Monday": [9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17]
+    },
+    "Kelly": {
+        "Monday": [9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17]
+    },
+    "Stephanie": {
+        "Monday": [11, 11.5, 14.5, 15]
+    },
+    "Hannah": {
+        "Monday": [9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17]
+    },
+    "Joe": {
+        "Monday": [9, 9.5, 10, 10.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17]
+    },
+    "Diana": {
+        "Monday": [9, 9.5, 10, 10.5, 11.5, 12, 12.5, 13, 13.5, 14.5, 15, 15.5, 16, 16.5, 17]
+    },
+    "Deborah": {
+        "Monday": [9, 9.5, 10, 10.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17]
+    }
 }
 
-# Define the unavailable time slots
-unavailable_time_slots = [
-    (start_time, start_time + 30),  # 9:00 to 9:30
-    (start_time + 11 * 60, start_time + 11 * 60 + 30),  # 11:00 to 11:30
-    (start_time + 14 * 60, start_time + 14 * 60 + 30),  # 14:30 to 15:00
-    (start_time + 10 * 60, start_time + 10 * 60 + 30),  # 10:00 to 10:30
-    (start_time + 10 * 60 + 30, start_time + 12 * 60),  # 10:30 to 12:00
-    (start_time + 12 * 60, start_time + 12 * 60 + 30),  # 12:00 to 12:30
-    (start_time + 14 * 60, start_time + 17 * 60),  # 14:00 to 17:00
-    (start_time + 9 * 60, start_time + 9 * 60 + 30),  # 9:30 to 10:00
-    (start_time + 11 * 60 + 30, start_time + 12 * 60 + 30),  # 11:30 to 12:00
-    (start_time + 13 * 60, start_time + 14 * 60),  # 13:00 to 14:00
-    (start_time + 14 * 60 + 30, start_time + 15 * 60 + 30),  # 14:30 to 15:30
-    (start_time + 16 * 60, start_time + 17 * 60),  # 16:00 to 17:00
-    (start_time + 10 * 60, start_time + 12 * 60),  # 10:00 to 12:00
-    (start_time + 12 * 60 + 30, start_time + 13 * 60 + 30),  # 12:30 to 13:00
-    (start_time + 13 * 60 + 30, start_time + 14 * 60 + 30),  # 13:00 to 14:00
-    (start_time + 16 * 60 + 30, start_time + 17 * 60),  # 16:30 to 17:00
-]
+# Define the day, start time, and end time
+day = "Monday"
+start_time = Real('start_time')
+end_time = start_time + 0.5
 
-# Define the solver
-solver = Solver()
-
-# Define the variables
-time = Int('time')
-time_range = [start_time + i for i in range((end_time - start_time) // 30 + 1)]
-
-# Add constraints for each unavailable time slot
-for start, end in unavailable_time_slots:
-    solver.add(And(time >= start, time <= end))
-
-# Add constraint for meeting duration
-solver.add(And(time >= start_time + 30, time + meeting_duration <= end_time))
-
-# Solve the problem
-if solver.check() == sat:
-    model = solver.model()
-    time_value = model[time].as_long()
-    print(f"SOLUTION:")
-    print(f"Day: {day}")
-    print(f"Start Time: {time_value // 60:02d}:{time_value % 60:02d}")
-    print(f"End Time: {(time_value // 60 + meeting_duration // 60):02d}:{(time_value % 60 + meeting_duration % 60):02d}")
-else:
-    print("No solution found.")
+# Schedule the meeting
+schedule_meeting(day, start_time, end_time, participants, schedules)

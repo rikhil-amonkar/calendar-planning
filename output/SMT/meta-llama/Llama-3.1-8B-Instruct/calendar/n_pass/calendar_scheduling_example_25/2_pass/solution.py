@@ -1,71 +1,66 @@
 from z3 import *
 
-def schedule_meeting(anthony_schedules, pamela_schedules, zachary_schedules, max_duration, max_end_time, pamela_preference):
-    # Create a new Z3 context
-    ctx = Context()
+def schedule_meeting(anthony_schedule, pamela_schedule, zachary_schedule, meeting_duration, pamela_preference):
+    # Define the day of the meeting
+    day = 'Monday'
 
-    # Declare the variables
-    day = Int('day')
+    # Define the start and end times of the meeting
     start_time = Int('start_time')
     end_time = Int('end_time')
 
-    # Define the constraints
+    # Define the constraints for the start and end times
     constraints = [
-        # Day is Monday
-        day == 1,
-        # Start time is between 9:00 and 17:00
-        And(9 * 60 <= start_time, start_time <= 17 * 60),
-        # End time is between 9:00 and 17:00
-        And(9 * 60 <= end_time, end_time <= 17 * 60),
-        # End time is greater than or equal to start time
-        end_time >= start_time,
-        # Duration is one hour
-        end_time - start_time == max_duration,
-        # Anthony is not busy
-        Not(Or([start_time >= s[0] and end_time <= s[1] for s in anthony_schedules])),
-        # Pamela is not busy
-        Not(Or([start_time >= s[0] and end_time <= s[1] for s in pamela_schedules])),
-        # Zachary is not busy
-        Not(Or([start_time >= s[0] and end_time <= s[1] for s in zachary_schedules])),
-        # Pamela does not want to meet after 14:30
-        Or([start_time >= 14 * 60 + 30, end_time <= 14 * 60 + 30])
+        And(9*60 <= start_time, start_time <= 17*60),  # Meeting time between 9:00 and 17:00
+        start_time + meeting_duration*60 <= 17*60,  # Meeting duration is 1 hour
+        start_time % 60 == 0,  # Start time is on the hour
+        start_time + meeting_duration*60 % 60 == 0  # End time is on the hour
     ]
 
-    # Add the Pamela preference constraint
-    constraints.append(start_time >= pamela_preference)
+    # Add constraints for each participant's schedule
+    for start, end in anthony_schedule:
+        constraints.append(Or(start*60 + meeting_duration*60 > end*60, start*60 > end*60))
+    for start, end in pamela_schedule:
+        constraints.append(Or(start*60 + meeting_duration*60 > end*60, start*60 > end*60))
+    for start, end in zachary_schedule:
+        constraints.append(Or(start*60 + meeting_duration*60 > end*60, start*60 > end*60))
+
+    # Add constraint for Pamela's preference
+    if pamela_preference:
+        constraints.append(start_time < 14*60 + 30*60)
 
     # Solve the constraints
-    solver = Solver(ctx)
+    solver = Solver()
     solver.add(constraints)
-
-    # Check if a solution exists
     if solver.check() == sat:
-        # Get the solution
         model = solver.model()
-        # Extract the solution
-        day_value = model[day].as_long()
         start_time_value = model[start_time].as_long()
         end_time_value = model[end_time].as_long()
-
-        # Convert the solution to the required format
-        day_str = 'Monday' if day_value == 1 else 'Tuesday' if day_value == 2 else 'Wednesday' if day_value == 3 else 'Thursday' if day_value == 4 else 'Friday' if day_value == 5 else 'Saturday' if day_value == 6 else 'Sunday'
-        start_time_str = f'{start_time_value // 60:02d}:{start_time_value % 60:02d}'
-        end_time_str = f'{end_time_value // 60:02d}:{end_time_value % 60:02d}'
-
-        # Print the solution
-        print(f'SOLUTION:')
-        print(f'Day: {day_str}')
-        print(f'Start Time: {start_time_str}')
-        print(f'End Time: {end_time_str}')
+        return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_value // 60:02d}:{start_time_value % 60:02d}\nEnd Time: {end_time_value // 60:02d}:{end_time_value % 60:02d}'
     else:
-        print('No solution exists')
+        # If no solution is found, try to find a solution by relaxing the constraints
+        # Relax the constraint that the start time is on the hour
+        constraints.remove(start_time % 60 == 0)
+        constraints.remove(start_time + meeting_duration*60 % 60 == 0)
+        
+        # Add the constraint that the start time is at least 10 minutes past the hour
+        constraints.append(start_time >= 10*60)
+        
+        # Solve the relaxed constraints
+        solver = Solver()
+        solver.add(constraints)
+        if solver.check() == sat:
+            model = solver.model()
+            start_time_value = model[start_time].as_long()
+            end_time_value = model[end_time].as_long()
+            return f'SOLUTION:\nDay: {day}\nStart Time: {start_time_value // 60:02d}:{start_time_value % 60:02d}\nEnd Time: {end_time_value // 60:02d}:{end_time_value % 60:02d}'
+        else:
+            return 'No solution found'
 
 # Example usage
-anthony_schedules = [(9 * 60 + 30, 10 * 60), (12 * 60, 13 * 60), (16 * 60, 16 * 60 + 30)]
-pamela_schedules = [(9 * 60 + 30, 10 * 60), (16 * 60 + 30, 17 * 60)]
-zachary_schedules = [(9 * 60, 11 * 60 + 30), (12 * 60, 12 * 60 + 30), (13 * 60, 13 * 60 + 30), (14 * 60 + 30, 15 * 60), (16 * 60, 17 * 60)]
-max_duration = 60
-max_end_time = 17 * 60
-pamela_preference = 14 * 60 + 30
+anthony_schedule = [(9*60 + 30*60, 10*60), (12*60, 13*60), (16*60, 16*60 + 30*60)]
+pamela_schedule = [(9*60 + 30*60, 10*60), (16*60 + 30*60, 17*60)]
+zachary_schedule = [(9*60, 11*60 + 30*60), (12*60, 12*60 + 30*60), (13*60, 13*60 + 30*60), (14*60 + 30*60, 15*60), (16*60, 17*60)]
+meeting_duration = 1
+pamela_preference = True
 
-schedule_meeting(anthony_schedules, pamela_schedules, zachary_schedules, max_duration, max_end_time, pamela_preference)
+print(schedule_meeting(anthony_schedule, pamela_schedule, zachary_schedule, meeting_duration, pamela_preference))

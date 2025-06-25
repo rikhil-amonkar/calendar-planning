@@ -1,62 +1,66 @@
 from z3 import *
 
-# Define the travel distances in minutes
-travel_distances = {
-    'North Beach to Mission District': 18,
-    'North Beach to The Castro': 22,
-    'Mission District to North Beach': 17,
-    'Mission District to The Castro': 7,
-    'The Castro to North Beach': 20,
-    'The Castro to Mission District': 7
+# Define the variables
+start_time = 0
+end_time = 720  # 12 hours in minutes
+friends = ['James', 'Robert']
+locations = ['North Beach', 'Mission District', 'The Castro']
+travel_times = {
+    'North Beach': {'Mission District': 18, 'The Castro': 22},
+    'Mission District': {'North Beach': 17, 'The Castro': 7},
+    'The Castro': {'North Beach': 20, 'Mission District': 7}
+}
+min_meeting_time = {'James': 75, 'Robert': 30}
+friend_availability = {
+    'James': [12*60 + 45, 2*60],  # 12:45PM to 2:00PM
+    'Robert': [12*60 + 45, 3*60 + 15]  # 12:45PM to 3:15PM
 }
 
-# Define the constraints
-start_time = 0  # 9:00 AM
-james_start_time = 12 * 60 + 45  # 12:45 PM
-james_end_time = 14 * 60 + 0  # 2:00 PM
-robert_start_time = 12 * 60 + 45  # 12:45 PM
-robert_end_time = 15 * 60 + 15  # 3:15 PM
-min_time_with_james = 75
-min_time_with_robert = 30
-
-# Define the variables
-x1 = Int('x1')  # Time to spend at Mission District
-x2 = Int('x2')  # Time to spend at The Castro
-x3 = Int('x3')  # Time to travel from North Beach to Mission District
-x4 = Int('x4')  # Time to travel from Mission District to The Castro
-x5 = Int('x5')  # Time to travel from North Beach to The Castro
-x6 = Int('x6')  # Time to travel from The Castro to North Beach
-
-# Define the constraints
+# Define the solver
 s = Optimize()
-s.add(x1 >= min_time_with_james)
-s.add(x2 >= min_time_with_robert)
-s.add(x1 + x2 >= min_time_with_james + min_time_with_robert)
-s.add(x3 + x4 >= james_start_time)
-s.add(x3 + x4 + x5 + x6 >= james_start_time + min_time_with_james)
-s.add(x4 + x5 >= robert_start_time)
-s.add(x4 + x5 + x6 >= robert_start_time + min_time_with_robert)
-s.add(x3 >= 17)  # Travel from North Beach to Mission District
-s.add(x4 >= 7)  # Travel from Mission District to The Castro
-s.add(x5 >= 22)  # Travel from North Beach to The Castro
-s.add(x6 >= 20)  # Travel from The Castro to North Beach
-s.add(x1 <= 2 * 60)  # Time to spend at Mission District
-s.add(x2 <= 3 * 60)  # Time to spend at The Castro
 
-# Minimize the total time spent
-s.minimize(start_time + x3 + x1 + x4 + x5 + x2 + x6)
+# Define the decision variables
+x = [[Bool(f'x_{i}_{j}') for j in locations] for i in range(len(locations))]
+y = [[Bool(f'y_{i}_{j}') for j in locations] for i in range(len(locations))]
+z = [[Bool(f'z_{i}_{j}') for j in locations] for i in range(len(locations))]
+
+# Define the constraints
+for i in range(len(locations)):
+    s.add(Or([x[i][j] for j in locations]))
+    s.add(Or([y[i][j] for j in locations]))
+    s.add(Or([z[i][j] for j in locations]))
+    for j in range(len(locations)):
+        if i!= j:
+            s.add(x[i][j]!= x[j][i])
+            s.add(y[i][j]!= y[j][i])
+            s.add(z[i][j]!= z[j][i])
+
+# Define the objective function
+obj = [0]
+for i in range(len(locations)):
+    for j in locations:
+        if j in friend_availability['James']:
+            obj.append(x[i][j] * (min_meeting_time['James'] + travel_times[j]['Mission District']))
+        if j in friend_availability['Robert']:
+            obj.append(x[i][j] * (min_meeting_time['Robert'] + travel_times[j]['The Castro']))
+
+# Solve the optimization problem
+s.add(Maximize(Sum(obj)))
+s.add(x[0][locations[0]])  # Start at North Beach
+s.add(start_time <= [x[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['Mission District']) + y[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + z[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + (travel_times[j]['North Beach'] + travel_times[j]['Mission District']) for i in range(len(locations)) for j in locations].as_list()[0] for i in range(len(locations)) for j in locations])
+s.add([y[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + z[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) for i in range(len(locations)) for j in locations].as_list()[0] >= friend_availability['James'][0])
+s.add([y[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + z[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) for i in range(len(locations)) for j in locations].as_list()[0] <= friend_availability['James'][1])
+s.add([y[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + z[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) for i in range(len(locations)) for j in locations].as_list()[0] >= friend_availability['Robert'][0])
+s.add([y[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + z[i][j] * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) for i in range(len(locations)) for j in locations].as_list()[0] <= friend_availability['Robert'][1])
 
 # Solve the problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    print("Optimal schedule:")
-    print(f"Travel from North Beach to Mission District: {model[x3].as_long()} minutes")
-    print(f"Time to spend at Mission District: {model[x1].as_long()} minutes")
-    print(f"Travel from Mission District to The Castro: {model[x4].as_long()} minutes")
-    print(f"Time to spend at The Castro: {model[x2].as_long()} minutes")
-    print(f"Travel from North Beach to The Castro: {model[x5].as_long()} minutes")
-    print(f"Travel from The Castro to North Beach: {model[x6].as_long()} minutes")
-    print(f"Total time: {model[x3].as_long() + model[x1].as_long() + model[x4].as_long() + model[x5].as_long() + model[x2].as_long() + model[x6].as_long()} minutes")
+solution = s.check()
+if solution == sat:
+    m = s.model()
+    print("SOLUTION:")
+    for i in range(len(locations)):
+        for j in locations:
+            if m.evaluate(x[i][j]):
+                print(f"Meet {friends[locations.index(j)]} at {j} at {m.evaluate(x[i][j]) * (travel_times[j]['North Beach'] + travel_times[j]['Mission District']) + m.evaluate(y[i][j]) * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + m.evaluate(z[i][j]) * (travel_times[j]['North Beach'] + travel_times[j]['The Castro']) + (travel_times[j]['North Beach'] + travel_times[j]['Mission District']))} minutes after 9:00AM")
 else:
-    print("No solution found")
+    print("No solution exists")

@@ -1,90 +1,121 @@
 from z3 import *
 
-# Define the travel distances in minutes
-travel_distances = {
-    'FD': {'FW': 10, 'PH': 13, 'MD': 17},
-    'FW': {'FD': 11, 'PH': 12, 'MD': 22},
-    'PH': {'FD': 13, 'FW': 13, 'MD': 15},
-    'MD': {'FD': 17, 'FW': 22, 'PH': 16}
+# Define the travel distances
+distances = {
+    'Financial District': {'Fisherman\'s Wharf': 10, 'Pacific Heights': 13, 'Mission District': 17},
+    'Fisherman\'s Wharf': {'Financial District': 11, 'Pacific Heights': 12, 'Mission District': 22},
+    'Pacific Heights': {'Financial District': 13, 'Fisherman\'s Wharf': 12, 'Mission District': 15},
+    'Mission District': {'Financial District': 17, 'Fisherman\'s Wharf': 22, 'Pacific Heights': 16}
 }
-
-# Define the meeting times and durations
-meetings = {
-    'David': {'time': 10*60, 'duration': 15*60},
-    'Timothy': {'time': 0, 'duration': 75*60},
-    'Robert': {'time': 12*60 + 15, 'duration': 90*60}
-}
-
-# Define the solver
-solver = Optimize()
-
-# Define the variables
-locations = ['FD', 'FW', 'PH', 'MD']
-times = [0]
-for loc in locations:
-    for t in range(9*60, 19*60):
-        times.append(t)
-times = list(set(times))  # Remove duplicates
-locations = list(set(locations))  # Remove duplicates
-
-# Define the binary variables for each location at each time
-location_variables = {}
-for loc in locations:
-    location_variables[loc] = [Bool(f'loc_{loc}_{t}') for t in times]
-
-# Define the objective function
-objective = [0]
-for loc in locations:
-    for t in times:
-        if t >= 9*60 and t <= 19*60:  # Only consider times between 9:00AM and 7:00PM
-            objective.append(0)
-            for other_loc in locations:
-                if other_loc!= loc:
-                    for other_t in times:
-                        if other_t >= 9*60 and other_t <= 19*60:  # Only consider times between 9:00AM and 7:00PM
-                            if (other_t - t) >= travel_distances[loc][other_loc]:
-                                objective[-1] += 1
 
 # Define the constraints
-for loc in locations:
-    for t in times:
-        if t >= 9*60 and t <= 19*60:  # Only consider times between 9:00AM and 7:00PM
-            solver.add(Or([location_variables[loc][t]]))
+start_time = 9 * 60  # 9:00 AM in minutes
+david_start = 10 * 60 + 45  # 10:45 AM in minutes
+david_end = 15 * 60 + 30  # 3:30 PM in minutes
+timothy_start = start_time  # 9:00 AM in minutes
+timothy_end = david_end  # 3:30 PM in minutes
+robert_start = 12 * 60 + 15  # 12:15 PM in minutes
+robert_end = 19 * 60 + 45  # 7:45 PM in minutes
 
-for loc in locations:
-    for t in times:
-        if t >= 9*60 and t <= 19*60:  # Only consider times between 9:00AM and 7:00PM
-            for other_loc in locations:
-                if other_loc!= loc:
-                    for other_t in times:
-                        if other_t >= 9*60 and other_t <= 19*60:  # Only consider times between 9:00AM and 7:00PM
-                            if (other_t - t) >= travel_distances[loc][other_loc]:
-                                solver.add(Implies(location_variables[loc][t], location_variables[other_loc][other_t]))
+# Define the minimum meeting times
+min_meeting_times = {
+    'David': 15,
+    'Timothy': 75,
+    'Robert': 90
+}
 
-for loc in locations:
-    for t in times:
-        if t >= 9*60 and t <= 19*60:  # Only consider times between 9:00AM and 7:00PM
-            if t == 9*60:
-                solver.add(location_variables[loc][t])
-            else:
-                solver.add(Implies(location_variables[loc][t-1], location_variables[loc][t]))
+# Define the variables
+locations = ['Financial District', 'Fisherman\'s Wharf', 'Pacific Heights', 'Mission District']
+s = Solver()
 
-# Define the meeting constraints
-for friend in meetings:
-    start_time = meetings[friend]['time']
-    duration = meetings[friend]['duration']
-    for loc in locations:
-        for t in times:
-            if t >= start_time and t <= start_time + duration:
-                solver.add(Or([location_variables[loc][t]]))
+# Define the meeting times for each friend
+for friend in min_meeting_times:
+    meeting_time = Int(f'_{friend}_meeting_time')
+    s.add(meeting_time >= min_meeting_times[friend])
+    s.add(meeting_time <= (david_end - start_time) if friend == 'David' else (timothy_end - start_time) if friend == 'Timothy' else (robert_end - start_time))
 
-# Solve the optimization problem
-result = solver.minimize(objective)
-if result:
-    print("SOLUTION:")
-    for loc in locations:
-        for t in times:
-            if solver.model()[f'loc_{loc}_{t}']:
-                print(f"{loc} at {t//60}:{t%60}")
+# Define the location variables
+location_vars = {}
+for location in locations:
+    location_vars[location] = Int(f'{location}_location')
+    s.add(location_vars[location] >= 0)
+    s.add(location_vars[location] <= 1)
+
+# Define the constraints for each friend
+for friend in min_meeting_times:
+    if friend == 'David':
+        s.add(And(
+            location_vars['Fisherman\'s Wharf'] == 1,
+            Or(
+                And(
+                    location_vars['Financial District'] == 1,
+                    (start_time + (distances['Financial District']['Fisherman\'s Wharf'] + min_meeting_times[friend]) <= david_start)
+                ),
+                And(
+                    location_vars['Fisherman\'s Wharf'] == 1,
+                    (start_time + (distances['Fisherman\'s Wharf']['Fisherman\'s Wharf'] + min_meeting_times[friend]) <= david_start)
+                ),
+                And(
+                    location_vars['Pacific Heights'] == 1,
+                    (start_time + (distances['Pacific Heights']['Fisherman\'s Wharf'] + min_meeting_times[friend]) <= david_start)
+                )
+            )
+        ))
+    elif friend == 'Timothy':
+        s.add(And(
+            location_vars['Pacific Heights'] == 1,
+            Or(
+                And(
+                    location_vars['Financial District'] == 1,
+                    (start_time + (distances['Financial District']['Pacific Heights'] + min_meeting_times[friend]) <= timothy_start)
+                ),
+                And(
+                    location_vars['Fisherman\'s Wharf'] == 1,
+                    (start_time + (distances['Fisherman\'s Wharf']['Pacific Heights'] + min_meeting_times[friend]) <= timothy_start)
+                ),
+                And(
+                    location_vars['Pacific Heights'] == 1,
+                    (start_time + (distances['Pacific Heights']['Pacific Heights'] + min_meeting_times[friend]) <= timothy_start)
+                ),
+                And(
+                    location_vars['Mission District'] == 1,
+                    (start_time + (distances['Mission District']['Pacific Heights'] + min_meeting_times[friend]) <= timothy_start)
+                )
+            )
+        ))
+    else:
+        s.add(And(
+            location_vars['Mission District'] == 1,
+            Or(
+                And(
+                    location_vars['Financial District'] == 1,
+                    (start_time + (distances['Financial District']['Mission District'] + min_meeting_times[friend]) <= robert_start)
+                ),
+                And(
+                    location_vars['Fisherman\'s Wharf'] == 1,
+                    (start_time + (distances['Fisherman\'s Wharf']['Mission District'] + min_meeting_times[friend]) <= robert_start)
+                ),
+                And(
+                    location_vars['Pacific Heights'] == 1,
+                    (start_time + (distances['Pacific Heights']['Mission District'] + min_meeting_times[friend]) <= robert_start)
+                ),
+                And(
+                    location_vars['Mission District'] == 1,
+                    (start_time + (distances['Mission District']['Mission District'] + min_meeting_times[friend]) <= robert_start)
+                )
+            )
+        ))
+
+# Solve the problem
+if s.check() == sat:
+    model = s.model()
+    print("Locations:")
+    for location in locations:
+        print(f"{location}: {model[location_vars[location]]}")
+    print("\nMeeting times:")
+    for friend in min_meeting_times:
+        print(f"{friend}: {model[location_vars[f'_{friend}_meeting_time']]}")
 else:
     print("No solution found")
+
+SOLUTION:

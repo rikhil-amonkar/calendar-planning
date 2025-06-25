@@ -1,87 +1,73 @@
+YOUR_CODE
 from z3 import *
 
-# Define the days and time slots
+# Define the days of the week
 days = ['Monday', 'Tuesday', 'Wednesday']
-time_slots = [(9, 30), (10, 30), (11, 30), (13, 30), (14, 30), (15, 30), (16, 30)]
 
-# Define the existing schedules
+# Define the start and end times of the work hours
+start_time = 9
+end_time = 17
+
+# Define the duration of the meeting
+meeting_duration = 30
+
+# Define the existing schedules for Amy and Pamela
 amy_schedule = {
-    'Monday': [(9, 30), (11, 30), (13, 30)],
-    'Tuesday': [],
-    'Wednesday': [(11, 30), (13, 30)]
+    'Monday': [(9, 17)],
+    'Tuesday': [(9, 17)],
+    'Wednesday': [(11, 11.5), (13.5, 14)]
 }
 
 pamela_schedule = {
-    'Monday': [(9, 30), (11, 0, 16, 30)],
-    'Tuesday': [(9, 30), (10, 0, 17, 0)],
-    'Wednesday': [(9, 30), (10, 0, 11, 0), (11, 30, 13, 30), (14, 30, 15, 0), (16, 0, 16, 30)]
+    'Monday': [(9, 10.5), (11, 16.5)],
+    'Tuesday': [(9, 9.5), (10, 17)],
+    'Wednesday': [(9, 9.5), (10, 11), (11.5, 13.5), (14.5, 15), (16, 16.5)]
 }
 
-# Define the preferences
+# Define the preferences for Pamela
 pamela_preferences = {
-    'Monday': [(15, 30, 17, 0)],
-    'Tuesday': [(15, 30, 17, 0)],
-    'Wednesday': [(15, 30, 16, 0)]
+    'Monday': [(16, 17)],
+    'Tuesday': [(16, 17)],
+    'Wednesday': [(9, 16)]
 }
 
-# Define the meeting duration
-meeting_duration = 0.5
-
-# Create the solver
-solver = Solver()
+# Define the solver
+s = Solver()
 
 # Define the variables
-day = [Bool(f'day_{i}') for i in range(len(days))]
-start_time = [Real(f'start_time_{i}') for i in range(len(time_slots))]
-end_time = [Real(f'end_time_{i}') for i in range(len(time_slots))]
+day = [Int(f'day_{i}') for i in range(3)]
+start_time_var = [Real(f'start_time_{i}') for i in range(3)]
+end_time_var = [Real(f'end_time_{i}') for i in range(3)]
 
 # Define the constraints
-for i, day_var in enumerate(day):
-    solver.add(day_var == False)
-solver.add(Or([day_var for day_var in day]))
+for i in range(3):
+    s.add(day[i] >= 0)
+    s.add(day[i] < len(days))
+    s.add(start_time_var[i] >= start_time)
+    s.add(start_time_var[i] <= end_time - meeting_duration)
+    s.add(end_time_var[i] >= start_time_var[i] + meeting_duration)
+    s.add(end_time_var[i] <= end_time)
 
-for i, time_slot in enumerate(time_slots):
-    start_time_var = start_time[i]
-    end_time_var = end_time[i]
-    solver.add(start_time_var >= 9)
-    solver.add(start_time_var <= 17)
-    solver.add(end_time_var >= start_time_var)
-    solver.add(end_time_var <= 17)
-    solver.add(end_time_var - start_time_var >= meeting_duration)
+    # Ensure the meeting time does not conflict with existing schedules
+    for j in range(len(amy_schedule[days[day[i].as_long()]])):
+        amy_start, amy_end = amy_schedule[days[day[i].as_long()]][j]
+        s.add(Or(start_time_var[i] >= amy_end, end_time_var[i] <= amy_start))
 
-for day_name in days:
-    for i, time_slot in enumerate(time_slots):
-        start_time_var = start_time[i]
-        end_time_var = end_time[i]
-        if day_name in amy_schedule and time_slot in amy_schedule[day_name]:
-            solver.add(Not(start_time_var == amy_schedule[day_name][amy_schedule[day_name].index(time_slot)][0]))
-            solver.add(Not(end_time_var == amy_schedule[day_name][amy_schedule[day_name].index(time_slot)][1]))
-        if day_name in pamela_schedule and time_slot in pamela_schedule[day_name]:
-            solver.add(Not(start_time_var == pamela_schedule[day_name][pamela_schedule[day_name].index(time_slot)][0]))
-            solver.add(Not(end_time_var == pamela_schedule[day_name][pamela_schedule[day_name].index(time_slot)][1]))
-        if day_name in pamela_preferences and time_slot in pamela_preferences[day_name]:
-            solver.add(Not(start_time_var == pamela_preferences[day_name][pamela_preferences[day_name].index(time_slot)][0]))
-            solver.add(Not(end_time_var == pamela_preferences[day_name][pamela_preferences[day_name].index(time_slot)][1]))
+    for j in range(len(pamela_schedule[days[day[i].as_long()]])):
+        pam_start, pam_end = pamela_schedule[days[day[i].as_long()]][j]
+        s.add(Or(start_time_var[i] >= pam_end, end_time_var[i] <= pam_end))
 
-# Add constraints for Monday
-solver.add(Not(day[0]))  # Pamela would like to avoid more meetings on Monday
-solver.add(Not(start_time[0] < 16))  # Tuesday. Wednesday before 16:00
-solver.add(Not(start_time[1] < 16))  # Tuesday. Wednesday before 16:00
-solver.add(Not(start_time[2] < 16))  # Tuesday. Wednesday before 16:00
-solver.add(Not(start_time[3] < 16))  # Tuesday. Wednesday before 16:00
-solver.add(Not(start_time[4] < 16))  # Tuesday. Wednesday before 16:00
-solver.add(Not(start_time[5] < 16))  # Tuesday. Wednesday before 16:00
-solver.add(Not(start_time[6] < 16))  # Tuesday. Wednesday before 16:00
+    # Ensure Pamela's preferences are met
+    for j in range(len(pamela_preferences[days[day[i].as_long()]])):
+        pref_start, pref_end = pamela_preferences[days[day[i].as_long()]][j]
+        s.add(Or(start_time_var[i] >= pref_end, end_time_var[i] <= pref_end))
 
 # Solve the constraints
-if solver.check() == sat:
-    model = solver.model()
-    day_index = [i for i, day_var in enumerate(day) if model.evaluate(day_var) == True][0]
-    start_time_index = [i for i, time_slot in enumerate(time_slots) if model.evaluate(start_time[i]) == time_slot[0]][0]
-    end_time_index = [i for i, time_slot in enumerate(time_slots) if model.evaluate(end_time[i]) == time_slot[1]][0]
-    print(f'SOLUTION:')
-    print(f'Day: {days[day_index]}')
-    print(f'Start Time: {model.evaluate(start_time[start_time_index]).as_real().numerator() / 60:.0f}:{model.evaluate(start_time[start_time_index]).as_real().numerator() % 60:02d}')
-    print(f'End Time: {model.evaluate(end_time[end_time_index]).as_real().numerator() / 60:.0f}:{model.evaluate(end_time[end_time_index]).as_real().numerator() % 60:02d}')
+s.add(Or(day[0], day[1], day[2]))
+if s.check() == sat:
+    model = s.model()
+    day_index = [i for i, x in enumerate([x.as_long() for x in model[day[0]] + model[day[1]] + model[day[2]]]) if x == 1][0]
+    solution = f'SOLUTION:\nDay: {days[day_index]}\nStart Time: {int(model[start_time_var[day_index]].numerator()) // int(model[start_time_var[day_index]].denominator()):02d}:{(int(model[start_time_var[day_index]].numerator()) % int(model[start_time_var[day_index]].denominator())) // 60:02d}\nEnd Time: {int(model[end_time_var[day_index]].numerator()) // int(model[end_time_var[day_index]].denominator()):02d}:{(int(model[end_time_var[day_index]].numerator()) % int(model[end_time_var[day_index]].denominator())) // 60:02d}'
+    print(solution)
 else:
-    print('No solution found.')
+    print('No solution found')

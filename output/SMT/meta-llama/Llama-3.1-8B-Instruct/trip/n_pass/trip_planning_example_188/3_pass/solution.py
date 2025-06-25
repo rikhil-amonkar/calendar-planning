@@ -1,63 +1,73 @@
 from z3 import *
 
-# Define the cities
-cities = ['Brussels', 'Barcelona', 'Split']
+def solve_scheduling():
+    # Define variables
+    brussels_days = Int('brussels_days')
+    split_days = Int('split_days')
+    barcelona_days = Int('barcelona_days')
+    brussels_to_barcelona = Int('brussels_to_barcelona')
+    barcelona_to_split = Int('barcelona_to_split')
 
-# Define the days
-days = range(1, 13)
+    # Define constraints
+    constraints = [
+        And(brussels_days >= 2, brussels_days <= 2),  # 2 days in Brussels
+        And(split_days >= 5, split_days <= 5),  # 5 days in Split
+        And(barcelona_days >= 7, barcelona_days <= 7),  # 7 days in Barcelona
+        And(brussels_days + split_days + barcelona_days + brussels_to_barcelona + barcelona_to_split == 12),  # Total days
+        brussels_to_barcelona >= 0,
+        barcelona_to_split >= 0,
+        brussels_to_barcelona + barcelona_to_split <= 1  # Can only fly from Barcelona to Split once
+    ]
 
-# Define the variables
-x = {city: Int(city) for city in cities}
+    # Define solver
+    solver = Solver()
 
-# Define the constraints
-# Each city is assigned to at least one day
-for city in cities:
-    constraints = []
-    for day in days:
-        constraints.append(x[city] == day)
-    s = Solver()
-    for c in constraints:
-        s.add(c)
-    if s.check() == sat:
-        model = s.model()
-        print(f'{city} can be assigned to: {[day for day in days if model[x[city]] == day]}')
+    # Add constraints to solver
+    for constraint in constraints:
+        solver.add(constraint)
+
+    # Check if solution exists
+    if solver.check() == sat:
+        model = solver.model()
+        brussels_days_val = model[brussels_days].as_long()
+        split_days_val = model[split_days].as_long()
+        barcelona_days_val = model[barcelona_days].as_long()
+        brussels_to_barcelona_val = model[brussels_to_barcelona].as_long()
+        barcelona_to_split_val = model[barcelona_to_split].as_long()
+
+        # Generate itinerary
+        itinerary = []
+        brussels_range = f"Day 1-2"
+        brussels_range_item = {"day_range": brussels_range, "place": "Brussels"}
+        itinerary.append(brussels_range_item)
+        for i in range(2):
+            itinerary.append({"day_range": brussels_range, "place": "Brussels"})
+
+        barcelona_range = f"Day 3-9"
+        barcelona_range_item = {"day_range": barcelona_range, "place": "Barcelona"}
+        itinerary.append(barcelona_range_item)
+        for i in range(7):
+            itinerary.append({"day_range": barcelona_range, "place": "Barcelona"})
+
+        if brussels_to_barcelona_val == 1:
+            brussels_to_barcelona_range = f"Day 9"
+            brussels_to_barcelona_range_item = {"day_range": brussels_to_barcelona_range, "place": "Brussels"}
+            itinerary.append(brussels_to_barcelona_range_item)
+            barcelona_range = f"Day 10-12"
+            barcelona_range_item = {"day_range": barcelona_range, "place": "Barcelona"}
+            itinerary.append(barcelona_range_item)
+            for i in range(3):
+                itinerary.append({"day_range": barcelona_range, "place": "Barcelona"})
+
+        split_range = f"Day 3-5"
+        split_range_item = {"day_range": split_range, "place": "Split"}
+        itinerary.append(split_range_item)
+        for i in range(3):
+            itinerary.append({"day_range": split_range, "place": "Split"})
+
+        # Return itinerary
+        return {"itinerary": itinerary}
     else:
-        print(f'No solution found for {city}')
+        return {"itinerary": "No solution exists"}
 
-# Brussels is assigned to days 1 and 2
-constraints = [x['Brussels'] == 1, x['Brussels'] == 2]
-
-# Split is assigned to days 3-7
-constraints.append(x['Split'] >= 3)
-constraints.append(x['Split'] <= 7)
-
-# Barcelona is assigned to days 8-12
-constraints.append(x['Barcelona'] >= 8)
-constraints.append(x['Barcelona'] <= 12)
-
-# Barcelona and Split can only be assigned after Brussels
-constraints.append(x['Barcelona'] > 2)
-constraints.append(x['Split'] > 2)
-
-# Barcelona and Split can only be assigned before day 13
-constraints.append(x['Barcelona'] < 13)
-constraints.append(x['Split'] < 13)
-
-# Ensure that each city is assigned to at most one day
-for city1 in cities:
-    for city2 in cities:
-        if city1!= city2:
-            for day in days:
-                constraints.append(Not(And([x[city1] == day, x[city2] == day])))
-
-# Solve the constraints
-s = Solver()
-for c in constraints:
-    s.add(c)
-if s.check() == sat:
-    model = s.model()
-    print('Trip plan:')
-    for city in cities:
-        print(f'{city}: {model[x[city]].as_long()}')
-else:
-    print('No solution found')
+print(solve_scheduling())

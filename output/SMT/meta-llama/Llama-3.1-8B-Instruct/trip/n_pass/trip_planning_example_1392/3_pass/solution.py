@@ -1,43 +1,97 @@
 from z3 import *
 
 # Define the cities
-cities = ['Naples', 'Venice', 'Split', 'Stuttgart', 'Valencia', 'Amsterdam', 'Nice', 'Barcelona', 'Porto']
+cities = ['Naples', 'Valencia', 'Stuttgart', 'Split', 'Venice', 'Amsterdam', 'Nice', 'Barcelona', 'Porto']
 
 # Define the days
 days = range(1, 25)
 
+# Define the itineraries
+itineraries = {
+    'Naples': 3,
+    'Valencia': 5,
+    'Stuttgart': 2,
+    'Split': 5,
+    'Venice': 5,
+    'Amsterdam': 4,
+    'Nice': 2,
+    'Barcelona': 2,
+    'Porto': 4
+}
+
+# Define the constraints
+constraints = []
+
+# Initialize the solver
+solver = Solver()
+
 # Define the variables
-x = {city: [Bool(city + '_' + str(day)) for day in days] for city in cities}
+places = [Bool('place_' + city) for city in cities]
+days_in_place = [Int('days_in_' + city) for city in cities]
+flight_days = [Bool('flight_' + str(day)) for day in days]
 
-# Define the constraints for each city
-for city in cities:
-    constraints = []
-    for day in days:
-        constraints.append(x[city][day])
-    constraints.append(Or(constraints))
-    constraints.append(And([Implies(x[city][day], x[city][day-1]) for day in days[1:]]))
-
-# Define the constraints for each pair of cities
-for city1, city2 in [('Naples', 'Venice'), ('Naples', 'Split'), ('Naples', 'Amsterdam'), ('Naples', 'Barcelona'), ('Naples', 'Valencia'), ('Naples', 'Nice'), ('Naples', 'Stuttgart'), ('Venice', 'Split'), ('Venice', 'Amsterdam'), ('Venice', 'Barcelona'), ('Venice', 'Stuttgart'), ('Venice', 'Nice'), ('Venice', 'Porto'), ('Split', 'Barcelona'), ('Split', 'Amsterdam'), ('Split', 'Stuttgart'), ('Barcelona', 'Amsterdam'), ('Barcelona', 'Stuttgart'), ('Barcelona', 'Nice'), ('Barcelona', 'Porto'), ('Amsterdam', 'Nice'), ('Amsterdam', 'Stuttgart'), ('Amsterdam', 'Valencia'), ('Amsterdam', 'Porto'), ('Nice', 'Stuttgart'), ('Nice', 'Valencia'), ('Nice', 'Porto'), ('Stuttgart', 'Valencia'), ('Stuttgart', 'Porto'), ('Valencia', 'Porto')]:
-    constraints.append(Implies(x[city1][day], x[city2][day]) for city1, city2 in [(city1, city2), (city2, city1)] for day in days if (city1, city2) in [(city1, city2), (city2, city1)])
-
-# Define the constraints for the given constraints
-for city, days in [('Naples', range(18, 21)), ('Valencia', range(1, 6)), ('Stuttgart', range(1, 3)), ('Split', range(1, 6)), ('Venice', range(1, 6)), ('Venice', range(6, 11)), ('Amsterdam', range(1, 5)), ('Nice', range(1, 3)), ('Barcelona', range(1, 3)), ('Barcelona', range(5, 6)), ('Nice', range(23, 25))]:
-    for day in days:
-        for city1 in cities:
-            constraints.append(Not(x[city1][day]))
-
-# Define the solver
-s = Solver()
-
-# Add the constraints to the solver
-for constraint in constraints:
-    s.add(constraint)
-
-# Check the solver
-if s.check() == sat:
-    model = s.model()
+# Add the constraints
+for day in days:
+    # Each day, exactly one place is visited
+    solver.add(Or(*[places[i] for i in range(len(cities))]))
+    
+    # If a place is visited, the number of days spent there is at least 1
+    for i in range(len(cities)):
+        solver.add(If(places[i], days_in_place[i] >= 1, True))
+        
+    # If a flight is taken, the departure and arrival cities are different
+    for i in range(len(cities)):
+        for j in range(i+1, len(cities)):
+            solver.add(Implies(flight_days[day-1], places[i]!= places[j]))
+            
+    # If a flight is taken, the departure and arrival cities are both visited on the same day
+    for i in range(len(cities)):
+        for j in range(len(cities)):
+            solver.add(Implies(flight_days[day-1], Or([places[k] == places[i] for k in range(len(cities))])))
+            
+    # The number of days spent in each place is at least the minimum required
     for city in cities:
-        print(f"{city}: {[model[city + '_' + str(day)].as_bool() for day in days]}")
+        solver.add(days_in_place[cities.index(city)] >= itineraries[city])
+        
+    # The number of days spent in each place is at most the total number of days
+    for city in cities:
+        solver.add(days_in_place[cities.index(city)] <= 24)
+        
+    # Meeting friends in Naples
+    solver.add(And([places[cities.index('Naples')] == True for day in range(18, 21)]))
+        
+    # Meeting friends in Nice
+    solver.add(And([places[cities.index('Nice')] == True for day in range(23, 25)]))
+        
+    # Conference in Venice
+    solver.add(And([places[cities.index('Venice')] == True for day in range(6, 11)]))
+        
+    # Workshop in Barcelona
+    solver.add(And([places[cities.index('Barcelona')] == True for day in range(5, 6)]))
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    
+    # Extract the itinerary from the model
+    for day in days:
+        if model.evaluate(flight_days[day-1]).decl().name() == 'flight':
+            # Flight day
+            departure_city = [city for city in cities if model.evaluate(places[cities.index(city)]).as_bool()][0]
+            arrival_city = [city for city in cities if model.evaluate(places[cities.index(city)]).as_bool() == False][0]
+            itinerary.append({"day_range": str(day) + "-" + str(day), "place": departure_city})
+            itinerary.append({"day_range": str(day), "place": departure_city})
+            itinerary.append({"day_range": str(day), "place": arrival_city})
+            itinerary.append({"day_range": str(day) + "-" + str(day+1), "place": arrival_city})
+        else:
+            # Non-flight day
+            for city in cities:
+                if model.evaluate(places[cities.index(city)]).as_bool():
+                    itinerary.append({"day_range": str(day) + "-" + str(day+itineraries[city]-1), "place": city})
+                    
+    # Convert the itinerary to a JSON-formatted dictionary
+    result = {"itinerary": itinerary}
+    print(result)
 else:
-    print("No solution found")
+    print("No solution exists")

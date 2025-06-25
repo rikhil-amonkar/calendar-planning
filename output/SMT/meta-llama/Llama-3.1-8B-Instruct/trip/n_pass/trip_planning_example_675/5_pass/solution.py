@@ -1,9 +1,12 @@
 from z3 import *
+from itertools import product
 
-# Define the variables
-days = 16
+# Define the cities and their corresponding days
 cities = ['Dubrovnik', 'Split', 'Milan', 'Porto', 'Krakow', 'Munich']
-stays = {
+days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+
+# Define the constraints for each city
+constraints = {
     'Dubrovnik': 4,
     'Split': 3,
     'Milan': 3,
@@ -11,180 +14,87 @@ stays = {
     'Krakow': 2,
     'Munich': 5
 }
-attendances = {
-    'Dubrovnik': 0,
-    'Split': 0,
-    'Milan': 2,
-    'Porto': 0,
-    'Krakow': 0,
-    'Munich': 4
+
+# Define the flight constraints
+flights = {
+    ('Dubrovnik', 'Munich'): 1,
+    ('Munich', 'Porto'): 1,
+    ('Split', 'Milan'): 1,
+    ('Milan', 'Porto'): 1,
+    ('Munich', 'Krakow'): 1,
+    ('Munich', 'Milan'): 1,
+    ('Krakow', 'Split'): 1,
+    ('Krakow', 'Milan'): 1,
+    ('Munich', 'Split'): 1
 }
-wedding = [11, 12]
-meeting = [8, 9]
-show = [4, 5, 6, 7]
 
-# Create a boolean variable for each city and day
-vars = [[Bool(f'{city}_{day}') for day in range(days + 1)] for city in cities]
+# Define the wedding and meeting constraints
+wedding = (11, 13)
+meeting = (8, 9)
 
-# Create a constraint for each city
-for city in cities:
-    for day in range(days + 1):
-        if city == 'Dubrovnik' and day < 4:
-            vars[cities.index(city)][day] = True
-        elif city == 'Split' and (day >= 4 and day < 7):
-            vars[cities.index(city)][day] = True
-        elif city == 'Milan' and (day >= 7 and day < 10):
-            vars[cities.index(city)][day] = True
-        elif city == 'Porto' and (day >= 10 and day < 14):
-            vars[cities.index(city)][day] = True
-        elif city == 'Krakow' and (day >= 7 and day < 9):
-            vars[cities.index(city)][day] = True
-        elif city == 'Munich' and (day >= 4 and day <= 8):
-            vars[cities.index(city)][day] = True
-        elif city == 'Dubrovnik' and day == 14:
-            vars[cities.index(city)][day] = True
-        elif city == 'Split' and (day >= 14 and day < 17):
-            vars[cities.index(city)][day] = True
-        elif city == 'Milan' and (day >= 14 and day <= 16):
-            vars[cities.index(city)][day] = True
-        elif city == 'Porto' and day == 14:
-            vars[cities.index(city)][day] = True
-        elif city == 'Krakow' and day == 9:
-            vars[cities.index(city)][day] = True
-        elif city == 'Munich' and (day >= 9 and day <= 14):
-            vars[cities.index(city)][day] = True
-        else:
-            vars[cities.index(city)][day] = False
-
-# Create a constraint for the wedding
-for day in range(wedding[0], wedding[1] + 1):
-    for city in cities:
-        if city!= 'Milan':
-            vars[cities.index(city)][day] = False
-
-# Create a constraint for the meeting
-for day in range(meeting[0], meeting[1] + 1):
-    for city in cities:
-        if city!= 'Krakow':
-            vars[cities.index(city)][day] = False
-
-# Create a constraint for the show
-for day in show:
-    for city in cities:
-        if city!= 'Munich':
-            vars[cities.index(city)][day] = False
-
-# Create a constraint for the direct flights
-flights = [
-    And(vars[cities.index('Munich')][day] == True, vars[cities.index('Porto')][day] == True) for day in range(days + 1)
-] + [
-    And(vars[cities.index('Split')][day] == True, vars[cities.index('Milan')][day] == True) for day in range(days + 1)
-] + [
-    And(vars[cities.index('Milan')][day] == True, vars[cities.index('Porto')][day] == True) for day in range(days + 1)
-] + [
-    And(vars[cities.index('Munich')][day] == True, vars[cities.index('Krakow')][day] == True) for day in range(days + 1)
-] + [
-    And(vars[cities.index('Munich')][day] == True, vars[cities.index('Milan')][day] == True) for day in range(days + 1)
-] + [
-    And(vars[cities.index('Dubrovnik')][day] == True, vars[cities.index('Munich')][day] == True) for day in range(days + 1)
-] + [
-    And(vars[cities.index('Krakow')][day] == True, vars[cities.index('Split')][day] == True) for day in range(days + 1)
-] + [
-    And(vars[cities.index('Krakow')][day] == True, vars[cities.index('Milan')][day] == True) for day in range(days + 1)
-]
-for day in range(days + 1):
-    flights.append(Implies(vars[cities.index('Munich')][day] == True, Or(vars[cities.index('Porto')][day] == True,
-                                                                   vars[cities.index('Krakow')][day] == True,
-                                                                   vars[cities.index('Milan')][day] == True,
-                                                                   vars[cities.index('Split')][day] == True,
-                                                                   vars[cities.index('Dubrovnik')][day] == True)))
-    flights.append(Implies(vars[cities.index('Split')][day] == True, Or(vars[cities.index('Milan')][day] == True,
-                                                                     vars[cities.index('Krakow')][day] == True)))
-    flights.append(Implies(vars[cities.index('Milan')][day] == True, Or(vars[cities.index('Porto')][day] == True,
-                                                                     vars[cities.index('Krakow')][day] == True)))
-    flights.append(Implies(vars[cities.index('Porto')][day] == True, Or(vars[cities.index('Milan')][day] == True)))
-    flights.append(Implies(vars[cities.index('Krakow')][day] == True, Or(vars[cities.index('Split')][day] == True,
-                                                                     vars[cities.index('Milan')][day] == True,
-                                                                     vars[cities.index('Munich')][day] == True)))
-    flights.append(Implies(vars[cities.index('Munich')][day] == True, Or(vars[cities.index('Krakow')][day] == True,
-                                                                     vars[cities.index('Milan')][day] == True,
-                                                                     vars[cities.index('Split')][day] == True,
-                                                                     vars[cities.index('Dubrovnik')][day] == True)))
-
-# Create a solver
+# Create a Z3 solver
 solver = Solver()
 
-# Add the constraints to the solver
-for flight in flights:
-    solver.add(flight)
+# Create variables for each day and city
+day_city = [Bool(f'day_{day}_city_{city}') for day in days for city in cities]
 
-# Solve the problem
+# Add constraints for each city
+for city in cities:
+    constraint = Or([day_city[day * len(cities) + cities.index(city)] for day in range(len(days))])
+    solver.add(constraint)
+
+# Add constraints for each flight
+for flight, duration in flights.items():
+    departure_day = days.index(flight[0]) + 1
+    arrival_day = departure_day + duration
+    if arrival_day > len(days):
+        arrival_day = len(days)
+    for day in range(departure_day, arrival_day):
+        for city_index, city in enumerate(cities):
+            if city == flight[0]:
+                constraint = Implies(day_city[(day * len(cities)) + city_index], day_city[(day * len(cities)) + cities.index(flight[1])])
+            elif city == flight[1]:
+                constraint = Implies(day_city[(day * len(cities)) + city_index], day_city[(day * len(cities)) + cities.index(flight[0])])
+            else:
+                constraint = Implies(day_city[(day * len(cities)) + city_index], day_city[(day * len(cities)) + city_index])
+            solver.add(constraint)
+
+# Add constraints for the wedding and meeting
+for day in range(wedding[0], wedding[1] + 1):
+    constraint = Or([day_city[day * len(cities) + cities.index('Milan')]])
+    solver.add(constraint)
+for day in range(meeting[0], meeting[1] + 1):
+    constraint = Or([day_city[day * len(cities) + cities.index('Krakow')]])
+    solver.add(constraint)
+
+# Add constraints for the annual show
+for day in range(4, 8 + 1):
+    constraint = Or([day_city[day * len(cities) + cities.index('Munich')]])
+    solver.add(constraint)
+
+# Solve the constraints
 if solver.check() == sat:
     model = solver.model()
-    schedule = {}
-    for city in cities:
-        schedule[city] = []
-        for day in range(days + 1):
-            if model[vars[cities.index(city)][day]].as_bool():
-                schedule[city].append(day)
-    for city, days in schedule.items():
-        print(f'{city}: {days}')
+    itinerary = []
+    for day in days:
+        for city in cities:
+            if model.evaluate(day_city[day * len(cities) + cities.index(city)]).as_bool():
+                if day == 1:
+                    itinerary.append({"day_range": f"Day {day}-{day + constraints[city] - 1}", "place": city})
+                elif day == constraints[city]:
+                    itinerary.append({"day_range": f"Day {day}-{day + constraints[city] - 1}", "place": city})
+                elif day == constraints[city] + 1:
+                    itinerary.append({"day_range": f"Day {day}", "place": city})
+                elif day > constraints[city] + 1:
+                    itinerary.append({"day_range": f"Day {day}", "place": city})
+                if day + 1 in days:
+                    for flight, duration in flights.items():
+                        if day == days.index(flight[0]) + 1 and day + duration - 1 == day:
+                            itinerary.append({"day_range": f"Day {day}", "place": flight[1]})
+                        elif day == days.index(flight[0]) + 1 and day + duration - 1 > day:
+                            itinerary.append({"day_range": f"Day {day}", "place": flight[1]})
+                            itinerary.append({"day_range": f"Day {day + duration - 1}", "place": flight[1]})
+                            break
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
-
-# Add a constraint to ensure the itinerary covers exactly 16 days
-if solver.check() == unsat:
-    print("Itinerary must cover exactly 16 days")
-    # Create a new solver
-    new_solver = Solver()
-
-    # Add the constraints to the new solver
-    for flight in flights:
-        new_solver.add(flight)
-
-    # Add a constraint to ensure the itinerary covers exactly 16 days
-    for city in cities:
-        new_solver.add(And([Or(vars[cities.index(city)][day]) for day in range(days + 1)]))
-
-    # Solve the problem
-    if new_solver.check() == sat:
-        new_model = new_solver.model()
-        schedule = {}
-        for city in cities:
-            schedule[city] = []
-            for day in range(days + 1):
-                if new_model[vars[cities.index(city)][day]].as_bool():
-                    schedule[city].append(day)
-        for city, days in schedule.items():
-            print(f'{city}: {days}')
-    else:
-        # Create a new solver
-        new_solver = Solver()
-
-        # Add the constraints to the new solver
-        for flight in flights:
-            new_solver.add(flight)
-
-        # Add a constraint to ensure the itinerary covers exactly 16 days
-        for city in cities:
-            new_solver.add(And([Or(vars[cities.index(city)][day]) for day in range(days + 1)]))
-
-        # Add a constraint to ensure each city is visited for the correct number of days
-        for city in cities:
-            new_solver.add(And([Implies(Or(vars[cities.index(city)][day] for day in range(days + 1)),
-                                         Sum([If(vars[cities.index(city)][day], 1, 0) for day in range(days + 1)]) == stays[city]))
-                               for city in cities]))
-
-        # Solve the problem
-        if new_solver.check() == sat:
-            new_model = new_solver.model()
-            schedule = {}
-            for city in cities:
-                schedule[city] = []
-                for day in range(days + 1):
-                    if new_model[vars[cities.index(city)][day]].as_bool():
-                        schedule[city].append(day)
-            for city, days in schedule.items():
-                print(f'{city}: {days}')
-        else:
-            print('No solution found')
+    print("No solution found")

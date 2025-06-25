@@ -1,59 +1,131 @@
 from z3 import *
 
-# Define the travel times
-travel_times = {
-    'Nob Hill': {'Richmond District': 14, 'Financial District': 9, 'North Beach': 8, 'The Castro': 17, 'Golden Gate Park': 17},
-    'Richmond District': {'Nob Hill': 17, 'Financial District': 22, 'North Beach': 17, 'The Castro': 16, 'Golden Gate Park': 9},
-    'Financial District': {'Nob Hill': 8, 'Richmond District': 21, 'North Beach': 7, 'The Castro': 23, 'Golden Gate Park': 23},
-    'North Beach': {'Nob Hill': 7, 'Richmond District': 18, 'Financial District': 8, 'The Castro': 22, 'Golden Gate Park': 22},
-    'The Castro': {'Nob Hill': 16, 'Richmond District': 16, 'Financial District': 20, 'North Beach': 20, 'Golden Gate Park': 11},
-    'Golden Gate Park': {'Nob Hill': 20, 'Richmond District': 7, 'Financial District': 26, 'North Beach': 24, 'The Castro': 13}
+# Define the travel distances in minutes
+distances = {
+    ('Nob_Hill', 'Richmond_District'): 14,
+    ('Nob_Hill', 'Financial_District'): 9,
+    ('Nob_Hill', 'North_Beach'): 8,
+    ('Nob_Hill', 'The_Castro'): 17,
+    ('Nob_Hill', 'Golden_Gate_Park'): 17,
+    ('Richmond_District', 'Nob_Hill'): 17,
+    ('Richmond_District', 'Financial_District'): 22,
+    ('Richmond_District', 'North_Beach'): 17,
+    ('Richmond_District', 'The_Castro'): 16,
+    ('Richmond_District', 'Golden_Gate_Park'): 9,
+    ('Financial_District', 'Nob_Hill'): 8,
+    ('Financial_District', 'Richmond_District'): 21,
+    ('Financial_District', 'North_Beach'): 7,
+    ('Financial_District', 'The_Castro'): 23,
+    ('Financial_District', 'Golden_Gate_Park'): 23,
+    ('North_Beach', 'Nob_Hill'): 7,
+    ('North_Beach', 'Richmond_District'): 18,
+    ('North_Beach', 'Financial_District'): 8,
+    ('North_Beach', 'The_Castro'): 22,
+    ('North_Beach', 'Golden_Gate_Park'): 22,
+    ('The_Castro', 'Nob_Hill'): 16,
+    ('The_Castro', 'Richmond_District'): 16,
+    ('The_Castro', 'Financial_District'): 20,
+    ('The_Castro', 'North_Beach'): 20,
+    ('The_Castro', 'Golden_Gate_Park'): 11,
+    ('Golden_Gate_Park', 'Nob_Hill'): 20,
+    ('Golden_Gate_Park', 'Richmond_District'): 7,
+    ('Golden_Gate_Park', 'Financial_District'): 26,
+    ('Golden_Gate_Park', 'North_Beach'): 24,
+    ('Golden_Gate_Park', 'The_Castro'): 13
 }
 
+# Define the locations and friends
+locations = ['Nob_Hill', 'Richmond_District', 'Financial_District', 'North_Beach', 'The_Castro', 'Golden_Gate_Park']
+friends = ['Emily', 'Margaret', 'Ronald', 'Deborah', 'Jeffrey']
+friend_locations = ['Richmond_District', 'Financial_District', 'North_Beach', 'The_Castro', 'Golden_Gate_Park']
+
 # Define the constraints
-s = Optimize()
-x = [Bool(f'x_{i}') for i in range(7)]  # 7 friends to meet
-t = [Real(f't_{i}') for i in range(7)]  # time spent with each friend
-start_time = 9  # start time
-end_time = 21  # end time
+s = Solver()
 
-# Constraints for each friend
-s.add(x[0] == Implies(start_time <= 19, True))  # Emily is only available from 7:00PM to 9:00PM
-s.add(t[0] >= 15)
-s.add(t[0] <= 60 * 2)  # 2 hours
+# Define the variables
+start_time = 0
+end_time = 24 * 60  # 24 hours in minutes
+times = [Int(locations[i] + '_time') for i in range(len(locations))]
+meet_times = [Int(friend + '_meet_time') for friend in friends]
+meet_count = Int('meet_count')
+meetings = [Bool(friend + '_meeting') for friend in friends]
 
-s.add(x[1] == Implies(start_time + 3.5 <= 19, True))  # Margaret is only available from 4:30PM to 8:15PM
-s.add(t[1] >= 75)
-s.add(t[1] <= 60 * 2)  # 2 hours
+# Initialize meet_count to 0
+s.add(meet_count == 0)
 
-s.add(x[2] == Implies(start_time + 6.5 <= 19, True))  # Ronald is only available from 6:30PM to 7:30PM
-s.add(t[2] >= 45)
-s.add(t[2] <= 60)  # 1 hour
+# Define the function to increment meet_count
+def increment_meet_count():
+    global meet_count
+    s.add(meet_count == meet_count + 1)
 
-s.add(x[3] == Implies(start_time + 1.75 <= 19, True))  # Deborah is only available from 1:45PM to 9:15PM
-s.add(t[3] >= 90)
-s.add(t[3] <= 60 * 3)  # 3 hours
+# Define the function to check if meet_count is equal to a certain value
+def check_meet_count(value):
+    global meet_count
+    return meet_count == value
 
-s.add(x[4] == True)  # Jeffrey is available from 11:15AM to 2:30PM
-s.add(t[4] >= 120)
-s.add(t[4] <= 60 * 3)  # 3 hours
+# Define the function to add a constraint to the solver
+def add_constraint(friend, start_time_friend, end_time_friend, meet_time_friend, location_friend):
+    global meet_count
+    s.add(And(times[locations.index('Nob_Hill')] == 0,
+             times[locations.index(location_friend)] >= start_time_friend,
+             times[locations.index(location_friend)] <= end_time_friend,
+             meet_times[friends.index(friend)] >= meet_time_friend,
+             meet_times[friends.index(friend)] <= (times[locations.index(location_friend)] - times[locations.index('Nob_Hill')]) + meet_time_friend,
+             meet_count >= 0,
+             meet_count <= 4,
+             meetings[friends.index(friend)] == True))
 
-# Objective function: minimize the total time spent
-s.minimize(sum(t))
+# Add constraints for each friend
+for i, friend in enumerate(friends):
+    if friend == 'Emily':
+        start_time_emily = 7 * 60
+        end_time_emily = 9 * 60
+        meet_time_emily = 15
+        location_emily = 'Richmond_District'
+    elif friend == 'Margaret':
+        start_time_margaret = 4 * 60 + 30
+        end_time_margaret = 8 * 60 + 15
+        meet_time_margaret = 75
+        location_margaret = 'Financial_District'
+    elif friend == 'Ronald':
+        start_time_ronald = 6 * 60 + 30
+        end_time_ronald = 7 * 60 + 30
+        meet_time_ronald = 45
+        location_ronald = 'North_Beach'
+    elif friend == 'Deborah':
+        start_time_deborah = 1 * 60 + 45
+        end_time_deborah = 9 * 60 + 15
+        meet_time_deborah = 90
+        location_deborah = 'The_Castro'
+    elif friend == 'Jeffrey':
+        start_time_jeffrey = 11 * 60 + 15
+        end_time_jeffrey = 2 * 60 + 30
+        meet_time_jeffrey = 120
+        location_jeffrey = 'Golden_Gate_Park'
+    
+    s.add(meetings[i] == True)
+    add_constraint(friend, start_time_emily if friend == 'Emily' else start_time_margaret if friend == 'Margaret' else start_time_ronald if friend == 'Ronald' else start_time_deborah if friend == 'Deborah' else start_time_jeffrey, end_time_emily if friend == 'Emily' else end_time_margaret if friend == 'Margaret' else end_time_ronald if friend == 'Ronald' else end_time_deborah if friend == 'Deborah' else end_time_jeffrey, meet_time_emily if friend == 'Emily' else meet_time_margaret if friend == 'Margaret' else meet_time_ronald if friend == 'Ronald' else meet_time_deborah if friend == 'Deborah' else meet_time_jeffrey, location_emily if friend == 'Emily' else location_margaret if friend == 'Margaret' else location_ronald if friend == 'Ronald' else location_deborah if friend == 'Deborah' else location_jeffrey)
 
-# Solve the problem
-result = s.check()
-if result == sat:
-    model = s.model()
-    total_time = 0
-    for i in range(7):
-        if model.evaluate(x[i]).as_bool():
-            total_time += model.evaluate(t[i]).numerator().as_long() / model.evaluate(t[i]).denominator().as_long()
-    print(f'Total time spent: {total_time / 60:.2f} hours')
-    for i in range(7):
-        if model.evaluate(x[i]).as_bool():
-            friend = ['Emily', 'Margaret', 'Ronald', 'Deborah', 'Jeffrey'][i]
-            time_spent = model.evaluate(t[i]).numerator().as_long() / model.evaluate(t[i]).denominator().as_long()
-            print(f'Meet {friend} for {time_spent / 60:.2f} hours')
+# Add constraint to meet exactly 5 people
+s.add(Sum([meetings[i] for i in range(len(friends))]) == 5)
+
+# Check if the solver has a model
+if s.check() == unsat:
+    print("No solution exists")
 else:
-    print('No solution found')
+    # Find the optimal schedule
+    m = s.model()
+    
+    # Print the optimal schedule
+    print("Optimal schedule:")
+    for i, friend in enumerate(friends):
+        if m[meetings[i]]:
+            print(f"Meet {friend} at {m[meet_times[i]]} minutes after 9:00AM")
+            print(f"Location: {locations[locations.index(friend_locations[i])]}")
+            print(f"Time: {m[times[locations.index(friend_locations[i])]]} minutes after 9:00AM")
+            print()
+
+    print("Total travel time:", sum(distances[(('Nob_Hill'), friend_locations[i])] for i, friend in enumerate(friends)))
+
+    # Print the meet count
+    print(f"Meet count: {m[meet_count]}")

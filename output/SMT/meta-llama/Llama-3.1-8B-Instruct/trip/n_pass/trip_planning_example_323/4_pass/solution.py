@@ -1,63 +1,77 @@
 from z3 import *
+from datetime import datetime, timedelta
 
 # Define the cities
-cities = ['London', 'Oslo', 'Split', 'Porto']
+cities = ['Split', 'Oslo', 'London', 'Porto']
 
 # Define the days
 days = range(1, 17)
 
-# Create boolean variables for each city and day
-bool_vars = {}
-for city in cities:
-    for day in days:
-        bool_vars[f'{city}_{day}'] = Bool(f'{city}_{day}')
+# Define the flights
+flights = [
+    ('London', 'Oslo', (1, 7)),
+    ('Split', 'Oslo', (1, 6)),
+    ('Oslo', 'Porto', (7, 12)),
+    ('London', 'Split', (1, 6)),
+]
 
-# Define the constraints
-constraints = []
-
-# London and relatives (1-7)
-for day in days[:7]:
-    constraints.append(bool_vars[f'London_{day}'])
-
-# Visit Oslo for 2 days
-for day in days[:2]:
-    constraints.append(bool_vars[f'Oslo_{day}'])
-constraints.append(Not(Or([bool_vars[f'Oslo_{day}'] for day in days[2:]])))
-
-# Visit Split for 5 days, attend show from day 7 to 11
-for day in days[:5]:
-    constraints.append(bool_vars[f'Split_{day}'])
-for day in days[6:11]:
-    constraints.append(bool_vars[f'Split_{day}'])
-constraints.append(Not(Or([bool_vars[f'Split_{day}'] for day in days[11:]])))
-
-# Visit Porto for 5 days
-for day in days[-5:]:
-    constraints.append(bool_vars[f'Porto_{day}'])
-
-# Direct flights
-for city1 in cities:
-    for city2 in cities:
-        if city1!= city2:
-            for day in days:
-                constraint = Implies(bool_vars[f'{city1}_{day}'], bool_vars[f'{city2}_{day}'])
-                constraints.append(constraint)
-
-# Total days constraint
-total_days = 0
-for city in cities:
-    for day in days:
-        total_days += If(bool_vars[f'{city}_{day}'], 1, 0)
-constraints.append(total_days == 16)
-
-# Create the solver and solve
+# Create a Z3 solver
 solver = Solver()
-for c in constraints:
-    solver.add(c)
+
+# Define the variables
+place = [Bool(f'place_{day}_{city}') for day in days for city in cities]
+
+# Add constraints
+for day in days:
+    # Each day, you can only be in one place
+    solver.add(Or([place[day * len(cities) + i] for i in range(len(cities))]))
+    # If you are in a place on day X, you must also be in that place on day X+1
+    for i in range(len(cities)):
+        if day + 1 in range(1, 17):
+            solver.add(If(place[day * len(cities) + i], place[(day + 1) * len(cities) + i], True))
+    # If you are in a place on day X and you have a flight to another place on day X, you must also be in that other place on day X
+    for flight in flights:
+        if day in flight[2]:
+            solver.add(If(place[day * len(cities) + cities.index(flight[0])], place[day * len(cities) + cities.index(flight[1])], True))
+            solver.add(If(place[day * len(cities) + cities.index(flight[1])], place[day * len(cities) + cities.index(flight[0])], True))
+
+# Add constraints for the given itinerary
+for day in range(1, 17):
+    for i in range(len(cities)):
+        if day >= 1 and day <= 5:
+            solver.add(place[day * len(cities) + i])
+        elif day >= 7 and day <= 11:
+            solver.add(place[day * len(cities) + i])
+        elif day >= 1 and day <= 7:
+            solver.add(place[day * len(cities) + i])
+        elif day >= 7 and day <= 12:
+            solver.add(place[day * len(cities) + i])
+        elif day >= 1 and day <= 5:
+            solver.add(place[day * len(cities) + i])
+
+# Solve the problem
 if solver.check() == sat:
     model = solver.model()
-    for city in cities:
-        for day in days:
-            print(f'{city} {day}: {model[bool_vars[f"{city}_{day}"]]}')
+    itinerary = []
+    for day in range(1, 17):
+        places = [model[place[day * len(cities) + i]] for i in range(len(cities))]
+        places = [str(place) for place in places]
+        if all(place == False for place in places):
+            continue
+        for i in range(len(cities)):
+            if model[place[day * len(cities) + i]]:
+                if day in flights[[flight for flight in flights if flight[0] == cities[i] and flight[1] in cities][0][2]][1]:
+                    itinerary.append({"day_range": f"Day {day} - Day {day}", "place": cities[i]})
+                    itinerary.append({"day_range": f"Day {day}", "place": cities[i]})
+                    itinerary.append({"day_range": f"Day {day}", "place": flights[[flight for flight in flights if flight[0] == cities[i] and flight[1] in cities][0][1]]})
+                    itinerary.append({"day_range": f"Day {day}", "place": flights[[flight for flight in flights if flight[0] == cities[i] and flight[1] in cities][0][1]]})
+                elif day in flights[[flight for flight in flights if flight[1] == cities[i] and flight[0] in cities][0][2]][1]:
+                    itinerary.append({"day_range": f"Day {day} - Day {day}", "place": cities[i]})
+                    itinerary.append({"day_range": f"Day {day}", "place": cities[i]})
+                    itinerary.append({"day_range": f"Day {day}", "place": flights[[flight for flight in flights if flight[1] == cities[i] and flight[0] in cities][0][0]]})
+                    itinerary.append({"day_range": f"Day {day}", "place": flights[[flight for flight in flights if flight[1] == cities[i] and flight[0] in cities][0][0]]})
+                else:
+                    itinerary.append({"day_range": f"Day {day} - Day {day + 1}" if day!= 16 else f"Day {day}", "place": cities[i]})
+    print({"itinerary": itinerary})
 else:
-    print('No solution found')
+    print("No solution found")
