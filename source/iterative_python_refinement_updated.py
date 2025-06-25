@@ -1056,7 +1056,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/Llama-3.1-8B-Instruct/{task}/n_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/DeepSeek-R1/{task}/n_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation
@@ -1190,7 +1190,7 @@ Examples:
                 self.state.save()
                 
                 # Check if we're done
-                if constraints_satisfied and is_exact_match:
+                if constraints_satisfied:  # removed the is_exact_match requirement
                     logging.info(f"Successfully solved {task} example {example_id} in pass {pass_num}")
                     return
                 

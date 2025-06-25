@@ -1,100 +1,92 @@
 def main():
-    work_start = 9 * 60  # 9:00 in minutes from midnight
-    work_end = 17 * 60   # 17:00
-
-    # Define busy intervals for each participant per day (in minutes from midnight)
-    jean_busy_monday = []
-    jean_busy_tuesday = [
-        (11*60 + 30, 12*60),   # 11:30 to 12:00
-        (16*60, 16*60 + 30)     # 16:00 to 16:30
-    ]
-    doris_busy_monday = [
-        (9*60, 11*60 + 30),     # 9:00 to 11:30
-        (12*60, 12*60 + 30),    # 12:00 to 12:30
-        (13*60 + 30, 16*60),    # 13:30 to 16:00
-        (16*60 + 30, 17*60)     # 16:30 to 17:00
-    ]
-    doris_busy_tuesday = [
-        (9*60, 17*60)            # 9:00 to 17:00
-    ]
-
-    candidate = None
-    candidate_day = None
-
-    for day in ['Monday', 'Tuesday']:
-        if day == 'Monday':
-            busy = jean_busy_monday + doris_busy_monday
-        else:
-            busy = jean_busy_tuesday + doris_busy_tuesday
-
-        # Sort busy intervals by start time
-        sorted_busy = sorted(busy, key=lambda x: x[0])
-        merged_busy = []
-        if sorted_busy:
-            current_start, current_end = sorted_busy[0]
-            for i in range(1, len(sorted_busy)):
-                s, e = sorted_busy[i]
-                if s <= current_end:
-                    current_end = max(current_end, e)
-                else:
-                    merged_busy.append((current_start, current_end))
-                    current_start, current_end = s, e
-            merged_busy.append((current_start, current_end))
-
-        # Compute free intervals within work hours
+    work_start = 540  # 9:00 in minutes
+    work_end = 1020   # 17:00 in minutes
+    days = ['Monday', 'Tuesday']
+    
+    # Busy intervals for Jean and Doris for each day (in minutes, [start, end))
+    jean_busy = {
+        'Monday': [],
+        'Tuesday': [[690, 720], [960, 990]]  # 11:30-12:00, 16:00-16:30
+    }
+    
+    doris_busy = {
+        'Monday': [[540, 690], [720, 750], [810, 960], [990, 1020]],  # 9:00-11:30, 12:00-12:30, 13:30-16:00, 16:30-17:00
+        'Tuesday': [[540, 1020]]  # Entire work day busy
+    }
+    
+    # Helper function to compute free intervals
+    def compute_free(work_start, work_end, busy_intervals):
+        if not busy_intervals:
+            return [[work_start, work_end]]
+        sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
         free = []
         current = work_start
-        for interval in merged_busy:
-            s, e = interval
-            if current < s:
-                free.append((current, s))
-            current = e
+        for s, e in sorted_busy:
+            if s > current:
+                free.append([current, s])
+            if e > current:
+                current = e
         if current < work_end:
-            free.append((current, work_end))
-
-        # Find a candidate meeting time
+            free.append([current, work_end])
+        return free
+    
+    # Helper function to find intersection of two sets of intervals
+    def intersect_intervals(intervals1, intervals2):
+        i = j = 0
+        common = []
+        while i < len(intervals1) and j < len(intervals2):
+            low = max(intervals1[i][0], intervals2[j][0])
+            high = min(intervals1[i][1], intervals2[j][1])
+            if low < high:
+                common.append([low, high])
+            if intervals1[i][1] < intervals2[j][1]:
+                i += 1
+            else:
+                j += 1
+        return common
+    
+    # Helper function to convert minutes to HH:MM string
+    def format_time(minutes):
+        h = minutes // 60
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
+    
+    # Iterate over days to find a suitable meeting time
+    chosen_day = None
+    chosen_interval = None
+    
+    for day in days:
+        jean_free = compute_free(work_start, work_end, jean_busy[day])
+        doris_free = compute_free(work_start, work_end, doris_busy[day])
+        common = intersect_intervals(jean_free, doris_free)
+        # Filter intervals with at least 30 minutes duration
+        common = [interv for interv in common if interv[1] - interv[0] >= 30]
+        
+        if not common:
+            continue
+            
         if day == 'Monday':
-            # First, try to find a slot entirely before 14:00 (840 minutes)
-            for interval in free:
-                s, e = interval
-                if e - s >= 30:  # Check if the interval is long enough
-                    if s + 30 <= 14 * 60:  # Ensure meeting ends by 14:00
-                        candidate = (s, s + 30)
-                        candidate_day = day
-                        break
-            if candidate is None:
-                # If no slot before 14:00, take any available slot on Monday
-                for interval in free:
-                    s, e = interval
-                    if e - s >= 30:
-                        candidate = (s, s + 30)
-                        candidate_day = day
-                        break
-        else:  # Tuesday
-            for interval in free:
-                s, e = interval
-                if e - s >= 30:
-                    candidate = (s, s + 30)
-                    candidate_day = day
-                    break
-
-        if candidate is not None:
+            # Filter intervals starting before 14:00 (840 minutes) for Doris's preference
+            preferred_common = [interv for interv in common if interv[0] < 840]
+            if preferred_common:
+                chosen_interval = preferred_common[0]
+                chosen_day = day
+                break
+            else:
+                chosen_interval = common[0]
+                chosen_day = day
+                break
+        else:
+            chosen_interval = common[0]
+            chosen_day = day
             break
-
-    if candidate is None:
-        print("No solution found")
-        exit(1)
-
-    # Convert candidate times to HH:MM format
-    s, e = candidate
-    start_hour = s // 60
-    start_minute = s % 60
-    end_hour = e // 60
-    end_minute = e % 60
-    time_str = f"{start_hour}:{start_minute:02d}:{end_hour}:{end_minute:02d}"
-
-    print(candidate_day)
-    print(time_str)
+    
+    if chosen_interval:
+        start_time = format_time(chosen_interval[0])
+        end_time = format_time(chosen_interval[1])
+        time_str = f"{start_time}:{end_time}"
+        print(chosen_day)
+        print(time_str)
 
 if __name__ == "__main__":
     main()
