@@ -45,7 +45,11 @@ for (from_city, to_city), duration in flight_durations.items():
         if i + duration <= total_days:
             solver.add(Or(And(days[i + duration] == days[i] + 1, places[i + duration] == to_index)))
         else:
-            solver.add(places[i + duration] == to_index)
+            solver.add(places[i] == to_index)
+
+# Add a constraint to cover exactly 12 days
+days_12 = [days[i] == i + 1 for i in range(total_days)]
+solver.add(And(days_12))
 
 # Find a solution
 if solver.check() == sat:

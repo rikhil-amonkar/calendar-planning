@@ -1,80 +1,75 @@
 from z3 import *
 import json
 
-# Define the cities and their corresponding days
-cities = {
+# Define the cities and their corresponding flight durations
+cities = ['Vilnius', 'Munich', 'Mykonos']
+flight_durations = {
+    ('Vilnius', 'Munich'): 1,
+    ('Munich', 'Mykonos'): 1,
+}
+
+# Define the total number of days
+total_days = 12
+
+# Define the minimum stay in each city
+min_stay = {
     'Vilnius': 4,
     'Munich': 3,
-    'Mykonos': 7
+    'Mykonos': 7,
 }
-
-# Define the direct flights
-flights = {
-    'Vilnius': ['Munich'],
-    'Munich': ['Mykonos']
-}
-
-# Define the solver
-solver = Solver()
 
 # Define the variables
-days = cities['Vilnius'] + cities['Munich'] + cities['Mykonos']
-places = ['Vilnius', 'Munich', 'Mykonos']
-itinerary = []
+days = [Int('day_' + str(i)) for i in range(total_days + 1)]
+places = [Int('place_' + str(i)) for i in range(total_days + 1)]
 
-# Create variables for each day
-for day in range(1, days + 1):
-    for place in places:
-        var = Int(f'day_{day}_{place}')
-        solver.add(var >= 0)
-        solver.add(var <= day)
-        itinerary.append({'day_range': f'Day {day}', 'place': place})
+# Define the constraints
+solver = Solver()
 
-# Create variables for flight days
-for flight in flights['Vilnius']:
-    solver.add(If(Int('vilnius_to_' + flight) == 1, Int('vilnius') + 1, 0) == Int('munich'))
-    solver.add(If(Int('vilnius_to_' + flight) == 1, 0, Int('vilnius')) == Int('munich') - 1)
-    itinerary.append({'day_range': f'Day {Int("vilnius") + 1}', 'place': 'Vilnius'})
-    itinerary.append({'day_range': f'Day {Int("vilnius") + 1}', 'place': flight})
-    itinerary.append({'day_range': f'Day {Int("munich")}', 'place': flight})
-    itinerary.append({'day_range': f'Day {Int("munich") - 1}', 'place': 'Munich'})
+# Initialize the first day
+solver.add(And(days[0] == 1, places[0] == 0))
 
-for flight in flights['Munich']:
-    solver.add(If(Int('munich_to_' + flight) == 1, Int('munich') + 1, 0) == Int('mykonos'))
-    solver.add(If(Int('munich_to_' + flight) == 1, 0, Int('munich')) == Int('mykonos') - 1)
-    itinerary.append({'day_range': f'Day {Int("munich") + 1}', 'place': 'Munich'})
-    itinerary.append({'day_range': f'Day {Int("munich") + 1}', 'place': flight})
-    itinerary.append({'day_range': f'Day {Int("mykonos")}', 'place': flight})
-    itinerary.append({'day_range': f'Day {Int("mykonos") - 1}', 'place': 'Mykonos'})
+# Constraints for the minimum stay in each city
+for city in cities:
+    min_day = min_stay[city]
+    for i in range(total_days + 1):
+        if i >= min_day:
+            solver.add(Or(And(days[i] == days[i - min_day] + 1, places[i] == cities.index(city))))
+        else:
+            solver.add(places[i]!= cities.index(city))
 
-# Add constraints for each city
-for place, days in cities.items():
-    solver.add(Int(place) + days - 1 == Int(place + '_end'))
-    solver.add(Int(place) >= 1)
+# Constraints for the flight durations
+for (from_city, to_city), duration in flight_durations.items():
+    from_index = cities.index(from_city)
+    to_index = cities.index(to_city)
+    for i in range(total_days + 1):
+        if i + duration <= total_days:
+            solver.add(Or(And(days[i + duration] == days[i] + 1, places[i + duration] == to_index)))
+        else:
+            solver.add(places[i] == to_index)
 
-# Solve the solver
+# Find a solution
 if solver.check() == sat:
     model = solver.model()
-    vilnius = model.evaluate(Int('vilnius')).as_long()
-    munich = model.evaluate(Int('munich')).as_long()
-    mykonos = model.evaluate(Int('mykonos')).as_long()
-    print('Itinerary:')
-    for entry in itinerary:
-        if entry['place'] == 'Vilnius':
-            entry['day_range'] = f'Day {vilnius}'
-            entry['place'] = 'Vilnius'
-        elif entry['place'] == 'Munich':
-            entry['day_range'] = f'Day {munich}'
-            entry['place'] = 'Munich'
-        elif entry['place'] == 'Mykonos':
-            entry['day_range'] = f'Day {mykonos}'
-            entry['place'] = 'Mykonos'
-        elif entry['place'] in flights['Vilnius']:
-            entry['day_range'] = f'Day {vilnius + 1}'
-            entry['place'] = entry['place']
-        elif entry['place'] in flights['Munich']:
-            entry['day_range'] = f'Day {munich + 1}'
-            entry['place'] = entry['place']
-    print(json.dumps({'itinerary': itinerary}, indent=4))
+    itinerary = []
+    current_day = 1
+    current_place = 0
+    for i in range(total_days + 1):
+        day = model[days[i]].as_long()
+        place = model[places[i]].as_long()
+        city = cities[place]
+        if i > 0 and day!= model[days[i - 1]].as_long() + 1:
+            itinerary.append({"day_range": f"Day {current_day}-{model[days[i - 1]].as_long() - 1}", "place": cities[current_place]})
+            itinerary.append({"day_range": f"Day {model[days[i - 1]].as_long()}", "place": city})
+            current_day = model[days[i - 1]].as_long()
+            current_place = place
+        elif i == 0:
+            itinerary.append({"day_range": f"Day {day}", "place": city})
+            current_day = day
+            current_place = place
+        else:
+            itinerary.append({"day_range": f"Day {day}", "place": city})
+            current_day = day
+            current_place = place
+    print(json.dumps({"itinerary": itinerary}))
 else:
-    print('No solution found')
+    print("No solution found")
