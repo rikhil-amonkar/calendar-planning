@@ -1,77 +1,74 @@
-def time_to_minutes(time_str):
-    parts = time_str.split(':')
-    return int(parts[0]) * 60 + int(parts[1])
-
-def minutes_to_time(minutes):
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours:02d}:{mins:02d}"
-
-def merge_intervals(intervals):
-    if not intervals:
-        return []
-    intervals.sort(key=lambda x: x[0])
-    merged = []
-    start, end = intervals[0]
-    for interval in intervals[1:]:
-        if interval[0] <= end:
-            end = max(end, interval[1])
-        else:
-            merged.append((start, end))
-            start, end = interval
-    merged.append((start, end))
-    return merged
-
 def main():
-    work_start = time_to_minutes("09:00")
-    work_end = time_to_minutes("17:00")
-    duration = 60
+    # Define work hours (9:00 to 17:00) in minutes from 9:00
+    work_start = 0   # 9:00
+    work_end = 480   # 17:00
+    meeting_duration = 60  # 1 hour
 
-    # Busy intervals in minutes for each participant
-    stephanie = [
-        (time_to_minutes("10:00"), time_to_minutes("10:30")),
-        (time_to_minutes("16:00"), time_to_minutes("16:30"))
-    ]
-    cheryl = [
-        (time_to_minutes("10:00"), time_to_minutes("10:30")),
-        (time_to_minutes("11:30"), time_to_minutes("12:00")),
-        (time_to_minutes("13:30"), time_to_minutes("14:00")),
-        (time_to_minutes("16:30"), time_to_minutes("17:00"))
-    ]
-    bradley = [
-        (time_to_minutes("09:30"), time_to_minutes("10:00")),
-        (time_to_minutes("10:30"), time_to_minutes("11:30")),
-        (time_to_minutes("13:30"), time_to_minutes("14:00")),
-        (time_to_minutes("14:30"), time_to_minutes("15:00")),
-        (time_to_minutes("15:30"), time_to_minutes("17:00"))
-    ]
-    steven = [
-        (time_to_minutes("09:00"), time_to_minutes("12:00")),
-        (time_to_minutes("13:00"), time_to_minutes("13:30")),
-        (time_to_minutes("14:30"), time_to_minutes("17:00"))
+    # Busy intervals for each participant (in minutes from 9:00)
+    all_busy = [
+        # Stephanie
+        (60, 90), (420, 450),
+        # Cheryl
+        (60, 90), (150, 180), (270, 300), (450, 480),
+        # Bradley
+        (30, 60), (90, 150), (270, 300), (330, 360), (390, 480),
+        # Steven
+        (0, 180), (240, 270), (330, 480)
     ]
 
-    all_busy = stephanie + cheryl + bradley + steven
-    all_busy = merge_intervals(all_busy)
+    # Aggregate events: +1 for start, -1 for end
+    events_aggregated = {}
+    for s, e in all_busy:
+        events_aggregated[s] = events_aggregated.get(s, 0) + 1
+        events_aggregated[e] = events_aggregated.get(e, 0) - 1
 
+    # Sort event times
+    event_times = sorted(events_aggregated.keys())
+    counter = 0
+    free_start = work_start
     free_intervals = []
-    current = work_start
-    for start, end in all_busy:
-        if start > current:
-            free_intervals.append((current, start))
-        current = max(current, end)
-    if current < work_end:
-        free_intervals.append((current, work_end))
-
+    
+    # Track free intervals
+    for time in event_times:
+        net_delta = events_aggregated[time]
+        prev_counter = counter
+        counter += net_delta
+        
+        if prev_counter == 0 and counter > 0:
+            if time > free_start:
+                free_intervals.append((free_start, time))
+            free_start = None
+        if prev_counter > 0 and counter == 0:
+            free_start = time
+    
+    # Add last free interval if applicable
+    if free_start is not None and free_start < work_end:
+        free_intervals.append((free_start, work_end))
+    
+    # Find first free interval that fits the meeting
+    meeting_slot = None
     for start, end in free_intervals:
-        if end - start >= duration:
-            meeting_start = start
-            meeting_end = start + duration
-            print(f"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}")
-            print("Monday")
-            return
-
-    print("No suitable time found")
+        if end - start >= meeting_duration:
+            meeting_slot = (start, start + meeting_duration)
+            break
+    
+    if meeting_slot:
+        start_min, end_min = meeting_slot
+        # Convert start time to HH:MM
+        start_hour = 9 + start_min // 60
+        start_minute = start_min % 60
+        start_str = f"{start_hour:02d}:{start_minute:02d}"
+        
+        # Convert end time to HH:MM
+        end_hour = 9 + end_min // 60
+        end_minute = end_min % 60
+        end_str = f"{end_hour:02d}:{end_minute:02d}"
+        
+        # Output day and time range
+        print("Monday")
+        print(f"{start_str}:{end_str}")
+    else:
+        print("No suitable time found")
 
 if __name__ == "__main__":
     main()

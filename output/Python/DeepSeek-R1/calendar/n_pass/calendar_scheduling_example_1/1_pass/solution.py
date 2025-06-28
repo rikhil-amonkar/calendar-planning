@@ -1,85 +1,85 @@
+def invert_intervals(busy_intervals, start, end):
+    if not busy_intervals:
+        return [(start, end)]
+    busy_intervals.sort(key=lambda x: x[0])
+    free = []
+    current = start
+    for interval in busy_intervals:
+        if current < interval[0]:
+            free.append((current, interval[0]))
+        current = max(current, interval[1])
+    if current < end:
+        free.append((current, end))
+    return free
+
+def intersect_intervals(intervals1, intervals2):
+    if not intervals1 or not intervals2:
+        return []
+    i = j = 0
+    result = []
+    while i < len(intervals1) and j < len(intervals2):
+        start1, end1 = intervals1[i]
+        start2, end2 = intervals2[j]
+        low = max(start1, start2)
+        high = min(end1, end2)
+        if low < high:
+            result.append((low, high))
+        if end1 < end2:
+            i += 1
+        else:
+            j += 1
+    return result
+
 def main():
-    # Define work hours: 9:00 to 17:00 (8 hours = 480 minutes)
-    work_start = 0   # 9:00 in minutes from 9:00
-    work_end = 480   # 17:00
-
-    # Busy intervals in minutes (relative to 9:00)
-    raymond_busy = [[0, 30], [150, 180], [240, 270], [360, 390]]
-    billy_busy = [[60, 90], [180, 240], [450, 480]]
-    donald_busy = [[0, 30], [60, 120], [180, 240], [300, 330], [420, 480]]
-
-    # Function to compute free intervals given busy intervals and work hours
-    def get_free_intervals(busy_intervals, start, end):
-        if not busy_intervals:
-            return [[start, end]]
-        sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
-        free = []
-        current = start
-        for interval in sorted_busy:
-            s, e = interval
-            if current < s:
-                free.append([current, s])
-            current = max(current, e)
-        if current < end:
-            free.append([current, end])
-        return free
-
-    # Function to intersect two sets of intervals
-    def intersect_intervals(intervals1, intervals2):
-        if not intervals1 or not intervals2:
-            return []
-        i, j = 0, 0
-        result = []
-        while i < len(intervals1) and j < len(intervals2):
-            a1, a2 = intervals1[i]
-            b1, b2 = intervals2[j]
-            start = max(a1, b1)
-            end = min(a2, b2)
-            if start < end:
-                result.append([start, end])
-            if a2 < b2:
-                i += 1
-            else:
-                j += 1
-        return result
-
-    # Calculate free intervals for each person
-    raymond_free = get_free_intervals(raymond_busy, work_start, work_end)
-    billy_free = get_free_intervals(billy_busy, work_start, work_end)
-    donald_free = get_free_intervals(donald_busy, work_start, work_end)
-
+    # Work day: 9:00 to 17:00 represented in minutes from 9:00 (0 minutes = 9:00, 480 minutes = 17:00)
+    work_start = 0
+    work_end = 480
+    meeting_duration = 30
+    # Billy's preference: avoid meetings after 15:00 (360 minutes from 9:00), so meeting must end by 360 (15:00) if possible
+    billy_cutoff = 360
+    
+    # Busy intervals for each participant (each interval is (start_minute, end_minute), end exclusive)
+    raymond_busy = [(0, 30), (150, 180), (240, 270), (360, 390)]
+    billy_busy = [(60, 90), (180, 240), (450, 480)]
+    donald_busy = [(0, 30), (60, 120), (180, 240), (300, 330), (420, 480)]
+    
+    # Calculate free intervals for each
+    raymond_free = invert_intervals(raymond_busy, work_start, work_end)
+    billy_free = invert_intervals(billy_busy, work_start, work_end)
+    donald_free = invert_intervals(donald_busy, work_start, work_end)
+    
     # Find common free intervals
     common_free = intersect_intervals(raymond_free, billy_free)
     common_free = intersect_intervals(common_free, donald_free)
-
-    # Find the earliest 30-minute slot that starts before 15:00 (360 minutes) if available
-    candidate = None
-    for interval in common_free:
-        start, end = interval
-        if start + 30 <= end:
-            if start < 360:  # Meeting starts before 15:00
-                candidate = [start, start + 30]
-                break
-    if candidate is None:
-        for interval in common_free:
-            start, end = interval
-            if start + 30 <= end:
-                candidate = [start, start + 30]
-                break
-
-    # Convert candidate from minutes to time strings
-    def minutes_to_time(minutes):
-        total_minutes = minutes
-        hours = 9 + total_minutes // 60
-        mins = total_minutes % 60
-        return f"{hours:02d}:{mins:02d}"
-
-    start_time = minutes_to_time(candidate[0])
-    end_time = minutes_to_time(candidate[1])
     
-    # Output the time range and day
-    print(f"{start_time}:{end_time}")
+    candidate_start = None
+    # First, try to find a slot that ends by 15:00 (360 minutes)
+    for start, end in common_free:
+        slot_end = start + meeting_duration
+        if slot_end > end:  # Not enough time in this interval
+            continue
+        if slot_end <= billy_cutoff:  # Ends by 15:00
+            candidate_start = start
+            break
+    
+    # If no candidate found that ends by 15:00, take the first available slot of sufficient length
+    if candidate_start is None:
+        for start, end in common_free:
+            if end - start >= meeting_duration:
+                candidate_start = start
+                break
+    
+    # Convert candidate_start to time string
+    total_minutes_start = candidate_start
+    hours_start = 9 + total_minutes_start // 60
+    minutes_start = total_minutes_start % 60
+    total_minutes_end = candidate_start + meeting_duration
+    hours_end = 9 + total_minutes_end // 60
+    minutes_end = total_minutes_end % 60
+    
+    time_str = f"{hours_start:02d}:{minutes_start:02d}:{hours_end:02d}:{minutes_end:02d}"
     print("Monday")
+    print(time_str)
 
 if __name__ == "__main__":
     main()
