@@ -302,6 +302,9 @@ def evaluate_trip(constraints, pred_dict):
 
 def evaluate_meeting(constraints, pred_dict):
     """Evaluate meeting constraints"""
+    # Handle nested constraints structure
+    actual_constraints = constraints.get("constraints", constraints)
+    
     def parse_time(s):
         try:
             if s.endswith(("AM", "PM")):
@@ -344,9 +347,9 @@ def evaluate_meeting(constraints, pred_dict):
             return False, {"person": m["person"], "time_of_day": avail}
 
     travel = {}
-    for d in constraints.get("travel_distances", []):
+    for d in actual_constraints.get("travel_distances", []):
         pl = d["place"]
-        frm = pl.get("from", constraints.get("start", {}).get("location"))
+        frm = pl.get("from", actual_constraints.get("start", {}).get("location"))
         to = pl["to"]
         travel[(frm, to)] = d["walking_time"]
 
