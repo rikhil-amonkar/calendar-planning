@@ -667,236 +667,236 @@ async def process_single_example(
     response_text = ""
     pass_num = 0
     
-    try:
-        logging.info(f"[{example_id}] Starting processing with model {model}")
-        
-        # Create output directory
-        output_dir = f"../output/Plan/{model}/{task}/n_pass/{example_id}"
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Initialize AI model (outside semaphore to allow parallel initialization)
+    async with semaphore:
         try:
-            ai = initialize_model(model, keys)
-            logging.info(f"[{example_id}] Model initialized successfully")
-        except Exception as e:
-            logging.error(f"[{example_id}] Failed to initialize model: {str(e)}")
-            # Save error evaluation result
-            error_eval_result = {
-                "has_execution_error": True,
-                "execution_output": f"Model initialization failed: {str(e)}",
-                "pred": {},
-                "gold": {},
-                "status": "Model initialization error",
-                "violated_constraint": {},
-                "is_exact_match": False,
-                "constraints_satisfied": False,
-                "pass_number": 0
-            }
-            with open(f"{output_dir}/1_pass/evaluation.json", "w") as f:
-                json.dump(error_eval_result, f, indent=4)
-            return
-        
-        # Initialize conversation history
-        conversation_history = []
-        
-        # Get gold answer
-        gold_formatted = extract_gold_answer(example, task)
-        logging.info(f"[{example_id}] Pass {pass_num} extracted gold: {gold_formatted}")
-        
-        # Initial prompt
-        if task == "calendar":
-            prompt = example.get("prompt_0shot", "")
-            prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\", \"day\": \"<DAY>\"}. For example, if the proposed time is Tuesday, 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\", \"day\": \"Tuesday\"}."
-        elif task == "meeting":
-            prompt = example.get("prompt_0shot", "")
-            prompt += "\n\nPlease output the meeting schedule in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"person\": \"<PERSON_NAME>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}. Make sure to include the person's name for each meeting."
-        elif task == "trip":
-            prompt = example.get("prompt_0shot", "")
-            prompt += "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}, {\"flying\": \"Day X-Y\", \"from\": \"<CITY>\", \"to\": \"<CITY>\"}]}. Include all city visits and flights with their day ranges."
-        
-        current_prompt = prompt
-        
-        for pass_num in range(1, max_passes + 1):
-            pass_start_time = time.time()
-            logging.info(f"[{example_id}] Starting pass {pass_num}")
+            logging.info(f"[{example_id}] Starting processing with model {model}")
             
-            # Create output directory for this pass
-            pass_output_dir = f"{output_dir}/{pass_num}_pass"
-            os.makedirs(pass_output_dir, exist_ok=True)
+            # Create output directory
+            output_dir = f"../output/Plan/{model}/{task}/n_pass/{example_id}"
+            os.makedirs(output_dir, exist_ok=True)
             
-            # Get response from model with rate limiting (use semaphore only for API calls)
-            api_call_start = time.time()
-            retry_count = 0
-            max_retries = 3
-            while retry_count < max_retries:
-                try:
-                    logging.info(f"[{example_id}] Making API call (attempt {retry_count + 1})")
-                    # Use semaphore only for the actual API call
-                    async with semaphore:
-                        response_text = await run_model_with_rate_limit(ai, current_prompt, rate_limiter)
-                    logging.info(f"[{example_id}] API call successful")
-                    break
-                except Exception as e:
-                    retry_count += 1
-                    logging.warning(f"[{example_id}] API error in pass {pass_num} (attempt {retry_count}): {e}")
-                    if retry_count >= max_retries:
-                        logging.error(f"[{example_id}] Max retries reached, giving up")
-                        # Save error evaluation result
-                        error_eval_result = {
-                            "has_execution_error": True,
-                            "execution_output": f"Max API retries ({max_retries}) reached in pass {pass_num}",
-                            "pred": {},
-                            "gold": {},
-                            "status": "API retry limit exceeded",
-                            "violated_constraint": {},
-                            "is_exact_match": False,
-                            "constraints_satisfied": False,
-                            "pass_number": pass_num
-                        }
-                        with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                            json.dump(error_eval_result, f, indent=4)
-                        return
-                    await asyncio.sleep(5)
-                    try:
-                        ai = initialize_model(model, keys)
-                        logging.info(f"[{example_id}] Model reinitialized after error")
-                    except Exception as init_error:
-                        logging.error(f"[{example_id}] Failed to reinitialize model: {str(init_error)}")
-                        # Save error evaluation result
-                        error_eval_result = {
-                            "has_execution_error": True,
-                            "execution_output": f"Model reinitialization failed: {str(init_error)}",
-                            "pred": {},
-                            "gold": {},
-                            "status": "Model reinitialization error",
-                            "violated_constraint": {},
-                            "is_exact_match": False,
-                            "constraints_satisfied": False,
-                            "pass_number": pass_num
-                        }
-                        with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                            json.dump(error_eval_result, f, indent=4)
-                        return
-            
-            api_call_time = time.time() - api_call_start
-            logging.info(f"[{example_id}] Pass {pass_num} API call completed - {api_call_time:.2f}s")
-            
-            # Add to conversation history
-            conversation_history.append({"role": "user", "content": current_prompt})
-            conversation_history.append({"role": "assistant", "content": response_text})
-            
-            # Save conversation
-            with open(f"{pass_output_dir}/conversation.json", "w") as f:
-                json.dump(conversation_history, f, indent=4)
-            
-            # Extract prediction
+            # Initialize AI model
             try:
-                pred_formatted = extract_answer_from_text(response_text, task)
-                logging.info(f"[{example_id}] Pass {pass_num} extracted prediction: {pred_formatted}")
+                logging.info(f"[{example_id}] About to initialize model...")
+                ai = initialize_model(model, keys)
+                logging.info(f"[{example_id}] Model initialized successfully")
             except Exception as e:
-                logging.error(f"[{example_id}] Pass {pass_num} failed to extract prediction: {str(e)}")
-                pred_formatted = {}
-            
-            # Save plan
-            with open(f"{pass_output_dir}/plan.json", "w") as f:
-                json.dump(pred_formatted, f, indent=4)
-            
-            # Set num_people_to_meet from gold plan for meeting tasks
-            if task == "meeting" and gold_formatted:
-                num_people_to_meet = len(gold_formatted.get("itinerary", []))
-                constraints["num_people_to_meet"] = num_people_to_meet
-            
-            # Evaluate constraints
-            if task == "calendar":
-                constraints_satisfied, violated_constraints = evaluate_calendar(constraints, pred_formatted)
-            elif task == "meeting":
-                constraints_satisfied, violated_constraints = evaluate_meeting(constraints, pred_formatted)
-            elif task == "trip":
-                constraints_satisfied, violated_constraints = evaluate_trip(constraints, pred_formatted)
-            
-            logging.info(f"[{example_id}] Pass {pass_num} constraints satisfied: {constraints_satisfied}")
-            logging.info(f"[{example_id}] Pass {pass_num} violated constraints: {violated_constraints}")
-            
-            # Check exact match
-            if gold_formatted and pred_formatted:
-                is_exact_match = check_exact_match(gold_formatted, pred_formatted, task)
-            logging.info(f"[{example_id}] Pass {pass_num} exact match: {is_exact_match}")
-            
-            # Determine status
-            if constraints_satisfied:
-                status = "Correct plan"
-            else:
-                status = "Wrong plan"
-            
-            # Save evaluation
-            eval_result = {
-                "has_execution_error": False,
-                "execution_output": response_text,
-                "pred": pred_formatted,
-                "gold": gold_formatted,
-                "status": status,
-                "violated_constraint": violated_constraints,
-                "is_exact_match": is_exact_match,
-                "constraints_satisfied": constraints_satisfied,
-                "pass_number": pass_num
-            }
-            with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                json.dump(eval_result, f, indent=4)
-            
-            if constraints_satisfied:
-                logging.info(f"[{example_id}] SUCCESS! Solved in pass {pass_num}")
+                logging.error(f"[{example_id}] Failed to initialize model: {str(e)}")
+                # Save error evaluation result
+                error_eval_result = {
+                    "has_execution_error": True,
+                    "execution_output": f"Model initialization failed: {str(e)}",
+                    "pred": {},
+                    "gold": {},
+                    "status": "Model initialization error",
+                    "violated_constraint": {},
+                    "is_exact_match": False,
+                    "constraints_satisfied": False,
+                    "pass_number": 0
+                }
+                with open(f"{output_dir}/1_pass/evaluation.json", "w") as f:
+                    json.dump(error_eval_result, f, indent=4)
                 return
-            else:
-                logging.info(f"[{example_id}] Pass {pass_num} failed constraints, preparing feedback")
-                # Prepare feedback for next iteration
-                constraint_feedback = format_constraint_feedback(violated_constraints, task)
-                current_prompt = f"The previous solution produced the following output:\n{response_text}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints."
-        
-        logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
-        
-        # Save final evaluation result even if we failed to solve
-        if 'pred_formatted' in locals() and 'gold_formatted' in locals():
-            final_eval_result = {
-                "has_execution_error": False,
-                "execution_output": response_text,
-                "pred": pred_formatted,
-                "gold": gold_formatted,
-                "status": "Failed to solve within max passes",
-                "violated_constraint": violated_constraints,
-                "is_exact_match": is_exact_match,
-                "constraints_satisfied": constraints_satisfied,
-                "pass_number": pass_num
-            }
-            with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                json.dump(final_eval_result, f, indent=4)
-            logging.info(f"[{example_id}] Saved final evaluation result from pass {pass_num}")
-        
-        return
-        
-    except Exception as e:
-        logging.error(f"[{example_id}] Unexpected error: {str(e)}")
-        # Save error evaluation result
-        try:
-            error_eval_result = {
-                "has_execution_error": True,
-                "execution_output": f"Unexpected error: {str(e)}",
-                "pred": {},
-                "gold": {},
-                "status": "Unexpected error",
-                "violated_constraint": {},
-                "is_exact_match": False,
-                "constraints_satisfied": False,
-                "pass_number": 0
-            }
-            # Try to save to first pass directory, create if needed
-            first_pass_dir = f"{output_dir}/1_pass"
-            os.makedirs(first_pass_dir, exist_ok=True)
-            with open(f"{first_pass_dir}/evaluation.json", "w") as f:
-                json.dump(error_eval_result, f, indent=4)
-            logging.info(f"[{example_id}] Saved error evaluation result")
-        except Exception as save_error:
-            logging.error(f"[{example_id}] Failed to save error evaluation: {str(save_error)}")
-        return
+            
+            # Initialize conversation history
+            conversation_history = []
+            
+            # Get gold answer
+            gold_formatted = extract_gold_answer(example, task)
+            logging.info(f"[{example_id}] Pass {pass_num} extracted gold: {gold_formatted}")
+            
+            # Initial prompt
+            if task == "calendar":
+                prompt = example.get("prompt_0shot", "")
+                prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\", \"day\": \"<DAY>\"}. For example, if the proposed time is Tuesday, 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\", \"day\": \"Tuesday\"}."
+            elif task == "meeting":
+                prompt = example.get("prompt_0shot", "")
+                prompt += "\n\nPlease output the meeting schedule in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"person\": \"<PERSON_NAME>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}. Make sure to include the person's name for each meeting."
+            elif task == "trip":
+                prompt = example.get("prompt_0shot", "")
+                prompt += "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}, {\"flying\": \"Day X-Y\", \"from\": \"<CITY>\", \"to\": \"<CITY>\"}]}. Include all city visits and flights with their day ranges."
+            
+            current_prompt = prompt
+            
+            for pass_num in range(1, max_passes + 1):
+                pass_start_time = time.time()
+                logging.info(f"[{example_id}] Starting pass {pass_num}")
+                
+                # Create output directory for this pass
+                pass_output_dir = f"{output_dir}/{pass_num}_pass"
+                os.makedirs(pass_output_dir, exist_ok=True)
+                
+                # Get response from model with rate limiting
+                api_call_start = time.time()
+                retry_count = 0
+                max_retries = 3
+                while retry_count < max_retries:
+                    try:
+                        logging.info(f"[{example_id}] Making API call (attempt {retry_count + 1})")
+                        response_text = await run_model_with_rate_limit(ai, current_prompt, rate_limiter)
+                        logging.info(f"[{example_id}] API call successful")
+                        break
+                    except Exception as e:
+                        retry_count += 1
+                        logging.warning(f"[{example_id}] API error in pass {pass_num} (attempt {retry_count}): {e}")
+                        if retry_count >= max_retries:
+                            logging.error(f"[{example_id}] Max retries reached, giving up")
+                            # Save error evaluation result
+                            error_eval_result = {
+                                "has_execution_error": True,
+                                "execution_output": f"Max API retries ({max_retries}) reached in pass {pass_num}",
+                                "pred": {},
+                                "gold": {},
+                                "status": "API retry limit exceeded",
+                                "violated_constraint": {},
+                                "is_exact_match": False,
+                                "constraints_satisfied": False,
+                                "pass_number": pass_num
+                            }
+                            with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                                json.dump(error_eval_result, f, indent=4)
+                            return
+                        await asyncio.sleep(5)
+                        try:
+                            ai = initialize_model(model, keys)
+                            logging.info(f"[{example_id}] Model reinitialized after error")
+                        except Exception as init_error:
+                            logging.error(f"[{example_id}] Failed to reinitialize model: {str(init_error)}")
+                            # Save error evaluation result
+                            error_eval_result = {
+                                "has_execution_error": True,
+                                "execution_output": f"Model reinitialization failed: {str(init_error)}",
+                                "pred": {},
+                                "gold": {},
+                                "status": "Model reinitialization error",
+                                "violated_constraint": {},
+                                "is_exact_match": False,
+                                "constraints_satisfied": False,
+                                "pass_number": pass_num
+                            }
+                            with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                                json.dump(error_eval_result, f, indent=4)
+                            return
+                
+                api_call_time = time.time() - api_call_start
+                logging.info(f"[{example_id}] Pass {pass_num} API call completed - {api_call_time:.2f}s")
+                
+                # Add to conversation history
+                conversation_history.append({"role": "user", "content": current_prompt})
+                conversation_history.append({"role": "assistant", "content": response_text})
+                
+                # Save conversation
+                with open(f"{pass_output_dir}/conversation.json", "w") as f:
+                    json.dump(conversation_history, f, indent=4)
+                
+                # Extract prediction
+                try:
+                    pred_formatted = extract_answer_from_text(response_text, task)
+                    logging.info(f"[{example_id}] Pass {pass_num} extracted prediction: {pred_formatted}")
+                except Exception as e:
+                    logging.error(f"[{example_id}] Pass {pass_num} failed to extract prediction: {str(e)}")
+                    pred_formatted = {}
+                
+                # Save plan
+                with open(f"{pass_output_dir}/plan.json", "w") as f:
+                    json.dump(pred_formatted, f, indent=4)
+                
+                # Set num_people_to_meet from gold plan for meeting tasks
+                if task == "meeting" and gold_formatted:
+                    num_people_to_meet = len(gold_formatted.get("itinerary", []))
+                    constraints["num_people_to_meet"] = num_people_to_meet
+                
+                # Evaluate constraints
+                if task == "calendar":
+                    constraints_satisfied, violated_constraints = evaluate_calendar(constraints, pred_formatted)
+                elif task == "meeting":
+                    constraints_satisfied, violated_constraints = evaluate_meeting(constraints, pred_formatted)
+                elif task == "trip":
+                    constraints_satisfied, violated_constraints = evaluate_trip(constraints, pred_formatted)
+                
+                logging.info(f"[{example_id}] Pass {pass_num} constraints satisfied: {constraints_satisfied}")
+                logging.info(f"[{example_id}] Pass {pass_num} violated constraints: {violated_constraints}")
+                
+                # Check exact match
+                if gold_formatted and pred_formatted:
+                    is_exact_match = check_exact_match(gold_formatted, pred_formatted, task)
+                logging.info(f"[{example_id}] Pass {pass_num} exact match: {is_exact_match}")
+                
+                # Determine status
+                if constraints_satisfied:
+                    status = "Correct plan"
+                else:
+                    status = "Wrong plan"
+                
+                # Save evaluation
+                eval_result = {
+                    "has_execution_error": False,
+                    "execution_output": response_text,
+                    "pred": pred_formatted,
+                    "gold": gold_formatted,
+                    "status": status,
+                    "violated_constraint": violated_constraints,
+                    "is_exact_match": is_exact_match,
+                    "constraints_satisfied": constraints_satisfied,
+                    "pass_number": pass_num
+                }
+                with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                    json.dump(eval_result, f, indent=4)
+                
+                if constraints_satisfied:
+                    logging.info(f"[{example_id}] SUCCESS! Solved in pass {pass_num}")
+                    return
+                else:
+                    logging.info(f"[{example_id}] Pass {pass_num} failed constraints, preparing feedback")
+                    # Prepare feedback for next iteration
+                    constraint_feedback = format_constraint_feedback(violated_constraints, task)
+                    current_prompt = f"The previous solution produced the following output:\n{response_text}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints."
+            
+            logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
+            
+            # Save final evaluation result even if we failed to solve
+            if 'pred_formatted' in locals() and 'gold_formatted' in locals():
+                final_eval_result = {
+                    "has_execution_error": False,
+                    "execution_output": response_text,
+                    "pred": pred_formatted,
+                    "gold": gold_formatted,
+                    "status": "Failed to solve within max passes",
+                    "violated_constraint": violated_constraints,
+                    "is_exact_match": is_exact_match,
+                    "constraints_satisfied": constraints_satisfied,
+                    "pass_number": pass_num
+                }
+                with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                    json.dump(final_eval_result, f, indent=4)
+                logging.info(f"[{example_id}] Saved final evaluation result from pass {pass_num}")
+            
+            return
+            
+        except Exception as e:
+            logging.error(f"[{example_id}] Unexpected error: {str(e)}")
+            # Save error evaluation result
+            try:
+                error_eval_result = {
+                    "has_execution_error": True,
+                    "execution_output": f"Unexpected error: {str(e)}",
+                    "pred": {},
+                    "gold": {},
+                    "status": "Unexpected error",
+                    "violated_constraint": {},
+                    "is_exact_match": False,
+                    "constraints_satisfied": False,
+                    "pass_number": 0
+                }
+                # Try to save to first pass directory, create if needed
+                first_pass_dir = f"{output_dir}/1_pass"
+                os.makedirs(first_pass_dir, exist_ok=True)
+                with open(f"{first_pass_dir}/evaluation.json", "w") as f:
+                    json.dump(error_eval_result, f, indent=4)
+                logging.info(f"[{example_id}] Saved error evaluation result")
+            except Exception as save_error:
+                logging.error(f"[{example_id}] Failed to save error evaluation: {str(save_error)}")
+            return
 
 async def main():
     """Main function"""
@@ -925,6 +925,7 @@ async def main():
     # Process examples in parallel
     tasks = []
     for example_id, example in examples.items():
+        logging.info(f"Creating task for {example_id}")
         task = asyncio.create_task(
             process_single_example(
                 example_id,
@@ -939,6 +940,9 @@ async def main():
             )
         )
         tasks.append(task)
+        logging.info(f"Task created for {example_id}")
+    
+    logging.info(f"All {len(tasks)} tasks created, waiting for completion...")
     
     # Wait for all tasks to complete
     results = await asyncio.gather(*tasks, return_exceptions=True)
