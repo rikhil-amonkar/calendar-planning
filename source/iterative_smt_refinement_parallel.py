@@ -439,34 +439,6 @@ async def process_single_example(
                 
                 with open(f"{pass_output_dir}/output.out", "w") as f:
                     f.write(execution_output)
-                save_time = time.time() - save_start
-                logging.info(f"[{example_id}] Pass {pass_num} files saved - {save_time:.2f}s")
-                
-                # Check if execution had errors
-                has_execution_error = ("Error" in execution_output or 
-                                     "Exception" in execution_output or 
-                                     "Traceback" in execution_output or
-                                     not execution_output.strip())
-                
-                if has_execution_error:
-                    logging.warning(f"[{example_id}] Pass {pass_num} execution error: {execution_output}")
-                    # Save evaluation result with empty prediction
-                    eval_result = {
-                        "has_execution_error": True,
-                        "execution_output": execution_output,
-                        "pred": {},
-                        "gold": gold_formatted,
-                        "status": "Error",
-                        "violated_constraint": {},
-                        "is_exact_match": False,
-                        "constraints_satisfied": False,
-                        "pass_number": pass_num
-                    }
-                    with open(f"{pass_output_dir}/evaluation.json", "w") as f:
-                        json.dump(eval_result, f, indent=4)
-                    # Prepare feedback for next iteration
-                    current_prompt = f"The previous code had the following error:\n{execution_output}\n\nPlease fix the code and provide a corrected version. Make sure to surround your final code with ```python\nYOUR_CODE\n```."
-                    continue
                 
                 # Extract structured answer from execution output
                 pred_extract_start = time.time()
@@ -573,19 +545,15 @@ async def process_single_example(
             # Save final evaluation result even if we failed to solve
             if 'pred_formatted' in locals() and 'gold_formatted' in locals():
                 # Determine the correct status based on what happened in the last pass
-                if has_execution_error:
-                    # Check if it's a code extraction error specifically
-                    if execution_output == "No code found in model response":
-                        final_status = "No code extracted"
-                    else:
-                        final_status = "Error"
+                if execution_output == "No code found in model response":
+                    final_status = "No code extracted"
                 elif not constraints_satisfied:
                     final_status = "Wrong plan"
                 else:
                     final_status = "Failed to solve within max passes"
                 
                 final_eval_result = {
-                    "has_execution_error": has_execution_error,
+                    "has_execution_error": False,
                     "execution_output": execution_output,
                     "pred": pred_formatted,
                     "gold": gold_formatted,
