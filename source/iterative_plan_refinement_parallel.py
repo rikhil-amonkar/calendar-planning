@@ -37,6 +37,7 @@ import concurrent.futures
 from typing import List, Dict, Any, Tuple
 import logging
 import shutil
+from openai import OpenAI
 
 # Set up logging
 logging.basicConfig(
@@ -191,7 +192,7 @@ def add_json_formatting_instruction(prompt, task):
     if task == "calendar":
         return prompt + "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\", \"day\": \"<DAY>\"}. For example, if the proposed time is Tuesday, 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\", \"day\": \"Tuesday\"}."
     elif task == "meeting":
-        return prompt + "\n\nPlease output the meeting plan in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"location\": \"<LOCATION>\", \"person\": \"<PERSON>\", \"start_time\": \"<START_TIME>\", \"end_time\": \"<END_TIME>\"}]}. Include all meetings with their locations, people, and times."
+        return prompt + "\n\nPlease output the meeting schedule in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"person\": \"<PERSON_NAME>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}. Make sure to include the person's name for each meeting."
     elif task == "trip":
         return prompt + "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}, {\"flying\": \"Day X-Y\", \"from\": \"<CITY>\", \"to\": \"<CITY>\"}]}. Include all city visits and flights with their day ranges."
     else:
@@ -245,6 +246,7 @@ def evaluate_calendar(constraints, pred_dict):
 def evaluate_meeting(constraints, pred_dict):
     """Evaluate meeting constraints comprehensively (flat dict, not nested)"""
     from datetime import datetime
+    
     # Check for missing itinerary
     if not pred_dict or "itinerary" not in pred_dict:
         return False, {"missing_itinerary": True}
@@ -253,16 +255,32 @@ def evaluate_meeting(constraints, pred_dict):
     if not isinstance(itinerary, list):
         return False, {"invalid_itinerary": True}
     
-    # Check people to meet
-    people_to_meet = constraints.get("people_to_meet", [])
-    people_names = set(p["name"] for p in people_to_meet)
+    # Check number of people to meet (use num_people_to_meet if available, otherwise check people_to_meet)
+    num_people_to_meet = constraints.get("num_people_to_meet", 0)
     met_people = set()
+    
     for m in itinerary:
         if "person" not in m or "start_time" not in m or "end_time" not in m:
             return False, {"missing_meeting_fields": m}
-        met_people.add(m["person"])
-    if people_names and not people_names.issubset(met_people):
-        return False, {"unmet_people": list(people_names - met_people)}
+        
+        person = m["person"]
+        # Require person name to be provided
+        if not person or person == "Unknown":
+            return False, {"missing_person_name": "Person name must be provided for each meeting"}
+        
+        met_people.add(person)
+    
+    # Check if we meet enough people
+    if num_people_to_meet > 0 and len(met_people) < num_people_to_meet:
+        return False, {"num_people_to_meet": num_people_to_meet}
+    
+    # If no num_people_to_meet constraint, fall back to checking people_to_meet
+    if num_people_to_meet == 0:
+        people_to_meet = constraints.get("people_to_meet", [])
+        people_names = set(p["name"] for p in people_to_meet)
+        if people_names and not people_names.issubset(met_people):
+            return False, {"unmet_people": list(people_names - met_people)}
+    
     return True, {}
 
 def evaluate_trip(constraints, pred_dict):
@@ -381,105 +399,53 @@ def extract_answer_from_text(text, task):
         return None
     
     elif task == "meeting":
-        # First try to extract JSON from the response
-        json_pattern = r'```json\s*(\{.*?\})\s*```'
-        json_match = re.search(json_pattern, text, re.DOTALL | re.IGNORECASE)
-        if json_match:
-            try:
-                json_str = json_match.group(1)
-                result = json.loads(json_str)
-                if "meetings" in result:
-                    # Convert meetings format to itinerary format for evaluation
-                    itinerary = []
-                    for meeting in result["meetings"]:
-                        if "start_time" in meeting and "end_time" in meeting:
-                            # Extract person name from the text if available
-                            person = meeting.get("person", f"Person_{len(itinerary)+1}")
-                            itinerary.append({
-                                "action": "meet",
-                                "person": person,
-                                "start_time": meeting["start_time"],
-                                "end_time": meeting["end_time"]
-                            })
-                    return {"itinerary": itinerary}
-            except json.JSONDecodeError:
-                pass
+        # Use LLM-based extraction for meetings (following SMT/Python approach)
+        import os
         
-        # Try to find JSON without code blocks
-        json_pattern2 = r'\{[^}]*"meetings"[^}]*\}'
-        json_match2 = re.search(json_pattern2, text)
-        if json_match2:
-            try:
-                result = json.loads(json_match2.group(0))
-                if "meetings" in result:
-                    # Convert meetings format to itinerary format for evaluation
-                    itinerary = []
-                    for meeting in result["meetings"]:
-                        if "start_time" in meeting and "end_time" in meeting:
-                            person = meeting.get("person", f"Person_{len(itinerary)+1}")
-                            itinerary.append({
-                                "action": "meet",
-                                "person": person,
-                                "start_time": meeting["start_time"],
-                                "end_time": meeting["end_time"]
-                            })
-                    return {"itinerary": itinerary}
-            except json.JSONDecodeError:
-                pass
+        # Try to get OpenAI API key
+        openai_key = None
+        try:
+            # Try to load from scheduling_key.json
+            with open("../../scheduling_key.json") as f:
+                key_data = json.load(f)
+                openai_key = key_data.get("openai")
+        except (FileNotFoundError, KeyError):
+            # Try environment variable
+            openai_key = os.getenv("OPENAI_API_KEY")
         
-        # Look for meeting patterns in text like "Meet X from HH:MM to HH:MM"
-        meetings = []
-        lines = text.split('\n')
-        for line in lines:
-            # Try different patterns for meeting extraction
-            patterns = [
-                r"Meet\s+(\w+)\s+(?:at\s+)?(?:[^(]+)?(?:\([^)]+\))?\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
-                r"Meet\s+(\w+)\s+(?:at\s+)?(?:[^(]+)?(?:\([^)]+\))?\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
-                r"(\w+):\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?",
-                r"meet\s+(\w+)\s+for\s+\d+\s+minutes\s+from\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?\s+to\s+(\d{1,2}:\d{2})\s+(?:AM|PM)?"
-            ]
-            
-            for pattern in patterns:
-                match = re.search(pattern, line, re.IGNORECASE)
-                if match:
-                    person = match.group(1)
-                    start_time = match.group(2)
-                    end_time = match.group(3)
-                    
-                    # Convert to 24-hour format if needed
-                    if "PM" in line:
-                        start_hour = int(start_time.split(':')[0])
-                        if start_hour != 12:
-                            start_hour += 12
-                        start_time = f"{start_hour:02d}:{start_time.split(':')[1]}"
-                        
-                        end_hour = int(end_time.split(':')[0])
-                        if end_hour != 12:
-                            end_hour += 12
-                        end_time = f"{end_hour:02d}:{end_time.split(':')[1]}"
-                    elif "AM" in line:
-                        start_hour = int(start_time.split(':')[0])
-                        if start_hour == 12:
-                            start_hour = 0
-                        start_time = f"{start_hour:02d}:{start_time.split(':')[1]}"
-                        
-                        end_hour = int(end_time.split(':')[0])
-                        if end_hour == 12:
-                            end_hour = 0
-                        end_time = f"{end_hour:02d}:{end_time.split(':')[1]}"
-                    
-                    meetings.append({
-                        "action": "meet",
-                        "person": person,
-                        "start_time": start_time,
-                        "end_time": end_time
-                    })
-                    break
+        if not openai_key:
+            print("Warning: Could not find OpenAI API key for answer extraction")
+            return None
         
-        if meetings:
-            return {"itinerary": meetings}
+        try:
+            client = OpenAI(api_key=openai_key)
+        except Exception as e:
+            print(f"Warning: Could not initialize OpenAI client for answer extraction: {e}")
+            return None
         
-        return None
+        # Define extraction prompt for meetings
+        prompt = f"Given the following meeting schedule:\n{text}\nExtract the time and the person of each meeting in a JSON format like {{\"itinerary\": [{{\"action\": \"meet\", \"person\": \"David\",\"start_time\": \"13:00\", \"end_time\": \"14:00\"}}, ...]}}. Do not include location. Only keep the meeting times, and ignore time for starting, waiting, or traveling. The time should be converted to a 24-hour format. If no time range is given at all, output an empty JSON."
+        
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",  # Using gpt-4o-mini as fallback
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                response_format={"type": "json_object"},
+                temperature=0,
+                max_tokens=2000,
+                top_p=1
+            )
+            output_json = response.choices[0].message.content
+            print(f"Extracted answer JSON: {output_json}")
+            return json.loads(output_json)
+        except Exception as e:
+            print(f"Error in answer extraction: {e}")
+            return None
     
     elif task == "trip":
         # First try to extract JSON from the response
@@ -556,6 +522,10 @@ def format_constraint_feedback(violated_constraints, task):
             feedback += f"- Time format could not be parsed. Use format: {{HH:MM:HH:MM}}\n"
     
     elif task == "meeting":
+        if "num_people_to_meet" in violated_constraints:
+            num_required = violated_constraints["num_people_to_meet"]
+            feedback += f"- Must meet with exactly {num_required} people\n"
+        
         if "unmet_people" in violated_constraints:
             people_info = violated_constraints["unmet_people"]
             feedback += f"- Need to meet {len(people_info)} people: {', '.join(people_info)}\n"
@@ -610,22 +580,22 @@ def check_exact_match(gold_formatted, pred_formatted, task):
         return gold_day == pred_day and gold_time == pred_time
     
     elif task == "meeting":
-        # Compare meetings list
-        gold_meetings = gold_formatted.get("meetings", [])
-        pred_meetings = pred_formatted.get("meetings", [])
+        # Compare itinerary lists
+        gold_itinerary = gold_formatted.get("itinerary", [])
+        pred_itinerary = pred_formatted.get("itinerary", [])
         
-        if len(gold_meetings) != len(pred_meetings):
+        if len(gold_itinerary) != len(pred_itinerary):
             return False
         
         # Sort meetings for comparison
         def sort_key(meeting):
-            return (meeting.get("day", ""), meeting.get("start_time", ""))
+            return (meeting.get("person", ""), meeting.get("start_time", ""))
         
-        gold_sorted = sorted(gold_meetings, key=sort_key)
-        pred_sorted = sorted(pred_meetings, key=sort_key)
+        gold_sorted = sorted(gold_itinerary, key=sort_key)
+        pred_sorted = sorted(pred_itinerary, key=sort_key)
         
         for gold_meeting, pred_meeting in zip(gold_sorted, pred_sorted):
-            if (gold_meeting.get("day", "").lower() != pred_meeting.get("day", "").lower() or
+            if (gold_meeting.get("person", "").lower() != pred_meeting.get("person", "").lower() or
                 gold_meeting.get("start_time", "") != pred_meeting.get("start_time", "") or
                 gold_meeting.get("end_time", "") != pred_meeting.get("end_time", "")):
                 return False
@@ -740,10 +710,10 @@ async def process_single_example(
                 prompt += "\n\nPlease output the proposed time in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\", \"day\": \"<DAY>\"}. For example, if the proposed time is Tuesday, 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\", \"day\": \"Tuesday\"}."
             elif task == "meeting":
                 prompt = example.get("prompt_0shot", "")
-                prompt += "\n\nPlease output the meeting schedule in the following JSON format:\n{\"meetings\": [{\"day\": \"<DAY>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}"
+                prompt += "\n\nPlease output the meeting schedule in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"person\": \"<PERSON_NAME>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}. Make sure to include the person's name for each meeting."
             elif task == "trip":
                 prompt = example.get("prompt_0shot", "")
-                prompt += "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"start_day\": <DAY>, \"end_day\": <DAY>, \"location\": \"<CITY>\"}]}"
+                prompt += "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}, {\"flying\": \"Day X-Y\", \"from\": \"<CITY>\", \"to\": \"<CITY>\"}]}. Include all city visits and flights with their day ranges."
             
             current_prompt = prompt
             
@@ -829,6 +799,11 @@ async def process_single_example(
                 # Save plan
                 with open(f"{pass_output_dir}/plan.json", "w") as f:
                     json.dump(pred_formatted, f, indent=4)
+                
+                # Set num_people_to_meet from gold plan for meeting tasks
+                if task == "meeting" and gold_formatted:
+                    num_people_to_meet = len(gold_formatted.get("itinerary", []))
+                    constraints["num_people_to_meet"] = num_people_to_meet
                 
                 # Evaluate constraints
                 if task == "calendar":
