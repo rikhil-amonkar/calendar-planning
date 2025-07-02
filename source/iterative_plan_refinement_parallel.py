@@ -194,7 +194,7 @@ def add_json_formatting_instruction(prompt, task):
     elif task == "meeting":
         return prompt + "\n\nPlease output the meeting schedule in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"person\": \"<PERSON_NAME>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}. Make sure to include the person's name for each meeting."
     elif task == "trip":
-        return prompt + "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}, {\"flying\": \"Day X-Y\", \"from\": \"<CITY>\", \"to\": \"<CITY>\"}]}. Include all city visits and flights with their day ranges."
+        return prompt + "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}]}. Include all city visits with their day ranges. Do not include separate flight entries in the JSON output.\n\nIMPORTANT: When you fly from city A to city B on day X, that day counts for BOTH cities. For example:\n- If you stay in Venice from Day 1-3 and fly to Vienna on Day 3, then:\n  - Venice: Day 1-3 (3 days)\n  - Vienna: Day 3-6 (4 days, including the flight day)\n- The flight day (Day 3) is counted for both Venice and Vienna.\n- Do NOT create separate flight entries in the JSON."
     else:
         return prompt
 
@@ -312,23 +312,39 @@ def evaluate_trip(constraints, pred_dict):
             start, end = int(start_s), int(end_s)
         except ValueError:
             return False, {"unparsable_day_range": day_range}
-        segments.append((start, end, seg["place"]))
+        segments.append({"place": seg["place"], "start": start, "end": end})
     
-    # Check trip length
+    # Validate trip starts on day 1 and ends on the correct day
     trip_length = constraints.get("trip_length")
     if trip_length is not None:
-        total_days = sum(end - start + 1 for start, end, _ in segments)
-        if total_days != trip_length:
-            return False, {"trip_length": {"required": trip_length, "actual": total_days}}
+        if not segments or segments[0]["start"] != 1 or segments[-1]["end"] != trip_length:
+            return False, {"trip_length": {"required": trip_length, "actual": "invalid_start_end"}}
+        
+        # Check for gaps or overlaps between consecutive segments
+        for a, b in zip(segments, segments[1:]):
+            if a["end"] != b["start"]:
+                return False, {"gap_or_overlap": {"between": f"Day {a['end']} and Day {b['start']}"}}
     
-    # Check city_length
+    # Check stay_days (convert from city_length format for consistency with Python refinement)
+    # Convert city_length format to stay_days format
     city_length = constraints.get("city_length", [])
+    stay_days = {}
     for city_req in city_length:
-        city = city_req["city"]
-        days_req = city_req["days"]
-        days_actual = sum(end - start + 1 for start, end, place in segments if place == city)
-        if days_actual != days_req:
-            return False, {"city_length": {"city": city, "required": days_req, "actual": days_actual}}
+        stay_days[city_req["city"]] = city_req["days"]
+    
+    for seg in segments:
+        required = stay_days.get(seg["place"])
+        if required is not None:
+            actual = seg["end"] - seg["start"] + 1
+            if actual != required:
+                return False, {"stay_days": {seg["place"]: required}}
+    
+    # Check flight constraints
+    allowed_flights = [(d["from"], d["to"]) for d in constraints.get("direct_flights", [])]
+    for a, b in zip(segments, segments[1:]):
+        pair = (a["place"], b["place"])
+        if pair not in allowed_flights:
+            return False, {"flight": {"from": a["place"], "to": b["place"]}}
     
     return True, {}
 
@@ -448,45 +464,92 @@ def extract_answer_from_text(text, task):
             return None
     
     elif task == "trip":
-        # First try to extract JSON from the response
+        # First try to extract JSON from the response (for model outputs)
         json_pattern = r'```json\s*(\{.*?\})\s*```'
         json_match = re.search(json_pattern, text, re.DOTALL | re.IGNORECASE)
         if json_match:
             try:
                 json_str = json_match.group(1)
                 result = json.loads(json_str)
-                if "itinerary" in result:
+                if "itinerary" in result and isinstance(result["itinerary"], list):
                     return result
             except json.JSONDecodeError:
                 pass
         
-        # Try to find JSON without code blocks
+        # Try to find JSON without code blocks - improved pattern
+        # Look for JSON objects that contain "itinerary" field
         json_pattern2 = r'\{[^}]*"itinerary"[^}]*\}'
-        json_match2 = re.search(json_pattern2, text)
+        json_match2 = re.search(json_pattern2, text, re.DOTALL)
         if json_match2:
             try:
-                return json.loads(json_match2.group(0))
+                # Find the complete JSON object by finding the outermost braces
+                start_pos = text.rfind('{', 0, json_match2.start())
+                if start_pos == -1:
+                    start_pos = json_match2.start()
+                
+                # Find the matching closing brace
+                brace_count = 0
+                end_pos = start_pos
+                for i in range(start_pos, len(text)):
+                    if text[i] == '{':
+                        brace_count += 1
+                    elif text[i] == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_pos = i + 1
+                            break
+                
+                json_str = text[start_pos:end_pos]
+                result = json.loads(json_str)
+                if "itinerary" in result and isinstance(result["itinerary"], list):
+                    return result
             except json.JSONDecodeError:
                 pass
         
-        # Trip format is a detailed itinerary
-        # Look for day patterns like "Day 1-3: Arriving in Paris and visit Paris for 3 days"
+        # Try to find any JSON object that might contain itinerary
+        # This is a more aggressive approach for malformed JSON
+        try:
+            # Look for the start of a JSON object
+            start_pos = text.find('{')
+            end_pos = text.rfind('}')
+            if start_pos != -1 and end_pos > start_pos and 'itinerary' in text:
+                json_str = text[start_pos:end_pos+1]
+                result = json.loads(json_str)
+                if "itinerary" in result and isinstance(result["itinerary"], list):
+                    return result
+        except json.JSONDecodeError:
+            pass
+        
+        # Fallback: Parse golden trip plan format (for gold text)
+        import re
+        
         itinerary = []
         
-        # Pattern for day entries
-        day_pattern = r'Day\s+(\d+)(?:-(\d+))?:\s*(?:Arriving in|Fly from|Visit)\s+([^,]+)'
-        matches = re.findall(day_pattern, text, re.IGNORECASE)
-        
-        for match in matches:
-            start_day = int(match[0])
-            end_day = int(match[1]) if match[1] else start_day
-            location = match[2].strip()
+        for line in text.split('\n'):
+            line = line.strip()
+            if not line or not line.startswith('**Day'):
+                continue
+                
+            day_match = re.search(r'Day (\d+)(?:-(\d+))?', line)
+            if not day_match:
+                continue
+                
+            start_day = int(day_match.group(1))
+            end_day = int(day_match.group(2)) if day_match.group(2) else start_day
+            day_range = f"Day {start_day}-{end_day}"
             
-            itinerary.append({
-                "start_day": start_day,
-                "end_day": end_day,
-                "location": location
-            })
+            place_match = re.search(r'(?:Arriving in|Visit|Stay in|at) ([^\s,.]+)', line, re.IGNORECASE)
+            if place_match:
+                itinerary.append({
+                    "day_range": day_range,
+                    "place": place_match.group(1)
+                })
+        
+        # Sort by day range start for consistent comparison
+        itinerary.sort(key=lambda x: (
+            int(x["day_range"].split()[1].split("-")[0]),
+            x["place"]
+        ))
         
         if itinerary:
             return {"itinerary": itinerary}
@@ -545,18 +608,21 @@ def format_constraint_feedback(violated_constraints, task):
     elif task == "trip":
         if "trip_length" in violated_constraints:
             length_info = violated_constraints["trip_length"]
-            feedback += f"- Trip must cover {length_info['required']} days, but covers {length_info['actual']}\n"
+            if length_info['actual'] == "invalid_start_end":
+                feedback += f"- Trip must start on Day 1 and end on Day {length_info['required']}\n"
+            else:
+                feedback += f"- Trip must cover {length_info['required']} days, but covers {length_info['actual']}\n"
         
-        if "city_length" in violated_constraints:
-            city_info = violated_constraints["city_length"]
-            feedback += f"- {city_info['city']} should be visited for {city_info['required']} days, but scheduled for {city_info['actual']} days\n"
+        if "stay_days" in violated_constraints:
+            for city, required_days in violated_constraints["stay_days"].items():
+                feedback += f"- Must stay in {city} for exactly {required_days} days\n"
         
         if "gap_or_overlap" in violated_constraints:
             gap_info = violated_constraints["gap_or_overlap"]
             feedback += f"- There is a gap or overlap {gap_info['between']}\n"
         
-        if "no_direct_flight" in violated_constraints:
-            flight_info = violated_constraints["no_direct_flight"]
+        if "flight" in violated_constraints:
+            flight_info = violated_constraints["flight"]
             feedback += f"- No direct flight available from {flight_info['from']} to {flight_info['to']}\n"
         
         if "missing_place" in violated_constraints:
@@ -611,9 +677,8 @@ def check_exact_match(gold_formatted, pred_formatted, task):
             return False
         
         for gold_item, pred_item in zip(gold_itinerary, pred_itinerary):
-            if (gold_item.get("start_day") != pred_item.get("start_day") or
-                gold_item.get("end_day") != pred_item.get("end_day") or
-                gold_item.get("location", "").lower() != pred_item.get("location", "").lower()):
+            if (gold_item.get("day_range") != pred_item.get("day_range") or
+                gold_item.get("place", "").lower() != pred_item.get("place", "").lower()):
                 return False
         
         return True
@@ -659,6 +724,7 @@ async def process_single_example(
 ):
     """Process a single example with iterative refinement"""
     # Initialize variables that might be referenced in error handling
+    gold_text = ""
     gold_formatted = {}
     pred_formatted = {}
     violated_constraints = {}
@@ -700,9 +766,9 @@ async def process_single_example(
         # Initialize conversation history
         conversation_history = []
         
-        # Get gold answer
-        gold_formatted = extract_gold_answer(example, task)
-        logging.info(f"[{example_id}] Pass {pass_num} extracted gold: {gold_formatted}")
+        # Get gold answer text (for reference only, not for exact match)
+        gold_text = extract_gold_answer(example, task)
+        logging.info(f"[{example_id}] Pass {pass_num} gold text: {gold_text[:100] if gold_text else 'None'}...")
         
         # Initial prompt
         if task == "calendar":
@@ -713,7 +779,7 @@ async def process_single_example(
             prompt += "\n\nPlease output the meeting schedule in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"person\": \"<PERSON_NAME>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}. Make sure to include the person's name for each meeting."
         elif task == "trip":
             prompt = example.get("prompt_0shot", "")
-            prompt += "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}, {\"flying\": \"Day X-Y\", \"from\": \"<CITY>\", \"to\": \"<CITY>\"}]}. Include all city visits and flights with their day ranges."
+            prompt += "\n\nPlease output the trip plan in the following JSON format:\n{\"itinerary\": [{\"day_range\": \"Day X-Y\", \"place\": \"<CITY>\"}]}. Include all city visits with their day ranges. Do not include separate flight entries in the JSON output.\n\nIMPORTANT: When you fly from city A to city B on day X, that day counts for BOTH cities. For example:\n- If you stay in Venice from Day 1-3 and fly to Vienna on Day 3, then:\n  - Venice: Day 1-3 (3 days)\n  - Vienna: Day 3-6 (4 days, including the flight day)\n- The flight day (Day 3) is counted for both Venice and Vienna.\n- Do NOT create separate flight entries in the JSON."
         
         current_prompt = prompt
         
@@ -802,10 +868,12 @@ async def process_single_example(
             with open(f"{pass_output_dir}/plan.json", "w") as f:
                 json.dump(pred_formatted, f, indent=4)
             
-            # Set num_people_to_meet from gold plan for meeting tasks
-            if task == "meeting" and gold_formatted:
-                num_people_to_meet = len(gold_formatted.get("itinerary", []))
-                constraints["num_people_to_meet"] = num_people_to_meet
+            # Set num_people_to_meet from constraints for meeting tasks
+            if task == "meeting":
+                # Use num_people_to_meet from constraints if available, otherwise use people_to_meet length
+                if "num_people_to_meet" not in constraints:
+                    people_to_meet = constraints.get("people_to_meet", [])
+                    constraints["num_people_to_meet"] = len(people_to_meet)
             
             # Evaluate constraints
             if task == "calendar":
@@ -818,14 +886,23 @@ async def process_single_example(
             logging.info(f"[{example_id}] Pass {pass_num} constraints satisfied: {constraints_satisfied}")
             logging.info(f"[{example_id}] Pass {pass_num} violated constraints: {violated_constraints}")
             
+            # Extract structured gold data for exact match comparison and evaluation
+            if gold_text:
+                gold_formatted = extract_answer_from_text(gold_text, task)
+            
             # Check exact match
             if gold_formatted and pred_formatted:
                 is_exact_match = check_exact_match(gold_formatted, pred_formatted, task)
+            else:
+                is_exact_match = False
             logging.info(f"[{example_id}] Pass {pass_num} exact match: {is_exact_match}")
             
-            # Determine status
-            if constraints_satisfied:
-                status = "Correct plan"
+            # Determine status - check exact match first, then constraints
+            if is_exact_match:
+                status = "Exact match"
+                constraints_satisfied = True  # Exact match implies constraints are satisfied
+            elif constraints_satisfied:
+                status = "Correct plan (constraints satisfied)"
             else:
                 status = "Wrong plan"
             
@@ -834,7 +911,7 @@ async def process_single_example(
                 "has_execution_error": False,
                 "execution_output": response_text,
                 "pred": pred_formatted,
-                "gold": gold_formatted,
+                "gold": gold_formatted if gold_text and pred_formatted else {},
                 "status": status,
                 "violated_constraint": violated_constraints,
                 "is_exact_match": is_exact_match,
@@ -844,11 +921,14 @@ async def process_single_example(
             with open(f"{pass_output_dir}/evaluation.json", "w") as f:
                 json.dump(eval_result, f, indent=4)
             
-            if constraints_satisfied:
-                logging.info(f"[{example_id}] SUCCESS! Solved in pass {pass_num}")
+            if is_exact_match or constraints_satisfied:
+                if is_exact_match:
+                    logging.info(f"[{example_id}] SUCCESS! Exact match in pass {pass_num}")
+                else:
+                    logging.info(f"[{example_id}] SUCCESS! Constraints satisfied in pass {pass_num}")
                 return
             else:
-                logging.info(f"[{example_id}] Pass {pass_num} failed constraints, preparing feedback")
+                logging.info(f"[{example_id}] Pass {pass_num} failed both exact match and constraints, preparing feedback")
                 # Prepare feedback for next iteration
                 constraint_feedback = format_constraint_feedback(violated_constraints, task)
                 current_prompt = f"The previous solution produced the following output:\n{response_text}\n{constraint_feedback}\n\nPlease revise your solution to satisfy these constraints."
@@ -856,12 +936,12 @@ async def process_single_example(
         logging.warning(f"[{example_id}] FAILED to solve within {max_passes} passes")
         
         # Save final evaluation result even if we failed to solve
-        if 'pred_formatted' in locals() and 'gold_formatted' in locals():
+        if 'pred_formatted' in locals():
             final_eval_result = {
                 "has_execution_error": False,
                 "execution_output": response_text,
                 "pred": pred_formatted,
-                "gold": gold_formatted,
+                "gold": gold_formatted if 'gold_formatted' in locals() else {},
                 "status": "Failed to solve within max passes",
                 "violated_constraint": violated_constraints,
                 "is_exact_match": is_exact_match,
@@ -979,73 +1059,10 @@ def load_constraints(task):
         return {example_id: data.get("constraints", {}) for example_id, data in constraints_data.items()}
 
 def extract_gold_answer(example, task):
-    """Extract gold answer from example"""
-    if task == "calendar":
-        # Calendar gold format: "Here is the proposed time: Monday, 13:30 - 14:30"
-        gold_text = example.get("golden_plan", "")
-        if gold_text:
-            return extract_answer_from_text(gold_text, task)
-        return None
-    
-    elif task == "meeting":
-        # Meeting gold format: list of strings like "You meet Sarah for 105 minutes from 2:45PM to 4:30PM"
-        gold_plan = example.get("golden_plan", [])
-        if isinstance(gold_plan, list) and gold_plan:
-            itinerary = []
-            for meeting_str in gold_plan:
-                if isinstance(meeting_str, str):
-                    # Parse meeting string to extract person, time
-                    # Pattern: "You meet {person} for {duration} minutes from {start_time} to {end_time}"
-                    import re
-                    
-                    # Try to extract person name and time range
-                    time_match = re.search(r'meet\s+([A-Za-z]+)\s+for\s+\d+\s+minutes\s+from\s+([0-9:]+(?:AM|PM)?)\s+to\s+([0-9:]+(?:AM|PM)?)', meeting_str)
-                    if time_match:
-                        person = time_match.group(1)
-                        start_time = time_match.group(2)
-                        end_time = time_match.group(3)
-                        
-                        # Convert to 24-hour format if needed
-                        if "PM" in meeting_str:
-                            start_hour = int(start_time.split(':')[0])
-                            if start_hour != 12:
-                                start_hour += 12
-                            start_time = f"{start_hour:02d}:{start_time.split(':')[1]}"
-                            
-                            end_hour = int(end_time.split(':')[0])
-                            if end_hour != 12:
-                                end_hour += 12
-                            end_time = f"{end_hour:02d}:{end_time.split(':')[1]}"
-                        elif "AM" in meeting_str:
-                            start_hour = int(start_time.split(':')[0])
-                            if start_hour == 12:
-                                start_hour = 0
-                            start_time = f"{start_hour:02d}:{start_time.split(':')[1]}"
-                            
-                            end_hour = int(end_time.split(':')[0])
-                            if end_hour == 12:
-                                end_hour = 0
-                            end_time = f"{end_hour:02d}:{end_time.split(':')[1]}"
-                        
-                        itinerary.append({
-                            "action": "meet",
-                            "person": person,
-                            "start_time": start_time,
-                            "end_time": end_time
-                        })
-            
-            if itinerary:
-                return {"itinerary": itinerary}
-        return None
-    
-    elif task == "trip":
-        # Trip gold format: "Here is the trip plan for visiting the 8 European cities for 21 days:..."
-        gold_text = example.get("golden_plan", "")
-        if gold_text:
-            return extract_answer_from_text(gold_text, task)
-        return None
-    
-    return None
+    """Extract gold answer from example - simplified to just return the golden_plan text"""
+    # For evaluation purposes, we only need the golden_plan text
+    # We don't need to parse it into structured format since we only evaluate constraints
+    return example.get("golden_plan", "")
 
 if __name__ == "__main__":
     asyncio.run(main()) 
