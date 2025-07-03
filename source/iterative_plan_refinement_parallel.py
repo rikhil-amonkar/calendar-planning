@@ -374,26 +374,20 @@ def extract_answer_from_text(text, task):
     import re
     
     if task == "calendar":
-        # First try to extract JSON from the response
-        json_pattern = r'```json\s*(\{.*?\})\s*```'
-        json_match = re.search(json_pattern, text, re.DOTALL | re.IGNORECASE)
-        if json_match:
-            try:
-                json_str = json_match.group(1)
-                result = json.loads(json_str)
-                if "time_range" in result and "day" in result:
-                    return result
-            except json.JSONDecodeError:
-                pass
-        
-        # Try to find JSON without code blocks
-        json_pattern2 = r'\{[^}]*"time_range"[^}]*"day"[^}]*\}'
-        json_match2 = re.search(json_pattern2, text)
-        if json_match2:
-            try:
-                return json.loads(json_match2.group(0))
-            except json.JSONDecodeError:
-                pass
+        # Try all JSON objects with both "time_range" and "day" keys (robust for pretty-printed and compact JSON)
+        try:
+            # Use a more flexible regex that handles newlines and pretty-printed JSON
+            json_pattern_multi = r'\{[\s\S]*?"time_range"[\s\S]*?"day"[\s\S]*?\}'
+            matches = re.findall(json_pattern_multi, text, re.DOTALL)
+            for match in matches:
+                try:
+                    result = json.loads(match)
+                    if "time_range" in result and "day" in result:
+                        return result
+                except Exception:
+                    continue
+        except Exception:
+            pass
         
         # Look for time range pattern in the format "Monday, 13:30 - 14:30"
         time_pattern = r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s*(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})'
