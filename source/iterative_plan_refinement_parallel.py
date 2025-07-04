@@ -767,7 +767,7 @@ async def process_single_example(
         # Initial prompt
         if task == "calendar":
             prompt = example.get("prompt_0shot", "")
-            prompt += "\n\nIMPORTANT: Do NOT write any code or algorithms. Simply provide the answer in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\", \"day\": \"<DAY>\"}\n\nFor example, if the proposed time is Tuesday, 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\", \"day\": \"Tuesday\"}"
+            prompt += "\n\nPlease output the answer in the following JSON format:\n{\"time_range\": \"{HH:MM:HH:MM}\", \"day\": \"<DAY>\"}\n\nFor example, if the proposed time is Tuesday, 14:30 to 15:30, the output should be:\n{\"time_range\": \"{14:30:15:30}\", \"day\": \"Tuesday\"}"
         elif task == "meeting":
             prompt = example.get("prompt_0shot", "")
             prompt += "\n\nPlease output the meeting schedule in the following JSON format:\n{\"itinerary\": [{\"action\": \"meet\", \"person\": \"<PERSON_NAME>\", \"start_time\": \"<HH:MM>\", \"end_time\": \"<HH:MM>\"}]}. Make sure to include the person's name for each meeting."
