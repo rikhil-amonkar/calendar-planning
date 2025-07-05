@@ -1,50 +1,48 @@
 from z3 import *
 
-# Define the variables
-day = String('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
+# Define the time slots in minutes from 9:00 to 17:00
+start_of_day = 9 * 60  # 9:00 AM
+end_of_day = 17 * 60   # 5:00 PM
 
-# Define the constraints
+# Define the meeting duration in minutes
+meeting_duration = 60  # 1 hour
+
+# Define the time variable for the meeting start time
+meeting_start = Int('meeting_start')
+
+# Create a solver instance
 solver = Solver()
 
-# Meeting duration is 1 hour
-solver.add(end_time - start_time == 60)
+# Add constraints for the meeting start time to be within working hours
+solver.add(meeting_start >= start_of_day)
+solver.add(meeting_start + meeting_duration <= end_of_day)
 
-# Meeting must be within work hours (9:00 to 17:00) on Monday
-solver.add(start_time >= 9 * 60)
-solver.add(end_time <= 17 * 60)
-solver.add(day == "Monday")
+# Define the busy times for James and John
+james_busy_times = [(11 * 60 + 30, 12 * 60), (14 * 60 + 30, 15 * 60)]
+john_busy_times = [(9 * 60 + 30, 11 * 60), (11 * 60 + 30, 12 * 60), (12 * 60 + 30, 13 * 60), (14 * 60 + 30, 16 * 60)]
 
-# James' blocked times: 11:30 to 12:00, 14:30 to 15:00
-solver.add(Or(start_time >= 12 * 60, end_time <= 11 * 60 + 30))
-solver.add(Or(start_time >= 15 * 60, end_time <= 14 * 60 + 30))
+# Add constraints to avoid busy times
+for start, end in james_busy_times:
+    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
 
-# John's busy times: 9:30 to 11:00, 11:30 to 12:30, 12:30 to 13:30, 14:30 to 16:30
-solver.add(Or(start_time >= 11 * 60, end_time <= 9 * 60 + 30))
-solver.add(Or(start_time >= 12 * 60 + 30, end_time <= 11 * 60 + 30))
-solver.add(Or(start_time >= 13 * 60, end_time <= 12 * 60 + 30))  # Avoid 12:30 to 13:30
-solver.add(Or(start_time >= 16 * 60 + 30, end_time <= 14 * 60 + 30))
+for start, end in john_busy_times:
+    solver.add(Or(meeting_start + meeting_duration <= start, meeting_start >= end))
 
-# Manually specify a valid time slot
-valid_start_time = 15 * 60  # 15:00
-valid_end_time = 16 * 60    # 16:00
-
-# Add the manually specified time slot as a solution
-solver.add(start_time == valid_start_time)
-solver.add(end_time == valid_end_time)
-
-# Solve the problem
+# Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    start_hour = model[start_time].as_long() // 60
-    start_minute = model[start_time].as_long() % 60
-    end_hour = model[end_time].as_long() // 60
-    end_minute = model[end_time].as_long() % 60
-
+    meeting_start_time = model[meeting_start].as_long()
+    meeting_end_time = meeting_start_time + meeting_duration
+    
+    # Convert the time back to HH:MM format
+    def convert_to_hhmm(minutes):
+        hours = minutes // 60
+        minutes = minutes % 60
+        return f"{hours:02}:{minutes:02}"
+    
     print("SOLUTION:")
-    print(f"Day: {model[day]}")
-    print(f"Start Time: {start_hour:02}:{start_minute:02}")
-    print(f"End Time: {end_hour:02}:{end_minute:02}")
+    print(f"Day: Monday")
+    print(f"Start Time: {convert_to_hhmm(meeting_start_time)}")
+    print(f"End Time: {convert_to_hhmm(meeting_end_time)}")
 else:
     print("No solution found")
