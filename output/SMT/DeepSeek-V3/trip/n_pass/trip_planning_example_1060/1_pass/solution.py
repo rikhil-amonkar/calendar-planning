@@ -1,0 +1,1 @@
+And(current_city_var == cities.index(c1), next_city_var == cities.index(c2))

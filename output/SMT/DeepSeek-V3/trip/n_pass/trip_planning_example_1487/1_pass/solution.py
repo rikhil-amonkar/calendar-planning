@@ -1,0 +1,2 @@
+s.add(Sum([If(positions[other] + 1 == positions[city], city_vars[other][1], 0) for other in other_cities]) <= city_vars[city][0])
+s.add(Sum([If(positions[other] + 1 == positions[city], city_vars[other][1], 0) for other in other_cities]) >= city_vars[city][0])
