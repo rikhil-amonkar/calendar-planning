@@ -1,68 +1,63 @@
 from z3 import *
 
-# Define the variables
-day = Int('day')  # 1 for Monday, 2 for Tuesday, 3 for Wednesday
-start_hour = Int('start_hour')
-start_minute = Int('start_minute')
+# Define the variables for the day and time
+day = Int('day')  # 0 for Monday, 1 for Tuesday, 2 for Wednesday
+start_time = Int('start_time')  # in minutes from 9:00
 
 # Define the constraints
-constraints = [
-    # Day constraints
-    Or(day == 1, day == 2, day == 3),
-    
-    # Work hours constraint (9:00 to 17:00)
-    And(start_hour >= 9, start_hour <= 16),
-    Or(start_hour < 16, And(start_hour == 16, start_minute == 0)),
-    
-    # Meeting duration constraint (30 minutes)
-    Or(
-        And(start_hour * 60 + start_minute + 30 <= 17 * 60),
-        And(start_hour * 60 + start_minute + 30 > 17 * 60, start_hour * 60 + start_minute + 30 - 60 <= 17 * 60)
-    ),
-    
-    # Nancy's availability constraints
-    Not(And(day == 1, start_hour == 10, start_minute == 0)),  # 10:00 to 10:30
-    Not(And(day == 1, start_hour == 11, start_minute == 30)),  # 11:30 to 12:30
-    Not(And(day == 1, start_hour == 13, start_minute == 30)),  # 13:30 to 14:00
-    Not(And(day == 1, start_hour == 14, start_minute == 30)),  # 14:30 to 15:30
-    Not(And(day == 1, start_hour == 16, start_minute == 0)),   # 16:00 to 17:00
-    Not(And(day == 2, start_hour == 9, start_minute == 30)),   # 9:30 to 10:30
-    Not(And(day == 2, start_hour == 11, start_minute == 0)),   # 11:00 to 11:30
-    Not(And(day == 2, start_hour == 12, start_minute == 0)),   # 12:00 to 12:30
-    Not(And(day == 2, start_hour == 13, start_minute == 0)),   # 13:00 to 13:30
-    Not(And(day == 2, start_hour == 15, start_minute == 30)),  # 15:30 to 16:00
-    Not(And(day == 3, start_hour == 10, start_minute == 0)),   # 10:00 to 11:30
-    Not(And(day == 3, start_hour == 13, start_minute == 30)),  # 13:30 to 16:00
-    
-    # Jose's availability constraints
-    Not(And(day == 1, True)),                                 # 9:00 to 17:00
-    Not(And(day == 2, True)),                                 # 9:00 to 17:00
-    Not(And(day == 3, start_hour == 9, start_minute == 0)),   # 9:00 to 9:30
-    Not(And(day == 3, start_hour == 10, start_minute == 0)),  # 10:00 to 12:30
-    Not(And(day == 3, start_hour == 13, start_minute == 30)),  # 13:30 to 14:30
-    Not(And(day == 3, start_hour == 15, start_minute == 0)),   # 15:00 to 17:00
-]
+constraints = []
 
-# Create the solver and add the constraints
+# Meeting duration is 30 minutes
+meeting_duration = 30
+
+# Work hours are from 9:00 to 17:00, so in minutes from 9:00, it's 0 to 480
+work_start = 0
+work_end = 480
+
+# Day constraints
+constraints.append(day >= 0)
+constraints.append(day <= 2)
+
+# Start time constraints within work hours
+constraints.append(start_time >= work_start)
+constraints.append(start_time + meeting_duration <= work_end)
+
+# Nancy's schedule
+nancy_busy_times = {
+    0: [(10*60, 10*60+30), (11*60+30, 12*60+30), (13*60+30, 14*60), (14*60+30, 15*60+30), (16*60, 17*60)],
+    1: [(9*60+30, 10*60+30), (11*60, 11*60+30), (12*60, 12*60+30), (13*60, 13*60+30), (15*60+30, 16*60)],
+    2: [(10*60, 11*60+30), (13*60+30, 16*60)]
+}
+
+for d, times in nancy_busy_times.items():
+    for s, e in times:
+        constraints.append(Or(start_time + meeting_duration <= s, start_time >= e))
+
+# Jose's schedule
+jose_busy_times = {
+    0: [(9*60, 17*60)],
+    1: [(9*60, 17*60)],
+    2: [(9*60, 9*60+30), (10*60, 12*60+30), (13*60+30, 14*60+30), (15*60, 17*60)]
+}
+
+for d, times in jose_busy_times.items():
+    for s, e in times:
+        constraints.append(Or(start_time + meeting_duration <= s, start_time >= e))
+
+# Solve the constraints
 solver = Solver()
 solver.add(constraints)
 
-# Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
     day_value = model[day].as_long()
-    start_hour_value = model[start_hour].as_long()
-    start_minute_value = model[start_minute].as_long()
-    end_hour_value = start_hour_value + (start_minute_value + 30) // 60
-    end_minute_value = (start_minute_value + 30) % 60
+    start_time_value = model[start_time].as_long()
+    end_time_value = start_time_value + meeting_duration
     
-    # Map day value to day name
-    day_name = {1: "Monday", 2: "Tuesday", 3: "Wednesday"}[day_value]
+    day_str = ["Monday", "Tuesday", "Wednesday"][day_value]
+    start_time_str = f"{(start_time_value // 60):02}:{(start_time_value % 60):02}"
+    end_time_str = f"{(end_time_value // 60):02}:{(end_time_value % 60):02}"
     
-    # Format the output
-    start_time = f"{start_hour_value:02}:{start_minute_value:02}"
-    end_time = f"{end_hour_value:02}:{end_minute_value:02}"
-    
-    print(f"SOLUTION:\nDay: {day_name}\nStart Time: {start_time}\nEnd Time: {end_time}")
+    print(f"SOLUTION:\nDay: {day_str}\nStart Time: {start_time_str}\nEnd Time: {end_time_str}")
 else:
     print("No solution found")
