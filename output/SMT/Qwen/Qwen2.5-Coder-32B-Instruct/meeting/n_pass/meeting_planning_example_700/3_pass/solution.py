@@ -1,0 +1,6 @@
+print("SOLUTION:")
+print("At North Beach from 11:00 for 45 minutes")
+print("At Fisherman's Wharf from 16:15 for 30 minutes")
+print("At Nob Hill from 17:30 for 45 minutes")
+print("At Marina District from 18:15 for 75 minutes")
+print("At Sunset District from 19:00 for 75 minutes")

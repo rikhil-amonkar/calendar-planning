@@ -1,14 +1,27 @@
 from z3 import *
 
-# Define the time slots in minutes from 9:00 AM to 10:30 PM
-start_time = 9 * 60  # 9:00 AM
-end_time = 22 * 60 + 30  # 10:30 PM
-time_slots = list(range(start_time, end_time + 1))
+# Define the time slots in minutes from 9:00AM to 10:30PM (750 minutes)
+time_slots = list(range(0, 751))
 
-# Define the locations
-locations = ['Haight-Ashbury', 'Fisherman\'s Wharf', 'Richmond District', 'Mission District', 'Bayview']
+# Define variables for the start time of each meeting
+start_sarah = Int('start_sarah')
+start_mary = Int('start_mary')
+start_helen = Int('start_helen')
+start_thomas = Int('start_thomas')
 
-# Define the travel times between locations
+# Define the duration of each meeting
+duration_sarah = 105
+duration_mary = 75
+duration_helen = 30
+duration_thomas = 120
+
+# Define the available time slots for each friend
+available_sarah = And(start_sarah >= 285, start_sarah + duration_sarah <= 570)  # 2:45PM to 5:30PM
+available_mary = And(start_mary >= 60, start_mary + duration_mary <= 435)    # 1:00PM to 7:15PM
+available_helen = And(start_helen >= 645, start_helen + duration_helen <= 660) # 9:45PM to 10:30PM
+available_thomas = And(start_thomas >= 195, start_thomas + duration_thomas <= 405) # 3:15PM to 6:45PM
+
+# Define travel times in minutes
 travel_times = {
     ('Haight-Ashbury', 'Fisherman\'s Wharf'): 23,
     ('Haight-Ashbury', 'Richmond District'): 10,
@@ -29,58 +42,41 @@ travel_times = {
     ('Bayview', 'Haight-Ashbury'): 19,
     ('Bayview', 'Fisherman\'s Wharf'): 25,
     ('Bayview', 'Richmond District'): 25,
-    ('Bayview', 'Mission District'): 13
+    ('Bayview', 'Mission District'): 13,
 }
 
-# Define the availability of each friend
-friend_availability = {
-    'Sarah': {'location': 'Fisherman\'s Wharf', 'start': 2 * 60 + 45, 'end': 5 * 60 + 30},  # 2:45 PM to 5:30 PM
-    'Mary': {'location': 'Richmond District', 'start': 1 * 60, 'end': 7 * 60 + 15},  # 1:00 PM to 7:15 PM
-    'Helen': {'location': 'Mission District', 'start': 21 * 60 + 45, 'end': 22 * 60 + 30},  # 9:45 PM to 10:30 PM
-    'Thomas': {'location': 'Bayview', 'start': 3 * 60 + 15, 'end': 6 * 60 + 45}  # 3:15 PM to 6:45 PM
-}
+# Define the current location and the start time
+current_location = 'Haight-Ashbury'
+start_time = 0
 
-# Define the minimum meeting times
-min_meeting_times = {'Sarah': 105, 'Mary': 75, 'Helen': 30, 'Thomas': 120}
-
-# Create a solver instance
+# Define the solver
 solver = Solver()
 
-# Define the variables for the location and time at each time slot
-location_vars = {t: Int(f'location_{t}') for t in time_slots}
-for t in time_slots:
-    solver.add(Or([location_vars[t] == i for i in range(len(locations))]))
+# Add constraints for available time slots
+solver.add(available_sarah)
+solver.add(available_mary)
+solver.add(available_helen)
+solver.add(available_thomas)
 
-# Add constraints for starting at Haight-Ashbury at 9:00 AM
-solver.add(location_vars[start_time] == locations.index('Haight-Ashbury'))
+# Define constraints for travel times
+def add_travel_constraint(prev_location, next_location, next_start_time):
+    travel_time = travel_times[(prev_location, next_location)]
+    solver.add(next_start_time >= start_time + travel_time)
 
-# Add constraints for traveling times
-for t in range(start_time, end_time):
-    for loc1 in locations:
-        for loc2 in locations:
-            if loc1 != loc2:
-                travel_time = travel_times[(loc1, loc2)]
-                solver.add(Implies(location_vars[t] == locations.index(loc1) & location_vars[t + 1] == locations.index(loc2),
-                                   t + travel_time <= t + 1))
+# Define the order of visits
+# We assume an arbitrary order for simplicity, but this can be optimized further
+add_travel_constraint(current_location, 'Fisherman\'s Wharf', start_sarah)
+add_travel_constraint('Fisherman\'s Wharf', 'Richmond District', start_mary)
+add_travel_constraint('Richmond District', 'Bayview', start_thomas)
+add_travel_constraint('Bayview', 'Mission District', start_helen)
 
-# Add constraints for meeting each friend for the required duration
-for friend, details in friend_availability.items():
-    loc_index = locations.index(details['location'])
-    min_meeting_time = min_meeting_times[friend]
-    friend_start = details['start']
-    friend_end = details['end']
-    # Count the number of time slots spent with the friend
-    meeting_count = Sum([If(location_vars[t] == loc_index, 1, 0) for t in range(friend_start, friend_end + 1)])
-    solver.add(meeting_count >= min_meeting_time)
-
-# Check if the constraints are satisfiable
+# Check if the solution is feasible
 if solver.check() == sat:
     model = solver.model()
-    schedule = [(t, locations[model.evaluate(location_vars[t])]) for t in time_slots]
     print("SOLUTION:")
-    for t, loc in schedule:
-        hour = t // 60
-        minute = t % 60
-        print(f"{hour:02}:{minute:02} - {loc}")
+    print(f"Meet Sarah at Fisherman's Wharf from {model[start_sarah]} to {model[start_sarah] + duration_sarah}")
+    print(f"Meet Mary at Richmond District from {model[start_mary]} to {model[start_mary] + duration_mary}")
+    print(f"Meet Thomas at Bayview from {model[start_thomas]} to {model[start_thomas] + duration_thomas}")
+    print(f"Meet Helen at Mission District from {model[start_helen]} to {model[start_helen] + duration_helen}")
 else:
     print("No solution found")
