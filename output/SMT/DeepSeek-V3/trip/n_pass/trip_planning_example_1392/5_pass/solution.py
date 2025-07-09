@@ -1,7 +1,5 @@
-from z3 import *
-
 def solve_itinerary():
-    # Cities to visit with their required days
+    # Cities and their required days
     cities = {
         "Naples": 3,
         "Valencia": 5,
@@ -14,165 +12,96 @@ def solve_itinerary():
         "Porto": 4
     }
     
-    # Direct flights between cities
+    # Direct flights adjacency list
     direct_flights = {
-        ("Venice", "Nice"), ("Naples", "Amsterdam"), ("Barcelona", "Nice"),
-        ("Amsterdam", "Nice"), ("Stuttgart", "Valencia"), ("Stuttgart", "Porto"),
-        ("Split", "Stuttgart"), ("Split", "Naples"), ("Valencia", "Amsterdam"),
-        ("Barcelona", "Porto"), ("Valencia", "Naples"), ("Venice", "Amsterdam"),
-        ("Barcelona", "Naples"), ("Barcelona", "Valencia"), ("Split", "Amsterdam"),
-        ("Barcelona", "Venice"), ("Stuttgart", "Amsterdam"), ("Naples", "Nice"),
-        ("Venice", "Stuttgart"), ("Split", "Barcelona"), ("Porto", "Nice"),
-        ("Porto", "Amsterdam"), ("Porto", "Valencia"), ("Stuttgart", "Naples"),
-        ("Barcelona", "Stuttgart"), ("Venice", "Naples")
+        "Venice": ["Nice", "Amsterdam", "Stuttgart", "Naples", "Barcelona"],
+        "Naples": ["Amsterdam", "Split", "Nice", "Valencia", "Barcelona", "Stuttgart", "Venice"],
+        "Barcelona": ["Nice", "Porto", "Valencia", "Naples", "Venice", "Amsterdam", "Stuttgart", "Split"],
+        "Amsterdam": ["Naples", "Nice", "Valencia", "Venice", "Porto", "Split", "Barcelona", "Stuttgart"],
+        "Stuttgart": ["Valencia", "Porto", "Split", "Amsterdam", "Naples", "Venice", "Barcelona"],
+        "Split": ["Stuttgart", "Naples", "Amsterdam", "Barcelona"],
+        "Valencia": ["Stuttgart", "Amsterdam", "Naples", "Porto", "Barcelona"],
+        "Nice": ["Venice", "Barcelona", "Amsterdam", "Naples", "Porto"],
+        "Porto": ["Stuttgart", "Barcelona", "Nice", "Amsterdam", "Valencia"]
     }
     
-    # Ensure flights are bidirectional
-    additional_flights = set()
-    for (a, b) in direct_flights:
-        additional_flights.add((b, a))
-    direct_flights.update(additional_flights)
+    # Total days
+    total_days = 24
     
-    # Create a solver instance
-    s = Solver()
+    # Specific constraints
+    constraints = {
+        6: "Venice", 7: "Venice", 8: "Venice", 9: "Venice", 10: "Venice",  # Conference in Venice
+        5: "Barcelona", 6: "Barcelona",  # Workshop in Barcelona
+        18: "Naples", 19: "Naples", 20: "Naples",  # Meeting in Naples
+        23: "Nice", 24: "Nice"  # Tour in Nice
+    }
     
-    # Define the sequence of cities and their day ranges
-    # We'll model the itinerary as a list of tuples (city, start_day, end_day)
-    # To simplify, we'll assume a fixed order of cities based on constraints
+    # Initialize itinerary
+    itinerary = [None] * total_days
     
-    # Fixed constraints:
-    # - Workshop in Barcelona between day 5 and 6
-    # - Conference in Venice between day 6 and 10
-    # - Meet friend in Naples between day 18 and 20
-    # - Meet friends in Nice between day 23 and 24
+    # Assign constrained days first
+    for day, city in constraints.items():
+        if day <= total_days:
+            itinerary[day-1] = city
     
-    # Based on these, a possible order is:
-    # Barcelona (days 1-2), Porto (days 2-5), Barcelona (days 5-6), Venice (days 6-10),
-    # Stuttgart (days 10-12), Split (days 12-17), Naples (days 17-19), Amsterdam (days 19-23),
-    # Nice (days 23-24)
+    # Fill remaining days
+    remaining_days = cities.copy()
+    for city in remaining_days:
+        remaining_days[city] -= sum(1 for d in itinerary if d == city)
     
-    itinerary = [
-        {"day_range": "Day 1-2", "place": "Barcelona"},
-        {"day_range": "Day 2", "place": "Barcelona"},
-        {"day_range": "Day 2", "place": "Porto"},
-        {"day_range": "Day 2-5", "place": "Porto"},
-        {"day_range": "Day 5", "place": "Porto"},
-        {"day_range": "Day 5", "place": "Barcelona"},
-        {"day_range": "Day 5-6", "place": "Barcelona"},
-        {"day_range": "Day 6", "place": "Barcelona"},
-        {"day_range": "Day 6", "place": "Venice"},
-        {"day_range": "Day 6-10", "place": "Venice"},
-        {"day_range": "Day 10", "place": "Venice"},
-        {"day_range": "Day 10", "place": "Stuttgart"},
-        {"day_range": "Day 10-12", "place": "Stuttgart"},
-        {"day_range": "Day 12", "place": "Stuttgart"},
-        {"day_range": "Day 12", "place": "Split"},
-        {"day_range": "Day 12-17", "place": "Split"},
-        {"day_range": "Day 17", "place": "Split"},
-        {"day_range": "Day 17", "place": "Naples"},
-        {"day_range": "Day 17-19", "place": "Naples"},
-        {"day_range": "Day 19", "place": "Naples"},
-        {"day_range": "Day 19", "place": "Amsterdam"},
-        {"day_range": "Day 19-23", "place": "Amsterdam"},
-        {"day_range": "Day 23", "place": "Amsterdam"},
-        {"day_range": "Day 23", "place": "Nice"},
-        {"day_range": "Day 23-24", "place": "Nice"}
-    ]
+    # Function to find next city with direct flight
+    def find_next_city(current_city, remaining_days):
+        for city in direct_flights[current_city]:
+            if remaining_days[city] > 0:
+                return city
+        return None
     
-    # Verify that this itinerary meets all constraints and flight connections
+    # Fill the itinerary
+    current_city = None
+    for day in range(total_days):
+        if itinerary[day] is not None:
+            current_city = itinerary[day]
+            continue
+        
+        if current_city is None:
+            # Find any city with remaining days
+            for city in remaining_days:
+                if remaining_days[city] > 0:
+                    current_city = city
+                    break
+        
+        next_city = find_next_city(current_city, remaining_days)
+        if next_city is None:
+            return {"error": "No valid itinerary found"}
+        
+        itinerary[day] = next_city
+        remaining_days[next_city] -= 1
+        current_city = next_city
     
-    # Check total days per city
-    city_days = {}
-    for entry in itinerary:
-        day_range = entry["day_range"]
-        place = entry["place"]
-        if day_range.startswith("Day "):
-            parts = day_range.split("-")
-            start_day = int(parts[0][4:])
-            if len(parts) == 1:
-                end_day = start_day
-            else:
-                end_day = int(parts[1])
-            days = end_day - start_day + 1
-            city_days[place] = city_days.get(place, 0) + days
+    # Verify all cities have required days
+    for city in remaining_days:
+        if remaining_days[city] != 0:
+            return {"error": "No valid itinerary found"}
     
-    # Check against required days
-    for city, required in cities.items():
-        assert city in city_days, f"{city} not in itinerary"
-        assert city_days[city] == required, f"{city} has {city_days[city]} days, expected {required}"
+    # Format the itinerary
+    formatted_itinerary = []
+    current_place = itinerary[0]
+    start_day = 1
+    for day in range(1, total_days):
+        if itinerary[day] != current_place:
+            end_day = day
+            formatted_itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": current_place})
+            # Add flight day
+            flight_day = day + 1
+            formatted_itinerary.append({"day_range": f"Day {flight_day}", "place": current_place})
+            formatted_itinerary.append({"day_range": f"Day {flight_day}", "place": itinerary[day]})
+            current_place = itinerary[day]
+            start_day = flight_day + 1
+    # Add last stay
+    formatted_itinerary.append({"day_range": f"Day {start_day}-{total_days}", "place": current_place})
     
-    # Check flight connections
-    for i in range(len(itinerary) - 1):
-        current = itinerary[i]
-        next_entry = itinerary[i + 1]
-        if current["place"] != next_entry["place"]:
-            # This is a flight day
-            from_city = current["place"]
-            to_city = next_entry["place"]
-            assert (from_city, to_city) in direct_flights, f"No flight from {from_city} to {to_city}"
-    
-    # Check specific constraints
-    # Workshop in Barcelona between day 5 and 6
-    barcelona_days = []
-    for entry in itinerary:
-        if entry["place"] == "Barcelona":
-            day_range = entry["day_range"]
-            parts = day_range.split("-")
-            start = int(parts[0][4:])
-            if len(parts) > 1:
-                end = int(parts[1])
-            else:
-                end = start
-            barcelona_days.extend(range(start, end + 1))
-    assert 5 in barcelona_days and 6 in barcelona_days, "Workshop days not in Barcelona"
-    
-    # Conference in Venice between day 6 and 10
-    venice_days = []
-    for entry in itinerary:
-        if entry["place"] == "Venice":
-            day_range = entry["day_range"]
-            parts = day_range.split("-")
-            start = int(parts[0][4:])
-            if len(parts) > 1:
-                end = int(parts[1])
-            else:
-                end = start
-            venice_days.extend(range(start, end + 1))
-    assert all(day in venice_days for day in range(6, 10 + 1)), "Conference days not in Venice"
-    
-    # Meet friend in Naples between day 18 and 20
-    naples_days = []
-    for entry in itinerary:
-        if entry["place"] == "Naples":
-            day_range = entry["day_range"]
-            parts = day_range.split("-")
-            start = int(parts[0][4:])
-            if len(parts) > 1:
-                end = int(parts[1])
-            else:
-                end = start
-            naples_days.extend(range(start, end + 1))
-    assert any(day in naples_days for day in range(18, 20 + 1)), "Friend meeting days not in Naples"
-    
-    # Meet friends in Nice between day 23 and 24
-    nice_days = []
-    for entry in itinerary:
-        if entry["place"] == "Nice":
-            day_range = entry["day_range"]
-            parts = day_range.split("-")
-            start = int(parts[0][4:])
-            if len(parts) > 1:
-                end = int(parts[1])
-            else:
-                end = start
-            nice_days.extend(range(start, end + 1))
-    assert any(day in nice_days for day in range(23, 24 + 1)), "Friends meeting days not in Nice"
-    
-    # Check total days sum to 24
-    total_days = max(int(entry["day_range"].split("-")[-1]) for entry in itinerary)
-    assert total_days == 24, f"Total days is {total_days}, expected 24"
-    
-    return {"itinerary": itinerary}
+    return {"itinerary": formatted_itinerary}
 
-# Since manually constructing the itinerary is feasible for this problem, we'll return the verified itinerary
-print(solve_itinerary())
+# Execute and print the result
+result = solve_itinerary()
+print(result)

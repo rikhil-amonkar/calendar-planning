@@ -1,148 +1,87 @@
 from z3 import *
 
 def solve_itinerary():
-    # Create a solver instance
+    # Create the solver
     s = Solver()
 
-    # Define the possible cities and their required days
-    cities = {
-        "Krakow": 5,
-        "Paris": 2,
-        "Seville": 6
-    }
+    # Define the days and cities
+    days = range(1, 12)  # Days 1 to 11
+    cities = ['Krakow', 'Paris', 'Seville']
 
-    # We need to model the sequence of cities visited and the days spent in each.
-    # Given the flight connections: Krakow <-> Paris <-> Seville.
-    # Possible sequences:
-    # 1. Krakow -> Paris -> Seville -> Paris -> Krakow
-    # 2. Krakow -> Paris -> Seville (but this doesn't meet the days)
-    # 3. Other sequences that return to Krakow.
+    # Variables to represent the city on each day
+    city_vars = [Int(f'day_{day}') for day in days]
+    # Assign each city a unique integer
+    city_map = {'Krakow': 0, 'Paris': 1, 'Seville': 2}
 
-    # Let's model the itinerary as a sequence of city stays with start and end days.
-    # For simplicity, we'll assume the sequence: Krakow -> Paris -> Seville -> Paris -> Krakow.
+    # Constraints for each day: must be one of the cities
+    for day_var in city_vars:
+        s.add(Or([day_var == city_map[city] for city in cities]))
 
-    # Define variables for each segment's start and end days.
-    # Segment 1: Krakow
-    k1_start = Int('k1_start')
-    k1_end = Int('k1_end')
-    # Segment 2: Paris
-    p1_start = Int('p1_start')
-    p1_end = Int('p1_end')
-    # Segment 3: Seville
-    s_start = Int('s_start')
-    s_end = Int('s_end')
-    # Segment 4: Paris
-    p2_start = Int('p2_start')
-    p2_end = Int('p2_end')
-    # Segment 5: Krakow
-    k2_start = Int('k2_start')
-    k2_end = Int('k2_end')
+    # Flight constraints: direct flights are Krakow-Paris and Paris-Seville
+    for i in range(len(days) - 1):
+        day1 = city_vars[i]
+        day2 = city_vars[i + 1]
+        s.add(Or(
+            day1 == day2,  # Stay in the same city
+            And(day1 == city_map['Krakow'], day2 == city_map['Paris']),  # Krakow -> Paris
+            And(day1 == city_map['Paris'], day2 == city_map['Krakow']),  # Paris -> Krakow
+            And(day1 == city_map['Paris'], day2 == city_map['Seville']),  # Paris -> Seville
+            And(day1 == city_map['Seville'], day2 == city_map['Paris'])   # Seville -> Paris
+        ))
 
-    # Constraints for the segments' order and continuity
-    s.add(k1_start == 1)  # Start on day 1
-    s.add(k1_end >= k1_start)
-    s.add(p1_start == k1_end)  # Flight from Krakow to Paris on k1_end
-    s.add(p1_end >= p1_start)
-    s.add(s_start == p1_end)  # Flight from Paris to Seville on p1_end
-    s.add(s_end >= s_start)
-    s.add(p2_start == s_end)  # Flight from Seville to Paris on s_end
-    s.add(p2_end >= p2_start)
-    s.add(k2_start == p2_end)  # Flight from Paris to Krakow on p2_end
-    s.add(k2_end >= k2_start)
-    s.add(k2_end == 11)  # End on day 11
+    # Total days in each city
+    total_krakow = Sum([If(city_vars[i] == city_map['Krakow'], 1, 0) for i in range(len(days))])
+    total_paris = Sum([If(city_vars[i] == city_map['Paris'], 1, 0) for i in range(len(days))])
+    total_seville = Sum([If(city_vars[i] == city_map['Seville'], 1, 0) for i in range(len(days))])
 
-    # Days spent in each city:
-    # Krakow: (k1_end - k1_start + 1) + (k2_end - k2_start + 1) - overlap (flight days counted twice)
-    # But flight days are counted in both cities. So:
-    # Krakow days: days in k1 (k1_end - k1_start + 1) + days in k2 (k2_end - k2_start + 1)
-    # But the flight days (transition days) are counted in both cities. So the total days sum is:
-    # (k1_end - k1_start + 1) + (p1_end - p1_start + 1) + (s_end - s_start + 1) + (p2_end - p2_start + 1) + (k2_end - k2_start + 1) - (number of flight days, which is 4 transitions, each counted twice in the sum, so subtract 4 (since each flight day is counted in two segments, but the total days should have each flight day counted once overall. Hmm, perhaps better to think that the sum of all segment days is 11 + number of flights (since each flight day is counted twice in the sum of segments).
-    # Alternatively, the sum of (end - start + 1) for all segments is 11 + (number of flights), because each flight day is counted in two segments.
-    # Number of flights is 4 (K->P, P->S, S->P, P->K).
-    # So sum of segment days is 11 +4 =15.
-    total_segment_days = (k1_end - k1_start + 1) + (p1_end - p1_start + 1) + (s_end - s_start + 1) + (p2_end - p2_start + 1) + (k2_end - k2_start + 1)
-    s.add(total_segment_days == 15)
+    s.add(total_krakow == 5)
+    s.add(total_paris == 2)
+    s.add(total_seville == 6)
 
-    # Days in each city:
-    krakow_days = (k1_end - k1_start + 1) + (k2_end - k2_start + 1)
-    paris_days = (p1_end - p1_start + 1) + (p2_end - p2_start + 1)
-    seville_days = (s_end - s_start + 1)
-    s.add(krakow_days == 5)
-    s.add(paris_days == 2)
-    s.add(seville_days == 6)
+    # Workshop in Krakow between day 1 and day 5
+    s.add(Or([city_vars[i] == city_map['Krakow'] for i in range(0, 5)]))
 
-    # Workshop in Krakow between day 1 and 5: so the first Krakow segment must include days 1-5.
-    # So k1_start =1, k1_end <=5.
-    s.add(k1_end <= 5)
-
-    # Check if the solver can find a solution
+    # Check if the problem is satisfiable
     if s.check() == sat:
-        m = s.model()
-        # Extract values
-        k1_s = m.evaluate(k1_start).as_long()
-        k1_e = m.evaluate(k1_end).as_long()
-        p1_s = m.evaluate(p1_start).as_long()
-        p1_e = m.evaluate(p1_end).as_long()
-        s_s = m.evaluate(s_start).as_long()
-        s_e = m.evaluate(s_end).as_long()
-        p2_s = m.evaluate(p2_start).as_long()
-        p2_e = m.evaluate(p2_end).as_long()
-        k2_s = m.evaluate(k2_start).as_long()
-        k2_e = m.evaluate(k2_end).as_long()
+        model = s.model()
+        itinerary = []
+        current_city = None
+        start_day = 1
 
         # Generate the itinerary
-        itinerary = []
+        for day in days:
+            day_var = city_vars[day - 1]
+            city_idx = model[day_var].as_long()
+            city = cities[city_idx]
 
-        # Krakow segment 1
-        if k1_s == k1_e:
-            itinerary.append({"day_range": f"Day {k1_s}", "place": "Krakow"})
+            if current_city is None:
+                current_city = city
+                start_day = day
+            elif city != current_city:
+                # Add the previous city's stay
+                if start_day == day - 1:
+                    itinerary.append({'day_range': f'Day {start_day}', 'place': current_city})
+                else:
+                    itinerary.append({'day_range': f'Day {start_day}-{day - 1}', 'place': current_city})
+                # Add the flight day for the previous city
+                itinerary.append({'day_range': f'Day {day}', 'place': current_city})
+                # Add the flight day for the new city
+                itinerary.append({'day_range': f'Day {day}', 'place': city})
+                current_city = city
+                start_day = day
+
+        # Add the last city's stay
+        if start_day == days[-1]:
+            itinerary.append({'day_range': f'Day {start_day}', 'place': current_city})
         else:
-            itinerary.append({"day_range": f"Day {k1_s}-{k1_e}", "place": "Krakow"})
+            itinerary.append({'day_range': f'Day {start_day}-{days[-1]}', 'place': current_city})
 
-        # Flight day to Paris: day p1_s (== k1_e)
-        itinerary.append({"day_range": f"Day {p1_s}", "place": "Krakow"})
-        itinerary.append({"day_range": f"Day {p1_s}", "place": "Paris"})
-
-        # Paris segment 1
-        if p1_s == p1_e:
-            pass  # already added as flight day
-        else:
-            itinerary.append({"day_range": f"Day {p1_s+1}-{p1_e}", "place": "Paris"})
-
-        # Flight day to Seville: day s_s (== p1_e)
-        itinerary.append({"day_range": f"Day {s_s}", "place": "Paris"})
-        itinerary.append({"day_range": f"Day {s_s}", "place": "Seville"})
-
-        # Seville segment
-        if s_s == s_e:
-            pass
-        else:
-            itinerary.append({"day_range": f"Day {s_s+1}-{s_e}", "place": "Seville"})
-
-        # Flight day to Paris: day p2_s (== s_e)
-        itinerary.append({"day_range": f"Day {p2_s}", "place": "Seville"})
-        itinerary.append({"day_range": f"Day {p2_s}", "place": "Paris"})
-
-        # Paris segment 2
-        if p2_s == p2_e:
-            pass
-        else:
-            itinerary.append({"day_range": f"Day {p2_s+1}-{p2_e}", "place": "Paris"})
-
-        # Flight day to Krakow: day k2_s (== p2_e)
-        itinerary.append({"day_range": f"Day {k2_s}", "place": "Paris"})
-        itinerary.append({"day_range": f"Day {k2_s}", "place": "Krakow"})
-
-        # Krakow segment 2
-        if k2_s == k2_e:
-            pass
-        else:
-            itinerary.append({"day_range": f"Day {k2_s+1}-{k2_e}", "place": "Krakow"})
-
-        return {"itinerary": itinerary}
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return None
 
 result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+if result:
+    print(result)
+else:
+    print("No valid itinerary found.")

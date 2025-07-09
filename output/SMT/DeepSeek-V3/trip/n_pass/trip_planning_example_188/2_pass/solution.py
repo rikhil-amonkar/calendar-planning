@@ -1,131 +1,95 @@
 from z3 import *
 
 def solve_itinerary():
-    # Create a solver instance
+    # Create the solver
     s = Solver()
 
-    # We have 12 days, labeled from 1 to 12
-    days = range(1, 13)
+    # Variables for start and end days in each city
+    # Brussels is fixed on days 1-2
+    brussels_start = 1
+    brussels_end = 2
 
-    # Variables for each day's city: 1 for Brussels, 2 for Barcelona, 3 for Split
-    city_vars = [Int(f'day_{day}_city') for day in days]
+    # Variables for Split and Barcelona
+    barcelona_start1 = Int('barcelona_start1')
+    barcelona_end1 = Int('barcelona_end1')
+    split_start = Int('split_start')
+    split_end = Int('split_end')
+    barcelona_start2 = Int('barcelona_start2')
+    barcelona_end2 = Int('barcelona_end2')
 
-    # Possible cities: Brussels (1), Barcelona (2), Split (3)
-    for day in days:
-        s.add(Or(city_vars[day - 1] == 1, city_vars[day - 1] == 2, city_vars[day - 1] == 3))
+    # Constraints for days in each city
+    s.add(barcelona_start1 >= 1, barcelona_start1 <= 12)
+    s.add(barcelona_end1 >= 1, barcelona_end1 <= 12)
+    s.add(split_start >= 1, split_start <= 12)
+    s.add(split_end >= 1, split_end <= 12)
+    s.add(barcelona_start2 >= 1, barcelona_start2 <= 12)
+    s.add(barcelona_end2 >= 1, barcelona_end2 <= 12)
 
-    # Constraints:
-    # Day 1 and 2 must be Brussels (conference)
-    s.add(city_vars[0] == 1)
-    s.add(city_vars[1] == 1)
+    # Brussels is days 1-2
+    s.add(barcelona_start1 == 3)  # After Brussels
 
-    # Total days in Brussels is 2 (already satisfied by days 1 and 2)
-    # So no other days can be Brussels
-    for day in range(3, 13):
-        s.add(city_vars[day - 1] != 1)
+    # Flight from Brussels to Barcelona is on day 2 (last day in Brussels) and day 3 (first day in Barcelona)
+    # So day 2 is in Brussels, day 3 in Barcelona
 
-    # Flight constraints: transitions only between connected cities
-    for prev_day, next_day in zip(days[:-1], days[1:]):
-        prev_city = city_vars[prev_day - 1]
-        next_city = city_vars[next_day - 1]
-        # Allowed transitions:
-        # Brussels <-> Barcelona, Barcelona <-> Split
-        s.add(
-            Or(
-                prev_city == next_city,  # same city
-                And(prev_city == 1, next_city == 2),  # Brussels -> Barcelona
-                And(prev_city == 2, next_city == 1),  # Barcelona -> Brussels
-                And(prev_city == 2, next_city == 3),  # Barcelona -> Split
-                And(prev_city == 3, next_city == 2),  # Split -> Barcelona
-            )
-        )
+    # Flight from Barcelona to Split is on day barcelona_end1 and split_start
+    s.add(split_start == barcelona_end1)
 
-    # Total days in Split is 5
-    split_days = Sum([If(city_vars[day - 1] == 3, 1, 0) for day in days])
-    s.add(split_days == 5)
+    # Flight from Split to Barcelona is not allowed, so the itinerary must end in Split or return via Barcelona
+    # But since we have to spend 7 days in Barcelona, and already spent some in the first Barcelona stay,
+    # we need to adjust the stays accordingly.
 
-    # Total days in Barcelona is 7
-    barcelona_days = Sum([If(city_vars[day - 1] == 2, 1, 0) for day in days])
-    s.add(barcelona_days == 7)
+    # Total days in Barcelona: (barcelona_end1 - barcelona_start1 + 1) + (barcelona_end2 - barcelona_start2 + 1) = 7
+    s.add((barcelona_end1 - barcelona_start1 + 1) + (barcelona_end2 - barcelona_start2 + 1) == 7)
 
-    # Check if the problem is satisfiable
+    # Total days in Split: split_end - split_start + 1 = 5
+    s.add(split_end - split_start + 1 == 5)
+
+    # Total days must be 12
+    s.add(barcelona_end2 == 12)
+
+    # Check if the solver can find a solution
     if s.check() == sat:
-        model = s.model()
-        # Extract the city for each day
-        itinerary = []
-        current_city = None
-        start_day = 1
+        m = s.model()
+        barcelona_start1_val = m.evaluate(barcelona_start1).as_long()
+        barcelona_end1_val = m.evaluate(barcelona_end1).as_long()
+        split_start_val = m.evaluate(split_start).as_long()
+        split_end_val = m.evaluate(split_end).as_long()
+        barcelona_start2_val = m.evaluate(barcelona_start2).as_long()
+        barcelona_end2_val = m.evaluate(barcelona_end2).as_long()
 
-        # Generate day ranges
-        for day in days:
-            city = model.evaluate(city_vars[day - 1]).as_long()
-            city_name = {1: 'Brussels', 2: 'Barcelona', 3: 'Split'}[city]
-            itinerary.append({"day_range": f"Day {day}", "place": city_name})
+        # Generate the itinerary
+        itinerary = [
+            {"day_range": "Day 1-2", "place": "Brussels"},
+            {"day_range": f"Day {barcelona_start1_val}", "place": "Barcelona"},
+            {"day_range": f"Day {barcelona_start1_val}-{barcelona_end1_val}", "place": "Barcelona"},
+            {"day_range": f"Day {split_start_val}", "place": "Barcelona"},
+            {"day_range": f"Day {split_start_val}", "place": "Split"},
+            {"day_range": f"Day {split_start_val}-{split_end_val}", "place": "Split"},
+            {"day_range": f"Day {barcelona_start2_val}", "place": "Split"},
+            {"day_range": f"Day {barcelona_start2_val}", "place": "Barcelona"},
+            {"day_range": f"Day {barcelona_start2_val}-{barcelona_end2_val}", "place": "Barcelona"}
+        ]
 
-        # Now, generate day ranges for consecutive stays
-        # Reset to generate ranges
-        day_place_list = []
-        for day in days:
-            city = model.evaluate(city_vars[day - 1]).as_long()
-            city_name = {1: 'Brussels', 2: 'Barcelona', 3: 'Split'}[city]
-            day_place_list.append((day, city_name))
-
-        # Process to find consecutive stays
-        ranges = []
-        if not day_place_list:
-            return {"itinerary": []}
-
-        current_place = day_place_list[0][1]
-        start_day = day_place_list[0][0]
-
-        for day, place in day_place_list[1:]:
-            if place == current_place:
-                continue
-            else:
-                end_day = day - 1
-                if start_day == end_day:
-                    ranges.append((start_day, start_day, current_place))
+        # Simplify the itinerary by merging consecutive same-city entries
+        simplified_itinerary = []
+        prev_place = None
+        for entry in itinerary:
+            if entry['place'] == prev_place:
+                last_entry = simplified_itinerary[-1]
+                if '-' in last_entry['day_range'] and '-' in entry['day_range']:
+                    start_day = last_entry['day_range'].split('-')[0].split()[1]
+                    end_day = entry['day_range'].split('-')[1]
+                    new_range = f"Day {start_day}-{end_day}"
+                    simplified_itinerary[-1] = {"day_range": new_range, "place": entry['place']}
                 else:
-                    ranges.append((start_day, end_day, current_place))
-                current_place = place
-                start_day = day
-        # Add the last range
-        end_day = day_place_list[-1][0]
-        if start_day == end_day:
-            ranges.append((start_day, end_day, current_place))
-        else:
-            ranges.append((start_day, end_day, current_place))
-
-        # Now, build the itinerary with both individual days and ranges
-        final_itinerary = []
-
-        # Add individual day entries first
-        for day, place in day_place_list:
-            final_itinerary.append({"day_range": f"Day {day}", "place": place})
-
-        # Add range entries
-        for start, end, place in ranges:
-            if start == end:
-                # Already added as individual day
-                pass
+                    simplified_itinerary.append(entry)
             else:
-                final_itinerary.append({"day_range": f"Day {start}-{end}", "place": place})
+                simplified_itinerary.append(entry)
+            prev_place = entry['place']
 
-        # Sort the itinerary to interleave individual days and ranges
-        # This part is tricky; perhaps better to sort by day_range in a specific way
-        # For the purpose of this problem, we'll proceed with the current approach
-
-        # The example shows individual flight days followed by ranges, so we'll arrange similarly
-        # But given time, perhaps better to return both and let the user interpret
-        # For now, return the combined list
-
-        return {"itinerary": final_itinerary}
+        return {"itinerary": simplified_itinerary}
     else:
-        return {"itinerary": []}
+        return {"error": "No valid itinerary found."}
 
-# Generate the itinerary
-itinerary = solve_itinerary()
-
-# Output the JSON
-import json
-print(json.dumps(itinerary, indent=2))
+result = solve_itinerary()
+print(result)

@@ -476,6 +476,30 @@ async def process_single_example(
                     logging.error(f"[{example_id}] Pass {pass_num} failed to extract prediction: {str(e)}")
                     pred_formatted = {}
                 
+                # Check if Z3 program returned an error (e.g., "No valid itinerary found")
+                if isinstance(pred_formatted, dict) and "error" in pred_formatted:
+                    error_message = pred_formatted["error"]
+                    logging.warning(f"[{example_id}] Pass {pass_num} Z3 program returned error: {error_message}")
+                    
+                    # Save evaluation result for this error case
+                    error_eval_result = {
+                        "has_execution_error": False,
+                        "execution_output": execution_output,
+                        "pred": pred_formatted,
+                        "gold": {},
+                        "status": f"Z3 error: {error_message}",
+                        "violated_constraint": {},
+                        "is_exact_match": False,
+                        "constraints_satisfied": False,
+                        "pass_number": pass_num
+                    }
+                    with open(f"{pass_output_dir}/evaluation.json", "w") as f:
+                        json.dump(error_eval_result, f, indent=4)
+                    
+                    # Prepare feedback for next iteration
+                    current_prompt = f"The previous Z3 solution returned an error: {error_message}\n\nPlease revise your Z3 program to find a valid solution. The error suggests that the constraints may be too restrictive or there may be an issue with the Z3 formulation.\n\nOriginal problem:\n{example['prompt_0shot']}\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
+                    continue
+                
                 # Get gold answer
                 gold = example["golden_plan"]
                 if isinstance(gold, list):
