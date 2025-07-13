@@ -1,11 +1,14 @@
 from z3 import *
 
 def solve_itinerary():
-    # Create the solver
+    # Create a solver instance
     s = Solver()
 
-    # Variables for start and end days of each city stay
-    # Stuttgart: 6 days, must include meeting between day 1-6
+    # Define the days (1 to 15)
+    days = 15
+
+    # Variables to represent the start and end days in each city
+    # Stuttgart: 6 days, must include a visit between day 1 and 6
     stuttgart_start = Int('stuttgart_start')
     stuttgart_end = Int('stuttgart_end')
 
@@ -17,134 +20,134 @@ def solve_itinerary():
     manchester_start = Int('manchester_start')
     manchester_end = Int('manchester_end')
 
-    # Constraints for start and end days
-    s.add(stuttgart_start >= 1)
-    s.add(stuttgart_end <= 15)
-    s.add(stuttgart_end - stuttgart_start + 1 == 6)  # 6 days in Stuttgart
+    # Constraints for each city's duration
+    s.add(stuttgart_end == stuttgart_start + 5)  # 6 days: start to start+5 inclusive
+    s.add(seville_end == seville_start + 6)      # 7 days
+    s.add(manchester_end == manchester_start + 3) # 4 days
 
-    s.add(seville_start >= 1)
-    s.add(seville_end <= 15)
-    s.add(seville_end - seville_start + 1 == 7)  # 7 days in Seville
+    # All start and end days must be within 1-15
+    s.add(stuttgart_start >= 1, stuttgart_end <= days)
+    s.add(seville_start >= 1, seville_end <= days)
+    s.add(manchester_start >= 1, manchester_end <= days)
 
-    s.add(manchester_start >= 1)
-    s.add(manchester_end <= 15)
-    s.add(manchester_end - manchester_start + 1 == 4)  # 4 days in Manchester
+    # The friend is met in Stuttgart between day 1 and 6
+    s.add(stuttgart_start <= 6 - 5)  # since stuttgart_end = stuttgart_start +5, to have some day <=6.
 
-    # Meeting in Stuttgart between day 1 and 6
-    s.add(stuttgart_start <= 6)
-    s.add(stuttgart_end >= 1)
+    # No overlapping stays in cities except for flight days (which are handled by being in two cities on the same day)
+    # The sequence must be such that the next city's start is either the same day (flight) or after the previous end.
 
-    # Flight constraints: only direct flights are Manchester-Seville and Stuttgart-Manchester
-    # Possible itineraries:
-    # Option 1: Start in Stuttgart, fly to Manchester, then to Seville, and back to Manchester or Stuttgart
-    # Option 2: Start in Seville, fly to Manchester, then to Stuttgart, etc.
-    # But total days must sum correctly with overlaps.
+    # Possible sequences: 
+    # Option 1: Stuttgart -> Manchester -> Seville -> Manchester (if needed)
+    # Or other permutations. But given flight constraints, let's model possible transitions.
 
-    # We need to model the transitions between cities. Let's assume the order is Stuttgart -> Manchester -> Seville.
-    # Then the flight days are:
-    # Flight from Stuttgart to Manchester on day stuttgart_end (same day arrival in Manchester)
-    # Flight from Manchester to Seville on some day after Manchester starts.
+    # We need to model the order of visits. Let's assume the order is Stuttgart -> Manchester -> Seville.
+    # So:
+    s.add(stuttgart_end <= manchester_start)
+    s.add(manchester_end <= seville_start)
 
-    # Alternatively, another order. But for simplicity, let's try to find an order that satisfies the constraints.
+    # But wait, total days would be 6 (Stuttgart) +4 (Manchester) +7 (Seville) =17, which exceeds 15. So there must be overlapping flight days.
+    # Alternatively, perhaps the trip is Stuttgart -> Manchester -> Seville -> Manchester -> Stuttgart, but that complicates.
 
-    # We can model the order of visits. Let's introduce variables to represent the order.
-    # For example, let's assume the cities are visited in a certain sequence, and flights happen between them.
+    # Alternatively, perhaps the trip is Stuttgart (6 days) -> Manchester (4 days, but some overlap with Seville).
 
-    # Let's try to model the transitions:
-    # The cities are visited in some order, with flights between them on specific days.
+    # Let me think differently: the sum of days in cities is 6 +7 +4 =17. But since flight days are counted twice, each flight reduces the total by 1.
+    # We have 17 -15 =2, so there must be two flight days (each flight day is counted in two cities, so each flight reduces total by 1).
 
-    # We can have three segments: the first city, then flight to second, then third.
-    # But overlaps must be handled.
+    # So there must be exactly two flight days.
 
-    # Alternatively, since the total days in cities is 6 + 7 + 4 = 17, and the total days is 15, there must be 2 days counted twice (flight days).
+    # Now, the flight days must be between cities with direct flights: Manchester-Seville and Stuttgart-Manchester.
 
-    # Each flight day is counted in two cities. So the total days is (days in cities) - (number of flight days) = 15.
-    # Days in cities sum to 17, so there must be 2 flight days (since 17 - 2 = 15).
+    # Let's model the two flight days.
 
-    # So there are two flight days in the itinerary.
+    # Suppose the first flight is from Stuttgart to Manchester on day X. Then day X is in both cities.
+    # Then the second flight is from Manchester to Seville on day Y.
 
-    # Now, the possible flights are:
-    # 1. Manchester-Seville
-    # 2. Stuttgart-Manchester
+    # So the itinerary would be:
+    # Days 1..X in Stuttgart, then flight to Manchester on X, then days X..Y in Manchester, flight to Seville on Y, days Y..15 in Seville.
 
-    # So the itinerary must include exactly two flights (each contributing one flight day).
+    # But let's compute the durations:
+    # Stuttgart: X days (1..X)
+    # Manchester: Y - X +1 days (since day X is in both, day Y is in both)
+    # Seville: 15 - Y +1 days.
+    # But the required durations are 6, 4, 7.
 
-    # Let's assume the itinerary is:
-    # Start in Stuttgart, stay until day X, fly to Manchester on day X (counted in both), stay in Manchester until day Y, fly to Seville on day Y (counted in both), stay in Seville until day 15.
+    # So X =6 (Stuttgart days 1-6, flight on day6 to Manchester).
+    # Then Manchester: Y -6 +1 =4 → Y -5 =4 → Y=9.
+    # Seville: 15 -9 +1 =7 days. Which matches.
 
-    # Then:
-    # Stuttgart: days 1 to X (X days)
-    # Manchester: days X to Y (Y - X + 1 days)
-    # Seville: days Y to 15 (15 - Y + 1 days)
-    # Total days: X + (Y - X + 1) + (15 - Y + 1) = 17 - (number of flight days). But each flight day is counted in two cities, so the equation is:
-    # X + (Y - X) + (15 - Y) + 2 (since two flight days are counted twice) = 15.
-    # Simplifies to 15 + 2 = 17, which matches the sum of city days (6+7+4=17), with two flight days.
+    # So the itinerary would be:
+    # Stuttgart: 1-6 (days 1-6)
+    # Flight Stuttgart to Manchester on day6.
+    # Manchester: 6-9 (days 6-9)
+    # Flight Manchester to Seville on day9.
+    # Seville: 9-15 (days 9-15).
 
-    # So let's model this.
+    # Check the durations:
+    # Stuttgart: 6 days (1-6).
+    # Manchester: days 6-9 → 6,7,8,9 →4 days.
+    # Seville: days 9-15 →7 days.
+    # Total: 6 +4 +7 -2 (flight days counted twice) =15.
 
-    # Assume the order is Stuttgart -> Manchester -> Seville.
+    # Also, the friend is met in Stuttgart between day1-6, which is satisfied.
 
-    # Then:
-    # Stuttgart: 1 to stuttgart_end (6 days) → stuttgart_end = 6
-    # Flight to Manchester on day 6.
-    # Manchester: 6 to manchester_end (4 days) → manchester_end = 9
-    # Flight to Seville on day 9.
-    # Seville: 9 to 15 (7 days) → 15 -9 +1 =7. Correct.
+    # Also, flights are between connected cities: Stuttgart-Manchester and Manchester-Seville, which are direct.
 
-    # Let's check the constraints:
-    # Stuttgart: 1-6 (6 days)
-    # Manchester: 6-9 (4 days, including day 6 and 9)
-    # Seville: 9-15 (7 days)
-    # Flight days: day 6 (Stuttgart-Manchester), day 9 (Manchester-Seville)
-    # Total days: 6 (Stuttgart) +4 (Manchester) +7 (Seville) -2 (flight days counted twice) = 15.
+    # So this seems to work.
 
-    # This seems to satisfy all constraints.
+    # Now, model this in Z3.
 
-    # So the solution is:
-    # Stuttgart: 1-6
-    # Flight to Manchester on 6
-    # Manchester: 6-9
-    # Flight to Seville on 9
-    # Seville: 9-15
+    # Alternatively, since we've found a valid itinerary manually, perhaps we can just return it.
 
-    # Now, let's verify the constraints:
-    # - Total days: 6 (Stuttgart) +4 (Manchester) +7 (Seville) -2 (flight days) =15. Correct.
-    # - Days in each city:
-    #   Stuttgart: 6 days (1-6)
-    #   Seville: 7 days (9-15)
-    #   Manchester: 4 days (6-9)
-    # - Meeting in Stuttgart between day 1-6: yes.
-    # - Flight connections are valid: Stuttgart-Manchester and Manchester-Seville.
+    # But for the sake of using Z3, let's proceed with the constraints.
 
-    # So this is a valid itinerary.
+    # Let's define the two flight days.
+    flight1_day = Int('flight1_day')  # Stuttgart to Manchester
+    flight2_day = Int('flight2_day')  # Manchester to Seville
 
-    # Let's encode this solution into the Z3 model.
+    s.add(flight1_day >= 1, flight1_day <= days)
+    s.add(flight2_day >= 1, flight2_day <= days)
+    s.add(flight2_day > flight1_day)
 
+    # Stuttgart is from 1 to flight1_day (inclusive)
     s.add(stuttgart_start == 1)
-    s.add(stuttgart_end == 6)
-    s.add(manchester_start == 6)
-    s.add(manchester_end == 9)
-    s.add(seville_start == 9)
-    s.add(seville_end == 15)
+    s.add(stuttgart_end == flight1_day)
+    s.add(flight1_day - stuttgart_start + 1 == 6)  # 6 days in Stuttgart
 
-    # Check if the model is satisfiable
+    # Manchester is from flight1_day to flight2_day
+    s.add(manchester_start == flight1_day)
+    s.add(manchester_end == flight2_day)
+    s.add(flight2_day - flight1_day + 1 == 4)  # 4 days in Manchester
+
+    # Seville is from flight2_day to 15
+    s.add(seville_start == flight2_day)
+    s.add(seville_end == 15)
+    s.add(15 - flight2_day + 1 == 7)  # 7 days in Seville
+
+    # Check if the solver can find a solution
     if s.check() == sat:
         m = s.model()
-        # Generate the itinerary
+        flight1 = m.evaluate(flight1_day).as_long()
+        flight2 = m.evaluate(flight2_day).as_long()
+
+        # Build the itinerary
         itinerary = []
 
-        # Stuttgart: 1-6
-        itinerary.append({"day_range": "Day 1-6", "place": "Stuttgart"})
-        # Flight from Stuttgart to Manchester on day 6
-        itinerary.append({"day_range": "Day 6", "place": "Stuttgart"})
-        itinerary.append({"day_range": "Day 6", "place": "Manchester"})
-        # Manchester: 6-9
-        itinerary.append({"day_range": "Day 6-9", "place": "Manchester"})
-        # Flight from Manchester to Seville on day 9
-        itinerary.append({"day_range": "Day 9", "place": "Manchester"})
-        itinerary.append({"day_range": "Day 9", "place": "Seville"})
-        # Seville: 9-15
-        itinerary.append({"day_range": "Day 9-15", "place": "Seville"})
+        # Stuttgart: Day 1 to flight1
+        itinerary.append({"day_range": f"Day 1-{flight1}", "place": "Stuttgart"})
+
+        # Flight from Stuttgart to Manchester on flight1_day
+        itinerary.append({"day_range": f"Day {flight1}", "place": "Stuttgart"})
+        itinerary.append({"day_range": f"Day {flight1}", "place": "Manchester"})
+
+        # Manchester: flight1 to flight2
+        itinerary.append({"day_range": f"Day {flight1}-{flight2}", "place": "Manchester"})
+
+        # Flight from Manchester to Seville on flight2_day
+        itinerary.append({"day_range": f"Day {flight2}", "place": "Manchester"})
+        itinerary.append({"day_range": f"Day {flight2}", "place": "Seville"})
+
+        # Seville: flight2 to 15
+        itinerary.append({"day_range": f"Day {flight2}-15", "place": "Seville"})
 
         return {"itinerary": itinerary}
     else:

@@ -1,120 +1,106 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities and their codes
+    # Cities and their required days
     cities = {
-        'Prague': 0,
-        'Stuttgart': 1,
-        'Split': 2,
-        'Krakow': 3,
-        'Florence': 4
-    }
-    city_names = {v: k for k, v in cities.items()}
-    
-    # Direct flights: adjacency list
-    direct_flights = {
-        0: [2, 4],  # Prague -> Split, Florence
-        1: [2, 3],   # Stuttgart -> Split, Krakow
-        2: [0, 1, 3], # Split -> Prague, Stuttgart, Krakow
-        3: [1, 2, 0], # Krakow -> Stuttgart, Split, Prague
-        4: [0]        # Florence -> Prague
+        "Prague": 4,
+        "Stuttgart": 2,
+        "Split": 2,
+        "Krakow": 2,
+        "Florence": 2
     }
     
-    # Total days
-    total_days = 8
+    # Direct flight connections
+    connections = {
+        "Stuttgart": ["Split", "Krakow"],
+        "Prague": ["Florence", "Split", "Krakow"],
+        "Krakow": ["Stuttgart", "Split", "Prague"],
+        "Split": ["Stuttgart", "Krakow", "Prague"],
+        "Florence": ["Prague"]
+    }
     
-    # Create solver
+    # Initialize Z3 solver
     s = Solver()
     
-    # Variables: day_destination[i] is the city visited on day i+1 (days 1..8)
-    day_destination = [Int(f'day_{i+1}') for i in range(total_days)]
+    # Create variables for each city's start and end day
+    city_vars = {}
+    for city in cities:
+        start = Int(f'start_{city}')
+        end = Int(f'end_{city}')
+        city_vars[city] = (start, end)
+        # Constraints: start >=1, end <=8, start <= end
+        s.add(start >= 1)
+        s.add(end <= 8)
+        s.add(start <= end)
+        # Duration constraint: end - start + 1 == required days
+        s.add(end - start + 1 == cities[city])
     
-    # Each day must be a valid city
-    for day in day_destination:
-        s.add(day >= 0, day <= 4)
+    # Constraint for the wedding in Stuttgart between day 2 and 3
+    stuttgart_start, stuttgart_end = city_vars["Stuttgart"]
+    s.add(Or(
+        And(stuttgart_start <= 2, stuttgart_end >= 2),
+        And(stuttgart_start <= 3, stuttgart_end >= 3)
+    ))
     
-    # Flight transitions: between days, either stay or take a direct flight
-    for i in range(total_days - 1):
-        current_city = day_destination[i]
-        next_city = day_destination[i+1]
-        # Either stay in the same city or move to a directly connected city
+    # Constraint for meeting friends in Split between day 3 and 4
+    split_start, split_end = city_vars["Split"]
+    s.add(Or(
+        And(split_start <= 3, split_end >= 3),
+        And(split_start <= 4, split_end >= 4)
+    ))
+    
+    # Ensure all days are covered by the cities' stays
+    # Create a variable for each day indicating which city is visited
+    day_city = [Int(f'day_{i}_city') for i in range(1, 9)]
+    city_ids = {city: idx for idx, city in enumerate(cities)}
+    id_to_city = {idx: city for city, idx in city_ids.items()}
+    
+    for day in range(1, 9):
+        s.add(Or([day_city[day-1] == city_ids[city] for city in cities]))
+        # The day must be within the start and end of the assigned city
+        for city in cities:
+            start, end = city_vars[city]
+            s.add(Implies(day_city[day-1] == city_ids[city],
+                          And(start <= day, day <= end)))
+    
+    # Each city's days must be exactly their required duration
+    for city in cities:
+        count = Sum([If(day_city[day-1] == city_ids[city], 1, 0) for day in range(1, 9)])
+        s.add(count == cities[city])
+    
+    # Ensure that consecutive days are either the same city or connected by a flight
+    for day in range(1, 8):
+        current_city = day_city[day-1]
+        next_city = day_city[day]
         s.add(Or(
             current_city == next_city,
-            And(current_city != next_city, 
-                Or([next_city == dest for dest in direct_flights[current_city.as_long() if is_const(current_city) else 0]]))
+            *[And(current_city == city_ids[c1], next_city == city_ids[c2]) 
+              for c1 in connections for c2 in connections[c1]]
         ))
     
-    # Duration constraints
-    # Prague: 4 days
-    s.add(Sum([If(day == cities['Prague'], 1, 0) for day in day_destination]) == 4)
-    # Stuttgart: 2 days
-    s.add(Sum([If(day == cities['Stuttgart'], 1, 0) for day in day_destination]) == 2)
-    # Split: 2 days
-    s.add(Sum([If(day == cities['Split'], 1, 0) for day in day_destination]) == 2)
-    # Krakow: 2 days
-    s.add(Sum([If(day == cities['Krakow'], 1, 0) for day in day_destination]) == 2)
-    # Florence: 2 days
-    s.add(Sum([If(day == cities['Florence'], 1, 0) for day in day_destination]) == 2)
-    
-    # Event constraints
-    # Wedding in Stuttgart on day 2
-    s.add(day_destination[1] == cities['Stuttgart'])  # day 2 is index 1 (0-based)
-    
-    # Meet friends in Split on day 3 and 4
-    s.add(day_destination[2] == cities['Split'])      # day 3
-    s.add(day_destination[3] == cities['Split'])      # day 4
-    
-    # Check if the problem is satisfiable
     if s.check() == sat:
-        model = s.model()
-        itinerary_days = [model.evaluate(day).as_long() for day in day_destination]
-        
+        m = s.model()
         itinerary = []
-        current_place = city_names[itinerary_days[0]]
-        start_day = 1
-        
-        for i in range(1, total_days):
-            if itinerary_days[i] != itinerary_days[i-1]:
-                # Flight occurs between day i and i+1 (0-based)
-                end_day = i
-                if start_day == end_day:
-                    day_range = f'Day {start_day}'
-                else:
-                    day_range = f'Day {start_day}-{end_day}'
-                itinerary.append({
-                    'day_range': day_range,
-                    'place': current_place
-                })
-                # Flight day is end_day + 1
-                flight_day = end_day + 1
-                itinerary.append({
-                    'day_range': f'Day {flight_day}',
-                    'place': current_place
-                })
-                new_place = city_names[itinerary_days[i]]
-                itinerary.append({
-                    'day_range': f'Day {flight_day}',
-                    'place': new_place
-                })
-                current_place = new_place
-                start_day = flight_day + 1
-        
-        # Add the last segment
-        if start_day <= total_days:
-            if start_day == total_days:
-                day_range = f'Day {start_day}'
+        # Determine the order of cities based on their start days
+        city_order = sorted(cities.keys(), key=lambda city: m.evaluate(city_vars[city][0]).as_long())
+        prev_end = 0
+        for city in city_order:
+            start = m.evaluate(city_vars[city][0]).as_long()
+            end = m.evaluate(city_vars[city][1]).as_long()
+            if start == end:
+                itinerary.append({"day_range": f"Day {start}", "place": city})
             else:
-                day_range = f'Day {start_day}-{total_days}'
-            itinerary.append({
-                'day_range': day_range,
-                'place': current_place
-            })
-        
-        return {'itinerary': itinerary}
+                itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+            # Check if there's a flight from the previous city
+            if prev_end != 0 and prev_end == start:
+                # Find the previous city
+                prev_city = next(c for c in city_order if m.evaluate(city_vars[c][1]).as_long() == prev_end)
+                itinerary.append({"day_range": f"Day {prev_end}", "place": prev_city})
+                itinerary.append({"day_range": f"Day {start}", "place": city})
+            prev_end = end
+        return {"itinerary": itinerary}
     else:
-        return {'error': 'No valid itinerary found'}
+        return {"error": "No valid itinerary found"}
 
-# Example usage
-if __name__ == '__main__':
-    result = solve_itinerary()
-    print(result)
+result = solve_itinerary()
+print(result)

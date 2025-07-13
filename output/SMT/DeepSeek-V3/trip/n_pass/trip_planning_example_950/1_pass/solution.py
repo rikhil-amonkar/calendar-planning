@@ -1,146 +1,128 @@
-from z3 import *
 import json
+from z3 import *
 
 def solve_itinerary():
     # Cities
     cities = ['Rome', 'Mykonos', 'Riga', 'Munich', 'Bucharest', 'Nice', 'Krakow']
     
-    # Direct flights as tuples (from, to)
-    direct_flights = [
-        ('Nice', 'Riga'),
-        ('Bucharest', 'Munich'),
-        ('Mykonos', 'Munich'),
-        ('Riga', 'Bucharest'),
-        ('Rome', 'Nice'),
-        ('Rome', 'Munich'),
-        ('Mykonos', 'Nice'),
-        ('Rome', 'Mykonos'),
-        ('Munich', 'Krakow'),
-        ('Rome', 'Bucharest'),
-        ('Nice', 'Munich'),
-        ('Riga', 'Munich'),
+    # Direct flights as a set of tuples
+    direct_flights = {
+        ('Nice', 'Riga'), ('Bucharest', 'Munich'), ('Mykonos', 'Munich'), 
+        ('Riga', 'Bucharest'), ('Rome', 'Nice'), ('Rome', 'Munich'), 
+        ('Mykonos', 'Nice'), ('Rome', 'Mykonos'), ('Munich', 'Krakow'), 
+        ('Rome', 'Bucharest'), ('Nice', 'Munich'), ('Riga', 'Munich'), 
         ('Rome', 'Riga')
-    ]
+    }
     # Make flights bidirectional
-    bidirectional_flights = []
-    for (a, b) in direct_flights:
-        bidirectional_flights.append((a, b))
-        bidirectional_flights.append((b, a))
-    # Remove duplicates and ensure correct city names (e.g., 'Munich' vs 'Munich')
-    # Correcting flight data: Assuming 'Munich' is the correct spelling
-    corrected_flights = []
-    for (a, b) in bidirectional_flights:
-        a_corrected = 'Munich' if a == 'Munich' or a == 'Munich' else a
-        b_corrected = 'Munich' if b == 'Munich' or b == 'Munich' else b
-        corrected_flights.append((a_corrected, b_corrected))
-    unique_flights = list(set(corrected_flights))
+    flights = set()
+    for a, b in direct_flights:
+        flights.add((a, b))
+        flights.add((b, a))
     
-    # Create solver
+    # Total days
+    days = 17
+    
+    # Create Z3 variables: day[i] is the city for day i+1 (1-based)
+    day = [Int(f'day_{i}') for i in range(1, days + 1)]
+    
+    # Create a mapping from city name to integer
+    city_to_int = {city: idx for idx, city in enumerate(cities)}
+    int_to_city = {idx: city for idx, city in enumerate(cities)}
+    
     s = Solver()
     
-    # Day variables: day[i] represents the city on day i+1 (since days are 1-based)
-    days = [Int(f'day_{i}') for i in range(17)]
+    # Each day's assignment must be a valid city (0 to 6)
+    for d in day:
+        s.add(And(d >= 0, d < len(cities)))
     
-    # City encodings
-    city_encoding = {city: idx for idx, city in enumerate(cities)}
+    # Fixed constraints:
+    # Days 1-4: conference in Rome (so days 1, 2, 3, 4 are Rome)
+    for i in [0, 1, 2, 3]:  # Days 1-4
+        s.add(day[i] == city_to_int['Rome'])
     
-    # Constraints: each day's value is between 0 and 6 (representing the cities)
-    for day in days:
-        s.add(day >= 0, day < len(cities))
+    # Days 16-17: Krakow
+    s.add(day[15] == city_to_int['Krakow'])  # Day 16
+    s.add(day[16] == city_to_int['Krakow'])  # Day 17
     
-    # Conference in Rome from day 1 to day 4 (1-based)
-    s.add(days[0] == city_encoding['Rome'])
-    s.add(days[1] == city_encoding['Rome'])
-    s.add(days[2] == city_encoding['Rome'])
-    s.add(days[3] == city_encoding['Rome'])
-    
-    # Wedding in Mykonos between day 4 and day 6 (1-based, so days 4,5, or 6)
-    # Mykonos must be visited for 3 days, including at least one of days 4,5,6
-    # We'll handle the total days constraint separately
-    
-    # Annual show in Krakow from day 16 to 17 (1-based, days 15 and 16 in 0-based)
-    s.add(days[15] == city_encoding['Krakow'])
-    s.add(days[16] == city_encoding['Krakow'])
-    
-    # Flight transitions: consecutive days must be same city or connected by a direct flight
-    for i in range(16):  # days 1..16 and 2..17
-        current_city = days[i]
-        next_city = days[i+1]
-        # Either stay in the same city or fly to a connected city
-        s.add(Or(
-            current_city == next_city,
-            *[And(current_city == city_encoding[a], next_city == city_encoding[b]) 
-              for (a, b) in unique_flights]
-        ))
+    # Flight constraints: consecutive days must be same city or connected by flight
+    for i in range(days - 1):
+        current_city = day[i]
+        next_city = day[i + 1]
+        # Either same city or connected by flight
+        same_city = current_city == next_city
+        flight_possible = Or([And(current_city == city_to_int[a], next_city == city_to_int[b]) for (a, b) in flights])
+        s.add(Or(same_city, flight_possible))
     
     # Total days per city constraints
-    # Rome: 4 days (days 0,1,2,3 in 0-based)
-    # So Rome is already 4 days (days 1-4)
+    # Rome: 4 days (including days 1-4)
+    rome_days = Sum([If(day[i] == city_to_int['Rome'], 1, 0) for i in range(days)])
+    s.add(rome_days == 4)
     
     # Mykonos: 3 days
-    s.add(Sum([If(days[i] == city_encoding['Mykonos'], 1, 0) for i in range(17)]) == 3)
-    # Ensure Mykonos includes at least one day between days 4-6 (1-based, 3-5 in 0-based)
-    s.add(Or(
-        days[3] == city_encoding['Mykonos'],  # day 4
-        days[4] == city_encoding['Mykonos'],  # day 5
-        days[5] == city_encoding['Mykonos']   # day 6
-    ))
+    mykonos_days = Sum([If(day[i] == city_to_int['Mykonos'], 1, 0) for i in range(days)])
+    s.add(mykonos_days == 3)
+    # Wedding in Mykonos between day 4 and 6: so at least one of days 5 or 6 is Mykonos.
+    s.add(Or(day[4] == city_to_int['Mykonos'], day[5] == city_to_int['Mykonos']))
     
     # Riga: 3 days
-    s.add(Sum([If(days[i] == city_encoding['Riga'], 1, 0) for i in range(17)]) == 3)
+    riga_days = Sum([If(day[i] == city_to_int['Riga'], 1, 0) for i in range(days)])
+    s.add(riga_days == 3)
     
     # Munich: 4 days
-    s.add(Sum([If(days[i] == city_encoding['Munich'], 1, 0) for i in range(17)]) == 4)
+    munich_days = Sum([If(day[i] == city_to_int['Munich'], 1, 0) for i in range(days)])
+    s.add(munich_days == 4)
     
     # Bucharest: 4 days
-    s.add(Sum([If(days[i] == city_encoding['Bucharest'], 1, 0) for i in range(17)]) == 4)
+    bucharest_days = Sum([If(day[i] == city_to_int['Bucharest'], 1, 0) for i in range(days)])
+    s.add(bucharest_days == 4)
     
     # Nice: 3 days
-    s.add(Sum([If(days[i] == city_encoding['Nice'], 1, 0) for i in range(17)]) == 3)
+    nice_days = Sum([If(day[i] == city_to_int['Nice'], 1, 0) for i in range(days)])
+    s.add(nice_days == 3)
     
-    # Krakow: 2 days (days 16-17)
-    # Already set to 2 days
+    # Krakow: 2 days (already fixed days 16-17)
+    krakow_days = Sum([If(day[i] == city_to_int['Krakow'], 1, 0) for i in range(days)])
+    s.add(krakow_days == 2)
     
-    # Check for a solution
+    # Check if the problem is satisfiable
     if s.check() == sat:
         model = s.model()
-        # Decode the solution
-        itinerary_days = [cities[model.evaluate(days[i]).as_long()] for i in range(17)]
+        # Extract the day assignments
+        schedule = []
+        for i in range(days):
+            city_idx = model.evaluate(day[i]).as_long()
+            schedule.append(int_to_city[city_idx])
         
-        # Generate the itinerary in the required format
+        # Generate the itinerary in the required JSON format
         itinerary = []
-        current_place = itinerary_days[0]
+        current_place = schedule[0]
         start_day = 1
-        for i in range(1, 17):
-            if itinerary_days[i] != current_place:
-                # Add the stay before the flight
-                if start_day == i:
-                    day_str = f"Day {start_day}"
-                else:
-                    day_str = f"Day {start_day}-{i}"
-                itinerary.append({"day_range": day_str, "place": current_place})
-                # Add the flight day (same day for departure and arrival)
-                itinerary.append({"day_range": f"Day {i}", "place": current_place})
-                itinerary.append({"day_range": f"Day {i}", "place": itinerary_days[i]})
-                current_place = itinerary_days[i]
-                start_day = i + 1
-            # else: continue the stay
-        # Add the last stay
-        if start_day <= 17:
-            if start_day == 17:
-                day_str = "Day 17"
+        
+        for i in range(1, days):
+            if schedule[i] == current_place:
+                continue
             else:
-                day_str = f"Day {start_day}-17"
-            itinerary.append({"day_range": day_str, "place": current_place})
+                end_day = i
+                if start_day == end_day:
+                    itinerary.append({"day_range": f"Day {start_day}", "place": current_place})
+                else:
+                    itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": current_place})
+                # Add flight day entries
+                itinerary.append({"day_range": f"Day {end_day}", "place": current_place})
+                itinerary.append({"day_range": f"Day {end_day}", "place": schedule[i]})
+                current_place = schedule[i]
+                start_day = end_day + 1
         
-        # Now, handle the case where flight days are not consecutive (e.g., multiple flights in a day is not possible)
-        # The current approach assumes that flights are on the day of transition, so the code above should suffice.
+        # Add the last segment
+        if start_day <= days:
+            if start_day == days:
+                itinerary.append({"day_range": f"Day {start_day}", "place": current_place})
+            else:
+                itinerary.append({"day_range": f"Day {start_day}-{days}", "place": current_place})
         
-        # Return as JSON
         return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute and print the result
 result = solve_itinerary()
 print(json.dumps(result, indent=2))

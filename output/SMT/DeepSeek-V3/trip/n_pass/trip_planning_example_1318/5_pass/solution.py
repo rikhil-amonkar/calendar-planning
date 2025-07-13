@@ -1,138 +1,109 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities to visit
-    cities = ["Oslo", "Helsinki", "Edinburgh", "Riga", "Tallinn", "Budapest", "Vilnius", "Porto", "Geneva"]
+    # Cities and their required days
+    cities = {
+        "Oslo": 2,
+        "Helsinki": 2,
+        "Edinburgh": 3,
+        "Riga": 2,
+        "Tallinn": 5,
+        "Budapest": 5,
+        "Vilnius": 5,
+        "Porto": 5,
+        "Geneva": 4
+    }
     
-    # Direct flights as tuples (from, to)
+    # Direct flights (bidirectional)
     direct_flights = [
-        ("Porto", "Oslo"),
-        ("Edinburgh", "Budapest"),
-        ("Edinburgh", "Geneva"),
-        ("Riga", "Tallinn"),
-        ("Edinburgh", "Porto"),
-        ("Vilnius", "Helsinki"),
-        ("Tallinn", "Vilnius"),
-        ("Riga", "Oslo"),
-        ("Geneva", "Oslo"),
-        ("Edinburgh", "Oslo"),
-        ("Edinburgh", "Helsinki"),
-        ("Vilnius", "Oslo"),
-        ("Riga", "Helsinki"),
-        ("Budapest", "Geneva"),
-        ("Helsinki", "Budapest"),
-        ("Helsinki", "Oslo"),
-        ("Edinburgh", "Riga"),
-        ("Tallinn", "Helsinki"),
-        ("Geneva", "Porto"),
-        ("Budapest", "Oslo"),
-        ("Helsinki", "Geneva"),
-        ("Riga", "Vilnius"),
-        ("Tallinn", "Oslo")
+        ("Porto", "Oslo"), ("Porto", "Edinburgh"), ("Porto", "Geneva"),
+        ("Edinburgh", "Budapest"), ("Edinburgh", "Geneva"), ("Edinburgh", "Oslo"),
+        ("Edinburgh", "Helsinki"), ("Edinburgh", "Riga"),
+        ("Riga", "Tallinn"), ("Riga", "Oslo"), ("Riga", "Helsinki"), ("Riga", "Vilnius"),
+        ("Tallinn", "Vilnius"), ("Tallinn", "Helsinki"), ("Tallinn", "Oslo"),
+        ("Vilnius", "Helsinki"), ("Vilnius", "Oslo"),
+        ("Helsinki", "Budapest"), ("Helsinki", "Oslo"), ("Helsinki", "Geneva"),
+        ("Budapest", "Geneva"), ("Budapest", "Oslo"),
+        ("Geneva", "Oslo"), ("Geneva", "Porto"), ("Geneva", "Budapest")
     ]
     
-    # Bidirectional flights
-    flight_pairs = set()
-    for a, b in direct_flights:
-        flight_pairs.add((a, b))
-        flight_pairs.add((b, a))
+    total_days = 25
+    city_list = list(cities.keys())
+    city_to_int = {city: idx for idx, city in enumerate(city_list)}
     
-    # Days: 1 to 25
-    days = 25
+    # Create solver
+    solver = Solver()
+    solver.set("timeout", 10000)  # 10 second timeout
     
-    # Create Z3 variables: day_i is the city on day i (1-based)
-    day_vars = [Int(f"day_{i}") for i in range(1, days + 1)]
-    
-    # Solver
-    s = Solver()
-    
-    # Each day_var must be an index representing a city (0 to 8)
-    city_map = {city: idx for idx, city in enumerate(cities)}
-    inv_city_map = {idx: city for idx, city in enumerate(cities)}
-    
+    # Day variables
+    day_vars = [Int(f"day_{i}") for i in range(total_days)]
     for day in day_vars:
-        s.add(day >= 0, day < len(cities))
+        solver.add(day >= 0, day < len(city_list))
     
-    # Constraints for durations
-    # Oslo: 2 days (including flight days)
-    # Helsinki: 2 days
-    # Edinburgh: 3 days
-    # Riga: 2 days
-    # Tallinn: 5 days (wedding between day 4-8)
-    # Budapest: 5 days
-    # Vilnius: 5 days
-    # Porto: 5 days
-    # Geneva: 4 days
+    # Transition constraints
+    flight_map = {}
+    for src, dst in direct_flights:
+        if src not in flight_map:
+            flight_map[src] = []
+        flight_map[src].append(dst)
     
-    # Count occurrences of each city
-    city_counts = []
-    for city_idx in range(len(cities)):
-        count = Sum([If(day == city_idx, 1, 0) for day in day_vars])
-        city_counts.append(count)
+    for i in range(total_days - 1):
+        current = day_vars[i]
+        next_day = day_vars[i + 1]
+        options = [current == next_day]  # Stay in same city
+        
+        for src in flight_map:
+            for dst in flight_map[src]:
+                options.append(And(current == city_to_int[src], 
+                                 next_day == city_to_int[dst]))
+        solver.add(Or(options))
     
-    s.add(city_counts[city_map["Oslo"]] == 2)
-    s.add(city_counts[city_map["Helsinki"]] == 2)
-    s.add(city_counts[city_map["Edinburgh"]] == 3)
-    s.add(city_counts[city_map["Riga"]] == 2)
-    s.add(city_counts[city_map["Tallinn"]] == 5)
-    s.add(city_counts[city_map["Budapest"]] == 5)
-    s.add(city_counts[city_map["Vilnius"]] == 5)
-    s.add(city_counts[city_map["Porto"]] == 5)
-    s.add(city_counts[city_map["Geneva"]] == 4)
+    # Day count constraints
+    for city, days in cities.items():
+        solver.add(Sum([If(day_vars[i] == city_to_int[city], 1, 0) 
+                   for i in range(total_days)) == days)
     
-    # Wedding in Tallinn between day 4 and 8: at least one day in Tallinn in days 4-8
-    wedding_days = [day_vars[i] for i in range(3, 8)]  # days 4-8 (0-based 3 to 7)
-    s.add(Or([day == city_map["Tallinn"] for day in wedding_days]))
+    # Special constraints
+    # Wedding in Tallinn between day 4-8
+    solver.add(Or([day_vars[i] == city_to_int["Tallinn"] for i in range(3, 8)]))
     
-    # Meet friend in Oslo between day 24 and 25: at least one of day 24 or 25 is Oslo
-    s.add(Or(day_vars[23] == city_map["Oslo"], day_vars[24] == city_map["Oslo"]))
+    # Meet friend in Oslo on day 24 or 25
+    solver.add(Or(day_vars[23] == city_to_int["Oslo"], 
+                 day_vars[24] == city_to_int["Oslo"]))
     
-    # Flight transitions: consecutive days must be same city or connected by direct flight
-    for i in range(days - 1):
-        current_city = day_vars[i]
-        next_city = day_vars[i + 1]
-        # Either same city or connected by flight
-        same_city = (current_city == next_city)
-        flight_connection = Or([And(current_city == city_map[a], next_city == city_map[b]) for a, b in flight_pairs])
-        s.add(Or(same_city, flight_connection))
+    # Symmetry breaking - first city is Edinburgh
+    solver.add(day_vars[0] == city_to_int["Edinburgh"])
     
-    # Check if the solver can find a solution
-    if s.check() == sat:
-        model = s.model()
+    if solver.check() == sat:
+        model = solver.model()
+        sequence = [city_list[model.evaluate(day_vars[i]).as_long()] 
+                   for i in range(total_days)]
+        
+        # Generate itinerary
         itinerary = []
-        current_place = None
-        start_day = 1
+        current = sequence[0]
+        start = 1
         
-        # Helper to add entries to itinerary
-        def add_entry(place, start, end):
-            if start == end:
-                itinerary.append({"day_range": f"Day {start}", "place": place})
+        for i in range(1, total_days):
+            if sequence[i] != sequence[i-1]:
+                if start == i:
+                    itinerary.append({"day_range": f"Day {start}", "place": current})
+                else:
+                    itinerary.append({"day_range": f"Day {start}-{i}", "place": current})
+                
+                itinerary.append({"day_range": f"Day {i+1}", "place": current})
+                itinerary.append({"day_range": f"Day {i+1}", "place": sequence[i]})
+                current = sequence[i]
+                start = i + 1
+        
+        if start <= total_days:
+            if start == total_days:
+                itinerary.append({"day_range": f"Day {total_days}", "place": current})
             else:
-                itinerary.append({"day_range": f"Day {start}-{end}", "place": place})
-        
-        # Process each day
-        for day in range(1, days + 1):
-            city_idx = model.evaluate(day_vars[day - 1]).as_long()
-            city = inv_city_map[city_idx]
-            if current_place is None:
-                current_place = city
-                start_day = day
-            elif city != current_place:
-                # Add the previous stay
-                add_entry(current_place, start_day, day - 1)
-                # Add the flight day (previous city)
-                itinerary.append({"day_range": f"Day {day}", "place": current_place})
-                # Add the flight day (new city)
-                itinerary.append({"day_range": f"Day {day}", "place": city})
-                current_place = city
-                start_day = day
-        # Add the last stay
-        add_entry(current_place, start_day, days)
+                itinerary.append({"day_range": f"Day {start}-{total_days}", "place": current})
         
         return {"itinerary": itinerary}
     else:
-        return {"error": "No valid itinerary found."}
+        return {"error": "No valid itinerary found within time limit"}
 
-# Generate and print the itinerary
-itinerary = solve_itinerary()
-print(itinerary)
+print(solve_itinerary())

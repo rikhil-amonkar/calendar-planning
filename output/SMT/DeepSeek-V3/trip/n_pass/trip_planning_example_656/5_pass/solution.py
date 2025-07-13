@@ -1,5 +1,8 @@
-def solve_itinerary():
-    # Cities and their required days
+from z3 import *
+
+def solve_trip_planning():
+    s = Solver()
+
     cities = {
         "Reykjavik": 5,
         "Istanbul": 4,
@@ -9,99 +12,98 @@ def solve_itinerary():
         "Bucharest": 5
     }
 
-    # Direct flights as adjacency list
-    flights = {
-        "Bucharest": ["Oslo", "Istanbul"],
-        "Istanbul": ["Oslo", "Bucharest", "Edinburgh", "Stuttgart"],
-        "Reykjavik": ["Stuttgart", "Oslo"],
-        "Stuttgart": ["Reykjavik", "Edinburgh", "Istanbul"],
-        "Oslo": ["Bucharest", "Istanbul", "Reykjavik", "Edinburgh"],
-        "Edinburgh": ["Stuttgart", "Istanbul", "Oslo"]
+    direct_flights = {
+        ("Bucharest", "Oslo"),
+        ("Istanbul", "Oslo"),
+        ("Reykjavik", "Stuttgart"),
+        ("Bucharest", "Istanbul"),
+        ("Stuttgart", "Edinburgh"),
+        ("Istanbul", "Edinburgh"),
+        ("Oslo", "Reykjavik"),
+        ("Istanbul", "Stuttgart"),
+        ("Oslo", "Edinburgh")
     }
 
-    # Manually construct the itinerary with exact day counts
-    itinerary = [
-        {"day_range": "Day 1-5", "place": "Reykjavik"},  # 5 days (1,2,3,4,5)
-        {"day_range": "Day 5", "place": "Reykjavik"},
-        {"day_range": "Day 5", "place": "Oslo"},        # Fly to Oslo on day 5
-        {"day_range": "Day 5-6", "place": "Oslo"},      # 2 days (5,6)
-        {"day_range": "Day 6", "place": "Oslo"},
-        {"day_range": "Day 6", "place": "Istanbul"},    # Fly to Istanbul on day 6
-        {"day_range": "Day 6-9", "place": "Istanbul"},  # 4 days (6,7,8,9)
-        {"day_range": "Day 9", "place": "Istanbul"},
-        {"day_range": "Day 9", "place": "Edinburgh"},   # Fly to Edinburgh on day 9
-        {"day_range": "Day 9-13", "place": "Edinburgh"}, # 5 days (9,10,11,12,13)
-        {"day_range": "Day 13", "place": "Edinburgh"},
-        {"day_range": "Day 13", "place": "Stuttgart"},   # Fly to Stuttgart on day 13
-        {"day_range": "Day 13-15", "place": "Stuttgart"}, # 3 days (13,14,15)
-        {"day_range": "Day 15", "place": "Stuttgart"},
-        {"day_range": "Day 15", "place": "Bucharest"},   # Fly to Bucharest on day 15
-        {"day_range": "Day 15-19", "place": "Bucharest"} # 5 days (15,16,17,18,19)
+    # Make flights bidirectional
+    flights = set()
+    for a, b in direct_flights:
+        flights.add((a, b))
+        flights.add((b, a))
+
+    # Variables for start and end days of each city
+    starts = {city: Int(f'start_{city}') for city in cities}
+    ends = {city: Int(f'end_{city}') for city in cities}
+
+    # Constraints for each city's duration
+    for city in cities:
+        s.add(starts[city] >= 1)
+        s.add(ends[city] <= 19)
+        s.add(ends[city] - starts[city] + 1 == cities[city])
+
+    # Special constraints
+    # Istanbul must include days 5-8: start <=5 and end >=8
+    s.add(starts["Istanbul"] <= 5)
+    s.add(ends["Istanbul"] >= 8)
+
+    # Oslo must include days 8-9: start <=8 and end >=9
+    s.add(starts["Oslo"] <= 8)
+    s.add(ends["Oslo"] >= 9)
+
+    # All cities must be visited in some order with direct flights between consecutive cities
+    # We'll try multiple possible orders to find one that satisfies all constraints
+    possible_orders = [
+        ["Reykjavik", "Stuttgart", "Edinburgh", "Istanbul", "Oslo", "Bucharest"],
+        ["Reykjavik", "Edinburgh", "Istanbul", "Oslo", "Bucharest"],
+        ["Reykjavik", "Stuttgart", "Istanbul", "Oslo", "Bucharest"],
+        ["Reykjavik", "Oslo", "Bucharest", "Istanbul", "Edinburgh"],
+        ["Reykjavik", "Stuttgart", "Istanbul", "Edinburgh", "Oslo", "Bucharest"]
     ]
 
-    # Verify the itinerary meets all constraints
-    total_days = 0
-    city_days = {city: 0 for city in cities}
-    
-    for entry in itinerary:
-        day_range = entry["day_range"]
-        place = entry["place"]
-        if '-' in day_range:
-            start, end = map(int, day_range.replace("Day ", "").split('-'))
-            days = end - start + 1
-            city_days[place] += days
-            total_days += days
-        else:
-            day = int(day_range.replace("Day ", ""))
-            city_days[place] += 1
-            total_days += 1
+    for order in possible_orders:
+        temp_solver = Solver()
+        temp_solver.add(s.assertions())
 
-    # Check city day counts
-    for city, required in cities.items():
-        if city_days[city] != required:
-            return {"error": f"Invalid days for {city}: expected {required}, got {city_days[city]}"}
+        # Ensure consecutive cities in the order have direct flights
+        valid_order = True
+        for i in range(len(order) - 1):
+            city1 = order[i]
+            city2 = order[i + 1]
+            if (city1, city2) not in flights:
+                valid_order = False
+                break
+        if not valid_order:
+            continue
 
-    # Check total days
-    if total_days != 19:
-        return {"error": f"Total days should be 19, got {total_days}"}
+        # Ensure the end of one city is the start of the next
+        for i in range(len(order) - 1):
+            city1 = order[i]
+            city2 = order[i + 1]
+            temp_solver.add(starts[city2] == ends[city1])
 
-    # Check flight connections
-    for i in range(len(itinerary) - 1):
-        current = itinerary[i]
-        next_entry = itinerary[i + 1]
-        if '-' in current["day_range"] and '-' in next_entry["day_range"]:
-            continue  # No flight between these entries
-        current_place = current["place"]
-        next_place = next_entry["place"]
-        if next_place not in flights.get(current_place, []):
-            return {"error": f"No direct flight from {current_place} to {next_place}"}
+        # Check if this order works
+        if temp_solver.check() == sat:
+            m = temp_solver.model()
+            itinerary = []
 
-    # Check specific constraints
-    istanbul_days = []
-    for entry in itinerary:
-        if entry["place"] == "Istanbul":
-            if '-' in entry["day_range"]:
-                start, end = map(int, entry["day_range"].replace("Day ", "").split('-'))
-                istanbul_days.extend(range(start, end + 1))
-            else:
-                day = int(entry["day_range"].replace("Day ", ""))
-                istanbul_days.append(day)
-    if not all(day in istanbul_days for day in range(5, 9)):
-        return {"error": "Istanbul must include days 5-8"}
+            # Generate the itinerary
+            for city in order:
+                start = m[starts[city]].as_long()
+                end = m[ends[city]].as_long()
+                # Add the stay period
+                itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
+                # If not the first city, add the flight day (same as previous city's end day)
+                if city != order[0]:
+                    flight_day = start
+                    prev_city = order[order.index(city) - 1]
+                    itinerary.append({"day_range": f"Day {flight_day}", "place": prev_city})
+                    itinerary.append({"day_range": f"Day {flight_day}", "place": city})
 
-    oslo_days = []
-    for entry in itinerary:
-        if entry["place"] == "Oslo":
-            if '-' in entry["day_range"]:
-                start, end = map(int, entry["day_range"].replace("Day ", "").split('-'))
-                oslo_days.extend(range(start, end + 1))
-            else:
-                day = int(entry["day_range"].replace("Day ", ""))
-                oslo_days.append(day)
-    if not all(day in oslo_days for day in range(8, 10)):
-        return {"error": "Oslo must include days 8-9"}
+            # Verify total days
+            max_day = max(m[ends[city]].as_long() for city in order)
+            if max_day == 19:
+                return {"itinerary": itinerary}
 
-    return {"itinerary": itinerary}
+    return {"error": "No valid itinerary found"}
 
-result = solve_itinerary()
+result = solve_trip_planning()
 print(result)

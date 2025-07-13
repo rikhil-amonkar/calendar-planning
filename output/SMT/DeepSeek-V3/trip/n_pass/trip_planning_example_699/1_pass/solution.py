@@ -2,172 +2,94 @@ from z3 import *
 
 def solve_itinerary():
     # Cities
-    cities = ['Dublin', 'Reykjavik', 'London', 'Mykonos', 'Helsinki', 'Hamburg']
-    city_map = {city: idx for idx, city in enumerate(cities)}
+    cities = ["Dublin", "London", "Hamburg", "Helsinki", "Reykjavik", "Mykonos"]
+    city_indices = {city: idx for idx, city in enumerate(cities)}
     
     # Direct flights: adjacency list
     direct_flights = {
-        'Dublin': ['London', 'Hamburg', 'Helsinki', 'Reykjavik'],
-        'Reykjavik': ['Helsinki', 'London', 'Dublin'],
-        'London': ['Dublin', 'Hamburg', 'Reykjavik', 'Mykonos', 'Helsinki'],
-        'Mykonos': ['London'],
-        'Helsinki': ['Reykjavik', 'Dublin', 'Hamburg', 'London'],
-        'Hamburg': ['Dublin', 'London', 'Helsinki']
+        "Dublin": ["London", "Hamburg", "Helsinki", "Reykjavik"],
+        "London": ["Dublin", "Hamburg", "Reykjavik", "Mykonos"],
+        "Hamburg": ["Dublin", "London", "Helsinki"],
+        "Helsinki": ["Hamburg", "Reykjavik", "London", "Dublin"],
+        "Reykjavik": ["Helsinki", "London", "Dublin"],
+        "Mykonos": ["London"]
     }
     
-    # Days are 1..16
-    days = 16
+    # Create solver
     s = Solver()
     
-    # Create variables: day i is in city (represented as integer)
-    X = [Int(f'X_{i}') for i in range(1, days + 1)]
+    # Variables: day_1 to day_16, each is an integer representing city index
+    days = [Int(f"day_{i}") for i in range(1, 17)]
     
-    # Each X[i] must be between 0 and 5 (representing the cities)
-    for i in range(days):
-        s.add(X[i] >= 0, X[i] < len(cities))
+    # Each day variable must be between 0 and 5 (inclusive)
+    for day in days:
+        s.add(day >= 0, day < len(cities))
     
-    # Flight transitions: consecutive days must be connected by direct flight or same city
-    for i in range(days - 1):
-        current_city = X[i]
-        next_city = X[i+1]
+    # Flight constraints: consecutive days must be same city or connected by direct flight
+    for i in range(1, 16):
+        current_city = days[i-1]
+        next_city = days[i]
         # Either stay in the same city or move to a directly connected city
-        s.add(Or(
-            current_city == next_city,
-            Or([And(current_city == city_map[a], next_city == city_map[b]) 
-                for a in direct_flights for b in direct_flights[a] if a in city_map and b in city_map])
-        ))
+        same_city = (current_city == next_city)
+        current_city_name = cities[current_city]
+        flight_possible = Or([next_city == city_indices[neighbor] 
+                            for neighbor in direct_flights[current_city_name]])
+        s.add(Or(same_city, flight_possible))
     
     # Duration constraints
-    # Dublin: 5 days (must include days 2-6)
-    s.add(Sum([If(X[i] == city_map['Dublin'], 1, 0) for i in range(days)])  # This line is incorrect; corrected below
+    def city_days(city_name):
+        return Sum([If(days[i] == city_indices[city_name], 1, 0) for i in range(16)])
     
-    # Wait, let's re-express the constraints properly.
+    s.add(city_days("Dublin") == 5)
+    s.add(city_days("London") == 5)
+    s.add(city_days("Hamburg") == 2)
+    s.add(city_days("Helsinki") == 4)
+    s.add(city_days("Reykjavik") == 2)
+    s.add(city_days("Mykonos") == 3)
     
-    # Dublin: 5 days total, including days 2-6 (indices 1..5 in 0-based)
-    # So days 2-6 (1-5 in 0-based) must be Dublin.
-    for i in range(1, 6):  # days 2-6 (1-5 in 0-based)
-        s.add(X[i] == city_map['Dublin'])
-    # Total Dublin days is 5: since days 2-6 are already 5 days, this is satisfied.
+    # Event constraints
+    # Wedding in Reykjavik between day 9 and 10: at least one of day 9 or 10 is Reykjavik
+    s.add(Or(days[8] == city_indices["Reykjavik"], days[9] == city_indices["Reykjavik"]))
     
-    # Hamburg: 2 days, between day 1 and day 2 (so days 1 and 2)
-    # But day 2 is Dublin, so Hamburg must be day 1.
-    s.add(X[0] == city_map['Hamburg'])
-    # Total Hamburg days: 2. So another day must be Hamburg. But day 2 is Dublin, so the other day must be later.
-    # So sum of X[i] == Hamburg is 2.
-    s.add(Sum([If(X[i] == city_map['Hamburg'], 1, 0) for i in range(days)]) == 2)
+    # Show in Dublin from day 2 to 6 (days 2,3,4,5,6 in 1-based)
+    for i in range(1, 6):  # days 2-6 (indices 1 to 5 in 0-based)
+        s.add(days[i] == city_indices["Dublin"])
     
-    # Reykjavik: 2 days, wedding between day 9-10 (so days 9 and 10 are Reykjavik)
-    s.add(X[8] == city_map['Reykjavik'])  # day 9
-    s.add(X[9] == city_map['Reykjavik'])  # day 10
+    # Meet friends in Hamburg between day 1 and 2 (days 1 or 2)
+    s.add(Or(days[0] == city_indices["Hamburg"], days[1] == city_indices["Hamburg"]))
     
-    # Mykonos: 3 days
-    s.add(Sum([If(X[i] == city_map['Mykonos'], 1, 0) for i in range(days)]) == 3)
-    
-    # London: 5 days
-    s.add(Sum([If(X[i] == city_map['London'], 1, 0) for i in range(days)]) == 5)
-    
-    # Helsinki: 4 days
-    s.add(Sum([If(X[i] == city_map['Helsinki'], 1, 0) for i in range(days)]) == 4)
-    
-    # Check and get model
+    # Solve
     if s.check() == sat:
         m = s.model()
-        assignment = [m.evaluate(X[i]).as_long() for i in range(days)]
-        city_assignment = [cities[idx] for idx in assignment]
-        
-        # Generate itinerary
         itinerary = []
-        current_place = city_assignment[0]
+        current_place = None
         start_day = 1
-        
-        for i in range(1, days):
-            if city_assignment[i] == current_place:
-                continue
-            else:
-                end_day = i
-                if start_day == end_day:
+        for day in range(1, 17):
+            city_idx = m.evaluate(days[day-1]).as_long()
+            city = cities[city_idx]
+            if current_place is None:
+                current_place = city
+                start_day = day
+            elif city != current_place:
+                # Add the previous stay
+                if start_day == day - 1:
                     itinerary.append({"day_range": f"Day {start_day}", "place": current_place})
                 else:
-                    itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": current_place})
-                # Add the transition day for the departure and arrival
-                itinerary.append({"day_range": f"Day {end_day}", "place": current_place})
-                itinerary.append({"day_range": f"Day {end_day}", "place": city_assignment[i]})
-                current_place = city_assignment[i]
-                start_day = i + 1
-        
+                    itinerary.append({"day_range": f"Day {start_day}-{day-1}", "place": current_place})
+                # Add the flight day entries for the previous and new city
+                itinerary.append({"day_range": f"Day {day}", "place": current_place})
+                itinerary.append({"day_range": f"Day {day}", "place": city})
+                current_place = city
+                start_day = day
         # Add the last stay
-        if start_day <= days:
-            if start_day == days:
-                itinerary.append({"day_range": f"Day {start_day}", "place": current_place})
-            else:
-                itinerary.append({"day_range": f"Day {start_day}-{days}", "place": current_place})
+        if start_day == 16:
+            itinerary.append({"day_range": f"Day {start_day}", "place": current_place})
+        else:
+            itinerary.append({"day_range": f"Day {start_day}-16", "place": current_place})
         
-        # Post-process to merge consecutive same-city entries where possible
-        # For example, Day 3 as Venice followed by Day 3-5 Venice becomes Day 3-5 Venice.
-        merged_itinerary = []
-        i = 0
-        n = len(itinerary)
-        while i < n:
-            current = itinerary[i]
-            if i + 1 < n:
-                next_entry = itinerary[i+1]
-                if current['place'] == next_entry['place']:
-                    # Merge them.
-                    current_range = current['day_range']
-                    next_range = next_entry['day_range']
-                    # Parse ranges. E.g., "Day 3" and "Day 3-5" → "Day 3-5".
-                    parts1 = current_range.split()
-                    parts2 = next_range.split()
-                    day_parts1 = parts1[1].split('-')
-                    day_parts2 = parts2[1].split('-')
-                    start_day1 = int(day_parts1[0])
-                    if len(day_parts1) > 1:
-                        end_day1 = int(day_parts1[1])
-                    else:
-                        end_day1 = start_day1
-                    start_day2 = int(day_parts2[0])
-                    if len(day_parts2) > 1:
-                        end_day2 = int(day_parts2[1])
-                    else:
-                        end_day2 = start_day2
-                    new_start = min(start_day1, start_day2)
-                    new_end = max(end_day1, end_day2)
-                    if new_start == new_end:
-                        new_range = f"Day {new_start}"
-                    else:
-                        new_range = f"Day {new_start}-{new_end}"
-                    merged_entry = {"day_range": new_range, "place": current['place']}
-                    merged_itinerary.append(merged_entry)
-                    i += 2  # skip the next entry as it's merged
-                    continue
-            merged_itinerary.append(current)
-            i += 1
-        
-        # Now, handle cases where flight days are separate entries (e.g., Day 3: City A and Day 3: City B)
-        # We need to ensure that flight days are represented with both cities.
-        # The merged itinerary may have combined some entries, so we need to reinsert flight days.
-        final_itinerary = []
-        i = 0
-        n = len(merged_itinerary)
-        while i < n:
-            current = merged_itinerary[i]
-            if i < n - 1:
-                next_entry = merged_itinerary[i+1]
-                # Check if current and next have the same day_range but different places (indicating a flight)
-                if current['day_range'] == next_entry['day_range'] and current['place'] != next_entry['place']:
-                    # Flight day: add both entries.
-                    final_itinerary.append(current)
-                    final_itinerary.append(next_entry)
-                    i += 2
-                    continue
-            final_itinerary.append(current)
-            i += 1
-        
-        return {"itinerary": final_itinerary}
+        return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute and print the result
 result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+print(result)

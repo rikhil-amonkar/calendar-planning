@@ -1,117 +1,144 @@
 from z3 import *
 
 def solve_itinerary():
-    # Define the cities
+    # Cities
     cities = ['Berlin', 'Nice', 'Athens', 'Stockholm', 'Barcelona', 'Vilnius', 'Lyon']
     city_map = {city: idx for idx, city in enumerate(cities)}
     
-    # Direct flights: adjacency list (bidirectional)
-    direct_flights = {
-        'Lyon': ['Nice', 'Barcelona'],
-        'Nice': ['Lyon', 'Athens', 'Berlin', 'Barcelona', 'Stockholm'],
-        'Athens': ['Nice', 'Stockholm', 'Berlin', 'Vilnius', 'Barcelona'],
-        'Stockholm': ['Athens', 'Berlin', 'Nice', 'Barcelona'],
-        'Barcelona': ['Berlin', 'Nice', 'Athens', 'Stockholm', 'Lyon'],
-        'Vilnius': ['Berlin', 'Athens'],
-        'Berlin': ['Nice', 'Athens', 'Barcelona', 'Vilnius', 'Stockholm']
-    }
+    # Direct flights
+    direct_flights = [
+        ('Lyon', 'Nice'),
+        ('Stockholm', 'Athens'),
+        ('Nice', 'Athens'),
+        ('Berlin', 'Athens'),
+        ('Berlin', 'Nice'),
+        ('Berlin', 'Barcelona'),
+        ('Berlin', 'Vilnius'),
+        ('Barcelona', 'Nice'),
+        ('Athens', 'Vilnius'),
+        ('Berlin', 'Stockholm'),
+        ('Nice', 'Stockholm'),
+        ('Barcelona', 'Athens'),
+        ('Barcelona', 'Stockholm'),
+        ('Barcelona', 'Lyon')
+    ]
+    
+    # Create a adjacency list for flight connections
+    flight_graph = {city: set() for city in cities}
+    for a, b in direct_flights:
+        flight_graph[a].add(b)
+        flight_graph[b].add(a)
     
     # Total days
     total_days = 20
     
-    # Create Z3 variables: for each day, which city is visited
+    # Create Z3 variables: for each day, the city (day 1 to 20)
+    # Each day can be a stay or a flight day (but flight days involve two cities)
+    # So we model each day as a variable indicating the current city.
+    # For flight days, we need to model the transition between cities.
+    
+    # We'll model the sequence of cities, where consecutive cities must be connected by a flight.
+    # Each day's city is a variable.
     day_city = [Int(f'day_{i}_city') for i in range(1, total_days + 1)]
     
-    # Create a solver
     s = Solver()
     
-    # Each day_city must be between 0 and 6 (representing the cities)
+    # Each day_city must be between 0 and 6 (index of cities)
     for dc in day_city:
         s.add(And(dc >= 0, dc <= 6))
     
-    # Berlin must be on day 1 and day 3 (conference days)
-    s.add(day_city[0] == city_map['Berlin'])  # Day 1 is index 0
-    s.add(day_city[2] == city_map['Berlin'])  # Day 3 is index 2
-    
-    # Barcelona workshop between day 3 and day 4: so must be in Barcelona on day 4 (since day 3 is Berlin)
-    s.add(day_city[3] == city_map['Barcelona'])
-    
-    # Wedding in Lyon between day 4 and day 5: must be in Lyon on day 5 (since day 4 is Barcelona)
-    s.add(day_city[4] == city_map['Lyon'])
-    
-    # Count the total days per city
-    city_days = {city: 0 for city in cities}
-    for city in cities:
-        city_idx = city_map[city]
-        city_days[city] = Sum([If(day_city[i] == city_idx, 1, 0) for i in range(total_days)])
-    
-    # Add constraints for required days per city
-    s.add(city_days['Berlin'] == 3)
-    s.add(city_days['Nice'] == 5)
-    s.add(city_days['Athens'] == 5)
-    s.add(city_days['Stockholm'] == 5)
-    s.add(city_days['Barcelona'] == 2)
-    s.add(city_days['Vilnius'] == 4)
-    s.add(city_days['Lyon'] == 2)
-    
-    # Flight constraints: consecutive days must be either same city or connected by direct flight
+    # Flight constraints: consecutive days must be connected by a direct flight or same city.
     for i in range(total_days - 1):
-        current_city_idx = day_city[i]
-        next_city_idx = day_city[i + 1]
-        # Either stay in the same city or move to a connected city
-        same_city = current_city_idx == next_city_idx
-        connected = Or([
-            And(current_city_idx == city_map[a], next_city_idx == city_map[b])
-            for a in direct_flights
-            for b in direct_flights[a]
-        ])
-        s.add(Or(same_city, connected))
+        current_city = day_city[i]
+        next_city = day_city[i + 1]
+        # Either same city or connected by a flight
+        same_city = (current_city == next_city)
+        flight_possible = Or([And(current_city == city_map[a], next_city == city_map[b]) 
+                            for a, b in direct_flights] + 
+                            [And(current_city == city_map[b], next_city == city_map[a]) 
+                            for a, b in direct_flights])
+        s.add(Or(same_city, flight_possible))
     
-    # Check if the solver can find a solution
+    # Total days per city constraints
+    for city in cities:
+        idx = city_map[city]
+        total = 0
+        if city == 'Berlin':
+            total = 3
+        elif city == 'Nice':
+            total = 5
+        elif city == 'Athens':
+            total = 5
+        elif city == 'Stockholm':
+            total = 5
+        elif city == 'Barcelona':
+            total = 2
+        elif city == 'Vilnius':
+            total = 4
+        elif city == 'Lyon':
+            total = 2
+        
+        # Count occurrences of the city in day_city
+        count = Sum([If(day_city[i] == idx, 1, 0) for i in range(total_days)])
+        s.add(count == total)
+    
+    # Event constraints:
+    # Berlin: conferences on day 1 and day 3. So day_city[0] and day_city[2] must be Berlin.
+    s.add(day_city[0] == city_map['Berlin'])
+    s.add(day_city[2] == city_map['Berlin'])
+    
+    # Barcelona workshop between day 3 and day 4. So Barcelona must include day 3 or 4.
+    # Wait: "between day 3 and day 4" could mean the workshop is on day 3 or 4.
+    # So at least one of day_city[2] (day 3) or day_city[3] (day 4) is Barcelona.
+    s.add(Or(day_city[2] == city_map['Barcelona'], day_city[3] == city_map['Barcelona']))
+    
+    # Lyon wedding between day 4 and day 5. So day_city[3] or day_city[4] is Lyon.
+    s.add(Or(day_city[3] == city_map['Lyon'], day_city[4] == city_map['Lyon']))
+    
+    # Check if the model is satisfiable
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        current_city = None
+        prev_city = None
         start_day = 1
+        current_city_idx = m[day_city[0]].as_long()
+        current_city = cities[current_city_idx]
         
-        # Generate day-by-day plan
-        day_plan = []
         for day in range(1, total_days + 1):
-            city_idx = model.evaluate(day_city[day - 1]).as_long()
-            city = cities[city_idx]
-            day_plan.append((day, city))
-        
-        # Process day_plan to create the itinerary with flight days
-        i = 0
-        while i < len(day_plan):
-            current_day, current_city = day_plan[i]
-            start = current_day
-            j = i
-            while j < len(day_plan) and day_plan[j][1] == current_city:
-                j += 1
-            end = day_plan[j - 1][0]
+            current_day_city_idx = m[day_city[day - 1]].as_long()
+            current_day_city = cities[current_day_city_idx]
             
-            if start == end:
-                itinerary.append({"day_range": f"Day {start}", "place": current_city})
+            if day == 1:
+                prev_city = current_day_city
+                start_day = 1
             else:
-                itinerary.append({"day_range": f"Day {start}-{end}", "place": current_city})
-            
-            # Check if next day is a different city (flight day)
-            if j < len(day_plan):
-                next_day, next_city = day_plan[j]
-                if next_city != current_city:
-                    # Add the current city for the flight day (last day in current city)
-                    itinerary.append({"day_range": f"Day {end}", "place": current_city})
-                    # Add the next city for the flight day (first day in next city)
-                    itinerary.append({"day_range": f"Day {next_day}", "place": next_city})
-            
-            i = j
+                if current_day_city == prev_city:
+                    continue
+                else:
+                    # Add the previous segment
+                    end_day = day - 1
+                    if start_day == end_day:
+                        itinerary.append({"day_range": f"Day {start_day}", "place": prev_city})
+                    else:
+                        itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": prev_city})
+                    # Add the flight day entries for the transition
+                    # The current day is a transition day, so include both cities
+                    itinerary.append({"day_range": f"Day {day}", "place": prev_city})
+                    itinerary.append({"day_range": f"Day {day}", "place": current_day_city})
+                    prev_city = current_day_city
+                    start_day = day + 1  # next segment starts after the flight
+        
+        # Add the last segment
+        end_day = total_days
+        if start_day == end_day:
+            itinerary.append({"day_range": f"Day {start_day}", "place": prev_city})
+        else:
+            itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": prev_city})
         
         return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Execute the solver and print the result
-result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+# Generate the itinerary
+itinerary = solve_itinerary()
+print(itinerary)

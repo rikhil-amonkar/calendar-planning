@@ -2,7 +2,6 @@ from z3 import *
 import json
 
 def solve_itinerary():
-    # Cities and their required days
     cities = {
         "Rome": 3,
         "Mykonos": 2,
@@ -15,138 +14,89 @@ def solve_itinerary():
         "Bucharest": 2,
         "Seville": 5
     }
-    city_list = list(cities.keys())
-    num_cities = len(city_list)
     
-    # Direct flights (undirected)
-    direct_flights = [
-        ("Rome", "Stuttgart"),
-        ("Venice", "Rome"),
-        ("Dublin", "Bucharest"),
-        ("Mykonos", "Rome"),
-        ("Seville", "Lisbon"),
-        ("Frankfurt", "Venice"),
-        ("Venice", "Stuttgart"),
-        ("Bucharest", "Lisbon"),
-        ("Nice", "Mykonos"),
-        ("Venice", "Lisbon"),
-        ("Dublin", "Lisbon"),
-        ("Venice", "Nice"),
-        ("Rome", "Seville"),
-        ("Frankfurt", "Rome"),
-        ("Nice", "Dublin"),
-        ("Rome", "Bucharest"),
-        ("Frankfurt", "Dublin"),
-        ("Rome", "Dublin"),
-        ("Venice", "Dublin"),
-        ("Rome", "Lisbon"),
-        ("Frankfurt", "Lisbon"),
-        ("Nice", "Rome"),
-        ("Frankfurt", "Nice"),
-        ("Frankfurt", "Stuttgart"),
-        ("Frankfurt", "Bucharest"),
-        ("Lisbon", "Stuttgart"),
-        ("Nice", "Lisbon"),
-        ("Seville", "Dublin")
-    ]
-    flight_set = set()
-    for a, b in direct_flights:
-        flight_set.add((a, b))
-        flight_set.add((b, a))
+    direct_flights = {
+        "Rome": ["Stuttgart", "Venice", "Mykonos", "Seville", "Frankfurt", "Bucharest", "Dublin", "Lisbon", "Nice"],
+        "Stuttgart": ["Rome", "Venice", "Frankfurt", "Lisbon"],
+        "Venice": ["Rome", "Stuttgart", "Frankfurt", "Lisbon", "Nice", "Dublin"],
+        "Dublin": ["Bucharest", "Lisbon", "Nice", "Frankfurt", "Rome", "Venice", "Seville"],
+        "Mykonos": ["Rome", "Nice"],
+        "Lisbon": ["Seville", "Bucharest", "Venice", "Dublin", "Rome", "Frankfurt", "Nice", "Stuttgart"],
+        "Frankfurt": ["Venice", "Rome", "Dublin", "Nice", "Stuttgart", "Bucharest", "Lisbon"],
+        "Nice": ["Mykonos", "Dublin", "Venice", "Rome", "Frankfurt", "Lisbon"],
+        "Bucharest": ["Dublin", "Lisbon", "Rome", "Frankfurt"],
+        "Seville": ["Lisbon", "Rome", "Dublin"]
+    }
     
-    # Total days
     total_days = 23
     
-    # Z3 solver
     s = Solver()
     
-    # Variables:
-    # Order of cities: position[i] is the ith city visited
-    position = [Int(f'pos_{i}') for i in range(num_cities)]
-    # Each position must be a distinct city
-    s.add(Distinct(position))
-    for i in range(num_cities):
-        s.add(position[i] >= 0)
-        s.add(position[i] < num_cities)
+    city_ids = {city: idx for idx, city in enumerate(cities.keys())}
+    id_to_city = {idx: city for city, idx in city_ids.items()}
     
-    # Start and end days for each city
-    start_day = {city: Int(f'start_{city}') for city in city_list}
-    end_day = {city: Int(f'end_{city}') for city in city_list}
+    day_to_city = [Int(f"day_{i}") for i in range(1, total_days + 1)]
     
-    # Constraints for start and end days
-    for city in city_list:
-        s.add(start_day[city] >= 1)
-        s.add(end_day[city] <= total_days)
-        s.add(end_day[city] == start_day[city] + cities[city] - 1)
+    for day in range(total_days):
+        s.add(Or([day_to_city[day] == city_ids[city] for city in cities]))
     
-    # Special constraints:
-    # Frankfurt wedding between day 1 and 5
-    s.add(start_day["Frankfurt"] <= 1)
-    s.add(end_day["Frankfurt"] >= 5)
+    for city, days in cities.items():
+        s.add(Sum([If(day_to_city[day] == city_ids[city], 1, 0) for day in range(total_days)]) == days)
     
-    # Conference in Seville between day 13 and 17
-    s.add(start_day["Seville"] <= 13)
-    s.add(end_day["Seville"] >= 17)
+    # Frankfurt between day 1-5 (0-based 0-4)
+    s.add(Or([day_to_city[day] == city_ids["Frankfurt"] for day in range(5)]))
     
-    # Meet friends in Mykonos between day 10 and 11
-    s.add(Or(
-        And(start_day["Mykonos"] <= 10, end_day["Mykonos"] >= 10),
-        And(start_day["Mykonos"] <= 11, end_day["Mykonos"] >= 11)
-    ))
+    # Mykonos includes day 10 or 11 (0-based 9 or 10)
+    s.add(Or(day_to_city[9] == city_ids["Mykonos"], day_to_city[10] == city_ids["Mykonos"]))
     
-    # Sequence constraints:
-    # The cities must be visited in the order defined by 'position', with no overlaps except flight days
-    # Also, consecutive cities in the sequence must have a direct flight
-    for i in range(num_cities - 1):
-        # Create a variable for the current and next city in the sequence
-        current_city = position[i]
-        next_city = position[i + 1]
-        
-        # Ensure there's a direct flight between current_city and next_city
+    # Seville between day 13-17 (0-based 12-16)
+    s.add(Or([day_to_city[day] == city_ids["Seville"] for day in range(12, 17)]))
+    
+    for day in range(total_days - 1):
+        current = day_to_city[day]
+        next_ = day_to_city[day + 1]
         flight_constraints = []
-        for a, b in flight_set:
-            flight_constraints.append(And(current_city == city_list.index(a), next_city == city_list.index(b)))
-        s.add(Or(*flight_constraints))
-        
-        # The start day of the next city is the end day of the current city (flight day)
-        s.add(start_day[city_list[next_city]] == end_day[city_list[current_city]])
+        for src in direct_flights:
+            for dst in direct_flights[src]:
+                flight_constraints.append(And(current == city_ids[src], next_ == city_ids[dst]))
+        s.add(Or(current == next_, *flight_constraints))
     
-    # Total days: sum of city days plus (num_cities - 1) flight days (each flight day is counted twice)
-    s.add(Sum([cities[city] for city in city_list]) + (num_cities - 1) == total_days)
-    
-    # Check if the problem is satisfiable
     if s.check() == sat:
-        m = s.model()
-        # Extract the order of cities
-        pos_order = []
-        for i in range(num_cities):
-            pos = m[position[i]].as_long()
-            pos_order.append(city_list[pos])
+        model = s.model()
+        assignments = []
+        for day in range(total_days):
+            city_id = model.eval(day_to_city[day]).as_long()
+            city = id_to_city[city_id]
+            assignments.append((day + 1, city))
         
-        # Extract start and end days
-        city_schedule = {}
-        for city in city_list:
-            city_schedule[city] = (m[start_day[city]].as_long(), m[end_day[city]].as_long())
-        
-        # Build the itinerary
         itinerary = []
-        for i in range(num_cities):
-            city = pos_order[i]
-            start, end = city_schedule[city]
-            if start == end:
-                itinerary.append({"day_range": f"Day {start}", "place": city})
+        i = 0
+        n = len(assignments)
+        while i < n:
+            day, city = assignments[i]
+            start_day = day
+            # Check if next day is different (flight)
+            if i < n - 1 and assignments[i + 1][1] != city:
+                # Flight day: current day is city and next city
+                next_city = assignments[i + 1][1]
+                itinerary.append({"day_range": f"Day {day}", "place": city})
+                itinerary.append({"day_range": f"Day {day}", "place": next_city})
+                i += 1
             else:
-                itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
-            if i < num_cities - 1:
-                next_city = pos_order[i + 1]
-                # Flight day
-                itinerary.append({"day_range": f"Day {end}", "place": city})
-                itinerary.append({"day_range": f"Day {end}", "place": next_city})
+                # Find consecutive same city
+                j = i
+                while j < n and assignments[j][1] == city:
+                    j += 1
+                end_day = assignments[j - 1][0]
+                if start_day == end_day:
+                    itinerary.append({"day_range": f"Day {start_day}", "place": city})
+                else:
+                    itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": city})
+                i = j
         
         return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-# Generate the itinerary
-itinerary = solve_itinerary()
-print(json.dumps(itinerary, indent=2))
+result = solve_itinerary()
+print(json.dumps(result, indent=2))

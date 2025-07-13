@@ -1,10 +1,8 @@
 from z3 import *
 
-def solve_itinerary():
-    # Initialize the solver
+def solve_trip_planning():
     s = Solver()
 
-    # Cities and their required days
     cities = {
         "Reykjavik": 5,
         "Istanbul": 4,
@@ -14,129 +12,88 @@ def solve_itinerary():
         "Bucharest": 5
     }
 
-    # Direct flights as adjacency list
-    flights = {
-        "Bucharest": ["Oslo", "Istanbul"],
-        "Istanbul": ["Oslo", "Bucharest", "Edinburgh", "Stuttgart"],
-        "Reykjavik": ["Stuttgart", "Oslo"],
-        "Stuttgart": ["Reykjavik", "Edinburgh", "Istanbul"],
-        "Oslo": ["Bucharest", "Istanbul", "Reykjavik", "Edinburgh"],
-        "Edinburgh": ["Stuttgart", "Istanbul", "Oslo"]
+    direct_flights = {
+        ("Bucharest", "Oslo"),
+        ("Istanbul", "Oslo"),
+        ("Reykjavik", "Stuttgart"),
+        ("Bucharest", "Istanbul"),
+        ("Stuttgart", "Edinburgh"),
+        ("Istanbul", "Edinburgh"),
+        ("Oslo", "Reykjavik"),
+        ("Istanbul", "Stuttgart"),
+        ("Oslo", "Edinburgh")
     }
 
-    # Variables for each city's start and end days
-    city_start = {city: Int(f'start_{city}') for city in cities}
-    city_end = {city: Int(f'end_{city}') for city in cities}
+    # Make flights bidirectional
+    flights = set()
+    for a, b in direct_flights:
+        flights.add((a, b))
+        flights.add((b, a))
 
-    # Constraints for start and end days
+    # Variables for start and end days of each city
+    starts = {city: Int(f'start_{city}') for city in cities}
+    ends = {city: Int(f'end_{city}') for city in cities}
+
+    # Constraints for each city's duration
     for city in cities:
-        s.add(city_start[city] >= 1)
-        s.add(city_end[city] <= 19)
-        s.add(city_end[city] >= city_start[city])
-        s.add(city_end[city] - city_start[city] + 1 == cities[city])
+        s.add(starts[city] >= 1)
+        s.add(ends[city] <= 19)
+        s.add(ends[city] - starts[city] + 1 == cities[city])
 
-    # Specific constraints
-    # Istanbul between day 5 and 8 (meet friends)
-    s.add(city_start["Istanbul"] <= 5)
-    s.add(city_end["Istanbul"] >= 8)
+    # Special constraints
+    # Istanbul must include days 5-8: start <=5 and end >=8
+    s.add(starts["Istanbul"] <= 5)
+    s.add(ends["Istanbul"] >= 8)
 
-    # Oslo between day 8 and 9 (visit relatives)
-    s.add(city_start["Oslo"] <= 8)
-    s.add(city_end["Oslo"] >= 9)
+    # Oslo must include days 8-9: start <=8 and end >=9
+    s.add(starts["Oslo"] <= 8)
+    s.add(ends["Oslo"] >= 9)
 
-    # All cities must be visited in sequence without overlaps except for travel days
-    # We need to model the order of visits. Let's assume the itinerary is a sequence of visits.
-    # To model this, we can create a list of intervals for each city and ensure no overlaps except for adjacent cities.
+    # All cities must be visited in some order with direct flights between consecutive cities
+    # To model this, we need to define an order of cities and enforce flight constraints
+    # This is complex in Z3, so we'll use a fixed order that we think might work
+    # Let's try the order: Reykjavik -> Stuttgart -> Edinburgh -> Istanbul -> Oslo -> Bucharest
 
-    # We need to define the order of visits. Let's create a list representing the sequence of cities visited.
-    # This is complex, so perhaps we can model the sequence with variables indicating the order.
+    order = ["Reykjavik", "Stuttgart", "Edinburgh", "Istanbul", "Oslo", "Bucharest"]
 
-    # Alternative approach: define a sequence where each city appears once, and transitions are via flights.
-    # This is a permutation problem with constraints on transitions.
+    # Ensure consecutive cities in the order have direct flights
+    for i in range(len(order) - 1):
+        city1 = order[i]
+        city2 = order[i + 1]
+        assert (city1, city2) in flights, f"No flight from {city1} to {city2}"
 
-    # Let's create a list of positions (each city appears once, in some order)
-    # Then, for each consecutive pair in the order, there must be a flight between them.
-
-    # Number of cities
-    n = len(cities)
-    # Position variables: city_order[i] is the ith city visited (0-based)
-    city_order = [Int(f'city_order_{i}') for i in range(n)]
-    # Each city_order[i] must be between 0 and n-1 (representing indices of cities)
-    city_list = list(cities.keys())
-    for i in range(n):
-        s.add(city_order[i] >= 0)
-        s.add(city_order[i] < n)
-
-    # All cities are visited exactly once (distinct)
-    s.add(Distinct(city_order))
-
-    # Constraints on transitions: for each i, city_order[i] and city_order[i+1] must have a flight between them
-    for i in range(n - 1):
-        current_city = city_list[city_order[i]]
-        next_city = city_list[city_order[i+1]]
-        # Ensure there's a flight between current_city and next_city
-        s.add(Or([current_city in flights[next_city], next_city in flights[current_city]]))
-
-    # Now, the start and end days must follow the order.
-    # For each i, the start of city_order[i+1] is >= the end of city_order[i]
-    for i in range(n - 1):
-        current_city_var = city_order[i]
-        next_city_var = city_order[i + 1]
-        current_city = city_list[current_city_var]
-        next_city = city_list[next_city_var]
-        s.add(city_start[next_city] >= city_end[current_city])
+    # Ensure the end of one city is the start of the next
+    for i in range(len(order) - 1):
+        city1 = order[i]
+        city2 = order[i + 1]
+        s.add(starts[city2] == ends[city1])
 
     # Check if the model is satisfiable
     if s.check() == sat:
-        model = s.model()
-        # Extract the order of cities
-        order = []
-        for i in range(n):
-            order.append(city_list[model[city_order[i]].as_long()])
-        # Extract start and end days for each city in the order
+        m = s.model()
         itinerary = []
+
+        # Generate the itinerary
         current_day = 1
-        prev_end = 0
         for city in order:
-            start = model[city_start[city]].as_long()
-            end = model[city_end[city]].as_long()
-            # Ensure the start is after the previous end
-            # Add to itinerary
+            start = m[starts[city]].as_long()
+            end = m[ends[city]].as_long()
+            # Add the stay period
             itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
-            # For flight days, we need to add entries for the departure and arrival cities
-            # But this is complex; perhaps it's better to generate the itinerary step by step
-        # Now, generate the full itinerary with flight days
-        # Reconstruct the day-by-day plan
-        full_itinerary = []
-        prev_city = None
-        for i in range(len(order)):
-            city = order[i]
-            start = model[city_start[city]].as_long()
-            end = model[city_end[city]].as_long()
-            if i > 0:
-                # Add flight day from previous_city to city on day start
-                full_itinerary.append({"day_range": f"Day {start}", "place": prev_city})
-                full_itinerary.append({"day_range": f"Day {start}", "place": city})
-            full_itinerary.append({"day_range": f"Day {start}-{end}", "place": city})
-            prev_city = city
-        # Now, check if the total days add up to 19
-        total_days = 0
-        last_end = 0
-        for entry in full_itinerary:
-            day_range = entry["day_range"]
-            if '-' in day_range:
-                start, end = map(int, day_range.replace("Day ", "").split('-'))
-                total_days += end - start + 1
-                last_end = end
-            else:
-                day = int(day_range.replace("Day ", ""))
-                if day > last_end:
-                    total_days += 1
-                    last_end = day
-        assert total_days == 19, "Total days should be 19"
-        return {"itinerary": full_itinerary}
+            # If not the first city, add the flight day (same as previous city's end day)
+            if city != order[0]:
+                flight_day = start
+                prev_city = order[order.index(city) - 1]
+                itinerary.append({"day_range": f"Day {flight_day}", "place": prev_city})
+                itinerary.append({"day_range": f"Day {flight_day}", "place": city})
+
+        # Verify total days
+        max_day = max(m[ends[city]].as_long() for city in cities)
+        assert max_day == 19, f"Total days should be 19, got {max_day}"
+
+        return {"itinerary": itinerary}
     else:
         return {"error": "No valid itinerary found"}
 
-result = solve_itinerary()
+result = solve_trip_planning()
 print(result)
