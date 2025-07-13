@@ -1,0 +1,1 @@
+{'itinerary': [{'day_range': 'Day 1-2', 'place': 'Brussels'}, {'day_range': 'Day 2', 'place': 'Brussels'}, {'day_range': 'Day 2', 'place': 'Barcelona'}, {'day_range': 'Day 2-8', 'place': 'Barcelona'}, {'day_range': 'Day 8', 'place': 'Barcelona'}, {'day_range': 'Day 8', 'place': 'Split'}, {'day_range': 'Day 8-12', 'place': 'Split'}]}
