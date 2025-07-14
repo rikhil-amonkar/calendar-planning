@@ -186,8 +186,8 @@ Expected format: {expected_format}
 
 Instructions:
 1. If the output contains valid JSON in the expected format, extract and return it
-2. If the output contains an error message (like "No valid itinerary found", "Error:", etc.), return {{"error": "error_message"}}
-3. If the output indicates no plan was found (like "No solution found", "UNSAT", etc.), return {{"no_plan": "reason"}}
+2. If the output indicates no plan was found (like "No valid itinerary found", "No solution found", "UNSAT", "unsat", etc.), return {{"no_plan": "reason"}}
+3. If the output contains an execution error message (like "Error:", "Exception:", "Traceback:", etc.), return {{"error": "error_message"}}
 4. If the output is malformed or unclear, try to extract any useful information or return {{"error": "malformed_output"}}
 
 Return only valid JSON:"""
