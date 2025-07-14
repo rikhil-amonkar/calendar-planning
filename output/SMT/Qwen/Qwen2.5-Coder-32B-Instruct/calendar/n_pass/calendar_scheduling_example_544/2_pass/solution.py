@@ -1,58 +1,65 @@
 from z3 import *
 
-# Define the variables for the meeting day and time
-day = Int('day')
-start_time = Int('start_time')
-end_time = Int('end_time')
+# Define the variables for the meeting time
+start_hour = Int('start_hour')
+start_minute = Int('start_minute')
 
-# Define the constraints
-constraints = []
+# Constants for the meeting duration
+meeting_duration_hours = 0
+meeting_duration_minutes = 30
 
-# Meeting duration is 30 minutes (0.5 hours)
-meeting_duration = 30
-
-# Constraints for the day (only Monday is considered here)
-constraints.append(day == 1)  # Assuming Monday is represented as 1
-
-# Constraints for Deborah (she is free the entire day)
-# No additional constraints needed for Deborah
+# Constraints for the work hours
+work_start_hour = 9
+work_end_hour = 17
 
 # Constraints for Albert
-# Albert is busy from 9:00 to 10:00, 10:30 to 12:00, 15:00 to 16:30
-constraints.append(Or(start_time >= 1000, end_time <= 900))  # Not during 9:00 to 10:00
-constraints.append(Or(start_time >= 1200, end_time <= 1030))  # Not during 10:30 to 12:00
-constraints.append(Or(start_time >= 1630, end_time <= 1500))  # Not during 15:00 to 16:30
+albert_blocked_times = [
+    (9, 10),    # 9:00 to 10:00
+    (10, 12),   # 10:30 to 12:00
+    (15, 16)    # 15:00 to 16:30
+]
 
-# Albert cannot meet after 11:00
-constraints.append(end_time <= 1100)
+albert_additional_constraint = start_hour < 11  # Albert can't meet after 11:00
 
-# Meeting must be within work hours (9:00 to 17:00)
-constraints.append(start_time >= 900)
-constraints.append(end_time <= 1700)
+# Define the constraints for the meeting time
+constraints = [
+    work_start_hour <= start_hour,
+    start_hour < work_end_hour,
+    Or(
+        start_hour < albert_blocked_times[0][0],
+        And(start_hour >= albert_blocked_times[0][1], start_hour < albert_blocked_times[1][0]),
+        And(start_hour >= albert_blocked_times[1][1], start_hour < albert_blocked_times[2][0]),
+        start_hour >= albert_blocked_times[2][1]
+    ),
+    albert_additional_constraint,
+    Or(start_minute == 0, start_minute == 30),  # Meeting can start at :00 or :30
+    # Ensure the meeting does not overlap with Albert's blocked times
+    Not(And(start_hour == albert_blocked_times[0][0], start_minute >= 0)),
+    Not(And(start_hour == albert_blocked_times[0][1] - 1, start_minute >= 30)),
+    Not(And(start_hour == albert_blocked_times[1][0], start_minute >= 30)),
+    Not(And(start_hour == albert_blocked_times[1][1] - 1, start_minute >= 0)),
+    Not(And(start_hour == albert_blocked_times[2][0], start_minute >= 0)),
+    Not(And(start_hour == albert_blocked_times[2][1] - 1, start_minute >= 30))
+]
 
-# Meeting duration constraint
-constraints.append(end_time - start_time == meeting_duration)
-
-# Create the solver and add the constraints
+# Create a solver instance
 solver = Solver()
+
+# Add constraints to the solver
 solver.add(constraints)
 
-# Check if there is a solution
+# Check if the constraints are satisfiable
 if solver.check() == sat:
     model = solver.model()
-    meeting_day = model[day].as_long()
-    meeting_start_time = model[start_time].as_long()
-    meeting_end_time = model[end_time].as_long()
-
-    # Convert times to HH:MM format
-    start_hour = meeting_start_time // 100
-    start_minute = meeting_start_time % 100
-    end_hour = meeting_end_time // 100
-    end_minute = meeting_end_time % 100
-
+    meeting_day = "Monday"
+    meeting_start_hour = model[start_hour].as_long()
+    meeting_start_minute = model[start_minute].as_long()
+    meeting_end_hour = meeting_start_hour + meeting_duration_hours + (meeting_start_minute + meeting_duration_minutes) // 60
+    meeting_end_minute = (meeting_start_minute + meeting_duration_minutes) % 60
+    
     print(f"SOLUTION:")
-    print(f"Day: Monday")
-    print(f"Start Time: {start_hour:02}:{start_minute:02}")
-    print(f"End Time: {end_hour:02}:{end_minute:02}")
+    print(f"Day: {meeting_day}")
+    print(f"Start Time: {meeting_start_hour:02}:{meeting_start_minute:02}")
+    print(f"End Time: {meeting_end_hour:02}:{meeting_end_minute:02}")
 else:
     print("No solution found")
