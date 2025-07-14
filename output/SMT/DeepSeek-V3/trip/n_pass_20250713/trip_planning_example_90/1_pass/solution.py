@@ -1,0 +1,12 @@
+{
+    "itinerary": [
+        {"day_range": "Day 1-5", "place": "Naples"},
+        {"day_range": "Day 5", "place": "Naples"},
+        {"day_range": "Day 5", "place": "Vienna"},
+        {"day_range": "Day 5", "place": "Vilnius"},
+        {"day_range": "Day 5-11", "place": "Vilnius"},
+        {"day_range": "Day 11", "place": "Vilnius"},
+        {"day_range": "Day 11", "place": "Vienna"},
+        {"day_range": "Day 11-17", "place": "Vienna"}
+    ]
+}

@@ -3,75 +3,82 @@ from z3 import *
 def solve_scheduling():
     # Create the solver
     s = Solver()
-    
-    # Define variables
-    day = Int('day')  # 0 for Monday, 1 for Tuesday
-    start_time = Int('start_time')  # in minutes from 9:00 (540 minutes)
-    end_time = Int('end_time')  # in minutes from start_time (duration is 30 minutes)
-    
+
+    # Define the possible days (Monday or Tuesday)
+    is_monday = Bool('is_monday')
+
+    # Define start and end times (in minutes since 9:00 to handle arithmetic easily)
+    start_time = Int('start_time')  # minutes from 9:00 (e.g., 0 is 9:00, 30 is 9:30)
+    end_time = Int('end_time')
+
     # Meeting duration is 30 minutes
     s.add(end_time == start_time + 30)
-    
-    # Work hours are 9:00 to 17:00 (540 to 1020 minutes)
-    s.add(start_time >= 540)
-    s.add(end_time <= 1020)
-    
-    # Day constraints: Monday (0) or Tuesday (1)
-    s.add(day >= 0, day <= 1)
-    
-    # Jeffrey is free the entire week, so no constraints for Jeffrey
-    
-    # Harold's constraints
-    # Monday (day 0): blocked 9:00-10:00 (540-600), 10:30-17:00 (630-1020)
-    # So free on Monday: 10:00-10:30 (600-630)
-    # Tuesday (day 1): blocked 9:00-9:30 (540-570), 10:30-11:30 (630-690), 
-    #                   12:30-13:30 (750-810), 14:30-15:30 (870-930), 16:00-17:00 (960-1020)
-    # So free on Tuesday: 9:30-10:30 (570-630), 11:30-12:30 (690-750), 13:30-14:30 (810-870), 15:30-16:00 (930-960)
-    
-    # Harold prefers to avoid more meetings on Monday and before 14:30 on Tuesday
-    # So we prioritize Tuesday after 14:30 (870 minutes)
-    
-    # Define free slots
-    # Monday free: 10:00-10:30 (600-630)
-    monday_free_start = 600
-    monday_free_end = 630
-    
-    # Tuesday free after 14:30: 15:30-16:00 (930-960)
-    tuesday_free_start = 930
-    tuesday_free_end = 960
-    
-    # Add constraints for Harold's schedule
-    s.add(Or(
-        And(day == 0, start_time >= monday_free_start, end_time <= monday_free_end),
-        And(day == 1, start_time >= tuesday_free_start, end_time <= tuesday_free_end)
-    ))
-    
-    # Check if there's a solution
-    if s.check() == sat:
-        m = s.model()
-        day_val = m[day].as_long()
-        start_val = m[start_time].as_long()
-        end_val = m[end_time].as_long()
-        
-        # Convert day to string
-        day_str = "Monday" if day_val == 0 else "Tuesday"
-        
-        # Convert start and end times to HH:MM format
-        start_hh = start_val // 60
-        start_mm = start_val % 60
-        end_hh = end_val // 60
-        end_mm = end_val % 60
-        
-        # Format times with leading zeros
-        start_time_str = f"{start_hh:02d}:{start_mm:02d}"
-        end_time_str = f"{end_hh:02d}:{end_mm:02d}"
-        
-        # Print the solution
-        print("SOLUTION:")
-        print(f"Day: {day_str}")
-        print(f"Start Time: {start_time_str}")
-        print(f"End Time: {end_time_str}")
+
+    # Work hours are 9:00 to 17:00 (480 minutes from 9:00)
+    s.add(start_time >= 0)
+    s.add(end_time <= 480)  # 17:00 is 8 hours after 9:00 (480 minutes)
+
+    # Harold's blocked times:
+    # Monday: 9:00-10:00 (0-60), 10:30-17:00 (90-480)
+    # Tuesday: 9:00-9:30 (0-30), 10:30-11:30 (90-150), 12:30-13:30 (210-270), 14:30-15:30 (330-390), 16:00-17:00 (420-480)
+
+    # Constraints based on the day
+    # If Monday, the meeting must not overlap with Harold's blocked times
+    monday_constraints = Or(
+        And(start_time >= 60, end_time <= 90),  # only possible slot on Monday is 10:00-10:30
+    )
+    s.add(Implies(is_monday, monday_constraints))
+
+    # If Tuesday, the meeting must not overlap with Harold's blocked times
+    tuesday_constraints = Or(
+        And(start_time >= 30, end_time <= 90),   # 9:30-10:30 (but Harold is busy 10:30-11:30, so 9:30-10:00 or 10:00-10:30)
+        And(start_time >= 150, end_time <= 210), # 11:30-12:30
+        And(start_time >= 270, end_time <= 330), # 13:30-14:30
+        And(start_time >= 390, end_time <= 420) # 15:30-16:00
+    )
+    s.add(Implies(Not(is_monday), tuesday_constraints))
+
+    # Harold prefers to avoid more meetings on Monday, so we prioritize Tuesday
+    # We can add a soft constraint to prefer Tuesday
+    # To model preferences, we can first try to find a solution on Tuesday, and if not found, then Monday
+    # Alternatively, use an optimization solver, but for simplicity, we'll check Tuesday first
+
+    # Create a temporary solver to check Tuesday first
+    temp_s = Solver()
+    temp_s.add(s.assertions())
+    temp_s.add(Not(is_monday))  # Try Tuesday first
+    if temp_s.check() == sat:
+        m = temp_s.model()
     else:
-        print("No solution found")
+        # If Tuesday is not possible, try Monday
+        temp_s = Solver()
+        temp_s.add(s.assertions())
+        temp_s.add(is_monday)
+        assert temp_s.check() == sat  # since the problem states a solution exists
+        m = temp_s.model()
+
+    # Determine the day
+    day_is_monday = is_true(m.eval(is_monday))
+    day = "Monday" if day_is_monday else "Tuesday"
+
+    # Get start and end times
+    start_min = m.eval(start_time).as_long()
+    end_min = m.eval(end_time).as_long()
+
+    # Convert minutes back to HH:MM format
+    start_hh = 9 + start_min // 60
+    start_mm = start_min % 60
+    end_hh = 9 + end_min // 60
+    end_mm = end_min % 60
+
+    # Format as 24-hour time with leading zeros
+    start_time_str = f"{start_hh:02d}:{start_mm:02d}"
+    end_time_str = f"{end_hh:02d}:{end_mm:02d}"
+
+    # Output the solution
+    print("SOLUTION:")
+    print(f"Day: {day}")
+    print(f"Start Time: {start_time_str}")
+    print(f"End Time: {end_time_str}")
 
 solve_scheduling()

@@ -1,122 +1,111 @@
 from z3 import *
-from itertools import permutations
 
 def solve_scheduling():
-    # Initialize Z3 solver
-    s = Solver()
+    # Initialize solver
+    s = Optimize()
 
-    # Locations and friends data
-    friends = {
-        "Kimberly": {"location": "Presidio", "start": 15.5, "end": 16.0, "min_duration": 0.25},
-        "Elizabeth": {"location": "Alamo Square", "start": 19.25, "end": 20.25, "min_duration": 0.25},
-        "Joshua": {"location": "Marina District", "start": 10.5, "end": 14.25, "min_duration": 0.75},
-        "Sandra": {"location": "Financial District", "start": 19.5, "end": 20.25, "min_duration": 0.75},
-        "Kenneth": {"location": "Nob Hill", "start": 12.75, "end": 21.75, "min_duration": 0.5},
-        "Betty": {"location": "Sunset District", "start": 14.0, "end": 19.0, "min_duration": 1.0},
-        "Deborah": {"location": "Chinatown", "start": 17.25, "end": 20.5, "min_duration": 0.25},
-        "Barbara": {"location": "Russian Hill", "start": 17.5, "end": 21.25, "min_duration": 2.0},
-        "Steven": {"location": "North Beach", "start": 17.75, "end": 20.75, "min_duration": 1.5},
-        "Daniel": {"location": "Haight-Ashbury", "start": 18.5, "end": 18.75, "min_duration": 0.25}
-    }
+    # Define locations and travel times
+    locations = ["Union Square", "Presidio", "Alamo Square", "Marina District", 
+                "Financial District", "Nob Hill", "Sunset District", "Chinatown",
+                "Russian Hill", "North Beach", "Haight-Ashbury"]
+    loc_index = {loc: idx for idx, loc in enumerate(locations)}
 
-    # Travel times (in hours)
-    travel_times = {
-        ("Union Square", "Presidio"): 24/60,
-        ("Union Square", "Alamo Square"): 15/60,
-        ("Union Square", "Marina District"): 18/60,
-        ("Union Square", "Financial District"): 9/60,
-        ("Union Square", "Nob Hill"): 9/60,
-        ("Union Square", "Sunset District"): 27/60,
-        ("Union Square", "Chinatown"): 7/60,
-        ("Union Square", "Russian Hill"): 13/60,
-        ("Union Square", "North Beach"): 10/60,
-        ("Union Square", "Haight-Ashbury"): 18/60,
-        ("Presidio", "Alamo Square"): 19/60,
-        ("Presidio", "Marina District"): 11/60,
-        ("Presidio", "Financial District"): 23/60,
-        ("Presidio", "Nob Hill"): 18/60,
-        ("Presidio", "Sunset District"): 15/60,
-        ("Presidio", "Chinatown"): 21/60,
-        ("Presidio", "Russian Hill"): 14/60,
-        ("Presidio", "North Beach"): 18/60,
-        ("Presidio", "Haight-Ashbury"): 15/60,
-        ("Alamo Square", "Marina District"): 15/60,
-        ("Alamo Square", "Financial District"): 17/60,
-        ("Alamo Square", "Nob Hill"): 11/60,
-        ("Alamo Square", "Sunset District"): 16/60,
-        ("Alamo Square", "Chinatown"): 15/60,
-        ("Alamo Square", "Russian Hill"): 13/60,
-        ("Alamo Square", "North Beach"): 15/60,
-        ("Alamo Square", "Haight-Ashbury"): 5/60,
-        ("Marina District", "Financial District"): 17/60,
-        ("Marina District", "Nob Hill"): 12/60,
-        ("Marina District", "Sunset District"): 19/60,
-        ("Marina District", "Chinatown"): 15/60,
-        ("Marina District", "Russian Hill"): 8/60,
-        ("Marina District", "North Beach"): 11/60,
-        ("Marina District", "Haight-Ashbury"): 16/60,
-        ("Financial District", "Nob Hill"): 8/60,
-        ("Financial District", "Sunset District"): 30/60,
-        ("Financial District", "Chinatown"): 5/60,
-        ("Financial District", "Russian Hill"): 11/60,
-        ("Financial District", "North Beach"): 7/60,
-        ("Financial District", "Haight-Ashbury"): 19/60,
-        ("Nob Hill", "Sunset District"): 24/60,
-        ("Nob Hill", "Chinatown"): 6/60,
-        ("Nob Hill", "Russian Hill"): 5/60,
-        ("Nob Hill", "North Beach"): 8/60,
-        ("Nob Hill", "Haight-Ashbury"): 13/60,
-        ("Sunset District", "Chinatown"): 30/60,
-        ("Sunset District", "Russian Hill"): 24/60,
-        ("Sunset District", "North Beach"): 28/60,
-        ("Sunset District", "Haight-Ashbury"): 15/60,
-        ("Chinatown", "Russian Hill"): 7/60,
-        ("Chinatown", "North Beach"): 3/60,
-        ("Chinatown", "Haight-Ashbury"): 19/60,
-        ("Russian Hill", "North Beach"): 5/60,
-        ("Russian Hill", "Haight-Ashbury"): 17/60,
-        ("North Beach", "Haight-Ashbury"): 18/60
-    }
+    # Travel times matrix (minutes)
+    travel = [
+        [0, 24, 15, 18, 9, 9, 27, 7, 13, 10, 18],
+        [22, 0, 19, 11, 23, 18, 15, 21, 14, 18, 15],
+        [14, 17, 0, 15, 17, 11, 16, 15, 13, 15, 5],
+        [16, 10, 15, 0, 17, 12, 19, 15, 8, 11, 16],
+        [9, 22, 17, 15, 0, 8, 30, 5, 11, 7, 19],
+        [7, 17, 11, 11, 9, 0, 24, 6, 5, 8, 13],
+        [30, 16, 17, 21, 30, 27, 0, 30, 24, 28, 15],
+        [7, 19, 17, 12, 5, 9, 29, 0, 7, 3, 19],
+        [10, 14, 15, 7, 11, 5, 23, 9, 0, 5, 17],
+        [7, 17, 16, 9, 8, 7, 27, 6, 4, 0, 18],
+        [19, 15, 5, 17, 21, 15, 15, 19, 17, 19, 0]
+    ]
 
-    # Select 7 friends to meet
-    selected_friends = list(combinations(friends.keys(), 7))[0]  # Just try first combination for demo
-    
-    # Create variables for arrival and departure times
-    arrival = {name: Real(f"arrival_{name}") for name in selected_friends}
-    departure = {name: Real(f"departure_{name}") for name in selected_friends}
-    
-    # Initial constraints
-    current_time = 9.0  # Start at Union Square at 9:00 AM
-    current_location = "Union Square"
-    
-    # For each selected friend
-    for name in selected_friends:
-        friend = friends[name]
-        loc = friend["location"]
-        start = friend["start"]
-        end = friend["end"]
-        min_duration = friend["min_duration"]
-        
-        # Time window constraints
-        s.add(arrival[name] >= start)
-        s.add(arrival[name] <= end - min_duration)
-        s.add(departure[name] == arrival[name] + min_duration)
-        
-        # Travel time constraint
-        travel_time = travel_times.get((current_location, loc), 24/60)  # Default to high if no direct route
-        s.add(arrival[name] >= current_time + travel_time)
-        
-        # Update current time and location
-        current_time = departure[name]
-        current_location = loc
-    
-    # Check for solution
+    # Friends data: name, location, start (min), end (min), min duration
+    friends = [
+        ("Kimberly", "Presidio", 930, 960, 15),
+        ("Elizabeth", "Alamo Square", 1155, 1215, 15),
+        ("Joshua", "Marina District", 630, 855, 45),
+        ("Sandra", "Financial District", 1170, 1215, 45),
+        ("Kenneth", "Nob Hill", 765, 1305, 30),
+        ("Betty", "Sunset District", 840, 1140, 60),
+        ("Deborah", "Chinatown", 1035, 1230, 15),
+        ("Barbara", "Russian Hill", 1050, 1275, 120),
+        ("Steven", "North Beach", 1065, 1245, 90),
+        ("Daniel", "Haight-Ashbury", 1110, 1125, 15)
+    ]
+
+    # Decision variables
+    meet = [Bool(f"meet_{name}") for name, _, _, _, _ in friends]
+    start_times = [Int(f"start_{name}") for name, _, _, _, _ in friends]
+    end_times = [Int(f"end_{name}") for name, _, _, _, _ in friends]
+
+    # Starting point
+    current_time = 540  # 9:00 AM
+    current_loc = loc_index["Union Square"]
+
+    # Basic constraints for each friend
+    for i, (name, loc, f_start, f_end, min_dur) in enumerate(friends):
+        # If meeting, must be within availability window
+        s.add(Implies(meet[i], And(
+            start_times[i] >= f_start,
+            end_times[i] <= f_end,
+            end_times[i] - start_times[i] >= min_dur
+        )))
+        # If not meeting, set times to -1
+        s.add(Implies(Not(meet[i]), And(
+            start_times[i] == -1,
+            end_times[i] == -1
+        )))
+
+    # Sequence constraints - new approach
+    # Create variables to track arrival times at each location
+    arrival_times = [Int(f"arrival_{i}") for i in range(len(friends))]
+    departure_times = [Int(f"departure_{i}") for i in range(len(friends))]
+
+    # Initial arrival is at Union Square at 9:00 AM
+    s.add(arrival_times[0] == current_time)
+
+    # Constraints for each potential meeting
+    for i in range(len(friends)):
+        # If meeting this friend, arrival must be before start time
+        s.add(Implies(meet[i], arrival_times[i] <= start_times[i]))
+        # Departure is either end time (if meeting) or arrival time (if not)
+        s.add(departure_times[i] == If(meet[i], end_times[i], arrival_times[i]))
+
+        # Connect to next meeting's arrival time
+        if i < len(friends) - 1:
+            # Calculate travel time to next location
+            travel_time = travel[loc_index[friends[i][1]]][loc_index[friends[i+1][1]]]
+            s.add(arrival_times[i+1] == departure_times[i] + travel_time)
+
+    # Maximize number of friends met
+    s.maximize(Sum([If(meet[i], 1, 0) for i in range(len(friends))]))
+
+    # Solve
     if s.check() == sat:
         m = s.model()
         print("SOLUTION:")
-        for name in selected_friends:
-            print(f"{name}: Arrive at {m[arrival[name]]}, Depart at {m[departure[name]]}")
+        print("Optimal Schedule:")
+        
+        # Collect meetings
+        meetings = []
+        for i, (name, loc, _, _, _) in enumerate(friends):
+            if is_true(m.evaluate(meet[i])):
+                start = m.evaluate(start_times[i]).as_long()
+                end = m.evaluate(end_times[i]).as_long()
+                meetings.append((name, loc, start, end))
+        
+        # Print schedule
+        for i, (name, loc, start, end) in enumerate(meetings, 1):
+            print(f"{i}. Meet {name} at {loc} from {start//60:02d}:{start%60:02d} to {end//60:02d}:{end%60:02d}")
+        
+        print(f"\nTotal friends met: {len(meetings)}")
     else:
-        print("No solution found with these 7 friends, trying another combination...")
+        print("No valid schedule found")
 
 solve_scheduling()

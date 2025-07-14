@@ -314,6 +314,9 @@ def evaluate_trip(constraints, pred_dict):
             return False, {"unparsable_day_range": day_range}
         segments.append({"place": seg["place"], "start": start, "end": end})
     
+    # Sort segments by start day to ensure chronological order for constraint evaluation
+    segments.sort(key=lambda x: x["start"])
+    
     # Validate trip starts on day 1 and ends on the correct day
     trip_length = constraints.get("trip_length")
     if trip_length is not None:

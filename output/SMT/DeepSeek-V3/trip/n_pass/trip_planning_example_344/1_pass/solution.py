@@ -1,103 +1,93 @@
 from z3 import *
-import json
 
 def solve_itinerary():
     # Cities
+    Valencia, Athens, Naples, Zurich = 0, 1, 2, 3
     cities = ['Valencia', 'Athens', 'Naples', 'Zurich']
-    city_to_idx = {city: idx for idx, city in enumerate(cities)}
     
-    # Total days
-    total_days = 20
+    # Direct flights: adjacency list
+    direct_flights = {
+        Valencia: [Naples, Athens, Zurich],
+        Athens: [Valencia, Naples, Zurich],
+        Naples: [Valencia, Athens, Zurich],
+        Zurich: [Naples, Athens, Valencia]
+    }
     
-    # Create Z3 variables: assign each day to a city or a transition
-    # day_assignments[d][0] = departure city (if flying), day_assignments[d][1] = arrival city (if flying)
-    # Otherwise, same city for both.
+    # Create Z3 variables for each day's city
+    days = 20
+    day_city = [Int(f'day_{i}_city') for i in range(1, days + 1)]
+    
     s = Solver()
     
-    # For each day, we have a current city and possibly a next city if flying.
-    # day_city[d] represents the city on day d (1-based)
-    day_city = [Int(f'day_{d}_city') for d in range(1, total_days + 1)]
+    # Each day's city must be 0, 1, 2, or 3
+    for day in day_city:
+        s.add(Or([day == c for c in [Valencia, Athens, Naples, Zurich]]))
     
-    # Each day_city must be 0-3 (Valencia, Athens, Naples, Zurich)
-    for d in range(total_days):
-        s.add(day_city[d] >= 0, day_city[d] <= 3)
+    # Fixed constraints:
+    # Athens between day 1 and 6 (inclusive)
+    for i in range(1, 7):  # days 1 to 6 (1-based)
+        s.add(day_city[i-1] == Athens)
     
-    # Flight transitions: if day d and d+1 are different, then there's a flight between them.
-    # Also, flights must be direct.
-    direct_flights = [
-        (0, 1), (1, 0),  # Valencia <-> Athens
-        (0, 2), (2, 0),  # Valencia <-> Naples
-        (1, 2), (2, 1),  # Athens <-> Naples
-        (1, 3), (3, 1),  # Athens <-> Zurich
-        (2, 3), (3, 2),  # Naples <-> Zurich
-        (0, 3), (3, 0)   # Valencia <-> Zurich
-    ]
+    # Naples between day 16 and 20 (inclusive)
+    for i in range(16, 21):  # days 16 to 20 (1-based)
+        s.add(day_city[i-1] == Naples)
     
-    for d in range(total_days - 1):
-        current = day_city[d]
-        next_ = day_city[d + 1]
-        # Either stay in the same city or take a direct flight
-        s.add(Or(current == next_, *[And(current == a, next_ == b) for (a, b) in direct_flights]))
+    # Total days per city
+    total_valencia = sum([If(day_city[i] == Valencia, 1, 0) for i in range(days)])
+    total_athens = sum([If(day_city[i] == Athens, 1, 0) for i in range(days)])
+    total_naples = sum([If(day_city[i] == Naples, 1, 0) for i in range(days)])
+    total_zurich = sum([If(day_city[i] == Zurich, 1, 0) for i in range(days)])
     
-    # Constraints on total days per city
-    valencia_days = sum([If(day_city[d] == 0, 1, 0) for d in range(total_days)])
-    athens_days = sum([If(day_city[d] == 1, 1, 0) for d in range(total_days)])
-    naples_days = sum([If(day_city[d] == 2, 1, 0) for d in range(total_days)])
-    zurich_days = sum([If(day_city[d] == 3, 1, 0) for d in range(total_days)])
+    s.add(total_valencia == 6)
+    s.add(total_athens == 6)
+    s.add(total_naples == 5)
+    s.add(total_zurich == 6)
     
-    s.add(valencia_days == 6)
-    s.add(athens_days == 6)
-    s.add(naples_days == 5)
-    s.add(zurich_days == 6)
+    # Flight transitions: consecutive days can be the same or adjacent via direct flights
+    for i in range(days - 1):
+        current = day_city[i]
+        next_day = day_city[i+1]
+        s.add(Or(
+            current == next_day,
+            *[And(current == c1, next_day == c2) for c1 in [Valencia, Athens, Naples, Zurich] 
+              for c2 in direct_flights[c1]]
+        ))
     
-    # Athens between day 1 and day 6 (1-based days 0-5 in zero-based)
-    # At least one day in Athens in days 0-5 (1-6 in 1-based)
-    s.add(Or(*[day_city[d] == 1 for d in range(6)]))
-    
-    # Naples wedding between day 16 and 20 (1-based days 15-19 in zero-based)
-    s.add(Or(*[day_city[d] == 2 for d in range(15, 20)]))
-    
-    # Check if the model is satisfiable
+    # Check and get model
     if s.check() == sat:
-        m = s.model()
-        # Extract the day assignments
-        schedule = []
-        for d in range(total_days):
-            city_idx = m.evaluate(day_city[d]).as_long()
-            schedule.append(cities[city_idx])
-        
-        # Now, build the itinerary with day ranges and flight days
+        model = s.model()
         itinerary = []
-        current_city = schedule[0]
-        start_day = 1  # 1-based
+        for i in range(days):
+            city_val = model[day_city[i]].as_long()
+            itinerary.append({'day': i+1, 'city': cities[city_val]})
         
-        for d in range(1, total_days):
-            if schedule[d] != schedule[d-1]:
-                # Flight occurs between d-1 and d (1-based days d and d+1)
-                # Add the departure city's stay up to d (1-based day d)
-                end_day = d  # 1-based
-                if start_day == end_day:
-                    itinerary.append({"day_range": f"Day {start_day}", "place": current_city})
-                else:
-                    itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": current_city})
-                # Add the flight day entries for both cities
-                itinerary.append({"day_range": f"Day {end_day}", "place": current_city})
-                itinerary.append({"day_range": f"Day {end_day}", "place": schedule[d]})
-                # Update current city and start day
-                current_city = schedule[d]
-                start_day = end_day + 1  # since end_day is the day of flight
-            # else continue the current city
-        # Add the last segment
-        end_day = total_days
-        if start_day == end_day:
-            itinerary.append({"day_range": f"Day {start_day}", "place": current_city})
-        else:
-            itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": current_city})
+        # Verify totals
+        val_days = sum(1 for entry in itinerary if entry['city'] == 'Valencia')
+        ath_days = sum(1 for entry in itinerary if entry['city'] == 'Athens')
+        nap_days = sum(1 for entry in itinerary if entry['city'] == 'Naples')
+        zur_days = sum(1 for entry in itinerary if entry['city'] == 'Zurich')
+        assert val_days == 6
+        assert ath_days == 6
+        assert nap_days == 5
+        assert zur_days == 6
         
-        return {"itinerary": itinerary}
+        # Verify fixed periods
+        assert all(entry['city'] == 'Athens' for entry in itinerary[:6])
+        assert all(entry['city'] == 'Naples' for entry in itinerary[15:20])
+        
+        # Verify flight transitions
+        for i in range(days - 1):
+            current = itinerary[i]['city']
+            next_city = itinerary[i+1]['city']
+            if current != next_city:
+                current_idx = cities.index(current)
+                next_idx = cities.index(next_city)
+                assert next_idx in direct_flights[current_idx]
+        
+        return {'itinerary': itinerary}
     else:
-        return {"error": "No valid itinerary found"}
+        return "No valid itinerary found."
 
-# Solve and print the itinerary
 result = solve_itinerary()
+import json
 print(json.dumps(result, indent=2))

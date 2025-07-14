@@ -1,49 +1,38 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize solver
-    s = Solver()
+    # Initialize optimizer
+    opt = Optimize()
 
-    # Convert all times to minutes since 9:00 AM (540 minutes since midnight)
-    # Arrival time at Bayview: 9:00 AM (540 minutes)
-    # Friends' availability:
-    # Mary: Pacific Heights, 10:00 AM (600) to 7:00 PM (1140), min 45 mins
-    # Lisa: Mission District, 8:30 PM (1230) to 10:00 PM (1320), min 75 mins
-    # Betty: Haight-Ashbury, 7:15 AM (435) to 5:15 PM (1035), min 90 mins
-    # Charles: Financial District, 11:15 AM (675) to 3:00 PM (900), min 120 mins
+    # Friends and their details
+    friends = {
+        'Mary': {
+            'location': 'Pacific Heights',
+            'available_start': 10 * 60,  # 10:00 AM in minutes
+            'available_end': 19 * 60,    # 7:00 PM in minutes
+            'min_duration': 45,
+        },
+        'Lisa': {
+            'location': 'Mission District',
+            'available_start': 20 * 60 + 30,  # 8:30 PM in minutes
+            'available_end': 22 * 60,         # 10:00 PM in minutes
+            'min_duration': 75,
+        },
+        'Betty': {
+            'location': 'Haight-Ashbury',
+            'available_start': 7 * 60 + 15,    # 7:15 AM in minutes
+            'available_end': 17 * 60 + 15,     # 5:15 PM in minutes
+            'min_duration': 90,
+        },
+        'Charles': {
+            'location': 'Financial District',
+            'available_start': 11 * 60 + 15,  # 11:15 AM in minutes
+            'available_end': 15 * 60,         # 3:00 PM in minutes
+            'min_duration': 120,
+        }
+    }
 
-    # Meeting start and end times (in minutes since midnight)
-    start_mary = Int('start_mary')
-    end_mary = Int('end_mary')
-    start_lisa = Int('start_lisa')
-    end_lisa = Int('end_lisa')
-    start_betty = Int('start_betty')
-    end_betty = Int('end_betty')
-    start_charles = Int('start_charles')
-    end_charles = Int('end_charles')
-
-    # Constraints for each meeting
-    # Mary: Pacific Heights, 600 to 1140, duration >=45
-    s.add(start_mary >= 600)
-    s.add(end_mary <= 1140)
-    s.add(end_mary - start_mary >= 45)
-
-    # Lisa: Mission District, 1230 to 1320, duration >=75
-    s.add(start_lisa >= 1230)
-    s.add(end_lisa <= 1320)
-    s.add(end_lisa - start_lisa >= 75)
-
-    # Betty: Haight-Ashbury, 435 to 1035, duration >=90
-    s.add(start_betty >= 435)
-    s.add(end_betty <= 1035)
-    s.add(end_betty - start_betty >= 90)
-
-    # Charles: Financial District, 675 to 900, duration >=120
-    s.add(start_charles >= 675)
-    s.add(end_charles <= 900)
-    s.add(end_charles - start_charles >= 120)
-
-    # Travel times between locations
+    # Travel times matrix (in minutes)
     travel_times = {
         ('Bayview', 'Pacific Heights'): 23,
         ('Bayview', 'Mission District'): 13,
@@ -67,63 +56,93 @@ def solve_scheduling():
         ('Financial District', 'Haight-Ashbury'): 19,
     }
 
-    # Initial location: Bayview at 540 (9:00 AM)
-    current_time = 540
+    # Variables for each friend's meeting start and end times, and whether they are scheduled
+    meeting_vars = {}
+    for name in friends:
+        meeting_vars[name] = {
+            'start': Int(f'start_{name}'),
+            'end': Int(f'end_{name}'),
+            'scheduled': Bool(f'scheduled_{name}')
+        }
+
+    # Current location starts at Bayview at 9:00 AM (540 minutes)
+    current_time = 9 * 60  # 9:00 AM in minutes
     current_location = 'Bayview'
 
-    # Order of meetings: We need to sequence the meetings and account for travel times
-    # We'll assume an order and enforce travel times between consecutive meetings
-    # Possible orders: Since we must meet all four friends, we can try all permutations
-    # For simplicity, we'll assume an order and adjust if needed
+    # Constraints for each friend
+    for name in friends:
+        friend = friends[name]
+        var = meeting_vars[name]
+        opt.add(Implies(var['scheduled'], var['start'] >= friend['available_start']))
+        opt.add(Implies(var['scheduled'], var['end'] <= friend['available_end']))
+        opt.add(Implies(var['scheduled'], var['end'] == var['start'] + friend['min_duration']))
+        opt.add(Implies(Not(var['scheduled']), var['start'] == -1))
+        opt.add(Implies(Not(var['scheduled']), var['end'] == -1))
 
-    # Assume the order is Betty -> Charles -> Mary -> Lisa
-    # Betty: Haight-Ashbury
-    s.add(start_betty >= current_time + travel_times[(current_location, 'Haight-Ashbury')])
-    # After Betty, go to Charles: Financial District
-    s.add(start_charles >= end_betty + travel_times[('Haight-Ashbury', 'Financial District')])
-    # After Charles, go to Mary: Pacific Heights
-    s.add(start_mary >= end_charles + travel_times[('Financial District', 'Pacific Heights')])
-    # After Mary, go to Lisa: Mission District
-    s.add(start_lisa >= end_mary + travel_times[('Pacific Heights', 'Mission District')])
+    # Ensure meetings do not overlap and travel times are respected
+    scheduled_names = [name for name in friends]
+    for i in range(len(scheduled_names)):
+        for j in range(i + 1, len(scheduled_names)):
+            name1 = scheduled_names[i]
+            name2 = scheduled_names[j]
+            loc1 = friends[name1]['location']
+            loc2 = friends[name2]['location']
+            travel_time = travel_times.get((loc1, loc2), 0)
+
+            # Either meeting1 is before meeting2 with travel time, or vice versa
+            opt.add(Implies(
+                And(meeting_vars[name1]['scheduled'], meeting_vars[name2]['scheduled']),
+                Or(
+                    meeting_vars[name1]['end'] + travel_time <= meeting_vars[name2]['start'],
+                    meeting_vars[name2]['end'] + travel_times.get((loc2, loc1), 0) <= meeting_vars[name1]['start']
+                )
+            ))
+
+    # The first meeting must start after current_time + travel time from Bayview
+    for name in friends:
+        loc = friends[name]['location']
+        travel_time = travel_times.get((current_location, loc), 0)
+        opt.add(Implies(
+            meeting_vars[name]['scheduled'],
+            meeting_vars[name]['start'] >= current_time + travel_time
+        ))
+
+    # Maximize the number of scheduled meetings
+    num_scheduled = Sum([If(meeting_vars[name]['scheduled'], 1, 0) for name in friends])
+    opt.maximize(num_scheduled)
 
     # Check for a solution
-    if s.check() == sat:
-        m = s.model()
-        print("Optimal schedule found. Meet all four friends:")
-        print(f"Betty: Haight-Ashbury from {m[start_betty]} to {m[end_betty]}")
-        print(f"Charles: Financial District from {m[start_charles]} to {m[end_charles]}")
-        print(f"Mary: Pacific Heights from {m[start_mary]} to {m[end_mary]}")
-        print(f"Lisa: Mission District from {m[start_lisa]} to {m[end_lisa]}")
+    if opt.check() == sat:
+        m = opt.model()
+        scheduled_meetings = []
+        for name in friends:
+            if m.evaluate(meeting_vars[name]['scheduled']):
+                start = m.evaluate(meeting_vars[name]['start']).as_long()
+                end = m.evaluate(meeting_vars[name]['end']).as_long()
+                scheduled_meetings.append({
+                    'name': name,
+                    'location': friends[name]['location'],
+                    'start': start,
+                    'end': end,
+                    'duration': friends[name]['min_duration']
+                })
+        # Sort meetings by start time
+        scheduled_meetings.sort(key=lambda x: x['start'])
+        return scheduled_meetings
     else:
-        print("No feasible schedule found with the assumed order. Trying another order...")
-        # Reset solver
-        s = Solver()
-        # Re-add constraints
-        s.add(start_mary >= 600)
-        s.add(end_mary <= 1140)
-        s.add(end_mary - start_mary >= 45)
-        s.add(start_lisa >= 1230)
-        s.add(end_lisa <= 1320)
-        s.add(end_lisa - start_lisa >= 75)
-        s.add(start_betty >= 435)
-        s.add(end_betty <= 1035)
-        s.add(end_betty - start_betty >= 90)
-        s.add(start_charles >= 675)
-        s.add(end_charles <= 900)
-        s.add(end_charles - start_charles >= 120)
-        # Try another order: Betty -> Mary -> Charles -> Lisa
-        s.add(start_betty >= current_time + travel_times[(current_location, 'Haight-Ashbury')])
-        s.add(start_mary >= end_betty + travel_times[('Haight-Ashbury', 'Pacific Heights')])
-        s.add(start_charles >= end_mary + travel_times[('Pacific Heights', 'Financial District')])
-        s.add(start_lisa >= end_charles + travel_times[('Financial District', 'Mission District')])
-        if s.check() == sat:
-            m = s.model()
-            print("Optimal schedule found. Meet all four friends:")
-            print(f"Betty: Haight-Ashbury from {m[start_betty]} to {m[end_betty]}")
-            print(f"Mary: Pacific Heights from {m[start_mary]} to {m[end_mary]}")
-            print(f"Charles: Financial District from {m[start_charles]} to {m[end_charles]}")
-            print(f"Lisa: Mission District from {m[start_lisa]} to {m[end_lisa]}")
-        else:
-            print("No feasible schedule found with any order.")
+        return None
 
-solve_scheduling()
+# Solve and print the schedule
+schedule = solve_scheduling()
+if schedule:
+    print("SOLUTION:")
+    print("Optimal Schedule:")
+    for meeting in schedule:
+        start_h = meeting['start'] // 60
+        start_m = meeting['start'] % 60
+        end_h = meeting['end'] // 60
+        end_m = meeting['end'] % 60
+        print(f"Meet {meeting['name']} at {meeting['location']} from {start_h:02d}:{start_m:02d} to {end_h:02d}:{end_m:02d}")
+    print(f"Total friends met: {len(schedule)}")
+else:
+    print("No feasible schedule found.")

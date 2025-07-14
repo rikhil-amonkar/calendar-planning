@@ -1,92 +1,67 @@
 from z3 import *
 
-def find_meeting_time():
+def solve_scheduling():
     # Initialize solver
     s = Solver()
     
-    # Define the start time variable in minutes from 9:00 (540 minutes from midnight)
-    start_time = Int('start_time')
+    # Work hours: 9:00 to 17:00 (540 to 1020 minutes)
+    work_start = 540  # 9:00 in minutes
+    work_end = 1020    # 17:00 in minutes
+    meeting_duration = 30
     
-    # Meeting duration is 30 minutes
-    duration = 30
-    end_time = start_time + duration
+    # Define the start time variable (in minutes since 9:00, so 0 is 9:00)
+    start = Int('start')
+    s.add(start >= 0)
+    s.add(start + meeting_duration <= work_end - work_start)
     
-    # Work hours are 9:00 to 17:00 (540 to 1020 minutes)
-    s.add(start_time >= 540)  # 9:00
-    s.add(end_time <= 1020)   # 17:00
+    # Each participant's blocked times in minutes since 9:00
+    # Doris's blocked times: 9:00-11:00 (0-120), 13:30-14:00 (270-300), 16:00-16:30 (420-450)
+    doris_blocks = [(0, 120), (270, 300), (420, 450)]
+    # Theresa's blocked times: 10:00-12:00 (60-180)
+    theresa_blocks = [(60, 180)]
+    # Christian has no blocks
+    christian_blocks = []
+    # Terry's blocked times: 9:30-10:00 (30-60), 11:30-12:00 (150-180), 12:30-13:00 (210-240), 13:30-14:00 (270-300), 14:30-15:00 (330-360), 15:30-17:00 (390-480)
+    terry_blocks = [(30, 60), (150, 180), (210, 240), (270, 300), (330, 360), (390, 480)]
+    # Carolyn's blocked times: 9:00-10:30 (0-90), 11:00-11:30 (120-150), 12:00-13:00 (180-240), 13:30-14:30 (270-330), 15:00-17:00 (360-480)
+    carolyn_blocks = [(0, 90), (120, 150), (180, 240), (270, 330), (360, 480)]
+    # Kyle's blocked times: 9:00-9:30 (0-30), 11:30-12:00 (150-180), 12:30-13:00 (210-240), 14:30-17:00 (330-480)
+    kyle_blocks = [(0, 30), (150, 180), (210, 240), (330, 480)]
     
-    # Define each participant's blocked time slots in minutes from midnight
-    # Doris's blocked times: 9:00-11:00 (540-660), 13:30-14:00 (810-840), 16:00-16:30 (960-990)
-    s.add(Or(
-        end_time <= 540,  # before 9:00
-        start_time >= 660,  # after 11:00
-        And(end_time <= 810, start_time >= 660),  # between 11:00 and 13:30
-        And(end_time <= 960, start_time >= 840),  # between 14:00 and 16:00
-        start_time >= 990   # after 16:30
-    ))
+    # Function to add constraints for each participant's blocks
+    def add_participant_constraints(blocks):
+        for block in blocks:
+            block_start, block_end = block
+            # The meeting must not overlap with the block: meeting is before or after
+            s.add(Or(start + meeting_duration <= block_start, start >= block_end))
     
-    # Theresa's blocked times: 10:00-12:00 (600-720)
-    s.add(Or(
-        end_time <= 600,
-        start_time >= 720
-    ))
-    
-    # Christian has no meetings, no constraints
-    
-    # Terry's blocked times: 9:30-10:00 (570-600), 11:30-12:00 (690-720), 12:30-13:00 (750-780), 
-    # 13:30-14:00 (810-840), 14:30-15:00 (870-900), 15:30-17:00 (930-1020)
-    s.add(Or(
-        end_time <= 570,
-        And(start_time >= 600, end_time <= 690),
-        And(start_time >= 720, end_time <= 750),
-        And(start_time >= 780, end_time <= 810),
-        And(start_time >= 840, end_time <= 870),
-        And(start_time >= 900, end_time <= 930),
-        start_time >= 1020
-    ))
-    
-    # Carolyn's blocked times: 9:00-10:30 (540-630), 11:00-11:30 (660-690), 12:00-13:00 (720-780),
-    # 13:30-14:30 (810-870), 15:00-17:00 (900-1020)
-    s.add(Or(
-        end_time <= 540,
-        And(start_time >= 630, end_time <= 660),
-        And(start_time >= 690, end_time <= 720),
-        And(start_time >= 780, end_time <= 810),
-        And(start_time >= 870, end_time <= 900),
-        start_time >= 1020
-    ))
-    
-    # Kyle's blocked times: 9:00-9:30 (540-570), 11:30-12:00 (690-720), 12:30-13:00 (750-780),
-    # 14:30-17:00 (870-1020)
-    s.add(Or(
-        end_time <= 540,
-        And(start_time >= 570, end_time <= 690),
-        And(start_time >= 720, end_time <= 750),
-        And(start_time >= 780, end_time <= 870),
-        start_time >= 1020
-    ))
+    # Add constraints for each participant
+    add_participant_constraints(doris_blocks)
+    add_participant_constraints(theresa_blocks)
+    add_participant_constraints(christian_blocks)
+    add_participant_constraints(terry_blocks)
+    add_participant_constraints(carolyn_blocks)
+    add_participant_constraints(kyle_blocks)
     
     # Check for a solution
     if s.check() == sat:
-        m = s.model()
-        start_min = m[start_time].as_long()
+        model = s.model()
+        start_minutes = model[start].as_long()
+        # Convert start minutes back to time
+        total_minutes = work_start + start_minutes
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
+        end_minutes = total_minutes + meeting_duration
+        end_hours = end_minutes // 60
+        end_minutes_remainder = end_minutes % 60
+        end_time = f"{end_hours:02d}:{end_minutes_remainder:02d}"
         
-        # Convert minutes back to HH:MM format
-        hours = start_min // 60
-        minutes = start_min % 60
-        start_str = f"{hours:02d}:{minutes:02d}"
-        
-        end_min = start_min + duration
-        hours_end = end_min // 60
-        minutes_end = end_min % 60
-        end_str = f"{hours_end:02d}:{minutes_end:02d}"
-        
-        # Output the solution
         print("SOLUTION:")
         print(f"Day: Monday")
-        print(f"Start Time: {start_str}")
-        print(f"End Time: {end_str}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 
-find_meeting_time()
+solve_scheduling()

@@ -1,126 +1,135 @@
 from z3 import *
-from itertools import combinations, permutations
 
 def solve_scheduling():
-    # Define all friends and their constraints
-    friends = {
-        'Sarah': {
-            'location': 'Fisherman\'s Wharf',
-            'window_start': 345,  # 2:45 PM in minutes since 9:00 AM
-            'window_end': 510,    # 5:30 PM
-            'min_duration': 105,
-            'travel_from_prev': {
-                'Haight-Ashbury': 23,
-                'Richmond District': 18,
-                'Mission District': 22,
-                'Bayview': 26
-            }
-        },
-        'Mary': {
-            'location': 'Richmond District',
-            'window_start': 240,  # 1:00 PM
-            'window_end': 615,    # 7:15 PM
-            'min_duration': 75,
-            'travel_from_prev': {
-                'Haight-Ashbury': 10,
-                'Fisherman\'s Wharf': 18,
-                'Mission District': 20,
-                'Bayview': 26
-            }
-        },
-        'Helen': {
-            'location': 'Mission District',
-            'window_start': 765,  # 9:45 PM
-            'window_end': 810,    # 10:30 PM
-            'min_duration': 30,
-            'travel_from_prev': {
-                'Haight-Ashbury': 11,
-                'Fisherman\'s Wharf': 22,
-                'Richmond District': 20,
-                'Bayview': 15
-            }
-        },
-        'Thomas': {
-            'location': 'Bayview',
-            'window_start': 375,  # 3:15 PM
-            'window_end': 585,    # 6:45 PM
-            'min_duration': 120,
-            'travel_from_prev': {
-                'Haight-Ashbury': 18,
-                'Fisherman\'s Wharf': 25,
-                'Richmond District': 25,
-                'Mission District': 13
-            }
-        }
+    # Initialize solver
+    s = Optimize()
+
+    # Define locations and travel times (in minutes)
+    locations = ["Haight-Ashbury", "Fisherman's Wharf", "Richmond District", "Mission District", "Bayview"]
+    travel = {
+        ("Haight-Ashbury", "Fisherman's Wharf"): 23,
+        ("Haight-Ashbury", "Richmond District"): 10,
+        ("Haight-Ashbury", "Mission District"): 11,
+        ("Haight-Ashbury", "Bayview"): 18,
+        ("Fisherman's Wharf", "Haight-Ashbury"): 22,
+        ("Fisherman's Wharf", "Richmond District"): 18,
+        ("Fisherman's Wharf", "Mission District"): 22,
+        ("Fisherman's Wharf", "Bayview"): 26,
+        ("Richmond District", "Haight-Ashbury"): 10,
+        ("Richmond District", "Fisherman's Wharf"): 18,
+        ("Richmond District", "Mission District"): 20,
+        ("Richmond District", "Bayview"): 26,
+        ("Mission District", "Haight-Ashbury"): 12,
+        ("Mission District", "Fisherman's Wharf"): 22,
+        ("Mission District", "Richmond District"): 20,
+        ("Mission District", "Bayview"): 15,
+        ("Bayview", "Haight-Ashbury"): 19,
+        ("Bayview", "Fisherman's Wharf"): 25,
+        ("Bayview", "Richmond District"): 25,
+        ("Bayview", "Mission District"): 13,
     }
 
-    # Generate all possible combinations of 3 friends
-    friend_combinations = combinations(friends.keys(), 3)
+    # Friend availability (converted to minutes since midnight)
+    friends = {
+        "Sarah": {"location": "Fisherman's Wharf", "start": 14*60+45, "end": 17*60+30, "min_duration": 105},
+        "Mary": {"location": "Richmond District", "start": 13*60, "end": 19*60+15, "min_duration": 75},
+        "Helen": {"location": "Mission District", "start": 21*60+45, "end": 22*60+30, "min_duration": 30},
+        "Thomas": {"location": "Bayview", "start": 15*60+15, "end": 18*60+45, "min_duration": 120}
+    }
 
-    for combo in friend_combinations:
-        # Initialize solver
-        s = Solver()
+    # Decision variables: whether to meet each friend
+    meet_vars = {name: Bool(f"meet_{name}") for name in friends}
+    
+    # Meeting start and end times
+    start_vars = {name: Int(f"start_{name}") for name in friends}
+    end_vars = {name: Int(f"end_{name}") for name in friends}
 
-        # Create variables for start and end times of each friend in the combination
-        time_vars = {}
-        for friend in combo:
-            time_vars[friend] = {
-                'start': Int(f'{friend}_start'),
-                'end': Int(f'{friend}_end')
-            }
+    # Current time starts at Haight-Ashbury at 9:00 AM (540 minutes)
+    current_time = 9 * 60
+    current_loc = "Haight-Ashbury"
 
-        # Add constraints for each friend's meeting window and duration
-        for friend in combo:
-            friend_info = friends[friend]
-            s.add(time_vars[friend]['start'] >= friend_info['window_start'])
-            s.add(time_vars[friend]['end'] <= friend_info['window_end'])
-            s.add(time_vars[friend]['end'] - time_vars[friend]['start'] >= friend_info['min_duration'])
+    # Constraints for each friend
+    for name in friends:
+        info = friends[name]
+        s.add(Implies(meet_vars[name], start_vars[name] >= info["start"]))
+        s.add(Implies(meet_vars[name], end_vars[name] <= info["end"]))
+        s.add(Implies(meet_vars[name], end_vars[name] - start_vars[name] >= info["min_duration"]))
 
-        # Define the order of meetings and add travel time constraints
-        # We need to consider all possible orders of the 3 friends
-        for order in permutations(combo):
-            # Reset the solver for each order
-            s = Solver()
+    # Order constraints to prevent overlapping meetings
+    # We'll create a sequence variable for each possible meeting
+    sequence = {name: Int(f"seq_{name}") for name in friends}
+    for name in friends:
+        s.add(Implies(meet_vars[name], sequence[name] >= 1))
+        s.add(Implies(meet_vars[name], sequence[name] <= 4))
+        s.add(Implies(Not(meet_vars[name]), sequence[name] == 0))
 
-            # Re-add the meeting constraints
-            for friend in combo:
-                friend_info = friends[friend]
-                s.add(time_vars[friend]['start'] >= friend_info['window_start'])
-                s.add(time_vars[friend]['end'] <= friend_info['window_end'])
-                s.add(time_vars[friend]['end'] - time_vars[friend]['start'] >= friend_info['min_duration'])
+    # Ensure all active sequence numbers are distinct
+    s.add(Distinct([sequence[name] for name in friends if name != "Helen"]))  # Helen is late, can be handled separately
 
-            # Add travel time constraints based on the order
-            prev_location = 'Haight-Ashbury'
-            prev_end = 0  # Start at 9:00 AM (0 minutes since 9:00 AM)
-            for i, friend in enumerate(order):
-                friend_info = friends[friend]
-                travel_time = friend_info['travel_from_prev'][prev_location]
-                s.add(time_vars[friend]['start'] >= prev_end + travel_time)
-                prev_end = time_vars[friend]['end']
-                prev_location = friend_info['location']
+    # Travel time constraints
+    for name1 in friends:
+        for name2 in friends:
+            if name1 != name2:
+                src = friends[name1]["location"]
+                dst = friends[name2]["location"]
+                travel_time = travel.get((src, dst), 0)
+                s.add(Implies(
+                    And(meet_vars[name1], meet_vars[name2], sequence[name1] < sequence[name2]),
+                    start_vars[name2] >= end_vars[name1] + travel_time
+                ))
 
-            # Check if this order is feasible
-            if s.check() == sat:
-                m = s.model()
-                # Verify Helen's meeting time is within her window
-                if 'Helen' in combo:
-                    helen_start = m[time_vars['Helen']['start']].as_long()
-                    helen_end = m[time_vars['Helen']['end']].as_long()
-                    if helen_start >= 765 and helen_end <= 810:
-                        print(f"Feasible schedule found for friends: {', '.join(order)}")
-                        for friend in order:
-                            start = m[time_vars[friend]['start']].as_long()
-                            end = m[time_vars[friend]['end']].as_long()
-                            print(f"Meet {friend} from {start} to {end} minutes since 9:00 AM.")
-                        return  # Exit after finding the first feasible schedule
-                else:
-                    print(f"Feasible schedule found for friends: {', '.join(order)}")
-                    for friend in order:
-                        start = m[time_vars[friend]['start']].as_long()
-                        end = m[time_vars[friend]['end']].as_long()
-                        print(f"Meet {friend} from {start} to {end} minutes since 9:00 AM.")
-                    return  # Exit after finding the first feasible schedule
+    # Special handling for Helen (late night meeting)
+    # Helen can be met after all other meetings
+    for name in friends:
+        if name != "Helen":
+            s.add(Implies(
+                And(meet_vars[name], meet_vars["Helen"]),
+                sequence[name] < sequence["Helen"]
+            ))
 
-    print("No feasible schedule found for any combination of three friends.")
+    # Initial travel from Haight-Ashbury to first meeting
+    for name in friends:
+        dst = friends[name]["location"]
+        travel_time = travel.get((current_loc, dst), 0)
+        s.add(Implies(
+            And(meet_vars[name], sequence[name] == 1),
+            start_vars[name] >= current_time + travel_time
+        ))
+
+    # Objective: maximize number of friends met
+    num_met = Int("num_met")
+    s.add(num_met == Sum([If(meet_vars[name], 1, 0) for name in friends]))
+    s.maximize(num_met)
+
+    # Solve
+    if s.check() == sat:
+        m = s.model()
+        print("SOLUTION:")
+        print(f"Number of friends met: {m.evaluate(num_met)}")
+        
+        # Get meetings in order
+        meetings = []
+        for name in friends:
+            if m.evaluate(meet_vars[name]):
+                seq = m.evaluate(sequence[name])
+                start = m.evaluate(start_vars[name])
+                end = m.evaluate(end_vars[name])
+                meetings.append((seq, name, start, end))
+        
+        # Sort by sequence
+        meetings.sort()
+        
+        # Print schedule
+        current_time = 9 * 60
+        current_loc = "Haight-Ashbury"
+        for seq, name, start, end in meetings:
+            dst = friends[name]["location"]
+            travel_time = travel.get((current_loc, dst), 0)
+            print(f"Travel from {current_loc} to {dst}: {travel_time} minutes")
+            print(f"Meet {name} at {dst} from {start//60:02d}:{start%60:02d} to {end//60:02d}:{end%60:02d}")
+            current_time = end
+            current_loc = dst
+    else:
+        print("No feasible schedule found")
 
 solve_scheduling()
