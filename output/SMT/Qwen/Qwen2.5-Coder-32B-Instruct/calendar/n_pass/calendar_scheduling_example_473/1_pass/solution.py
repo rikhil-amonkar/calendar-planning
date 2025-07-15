@@ -1,58 +1,64 @@
 from z3 import *
 
-# Define the variables
-day = String('day')
+# Define the variables for the start time of the meeting
 start_time = Int('start_time')
-end_time = Int('end_time')
 
-# Define the constraints
-constraints = []
+# Define the constraints for each participant
+constraints = [
+    # Gregory: not available from 9:00 to 9:30, 11:30 to 12:00
+    Or(start_time >= 930, start_time < 900),
+    Or(start_time >= 1200, start_time < 1130),
+    
+    # Jonathan: not available from 9:00 to 9:30, 12:00 to 12:30, 13:00 to 13:30, 15:00 to 16:00, 16:30 to 17:00
+    Or(start_time >= 930, start_time < 900),
+    Or(start_time >= 1230, start_time < 1200),
+    Or(start_time >= 1330, start_time < 1300),
+    Or(start_time >= 1600, start_time < 1500),
+    Or(start_time >= 1700, start_time < 1630),
+    
+    # Barbara: not available from 10:00 to 10:30, 13:30 to 14:00
+    Or(start_time >= 1030, start_time < 1000),
+    Or(start_time >= 1400, start_time < 1330),
+    
+    # Jesse: not available from 10:00 to 11:00, 12:30 to 14:30
+    Or(start_time >= 1100, start_time < 1000),
+    Or(start_time >= 1430, start_time < 1230),
+    
+    # Alan: not available from 9:30 to 11:00, 11:30 to 12:30, 13:00 to 15:30, 16:00 to 17:00
+    Or(start_time >= 1100, start_time < 930),
+    Or(start_time >= 1230, start_time < 1130),
+    Or(start_time >= 1530, start_time < 1300),
+    Or(start_time >= 1700, start_time < 1600),
+    
+    # Nicole: not available from 9:00 to 10:30, 11:30 to 12:00, 12:30 to 13:30, 14:00 to 17:00
+    Or(start_time >= 1030, start_time < 900),
+    Or(start_time >= 1200, start_time < 1130),
+    Or(start_time >= 1330, start_time < 1230),
+    Or(start_time >= 1700, start_time < 1400),
+    
+    # Catherine: not available from 9:00 to 10:30, 12:00 to 13:30, 15:00 to 15:30, 16:00 to 16:30
+    Or(start_time >= 1030, start_time < 900),
+    Or(start_time >= 1330, start_time < 1200),
+    Or(start_time >= 1530, start_time < 1500),
+    Or(start_time >= 1630, start_time < 1600),
+    
+    # Meeting duration is 30 minutes, so the end time must be within working hours
+    And(start_time >= 900, start_time + 30 <= 1700)
+]
 
-# Define the meeting duration
-meeting_duration = 30
-
-# Define the available time slots for each person
-available_slots = {
-    'Gregory': [(930, 1130), (1200, 1700)],
-    'Jonathan': [(900, 900), (930, 1200), (1230, 1300), (1330, 1500), (1600, 1630)],
-    'Barbara': [(900, 1000), (1030, 1330), (1400, 1700)],
-    'Jesse': [(900, 1000), (1100, 1230), (1430, 1700)],
-    'Alan': [(900, 930), (1100, 1130), (1230, 1300), (1530, 1600)],
-    'Nicole': [(900, 900), (1030, 1130), (1200, 1230), (1330, 1400)],
-    'Catherine': [(900, 900), (1030, 1200), (1330, 1500), (1530, 1600), (1630, 1630)]
-}
-
-# Convert times to minutes since 9:00 AM for easier comparison
-def convert_to_minutes(time):
-    return (time // 100 - 9) * 60 + time % 100
-
-# Add constraints for each person
-for person, slots in available_slots.items():
-    # Convert slots to minutes
-    slots_in_minutes = [(convert_to_minutes(start), convert_to_minutes(end)) for start, end in slots]
-    # Create a constraint that the meeting must fit into one of these slots
-    person_constraints = Or([And(start_time >= convert_to_minutes(start), end_time <= convert_to_minutes(end))
-                            for start, end in slots_in_minutes])
-    constraints.append(person_constraints)
-
-# The meeting duration constraint
-constraints.append(end_time == start_time + meeting_duration)
-
-# The meeting must be within working hours (9:00 AM to 5:00 PM)
-constraints.append(start_time >= 0)
-constraints.append(end_time <= 480)  # 480 minutes is 8 hours, which is 5:00 PM
-
-# Create the solver and add the constraints
+# Create a solver instance
 solver = Solver()
+
+# Add the constraints to the solver
 solver.add(constraints)
 
 # Check if there is a solution
 if solver.check() == sat:
     model = solver.model()
-    start_hour = (model[start_time].as_long() // 60) + 9
-    start_minute = model[start_time].as_long() % 60
-    end_hour = (model[end_time].as_long() // 60) + 9
-    end_minute = model[end_time].as_long() % 60
-    print(f"SOLUTION:\nDay: Monday\nStart Time: {start_hour:02}:{start_minute:02}\nEnd Time: {end_hour:02}:{end_minute:02}")
+    start = model[start_time].as_long()
+    print("SOLUTION:")
+    print(f"Day: Monday")
+    print(f"Start Time: {start // 100}:{start % 100:02d}")
+    print(f"End Time: {(start + 30) // 100}:{(start + 30) % 100:02d}")
 else:
     print("No solution found")

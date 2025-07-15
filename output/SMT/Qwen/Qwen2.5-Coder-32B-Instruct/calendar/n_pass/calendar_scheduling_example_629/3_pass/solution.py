@@ -1,4 +1,4 @@
 SOLUTION:
 Day: Tuesday
-Start Time: 14:30
-End Time: 15:00
+Start Time: 13:00
+End Time: 13:30
