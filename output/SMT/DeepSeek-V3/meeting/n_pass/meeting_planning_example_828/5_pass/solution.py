@@ -1,0 +1,139 @@
+from z3 import *
+
+def solve_scheduling():
+    # Initialize Z3 solver
+    s = Optimize()
+
+    # Define friends and their availability (in minutes since 9:00 AM)
+    friends = {
+        'Stephanie': {'location': 'Richmond District', 'start': 435, 'end': 750, 'duration': 75},
+        'William': {'location': 'Union Square', 'start': 105, 'end': 510, 'duration': 45},
+        'Elizabeth': {'location': 'Nob Hill', 'start': 195, 'end': 360, 'duration': 105},
+        'Joseph': {'location': 'Fisherman\'s Wharf', 'start': 225, 'end': 300, 'duration': 75},
+        'Anthony': {'location': 'Golden Gate Park', 'start': 240, 'end': 690, 'duration': 75},
+        'Barbara': {'location': 'Embarcadero', 'start': 495, 'end': 570, 'duration': 75},
+        'Carol': {'location': 'Financial District', 'start': 165, 'end': 375, 'duration': 60},
+        'Sandra': {'location': 'North Beach', 'start': 60, 'end': 210, 'duration': 15},
+        'Kenneth': {'location': 'Presidio', 'start': 615, 'end': 675, 'duration': 45},
+    }
+
+    # Travel times in minutes (symmetric)
+    travel_times = {
+        ('Marina District', 'Richmond District'): 11,
+        ('Marina District', 'Union Square'): 16,
+        ('Marina District', 'Nob Hill'): 12,
+        ('Marina District', 'Fisherman\'s Wharf'): 10,
+        ('Marina District', 'Golden Gate Park'): 18,
+        ('Marina District', 'Embarcadero'): 14,
+        ('Marina District', 'Financial District'): 17,
+        ('Marina District', 'North Beach'): 11,
+        ('Marina District', 'Presidio'): 10,
+        ('Richmond District', 'Union Square'): 21,
+        ('Richmond District', 'Nob Hill'): 17,
+        ('Richmond District', 'Fisherman\'s Wharf'): 18,
+        ('Richmond District', 'Golden Gate Park'): 9,
+        ('Richmond District', 'Embarcadero'): 19,
+        ('Richmond District', 'Financial District'): 22,
+        ('Richmond District', 'North Beach'): 17,
+        ('Richmond District', 'Presidio'): 7,
+        ('Union Square', 'Nob Hill'): 9,
+        ('Union Square', 'Fisherman\'s Wharf'): 15,
+        ('Union Square', 'Golden Gate Park'): 22,
+        ('Union Square', 'Embarcadero'): 11,
+        ('Union Square', 'Financial District'): 9,
+        ('Union Square', 'North Beach'): 10,
+        ('Union Square', 'Presidio'): 24,
+        ('Nob Hill', 'Fisherman\'s Wharf'): 10,
+        ('Nob Hill', 'Golden Gate Park'): 17,
+        ('Nob Hill', 'Embarcadero'): 9,
+        ('Nob Hill', 'Financial District'): 9,
+        ('Nob Hill', 'North Beach'): 8,
+        ('Nob Hill', 'Presidio'): 17,
+        ('Fisherman\'s Wharf', 'Golden Gate Park'): 25,
+        ('Fisherman\'s Wharf', 'Embarcadero'): 8,
+        ('Fisherman\'s Wharf', 'Financial District'): 11,
+        ('Fisherman\'s Wharf', 'North Beach'): 6,
+        ('Fisherman\'s Wharf', 'Presidio'): 17,
+        ('Golden Gate Park', 'Embarcadero'): 25,
+        ('Golden Gate Park', 'Financial District'): 26,
+        ('Golden Gate Park', 'North Beach'): 23,
+        ('Golden Gate Park', 'Presidio'): 11,
+        ('Embarcadero', 'Financial District'): 5,
+        ('Embarcadero', 'North Beach'): 5,
+        ('Embarcadero', 'Presidio'): 20,
+        ('Financial District', 'North Beach'): 7,
+        ('Financial District', 'Presidio'): 22,
+        ('North Beach', 'Presidio'): 17,
+    }
+
+    # Create variables
+    meet = {name: Bool(f'meet_{name}') for name in friends}
+    start = {name: Int(f'start_{name}') for name in friends}
+    order = {name: Int(f'order_{name}') for name in friends}
+
+    # Current location and time
+    current_loc = 'Marina District'
+    current_time = 0
+
+    # Constraints
+    for name in friends:
+        # Meeting must be within availability window if we meet
+        s.add(Implies(meet[name], 
+                     And(start[name] >= friends[name]['start'],
+                         start[name] + friends[name]['duration'] <= friends[name]['end'])))
+
+        # Order must be between 0 and number of friends-1
+        s.add(order[name] >= 0)
+        s.add(order[name] < len(friends))
+
+    # All order numbers must be distinct
+    s.add(Distinct([order[name] for name in friends]))
+
+    # Travel time constraints between consecutive meetings
+    for name1 in friends:
+        for name2 in friends:
+            if name1 != name2:
+                loc1 = friends[name1]['location']
+                loc2 = friends[name2]['location']
+                travel = travel_times.get((loc1, loc2), 999)  # Large number if no direct route
+                
+                s.add(Implies(And(meet[name1], meet[name2], order[name2] == order[name1] + 1),
+                             start[name2] >= start[name1] + friends[name1]['duration'] + travel))
+
+    # First meeting must be after travel from Marina District
+    for name in friends:
+        loc = friends[name]['location']
+        travel = travel_times.get((current_loc, loc), 999)
+        s.add(Implies(And(meet[name], order[name] == 0),
+                     start[name] >= current_time + travel))
+
+    # Maximize number of friends met
+    s.maximize(Sum([If(meet[name], 1, 0) for name in friends]))
+
+    if s.check() == sat:
+        m = s.model()
+        schedule = []
+        for name in friends:
+            if is_true(m[meet[name]]):
+                start_val = m[start[name]]
+                if is_int_value(start_val):
+                    start_time = start_val.as_long()
+                    end_time = start_time + friends[name]['duration']
+                    schedule.append((name, start_time, end_time, friends[name]['location']))
+        
+        # Sort by start time
+        schedule.sort(key=lambda x: x[1])
+        
+        print("Optimal Schedule:")
+        for name, start, end, loc in schedule:
+            start_hr = 9 + start // 60
+            start_min = start % 60
+            end_hr = 9 + end // 60
+            end_min = end % 60
+            print(f"Meet {name} at {loc} from {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d}")
+        
+        print(f"\nTotal friends met: {len(schedule)}")
+    else:
+        print("No valid schedule found")
+
+solve_scheduling()

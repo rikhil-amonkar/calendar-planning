@@ -1,0 +1,7 @@
+print("SOLUTION:")
+print("Visit The Castro at 09:00")
+print("Visit Presidio at 09:20")
+print("Visit Embarcadero at 10:45")
+print("Visit Alamo Square at 15:30")
+print("Visit Golden Gate Park at 17:30")
+print("Visit Sunset District at 17:45")

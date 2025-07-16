@@ -1,0 +1,100 @@
+from z3 import *
+
+# Define the solver
+solver = Solver()
+
+# Define variables for the start day of each city
+start_athens = Int('start_athens')
+start_barcelona = Int('start_barcelona')
+start_berlin = Int('start_berlin')
+start_lyon = Int('start_lyon')
+start_nice = Int('start_nice')
+start_stockholm = Int('start_stockholm')
+start_vilnius = Int('start_vilnius')
+
+# Define the duration of stay in each city
+duration_athens = 5
+duration_barcelona = 2
+duration_berlin = 3
+duration_lyon = 2
+duration_nice = 5
+duration_stockholm = 5
+duration_vilnius = 4
+
+# Define the total number of days
+total_days = 20
+
+# Constraints for the start days
+solver.add(start_athens >= 1)
+solver.add(start_barcelona >= 1)
+solver.add(start_berlin >= 1)
+solver.add(start_lyon >= 1)
+solver.add(start_nice >= 1)
+solver.add(start_stockholm >= 1)
+solver.add(start_vilnius >= 1)
+
+solver.add(start_athens + duration_athens <= total_days)
+solver.add(start_barcelona + duration_barcelona <= total_days)
+solver.add(start_berlin + duration_berlin <= total_days)
+solver.add(start_lyon + duration_lyon <= total_days)
+solver.add(start_nice + duration_nice <= total_days)
+solver.add(start_stockholm + duration_stockholm <= total_days)
+solver.add(start_vilnius + duration_vilnius <= total_days)
+
+# Conference in Berlin on day 1 and day 3
+solver.add(start_berlin == 1)
+
+# Workshop in Barcelona between day 3 and day 4
+solver.add(start_barcelona == 3)
+
+# Wedding in Lyon between day 4 and day 5
+solver.add(start_lyon == 4)
+
+# Direct flight constraints
+# Ensure there is at least one day overlap between consecutive cities
+solver.add(start_berlin + duration_berlin == start_barcelona)
+solver.add(start_barcelona + duration_barcelona == start_lyon)
+solver.add(start_lyon + duration_lyon == start_nice)
+solver.add(start_nice + duration_nice == start_stockholm)
+solver.add(start_stockholm + duration_stockholm == start_vilnius)
+solver.add(start_vilnius + duration_vilnius == start_athens)
+
+# Ensure the total number of days is exactly 20
+# Calculate the last day of each city
+last_day_athens = start_athens + duration_athens - 1
+last_day_barcelona = start_barcelona + duration_barcelona - 1
+last_day_berlin = start_berlin + duration_berlin - 1
+last_day_lyon = start_lyon + duration_lyon - 1
+last_day_nice = start_nice + duration_nice - 1
+last_day_stockholm = start_stockholm + duration_stockholm - 1
+last_day_vilnius = start_vilnius + duration_vilnius - 1
+
+# Ensure the maximum last day is exactly 20
+solver.add(last_day_athens == total_days)
+
+# Solve the problem
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+
+    def add_to_itinerary(start, duration, place):
+        start_day = model.evaluate(start).as_long()
+        end_day = start_day + duration - 1
+        itinerary.append({"day_range": f"Day {start_day}-{end_day}", "place": place})
+        if duration > 1:
+            itinerary.append({"day_range": f"Day {end_day}", "place": place})
+
+    add_to_itinerary(start_athens, duration_athens, "Athens")
+    add_to_itinerary(start_barcelona, duration_barcelona, "Barcelona")
+    add_to_itinerary(start_berlin, duration_berlin, "Berlin")
+    add_to_itinerary(start_lyon, duration_lyon, "Lyon")
+    add_to_itinerary(start_nice, duration_nice, "Nice")
+    add_to_itinerary(start_stockholm, duration_stockholm, "Stockholm")
+    add_to_itinerary(start_vilnius, duration_vilnius, "Vilnius")
+
+    # Sort the itinerary by day
+    itinerary.sort(key=lambda x: int(x['day_range'].split('-')[0].split()[1]))
+
+    print({"itinerary": itinerary})
+else:
+    print("No solution found")

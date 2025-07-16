@@ -1,0 +1,61 @@
+from z3 import *
+
+# Define the number of days and cities
+num_days = 18
+cities = ["Reykjavik", "Riga", "Oslo", "Lyon", "Dubrovnik", "Madrid", "Warsaw", "London"]
+
+# Create a Z3 solver instance
+solver = Solver()
+
+# Define variables for the start day of each city stay
+start_vars = {city: Int(f"start_{city}") for city in cities}
+
+# Define constraints for each city's stay duration
+constraints = []
+for city, duration in [("Reykjavik", 4), ("Riga", 2), ("Oslo", 3), ("Lyon", 5), ("Dubrovnik", 2), ("Madrid", 2), ("Warsaw", 4), ("London", 3)]:
+    start = start_vars[city]
+    constraints.append(start >= 1)
+    constraints.append(start + duration - 1 <= num_days)
+
+# Add specific constraints for meeting and attending events
+constraints.append(start_vars["Riga"] + 1 == 5)  # Meet friend in Riga between day 4 and 5
+constraints.append(start_vars["Dubrovnik"] + 1 == 8)  # Attend wedding in Dubrovnik between day 7 and 8
+
+# Define possible transitions between cities via direct flights
+flights = [
+    ("Warsaw", "Reykjavik"), ("Oslo", "Madrid"), ("Warsaw", "Riga"), ("Lyon", "London"),
+    ("Madrid", "London"), ("Warsaw", "London"), ("Reykjavik", "Madrid"), ("Warsaw", "Oslo"),
+    ("Oslo", "Dubrovnik"), ("Oslo", "Reykjavik"), ("Riga", "Oslo"), ("Oslo", "Lyon"),
+    ("Oslo", "London"), ("London", "Reykjavik"), ("Warsaw", "Madrid"), ("Madrid", "Lyon"),
+    ("Dubrovnik", "Madrid")
+]
+
+# Add constraints for valid transitions between cities
+for i in range(1, num_days):
+    current_city = Or([And(start_vars[city] <= i, start_vars[city] + duration > i) for city, duration in [("Reykjavik", 4), ("Riga", 2), ("Oslo", 3), ("Lyon", 5), ("Dubrovnik", 2), ("Madrid", 2), ("Warsaw", 4), ("London", 3)]])
+    next_city = Or([And(start_vars[city] <= i + 1, start_vars[city] + duration > i + 1) for city, duration in [("Reykjavik", 4), ("Riga", 2), ("Oslo", 3), ("Lyon", 5), ("Dubrovnik", 2), ("Madrid", 2), ("Warsaw", 4), ("London", 3)]])
+    valid_transition = Or(Not(current_city), Not(next_city))  # No transition needed if in the same city
+    for city1, city2 in flights:
+        valid_transition = Or(valid_transition, And(start_vars[city1] + 4 == i + 1, start_vars[city2] == i + 1))
+        valid_transition = Or(valid_transition, And(start_vars[city2] + 4 == i + 1, start_vars[city1] == i + 1))
+    constraints.append(valid_transition)
+
+# Add all constraints to the solver
+solver.add(constraints)
+
+# Check if the constraints are satisfiable
+if solver.check() == sat:
+    model = solver.model()
+    itinerary = []
+    for day in range(1, num_days + 1):
+        for city in cities:
+            start = model[start_vars[city]].as_long()
+            duration = {"Reykjavik": 4, "Riga": 2, "Oslo": 3, "Lyon": 5, "Dubrovnik": 2, "Madrid": 2, "Warsaw": 4, "London": 3}[city]
+            if start <= day <= start + duration - 1:
+                if day == start:
+                    itinerary.append({"day_range": f"Day {start}-{start + duration - 1}", "place": city})
+                itinerary.append({"day_range": f"Day {day}", "place": city})
+                break
+    print(json.dumps({"itinerary": itinerary}, indent=4))
+else:
+    print("No solution found")

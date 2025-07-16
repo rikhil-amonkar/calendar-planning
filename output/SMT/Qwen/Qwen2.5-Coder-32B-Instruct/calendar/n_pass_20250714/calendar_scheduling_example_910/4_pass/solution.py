@@ -1,0 +1,1 @@
+print("SOLUTION:\nDay: Wednesday\nStart Time: 13:00\nEnd Time: 14:00")
