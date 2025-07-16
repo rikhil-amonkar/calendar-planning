@@ -40,6 +40,10 @@ import logging
 import shutil
 from openai import OpenAI
 
+import torch
+torch.cuda.empty_cache()  # Clear cache
+torch.backends.cudnn.benchmark = False  # Reduce memory usage
+
 # Configure logging for timestamps
 logging.basicConfig(
     level=logging.INFO,

@@ -1,99 +1,92 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize the optimizer
+    # Initialize Z3 solver
     opt = Optimize()
 
-    # Define districts and travel times
-    districts = {
-        'Richmond': 0,
-        'Marina': 1,
-        'Chinatown': 2,
-        'Financial': 3,
-        'Bayview': 4,
-        'UnionSquare': 5
-    }
+    # Define the districts
+    districts = ['Richmond', 'Marina', 'Chinatown', 'Financial', 'Bayview', 'UnionSquare']
+    district_indices = {d: i for i, d in enumerate(districts)}
 
+    # Travel times matrix (in minutes)
     travel_times = [
-        [0, 9, 20, 22, 26, 21],    # Richmond
-        [11, 0, 16, 17, 27, 16],    # Marina
-        [20, 12, 0, 5, 22, 7],      # Chinatown
-        [21, 15, 5, 0, 19, 9],      # Financial
-        [25, 25, 18, 19, 0, 17],    # Bayview
-        [20, 18, 7, 9, 15, 0]       # UnionSquare
+        [0, 9, 20, 22, 26, 21],    # Richmond to others
+        [11, 0, 16, 17, 27, 16],   # Marina to others
+        [20, 12, 0, 5, 22, 7],     # Chinatown to others
+        [21, 15, 5, 0, 19, 9],     # Financial to others
+        [25, 25, 18, 19, 0, 17],   # Bayview to others
+        [20, 18, 7, 9, 15, 0]      # UnionSquare to others
     ]
 
-    def time_to_minutes(h, m):
-        return h * 60 + m - 540  # Convert to minutes since 9:00 AM (540)
-
+    # Friends' data: name, district, start_available, end_available, min_duration (minutes)
     friends = [
-        {'name': 'Kimberly', 'district': 'Marina', 'start': time_to_minutes(13, 15), 
-         'end': time_to_minutes(16, 45), 'duration': 15, 'met': Bool('met_Kimberly')},
-        {'name': 'Robert', 'district': 'Chinatown', 'start': time_to_minutes(12, 15), 
-         'end': time_to_minutes(20, 15), 'duration': 15, 'met': Bool('met_Robert')},
-        {'name': 'Rebecca', 'district': 'Financial', 'start': time_to_minutes(13, 15), 
-         'end': time_to_minutes(16, 45), 'duration': 75, 'met': Bool('met_Rebecca')},
-        {'name': 'Margaret', 'district': 'Bayview', 'start': time_to_minutes(9, 30), 
-         'end': time_to_minutes(13, 30), 'duration': 30, 'met': Bool('met_Margaret')},
-        {'name': 'Kenneth', 'district': 'UnionSquare', 'start': time_to_minutes(19, 30), 
-         'end': time_to_minutes(21, 15), 'duration': 75, 'met': Bool('met_Kenneth')}
+        ('Kimberly', 'Marina', 13*60 + 15, 16*60 + 45, 15),
+        ('Robert', 'Chinatown', 12*60 + 15, 20*60 + 15, 15),
+        ('Rebecca', 'Financial', 13*60 + 15, 16*60 + 45, 75),
+        ('Margaret', 'Bayview', 9*60 + 30, 13*60 + 30, 30),
+        ('Kenneth', 'UnionSquare', 19*60 + 30, 21*60 + 15, 75)
     ]
 
-    # Create variables for arrival and departure times
-    for friend in friends:
-        friend['arrival'] = Int(f"arrival_{friend['name']}")
-        friend['departure'] = Int(f"departure_{friend['name']}")
-        # Meeting must be within availability window if met
-        opt.add(Implies(friend['met'], 
-                    And(friend['arrival'] >= friend['start'],
-                        friend['departure'] <= friend['end'],
-                        friend['departure'] - friend['arrival'] >= friend['duration'])))
+    # Variables for each friend: start and end times of meeting
+    start_vars = [Int(f'start_{name}') for name, _, _, _, _ in friends]
+    end_vars = [Int(f'end_{name}') for name, _, _, _, _ in friends]
 
-    # Initial constraint: start at Richmond at 9:00 AM (time = 0)
-    current_time = 0
-    current_location = districts['Richmond']
+    # Current location starts at Richmond at 9:00 AM (540 minutes)
+    current_time = 540  # 9:00 AM in minutes
+    current_district = district_indices['Richmond']
 
-    # Create an ordered list of possible meetings
-    meeting_order = []
-    for friend in friends:
-        meeting_order.append((friend['name'], friend['district'], 
-                            friend['arrival'], friend['departure'], friend['met']))
+    # Track the order of meetings to ensure travel times are respected
+    sequence = []
 
-    # Add travel time constraints between consecutive meetings
-    for i in range(len(meeting_order)-1):
-        name1, district1, arrival1, departure1, met1 = meeting_order[i]
-        name2, district2, arrival2, _, met2 = meeting_order[i+1]
-        travel_time = travel_times[districts[district1]][districts[district2]]
-        opt.add(Implies(And(met1, met2), arrival2 >= departure1 + travel_time))
+    # Constraints for each friend
+    for i, (name, district, start_avail, end_avail, min_dur) in enumerate(friends):
+        dist_idx = district_indices[district]
 
-    # Ensure Kenneth is met (since his meeting is in the evening)
-    opt.add(friends[-1]['met'] == True)
+        # Meeting must start and end within friend's availability
+        opt.add(start_vars[i] >= start_avail)
+        opt.add(end_vars[i] <= end_avail)
+        opt.add(end_vars[i] == start_vars[i] + min_dur)
 
-    # Maximize the number of friends met (excluding Kenneth who must be met)
-    opt.maximize(Sum([If(f['met'], 1, 0) for f in friends[:-1]]))
+        # Travel time from current district to friend's district
+        travel_time = travel_times[current_district][dist_idx]
+        opt.add(start_vars[i] >= current_time + travel_time)
 
+        # Update current time and district after meeting
+        current_time = end_vars[i]
+        current_district = dist_idx
+        sequence.append((name, start_vars[i], end_vars[i]))
+
+    # Ensure Kenneth is met last (since his time is latest)
+    kenneth_idx = [i for i, (name, _, _, _, _) in enumerate(friends) if name == 'Kenneth'][0]
+    for i, (name, _, _, _, _) in enumerate(friends):
+        if name != 'Kenneth':
+            opt.add(end_vars[i] <= start_vars[kenneth_idx] - travel_times[district_indices[friends[i][1]]][district_indices['UnionSquare']])
+
+    # Try to meet as many friends as possible by allowing optional meetings
+    # We'll use a flag for each friend to indicate if they are met
+    met_flags = [Bool(f'met_{name}') for name, _, _, _, _ in friends]
+    for i in range(len(friends)):
+        opt.add(Implies(met_flags[i], start_vars[i] >= 0))  # If met, start time is valid
+        opt.add(Implies(Not(met_flags[i]), start_vars[i] == -1))  # If not met, start time is -1
+
+    # Maximize the number of friends met
+    opt.maximize(Sum([If(met_flags[i], 1, 0) for i in range(len(friends))]))
+
+    # Check if a solution exists
     if opt.check() == sat:
         m = opt.model()
-        schedule = []
-        for friend in friends:
-            if m.evaluate(friend['met']):
-                arr = m.evaluate(friend['arrival']).as_long() + 540
-                dep = m.evaluate(friend['departure']).as_long() + 540
-                arr_time = f"{arr//60}:{arr%60:02d}"
-                dep_time = f"{dep//60}:{dep%60:02d}"
-                schedule.append({
-                    'action': 'meet',
-                    'person': friend['name'],
-                    'location': friend['district'],
-                    'start_time': arr_time,
-                    'end_time': dep_time
-                })
-        
-        # Print the valid schedule
-        print("Valid schedule found:")
-        for event in sorted(schedule, key=lambda x: x['start_time']):
-            print(f"Meet {event['person']} at {event['location']} from {event['start_time']} to {event['end_time']}")
+        print("SOLUTION:")
+        total_met = 0
+        for i, (name, _, _, _, _) in enumerate(friends):
+            if is_true(m.evaluate(met_flags[i])):
+                start = m.evaluate(start_vars[i]).as_long()
+                end = m.evaluate(end_vars[i]).as_long()
+                start_str = f"{start//60}:{start%60:02d}"
+                end_str = f"{end//60}:{end%60:02d}"
+                print(f"Meet {name} from {start_str} to {end_str} at {friends[i][1]}")
+                total_met += 1
+        print(f"Total friends met: {total_met}")
     else:
-        print("No valid schedule found that satisfies all constraints")
+        print("No solution found")
 
 solve_scheduling()

@@ -1,10 +1,9 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize solver
-    s = Optimize()
+    s = Solver()
 
-    # Define locations and travel times
+    # Locations and indices
     locations = ["Union Square", "Presidio", "Alamo Square", "Marina District", 
                 "Financial District", "Nob Hill", "Sunset District", "Chinatown",
                 "Russian Hill", "North Beach", "Haight-Ashbury"]
@@ -25,86 +24,67 @@ def solve_scheduling():
         [19, 15, 5, 17, 21, 15, 15, 19, 17, 19, 0]
     ]
 
-    # Friends data: name, location, start (min), end (min), min duration
+    # Friends data: name, location, start (hr), end (hr), min duration (hr)
     friends = [
-        ("Kimberly", "Presidio", 930, 960, 15),
-        ("Elizabeth", "Alamo Square", 1155, 1215, 15),
-        ("Joshua", "Marina District", 630, 855, 45),
-        ("Sandra", "Financial District", 1170, 1215, 45),
-        ("Kenneth", "Nob Hill", 765, 1305, 30),
-        ("Betty", "Sunset District", 840, 1140, 60),
-        ("Deborah", "Chinatown", 1035, 1230, 15),
-        ("Barbara", "Russian Hill", 1050, 1275, 120),
-        ("Steven", "North Beach", 1065, 1245, 90),
-        ("Daniel", "Haight-Ashbury", 1110, 1125, 15)
+        ("Kimberly", "Presidio", 15.5, 16.0, 0.25),
+        ("Elizabeth", "Alamo Square", 19.25, 20.25, 0.25),
+        ("Joshua", "Marina District", 10.5, 14.25, 0.75),
+        ("Sandra", "Financial District", 19.5, 20.25, 0.75),
+        ("Kenneth", "Nob Hill", 12.75, 21.75, 0.5),
+        ("Betty", "Sunset District", 14.0, 19.0, 1.0),
+        ("Deborah", "Chinatown", 17.25, 20.5, 0.25),
+        ("Barbara", "Russian Hill", 17.5, 21.25, 2.0),
+        ("Steven", "North Beach", 17.75, 20.75, 1.5),
+        ("Daniel", "Haight-Ashbury", 18.5, 18.75, 0.25)
     ]
 
-    # Decision variables
-    meet = [Bool(f"meet_{name}") for name, _, _, _, _ in friends]
-    start_times = [Int(f"start_{name}") for name, _, _, _, _ in friends]
-    end_times = [Int(f"end_{name}") for name, _, _, _, _ in friends]
+    # Create variables and basic constraints
+    vars = []
+    for name, loc, start, end, dur in friends:
+        s_start = Real(f'start_{name}')
+        s_end = Real(f'end_{name}')
+        s.add(s_start >= start)
+        s.add(s_end <= end)
+        s.add(s_end >= s_start + dur)
+        vars.append((name, loc, s_start, s_end))
 
-    # Starting point
-    current_time = 540  # 9:00 AM
-    current_loc = loc_index["Union Square"]
+    # Add travel time constraints
+    for i in range(len(vars)):
+        for j in range(i+1, len(vars)):
+            n1, l1, st1, et1 = vars[i]
+            n2, l2, st2, et2 = vars[j]
+            travel_time = RealVal(travel[loc_index[l1]][loc_index[l2]]) / 60
+            s.add(Or(
+                et1 + travel_time <= st2,
+                et2 + travel_time <= st1
+            ))
 
-    # Basic constraints for each friend
-    for i, (name, loc, f_start, f_end, min_dur) in enumerate(friends):
-        # If meeting, must be within availability window
-        s.add(Implies(meet[i], And(
-            start_times[i] >= f_start,
-            end_times[i] <= f_end,
-            end_times[i] - start_times[i] >= min_dur
-        )))
-        # If not meeting, set times to -1
-        s.add(Implies(Not(meet[i]), And(
-            start_times[i] == -1,
-            end_times[i] == -1
-        )))
+    # Starting at Union Square at 9:00 AM
+    # Create a variable for first meeting and constrain it
+    first_meeting = vars[0]
+    travel_time = RealVal(travel[loc_index["Union Square"]][loc_index[first_meeting[1]]]) / 60
+    s.add(first_meeting[2] >= 9.0 + travel_time)
 
-    # Sequence constraints - new approach
-    # Create variables to track arrival times at each location
-    arrival_times = [Int(f"arrival_{i}") for i in range(len(friends))]
-    departure_times = [Int(f"departure_{i}") for i in range(len(friends))]
-
-    # Initial arrival is at Union Square at 9:00 AM
-    s.add(arrival_times[0] == current_time)
-
-    # Constraints for each potential meeting
-    for i in range(len(friends)):
-        # If meeting this friend, arrival must be before start time
-        s.add(Implies(meet[i], arrival_times[i] <= start_times[i]))
-        # Departure is either end time (if meeting) or arrival time (if not)
-        s.add(departure_times[i] == If(meet[i], end_times[i], arrival_times[i]))
-
-        # Connect to next meeting's arrival time
-        if i < len(friends) - 1:
-            # Calculate travel time to next location
-            travel_time = travel[loc_index[friends[i][1]]][loc_index[friends[i+1][1]]]
-            s.add(arrival_times[i+1] == departure_times[i] + travel_time)
-
-    # Maximize number of friends met
-    s.maximize(Sum([If(meet[i], 1, 0) for i in range(len(friends))]))
-
-    # Solve
     if s.check() == sat:
         m = s.model()
+        schedule = []
+        for name, loc, s_start, s_end in vars:
+            start_val = m.evaluate(s_start)
+            end_val = m.evaluate(s_end)
+            start = float(start_val.numerator_as_long())/float(start_val.denominator_as_long())
+            end = float(end_val.numerator_as_long())/float(end_val.denominator_as_long())
+            schedule.append((name, loc, start, end))
+        
+        # Sort by start time for display
+        schedule.sort(key=lambda x: x[2])
+        
         print("SOLUTION:")
-        print("Optimal Schedule:")
-        
-        # Collect meetings
-        meetings = []
-        for i, (name, loc, _, _, _) in enumerate(friends):
-            if is_true(m.evaluate(meet[i])):
-                start = m.evaluate(start_times[i]).as_long()
-                end = m.evaluate(end_times[i]).as_long()
-                meetings.append((name, loc, start, end))
-        
-        # Print schedule
-        for i, (name, loc, start, end) in enumerate(meetings, 1):
-            print(f"{i}. Meet {name} at {loc} from {start//60:02d}:{start%60:02d} to {end//60:02d}:{end%60:02d}")
-        
-        print(f"\nTotal friends met: {len(meetings)}")
+        for name, loc, start, end in schedule:
+            start_hr = int(start)
+            start_min = int((start - start_hr) * 60)
+            end_hr = int(end)
+            end_min = int((end - end_hr) * 60)
+            print(f"Meet {name} at {loc} from {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d}")
     else:
         print("No valid schedule found")
 

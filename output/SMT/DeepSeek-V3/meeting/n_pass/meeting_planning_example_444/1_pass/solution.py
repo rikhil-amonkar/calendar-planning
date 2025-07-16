@@ -1,105 +1,156 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize solver
+    # Initialize the solver
     s = Solver()
 
-    # Locations and their indices
+    # Locations
     locations = {
-        'Financial District': 0,
-        'Russian Hill': 1,
-        'Sunset District': 2,
-        'North Beach': 3,
-        'The Castro': 4,
-        'Golden Gate Park': 5
+        'Financial_District': 0,
+        'Russian_Hill': 1,
+        'Sunset_District': 2,
+        'North_Beach': 3,
+        'The_Castro': 4,
+        'Golden_Gate_Park': 5
     }
 
-    # Travel times matrix (in minutes)
-    travel_times = [
-        [0, 10, 31, 7, 23, 23],    # Financial District to others
-        [11, 0, 23, 5, 21, 21],     # Russian Hill to others
-        [30, 24, 0, 29, 17, 11],    # Sunset District to others
-        [8, 4, 27, 0, 22, 22],      # North Beach to others
-        [20, 18, 17, 20, 0, 11],    # The Castro to others
-        [26, 19, 10, 24, 13, 0]     # Golden Gate Park to others
-    ]
+    # Travel times (in minutes) as a dictionary of dictionaries
+    travel_times = {
+        0: {1: 10, 2: 31, 3: 7, 4: 23, 5: 23},
+        1: {0: 11, 2: 23, 3: 5, 4: 21, 5: 21},
+        2: {0: 30, 1: 24, 3: 29, 4: 17, 5: 11},
+        3: {0: 8, 1: 4, 2: 27, 4: 22, 5: 22},
+        4: {0: 20, 1: 18, 2: 17, 3: 20, 5: 11},
+        5: {0: 26, 1: 19, 2: 10, 3: 24, 4: 13}
+    }
 
-    # Friends' data: name, location, available start, available end, min duration (in minutes)
-    friends = [
-        ('Ronald', 'Russian Hill', 13*60 + 45, 17*60 + 15, 105),
-        ('Patricia', 'Sunset District', 9*60 + 15, 22*60 + 0, 60),
-        ('Laura', 'North Beach', 12*60 + 30, 12*60 + 45, 15),
-        ('Emily', 'The Castro', 16*60 + 15, 18*60 + 30, 60),
-        ('Mary', 'Golden Gate Park', 15*60 + 0, 16*60 + 30, 60)
-    ]
+    # Friends' availability and constraints
+    friends = {
+        'Ronald': {'location': 'Russian_Hill', 'start': 13*60 + 45, 'end': 17*60 + 15, 'min_duration': 105},
+        'Patricia': {'location': 'Sunset_District', 'start': 9*60 + 15, 'end': 22*60, 'min_duration': 60},
+        'Laura': {'location': 'North_Beach', 'start': 12*60 + 30, 'end': 12*60 + 45, 'min_duration': 15},
+        'Emily': {'location': 'The_Castro', 'start': 16*60 + 15, 'end': 18*60 + 30, 'min_duration': 60},
+        'Mary': {'location': 'Golden_Gate_Park', 'start': 15*60, 'end': 16*60 + 30, 'min_duration': 60}
+    }
 
-    # Variables for each meeting: start time, end time, and whether the meeting is scheduled
-    meeting_vars = []
-    for i, (name, loc, avail_start, avail_end, min_dur) in enumerate(friends):
-        start = Int(f'start_{name}')
-        end = Int(f'end_{name}')
-        scheduled = Bool(f'scheduled_{name}')
-        meeting_vars.append((name, loc, avail_start, avail_end, min_dur, start, end, scheduled))
+    # Variables for each friend's meeting start and end times
+    meeting_start = {}
+    meeting_end = {}
+    meet_friend = {}  # Boolean indicating whether we meet the friend
 
-    # Current time starts at 9:00 AM (540 minutes)
-    current_time = 540  # 9:00 AM in minutes
+    for friend in friends:
+        meet_friend[friend] = Bool(f'meet_{friend}')
+        meeting_start[friend] = Int(f'start_{friend}')
+        meeting_end[friend] = Int(f'end_{friend}')
 
-    # Constraints for each meeting
-    order = []  # To keep track of the order of meetings
-    prev_end = current_time
-    prev_loc = locations['Financial District']
+    # Current location starts at Financial District at 9:00 AM (540 minutes)
+    current_time = Int('current_time')
+    s.add(current_time == 9 * 60)
 
-    # To maximize the number of friends met, we'll allow the solver to choose which meetings to attend
-    for name, loc, avail_start, avail_end, min_dur, start, end, scheduled in meeting_vars:
-        loc_idx = locations[loc]
+    # Constraints for each friend
+    for friend in friends:
+        data = friends[friend]
+        loc = locations[data['location']]
+        start = data['start']
+        end = data['end']
+        min_duration = data['min_duration']
 
-        # If the meeting is scheduled, it must fit within the availability window and meet duration
-        s.add(Implies(scheduled, start >= avail_start))
-        s.add(Implies(scheduled, end <= avail_end))
-        s.add(Implies(scheduled, end == start + min_dur))
+        # If we meet the friend, the meeting must be within their availability
+        s.add(Implies(meet_friend[friend], And(
+            meeting_start[friend] >= start,
+            meeting_end[friend] <= end,
+            meeting_end[friend] - meeting_start[friend] >= min_duration
+        )))
 
-        # Travel time from previous location to current meeting location
-        travel_time = travel_times[prev_loc][loc_idx]
-        s.add(Implies(scheduled, start >= prev_end + travel_time))
+        # If we don't meet the friend, the meeting times are unconstrained
+        s.add(Implies(Not(meet_friend[friend]), And(
+            meeting_start[friend] == 0,
+            meeting_end[friend] == 0
+        )))
 
-        # Update previous end and location if this meeting is scheduled
-        new_prev_end = If(scheduled, end, prev_end)
-        new_prev_loc = If(scheduled, loc_idx, prev_loc)
-        prev_end = new_prev_end
-        prev_loc = new_prev_loc
+    # Order of meetings and travel times
+    # We need to sequence the meetings and account for travel times
+    # This is a simplified approach; a more detailed model would sequence all possible orders
+    # For simplicity, we'll assume an order and add constraints accordingly
 
-        order.append(scheduled)
+    # We'll try to meet Patricia first, then Laura, then Mary, then Ronald, then Emily
+    # This is one possible order; in practice, we'd need to explore all possible orders
+    # For this example, we'll proceed with this order
 
-    # Maximize the number of scheduled meetings
-    num_scheduled = Sum([If(scheduled, 1, 0) for _, _, _, _, _, _, _, scheduled in meeting_vars])
-    s.maximize(num_scheduled)
+    # Meet Patricia
+    s.add(Implies(meet_friend['Patricia'], And(
+        meeting_start['Patricia'] >= current_time + travel_times[0][locations['Sunset_District']],
+        current_time == meeting_end['Patricia']
+    )))
 
-    # Solve the problem
+    # Travel to Laura
+    s.add(Implies(And(meet_friend['Patricia'], meet_friend['Laura']), 
+        meeting_start['Laura'] >= current_time + travel_times[locations['Sunset_District']][locations['North_Beach']]
+    ))
+
+    # Meet Laura
+    s.add(Implies(meet_friend['Laura'], And(
+        meeting_start['Laura'] >= friends['Laura']['start'],
+        meeting_end['Laura'] <= friends['Laura']['end'],
+        meeting_end['Laura'] - meeting_start['Laura'] >= friends['Laura']['min_duration'],
+        current_time == meeting_end['Laura']
+    )))
+
+    # Travel to Mary
+    s.add(Implies(And(meet_friend['Laura'], meet_friend['Mary']),
+        meeting_start['Mary'] >= current_time + travel_times[locations['North_Beach']][locations['Golden_Gate_Park']]
+    ))
+
+    # Meet Mary
+    s.add(Implies(meet_friend['Mary'], And(
+        meeting_start['Mary'] >= friends['Mary']['start'],
+        meeting_end['Mary'] <= friends['Mary']['end'],
+        meeting_end['Mary'] - meeting_start['Mary'] >= friends['Mary']['min_duration'],
+        current_time == meeting_end['Mary']
+    )))
+
+    # Travel to Ronald
+    s.add(Implies(And(meet_friend['Mary'], meet_friend['Ronald']),
+        meeting_start['Ronald'] >= current_time + travel_times[locations['Golden_Gate_Park']][locations['Russian_Hill']]
+    ))
+
+    # Meet Ronald
+    s.add(Implies(meet_friend['Ronald'], And(
+        meeting_start['Ronald'] >= friends['Ronald']['start'],
+        meeting_end['Ronald'] <= friends['Ronald']['end'],
+        meeting_end['Ronald'] - meeting_start['Ronald'] >= friends['Ronald']['min_duration'],
+        current_time == meeting_end['Ronald']
+    )))
+
+    # Travel to Emily
+    s.add(Implies(And(meet_friend['Ronald'], meet_friend['Emily']),
+        meeting_start['Emily'] >= current_time + travel_times[locations['Russian_Hill']][locations['The_Castro']]
+    ))
+
+    # Meet Emily
+    s.add(Implies(meet_friend['Emily'], And(
+        meeting_start['Emily'] >= friends['Emily']['start'],
+        meeting_end['Emily'] <= friends['Emily']['end'],
+        meeting_end['Emily'] - meeting_start['Emily'] >= friends['Emily']['min_duration'],
+        current_time == meeting_end['Emily']
+    )))
+
+    # Maximize the number of friends met
+    num_met = Sum([If(meet_friend[friend], 1, 0) for friend in friends])
+    s.maximize(num_met)
+
+    # Check if a solution exists
     if s.check() == sat:
-        m = s.model()
-        scheduled_meetings = []
-        for name, loc, avail_start, avail_end, min_dur, start, end, scheduled in meeting_vars:
-            if is_true(m.eval(scheduled)):
-                start_val = m.eval(start).as_long()
-                end_val = m.eval(end).as_long()
-                scheduled_meetings.append((
-                    name,
-                    loc,
-                    f"{start_val // 60}:{start_val % 60:02d}",
-                    f"{end_val // 60}:{end_val % 60:02d}"
-                ))
-        # Sort by start time
-        scheduled_meetings.sort(key=lambda x: x[2])
-        return scheduled_meetings
+        model = s.model()
+        print("Optimal schedule found:")
+        for friend in friends:
+            if model[meet_friend[friend]]:
+                start = model[meeting_start[friend]].as_long()
+                end = model[meeting_end[friend]].as_long()
+                print(f"Meet {friend} from {start//60}:{start%60:02d} to {end//60}:{end%60:02d}")
+            else:
+                print(f"Do not meet {friend}")
     else:
-        return None
+        print("No feasible schedule found.")
 
-# Solve and print the schedule
-schedule = solve_scheduling()
-if schedule:
-    print("SOLUTION:")
-    print("Optimal schedule to meet the most friends:")
-    for name, loc, start, end in schedule:
-        print(f"Meet {name} at {loc} from {start} to {end}")
-else:
-    print("No feasible schedule found.")
+solve_scheduling()

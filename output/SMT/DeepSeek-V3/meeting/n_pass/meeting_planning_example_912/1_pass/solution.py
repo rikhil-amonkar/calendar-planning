@@ -1,17 +1,26 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize the solver
+    # Initialize Z3 solver
     s = Solver()
 
     # Define the locations and their indices
     locations = [
-        "Union Square", "Presidio", "Alamo Square", "Marina District", "Financial District",
-        "Nob Hill", "Sunset District", "Chinatown", "Russian Hill", "North Beach", "Haight-Ashbury"
+        "Union Square",
+        "Presidio",
+        "Alamo Square",
+        "Marina District",
+        "Financial District",
+        "Nob Hill",
+        "Sunset District",
+        "Chinatown",
+        "Russian Hill",
+        "North Beach",
+        "Haight-Ashbury"
     ]
     loc_index = {loc: idx for idx, loc in enumerate(locations)}
 
-    # Travel times matrix (in minutes)
+    # Travel times matrix (loc_index[from][to] = minutes)
     travel_times = [
         [0, 24, 15, 18, 9, 9, 27, 7, 13, 10, 18],  # Union Square
         [22, 0, 19, 11, 23, 18, 15, 21, 14, 18, 15],  # Presidio
@@ -26,80 +35,71 @@ def solve_scheduling():
         [19, 15, 5, 17, 21, 15, 15, 19, 17, 19, 0]   # Haight-Ashbury
     ]
 
-    # Friends' data: name, location, start time, end time, min duration
+    # Friends' data: name, location, start, end, min_duration
     friends = [
-        ("Kimberly", "Presidio", 15 * 60 + 30, 16 * 60, 15),
-        ("Elizabeth", "Alamo Square", 19 * 60 + 15, 20 * 60 + 15, 15),
-        ("Joshua", "Marina District", 10 * 60 + 30, 14 * 60 + 15, 45),
-        ("Sandra", "Financial District", 19 * 60 + 30, 20 * 60 + 15, 45),
-        ("Kenneth", "Nob Hill", 12 * 60 + 45, 21 * 60 + 45, 30),
-        ("Betty", "Sunset District", 14 * 60, 19 * 60, 60),
-        ("Deborah", "Chinatown", 17 * 60 + 15, 20 * 60 + 30, 15),
-        ("Barbara", "Russian Hill", 17 * 60 + 30, 21 * 60 + 15, 120),
-        ("Steven", "North Beach", 17 * 60 + 45, 20 * 60 + 45, 90),
-        ("Daniel", "Haight-Ashbury", 18 * 60 + 30, 18 * 60 + 45, 15)
+        ("Kimberly", "Presidio", 15.5, 16.0, 0.25),
+        ("Elizabeth", "Alamo Square", 19.25, 20.25, 0.25),
+        ("Joshua", "Marina District", 10.5, 14.25, 0.75),
+        ("Sandra", "Financial District", 19.5, 20.25, 0.75),
+        ("Kenneth", "Nob Hill", 12.75, 21.75, 0.5),
+        ("Betty", "Sunset District", 14.0, 19.0, 1.0),
+        ("Deborah", "Chinatown", 17.25, 20.5, 0.25),
+        ("Barbara", "Russian Hill", 17.5, 21.25, 2.0),
+        ("Steven", "North Beach", 17.75, 20.75, 1.5),
+        ("Daniel", "Haight-Ashbury", 18.5, 18.75, 0.25)
     ]
 
-    # Variables for each friend: start and end times of the meeting
-    start_vars = [Int(f'start_{name}') for name, _, _, _, _ in friends]
-    end_vars = [Int(f'end_{name}') for name, _, _, _, _ in friends]
-    meet_vars = [Bool(f'meet_{name}') for name, _, _, _, _ in friends]  # Whether to meet the friend
+    # Create variables for each friend: start and end times
+    friend_vars = []
+    for friend in friends:
+        name, loc, start, end, min_dur = friend
+        start_var = Real(f'start_{name}')
+        end_var = Real(f'end_{name}')
+        s.add(start_var >= start)
+        s.add(end_var <= end)
+        s.add(end_var >= start_var + min_dur)
+        friend_vars.append((name, loc, start_var, end_var))
 
-    # Initial position: Union Square at 9:00 AM (540 minutes)
-    current_time = 540  # 9:00 AM in minutes
-    current_loc = loc_index["Union Square"]
+    # Add constraints for travel times and no overlapping meetings
+    for i in range(len(friend_vars)):
+        for j in range(i + 1, len(friend_vars)):
+            name1, loc1, start1, end1 = friend_vars[i]
+            name2, loc2, start2, end2 = friend_vars[j]
+            # Either meeting i is before j or vice versa, with travel time
+            travel1 = travel_times[loc_index[loc1]][loc_index[loc2]]
+            travel2 = travel_times[loc_index[loc2]][loc_index[loc1]]
+            s.add(Or(
+                end1 + travel1 / 60 <= start2,
+                end2 + travel2 / 60 <= start1
+            ))
 
-    # Constraints for each friend
-    for i, (name, loc, friend_start, friend_end, min_dur) in enumerate(friends):
-        loc_idx = loc_index[loc]
-        # If meeting the friend, the meeting must fit within their window and have min duration
-        s.add(Implies(meet_vars[i], And(
-            start_vars[i] >= friend_start,
-            end_vars[i] <= friend_end,
-            end_vars[i] - start_vars[i] >= min_dur
-        )))
-        # If not meeting the friend, start and end times are irrelevant
-        s.add(Implies(Not(meet_vars[i]), And(
-            start_vars[i] == -1,
-            end_vars[i] == -1
-        )))
+    # Add constraint to start at Union Square at 9:00 AM
+    s.add(friend_vars[0][2] >= 9.0)  # Assuming first friend is the starting point
 
-    # Order constraints: meetings must be in sequence with travel time
-    # We need to model the order of meetings, but this is complex with Z3.
-    # For simplicity, we'll assume meetings are in the order of friends list and add travel time constraints.
-    # This is a simplification; a more accurate approach would involve sequencing variables.
-    prev_end = current_time
-    prev_loc = current_loc
-    for i in range(len(friends)):
-        # Travel time from previous location to current friend's location
-        travel_time = travel_times[prev_loc][loc_index[friends[i][1]]]
-        # If meeting this friend, start time must be >= prev_end + travel_time
-        s.add(Implies(meet_vars[i], start_vars[i] >= prev_end + travel_time))
-        # Update prev_end and prev_loc if meeting this friend
-        prev_end = If(meet_vars[i], end_vars[i], prev_end)
-        prev_loc = If(meet_vars[i], loc_index[friends[i][1]], prev_loc)
-
-    # Maximize the number of friends met
-    s.maximize(Sum([If(meet_vars[i], 1, 0) for i in range(len(friends))]))
-
-    # Check if a solution exists
+    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
-        print("SOLUTION:")
-        print("Schedule:")
-        total_met = 0
-        for i, (name, loc, _, _, _) in enumerate(friends):
-            if m.evaluate(meet_vars[i]):
-                start = m.evaluate(start_vars[i])
-                end = m.evaluate(end_vars[i])
-                start_hr = start.as_long() // 60
-                start_min = start.as_long() % 60
-                end_hr = end.as_long() // 60
-                end_min = end.as_long() % 60
-                print(f"Meet {name} at {loc} from {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d}")
-                total_met += 1
-        print(f"Total friends met: {total_met}")
+        schedule = []
+        for name, loc, start_var, end_var in friend_vars:
+            start = m[start_var].as_fraction()
+            end = m[end_var].as_fraction()
+            start_hr = float(start)
+            end_hr = float(end)
+            schedule.append((name, loc, start_hr, end_hr))
+        # Sort schedule by start time
+        schedule.sort(key=lambda x: x[2])
+        return schedule
     else:
-        print("No solution found.")
+        return None
 
-solve_scheduling()
+schedule = solve_scheduling()
+if schedule:
+    print("SOLUTION:")
+    for name, loc, start, end in schedule:
+        start_hr = int(start)
+        start_min = int((start - start_hr) * 60)
+        end_hr = int(end)
+        end_min = int((end - end_hr) * 60)
+        print(f"Meet {name} at {loc} from {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d}")
+else:
+    print("No valid schedule found.")
