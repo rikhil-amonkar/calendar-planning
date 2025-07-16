@@ -1,0 +1,53 @@
+from datetime import datetime, timedelta
+
+def find_meeting_time():
+    # Define the work hours
+    start_time = datetime.strptime("09:00", "%H:%M")
+    end_time = datetime.strptime("17:00", "%H:%M")
+    
+    # Define Harold's busy times
+    harold_busy_times = {
+        "Monday": [
+            (datetime.strptime("09:00", "%H:%M"), datetime.strptime("10:00", "%H:%M")),
+            (datetime.strptime("10:30", "%H:%M"), datetime.strptime("17:00", "%H:%M"))
+        ],
+        "Tuesday": [
+            (datetime.strptime("10:30", "%H:%M"), datetime.strptime("11:30", "%H:%M")),
+            (datetime.strptime("12:30", "%H:%M"), datetime.strptime("13:30", "%H:%M")),
+            (datetime.strptime("14:30", "%H:%M"), datetime.strptime("15:30", "%H:%M")),
+            (datetime.strptime("16:00", "%H:%M"), datetime.strptime("17:00", "%H:%M"))
+        ]
+    }
+    
+    # Meeting duration
+    meeting_duration = timedelta(minutes=30)
+    
+    # Preference: Avoid Monday, prefer Tuesday before 14:30
+    preferred_day = "Tuesday"
+    preferred_end_time = datetime.strptime("14:30", "%H:%M")
+    
+    # Check available times on the preferred day first
+    for day in [preferred_day, "Monday"]:  # Check Tuesday first, then Monday if necessary
+        current_time = start_time
+        while current_time < end_time - meeting_duration:
+            is_free = True
+            for busy_start, busy_end in harold_busy_times[day]:
+                if current_time < busy_end and current_time + meeting_duration > busy_start:
+                    is_free = False
+                    current_time = busy_end
+                    break
+            if is_free:
+                if day == preferred_day and current_time + meeting_duration <= preferred_end_time:
+                    return current_time.strftime('%H:%M'), day
+                elif day != preferred_day:
+                    return current_time.strftime('%H:%M'), day
+            current_time += timedelta(minutes=30)  # Check every 30 minutes for availability
+    
+    # If no suitable time is found, raise an exception
+    raise ValueError("No suitable meeting time found.")
+
+try:
+    meeting_time, meeting_day = find_meeting_time()
+    print(f"Meeting scheduled at {meeting_time} on {meeting_day}.")
+except ValueError as e:
+    print(e)

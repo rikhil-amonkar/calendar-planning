@@ -1,0 +1,1 @@
+prioritized_friends = sorted(friends, key=lambda x: (time_to_minutes(x['end']) - time_to_minutes(x['start']), x['duration']))

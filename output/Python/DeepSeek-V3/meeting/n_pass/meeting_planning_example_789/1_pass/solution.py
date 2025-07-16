@@ -1,0 +1,208 @@
+import json
+from itertools import permutations
+from datetime import datetime, timedelta
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, "%H:%M")
+
+def format_time(dt):
+    return dt.strftime("%-H:%M")
+
+def time_add_minutes(time_str, minutes):
+    dt = parse_time(time_str)
+    dt += timedelta(minutes=minutes)
+    return format_time(dt)
+
+def time_diff_minutes(start_str, end_str):
+    start = parse_time(start_str)
+    end = parse_time(end_str)
+    return int((end - start).total_seconds() / 60)
+
+def get_travel_time(from_loc, to_loc):
+    travel_times = {
+        ("Union Square", "Russian Hill"): 13,
+        ("Union Square", "Alamo Square"): 15,
+        ("Union Square", "Haight-Ashbury"): 18,
+        ("Union Square", "Marina District"): 18,
+        ("Union Square", "Bayview"): 15,
+        ("Union Square", "Chinatown"): 7,
+        ("Union Square", "Presidio"): 24,
+        ("Union Square", "Sunset District"): 27,
+        ("Russian Hill", "Union Square"): 10,
+        ("Russian Hill", "Alamo Square"): 15,
+        ("Russian Hill", "Haight-Ashbury"): 17,
+        ("Russian Hill", "Marina District"): 7,
+        ("Russian Hill", "Bayview"): 23,
+        ("Russian Hill", "Chinatown"): 9,
+        ("Russian Hill", "Presidio"): 14,
+        ("Russian Hill", "Sunset District"): 23,
+        ("Alamo Square", "Union Square"): 14,
+        ("Alamo Square", "Russian Hill"): 13,
+        ("Alamo Square", "Haight-Ashbury"): 5,
+        ("Alamo Square", "Marina District"): 15,
+        ("Alamo Square", "Bayview"): 16,
+        ("Alamo Square", "Chinatown"): 15,
+        ("Alamo Square", "Presidio"): 17,
+        ("Alamo Square", "Sunset District"): 16,
+        ("Haight-Ashbury", "Union Square"): 19,
+        ("Haight-Ashbury", "Russian Hill"): 17,
+        ("Haight-Ashbury", "Alamo Square"): 5,
+        ("Haight-Ashbury", "Marina District"): 17,
+        ("Haight-Ashbury", "Bayview"): 18,
+        ("Haight-Ashbury", "Chinatown"): 19,
+        ("Haight-Ashbury", "Presidio"): 15,
+        ("Haight-Ashbury", "Sunset District"): 15,
+        ("Marina District", "Union Square"): 16,
+        ("Marina District", "Russian Hill"): 8,
+        ("Marina District", "Alamo Square"): 15,
+        ("Marina District", "Haight-Ashbury"): 16,
+        ("Marina District", "Bayview"): 27,
+        ("Marina District", "Chinatown"): 15,
+        ("Marina District", "Presidio"): 10,
+        ("Marina District", "Sunset District"): 19,
+        ("Bayview", "Union Square"): 18,
+        ("Bayview", "Russian Hill"): 23,
+        ("Bayview", "Alamo Square"): 16,
+        ("Bayview", "Haight-Ashbury"): 19,
+        ("Bayview", "Marina District"): 27,
+        ("Bayview", "Chinatown"): 19,
+        ("Bayview", "Presidio"): 32,
+        ("Bayview", "Sunset District"): 23,
+        ("Chinatown", "Union Square"): 7,
+        ("Chinatown", "Russian Hill"): 7,
+        ("Chinatown", "Alamo Square"): 17,
+        ("Chinatown", "Haight-Ashbury"): 19,
+        ("Chinatown", "Marina District"): 12,
+        ("Chinatown", "Bayview"): 20,
+        ("Chinatown", "Presidio"): 19,
+        ("Chinatown", "Sunset District"): 29,
+        ("Presidio", "Union Square"): 22,
+        ("Presidio", "Russian Hill"): 14,
+        ("Presidio", "Alamo Square"): 19,
+        ("Presidio", "Haight-Ashbury"): 15,
+        ("Presidio", "Marina District"): 11,
+        ("Presidio", "Bayview"): 31,
+        ("Presidio", "Chinatown"): 21,
+        ("Presidio", "Sunset District"): 15,
+        ("Sunset District", "Union Square"): 30,
+        ("Sunset District", "Russian Hill"): 24,
+        ("Sunset District", "Alamo Square"): 17,
+        ("Sunset District", "Haight-Ashbury"): 15,
+        ("Sunset District", "Marina District"): 21,
+        ("Sunset District", "Bayview"): 22,
+        ("Sunset District", "Chinatown"): 30,
+        ("Sunset District", "Presidio"): 16
+    }
+    return travel_times.get((from_loc, to_loc), float('inf'))
+
+friends = [
+    {"name": "Betty", "location": "Russian Hill", "available_start": "7:00", "available_end": "16:45", "duration": 105},
+    {"name": "Melissa", "location": "Alamo Square", "available_start": "9:30", "available_end": "17:15", "duration": 105},
+    {"name": "Joshua", "location": "Haight-Ashbury", "available_start": "12:15", "available_end": "19:00", "duration": 90},
+    {"name": "Jeffrey", "location": "Marina District", "available_start": "12:15", "available_end": "18:00", "duration": 45},
+    {"name": "James", "location": "Bayview", "available_start": "7:30", "available_end": "20:00", "duration": 90},
+    {"name": "Anthony", "location": "Chinatown", "available_start": "11:45", "available_end": "13:30", "duration": 75},
+    {"name": "Timothy", "location": "Presidio", "available_start": "12:30", "available_end": "14:45", "duration": 90},
+    {"name": "Emily", "location": "Sunset District", "available_start": "19:30", "available_end": "21:30", "duration": 120}
+]
+
+def is_schedule_valid(schedule):
+    current_time = "9:00"
+    current_location = "Union Square"
+    
+    for meeting in schedule:
+        # Travel to meeting location
+        travel_time = get_travel_time(current_location, meeting["location"])
+        arrival_time = time_add_minutes(current_time, travel_time)
+        
+        # Check if arrival is before available end time
+        if arrival_time >= meeting["available_end"]:
+            return False
+        
+        # Calculate meeting start time (max of arrival and available start)
+        meeting_start = max(arrival_time, meeting["available_start"])
+        
+        # Check if there's enough time for the meeting
+        meeting_end = time_add_minutes(meeting_start, meeting["duration"])
+        if meeting_end > meeting["available_end"]:
+            return False
+        
+        # Update current time and location
+        current_time = meeting_end
+        current_location = meeting["location"]
+    
+    return True
+
+def calculate_total_meetings(schedule):
+    current_time = "9:00"
+    current_location = "Union Square"
+    total_meetings = 0
+    
+    for meeting in schedule:
+        travel_time = get_travel_time(current_location, meeting["location"])
+        arrival_time = time_add_minutes(current_time, travel_time)
+        
+        if arrival_time >= meeting["available_end"]:
+            break
+        
+        meeting_start = max(arrival_time, meeting["available_start"])
+        meeting_end = time_add_minutes(meeting_start, meeting["duration"])
+        
+        if meeting_end > meeting["available_end"]:
+            break
+        
+        total_meetings += 1
+        current_time = meeting_end
+        current_location = meeting["location"]
+    
+    return total_meetings
+
+def generate_itinerary(schedule):
+    itinerary = []
+    current_time = "9:00"
+    current_location = "Union Square"
+    
+    for meeting in schedule:
+        travel_time = get_travel_time(current_location, meeting["location"])
+        arrival_time = time_add_minutes(current_time, travel_time)
+        
+        if arrival_time >= meeting["available_end"]:
+            break
+        
+        meeting_start = max(arrival_time, meeting["available_start"])
+        meeting_end = time_add_minutes(meeting_start, meeting["duration"])
+        
+        if meeting_end > meeting["available_end"]:
+            break
+        
+        itinerary.append({
+            "action": "meet",
+            "location": meeting["location"],
+            "person": meeting["name"],
+            "start_time": meeting_start,
+            "end_time": meeting_end
+        })
+        
+        current_time = meeting_end
+        current_location = meeting["location"]
+    
+    return itinerary
+
+# Try all permutations of friends to find the optimal schedule
+best_schedule = None
+max_meetings = 0
+
+for perm in permutations(friends):
+    if is_schedule_valid(perm):
+        num_meetings = calculate_total_meetings(perm)
+        if num_meetings > max_meetings:
+            max_meetings = num_meetings
+            best_schedule = perm
+
+if best_schedule:
+    itinerary = generate_itinerary(best_schedule)
+    result = {"itinerary": itinerary}
+else:
+    result = {"itinerary": []}
+
+print(json.dumps(result, indent=2))

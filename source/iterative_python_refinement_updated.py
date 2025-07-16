@@ -1056,7 +1056,7 @@ Examples:
 
     def save_output_files(self, task, example_id, pass_num, conversation, code, output, evaluation):
         """Save all output files for a given pass"""
-        output_dir = f"../output/Python/DeepSeek-R1/{task}/n_pass/{example_id}/{pass_num}_pass"
+        output_dir = f"../output/Python/Qwen-Coder-32B-Instruct/{task}/n_pass/{example_id}/{pass_num}_pass"
         os.makedirs(output_dir, exist_ok=True)
         
         # Save conversation

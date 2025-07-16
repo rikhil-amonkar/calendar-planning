@@ -1,0 +1,1 @@
+if (conference_days.issubset(berlin_days) and (relatives_days.issubset(tallinn_days)):

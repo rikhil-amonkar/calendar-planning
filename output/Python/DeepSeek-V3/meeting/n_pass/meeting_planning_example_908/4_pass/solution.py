@@ -1,0 +1,1 @@
+sorted_friends = sorted(friends, key=lambda x: (time_to_minutes(x[3]) - time_to_minutes(x[2]), x[4])

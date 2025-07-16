@@ -1,0 +1,1 @@
+visited_days[entry['place']] = visited_days.get(entry['place'], 0) + days
