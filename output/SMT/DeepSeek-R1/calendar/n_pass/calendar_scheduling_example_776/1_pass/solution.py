@@ -1,69 +1,74 @@
 from z3 import *
 
 def main():
-    # Initialize the solver and the start time variable
-    start = Int('start')
+    # Initialize solver
     solver = Solver()
     
-    # Total minutes in three days (each day 480 minutes: 9:00 to 17:00)
-    total_minutes = 480 * 3
-    meeting_duration = 30
+    # Define variables
+    d = Int('d')  # 0: Monday, 1: Tuesday, 2: Wednesday
+    start_time = Int('start_time')  # in minutes from midnight
     
-    # Constraint: start time must be in [0, total_minutes - meeting_duration]
-    solver.add(start >= 0)
-    solver.add(start <= total_minutes - meeting_duration)
+    # Constraints for day and time boundaries
+    solver.add(Or(d == 0, d == 1, d == 2))
+    solver.add(start_time >= 540)  # 9:00
+    solver.add(start_time <= 990)  # 16:30 (so that meeting ends by 17:00)
     
-    # Day and time within day
-    day = start / 480  # Integer division to get day index
-    time_in_day = start % 480
+    # Jennifer's busy intervals in minutes from midnight
+    # Monday: [540,660], [690,780], [810,870], [900,1020]
+    monday_constraints = And(
+        Or(start_time + 30 <= 540, start_time >= 660),
+        Or(start_time + 30 <= 690, start_time >= 780),
+        Or(start_time + 30 <= 810, start_time >= 870),
+        Or(start_time + 30 <= 900, start_time >= 1020),
+        start_time + 30 <= 870  # John's preference: end by 14:30 (870 minutes)
+    )
     
-    # Constraint: meeting must end by 17:00 on the chosen day
-    solver.add(time_in_day + meeting_duration <= 480)
+    # Tuesday: [540,690], [720,1020]
+    tuesday_constraints = And(
+        Or(start_time + 30 <= 540, start_time >= 690),
+        Or(start_time + 30 <= 720, start_time >= 1020)
+    )
     
-    # John's constraint: on Monday (day 0), meeting must end by 14:30 (330 minutes from 9:00)
-    solver.add(If(day == 0, time_in_day <= 300, True))
+    # Wednesday: [540,690], [720,750], [780,840], [870,960], [990,1020]
+    wednesday_constraints = And(
+        Or(start_time + 30 <= 540, start_time >= 690),
+        Or(start_time + 30 <= 720, start_time >= 750),
+        Or(start_time + 30 <= 780, start_time >= 840),
+        Or(start_time + 30 <= 870, start_time >= 960),
+        Or(start_time + 30 <= 990, start_time >= 1020)
+    )
     
-    # Jennifer's busy intervals per day (each interval [start_min, end_min) in minutes from 9:00)
-    busy_intervals = {
-        0: [(0, 120), (150, 240), (270, 330), (360, 480)],   # Monday
-        1: [(0, 150), (180, 480)],                           # Tuesday
-        2: [(0, 150), (180, 210), (240, 300), (330, 420), (450, 480)]  # Wednesday
-    }
-    
-    # Add constraints for each busy interval
-    for day_index, intervals in busy_intervals.items():
-        for s, e in intervals:
-            # The meeting must not overlap the interval [s, e)
-            no_overlap = Or(time_in_day + meeting_duration <= s, time_in_day >= e)
-            # Apply only if the meeting is on this day
-            solver.add(If(day == day_index, no_overlap, True))
+    # Apply day-specific constraints
+    solver.add(If(d == 0, monday_constraints, 
+                  If(d == 1, tuesday_constraints, 
+                     wednesday_constraints)))
     
     # Check for a solution
     if solver.check() == sat:
         model = solver.model()
-        start_val = model.eval(start).as_long()
+        day_val = model[d].as_long()
+        start_minutes = model[start_time].as_long()
         
-        # Determine the day and time within the day
-        day_index = start_val // 480
-        time_in_day_val = start_val % 480
-        
-        # Convert time_in_day to hours and minutes
-        hours = 9 + time_in_day_val // 60
-        minutes = time_in_day_val % 60
-        end_time_val = time_in_day_val + meeting_duration
-        end_hours = 9 + end_time_val // 60
-        end_minutes = end_time_val % 60
-        
-        # Format the time strings
-        start_time_str = f"{hours:02d}:{minutes:02d}"
-        end_time_str = f"{end_hours:02d}:{end_minutes:02d}"
+        # Convert day value to string
         days = ["Monday", "Tuesday", "Wednesday"]
-        day_str = days[day_index]
+        day_str = days[day_val]
         
-        # Output the solution
+        # Convert start time to HH:MM format
+        hours = start_minutes // 60
+        minutes = start_minutes % 60
+        start_time_str = f"{hours:02d}:{minutes:02d}"
+        
+        # Calculate end time
+        end_minutes = start_minutes + 30
+        end_hours = end_minutes // 60
+        end_minutes %= 60
+        end_time_str = f"{end_hours:02d}:{end_minutes:02d}"
+        
+        # Output solution
+        print("SOLUTION:")
         print(f"Day: {day_str}")
-        print(f"Start: {start_time_str}")
-        print(f"End: {end_time_str}")
+        print(f"Start Time: {start_time_str}")
+        print(f"End Time: {end_time_str}")
     else:
         print("No solution found")
 

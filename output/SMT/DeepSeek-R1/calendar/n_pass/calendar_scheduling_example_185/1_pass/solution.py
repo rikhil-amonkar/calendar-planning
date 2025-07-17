@@ -1,51 +1,52 @@
 from z3 import *
 
 def main():
-    # Initialize the solver
-    s = Int('s')
-    solver = Solver()
+    # Initialize solver
+    s = Solver()
     
-    # Meeting must be between 9:00 and 17:00, duration 30 minutes.
-    # Also, Megan's preference: avoid before 10:00, so start at or after 10:00 (60 minutes from 9:00).
-    solver.add(s >= 60)
-    solver.add(s <= 450)  # because 450 + 30 = 480 (17:00)
+    # Start time in minutes from midnight
+    S = Int('S')
     
-    # Define busy intervals for each participant in minutes from 9:00 (start inclusive, end exclusive)
-    kimberly_busy = [(60, 90), (120, 180), (420, 450)]
-    marie_busy = [(60, 120), (150, 360), (420, 450)]
-    diana_busy = [(30, 60), (90, 330), (390, 480)]
+    # Work hours: 9:00 (540) to 17:00 (1020), meeting duration 30 minutes
+    s.add(S >= 540)        # Meeting must start at or after 9:00
+    s.add(S <= 990)        # Meeting must start by 16:30 to end by 17:00
     
-    # Add constraints for Kimberly
-    for (b_start, b_end) in kimberly_busy:
-        solver.add(Or(s + 30 <= b_start, s >= b_end))
+    # Megan's preference: avoid meetings before 10:00 (600 minutes)
+    s.add(S >= 600)
     
-    # Add constraints for Marie
-    for (b_start, b_end) in marie_busy:
-        solver.add(Or(s + 30 <= b_start, s >= b_end))
+    # Busy intervals for each participant (start, end) in minutes
+    busy_times = {
+        'Kimberly': [(600, 630), (660, 720), (960, 990)],
+        'Marie': [(600, 660), (690, 900), (960, 990)],
+        'Diana': [(570, 600), (630, 870), (930, 1020)],
+        'Megan': []
+    }
     
-    # Add constraints for Diana
-    for (b_start, b_end) in diana_busy:
-        solver.add(Or(s + 30 <= b_start, s >= b_end))
+    # Add constraints for each busy interval
+    for person, intervals in busy_times.items():
+        for (b_start, b_end) in intervals:
+            s.add(Or(S >= b_end, S + 30 <= b_start))
     
     # Check for a solution
-    if solver.check() == sat:
-        m = solver.model()
-        start_minutes = m[s].as_long()
+    if s.check() == sat:
+        m = s.model()
+        start_min = m[S].as_long()
+        # Convert start time to HH:MM format
+        hour = start_min // 60
+        minute = start_min % 60
+        start_time = f"{hour:02d}:{minute:02d}"
+        # Calculate end time
+        end_min = start_min + 30
+        hour_end = end_min // 60
+        minute_end = end_min % 60
+        end_time = f"{hour_end:02d}:{minute_end:02d}"
         
-        # Convert start_minutes back to time string
-        total_minutes_from_midnight_start = 9 * 60 + start_minutes
-        hours_start = total_minutes_from_midnight_start // 60
-        minutes_start = total_minutes_from_midnight_start % 60
-        start_time = f"{hours_start}:{minutes_start:02d}"
-        
-        end_minutes = start_minutes + 30
-        total_minutes_from_midnight_end = 9 * 60 + end_minutes
-        hours_end = total_minutes_from_midnight_end // 60
-        minutes_end = total_minutes_from_midnight_end % 60
-        end_time = f"{hours_end}:{minutes_end:02d}"
-        
-        # Output the meeting time
-        print("Monday", start_time, end_time)
+        # Format the solution
+        solution = "SOLUTION:\n" + \
+                   "Day: Monday\n" + \
+                   f"Start Time: {start_time}\n" + \
+                   f"End Time: {end_time}"
+        print(solution)
     else:
         print("No solution found")
 

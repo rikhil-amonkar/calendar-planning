@@ -1,109 +1,155 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize Z3 solver
-    s = Solver()
+# Define the locations and their travel times
+locations = [
+    "Union Square", "Presidio", "Alamo Square", "Marina District", "Financial District",
+    "Nob Hill", "Sunset District", "Chinatown", "Russian Hill", "North Beach", "Haight-Ashbury"
+]
 
-    # Define the locations and their indices
-    locations = [
-        "Union Square",
-        "Presidio",
-        "Alamo Square",
-        "Marina District",
-        "Financial District",
-        "Nob Hill",
-        "Sunset District",
-        "Chinatown",
-        "Russian Hill",
-        "North Beach",
-        "Haight-Ashbury"
-    ]
-    loc_index = {loc: idx for idx, loc in enumerate(locations)}
+# Travel times matrix (from_location -> to_location -> minutes)
+travel_times = {
+    "Union Square": {
+        "Presidio": 24, "Alamo Square": 15, "Marina District": 18, "Financial District": 9,
+        "Nob Hill": 9, "Sunset District": 27, "Chinatown": 7, "Russian Hill": 13,
+        "North Beach": 10, "Haight-Ashbury": 18
+    },
+    "Presidio": {
+        "Union Square": 22, "Alamo Square": 19, "Marina District": 11, "Financial District": 23,
+        "Nob Hill": 18, "Sunset District": 15, "Chinatown": 21, "Russian Hill": 14,
+        "North Beach": 18, "Haight-Ashbury": 15
+    },
+    "Alamo Square": {
+        "Union Square": 14, "Presidio": 17, "Marina District": 15, "Financial District": 17,
+        "Nob Hill": 11, "Sunset District": 16, "Chinatown": 15, "Russian Hill": 13,
+        "North Beach": 15, "Haight-Ashbury": 5
+    },
+    "Marina District": {
+        "Union Square": 16, "Presidio": 10, "Alamo Square": 15, "Financial District": 17,
+        "Nob Hill": 12, "Sunset District": 19, "Chinatown": 15, "Russian Hill": 8,
+        "North Beach": 11, "Haight-Ashbury": 16
+    },
+    "Financial District": {
+        "Union Square": 9, "Presidio": 22, "Alamo Square": 17, "Marina District": 15,
+        "Nob Hill": 8, "Sunset District": 30, "Chinatown": 5, "Russian Hill": 11,
+        "North Beach": 7, "Haight-Ashbury": 19
+    },
+    "Nob Hill": {
+        "Union Square": 7, "Presidio": 17, "Alamo Square": 11, "Marina District": 11,
+        "Financial District": 9, "Sunset District": 24, "Chinatown": 6, "Russian Hill": 5,
+        "North Beach": 8, "Haight-Ashbury": 13
+    },
+    "Sunset District": {
+        "Union Square": 30, "Presidio": 16, "Alamo Square": 17, "Marina District": 21,
+        "Financial District": 30, "Nob Hill": 27, "Chinatown": 30, "Russian Hill": 24,
+        "North Beach": 28, "Haight-Ashbury": 15
+    },
+    "Chinatown": {
+        "Union Square": 7, "Presidio": 19, "Alamo Square": 17, "Marina District": 12,
+        "Financial District": 5, "Nob Hill": 9, "Sunset District": 29, "Russian Hill": 7,
+        "North Beach": 3, "Haight-Ashbury": 19
+    },
+    "Russian Hill": {
+        "Union Square": 10, "Presidio": 14, "Alamo Square": 15, "Marina District": 7,
+        "Financial District": 11, "Nob Hill": 5, "Sunset District": 23, "Chinatown": 9,
+        "North Beach": 5, "Haight-Ashbury": 17
+    },
+    "North Beach": {
+        "Union Square": 7, "Presidio": 17, "Alamo Square": 16, "Marina District": 9,
+        "Financial District": 8, "Nob Hill": 7, "Sunset District": 27, "Chinatown": 6,
+        "Russian Hill": 4, "Haight-Ashbury": 18
+    },
+    "Haight-Ashbury": {
+        "Union Square": 19, "Presidio": 15, "Alamo Square": 5, "Marina District": 17,
+        "Financial District": 21, "Nob Hill": 15, "Sunset District": 15, "Chinatown": 19,
+        "Russian Hill": 17, "North Beach": 19
+    }
+}
 
-    # Travel times matrix (loc_index[from][to] = minutes)
-    travel_times = [
-        [0, 24, 15, 18, 9, 9, 27, 7, 13, 10, 18],  # Union Square
-        [22, 0, 19, 11, 23, 18, 15, 21, 14, 18, 15],  # Presidio
-        [14, 17, 0, 15, 17, 11, 16, 15, 13, 15, 5],  # Alamo Square
-        [16, 10, 15, 0, 17, 12, 19, 15, 8, 11, 16],  # Marina District
-        [9, 22, 17, 15, 0, 8, 30, 5, 11, 7, 19],  # Financial District
-        [7, 17, 11, 11, 9, 0, 24, 6, 5, 8, 13],  # Nob Hill
-        [30, 16, 17, 21, 30, 27, 0, 30, 24, 28, 15],  # Sunset District
-        [7, 19, 17, 12, 5, 9, 29, 0, 7, 3, 19],  # Chinatown
-        [10, 14, 15, 7, 11, 5, 23, 9, 0, 5, 17],  # Russian Hill
-        [7, 17, 16, 9, 8, 7, 27, 6, 4, 0, 18],  # North Beach
-        [19, 15, 5, 17, 21, 15, 15, 19, 17, 19, 0]   # Haight-Ashbury
-    ]
+# Friends' availability and constraints
+friends = [
+    {"name": "Kimberly", "location": "Presidio", "start": "15:30", "end": "16:00", "min_duration": 15},
+    {"name": "Elizabeth", "location": "Alamo Square", "start": "19:15", "end": "20:15", "min_duration": 15},
+    {"name": "Joshua", "location": "Marina District", "start": "10:30", "end": "14:15", "min_duration": 45},
+    {"name": "Sandra", "location": "Financial District", "start": "19:30", "end": "20:15", "min_duration": 45},
+    {"name": "Kenneth", "location": "Nob Hill", "start": "12:45", "end": "21:45", "min_duration": 30},
+    {"name": "Betty", "location": "Sunset District", "start": "14:00", "end": "19:00", "min_duration": 60},
+    {"name": "Deborah", "location": "Chinatown", "start": "17:15", "end": "20:30", "min_duration": 15},
+    {"name": "Barbara", "location": "Russian Hill", "start": "17:30", "end": "21:15", "min_duration": 120},
+    {"name": "Steven", "location": "North Beach", "start": "17:45", "end": "20:45", "min_duration": 90},
+    {"name": "Daniel", "location": "Haight-Ashbury", "start": "18:30", "end": "18:45", "min_duration": 15}
+]
 
-    # Friends' data: name, location, start, end, min_duration
-    friends = [
-        ("Kimberly", "Presidio", 15.5, 16.0, 0.25),
-        ("Elizabeth", "Alamo Square", 19.25, 20.25, 0.25),
-        ("Joshua", "Marina District", 10.5, 14.25, 0.75),
-        ("Sandra", "Financial District", 19.5, 20.25, 0.75),
-        ("Kenneth", "Nob Hill", 12.75, 21.75, 0.5),
-        ("Betty", "Sunset District", 14.0, 19.0, 1.0),
-        ("Deborah", "Chinatown", 17.25, 20.5, 0.25),
-        ("Barbara", "Russian Hill", 17.5, 21.25, 2.0),
-        ("Steven", "North Beach", 17.75, 20.75, 1.5),
-        ("Daniel", "Haight-Ashbury", 18.5, 18.75, 0.25)
-    ]
+# Convert time strings to minutes since 9:00 AM (540 minutes)
+def time_to_minutes(time_str):
+    hh, mm = map(int, time_str.split(':'))
+    return hh * 60 + mm - 540  # Subtract 540 to start from 9:00 AM (540 minutes)
 
-    # Create variables for each friend: start and end times
-    friend_vars = []
-    for friend in friends:
-        name, loc, start, end, min_dur = friend
-        start_var = Real(f'start_{name}')
-        end_var = Real(f'end_{name}')
-        s.add(start_var >= start)
-        s.add(end_var <= end)
-        s.add(end_var >= start_var + min_dur)
-        friend_vars.append((name, loc, start_var, end_var))
+# Convert minutes back to time string
+def minutes_to_time(minutes):
+    total_minutes = 540 + minutes
+    hh = total_minutes // 60
+    mm = total_minutes % 60
+    return f"{hh:02d}:{mm:02d}"
 
-    # Add constraints for travel times and no overlapping meetings
-    for i in range(len(friend_vars)):
-        for j in range(i + 1, len(friend_vars)):
-            name1, loc1, start1, end1 = friend_vars[i]
-            name2, loc2, start2, end2 = friend_vars[j]
-            # Either meeting i is before j or vice versa, with travel time
-            travel1 = travel_times[loc_index[loc1]][loc_index[loc2]]
-            travel2 = travel_times[loc_index[loc2]][loc_index[loc1]]
-            s.add(Or(
-                end1 + travel1 / 60 <= start2,
-                end2 + travel2 / 60 <= start1
-            ))
+# Initialize Z3 optimizer
+opt = Optimize()
 
-    # Add constraint to start at Union Square at 9:00 AM
-    # Assuming the first activity is to go to the first friend's location
-    # We need to add travel time from Union Square to the first friend's location
-    first_friend_loc = friend_vars[0][1]
-    travel_to_first = travel_times[loc_index["Union Square"]][loc_index[first_friend_loc]]
-    s.add(friend_vars[0][2] >= 9.0 + travel_to_first / 60)
+# Create variables for each meeting: start time, end time, and duration
+meetings = []
+for friend in friends:
+    start = Int(f"start_{friend['name']}")
+    end = Int(f"end_{friend['name']}")
+    duration = Int(f"duration_{friend['name']}")
+    meetings.append({
+        "name": friend["name"],
+        "location": friend["location"],
+        "start": start,
+        "end": end,
+        "duration": duration,
+        "min_duration": friend["min_duration"],
+        "window_start": time_to_minutes(friend["start"]),
+        "window_end": time_to_minutes(friend["end"])
+    })
 
-    # Check if the problem is satisfiable
-    if s.check() == sat:
-        m = s.model()
-        schedule = []
-        for name, loc, start_var, end_var in friend_vars:
-            start = m[start_var].as_fraction()
-            end = m[end_var].as_fraction()
-            start_hr = float(start)
-            end_hr = float(end)
-            schedule.append((name, loc, start_hr, end_hr))
-        # Sort schedule by start time
-        schedule.sort(key=lambda x: x[2])
-        return schedule
-    else:
-        return None
+# Add constraints for each meeting
+for m in meetings:
+    opt.add(m["start"] >= m["window_start"])
+    opt.add(m["end"] <= m["window_end"])
+    opt.add(m["duration"] >= m["min_duration"])
+    opt.add(m["end"] == m["start"] + m["duration"])
 
-schedule = solve_scheduling()
-if schedule:
-    print("SOLUTION:")
-    for name, loc, start, end in schedule:
-        start_hr = int(start)
-        start_min = int((start - start_hr) * 60)
-        end_hr = int(end)
-        end_min = int((end - end_hr) * 60)
-        print(f"Meet {name} at {loc} from {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d}")
+# Add constraints to ensure no overlapping meetings and travel times
+for i in range(len(meetings)):
+    for j in range(i + 1, len(meetings)):
+        m1 = meetings[i]
+        m2 = meetings[j]
+        # Either m1 ends before m2 starts plus travel time, or vice versa
+        opt.add(Or(
+            m1["end"] + travel_times[m1["location"]][m2["location"]] <= m2["start"],
+            m2["end"] + travel_times[m2["location"]][m1["location"]] <= m1["start"]
+        ))
+
+# Maximize the total meeting duration
+total_duration = Int("total_duration")
+opt.add(total_duration == sum([m["duration"] for m in meetings]))
+opt.maximize(total_duration)
+
+# Check if a solution exists
+if opt.check() == sat:
+    model = opt.model()
+    itinerary = []
+    for m in meetings:
+        start = model.evaluate(m["start"]).as_long()
+        end = model.evaluate(m["end"]).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": m["name"],
+            "start_time": minutes_to_time(start),
+            "end_time": minutes_to_time(end)
+        })
+    # Sort itinerary by start time
+    itinerary.sort(key=lambda x: x["start_time"])
+    print(json.dumps({"itinerary": itinerary}, indent=2))
 else:
-    print("No valid schedule found.")
+    print('{"itinerary": []}')

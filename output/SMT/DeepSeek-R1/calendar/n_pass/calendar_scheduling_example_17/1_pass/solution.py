@@ -1,68 +1,60 @@
 from z3 import *
 
 def main():
-    # Create the solver and variable for start time in minutes from 9:00
+    # Create a solver instance
     s = Solver()
-    t = Int('t')
     
-    # Global constraints: meeting within work hours and Helen's preference (end by 13:30)
-    s.add(t >= 0)                # Start at or after 9:00
-    s.add(t + 30 <= 270)          # End by 13:30 (270 minutes from 9:00)
+    # Define the start time variable in minutes from 9:00
+    start = Int('start')
     
-    # Margaret's blocked intervals in minutes
-    margaret_blocks = [
-        (0, 60),    # 9:00-10:00
-        (90, 120),  # 10:30-11:00
-        (150, 180), # 11:30-12:00
-        (240, 270), # 13:00-13:30
-        (360, 390)  # 15:00-15:30
+    # Meeting duration is 30 minutes
+    duration = 30
+    end = start + duration
+    
+    # Constraints: start must be between 0 (9:00) and 240 (13:00) because end must be <= 270 (13:30)
+    s.add(start >= 0)
+    s.add(end <= 270)  # meeting must end by 13:30
+    
+    # Busy intervals for each participant (start, end) in minutes from 9:00, only those starting before 270
+    busy_intervals = [
+        # Margaret's busy intervals
+        (0, 60),
+        (90, 120),
+        (150, 180),
+        (240, 270),
+        # Helen's busy intervals
+        (0, 30),
+        (60, 150),
+        (240, 300)
     ]
     
-    # Donna's blocked intervals
-    donna_blocks = [
-        (330, 360), # 14:30-15:00
-        (420, 450)  # 16:00-16:30
-    ]
+    # Donna has no busy intervals before 270 minutes
     
-    # Helen's blocked intervals
-    helen_blocks = [
-        (0, 30),    # 9:00-9:30
-        (60, 150),  # 10:00-11:30
-        (240, 300), # 13:00-14:00
-        (330, 360), # 14:30-15:00
-        (390, 480)  # 15:30-17:00
-    ]
+    # Add constraints for each busy interval: meeting must not overlap
+    for (b_start, b_end) in busy_intervals:
+        s.add(Or(end <= b_start, start >= b_end))
     
-    # Add constraints for Margaret's blocks
-    for (a, b) in margaret_blocks:
-        s.add(Or(t + 30 <= a, t >= b))
-    
-    # Add constraints for Donna's blocks
-    for (a, b) in donna_blocks:
-        s.add(Or(t + 30 <= a, t >= b))
-    
-    # Add constraints for Helen's blocks
-    for (a, b) in helen_blocks:
-        s.add(Or(t + 30 <= a, t >= b))
-    
-    # Check for a solution
+    # Check if there's a solution
     if s.check() == sat:
-        model = s.model()
-        t_val = model[t].as_long()
+        m = s.model()
+        start_min = m[start].as_long()
         
-        # Convert start time from minutes to HH:MM format
-        start_hour = 9 + t_val // 60
-        start_min = t_val % 60
-        start_str = f"{start_hour}:{start_min:02d}"
+        # Convert minutes back to time in HH:MM format
+        total_minutes = start_min
+        hours = 9 + total_minutes // 60
+        minutes = total_minutes % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Calculate end time (start time + 30 minutes)
-        end_val = t_val + 30
-        end_hour = 9 + end_val // 60
-        end_min = end_val % 60
-        end_str = f"{end_hour}:{end_min:02d}"
+        end_min = start_min + duration
+        hours_end = 9 + end_min // 60
+        minutes_end = end_min % 60
+        end_time = f"{hours_end:02d}:{minutes_end:02d}"
         
-        # Output the meeting time
-        print(f"Monday {start_str} to {end_str}")
+        # Output the solution
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

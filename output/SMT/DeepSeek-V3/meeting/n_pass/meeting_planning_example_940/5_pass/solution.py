@@ -1,107 +1,132 @@
 from z3 import *
+import json
+from itertools import combinations
 
 def solve_scheduling():
-    # Initialize solver
     s = Optimize()
 
-    # Friend data (name: {location, start, end, min_duration})
+    # Friends data with locations, time windows, and required durations
     friends = {
-        'Kevin': {'location': 'Mission District', 'start': 20.75, 'end': 21.75, 'duration': 1.0},
-        'Mark': {'location': 'Fisherman\'s Wharf', 'start': 17.25, 'end': 20.0, 'duration': 1.5},
-        'Jessica': {'location': 'Russian Hill', 'start': 9.0, 'end': 15.0, 'duration': 2.0},
-        'Jason': {'location': 'Marina District', 'start': 15.25, 'end': 21.75, 'duration': 2.0},
-        'John': {'location': 'North Beach', 'start': 9.75, 'end': 18.0, 'duration': 0.25},
-        'Karen': {'location': 'Chinatown', 'start': 16.75, 'end': 19.0, 'duration': 1.25},
-        'Sarah': {'location': 'Pacific Heights', 'start': 17.5, 'end': 18.25, 'duration': 0.75},
-        'Amanda': {'location': 'The Castro', 'start': 20.0, 'end': 21.25, 'duration': 1.0},
-        'Nancy': {'location': 'Nob Hill', 'start': 9.75, 'end': 13.0, 'duration': 0.75},
-        'Rebecca': {'location': 'Sunset District', 'start': 8.75, 'end': 15.0, 'duration': 1.25}
+        "Kevin": {"location": "Mission District", "start": 20*60+45, "end": 21*60+45, "duration": 60},
+        "Mark": {"location": "Fisherman's Wharf", "start": 17*60+15, "end": 20*60+0, "duration": 90},
+        "Jessica": {"location": "Russian Hill", "start": 9*60+0, "end": 15*60+0, "duration": 120},
+        "Jason": {"location": "Marina District", "start": 15*60+15, "end": 21*60+45, "duration": 120},
+        "John": {"location": "North Beach", "start": 9*60+45, "end": 18*60+0, "duration": 15},
+        "Karen": {"location": "Chinatown", "start": 16*60+45, "end": 19*60+0, "duration": 75},
+        "Sarah": {"location": "Pacific Heights", "start": 17*60+30, "end": 18*60+15, "duration": 45},
+        "Amanda": {"location": "The Castro", "start": 20*60+0, "end": 21*60+15, "duration": 60},
+        "Nancy": {"location": "Nob Hill", "start": 9*60+45, "end": 13*60+0, "duration": 45},
+        "Rebecca": {"location": "Sunset District", "start": 8*60+45, "end": 15*60+0, "duration": 75}
     }
 
-    # Travel times in hours (converted from minutes)
+    # Travel times between locations (minutes)
     travel_times = {
-        ('Union Square', 'Mission District'): 14/60,
-        ('Union Square', 'Fisherman\'s Wharf'): 15/60,
-        ('Union Square', 'Russian Hill'): 13/60,
-        ('Union Square', 'Marina District'): 18/60,
-        ('Union Square', 'North Beach'): 10/60,
-        ('Union Square', 'Chinatown'): 7/60,
-        ('Union Square', 'Pacific Heights'): 15/60,
-        ('Union Square', 'The Castro'): 17/60,
-        ('Union Square', 'Nob Hill'): 9/60,
-        ('Union Square', 'Sunset District'): 27/60,
-        # Add all other necessary travel times here
+        ("Union Square", "Mission District"): 14,
+        ("Union Square", "Fisherman's Wharf"): 15,
+        ("Union Square", "Russian Hill"): 13,
+        ("Union Square", "Marina District"): 18,
+        ("Union Square", "North Beach"): 10,
+        ("Union Square", "Chinatown"): 7,
+        ("Union Square", "Pacific Heights"): 15,
+        ("Union Square", "The Castro"): 17,
+        ("Union Square", "Nob Hill"): 9,
+        ("Union Square", "Sunset District"): 27,
+        ("Mission District", "Fisherman's Wharf"): 22,
+        ("Mission District", "Russian Hill"): 15,
+        ("Mission District", "Marina District"): 19,
+        ("Mission District", "North Beach"): 17,
+        ("Mission District", "Chinatown"): 16,
+        ("Mission District", "Pacific Heights"): 16,
+        ("Mission District", "The Castro"): 7,
+        ("Mission District", "Nob Hill"): 12,
+        ("Fisherman's Wharf", "Russian Hill"): 7,
+        ("Fisherman's Wharf", "Marina District"): 9,
+        ("Fisherman's Wharf", "North Beach"): 6,
+        ("Fisherman's Wharf", "Chinatown"): 12,
+        ("Fisherman's Wharf", "Pacific Heights"): 12,
+        ("Fisherman's Wharf", "The Castro"): 27,
+        ("Fisherman's Wharf", "Nob Hill"): 11,
+        ("Russian Hill", "Marina District"): 7,
+        ("Russian Hill", "North Beach"): 5,
+        ("Russian Hill", "Chinatown"): 9,
+        ("Russian Hill", "Pacific Heights"): 7,
+        ("Russian Hill", "The Castro"): 21,
+        ("Russian Hill", "Nob Hill"): 5,
+        ("Marina District", "North Beach"): 11,
+        ("Marina District", "Chinatown"): 15,
+        ("Marina District", "Pacific Heights"): 7,
+        ("Marina District", "The Castro"): 22,
+        ("Marina District", "Nob Hill"): 12,
+        ("North Beach", "Chinatown"): 6,
+        ("North Beach", "Pacific Heights"): 8,
+        ("North Beach", "The Castro"): 23,
+        ("North Beach", "Nob Hill"): 7,
+        ("Chinatown", "Pacific Heights"): 10,
+        ("Chinatown", "The Castro"): 22,
+        ("Chinatown", "Nob Hill"): 9,
+        ("Pacific Heights", "The Castro"): 16,
+        ("Pacific Heights", "Nob Hill"): 8,
+        ("The Castro", "Nob Hill"): 16,
     }
+
+    # Add reverse directions
+    reverse_times = {(b,a):t for (a,b),t in travel_times.items()}
+    travel_times.update(reverse_times)
 
     # Create variables
-    meet = {name: Bool(f'meet_{name}') for name in friends}
-    start_time = {name: Real(f'start_{name}') for name in friends}
-    end_time = {name: Real(f'end_{name}') for name in friends}
-    travel_time = {name: Real(f'travel_{name}') for name in friends}
+    start_vars = {name: Int(f"start_{name}") for name in friends}
+    meet_vars = {name: Bool(f"meet_{name}") for name in friends}
 
-    # Starting point
-    current_location = 'Union Square'
-    current_time = 9.0  # 9:00 AM
-
-    # Basic constraints for each friend
+    # Basic constraints
     for name in friends:
-        friend = friends[name]
-        loc = friend['location']
-        
-        # If we meet this friend:
-        s.add(Implies(meet[name], start_time[name] >= friend['start']))
-        s.add(Implies(meet[name], end_time[name] <= friend['end']))
-        s.add(Implies(meet[name], end_time[name] == start_time[name] + friend['duration']))
-        
-        # Set travel time to this location
-        if (current_location, loc) in travel_times:
-            s.add(Implies(meet[name], travel_time[name] == travel_times[(current_location, loc)]))
-        else:
-            s.add(Implies(meet[name], travel_time[name] == 0))  # Default if no travel time specified
+        s.add(Implies(meet_vars[name], start_vars[name] >= friends[name]["start"]))
+        s.add(Implies(meet_vars[name], start_vars[name] + friends[name]["duration"] <= friends[name]["end"]))
+        s.add(Implies(Not(meet_vars[name]), start_vars[name] == -1))
 
-    # Sequencing constraints (ensure no overlapping meetings)
-    for name1 in friends:
-        for name2 in friends:
-            if name1 != name2:
-                s.add(Implies(And(meet[name1], meet[name2]),
-                             Or(start_time[name2] >= end_time[name1] + travel_time[name2],
-                                start_time[name1] >= end_time[name2] + travel_time[name1])))
+    # No overlapping meetings with travel time
+    for name1, name2 in combinations(friends.keys(), 2):
+        loc1 = friends[name1]["location"]
+        loc2 = friends[name2]["location"]
+        travel = travel_times.get((loc1, loc2), 60)  # Default travel time if not specified
+        
+        s.add(Implies(
+            And(meet_vars[name1], meet_vars[name2]),
+            Or(
+                start_vars[name1] + friends[name1]["duration"] + travel <= start_vars[name2],
+                start_vars[name2] + friends[name2]["duration"] + travel <= start_vars[name1]
+            )
+        ))
+
+    # Must meet Kevin at his exact time window
+    s.add(meet_vars["Kevin"])
+    s.add(start_vars["Kevin"] == friends["Kevin"]["start"])
+
+    # Must meet Amanda (since she's in the evening)
+    s.add(meet_vars["Amanda"])
+    s.add(start_vars["Amanda"] + friends["Amanda"]["duration"] <= friends["Amanda"]["end"])
 
     # Maximize number of friends met
-    s.maximize(Sum([If(meet[name], 1, 0) for name in friends]))
+    s.maximize(Sum([If(meet_vars[name], 1, 0) for name in friends]))
 
-    # Solve
+    # Solve and format output
     if s.check() == sat:
-        m = s.model()
-        print("SOLUTION:")
-        print("Optimal schedule meeting these friends:")
-        
-        # Collect meetings and sort by start time
-        meetings = []
+        model = s.model()
+        itinerary = []
         for name in friends:
-            if is_true(m.evaluate(meet[name])):
-                start = m.evaluate(start_time[name])
-                end = m.evaluate(end_time[name])
-                
-                # Convert Z3 numbers to floats
-                def z3_to_float(z3_num):
-                    if is_rational_value(z3_num):
-                        return float(z3_num.numerator_as_long()) / float(z3_num.denominator_as_long())
-                    else:
-                        return float(str(z3_num))
-                
-                start_val = z3_to_float(start)
-                end_val = z3_to_float(end)
-                meetings.append((start_val, name, friends[name]['location']))
-        
-        # Sort by start time and print
-        meetings.sort()
-        for time, name, loc in meetings:
-            duration = friends[name]['duration']
-            print(f"{name}: at {loc} from {time:.2f} to {time + duration:.2f}")
-        
-        print(f"\nTotal friends met: {len(meetings)}")
+            if model.evaluate(meet_vars[name]):
+                start = model.evaluate(start_vars[name]).as_long()
+                end = start + friends[name]["duration"]
+                itinerary.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": f"{start//60:02d}:{start%60:02d}",
+                    "end_time": f"{end//60:02d}:{end%60:02d}"
+                })
+        # Sort by start time
+        itinerary.sort(key=lambda x: int(x["start_time"][:2])*60 + int(x["start_time"][3:]))
+        return {"itinerary": itinerary}
     else:
-        print("No valid schedule found")
+        return {"itinerary": []}
 
-solve_scheduling()
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

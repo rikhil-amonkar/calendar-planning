@@ -1,192 +1,209 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize the solver
+def solve_scheduling_problem():
+    # Initialize Z3 solver
     s = Solver()
 
-    # Define the friends and their details (times in hours)
-    friends = {
-        'Laura': {'location': 'Alamo Square', 'start': 14.5, 'end': 16.25, 'min_duration': 75/60},
-        'Brian': {'location': 'Presidio', 'start': 10.25, 'end': 17.0, 'min_duration': 30/60},
-        'Karen': {'location': 'Russian Hill', 'start': 18.0, 'end': 20.25, 'min_duration': 90/60},
-        'Stephanie': {'location': 'North Beach', 'start': 10.25, 'end': 16.0, 'min_duration': 75/60},
-        'Helen': {'location': 'Golden Gate Park', 'start': 11.5, 'end': 21.75, 'min_duration': 120/60},
-        'Sandra': {'location': 'Richmond District', 'start': 8.0, 'end': 15.25, 'min_duration': 30/60},
-        'Mary': {'location': 'Embarcadero', 'start': 16.75, 'end': 18.75, 'min_duration': 120/60},
-        'Deborah': {'location': 'Financial District', 'start': 19.0, 'end': 20.75, 'min_duration': 105/60},
-        'Elizabeth': {'location': 'Marina District', 'start': 8.5, 'end': 13.25, 'min_duration': 105/60},
-    }
+    # Define friends and their details
+    friends = [
+        {"name": "Laura", "location": "Alamo Square", "available_start": "14:30", "available_end": "16:15", "min_duration": 75},
+        {"name": "Brian", "location": "Presidio", "available_start": "10:15", "available_end": "17:00", "min_duration": 30},
+        {"name": "Karen", "location": "Russian Hill", "available_start": "18:00", "available_end": "20:15", "min_duration": 90},
+        {"name": "Stephanie", "location": "North Beach", "available_start": "10:15", "available_end": "16:00", "min_duration": 75},
+        {"name": "Helen", "location": "Golden Gate Park", "available_start": "11:30", "available_end": "21:45", "min_duration": 120},
+        {"name": "Sandra", "location": "Richmond District", "available_start": "08:00", "available_end": "15:15", "min_duration": 30},
+        {"name": "Mary", "location": "Embarcadero", "available_start": "16:45", "available_end": "18:45", "min_duration": 120},
+        {"name": "Deborah", "location": "Financial District", "available_start": "19:00", "available_end": "20:45", "min_duration": 105},
+        {"name": "Elizabeth", "location": "Marina District", "available_start": "08:30", "available_end": "13:15", "min_duration": 105}
+    ]
 
-    # Define travel times (in hours)
+    # Convert time strings to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    # Process friend data
+    for friend in friends:
+        friend["available_start_min"] = time_to_minutes(friend["available_start"])
+        friend["available_end_min"] = time_to_minutes(friend["available_end"])
+
+    # Define travel times (simplified as a dictionary of dictionaries)
     travel_times = {
-        ('Mission District', 'Alamo Square'): 11/60,
-        ('Mission District', 'Presidio'): 25/60,
-        ('Mission District', 'Russian Hill'): 15/60,
-        ('Mission District', 'North Beach'): 17/60,
-        ('Mission District', 'Golden Gate Park'): 17/60,
-        ('Mission District', 'Richmond District'): 20/60,
-        ('Mission District', 'Embarcadero'): 19/60,
-        ('Mission District', 'Financial District'): 15/60,
-        ('Mission District', 'Marina District'): 19/60,
-        ('Alamo Square', 'Mission District'): 10/60,
-        ('Alamo Square', 'Presidio'): 17/60,
-        ('Alamo Square', 'Russian Hill'): 13/60,
-        ('Alamo Square', 'North Beach'): 15/60,
-        ('Alamo Square', 'Golden Gate Park'): 9/60,
-        ('Alamo Square', 'Richmond District'): 11/60,
-        ('Alamo Square', 'Embarcadero'): 16/60,
-        ('Alamo Square', 'Financial District'): 17/60,
-        ('Alamo Square', 'Marina District'): 15/60,
-        ('Presidio', 'Mission District'): 26/60,
-        ('Presidio', 'Alamo Square'): 19/60,
-        ('Presidio', 'Russian Hill'): 14/60,
-        ('Presidio', 'North Beach'): 18/60,
-        ('Presidio', 'Golden Gate Park'): 12/60,
-        ('Presidio', 'Richmond District'): 7/60,
-        ('Presidio', 'Embarcadero'): 20/60,
-        ('Presidio', 'Financial District'): 23/60,
-        ('Presidio', 'Marina District'): 11/60,
-        ('Russian Hill', 'Mission District'): 16/60,
-        ('Russian Hill', 'Alamo Square'): 15/60,
-        ('Russian Hill', 'Presidio'): 14/60,
-        ('Russian Hill', 'North Beach'): 5/60,
-        ('Russian Hill', 'Golden Gate Park'): 21/60,
-        ('Russian Hill', 'Richmond District'): 14/60,
-        ('Russian Hill', 'Embarcadero'): 8/60,
-        ('Russian Hill', 'Financial District'): 11/60,
-        ('Russian Hill', 'Marina District'): 7/60,
-        ('North Beach', 'Mission District'): 18/60,
-        ('North Beach', 'Alamo Square'): 16/60,
-        ('North Beach', 'Presidio'): 17/60,
-        ('North Beach', 'Russian Hill'): 4/60,
-        ('North Beach', 'Golden Gate Park'): 22/60,
-        ('North Beach', 'Richmond District'): 18/60,
-        ('North Beach', 'Embarcadero'): 6/60,
-        ('North Beach', 'Financial District'): 8/60,
-        ('North Beach', 'Marina District'): 9/60,
-        ('Golden Gate Park', 'Mission District'): 17/60,
-        ('Golden Gate Park', 'Alamo Square'): 9/60,
-        ('Golden Gate Park', 'Presidio'): 11/60,
-        ('Golden Gate Park', 'Russian Hill'): 19/60,
-        ('Golden Gate Park', 'North Beach'): 23/60,
-        ('Golden Gate Park', 'Richmond District'): 7/60,
-        ('Golden Gate Park', 'Embarcadero'): 25/60,
-        ('Golden Gate Park', 'Financial District'): 26/60,
-        ('Golden Gate Park', 'Marina District'): 16/60,
-        ('Richmond District', 'Mission District'): 20/60,
-        ('Richmond District', 'Alamo Square'): 13/60,
-        ('Richmond District', 'Presidio'): 7/60,
-        ('Richmond District', 'Russian Hill'): 13/60,
-        ('Richmond District', 'North Beach'): 17/60,
-        ('Richmond District', 'Golden Gate Park'): 9/60,
-        ('Richmond District', 'Embarcadero'): 19/60,
-        ('Richmond District', 'Financial District'): 22/60,
-        ('Richmond District', 'Marina District'): 9/60,
-        ('Embarcadero', 'Mission District'): 20/60,
-        ('Embarcadero', 'Alamo Square'): 19/60,
-        ('Embarcadero', 'Presidio'): 20/60,
-        ('Embarcadero', 'Russian Hill'): 8/60,
-        ('Embarcadero', 'North Beach'): 5/60,
-        ('Embarcadero', 'Golden Gate Park'): 25/60,
-        ('Embarcadero', 'Richmond District'): 21/60,
-        ('Embarcadero', 'Financial District'): 5/60,
-        ('Embarcadero', 'Marina District'): 12/60,
-        ('Financial District', 'Mission District'): 17/60,
-        ('Financial District', 'Alamo Square'): 17/60,
-        ('Financial District', 'Presidio'): 22/60,
-        ('Financial District', 'Russian Hill'): 11/60,
-        ('Financial District', 'North Beach'): 7/60,
-        ('Financial District', 'Golden Gate Park'): 23/60,
-        ('Financial District', 'Richmond District'): 21/60,
-        ('Financial District', 'Embarcadero'): 4/60,
-        ('Financial District', 'Marina District'): 15/60,
-        ('Marina District', 'Mission District'): 20/60,
-        ('Marina District', 'Alamo Square'): 15/60,
-        ('Marina District', 'Presidio'): 10/60,
-        ('Marina District', 'Russian Hill'): 8/60,
-        ('Marina District', 'North Beach'): 11/60,
-        ('Marina District', 'Golden Gate Park'): 18/60,
-        ('Marina District', 'Richmond District'): 11/60,
-        ('Marina District', 'Embarcadero'): 14/60,
-        ('Marina District', 'Financial District'): 17/60,
+        "Mission District": {
+            "Alamo Square": 11,
+            "Presidio": 25,
+            "Russian Hill": 15,
+            "North Beach": 17,
+            "Golden Gate Park": 17,
+            "Richmond District": 20,
+            "Embarcadero": 19,
+            "Financial District": 15,
+            "Marina District": 19
+        },
+        "Alamo Square": {
+            "Mission District": 10,
+            "Presidio": 17,
+            "Russian Hill": 13,
+            "North Beach": 15,
+            "Golden Gate Park": 9,
+            "Richmond District": 11,
+            "Embarcadero": 16,
+            "Financial District": 17,
+            "Marina District": 15
+        },
+        "Presidio": {
+            "Mission District": 26,
+            "Alamo Square": 19,
+            "Russian Hill": 14,
+            "North Beach": 18,
+            "Golden Gate Park": 12,
+            "Richmond District": 7,
+            "Embarcadero": 20,
+            "Financial District": 23,
+            "Marina District": 11
+        },
+        "Russian Hill": {
+            "Mission District": 16,
+            "Alamo Square": 15,
+            "Presidio": 14,
+            "North Beach": 5,
+            "Golden Gate Park": 21,
+            "Richmond District": 14,
+            "Embarcadero": 8,
+            "Financial District": 11,
+            "Marina District": 7
+        },
+        "North Beach": {
+            "Mission District": 18,
+            "Alamo Square": 16,
+            "Presidio": 17,
+            "Russian Hill": 4,
+            "Golden Gate Park": 22,
+            "Richmond District": 18,
+            "Embarcadero": 6,
+            "Financial District": 8,
+            "Marina District": 9
+        },
+        "Golden Gate Park": {
+            "Mission District": 17,
+            "Alamo Square": 9,
+            "Presidio": 11,
+            "Russian Hill": 19,
+            "North Beach": 23,
+            "Richmond District": 7,
+            "Embarcadero": 25,
+            "Financial District": 26,
+            "Marina District": 16
+        },
+        "Richmond District": {
+            "Mission District": 20,
+            "Alamo Square": 13,
+            "Presidio": 7,
+            "Russian Hill": 13,
+            "North Beach": 17,
+            "Golden Gate Park": 9,
+            "Embarcadero": 19,
+            "Financial District": 22,
+            "Marina District": 9
+        },
+        "Embarcadero": {
+            "Mission District": 20,
+            "Alamo Square": 19,
+            "Presidio": 20,
+            "Russian Hill": 8,
+            "North Beach": 5,
+            "Golden Gate Park": 25,
+            "Richmond District": 21,
+            "Financial District": 5,
+            "Marina District": 12
+        },
+        "Financial District": {
+            "Mission District": 17,
+            "Alamo Square": 17,
+            "Presidio": 22,
+            "Russian Hill": 11,
+            "North Beach": 7,
+            "Golden Gate Park": 23,
+            "Richmond District": 21,
+            "Embarcadero": 4,
+            "Marina District": 17
+        },
+        "Marina District": {
+            "Mission District": 20,
+            "Alamo Square": 15,
+            "Presidio": 10,
+            "Russian Hill": 8,
+            "North Beach": 11,
+            "Golden Gate Park": 18,
+            "Richmond District": 11,
+            "Embarcadero": 14,
+            "Financial District": 17
+        }
     }
 
     # Create variables for each friend's meeting start and end times
-    meeting_vars = {}
-    for name in friends:
-        start = Real(f'start_{name}')
-        end = Real(f'end_{name}')
-        meeting_vars[name] = {'start': start, 'end': end}
+    meeting_vars = []
+    for friend in friends:
+        start = Int(f"start_{friend['name']}")
+        end = Int(f"end_{friend['name']}")
+        meeting_vars.append((friend, start, end))
 
-    # Current location starts at Mission District at 9:00 AM (9.0 hours)
-    current_time = 9.0
-    current_location = 'Mission District'
+    # Constraints for each meeting
+    for friend, start, end in meeting_vars:
+        s.add(start >= friend["available_start_min"])
+        s.add(end <= friend["available_end_min"])
+        s.add(end - start >= friend["min_duration"])
 
-    # Track the order of meetings to enforce travel times
-    meeting_order = []
+    # Starting point: Mission District at 9:00 AM (540 minutes)
+    current_location = "Mission District"
+    current_time = 540  # 9:00 AM in minutes
 
-    # Add constraints for each friend
-    for name in friends:
-        friend = friends[name]
-        start_var = meeting_vars[name]['start']
-        end_var = meeting_vars[name]['end']
+    # Prioritize friends based on earliest available start time
+    friends_sorted = sorted(friends, key=lambda x: x["available_start_min"])
 
-        # Meeting must start within friend's availability window
-        s.add(start_var >= friend['start'])
-        s.add(end_var <= friend['end'])
+    # Add travel time constraints for the prioritized order
+    prev_time = current_time
+    prev_location = current_location
+    itinerary = []
+    for friend in friends_sorted:
+        start_var = Int(f"start_{friend['name']}")
+        end_var = Int(f"end_{friend['name']}")
+        travel_time = travel_times[prev_location][friend["location"]]
+        s.add(start_var >= prev_time + travel_time)
+        itinerary.append({
+            "name": friend["name"],
+            "location": friend["location"],
+            "start_var": start_var,
+            "end_var": end_var
+        })
+        prev_time = end_var
+        prev_location = friend["location"]
 
-        # Meeting duration must be at least the minimum required
-        s.add(end_var - start_var >= friend['min_duration'])
-
-        # Add travel time constraint from previous location to current friend's location
-        if meeting_order:
-            prev_name = meeting_order[-1]
-            prev_location = friends[prev_name]['location']
-            travel_time = travel_times[(prev_location, friend['location'])]
-            s.add(start_var >= meeting_vars[prev_name]['end'] + travel_time)
-        else:
-            # First meeting must account for travel from Mission District
-            travel_time = travel_times[(current_location, friend['location'])]
-            s.add(start_var >= current_time + travel_time)
-
-        meeting_order.append(name)
-
-    # Try to solve the constraints
+    # Check if the schedule is feasible
     if s.check() == sat:
         model = s.model()
-        schedule = []
-        for name in meeting_order:
-            # Get the actual numerical values from the model
-            start_val = model[meeting_vars[name]['start']]
-            end_val = model[meeting_vars[name]['end']]
-            
-            # Convert to float values
-            start_float = float(str(start_val))
-            end_float = float(str(end_val))
-            
-            schedule.append((name, start_float, end_float))
-        
-        # Sort schedule by start time
-        schedule.sort(key=lambda x: x[1])
-        
-        # Print the schedule
-        print("SOLUTION:")
-        for name, start, end in schedule:
-            start_hr = int(start)
-            start_min = int(round((start - start_hr) * 60))
-            end_hr = int(end)
-            end_min = int(round((end - end_hr) * 60))
-            
-            # Handle minute overflow (e.g., 1.999 hours should be 2:00)
-            if start_min >= 60:
-                start_hr += 1
-                start_min -= 60
-            if end_min >= 60:
-                end_hr += 1
-                end_min -= 60
-                
-            print(f"Meet {name} at {friends[name]['location']} from {start_hr:02d}:{start_min:02d} to {end_hr:02d}:{end_min:02d}")
+        result = []
+        for entry in itinerary:
+            name = entry["name"]
+            start = model[entry["start_var"]].as_long()
+            end = model[entry["end_var"]].as_long()
+            result.append({
+                "action": "meet",
+                "person": name,
+                "start_time": minutes_to_time(start),
+                "end_time": minutes_to_time(end)
+            })
+        return {"itinerary": result}
     else:
-        print("No valid schedule found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Run the solver and print the result
+solution = solve_scheduling_problem()
+print(json.dumps(solution, indent=2))

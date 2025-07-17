@@ -1,79 +1,92 @@
 from z3 import *
+import json
 
 def main():
-    # Travel times matrix: [Bayview, Pacific Heights, Mission District, Haight-Ashbury, Financial District]
-    travel = [
-        [0, 23, 13, 19, 19],   # Bayview (0) to others
-        [22, 0, 15, 11, 13],    # Pacific Heights (1) to others
-        [15, 16, 0, 12, 17],    # Mission District (2) to others
-        [18, 12, 11, 0, 21],    # Haight-Ashbury (3) to others
-        [19, 13, 17, 19, 0]     # Financial District (4) to others
+    # Define travel_time matrix (5x5) for indices: 
+    # 0: Bayview (virtual start)
+    # 1: Mary (Pacific Heights)
+    # 2: Lisa (Mission District)
+    # 3: Betty (Haight-Ashbury)
+    # 4: Charles (Financial District)
+    travel_time = [
+        [0, 23, 13, 19, 19],
+        [22, 0, 15, 11, 13],
+        [15, 16, 0, 12, 17],
+        [18, 12, 11, 0, 21],
+        [19, 13, 17, 19, 0]
     ]
     
-    base_time = 540  # 9:00 AM in minutes from midnight
+    # Durations for each meeting (index0 is virtual, duration 0)
+    dur = [0, 45, 75, 90, 120]
     
-    friends = [
-        {'name': 'Betty', 'loc': 3, 'dur': 90, 'start_avail': 435, 'end_avail': 1035},  # 7:15 AM to 5:15 PM
-        {'name': 'Mary', 'loc': 1, 'dur': 45, 'start_avail': 600, 'end_avail': 1140},    # 10:00 AM to 7:00 PM
-        {'name': 'Charles', 'loc': 4, 'dur': 120, 'start_avail': 675, 'end_avail': 900},  # 11:15 AM to 3:00 PM
-        {'name': 'Lisa', 'loc': 2, 'dur': 75, 'start_avail': 1230, 'end_avail': 1320}     # 8:30 PM to 10:00 PM
-    ]
-    n = len(friends)
+    # Availability windows (in minutes from 9:00 AM)
+    # For each friend: [low, high] for start time
+    avail_low = [0, 60, 690, 19, 135]   # index0 unused for real meetings
+    avail_high = [0, 555, 705, 405, 240] # index0 unused for real meetings
     
-    meet = [Bool(f"meet_{i}") for i in range(n)]
-    start = [Int(f"start_{i}") for i in range(n)]
+    # Create Z3 variables
+    s = [Int(f's_{i}') for i in range(5)]
+    meet = [Bool(f'meet_{i}') for i in range(5)]
     
-    s = Solver()
+    solver = Solver()
     
-    for i in range(n):
-        min_start_avail = max(base_time, friends[i]['start_avail'])
-        min_start_travel = base_time + travel[0][friends[i]['loc']]
-        min_start = max(min_start_avail, min_start_travel)
-        
-        s.add(Implies(meet[i], start[i] >= min_start))
-        s.add(Implies(meet[i], start[i] + friends[i]['dur'] <= friends[i]['end_avail']))
+    # Virtual meeting at Bayview at time 0 (9:00 AM)
+    solver.add(meet[0] == True)
+    solver.add(s[0] == 0)
     
-    for i in range(n):
-        for j in range(i+1, n):
-            if i != j:
-                loc_i = friends[i]['loc']
-                loc_j = friends[j]['loc']
-                travel_ij = travel[loc_i][loc_j]
-                travel_ji = travel[loc_j][loc_i]
-                
-                constraint1 = (start[i] + friends[i]['dur'] + travel_ij <= start[j])
-                constraint2 = (start[j] + friends[j]['dur'] + travel_ji <= start[i])
-                
-                s.add(Implies(And(meet[i], meet[j]), Or(constraint1, constraint2)))
+    # Constraints for real meetings (indices 1 to 4)
+    for i in range(1, 5):
+        solver.add(Implies(meet[i], And(s[i] >= avail_low[i], s[i] <= avail_high[i])))
+    
+    # Constraints for every pair of meetings (including virtual)
+    for i in range(5):
+        for j in range(5):
+            if i == j:
+                continue
+            c1 = (s[j] >= s[i] + dur[i] + travel_time[i][j])
+            c2 = (s[i] >= s[j] + dur[j] + travel_time[j][i])
+            solver.add(Implies(And(meet[i], meet[j]), Or(c1, c2)))
+    
+    # Objective: maximize the number of meetings (for indices 1 to 4)
+    objective = Sum([If(meet[i], 1, 0) for i in range(1,5)])
     
     opt = Optimize()
-    opt.add(s.assertions())
-    total_meet = Sum([If(meet[i], 1, 0) for i in range(n)])
-    opt.maximize(total_meet)
+    opt.add(solver.assertions())
+    opt.maximize(objective)
     
+    schedule = []
     if opt.check() == sat:
         m = opt.model()
-        total = 0
-        result = []
-        for i in range(n):
-            is_met = m.eval(meet[i])
-            if is_met:
-                total += 1
-                start_val = m.eval(start[i])
-                if isinstance(start_val, IntNumRef):
-                    start_min = start_val.as_long()
-                else:
-                    start_min = start_val
-                hours = start_min // 60
-                minutes = start_min % 60
-                time_str = f"{hours}:{minutes:02d}"
-                result.append(f"Meet {friends[i]['name']} at {time_str}")
-            else:
-                result.append(f"Skip {friends[i]['name']}")
-        result.append(f"Total meetings: {total}")
-        print("\n".join(result))
+        friends = [None, "Mary", "Lisa", "Betty", "Charles"]
+        for i in range(1,5):
+            if is_true(m.evaluate(meet[i])):
+                start_val = m.evaluate(s[i])
+                start_minutes = start_val.as_long()
+                total_minutes = start_minutes
+                hours = total_minutes // 60
+                minutes = total_minutes % 60
+                start_time = f"{9+hours:02d}:{minutes:02d}"
+                
+                end_minutes = start_minutes + dur[i]
+                hours_end = end_minutes // 60
+                minutes_end = end_minutes % 60
+                end_time = f"{9+hours_end:02d}:{minutes_end:02d}"
+                
+                schedule.append({
+                    "action": "meet",
+                    "person": friends[i],
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
+        # Sort by start_time
+        schedule.sort(key=lambda x: x['start_time'])
     else:
-        print("No solution found")
+        # If no solution found, schedule remains empty
+        pass
+        
+    result = {"itinerary": schedule}
+    print("SOLUTION:")
+    print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

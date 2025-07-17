@@ -1,65 +1,72 @@
 from z3 import *
 
 def main():
-    # Define the variables
-    day = Int('day')
-    s = Int('s')  # start time in minutes after 9:00
-
-    # Constraints for day and s
-    constraints = [day >= 0, day <= 2, s >= 0, s <= 450]  # s <= 450 ensures meeting ends by 17:00
-
-    # Busy intervals: each interval is (start_minute, end_minute) and represents [start, end)
-    busy_intervals = {
-        0: [(0, 60), (90, 180), (210, 330), (360, 420), (450, 480)],  # Monday (Ruth's busy times)
-        1: [(0, 30), (330, 360), (0, 480)],  # Tuesday (Tyler's and Ruth's busy times)
-        2: [(90, 120), (210, 240), (270, 300), (450, 480), (0, 480)]  # Wednesday (Tyler's and Ruth's busy times)
-    }
-
-    # Monday constraints: Tyler's preference (s >= 420) and avoid busy intervals
-    monday_constraints = [s >= 420]
-    for b, e in busy_intervals[0]:
-        monday_constraints.append(Or(s + 30 <= b, s >= e))
+    # Create solver
+    s = Solver()
     
-    # Tuesday constraints: avoid busy intervals
-    tuesday_constraints = []
-    for b, e in busy_intervals[1]:
-        tuesday_constraints.append(Or(s + 30 <= b, s >= e))
+    # Define variables
+    day = Int('day')  # 0: Monday, 1: Tuesday, 2: Wednesday
+    start_minutes = Int('start_minutes')  # minutes from 9:00, range [0, 450] (since meeting is 30 min and must end by 17:00)
     
-    # Wednesday constraints: avoid busy intervals
-    wednesday_constraints = []
-    for b, e in busy_intervals[2]:
-        wednesday_constraints.append(Or(s + 30 <= b, s >= e))
+    # Basic constraints for day and start time
+    s.add(day >= 0, day <= 2)
+    s.add(start_minutes >= 0, start_minutes <= 450)  # 450 = 480 - 30 (30 minutes meeting)
     
-    # Add implications for each day
-    constraints.append(Implies(day == 0, And(monday_constraints)))
-    constraints.append(Implies(day == 1, And(tuesday_constraints)))
-    constraints.append(Implies(day == 2, And(wednesday_constraints)))
+    # Monday constraints (day 0)
+    ruth_monday_busy = [(0, 60), (90, 180), (210, 330), (360, 420), (450, 480)]
+    monday_constraint = And(
+        # Ruth's busy intervals: meeting must not overlap
+        *[Or(start_minutes + 30 <= a, start_minutes >= b) for a, b in ruth_monday_busy],
+        # Tyler's preference: avoid before 16:00 (420 minutes from 9:00)
+        start_minutes >= 420
+    )
     
-    # Solve the constraints
-    solver = Solver()
-    solver.add(constraints)
+    # Tuesday constraints (day 1) - Ruth is busy all day
+    ruth_tuesday_busy = [(0, 480)]
+    tyler_tuesday_busy = [(0, 30), (330, 360)]  # Tyler's busy times on Tuesday
+    tuesday_constraint = And(
+        *[Or(start_minutes + 30 <= a, start_minutes >= b) for a, b in ruth_tuesday_busy],
+        *[Or(start_minutes + 30 <= a, start_minutes >= b) for a, b in tyler_tuesday_busy]
+    )
     
-    if solver.check() == sat:
-        model = solver.model()
-        day_val = model[day].as_long()
-        s_val = model[s].as_long()
+    # Wednesday constraints (day 2) - Ruth is busy all day
+    ruth_wednesday_busy = [(0, 480)]
+    tyler_wednesday_busy = [(90, 120), (210, 240), (270, 300), (450, 480)]  # Tyler's busy times on Wednesday
+    wednesday_constraint = And(
+        *[Or(start_minutes + 30 <= a, start_minutes >= b) for a, b in ruth_wednesday_busy],
+        *[Or(start_minutes + 30 <= a, start_minutes >= b) for a, b in tyler_wednesday_busy]
+    )
+    
+    # Conditional constraints based on the day
+    s.add(If(day == 0, monday_constraint, 
+              If(day == 1, tuesday_constraint, wednesday_constraint)))
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        day_val = m[day].as_long()
+        start_minutes_val = m[start_minutes].as_long()
         
-        # Map day value to day name
+        # Convert day value to string
         days = ["Monday", "Tuesday", "Wednesday"]
         day_str = days[day_val]
         
         # Calculate start time (HH:MM)
-        start_hour = 9 + s_val // 60
-        start_minute = s_val % 60
-        start_time = f"{start_hour}:{start_minute:02d}"
+        total_minutes = start_minutes_val
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        start_hour = 9 + hours
+        start_time = f"{start_hour:02d}:{minutes:02d}"
         
         # Calculate end time (start time + 30 minutes)
-        end_minutes = s_val + 30
-        end_hour = 9 + end_minutes // 60
-        end_minute = end_minutes % 60
-        end_time = f"{end_hour}:{end_minute:02d}"
+        end_minutes_val = start_minutes_val + 30
+        end_hours = end_minutes_val // 60
+        end_minutes = end_minutes_val % 60
+        end_hour = 9 + end_hours
+        end_time = f"{end_hour:02d}:{end_minutes:02d}"
         
         # Output the solution
+        print("SOLUTION:")
         print(f"Day: {day_str}")
         print(f"Start Time: {start_time}")
         print(f"End Time: {end_time}")

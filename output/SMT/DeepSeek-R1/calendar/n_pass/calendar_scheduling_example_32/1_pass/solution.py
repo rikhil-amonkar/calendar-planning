@@ -1,18 +1,12 @@
 from z3 import *
 
 def main():
-    # Initialize Z3 solver and variable
-    s = Solver()
-    start_time_minutes = Int('start_time_minutes')
-    
-    # Work hours: 9:00 (0 minutes) to 17:00 (480 minutes)
-    s.add(start_time_minutes >= 0)
-    s.add(start_time_minutes + 30 <= 480)  # Meeting duration constraint
-    
-    # Frank's constraint: meeting must end by 9:30 (30 minutes from 9:00)
-    s.add(start_time_minutes + 30 <= 30)
-    
-    # Define busy slots in minutes from 9:00
+    day = "Monday"
+    work_start_minutes = 0    # 9:00
+    work_end_minutes = 480    # 17:00 (8 hours * 60 minutes)
+    meeting_duration = 30
+
+    # Busy intervals in minutes from 9:00
     emily_busy = [
         (60, 90),    # 10:00-10:30
         (150, 210),  # 11:30-12:30
@@ -32,35 +26,50 @@ def main():
         (450, 480)   # 16:30-17:00
     ]
     
-    # Function to add non-overlap constraints for a participant
-    def add_non_overlap(busy_slots):
-        for a, b in busy_slots:
-            s.add(Or(start_time_minutes + 30 <= a, start_time_minutes >= b))
+    # Initialize Z3 solver and variables
+    start = Int('start')
+    end = start + meeting_duration
+    s = Solver()
     
-    add_non_overlap(emily_busy)
-    add_non_overlap(melissa_busy)
-    add_non_overlap(frank_busy)
+    # Meeting within work hours
+    s.add(start >= work_start_minutes)
+    s.add(end <= work_end_minutes)
     
-    # Check for a solution
+    # Frank's constraint: meeting must end by 9:30 (30 minutes from 9:00)
+    s.add(end <= 30)
+    
+    # Add constraints for each participant's busy intervals
+    for a, b in emily_busy:
+        s.add(Or(end <= a, start >= b))
+    for a, b in melissa_busy:
+        s.add(Or(end <= a, start >= b))
+    for a, b in frank_busy:
+        s.add(Or(end <= a, start >= b))
+    
+    # Check for solution
     if s.check() == sat:
         model = s.model()
-        start_min = model[start_time_minutes].as_long()
+        start_val = model[start].as_long()
         
         # Convert start time to HH:MM format
-        total_min_start = 9 * 60 + start_min
-        hours_start = total_min_start // 60
-        minutes_start = total_min_start % 60
-        start_time_str = f"{hours_start}:{minutes_start:02d}"
+        total_minutes = start_val
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        actual_hour = 9 + hours
+        start_time = f"{actual_hour:02d}:{minutes:02d}"
         
-        # Convert end time to HH:MM format
-        end_min = start_min + 30
-        total_min_end = 9 * 60 + end_min
-        hours_end = total_min_end // 60
-        minutes_end = total_min_end % 60
-        end_time_str = f"{hours_end}:{minutes_end:02d}"
+        # Calculate end time
+        end_minutes = start_val + meeting_duration
+        hours_end = end_minutes // 60
+        minutes_end = end_minutes % 60
+        actual_hour_end = 9 + hours_end
+        end_time = f"{actual_hour_end:02d}:{minutes_end:02d}"
         
-        # Output the meeting time
-        print("Monday", start_time_str, end_time_str)
+        # Output the solution
+        print("SOLUTION:")
+        print(f"Day: {day}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

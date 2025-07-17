@@ -1,60 +1,67 @@
 from z3 import *
 
 def main():
-    # Convert time to minutes from 9:00 (9:00 is 0)
-    # Participants' busy intervals in minutes
-    intervals = {
+    # Define busy intervals in minutes from 9:00 (9:00 is 0 minutes)
+    participants = {
         "Christine": [(30, 90), (180, 210), (240, 270), (330, 360), (420, 450)],
         "Janice": [],
         "Bobby": [(180, 210), (330, 360)],
         "Elizabeth": [(0, 30), (150, 240), (270, 300), (360, 390), (420, 480)],
         "Tyler": [(0, 120), (180, 210), (240, 270), (390, 420), (450, 480)],
-        "Edward": [(0, 30), (60, 120), (150, 300), (330, 390), (420, 480)]
+        "Edward": [(0, 30), (60, 120), (150, 240), (330, 390), (420, 480)]
     }
     
-    # First, try with Janice's preference: meeting ends by 13:00 (240 minutes) -> S <= 210
-    S = Int('S')
+    # Create Z3 solver and variable
+    s = Int('s')
     solver = Solver()
-    solver.add(S >= 0)
-    solver.add(S <= 210)  # so that meeting ends by 13:00 (240 minutes)
+    
+    # Meeting must be within 9:00 to 17:00 and last 30 minutes
+    solver.add(s >= 0)
+    solver.add(s <= 450)  # 450 minutes is 16:30, so meeting ends at 17:00
     
     # Add constraints for each participant's busy intervals
-    for person, busy_list in intervals.items():
-        for (start, end) in busy_list:
-            # The meeting [S, S+30) should not overlap [start, end)
-            solver.add(Or(S + 30 <= start, S >= end))
+    for name, intervals in participants.items():
+        for interval in intervals:
+            a, b = interval
+            # The meeting [s, s+30) must not overlap [a, b)
+            solver.add(Or(s + 30 <= a, s >= b))
+    
+    # First, try with Janice's preference: meeting starts before 13:00 (240 minutes from 9:00)
+    solver.push()
+    solver.add(s < 240)
     
     if solver.check() == sat:
-        m = solver.model()
-        start_minutes = m[S].as_long()
+        model = solver.model()
+        start_minutes = model[s].as_long()
     else:
-        # If no solution with preference, try without the preference (meeting any time during work hours)
-        solver2 = Solver()
-        S2 = Int('S2')
-        solver2.add(S2 >= 0)
-        solver2.add(S2 <= 450)  # meeting must end by 17:00 (480 minutes)
-        for person, busy_list in intervals.items():
-            for (start, end) in busy_list:
-                solver2.add(Or(S2 + 30 <= start, S2 >= end))
-        if solver2.check() == sat:
-            m = solver2.model()
-            start_minutes = m[S2].as_long()
+        # If no solution with preference, try without the preference
+        solver.pop()
+        if solver.check() == sat:
+            model = solver.model()
+            start_minutes = model[s].as_long()
         else:
+            # According to the problem, there is a solution, so this should not happen
             print("No solution found")
             return
     
-    # Convert minutes back to time string
-    total_minutes = start_minutes
-    hours = 9 + total_minutes // 60
-    minutes = total_minutes % 60
-    start_time = f"{hours}:{minutes:02d}"
+    # Convert start_minutes back to time string
+    total_minutes_start = 9 * 60 + start_minutes
+    hours = total_minutes_start // 60
+    minutes = total_minutes_start % 60
+    start_time_str = f"{hours:02d}:{minutes:02d}"
     
-    total_minutes_end = start_minutes + 30
-    hours_end = 9 + total_minutes_end // 60
+    # Calculate end time (30 minutes later)
+    end_minutes = start_minutes + 30
+    total_minutes_end = 9 * 60 + end_minutes
+    hours_end = total_minutes_end // 60
     minutes_end = total_minutes_end % 60
-    end_time = f"{hours_end}:{minutes_end:02d}"
+    end_time_str = f"{hours_end:02d}:{minutes_end:02d}"
     
-    print(f"Monday {start_time} to {end_time}")
+    # Output the solution
+    print("SOLUTION:")
+    print("Day: Monday")
+    print(f"Start Time: {start_time_str}")
+    print(f"End Time: {end_time_str}")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

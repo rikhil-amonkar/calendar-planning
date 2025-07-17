@@ -1,57 +1,44 @@
 from z3 import *
 
 def main():
-    # Define the start and end of the work day in minutes from 9:00
-    work_start = 0    # 9:00
-    work_end = 480    # 17:00 (8 hours * 60 minutes)
-    meeting_duration = 30
-
-    # The variable for the meeting start time (in minutes from 9:00)
-    start = Int('start')
-
-    # Create an optimizer
-    s = Optimize()
-    s.add(start >= work_start, start <= work_end - meeting_duration)
-
-    # Define busy intervals for each participant
-    # Denise: two intervals (in minutes from 9:00)
-    denise_busy = [(180, 210), (390, 420)]
-    # Natalie: four intervals
-    natalie_busy = [(0, 150), (180, 240), (300, 330), (360, 480)]
-
-    # For Denise: for each busy interval, meeting must not overlap
-    for interval in denise_busy:
-        a, b = interval
-        s.add(Or(start + meeting_duration <= a, start >= b))
-
-    # For Natalie
-    for interval in natalie_busy:
-        a, b = interval
-        s.add(Or(start + meeting_duration <= a, start >= b))
-
-    # Angela has no constraints, so nothing to add
-
-    # We want the earliest time, so minimize start
-    s.minimize(start)
-
-    # Check the model
-    if s.check() == sat:
-        m = s.model()
-        start_val = m[start].as_long()
-        # Convert to time string
-        total_minutes = start_val
-        hours = total_minutes // 60
-        minutes = total_minutes % 60
-        # Format the time without leading zero for hour, but with two digits for minutes if needed.
-        start_time = f"{9+hours}:{minutes:02d}"
-
-        end_val = start_val + meeting_duration
-        end_hours = end_val // 60
-        end_minutes = end_val % 60
-        end_time = f"{9+end_hours}:{end_minutes:02d}"
-
-        # Since the day is Monday
-        print(f"Day: Monday, Start: {start_time}, End: {end_time}")
+    s = Int('s')
+    opt = Optimize()
+    
+    # Work hours: 9:00 (0 minutes) to 17:00 (480 minutes)
+    opt.add(s >= 0)
+    opt.add(s + 30 <= 480)
+    
+    # Denise's constraints
+    opt.add(Or(s + 30 <= 180, s >= 210))  # Avoid 12:00-12:30
+    opt.add(Or(s + 30 <= 390, s >= 420))  # Avoid 15:30-16:00
+    
+    # Natalie's constraints
+    opt.add(s >= 150)  # Avoid 9:00-11:30
+    opt.add(Or(s + 30 <= 180, s >= 240))  # Avoid 12:00-13:00
+    opt.add(Or(s + 30 <= 300, s >= 330))  # Avoid 14:00-14:30
+    opt.add(Or(s + 30 <= 360, s >= 480))  # Avoid 15:00-17:00 (s>=480 is impossible but included for completeness)
+    
+    opt.minimize(s)
+    
+    if opt.check() == sat:
+        model = opt.model()
+        start_minutes = model[s].as_long()
+        
+        # Calculate start time in HH:MM
+        start_hour = 9 + start_minutes // 60
+        start_min = start_minutes % 60
+        start_time = f"{start_hour:02d}:{start_min:02d}"
+        
+        # Calculate end time (start_minutes + 30)
+        end_minutes = start_minutes + 30
+        end_hour = 9 + end_minutes // 60
+        end_min = end_minutes % 60
+        end_time = f"{end_hour:02d}:{end_min:02d}"
+        
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

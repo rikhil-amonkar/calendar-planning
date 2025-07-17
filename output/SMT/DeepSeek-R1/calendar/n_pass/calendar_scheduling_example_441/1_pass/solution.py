@@ -1,19 +1,12 @@
 from z3 import *
 
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1])
+    return (hours - 9) * 60 + minutes
+
 def main():
-    # Define the start variable (in minutes from 9:00)
-    start = Int('start')
-    
-    # Constraints: meeting must be within 9:00 to 17:00 (0 to 480 minutes from 9:00), and duration 30 minutes
-    constraints = [start >= 0, start <= 450]  # 450 because 480 - 30 = 450
-    
-    # Convert time string to minutes since 9:00
-    def to_minutes(time_str):
-        h, m = time_str.split(':')
-        total_minutes = int(h) * 60 + int(m)
-        return total_minutes - 540  # 9:00 is 540 minutes from midnight
-    
-    # Participants and their busy intervals
     participants = {
         "Joan": ["11:30 to 12:00", "14:30 to 15:00"],
         "Megan": ["9:00 to 10:00", "14:00 to 14:30", "16:00 to 16:30"],
@@ -24,39 +17,43 @@ def main():
         "Kathryn": ["9:30 to 10:00", "10:30 to 11:00", "11:30 to 13:00", "14:00 to 16:00", "16:30 to 17:00"]
     }
     
-    # Add constraints for each participant's busy intervals
-    for person, intervals in participants.items():
-        for interval in intervals:
-            parts = interval.split(' to ')
-            if len(parts) < 2:
-                continue
-            start_busy = to_minutes(parts[0])
-            end_busy = to_minutes(parts[1])
-            constraints.append(Or(start + 30 <= start_busy, start >= end_busy))
+    busy_intervals = []
+    for person, schedules in participants.items():
+        person_intervals = []
+        for s in schedules:
+            parts = s.split(' to ')
+            start_str = parts[0].strip()
+            end_str = parts[1].strip()
+            start_minutes = time_to_minutes(start_str)
+            end_minutes = time_to_minutes(end_str)
+            person_intervals.append((start_minutes, end_minutes))
+        busy_intervals.append(person_intervals)
     
-    # Solve the constraints
-    s = Solver()
-    s.add(constraints)
-    if s.check() == sat:
-        m = s.model()
-        start_val = m[start].as_long()
+    S = Int('S')
+    solver = Solver()
+    solver.add(S >= 0)
+    solver.add(S <= 450)  # 480 - 30 = 450
+    
+    for intervals in busy_intervals:
+        for (A, B) in intervals:
+            solver.add(Or(S + 30 <= A, S >= B))
+    
+    if solver.check() == sat:
+        model = solver.model()
+        start_minutes = model[S].as_long()
+        hours = 9 + start_minutes // 60
+        minutes = start_minutes % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Convert start_val back to time string
-        total_minutes_from_midnight = start_val + 540
-        hours = total_minutes_from_midnight // 60
-        minutes = total_minutes_from_midnight % 60
-        start_time_str = f"{hours}:{minutes:02d}"
+        end_minutes = start_minutes + 30
+        end_hours = 9 + end_minutes // 60
+        end_minutes_part = end_minutes % 60
+        end_time = f"{end_hours:02d}:{end_minutes_part:02d}"
         
-        end_val = start_val + 30
-        total_minutes_end = end_val + 540
-        hours_end = total_minutes_end // 60
-        minutes_end = total_minutes_end % 60
-        end_time_str = f"{hours_end}:{minutes_end:02d}"
-        
-        # Output the meeting time
-        print("Monday")
-        print(start_time_str)
-        print(end_time_str)
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

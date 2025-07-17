@@ -1,51 +1,65 @@
 from z3 import *
 
 def main():
-    # Work hours: 9:00 to 17:00 -> 8 hours = 480 minutes
-    total_minutes_in_work_day = 480
+    # Initialize Z3 solver
+    s = Solver()
     
-    # Only Tuesday is considered (Margaret doesn't want Monday)
-    s = Int('start_time_tuesday')
+    # Define variables: day (0 for Monday, 1 for Tuesday) and start_minute (minutes from 9:00)
+    day = Int('day')
+    start_minute = Int('start_minute')
     
-    solver = Solver()
+    # Day must be Monday (0) or Tuesday (1)
+    s.add(Or(day == 0, day == 1))
     
-    # Constraints for work hours and Margaret's preference (after 14:30)
-    solver.add(s >= 330)        # 14:30 is 5.5 hours from 9:00 -> 5.5*60 = 330 minutes
-    solver.add(s + 30 <= total_minutes_in_work_day)  # Meeting ends by 17:00 (480 minutes)
+    # Start minute must be between 0 and 450 (inclusive) to allow a 30-minute meeting within 9:00-17:00
+    s.add(start_minute >= 0, start_minute <= 450)
     
-    # Blocked intervals for Tuesday (in minutes from 9:00)
-    # Margaret: 12:00 to 12:30 -> 180 to 210 minutes
-    margaret_blocked_start = 180
-    margaret_blocked_end = 210
+    # Margaret does not want to meet on Monday, so enforce Tuesday
+    s.add(day == 1)
     
-    # Alexis: 14:00 to 16:30 -> 300 to 450 minutes
-    alexis_blocked_start = 300
-    alexis_blocked_end = 450
+    # On Tuesday, Margaret does not want to meet before 14:30 (330 minutes from 9:00)
+    s.add(start_minute >= 330)
     
-    # Non-overlap constraints for Margaret's blocked interval
-    # Meeting must end by the start of the blocked interval or start after the end
-    solver.add(Or(s + 30 <= margaret_blocked_start, s >= margaret_blocked_end))
+    # Margaret's busy intervals on Tuesday (in minutes from 9:00)
+    margaret_tuesday_busy = [(180, 210)]  # 12:00 to 12:30
     
-    # Non-overlap constraints for Alexis's blocked interval
-    solver.add(Or(s + 30 <= alexis_blocked_start, s >= alexis_blocked_end))
+    # Alexis's busy intervals on Tuesday
+    alexis_tuesday_busy = [(0, 30), (60, 90), (300, 450)]  # 9:00-9:30, 10:00-10:30, 14:00-16:30
     
-    # Check for solution
-    if solver.check() == sat:
-        model = solver.model()
-        start_minutes = model[s].as_long()
+    # Add constraints to avoid Margaret's busy intervals
+    for (busy_start, busy_end) in margaret_tuesday_busy:
+        s.add(Or(start_minute + 30 <= busy_start, start_minute >= busy_end))
+    
+    # Add constraints to avoid Alexis's busy intervals
+    for (busy_start, busy_end) in alexis_tuesday_busy:
+        s.add(Or(start_minute + 30 <= busy_start, start_minute >= busy_end))
+    
+    # Check for a feasible solution
+    if s.check() == sat:
+        m = s.model()
+        d = m[day].as_long()
+        sm = m[start_minute].as_long()
         
-        # Calculate start time in HH:MM
-        start_hour = 9 + start_minutes // 60
-        start_minute = start_minutes % 60
-        start_time = f"{start_hour}:{start_minute:02d}"
+        # Convert day index to string
+        day_str = "Tuesday" if d == 1 else "Monday"
         
-        # Calculate end time
-        end_minutes = start_minutes + 30
-        end_hour = 9 + end_minutes // 60
-        end_minute = end_minutes % 60
-        end_time = f"{end_hour}:{end_minute:02d}"
+        # Calculate start time in HH:MM format
+        total_minutes_start = sm
+        hours_start = 9 + total_minutes_start // 60
+        minutes_start = total_minutes_start % 60
+        start_time = f"{hours_start:02d}:{minutes_start:02d}"
         
-        print(f"Tuesday {start_time} {end_time}")
+        # Calculate end time (start time + 30 minutes)
+        total_minutes_end = sm + 30
+        hours_end = 9 + total_minutes_end // 60
+        minutes_end = total_minutes_end % 60
+        end_time = f"{hours_end:02d}:{minutes_end:02d}"
+        
+        # Output the solution in the required format
+        print("SOLUTION:")
+        print(f"Day: {day_str}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

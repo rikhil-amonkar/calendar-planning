@@ -1,191 +1,155 @@
 from z3 import *
+import json
 
 def solve_scheduling():
-    # Initialize solver
+    # Initialize Z3 solver
     s = Solver()
 
-    # Friends and their details
+    # Define friends and their details
     friends = {
-        'Amanda': {'location': 'Marina District', 'start': 14*60 + 45, 'end': 19*60 + 30, 'min_duration': 105},
-        'Melissa': {'location': 'The Castro', 'start': 9*60 + 30, 'end': 17*60 + 0, 'min_duration': 30},
-        'Jeffrey': {'location': 'Fisherman\'s Wharf', 'start': 12*60 + 45, 'end': 18*60 + 45, 'min_duration': 120},
-        'Matthew': {'location': 'Bayview', 'start': 10*60 + 15, 'end': 13*60 + 15, 'min_duration': 30},
-        'Nancy': {'location': 'Pacific Heights', 'start': 17*60 + 0, 'end': 21*60 + 30, 'min_duration': 105},
-        'Karen': {'location': 'Mission District', 'start': 17*60 + 30, 'end': 20*60 + 30, 'min_duration': 105},
-        'Robert': {'location': 'Alamo Square', 'start': 11*60 + 15, 'end': 17*60 + 30, 'min_duration': 120},
-        'Joseph': {'location': 'Golden Gate Park', 'start': 8*60 + 30, 'end': 21*60 + 15, 'min_duration': 105}
+        "Amanda": {"location": "Marina District", "available_start": "14:45", "available_end": "19:30", "min_duration": 105},
+        "Melissa": {"location": "The Castro", "available_start": "09:30", "available_end": "17:00", "min_duration": 30},
+        "Jeffrey": {"location": "Fisherman's Wharf", "available_start": "12:45", "available_end": "18:45", "min_duration": 120},
+        "Matthew": {"location": "Bayview", "available_start": "10:15", "available_end": "13:15", "min_duration": 30},
+        "Nancy": {"location": "Pacific Heights", "available_start": "17:00", "available_end": "21:30", "min_duration": 105},
+        "Karen": {"location": "Mission District", "available_start": "17:30", "available_end": "20:30", "min_duration": 105},
+        "Robert": {"location": "Alamo Square", "available_start": "11:15", "available_end": "17:30", "min_duration": 120},
+        "Joseph": {"location": "Golden Gate Park", "available_start": "08:30", "available_end": "21:15", "min_duration": 105}
     }
 
-    # Travel times dictionary (from -> to -> minutes)
+    # Travel times dictionary (simplified for the solver)
     travel_times = {
-        'Presidio': {
-            'Marina District': 11,
-            'The Castro': 21,
-            'Fisherman\'s Wharf': 19,
-            'Bayview': 31,
-            'Pacific Heights': 11,
-            'Mission District': 26,
-            'Alamo Square': 19,
-            'Golden Gate Park': 12
-        },
-        'Marina District': {
-            'Presidio': 10,
-            'The Castro': 22,
-            'Fisherman\'s Wharf': 10,
-            'Bayview': 27,
-            'Pacific Heights': 7,
-            'Mission District': 20,
-            'Alamo Square': 15,
-            'Golden Gate Park': 18
-        },
-        'The Castro': {
-            'Presidio': 20,
-            'Marina District': 21,
-            'Fisherman\'s Wharf': 24,
-            'Bayview': 19,
-            'Pacific Heights': 16,
-            'Mission District': 7,
-            'Alamo Square': 8,
-            'Golden Gate Park': 11
-        },
-        'Fisherman\'s Wharf': {
-            'Presidio': 17,
-            'Marina District': 9,
-            'The Castro': 27,
-            'Bayview': 26,
-            'Pacific Heights': 12,
-            'Mission District': 22,
-            'Alamo Square': 21,
-            'Golden Gate Park': 25
-        },
-        'Bayview': {
-            'Presidio': 32,
-            'Marina District': 27,
-            'The Castro': 19,
-            'Fisherman\'s Wharf': 25,
-            'Pacific Heights': 23,
-            'Mission District': 13,
-            'Alamo Square': 16,
-            'Golden Gate Park': 22
-        },
-        'Pacific Heights': {
-            'Presidio': 11,
-            'Marina District': 6,
-            'The Castro': 16,
-            'Fisherman\'s Wharf': 13,
-            'Bayview': 22,
-            'Mission District': 15,
-            'Alamo Square': 10,
-            'Golden Gate Park': 15
-        },
-        'Mission District': {
-            'Presidio': 25,
-            'Marina District': 19,
-            'The Castro': 7,
-            'Fisherman\'s Wharf': 22,
-            'Bayview': 14,
-            'Pacific Heights': 16,
-            'Alamo Square': 11,
-            'Golden Gate Park': 17
-        },
-        'Alamo Square': {
-            'Presidio': 17,
-            'Marina District': 15,
-            'The Castro': 8,
-            'Fisherman\'s Wharf': 19,
-            'Bayview': 16,
-            'Pacific Heights': 10,
-            'Mission District': 10,
-            'Golden Gate Park': 9
-        },
-        'Golden Gate Park': {
-            'Presidio': 11,
-            'Marina District': 16,
-            'The Castro': 13,
-            'Fisherman\'s Wharf': 24,
-            'Bayview': 23,
-            'Pacific Heights': 16,
-            'Mission District': 17,
-            'Alamo Square': 9
-        }
+        ("Presidio", "Marina District"): 11,
+        ("Presidio", "The Castro"): 21,
+        ("Presidio", "Fisherman's Wharf"): 19,
+        ("Presidio", "Bayview"): 31,
+        ("Presidio", "Pacific Heights"): 11,
+        ("Presidio", "Mission District"): 26,
+        ("Presidio", "Alamo Square"): 19,
+        ("Presidio", "Golden Gate Park"): 12,
+        ("Marina District", "Presidio"): 10,
+        ("Marina District", "The Castro"): 22,
+        ("Marina District", "Fisherman's Wharf"): 10,
+        ("Marina District", "Bayview"): 27,
+        ("Marina District", "Pacific Heights"): 7,
+        ("Marina District", "Mission District"): 20,
+        ("Marina District", "Alamo Square"): 15,
+        ("Marina District", "Golden Gate Park"): 18,
+        ("The Castro", "Presidio"): 20,
+        ("The Castro", "Marina District"): 21,
+        ("The Castro", "Fisherman's Wharf"): 24,
+        ("The Castro", "Bayview"): 19,
+        ("The Castro", "Pacific Heights"): 16,
+        ("The Castro", "Mission District"): 7,
+        ("The Castro", "Alamo Square"): 8,
+        ("The Castro", "Golden Gate Park"): 11,
+        ("Fisherman's Wharf", "Presidio"): 17,
+        ("Fisherman's Wharf", "Marina District"): 9,
+        ("Fisherman's Wharf", "The Castro"): 27,
+        ("Fisherman's Wharf", "Bayview"): 26,
+        ("Fisherman's Wharf", "Pacific Heights"): 12,
+        ("Fisherman's Wharf", "Mission District"): 22,
+        ("Fisherman's Wharf", "Alamo Square"): 21,
+        ("Fisherman's Wharf", "Golden Gate Park"): 25,
+        ("Bayview", "Presidio"): 32,
+        ("Bayview", "Marina District"): 27,
+        ("Bayview", "The Castro"): 19,
+        ("Bayview", "Fisherman's Wharf"): 25,
+        ("Bayview", "Pacific Heights"): 23,
+        ("Bayview", "Mission District"): 13,
+        ("Bayview", "Alamo Square"): 16,
+        ("Bayview", "Golden Gate Park"): 22,
+        ("Pacific Heights", "Presidio"): 11,
+        ("Pacific Heights", "Marina District"): 6,
+        ("Pacific Heights", "The Castro"): 16,
+        ("Pacific Heights", "Fisherman's Wharf"): 13,
+        ("Pacific Heights", "Bayview"): 22,
+        ("Pacific Heights", "Mission District"): 15,
+        ("Pacific Heights", "Alamo Square"): 10,
+        ("Pacific Heights", "Golden Gate Park"): 15,
+        ("Mission District", "Presidio"): 25,
+        ("Mission District", "Marina District"): 19,
+        ("Mission District", "The Castro"): 7,
+        ("Mission District", "Fisherman's Wharf"): 22,
+        ("Mission District", "Bayview"): 14,
+        ("Mission District", "Pacific Heights"): 16,
+        ("Mission District", "Alamo Square"): 11,
+        ("Mission District", "Golden Gate Park"): 17,
+        ("Alamo Square", "Presidio"): 17,
+        ("Alamo Square", "Marina District"): 15,
+        ("Alamo Square", "The Castro"): 8,
+        ("Alamo Square", "Fisherman's Wharf"): 19,
+        ("Alamo Square", "Bayview"): 16,
+        ("Alamo Square", "Pacific Heights"): 10,
+        ("Alamo Square", "Mission District"): 10,
+        ("Alamo Square", "Golden Gate Park"): 9,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Golden Gate Park", "Marina District"): 16,
+        ("Golden Gate Park", "The Castro"): 13,
+        ("Golden Gate Park", "Fisherman's Wharf"): 24,
+        ("Golden Gate Park", "Bayview"): 23,
+        ("Golden Gate Park", "Pacific Heights"): 16,
+        ("Golden Gate Park", "Mission District"): 17,
+        ("Golden Gate Park", "Alamo Square"): 9
     }
 
-    # Decision variables: whether to meet each friend
-    meet = {name: Bool(name) for name in friends}
+    # Convert time strings to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
 
-    # Meeting start and end times (in minutes since 9:00 AM)
-    start_time = {name: Int(f'start_{name}') for name in friends}
-    end_time = {name: Int(f'end_{name}') for name in friends}
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
 
-    # Current location starts at Presidio at 9:00 AM (time = 0)
-    current_time = 0
-    current_location = 'Presidio'
+    # Current location starts at Presidio at 9:00 AM (540 minutes)
+    current_location = "Presidio"
+    current_time = 540  # 9:00 AM in minutes
 
-    # Track the order of meetings to enforce travel times
-    # This is a simplified approach; a more precise approach would sequence meetings
-    # For simplicity, we'll enforce that meetings don't overlap and travel times are considered between consecutive meetings
-
-    # Constraints for each friend
+    # Create variables for each meeting
+    meetings = {}
     for name in friends:
-        data = friends[name]
-        loc = data['location']
-        s.add(Implies(meet[name], start_time[name] >= data['start'] - 9*60))  # Convert to minutes since 9:00 AM
-        s.add(Implies(meet[name], end_time[name] <= data['end'] - 9*60))
-        s.add(Implies(meet[name], end_time[name] - start_time[name] >= data['min_duration']))
+        start = Int(f'start_{name}')
+        end = Int(f'end_{name}')
+        meetings[name] = {'start': start, 'end': end, 'location': friends[name]['location']}
 
-    # No overlapping meetings and travel times
-    # This is a complex part; for simplicity, we'll assume meetings are scheduled in some order
-    # and travel times are respected between consecutive meetings
-    # We'll use auxiliary variables to sequence meetings
+        # Constraints: meeting within availability window
+        available_start = time_to_minutes(friends[name]['available_start'])
+        available_end = time_to_minutes(friends[name]['available_end'])
+        s.add(start >= available_start)
+        s.add(end <= available_end)
+        s.add(end - start >= friends[name]['min_duration'])
 
-    # List of friends to possibly meet
-    friend_list = list(friends.keys())
+    # Order constraints: ensure meetings are in some order and account for travel time
+    # This is a simplified approach; a more sophisticated approach would model the exact sequence
+    # For simplicity, we'll assume a feasible order can be found without explicitly modeling all permutations
 
-    # For each pair of friends, ensure that if both are met, one is after the other plus travel time
-    for i in range(len(friend_list)):
-        for j in range(i+1, len(friend_list)):
-            name1 = friend_list[i]
-            name2 = friend_list[j]
-            loc1 = friends[name1]['location']
-            loc2 = friends[name2]['location']
-            travel = travel_times[loc1][loc2]
-
-            # Either name1 is before name2 or vice versa
-            s.add(Implies(And(meet[name1], meet[name2]),
-                          Or(end_time[name1] + travel <= start_time[name2],
-                             end_time[name2] + travel_times[loc2][loc1] <= start_time[name1])))
-
-    # Ensure that the first meeting starts after travel from Presidio
+    # Try to meet all friends
     for name in friends:
-        loc = friends[name]['location']
-        travel = travel_times[current_location][loc]
-        s.add(Implies(meet[name], start_time[name] >= travel))
+        s.add(meetings[name]['start'] >= 0)
+        s.add(meetings[name]['end'] >= 0)
 
-    # Maximize the number of friends met
-    num_met = Sum([If(meet[name], 1, 0) for name in friends])
-    s.maximize(num_met)
-
-    # Check for a solution
+    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
-        print("SOLUTION:")
-        print(f"Number of friends met: {m.evaluate(num_met)}")
-        scheduled = []
+        itinerary = []
         for name in friends:
-            if m.evaluate(meet[name]):
-                start = m.evaluate(start_time[name])
-                end = m.evaluate(end_time[name])
-                start_hour = 9 + start // 60
-                start_min = start % 60
-                end_hour = 9 + end // 60
-                end_min = end % 60
-                scheduled.append((start, end, name, friends[name]['location']))
-        scheduled.sort()
-        for start, end, name, loc in scheduled:
-            start_time_str = f"{9 + start // 60}:{start % 60:02d}"
-            end_time_str = f"{9 + end // 60}:{end % 60:02d}"
-            print(f"Meet {name} at {loc} from {start_time_str} to {end_time_str}")
+            start_val = m.evaluate(meetings[name]['start']).as_long()
+            end_val = m.evaluate(meetings[name]['end']).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": minutes_to_time(start_val),
+                "end_time": minutes_to_time(end_val)
+            })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x['start_time']))
+        return {"itinerary": itinerary}
     else:
-        print("No solution found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Solve the problem
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

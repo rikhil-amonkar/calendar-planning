@@ -1,78 +1,91 @@
-from z3 import *
+import z3
+import json
 
-def min_to_time_str(mins):
-    total = mins
-    h = 9 + total // 60
-    m = total % 60
-    if h < 12:
-        return f"{h}:{m:02d} AM"
-    elif h == 12:
-        return f"12:{m:02d} PM"
+def main():
+    solver = z3.Optimize()
+    
+    # Define variables (in minutes from midnight)
+    T = z3.Int('T')  # Departure time from Financial District
+    start_B = z3.Int('start_B')
+    end_B = z3.Int('end_B')
+    start_K = z3.Int('start_K')
+    end_K = z3.Int('end_K')
+    is_Barbara_first = z3.Bool('is_Barbara_first')
+    
+    # Constraints
+    solver.add(T >= 540)  # Must leave FD at or after 9:00 AM (540 minutes)
+    
+    # Meeting durations
+    solver.add(end_B == start_B + 45)  # 45 minutes with Barbara
+    solver.add(end_K == start_K + 90)  # 90 minutes with Kenneth
+    
+    # Availability constraints
+    solver.add(start_B >= 495)   # Barbara available from 8:15 AM (495 minutes)
+    solver.add(end_B <= 1140)    # Barbara available until 7:00 PM (1140 minutes)
+    solver.add(start_K >= 720)   # Kenneth available from 12:00 PM (720 minutes)
+    solver.add(end_K <= 900)     # Kenneth available until 3:00 PM (900 minutes)
+    
+    # Order and travel constraints
+    solver.add(z3.Or(
+        z3.And(is_Barbara_first, start_B >= T + 23, start_K >= end_B + 23),
+        z3.And(z3.Not(is_Barbara_first), start_K >= T + 5, start_B >= end_K + 23)
+    ))
+    
+    # Define the end time of the last meeting
+    last_end = z3.Int('last_end')
+    solver.add(last_end == z3.If(is_Barbara_first, end_K, end_B))
+    solver.minimize(last_end)
+    
+    # Solve the constraints
+    if solver.check() == z3.sat:
+        model = solver.model()
+        T_val = model[T].as_long()
+        start_B_val = model[start_B].as_long()
+        end_B_val = model[end_B].as_long()
+        start_K_val = model[start_K].as_long()
+        end_K_val = model[end_K].as_long()
+        is_Barbara_first_val = z3.is_true(model[is_Barbara_first])
+        
+        # Convert minutes to HH:MM format
+        def to_time_str(total_minutes):
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+            return f"{hours:02d}:{minutes:02d}"
+        
+        # Create itinerary in chronological order
+        itinerary = []
+        if is_Barbara_first_val:
+            itinerary.append({
+                "action": "meet",
+                "person": "Barbara",
+                "start_time": to_time_str(start_B_val),
+                "end_time": to_time_str(end_B_val)
+            })
+            itinerary.append({
+                "action": "meet",
+                "person": "Kenneth",
+                "start_time": to_time_str(start_K_val),
+                "end_time": to_time_str(end_K_val)
+            })
+        else:
+            itinerary.append({
+                "action": "meet",
+                "person": "Kenneth",
+                "start_time": to_time_str(start_K_val),
+                "end_time": to_time_str(end_K_val)
+            })
+            itinerary.append({
+                "action": "meet",
+                "person": "Barbara",
+                "start_time": to_time_str(start_B_val),
+                "end_time": to_time_str(end_B_val)
+            })
+        
+        result = {"itinerary": itinerary}
+        print("SOLUTION:")
+        print(json.dumps(result))
     else:
-        if h > 12:
-            h -= 12
-        return f"{h}:{m:02d} PM"
+        print("No solution found")
 
-s = Solver()
-
-# Define variables
-go_to_ggp_first = Bool('go_to_ggp_first')
-t0 = Int('t0')
-meeting1_start = Int('meeting1_start')
-meeting1_end = Int('meeting1_end')
-meeting2_start = Int('meeting2_start')
-meeting2_end = Int('meeting2_end')
-
-s.add(t0 >= 0)
-
-# First location arrival time
-arr1 = If(go_to_ggp_first, t0 + 23, t0 + 5)
-s.add(meeting1_start >= arr1)
-s.add(meeting1_end == meeting1_start + If(go_to_ggp_first, 45, 90))
-
-# Travel to second location
-arr2 = meeting1_end + 23
-s.add(meeting2_start >= arr2)
-s.add(meeting2_end == meeting2_start + If(go_to_ggp_first, 90, 45))
-
-# Assign to friends
-b_start = If(go_to_ggp_first, meeting1_start, meeting2_start)
-b_end = If(go_to_ggp_first, meeting1_end, meeting2_end)
-k_start = If(go_to_ggp_first, meeting2_start, meeting1_start)
-k_end = If(go_to_ggp_first, meeting2_end, meeting1_end)
-
-# Constraints from availability
-s.add(b_end <= 600)   # Barbara available until 7:00 PM (600 minutes after 9:00 AM)
-s.add(k_start >= 180) # Kenneth available from 12:00 PM (180 minutes)
-s.add(k_end <= 360)   # Kenneth available until 3:00 PM (360 minutes)
-
-if s.check() == sat:
-    m = s.model()
-    t0_val = m.eval(t0).as_long()
-    go_to_ggp_first_val = is_true(m.eval(go_to_ggp_first))
-    meeting1_start_val = m.eval(meeting1_start).as_long()
-    meeting1_end_val = m.eval(meeting1_end).as_long()
-    meeting2_start_val = m.eval(meeting2_start).as_long()
-    meeting2_end_val = m.eval(meeting2_end).as_long()
-
-    # Print the schedule
-    print("SOLUTION:")
-    print("Start at Financial District at 9:00 AM.")
-    if go_to_ggp_first_val:
-        print(f"  Leave Financial District at {min_to_time_str(t0_val)}")
-        print(f"  Travel to Golden Gate Park (23 minutes)")
-        print(f"  Arrive at Golden Gate Park at {min_to_time_str(t0_val + 23)}")
-        print(f"  Meet Barbara from {min_to_time_str(meeting1_start_val)} to {min_to_time_str(meeting1_end_val)}")
-        print(f"  Travel to Chinatown (23 minutes)")
-        print(f"  Arrive at Chinatown at {min_to_time_str(meeting1_end_val + 23)}")
-        print(f"  Meet Kenneth from {min_to_time_str(meeting2_start_val)} to {min_to_time_str(meeting2_end_val)}")
-    else:
-        print(f"  Leave Financial District at {min_to_time_str(t0_val)}")
-        print(f"  Travel to Chinatown (5 minutes)")
-        print(f"  Arrive at Chinatown at {min_to_time_str(t0_val + 5)}")
-        print(f"  Meet Kenneth from {min_to_time_str(meeting1_start_val)} to {min_to_time_str(meeting1_end_val)}")
-        print(f"  Travel to Golden Gate Park (23 minutes)")
-        print(f"  Arrive at Golden Gate Park at {min_to_time_str(meeting1_end_val + 23)}")
-        print(f"  Meet Barbara from {min_to_time_str(meeting2_start_val)} to {min_to_time_str(meeting2_end_val)}")
-else:
-    print("No solution found.")
+if __name__ == "__main__":
+    main()

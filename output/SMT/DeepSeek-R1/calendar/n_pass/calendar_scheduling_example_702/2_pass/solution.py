@@ -1,68 +1,68 @@
 from z3 import *
 
 def main():
-    # Corrected busy intervals in minutes from 9:00
+    # Initialize variables
+    day = Int('day')
+    start_time = Int('start_time')
+    
+    # Busy intervals in minutes (half-open [start, end))
     robert_busy = {
-        0: [(120, 150), (300, 330), (390, 420)],   # Monday
-        1: [(90, 120), (360, 390)],                # Tuesday
-        2: [(60, 120), (150, 180), (210, 240), (270, 300), (360, 390), (420, 450)]  # Wednesday
+        0: [(660, 690), (840, 870), (930, 960)],  # Monday: 11:00-11:30, 14:00-14:30, 15:30-16:00
+        1: [(630, 660), (900, 930)],               # Tuesday: 10:30-11:00, 15:00-15:30
+        2: [(600, 660), (690, 720), (750, 780), (810, 840), (900, 930), (960, 990)]  # Wednesday: 10:00-11:00, 11:30-12:00, 12:30-13:00, 13:30-14:00, 15:00-15:30, 16:00-16:30
     }
     
     ralph_busy = {
-        0: [(60, 270), (300, 330), (360, 480)],    # Monday
-        1: [(0, 30), (60, 90), (120, 150), (180, 240), (300, 390), (420, 480)], # Tuesday
-        2: [(90, 120), (150, 180), (240, 330), (450, 480)]   # Wednesday
+        0: [(600, 810), (840, 870), (900, 1020)],  # Monday: 10:00-13:30, 14:00-14:30, 15:00-17:00
+        1: [(540, 570), (600, 630), (660, 690), (720, 780), (840, 930), (960, 1020)],  # Tuesday: 9:00-9:30, 10:00-10:30, 11:00-11:30, 12:00-13:00, 14:00-15:30, 16:00-17:00
+        2: [(630, 660), (690, 720), (780, 870), (990, 1020)]  # Wednesday: 10:30-11:00, 11:30-12:00, 13:00-14:30, 16:30-17:00
     }
     
-    # Create Z3 variables
-    d = Int('d')
-    s = Int('s')
+    # Setup optimizer
+    opt = Optimize()
+    opt.add(day >= 0, day <= 2)
+    opt.add(start_time >= 540, start_time <= 990)  # 540=9:00, 990=16:30 (since meeting ends at start+30 <= 1020=17:00)
     
-    solver = Optimize()
+    # Add constraints for Robert's busy times
+    for day_index, intervals in robert_busy.items():
+        for (b_start, b_end) in intervals:
+            opt.add(If(day == day_index, Or(start_time + 30 <= b_start, start_time >= b_end), True)
     
-    # Exclude Monday (0) due to conflict and preference
-    solver.add(Or(d == 1, d == 2))  # Only consider Tuesday (1) or Wednesday (2)
-    # Start time must be between 0 and 450 minutes (inclusive)
-    solver.add(s >= 0)
-    solver.add(s <= 450)
+    # Add constraints for Ralph's busy times
+    for day_index, intervals in ralph_busy.items():
+        for (b_start, b_end) in intervals:
+            opt.add(If(day == day_index, Or(start_time + 30 <= b_start, start_time >= b_end), True)
     
-    # Non-overlap constraints per day
-    tuesday_intervals = robert_busy[1] + ralph_busy[1]
-    wednesday_intervals = robert_busy[2] + ralph_busy[2]
+    # Minimize: lexicographic (day, start_time)
+    total = day * 10000 + start_time
+    opt.minimize(total)
     
-    # Ensure no overlap with busy intervals for the selected day
-    solver.add(Or(
-        And(d == 1, And([Or(s >= end, s + 30 <= start) for (start, end) in tuesday_intervals])),
-        And(d == 2, And([Or(s >= end, s + 30 <= start) for (start, end) in wednesday_intervals]))
-    ))
-    
-    # Minimize total minutes from Monday 9:00 (earliest availability)
-    total_minutes = d * 1440 + s  # 1440 minutes = 24 hours
-    solver.minimize(total_minutes)
-    
-    # Check for solution
-    if solver.check() == sat:
-        model = solver.model()
-        d_val = model[d].as_long()
-        s_val = model[s].as_long()
+    # Solve
+    if opt.check() == sat:
+        m = opt.model()
+        d = m[day].as_long()
+        s_time = m[start_time].as_long()
         
+        # Map day index to string
         days = ["Monday", "Tuesday", "Wednesday"]
-        day_str = days[d_val]
+        day_str = days[d]
         
-        # Calculate start time (HH:MM)
-        start_hour = 9 + s_val // 60
-        start_min = s_val % 60
-        start_time = f"{start_hour}:{start_min:02d}"
+        # Format start time
+        start_hours = s_time // 60
+        start_minutes = s_time % 60
+        start_str = f"{start_hours:02d}:{start_minutes:02d}"
         
-        # Calculate end time (start time + 30 minutes)
-        end_minutes = s_val + 30
-        end_hour = 9 + end_minutes // 60
-        end_min = end_minutes % 60
-        end_time = f"{end_hour}:{end_min:02d}"
+        # Format end time (start_time + 30 minutes)
+        end_time = s_time + 30
+        end_hours = end_time // 60
+        end_minutes = end_time % 60
+        end_str = f"{end_hours:02d}:{end_minutes:02d}"
         
+        # Output solution
+        print("SOLUTION:")
         print(f"Day: {day_str}")
-        print(f"Start: {start_time}")
-        print(f"End: {end_time}")
+        print(f"Start Time: {start_str}")
+        print(f"End Time: {end_str}")
     else:
         print("No solution found")
 

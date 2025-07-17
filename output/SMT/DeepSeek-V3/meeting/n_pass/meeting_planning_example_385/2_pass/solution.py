@@ -1,98 +1,244 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize solver
+def solve_scheduling_problem():
+    # Initialize Z3 solver
     s = Solver()
 
-    # Locations and friends
-    friends = {
-        'Jeffrey': {'location': 'Presidio', 'start': 8*60, 'end': 10*60, 'min_duration': 105},
-        'Steven': {'location': 'North Beach', 'start': 13.5*60, 'end': 22*60, 'min_duration': 45},
-        'Barbara': {'location': 'Fisherman\'s Wharf', 'start': 18*60, 'end': 21.5*60, 'min_duration': 30},
-        'John': {'location': 'Pacific Heights', 'start': 9*60, 'end': 13.5*60, 'min_duration': 15}
-    }
+    # Define the meeting variables
+    # Each meeting has a start and end time in minutes since 9:00 AM (540 minutes)
+    # Jeffrey at Presidio: 8:00 AM to 10:00 AM, min 105 minutes
+    jeffrey_start = Int('jeffrey_start')
+    jeffrey_end = Int('jeffrey_end')
+    jeffrey_duration = 105
 
-    # Travel times (in minutes) as a dictionary: (from, to) -> time
-    travel_times = {
-        ('Nob Hill', 'Presidio'): 17,
-        ('Nob Hill', 'North Beach'): 8,
-        ('Nob Hill', 'Fisherman\'s Wharf'): 11,
-        ('Nob Hill', 'Pacific Heights'): 8,
-        ('Presidio', 'Nob Hill'): 18,
-        ('Presidio', 'North Beach'): 18,
-        ('Presidio', 'Fisherman\'s Wharf'): 19,
-        ('Presidio', 'Pacific Heights'): 11,
-        ('North Beach', 'Nob Hill'): 7,
-        ('North Beach', 'Presidio'): 17,
-        ('North Beach', 'Fisherman\'s Wharf'): 5,
-        ('North Beach', 'Pacific Heights'): 8,
-        ('Fisherman\'s Wharf', 'Nob Hill'): 11,
-        ('Fisherman\'s Wharf', 'Presidio'): 17,
-        ('Fisherman\'s Wharf', 'North Beach'): 6,
-        ('Fisherman\'s Wharf', 'Pacific Heights'): 12,
-        ('Pacific Heights', 'Nob Hill'): 8,
-        ('Pacific Heights', 'Presidio'): 11,
-        ('Pacific Heights', 'North Beach'): 9,
-        ('Pacific Heights', 'Fisherman\'s Wharf'): 13
-    }
+    # John at Pacific Heights: 9:00 AM to 1:30 PM (until 810 minutes), min 15 minutes
+    john_start = Int('john_start')
+    john_end = Int('john_end')
+    john_duration = 15
 
-    # Variables for start and end times of each meeting
-    meeting_start = {name: Int(f'start_{name}') for name in friends}
-    meeting_end = {name: Int(f'end_{name}') for name in friends}
+    # Steven at North Beach: 1:30 PM (810 minutes) to 10:00 PM (1320 minutes), min 45 minutes
+    steven_start = Int('steven_start')
+    steven_end = Int('steven_end')
+    steven_duration = 45
 
-    # Current location starts at Nob Hill at 9:00 AM (540 minutes)
-    current_time = 540  # 9:00 AM in minutes
-    current_location = 'Nob Hill'
+    # Barbara at Fisherman's Wharf: 6:00 PM (1080 minutes) to 9:30 PM (1290 minutes), min 30 minutes
+    barbara_start = Int('barbara_start')
+    barbara_end = Int('barbara_end')
+    barbara_duration = 30
 
-    # Add constraints for each friend
-    for name in friends:
-        friend = friends[name]
-        s.add(meeting_start[name] >= friend['start'])
-        s.add(meeting_end[name] <= friend['end'])
-        s.add(meeting_end[name] - meeting_start[name] >= friend['min_duration'])
+    # Convert all times to minutes since 9:00 AM (0 minutes is 9:00 AM)
+    # Jeffrey's window: 8:00 AM is -60, 10:00 AM is 60
+    s.add(jeffrey_start >= -60)
+    s.add(jeffrey_end <= 60)
+    s.add(jeffrey_end - jeffrey_start >= jeffrey_duration)
 
-    # Determine meeting order (try all permutations to find feasible schedule)
-    from itertools import permutations
-    for order in permutations(friends.keys()):
-        temp_solver = Solver()
-        temp_solver.add(s.assertions())
+    # John's window: 9:00 AM (0) to 1:30 PM (270)
+    s.add(john_start >= 0)
+    s.add(john_end <= 270)
+    s.add(john_end - john_start >= john_duration)
 
-        # Enforce travel times between meetings
-        for i in range(len(order) - 1):
-            from_meeting = order[i]
-            to_meeting = order[i + 1]
-            from_loc = friends[from_meeting]['location']
-            to_loc = friends[to_meeting]['location']
-            travel_time = travel_times.get((from_loc, to_loc), 0)
-            temp_solver.add(meeting_start[to_meeting] >= meeting_end[from_meeting] + travel_time)
+    # Steven's window: 1:30 PM (810) to 10:00 PM (1320)
+    s.add(steven_start >= 810)
+    s.add(steven_end <= 1320)
+    s.add(steven_end - steven_start >= steven_duration)
 
-        # First meeting must be after travel from Nob Hill
-        first_meeting = order[0]
-        first_loc = friends[first_meeting]['location']
-        travel_time = travel_times.get((current_location, first_loc), 0)
-        temp_solver.add(meeting_start[first_meeting] >= current_time + travel_time)
+    # Barbara's window: 6:00 PM (1080) to 9:30 PM (1290)
+    s.add(barbara_start >= 1080)
+    s.add(barbara_end <= 1290)
+    s.add(barbara_end - barbara_start >= barbara_duration)
 
-        if temp_solver.check() == sat:
-            m = temp_solver.model()
-            schedule = []
-            for name in friends:
-                start = m[meeting_start[name]].as_long()
-                end = m[meeting_end[name]].as_long()
-                schedule.append({
-                    'friend': name,
-                    'location': friends[name]['location'],
-                    'start': f"{start // 60}:{start % 60:02d}",
-                    'end': f"{end // 60}:{end % 60:02d}",
-                    'duration': end - start
-                })
-            return schedule
+    # Travel times (in minutes)
+    # From Nob Hill to Presidio: 17 minutes
+    # From Presidio to Pacific Heights: 11 minutes
+    # From Pacific Heights to North Beach: 8 minutes
+    # From North Beach to Fisherman's Wharf: 5 minutes
 
-    return None
+    # Sequence: Jeffrey -> John -> Steven -> Barbara
+    # Start at Nob Hill at 0 minutes (9:00 AM)
+    # Travel to Presidio: 17 minutes
+    s.add(jeffrey_start >= 17)
+    s.add(jeffrey_end <= 60)
 
-schedule = solve_scheduling()
-if schedule:
-    print("SOLUTION:")
-    for meeting in schedule:
-        print(f"Meet {meeting['friend']} at {meeting['location']} from {meeting['start']} to {meeting['end']} (duration: {meeting['duration']} minutes)")
-else:
-    print("No valid schedule found.")
+    # After meeting Jeffrey, travel to Pacific Heights: 11 minutes
+    s.add(john_start >= jeffrey_end + 11)
+    s.add(john_end <= 270)
+
+    # After meeting John, travel to North Beach: 8 minutes
+    s.add(steven_start >= john_end + 8)
+    s.add(steven_start >= 810)
+
+    # After meeting Steven, travel to Fisherman's Wharf: 5 minutes
+    s.add(barbara_start >= steven_end + 5)
+    s.add(barbara_start >= 1080)
+
+    # Check if all meetings can be scheduled
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+
+        # Function to convert minutes since 9:00 AM to HH:MM string
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes  # 9:00 AM is 540 minutes since midnight
+            hours = total_minutes // 60
+            mins = total_minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        # Add Jeffrey's meeting
+        jeffrey_s = model[jeffrey_start].as_long()
+        jeffrey_e = model[jeffrey_end].as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        # Add John's meeting
+        john_s = model[john_start].as_long()
+        john_e = model[john_end].as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "John",
+            "start_time": to_time_str(john_s),
+            "end_time": to_time_str(john_e)
+        })
+
+        # Add Steven's meeting
+        steven_s = model[steven_start].as_long()
+        steven_e = model[steven_end].as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Steven",
+            "start_time": to_time_str(steven_s),
+            "end_time": to_time_str(steven_e)
+        })
+
+        # Add Barbara's meeting
+        barbara_s = model[barbara_start].as_long()
+        barbara_e = model[barbara_end].as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Barbara",
+            "start_time": to_time_str(barbara_s),
+            "end_time": to_time_str(barbara_e)
+        })
+
+        return {"itinerary": itinerary}
+    else:
+        # Try alternative sequences if the first one fails
+        s.reset()
+        s = Solver()
+
+        # Define the meeting variables again
+        jeffrey_start = Int('jeffrey_start')
+        jeffrey_end = Int('jeffrey_end')
+        jeffrey_duration = 105
+
+        john_start = Int('john_start')
+        john_end = Int('john_end')
+        john_duration = 15
+
+        steven_start = Int('steven_start')
+        steven_end = Int('steven_end')
+        steven_duration = 45
+
+        barbara_start = Int('barbara_start')
+        barbara_end = Int('barbara_end')
+        barbara_duration = 30
+
+        # Jeffrey's window
+        s.add(jeffrey_start >= -60)
+        s.add(jeffrey_end <= 60)
+        s.add(jeffrey_end - jeffrey_start >= jeffrey_duration)
+
+        # John's window
+        s.add(john_start >= 0)
+        s.add(john_end <= 270)
+        s.add(john_end - john_start >= john_duration)
+
+        # Steven's window
+        s.add(steven_start >= 810)
+        s.add(steven_end <= 1320)
+        s.add(steven_end - steven_start >= steven_duration)
+
+        # Barbara's window
+        s.add(barbara_start >= 1080)
+        s.add(barbara_end <= 1290)
+        s.add(barbara_end - barbara_start >= barbara_duration)
+
+        # Alternative sequence: John -> Jeffrey -> Steven -> Barbara
+        # Start at Nob Hill at 0 minutes (9:00 AM)
+        # John is at Pacific Heights, which is 8 minutes from Nob Hill
+        s.add(john_start >= 8)
+        s.add(john_end <= 270)
+
+        # After meeting John, travel to Presidio: Pacific Heights to Presidio is 11 minutes
+        s.add(jeffrey_start >= john_end + 11)
+        s.add(jeffrey_end <= 60)
+
+        # After meeting Jeffrey, travel to North Beach: Presidio to North Beach is 18 minutes
+        s.add(steven_start >= jeffrey_end + 18)
+        s.add(steven_start >= 810)
+
+        # After meeting Steven, travel to Fisherman's Wharf: North Beach to Fisherman's Wharf is 5 minutes
+        s.add(barbara_start >= steven_end + 5)
+        s.add(barbara_start >= 1080)
+
+        if s.check() == sat:
+            model = s.model()
+            itinerary = []
+
+            def to_time_str(minutes):
+                total_minutes = 540 + minutes
+                hours = total_minutes // 60
+                mins = total_minutes % 60
+                return f"{hours:02d}:{mins:02d}"
+
+            # Add John's meeting
+            john_s = model[john_start].as_long()
+            john_e = model[john_end].as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "John",
+                "start_time": to_time_str(john_s),
+                "end_time": to_time_str(john_e)
+            })
+
+            # Add Jeffrey's meeting
+            jeffrey_s = model[jeffrey_start].as_long()
+            jeffrey_e = model[jeffrey_end].as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Jeffrey",
+                "start_time": to_time_str(jeffrey_s),
+                "end_time": to_time_str(jeffrey_e)
+            })
+
+            # Add Steven's meeting
+            steven_s = model[steven_start].as_long()
+            steven_e = model[steven_end].as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Steven",
+                "start_time": to_time_str(steven_s),
+                "end_time": to_time_str(steven_e)
+            })
+
+            # Add Barbara's meeting
+            barbara_s = model[barbara_start].as_long()
+            barbara_e = model[barbara_end].as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Barbara",
+                "start_time": to_time_str(barbara_s),
+                "end_time": to_time_str(barbara_e)
+            })
+
+            return {"itinerary": itinerary}
+        else:
+            return {"itinerary": []}
+
+# Solve the problem and print the result
+result = solve_scheduling_problem()
+print(json.dumps(result, indent=2))

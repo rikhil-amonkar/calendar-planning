@@ -1,31 +1,20 @@
 from z3 import *
+import json
 
 def solve_scheduling():
-    # Initialize solver
     s = Solver()
 
-    # Define all time points in minutes since midnight
-    castro_arrival = 540  # 9:00 AM (540 minutes)
-    
-    # Friend availability windows
-    emily_start_avail = 705   # 11:45 AM
-    emily_end_avail = 915      # 3:15 PM
-    barbara_start_avail = 1005 # 4:45 PM
-    barbara_end_avail = 1095   # 6:15 PM
-    william_start_avail = 1095 # 5:15 PM
-    william_end_avail = 1200   # 7:00 PM
+    # Convert times to minutes since midnight for easier arithmetic
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
 
-    # Meeting duration requirements
-    emily_min_duration = 105  # 1 hour 45 minutes
-    barbara_min_duration = 60 # 1 hour
-    william_min_duration = 105 # 1 hour 45 minutes
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
 
-    # Travel times in minutes
-    castro_to_alamo = 8
-    alamo_to_union = 14
-    union_to_china = 7
-
-    # Define meeting start and end times
+    # Define time variables (in minutes since midnight)
     emily_start = Int('emily_start')
     emily_end = Int('emily_end')
     barbara_start = Int('barbara_start')
@@ -33,44 +22,96 @@ def solve_scheduling():
     william_start = Int('william_start')
     william_end = Int('william_end')
 
-    # Add constraints for Emily
-    s.add(emily_start >= emily_start_avail)
-    s.add(emily_end <= emily_end_avail)
-    s.add(emily_end - emily_start >= emily_min_duration)
-    s.add(emily_start >= castro_arrival + castro_to_alamo)
+    # Meeting durations in minutes
+    emily_duration = 105
+    barbara_duration = 60
+    william_duration = 105
 
-    # Add constraints for Barbara
-    s.add(barbara_start >= barbara_start_avail)
-    s.add(barbara_end <= barbara_end_avail)
-    s.add(barbara_end - barbara_start >= barbara_min_duration)
-    s.add(barbara_start >= emily_end + alamo_to_union)
+    # Availability windows (in minutes since midnight)
+    emily_window_start = time_to_minutes("11:45")
+    emily_window_end = time_to_minutes("15:15")
+    barbara_window_start = time_to_minutes("16:45")
+    barbara_window_end = time_to_minutes("18:15")
+    william_window_start = time_to_minutes("17:15")
+    william_window_end = time_to_minutes("19:00")
 
-    # Add constraints for William
-    s.add(william_start >= william_start_avail)
-    s.add(william_end <= william_end_avail)
-    s.add(william_end - william_start >= william_min_duration)
-    s.add(william_start >= barbara_end + union_to_china)
+    # Travel times between locations (in minutes)
+    travel = {
+        ('Castro', 'Alamo Square'): 8,
+        ('Alamo Square', 'Union Square'): 14,
+        ('Alamo Square', 'Chinatown'): 16,
+        ('Union Square', 'Chinatown'): 7,
+        ('Union Square', 'Alamo Square'): 15,
+        ('Chinatown', 'Union Square'): 7
+    }
 
-    # Check for satisfiability
+    # Meeting constraints
+    s.add(emily_start >= emily_window_start)
+    s.add(emily_end <= emily_window_end)
+    s.add(emily_end == emily_start + emily_duration)
+
+    s.add(barbara_start >= barbara_window_start)
+    s.add(barbara_end <= barbara_window_end)
+    s.add(barbara_end == barbara_start + barbara_duration)
+
+    s.add(william_start >= william_window_start)
+    s.add(william_end <= william_window_end)
+    s.add(william_end == william_start + william_duration)
+
+    # Define possible meeting orders
+    order1 = And(
+        barbara_start >= emily_end + travel[('Alamo Square', 'Union Square')],
+        william_start >= barbara_end + travel[('Union Square', 'Chinatown')]
+    )
+    
+    order2 = And(
+        william_start >= emily_end + travel[('Alamo Square', 'Chinatown')],
+        barbara_start >= william_end + travel[('Chinatown', 'Union Square')]
+    )
+
+    # Try both possible orders
+    s.add(Or(order1, order2))
+
+    # Starting at Castro at 9:00 (540 minutes)
+    s.add(emily_start >= 540 + travel[('Castro', 'Alamo Square')])
+
     if s.check() == sat:
-        m = s.model()
-        
-        def format_time(minutes):
-            hours = minutes // 60
-            mins = minutes % 60
-            ampm = "AM" if hours < 12 else "PM"
-            hours = hours % 12
-            if hours == 0:
-                hours = 12
-            return f"{hours}:{mins:02d} {ampm}"
+        model = s.model()
+        itinerary = []
 
-        print("SOLUTION:")
-        print(f"1. Meet Emily at Alamo Square from {format_time(m[emily_start].as_long())} to {format_time(m[emily_end].as_long())}")
-        print(f"2. Travel to Union Square (14 mins)")
-        print(f"3. Meet Barbara at Union Square from {format_time(m[barbara_start].as_long())} to {format_time(m[barbara_end].as_long())}")
-        print(f"4. Travel to Chinatown (7 mins)")
-        print(f"5. Meet William at Chinatown from {format_time(m[william_start].as_long())} to {format_time(m[william_end].as_long())}")
+        # Determine which order was chosen
+        if is_true(model.eval(order1)):
+            # Emily → Barbara → William
+            emily_s = model[emily_start].as_long()
+            emily_e = model[emily_end].as_long()
+            barbara_s = model[barbara_start].as_long()
+            barbara_e = model[barbara_end].as_long()
+            william_s = model[william_start].as_long()
+            william_e = model[william_end].as_long()
+            
+            itinerary = [
+                {"action": "meet", "person": "Emily", "start_time": minutes_to_time(emily_s), "end_time": minutes_to_time(emily_e)},
+                {"action": "meet", "person": "Barbara", "start_time": minutes_to_time(barbara_s), "end_time": minutes_to_time(barbara_e)},
+                {"action": "meet", "person": "William", "start_time": minutes_to_time(william_s), "end_time": minutes_to_time(william_e)}
+            ]
+        else:
+            # Emily → William → Barbara
+            emily_s = model[emily_start].as_long()
+            emily_e = model[emily_end].as_long()
+            william_s = model[william_start].as_long()
+            william_e = model[william_end].as_long()
+            barbara_s = model[barbara_start].as_long()
+            barbara_e = model[barbara_end].as_long()
+            
+            itinerary = [
+                {"action": "meet", "person": "Emily", "start_time": minutes_to_time(emily_s), "end_time": minutes_to_time(emily_e)},
+                {"action": "meet", "person": "William", "start_time": minutes_to_time(william_s), "end_time": minutes_to_time(william_e)},
+                {"action": "meet", "person": "Barbara", "start_time": minutes_to_time(barbara_s), "end_time": minutes_to_time(barbara_e)}
+            ]
+
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found that meets all constraints.")
+        return {"error": "No feasible schedule found."}
 
-solve_scheduling()
+result = solve_scheduling()
+print(json.dumps(result, indent=2))

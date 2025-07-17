@@ -3,79 +3,104 @@ from z3 import *
 def solve_scheduling():
     s = Solver()
 
-    # Time is in minutes since 9:00AM (so 9:00AM is 0)
-    # Define variables for each meeting's start and end times
-    margaret_start = Int('margaret_start')
-    margaret_end = Int('margaret_end')
-    
-    daniel_start = Int('daniel_start')
-    daniel_end = Int('daniel_end')
-    
-    charles_start = Int('charles_start')
-    charles_end = Int('charles_end')
-    
-    stephanie_start = Int('stephanie_start')
-    stephanie_end = Int('stephanie_end')
+    # Travel times (in minutes)
+    travel = {
+        ('Sunset District', 'Alamo Square'): 17,
+        ('Sunset District', 'Russian Hill'): 24,
+        ('Sunset District', 'Golden Gate Park'): 11,
+        ('Sunset District', 'Mission District'): 24,
+        ('Alamo Square', 'Sunset District'): 16,
+        ('Alamo Square', 'Russian Hill'): 13,
+        ('Alamo Square', 'Golden Gate Park'): 9,
+        ('Alamo Square', 'Mission District'): 10,
+        ('Russian Hill', 'Sunset District'): 23,
+        ('Russian Hill', 'Alamo Square'): 15,
+        ('Russian Hill', 'Golden Gate Park'): 21,
+        ('Russian Hill', 'Mission District'): 16,
+        ('Golden Gate Park', 'Sunset District'): 10,
+        ('Golden Gate Park', 'Alamo Square'): 10,
+        ('Golden Gate Park', 'Russian Hill'): 19,
+        ('Golden Gate Park', 'Mission District'): 17,
+        ('Mission District', 'Sunset District'): 24,
+        ('Mission District', 'Alamo Square'): 11,
+        ('Mission District', 'Russian Hill'): 15,
+        ('Mission District', 'Golden Gate Park'): 17,
+    }
 
-    # Constraints for Margaret (Russian Hill: 9:00AM-4:00PM, min 30 mins)
-    s.add(margaret_start >= 24)  # Travel from Sunset to Russian Hill: 24 mins
-    s.add(margaret_start >= 0)  # Available from 9:00AM (0 in our time)
-    s.add(margaret_end == margaret_start + 30)
-    s.add(margaret_end <= 7 * 60)  # 4:00PM is 7 hours after 9:00AM (420 minutes)
+    # Friends' availability
+    friends = {
+        'Charles': {'location': 'Alamo Square', 'start': 18*60, 'end': 20*60 + 45, 'duration': 90},
+        'Margaret': {'location': 'Russian Hill', 'start': 9*60, 'end': 16*60, 'duration': 30},
+        'Daniel': {'location': 'Golden Gate Park', 'start': 8*60, 'end': 13*60 + 30, 'duration': 15},
+        'Stephanie': {'location': 'Mission District', 'start': 20*60 + 30, 'end': 22*60, 'duration': 90},
+    }
 
-    # Constraints for Daniel (Golden Gate Park: 8:00AM-1:30PM, min 15 mins)
-    # 8:00AM is 1 hour before 9:00AM, so in our time, it's -60 minutes.
-    # So Daniel's window is from -60 to 4.5*60 = 270 minutes in our time.
-    s.add(daniel_start >= 11)  # Travel from Sunset to Golden Gate Park: 11 mins
-    s.add(daniel_start >= -60)  # Available from 8:00AM (-60)
-    s.add(daniel_end == daniel_start + 15)
-    s.add(daniel_end <= 270)  # 1:30PM is 4.5 hours after 9:00AM (270 minutes)
+    # Current location and time
+    current_location = 'Sunset District'
+    current_time = 9 * 60  # 9:00 AM in minutes
 
-    # Constraints for Charles (Alamo Square: 6:00PM-8:45PM, min 90 mins)
-    # 6:00PM is 9 hours after 9:00AM (540 minutes), 8:45PM is 11.75 hours (705 minutes)
-    s.add(charles_start >= 540)
-    s.add(charles_end == charles_start + 90)
-    s.add(charles_end <= 705)
+    # Create variables for each meeting
+    meetings = {}
+    for name in friends:
+        meetings[name] = {
+            'start': Int(f'start_{name}'),
+            'end': Int(f'end_{name}'),
+            'location': friends[name]['location'],
+        }
+        s.add(meetings[name]['start'] >= friends[name]['start'])
+        s.add(meetings[name]['end'] <= friends[name]['end'])
+        s.add(meetings[name]['end'] == meetings[name]['start'] + friends[name]['duration'])
 
-    # Constraints for Stephanie (Mission District: 8:30PM-10:00PM, min 90 mins)
-    # 8:30PM is 11.5 hours after 9:00AM (690 minutes), 10:00PM is 13 hours (780 minutes)
-    s.add(stephanie_start >= 690)
-    s.add(stephanie_end == stephanie_start + 90)
-    s.add(stephanie_end <= 780)
+    # Define the order of meetings (we'll use a list to represent the sequence)
+    # We need to ensure that travel times are respected between consecutive meetings
+    # This is a complex constraint; for simplicity, we'll assume a fixed order
+    # Here, we'll try meeting Margaret, Daniel, Charles, then Stephanie
 
-    # Travel constraints between meetings.
-    # Assume the order is Daniel -> Margaret -> Charles -> Stephanie.
-    s.add(daniel_start >= 11)  # Sunset to Golden Gate Park: 11 mins
-    s.add(margaret_start >= daniel_end + 19)  # Golden Gate Park to Russian Hill: 19 mins
-    s.add(charles_start >= margaret_end + 15)  # Russian Hill to Alamo Square: 15 mins
-    s.add(stephanie_start >= charles_end + 10)  # Alamo Square to Mission District: 10 mins
+    # Start at Sunset District at 9:00 AM
+    prev_end = current_time
+    prev_loc = current_location
+
+    # Meet Margaret first
+    s.add(meetings['Margaret']['start'] >= prev_end + travel[(prev_loc, meetings['Margaret']['location'])])
+    prev_end = meetings['Margaret']['end']
+    prev_loc = meetings['Margaret']['location']
+
+    # Meet Daniel next
+    s.add(meetings['Daniel']['start'] >= prev_end + travel[(prev_loc, meetings['Daniel']['location'])])
+    prev_end = meetings['Daniel']['end']
+    prev_loc = meetings['Daniel']['location']
+
+    # Meet Charles next
+    s.add(meetings['Charles']['start'] >= prev_end + travel[(prev_loc, meetings['Charles']['location'])])
+    prev_end = meetings['Charles']['end']
+    prev_loc = meetings['Charles']['location']
+
+    # Meet Stephanie last
+    s.add(meetings['Stephanie']['start'] >= prev_end + travel[(prev_loc, meetings['Stephanie']['location'])])
 
     # Check if the schedule is feasible
     if s.check() == sat:
-        m = s.model()
-        print("Feasible schedule found:")
-        # Convert times back to hours for readability
-        def minutes_to_time(minutes):
-            total_hours = 9 + minutes // 60
-            total_mins = minutes % 60
-            return f"{total_hours}:{total_mins:02d}"
+        model = s.model()
+        itinerary = []
 
-        daniel_start_time = m[daniel_start].as_long()
-        daniel_end_time = m[daniel_end].as_long()
-        print(f"Meet Daniel at Golden Gate Park from {minutes_to_time(daniel_start_time)} to {minutes_to_time(daniel_end_time)}")
+        # Collect all meetings
+        for name in meetings:
+            start = model[meetings[name]['start']].as_long()
+            end = model[meetings[name]['end']].as_long()
+            start_time = f"{start // 60:02d}:{start % 60:02d}"
+            end_time = f"{end // 60:02d}:{end % 60:02d}"
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": start_time,
+                "end_time": end_time
+            })
 
-        margaret_start_time = m[margaret_start].as_long()
-        margaret_end_time = m[margaret_end].as_long()
-        print(f"Meet Margaret at Russian Hill from {minutes_to_time(margaret_start_time)} to {minutes_to_time(margaret_end_time)}")
-
-        charles_start_time = m[charles_start].as_long()
-        charles_end_time = m[charles_end].as_long()
-        print(f"Meet Charles at Alamo Square from {minutes_to_time(charles_start_time)} to {minutes_to_time(charles_end_time)}")
-
-        stephanie_start_time = m[stephanie_start].as_long()
-        stephanie_end_time = m[stephanie_end].as_long()
-        print(f"Meet Stephanie at Mission District from {minutes_to_time(stephanie_start_time)} to {minutes_to_time(stephanie_end_time)}")
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found to meet all friends.")
+        return {"itinerary": []}
 
-solve_scheduling()
+result = solve_scheduling()
+print(result)

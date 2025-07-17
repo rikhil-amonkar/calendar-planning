@@ -1,65 +1,75 @@
 from z3 import *
 
+def time_str_to_minutes(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1])
+    return (hours - 9) * 60 + minutes
+
 def main():
-    # Convert time string to minutes from 9:00
-    def time_to_minutes(time_str):
-        parts = time_str.split(':')
-        hour = int(parts[0])
-        minute = int(parts[1])
-        return (hour - 9) * 60 + minute
-
-    # Convert minutes back to time string
-    def minutes_to_time(mins):
-        total_minutes = mins
-        hour = 9 + total_minutes // 60
-        minute = total_minutes % 60
-        return f"{hour}:{minute:02d}"
-
-    # Busy intervals for each participant in minutes (from 9:00)
-    busy_times = {
-        'Gregory': [('9:00', '9:30'), ('11:30', '12:00')],
-        'Jonathan': [('9:00', '9:30'), ('12:00', '12:30'), ('13:00', '13:30'), ('15:00', '16:00'), ('16:30', '17:00')],
-        'Barbara': [('10:00', '10:30'), ('13:30', '14:00')],
-        'Jesse': [('10:00', '11:00'), ('12:30', '14:30')],
-        'Alan': [('9:30', '11:00'), ('11:30', '12:30'), ('13:00', '15:30'), ('16:00', '17:00')],
-        'Nicole': [('9:00', '10:30'), ('11:30', '12:00'), ('12:30', '13:30'), ('14:00', '17:00')],
-        'Catherine': [('9:00', '10:30'), ('12:00', '13:30'), ('15:00', '15:30'), ('16:00', '16:30')],
-    }
-
-    # Convert all busy times to minutes
-    busy_intervals = {}
-    for person, slots in busy_times.items():
-        intervals = []
-        for (start_str, end_str) in slots:
-            s_min = time_to_minutes(start_str)
-            e_min = time_to_minutes(end_str)
-            intervals.append((s_min, e_min))
-        busy_intervals[person] = intervals
-
-    # Create Z3 solver and variable for meeting start time
+    busy_intervals = []
+    
+    # Gregory
+    busy_intervals.append((time_str_to_minutes("9:00"), time_str_to_minutes("9:30")))
+    busy_intervals.append((time_str_to_minutes("11:30"), time_str_to_minutes("12:00")))
+    
+    # Jonathan
+    busy_intervals.append((time_str_to_minutes("9:00"), time_str_to_minutes("9:30")))
+    busy_intervals.append((time_str_to_minutes("12:00"), time_str_to_minutes("12:30")))
+    busy_intervals.append((time_str_to_minutes("13:00"), time_str_to_minutes("13:30")))
+    busy_intervals.append((time_str_to_minutes("15:00"), time_str_to_minutes("16:00")))
+    busy_intervals.append((time_str_to_minutes("16:30"), time_str_to_minutes("17:00")))
+    
+    # Barbara
+    busy_intervals.append((time_str_to_minutes("10:00"), time_str_to_minutes("10:30")))
+    busy_intervals.append((time_str_to_minutes("13:30"), time_str_to_minutes("14:00")))
+    
+    # Jesse
+    busy_intervals.append((time_str_to_minutes("10:00"), time_str_to_minutes("11:00")))
+    busy_intervals.append((time_str_to_minutes("12:30"), time_str_to_minutes("14:30")))
+    
+    # Alan
+    busy_intervals.append((time_str_to_minutes("9:30"), time_str_to_minutes("11:00")))
+    busy_intervals.append((time_str_to_minutes("11:30"), time_str_to_minutes("12:30")))
+    busy_intervals.append((time_str_to_minutes("13:00"), time_str_to_minutes("15:30")))
+    busy_intervals.append((time_str_to_minutes("16:00"), time_str_to_minutes("17:00")))
+    
+    # Nicole
+    busy_intervals.append((time_str_to_minutes("9:00"), time_str_to_minutes("10:30")))
+    busy_intervals.append((time_str_to_minutes("11:30"), time_str_to_minutes("12:00")))
+    busy_intervals.append((time_str_to_minutes("12:30"), time_str_to_minutes("13:30")))
+    busy_intervals.append((time_str_to_minutes("14:00"), time_str_to_minutes("17:00")))
+    
+    # Catherine
+    busy_intervals.append((time_str_to_minutes("9:00"), time_str_to_minutes("10:30")))
+    busy_intervals.append((time_str_to_minutes("12:00"), time_str_to_minutes("13:30")))
+    busy_intervals.append((time_str_to_minutes("15:00"), time_str_to_minutes("15:30")))
+    busy_intervals.append((time_str_to_minutes("16:00"), time_str_to_minutes("16:30")))
+    
     s = Solver()
-    start = Int('start')
-    meeting_duration = 30
-
-    # Constraint: Meeting must be within 9:00 to 17:00
-    s.add(start >= 0)
-    s.add(start <= 450)  # 450 minutes = 16:30, so meeting ends at 17:00
-
-    # Add constraints for each participant's busy intervals
-    for person, intervals in busy_intervals.items():
-        for (s_busy, e_busy) in intervals:
-            # Meeting must not overlap: either ends before busy starts or starts after busy ends
-            s.add(Or(start + meeting_duration <= s_busy, start >= e_busy))
-
-    # Check for a solution
+    start_time = Int('start_time')
+    s.add(start_time >= 0)
+    s.add(start_time <= 450)  # 450 minutes from 9:00 is 16:30, ensuring meeting ends by 17:00
+    
+    for (s_busy, e_busy) in busy_intervals:
+        s.add(Or(start_time + 30 <= s_busy, start_time >= e_busy))
+    
     if s.check() == sat:
-        model = s.model()
-        start_val = model[start].as_long()
-        start_time_str = minutes_to_time(start_val)
-        end_time_str = minutes_to_time(start_val + meeting_duration)
-        print(f"Monday {start_time_str} to {end_time_str}")
+        m = s.model()
+        start_val = m[start_time].as_long()
+        total_minutes = start_val
+        hours = 9 + total_minutes // 60
+        minutes = total_minutes % 60
+        start_str = f"{hours}:{minutes:02d}"
+        end_val = start_val + 30
+        hours_end = 9 + end_val // 60
+        minutes_end = end_val % 60
+        end_str = f"{hours_end}:{minutes_end:02d}"
+        print("Day: Monday")
+        print(f"Start Time: {start_str}")
+        print(f"End Time: {end_str}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

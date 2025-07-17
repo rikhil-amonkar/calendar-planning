@@ -1,45 +1,55 @@
 from z3 import *
 
 def main():
-    # Initialize solver
-    s = Solver()
-    
-    # Work day: 9:00 (0 minutes) to 17:00 (480 minutes)
-    start = Int('start')
-    meeting_duration = 30
-    
-    # Start time must be within [0, 450] to fit the meeting before 17:00
-    s.add(start >= 0)
-    s.add(start <= 450)
-    
-    # Michael's busy intervals (in minutes)
-    michael_busy = [(30, 90), (360, 390), (420, 450)]
-    # For each busy interval, ensure the meeting doesn't overlap
-    for (busy_start, busy_end) in michael_busy:
-        s.add(Or(start + meeting_duration <= busy_start, start >= busy_end))
-    
-    # Arthur's busy intervals (in minutes)
-    arthur_busy = [(0, 180), (240, 360), (390, 420), (450, 480)]
-    for (busy_start, busy_end) in arthur_busy:
-        s.add(Or(start + meeting_duration <= busy_start, start >= busy_end))
-    
-    # Check for a solution
-    if s.check() == sat:
-        model = s.model()
-        start_minutes = model[start].as_long()
-        
-        # Convert start_minutes to time string
-        hours = 9 + start_minutes // 60
-        minutes = start_minutes % 60
-        start_time = f"{hours:02d}:{minutes:02d}"
-        
-        end_minutes = start_minutes + meeting_duration
-        hours_end = 9 + end_minutes // 60
-        minutes_end = end_minutes % 60
-        end_time = f"{hours_end:02d}:{minutes_end:02d}"
-        
-        # Output the meeting time
-        print(f"Monday {start_time} to {end_time}")
+    # Initialize variables
+    s = Int('start')
+    duration = 30
+    total_minutes_in_work_day = 8 * 60  # 9:00 to 17:00 is 8 hours = 480 minutes
+
+    # Constraints: meeting must start between 0 and (480 - duration) minutes
+    constraints = [s >= 0, s <= total_minutes_in_work_day - duration]
+
+    # Michael's busy intervals (in minutes from 9:00)
+    michael_busy = [
+        (30, 90),    # 9:30-10:30
+        (360, 390),  # 15:00-15:30
+        (420, 450)   # 16:00-16:30
+    ]
+    for start_busy, end_busy in michael_busy:
+        constraints.append(Or(s + duration <= start_busy, s >= end_busy))
+
+    # Eric has no busy intervals
+
+    # Arthur's busy intervals (in minutes from 9:00)
+    arthur_busy = [
+        (0, 180),    # 9:00-12:00
+        (240, 360),  # 13:00-15:00
+        (390, 420),  # 15:30-16:00
+        (450, 480)   # 16:30-17:00
+    ]
+    for start_busy, end_busy in arthur_busy:
+        constraints.append(Or(s + duration <= start_busy, s >= end_busy))
+
+    # Solve constraints
+    solver = Solver()
+    solver.add(constraints)
+    if solver.check() == sat:
+        model = solver.model()
+        start_val = model[s].as_long()
+        # Convert start time from minutes to HH:MM format
+        start_hour = 9 + start_val // 60
+        start_minute = start_val % 60
+        start_time = f"{start_hour:02d}:{start_minute:02d}"
+        # Calculate end time
+        end_val = start_val + duration
+        end_hour = 9 + end_val // 60
+        end_minute = end_val % 60
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
+        # Output the solution
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

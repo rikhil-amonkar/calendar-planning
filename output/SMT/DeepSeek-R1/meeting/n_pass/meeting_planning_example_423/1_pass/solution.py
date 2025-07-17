@@ -1,83 +1,94 @@
 from z3 import *
+import itertools
+from datetime import datetime, timedelta
 
 def main():
-    # Travel time matrix: [Presidio, Richmond, NorthBeach, Financial, GoldenGate, UnionSquare]
-    travel = [
-        [0, 7, 18, 23, 12, 22],     # From Presidio
-        [7, 0, 17, 22, 9, 21],      # From Richmond
-        [17, 18, 0, 8, 22, 7],      # From NorthBeach
-        [22, 21, 7, 0, 23, 9],      # From Financial
-        [11, 7, 24, 26, 0, 22],     # From GoldenGate
-        [24, 20, 10, 9, 22, 0]      # From UnionSquare
+    friends = ['Jason', 'Melissa', 'Brian', 'Elizabeth', 'Laura']
+    locations = [1, 2, 3, 4, 5]  # Corresponding location indices for each friend
+    durations = [90, 45, 15, 105, 75]  # Minimum meeting durations in minutes
+    available_start = [240, 585, 45, -15, 315]  # Minutes from 9:00 AM
+    available_end = [705, 675, 765, 750, 630]  # Minutes from 9:00 AM
+
+    # Travel time matrix: [0:Presidio, 1:Richmond, 2:North Beach, 3:Financial, 4:Golden Gate, 5:Union Square]
+    T = [
+        [0, 7, 18, 23, 12, 22],
+        [7, 0, 17, 22, 9, 21],
+        [17, 18, 0, 8, 22, 7],
+        [22, 21, 7, 0, 23, 9],
+        [11, 7, 24, 26, 0, 22],
+        [24, 20, 10, 9, 22, 0]
     ]
 
-    friends = [
-        # (name, loc_index, avail_start, avail_end, min_duration, travel_from_presidio)
-        ('Jason', 1, 240, 705, 90, travel[0][1]),
-        ('Melissa', 2, 585, 675, 45, travel[0][2]),
-        ('Brian', 3, 45, 765, 15, travel[0][3]),
-        ('Elizabeth', 4, -15, 750, 105, travel[0][4]),
-        ('Laura', 5, 315, 630, 75, travel[0][5])
-    ]
+    # Try subsets of friends from largest to smallest
+    n_friends = 5
+    base_time = datetime(2023, 1, 1, 9, 0)  # 9:00 AM base time
+    solution_found = False
+    result_schedule = []
 
-    n = len(friends)
-    active = [Bool(f[0]) for f in friends]
-    start = [Int(f'start_{f[0]}') for f in friends]
-    end = [Int(f'end_{f[0]}') for f in friends]
+    for n in range(n_friends, 0, -1):
+        for subset in itertools.combinations(range(n_friends), n):
+            s = Solver()
+            order = [Int(f'order_{i}') for i in range(n)]
+            s.add(Distinct(order))
+            s.add([And(order[i] >= 0, order[i] < n_friends) for i in range(n)])
+            for i in range(n):
+                s.add(Or([order[i] == idx for idx in subset]))
+            
+            start_times = [Int(f'start_{i}') for i in range(n)]
+            duration_vars = [Int(f'duration_{i}') for i in range(n)]
+            avail_start_vars = [Int(f'avail_start_{i}') for i in range(n)]
+            avail_end_vars = [Int(f'avail_end_{i}') for i in range(n)]
+            
+            for i in range(n):
+                for idx in range(n_friends):
+                    s.add(If(order[i] == idx, duration_vars[i] == durations[idx], True))
+                    s.add(If(order[i] == idx, avail_start_vars[i] == available_start[idx], True))
+                    s.add(If(order[i] == idx, avail_end_vars[i] == available_end[idx], True))
+            
+            # First meeting constraints
+            travel_time0 = Int('travel_time0')
+            for idx in range(n_friends):
+                s.add(If(order[0] == idx, travel_time0 == T[0][locations[idx]], True))
+            s.add(start_times[0] >= travel_time0)
+            s.add(start_times[0] >= avail_start_vars[0])
+            s.add(start_times[0] + duration_vars[0] <= avail_end_vars[0])
+            
+            # Subsequent meetings
+            for i in range(1, n):
+                travel_time_i = Int(f'travel_time_{i}')
+                for prev_idx in range(n_friends):
+                    for curr_idx in range(n_friends):
+                        s.add(If(And(order[i-1] == prev_idx, order[i] == curr_idx),
+                                  travel_time_i == T[locations[prev_idx]][locations[curr_idx]],
+                                  True))
+                s.add(start_times[i] >= start_times[i-1] + duration_vars[i-1] + travel_time_i)
+                s.add(start_times[i] >= avail_start_vars[i])
+                s.add(start_times[i] + duration_vars[i] <= avail_end_vars[i])
+            
+            if s.check() == sat:
+                model = s.model()
+                schedule = []
+                for i in range(n):
+                    friend_idx = model[order[i]].as_long()
+                    start_minutes = model[start_times[i]].as_long()
+                    end_minutes = start_minutes + durations[friend_idx]
+                    start_time = (base_time + timedelta(minutes=start_minutes)).strftime('%H:%M')
+                    end_time = (base_time + timedelta(minutes=end_minutes)).strftime('%H:%M')
+                    schedule.append({
+                        "action": "meet",
+                        "person": friends[friend_idx],
+                        "start_time": start_time,
+                        "end_time": end_time
+                    })
+                result_schedule = schedule
+                solution_found = True
+                break
+        if solution_found:
+            break
+    
+    # Output the result
+    print('SOLUTION:')
+    print(f'{{"itinerary": {result_schedule}}}')
 
-    s = Optimize()
-
-    for i in range(n):
-        name, loc_idx, avail_s, avail_e, dur, travel_p = friends[i]
-        # If meeting the friend, start time must be at least travel time from Presidio
-        s.add(Implies(active[i], start[i] >= travel_p))
-        # If availability start time is non-negative, start time must be at least that
-        if avail_s >= 0:
-            s.add(Implies(active[i], start[i] >= avail_s))
-        # Meeting duration constraint
-        s.add(Implies(active[i], end[i] == start[i] + dur))
-        # End time must be within friend's availability window
-        s.add(Implies(active[i], end[i] <= avail_e))
-
-    # Disjunctive constraints for every pair of friends
-    for i in range(n):
-        for j in range(i + 1, n):
-            name_i, loc_i, _, _, _, _ = friends[i]
-            name_j, loc_j, _, _, _, _ = friends[j]
-            T_ij = travel[loc_i][loc_j]
-            T_ji = travel[loc_j][loc_i]
-            s.add(Implies(
-                And(active[i], active[j]),
-                Or(end[i] + T_ij <= start[j], end[j] + T_ji <= start[i])
-            ))
-
-    obj = Sum([If(active[i], 1, 0) for i in range(n)])
-    s.maximize(obj)
-
-    if s.check() == sat:
-        m = s.model()
-        active_friends = []
-        for i in range(n):
-            if m.evaluate(active[i]):
-                name = friends[i][0]
-                start_val = m.evaluate(start[i])
-                end_val = m.evaluate(end[i])
-                if isinstance(start_val, IntNumRef) and isinstance(end_val, IntNumRef):
-                    start_min = start_val.as_long()
-                    end_min = end_val.as_long()
-                    start_hour = 9 + start_min // 60
-                    start_minute = start_min % 60
-                    end_hour = 9 + end_min // 60
-                    end_minute = end_min % 60
-                    start_str = f"{start_hour}:{start_minute:02d}"
-                    end_str = f"{end_hour}:{end_minute:02d}"
-                    active_friends.append((name, start_str, end_str))
-        print("We meet the following friends:")
-        for name, st, et in active_friends:
-            print(f"{name}: from {st} to {et}")
-        print(f"Total: {len(active_friends)} friends")
-    else:
-        print("No solution found")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

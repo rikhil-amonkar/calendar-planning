@@ -1,59 +1,77 @@
-from z3 import Solver, Int, Or, And, sat
+from z3 import *
 
 def main():
-    # Convert time to minutes from 9:00 (e.g., 9:30 -> 30 minutes)
-    raymond_blocks = [(0, 30), (150, 180), (240, 270), (360, 390)]
-    billy_blocks = [(60, 90), (180, 240), (450, 480)]
-    donald_blocks = [(0, 30), (60, 120), (180, 240), (300, 330), (420, 480)]
+    s = Int('s')
     
-    s = Solver()
-    start = Int('start')
-    duration = 30
+    constraints = [
+        s >= 0,
+        s <= 450   # because 450 + 30 = 480 minutes (17:00)
+    ]
     
-    # Constraint: meeting must be within 9:00 to 17:00
-    s.add(start >= 0)
-    s.add(start <= 480 - duration)
+    raymond_intervals = [
+        (0, 30),    # 9:00-9:30
+        (150, 180), # 11:30-12:00
+        (240, 270), # 13:00-13:30
+        (360, 390)  # 15:00-15:30
+    ]
     
-    # Function to add no-overlap constraints for a participant's blocks
-    def add_no_overlap_constraints(blocks):
-        for b_start, b_end in blocks:
-            s.add(Or(start + duration <= b_start, start >= b_end))
+    billy_intervals = [
+        (60, 90),   # 10:00-10:30
+        (180, 240), # 12:00-13:00
+        (450, 480)  # 16:30-17:00
+    ]
     
-    add_no_overlap_constraints(raymond_blocks)
-    add_no_overlap_constraints(billy_blocks)
-    add_no_overlap_constraints(donald_blocks)
+    donald_intervals = [
+        (0, 30),    # 9:00-9:30
+        (60, 120),  # 10:00-11:00
+        (180, 240), # 12:00-13:00
+        (300, 330), # 14:00-14:30
+        (420, 480)  # 16:00-17:00
+    ]
     
-    # First, try to meet Billy's preference: end by 15:00 (360 minutes)
-    s.push()
-    s.add(start + duration <= 360)
+    def add_interval_constraints(intervals):
+        cons = []
+        for (a, b) in intervals:
+            cons.append(Or(s + 30 <= a, s >= b))
+        return cons
     
-    if s.check() == sat:
-        m = s.model()
-        start_val = m[start].as_long()
-        s.pop()
+    constraints += add_interval_constraints(raymond_intervals)
+    constraints += add_interval_constraints(billy_intervals)
+    constraints += add_interval_constraints(donald_intervals)
+    
+    solver = Solver()
+    solver.add(constraints)
+    
+    pref_constraint = (s + 30 <= 360)  # End by 15:00 (360 minutes from 9:00)
+    
+    solver.push()
+    solver.add(pref_constraint)
+    if solver.check() == sat:
+        model = solver.model()
     else:
-        s.pop()
-        # No solution before 15:00; try any time
-        if s.check() == sat:
-            m = s.model()
-            start_val = m[start].as_long()
+        solver.pop()
+        if solver.check() == sat:
+            model = solver.model()
         else:
-            # According to the problem, a solution exists
-            raise Exception("No solution found, but one should exist")
+            print("No solution found")
+            return
     
-    # Convert start_val to time string
-    total_minutes = start_val
-    hours = 9 + total_minutes // 60
+    s_val = model.eval(s).as_long()
+    
+    total_minutes = 9 * 60 + s_val
+    hours = total_minutes // 60
     minutes = total_minutes % 60
-    start_time = f"{hours}:{minutes:02d}"
+    start_time = f"{hours:02d}:{minutes:02d}"
     
-    end_val = start_val + duration
-    total_minutes_end = end_val
-    hours_end = 9 + total_minutes_end // 60
-    minutes_end = total_minutes_end % 60
-    end_time = f"{hours_end}:{minutes_end:02d}"
+    end_minutes = total_minutes + 30
+    end_hours = end_minutes // 60
+    end_minutes = end_minutes % 60
+    end_time = f"{end_hours:02d}:{end_minutes:02d}"
     
-    print(f"Monday, {start_time}, {end_time}")
+    print("SOLUTION:")
+    print("Day: Monday")
+    print(f"Start Time: {start_time}")
+    print(f"End Time: {end_time}")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

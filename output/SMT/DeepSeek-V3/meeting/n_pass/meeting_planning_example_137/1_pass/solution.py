@@ -1,88 +1,85 @@
 from z3 import *
+import datetime
 
-def solve_scheduling():
-    # Initialize solver
+def solve_scheduling_problem():
     s = Solver()
 
-    # Define variables
-    # Time variables are in minutes since 9:00 AM (540 minutes since midnight)
-    start_kenneth = Int('start_kenneth')  # Start time of meeting with Kenneth
-    end_kenneth = Int('end_kenneth')      # End time of meeting with Kenneth
-    start_barbara = Int('start_barbara')  # Start time of meeting with Barbara
-    end_barbara = Int('end_barbara')      # End time of meeting with Barbara
+    # Define variables for meeting start and end times (in minutes from 9:00 AM)
+    k_start = Int('k_start')
+    k_end = Int('k_end')
+    b_start = Int('b_start')
+    b_end = Int('b_end')
 
-    # Travel times (in minutes)
-    fd_to_china = 5
+    # Kenneth's availability: 12:00 PM to 3:00 PM (180 to 360 minutes from 9:00 AM)
+    s.add(k_start >= 180)
+    s.add(k_end <= 360)
+    s.add(k_end - k_start >= 90)
+
+    # Barbara's availability: 8:15 AM to 7:00 PM (0 to 600 minutes from 9:00 AM)
+    s.add(b_start >= 0)
+    s.add(b_end <= 600)
+    s.add(b_end - b_start >= 45)
+
+    # Travel times
+    fd_to_ct = 5
     fd_to_ggp = 23
-    china_to_ggp = 23
-    ggp_to_china = 23
-    china_to_fd = 5
-    ggp_to_fd = 26
+    ct_to_ggp = 23
+    ggp_to_ct = 23
 
-    # Convert friend availability to minutes since 9:00 AM
-    # Kenneth is available from 12:00 PM to 3:00 PM (180 to 360 minutes since 9:00 AM)
-    kenneth_start_avail = 180  # 12:00 PM is 3 hours after 9:00 AM
-    kenneth_end_avail = 360    # 3:00 PM is 6 hours after 9:00 AM
+    # We start at Financial District at 0 minutes (9:00 AM)
+    # Two possible orders: meet Kenneth first or Barbara first
 
-    # Barbara is available from 8:15 AM to 7:00 PM (but we start at 9:00 AM)
-    # Barbara's availability starts at 8:15 AM, but we start at 9:00 AM (0 minutes)
-    barbara_start_avail = 0    # 9:00 AM is 0 minutes after 9:00 AM
-    barbara_end_avail = 600    # 7:00 PM is 10 hours after 9:00 AM
-
-    # Meeting duration constraints
-    min_kenneth_duration = 90
-    min_barbara_duration = 45
-
-    # Constraints for Kenneth
-    s.add(start_kenneth >= kenneth_start_avail)
-    s.add(end_kenneth <= kenneth_end_avail)
-    s.add(end_kenneth - start_kenneth >= min_kenneth_duration)
-
-    # Constraints for Barbara
-    s.add(start_barbara >= barbara_start_avail)
-    s.add(end_barbara <= barbara_end_avail)
-    s.add(end_barbara - start_barbara >= min_barbara_duration)
-
-    # Travel constraints
-    # We start at Financial District at time 0 (9:00 AM)
-    # We can either:
-    # 1. Go to Barbara first, then Kenneth
-    # 2. Go to Kenneth first, then Barbara
-    # We need to model both possibilities and let the solver choose the feasible one.
-
-    # Option 1: Visit Barbara first, then Kenneth
+    # Option 1: Meet Kenneth first
+    # Travel to Chinatown: 5 minutes
+    # Then meet Kenneth, then travel to GGP: 23 minutes
+    # Then meet Barbara
     option1 = And(
-        start_barbara >= fd_to_ggp,  # Travel to Barbara takes 23 minutes
-        start_kenneth >= end_barbara + china_to_ggp  # Travel from Barbara to Kenneth takes 23 minutes
+        k_start >= fd_to_ct,
+        b_start >= k_end + ct_to_ggp
     )
 
-    # Option 2: Visit Kenneth first, then Barbara
+    # Option 2: Meet Barbara first
+    # Travel to GGP: 23 minutes
+    # Then meet Barbara, then travel to Chinatown: 23 minutes
+    # Then meet Kenneth
     option2 = And(
-        start_kenneth >= fd_to_china,  # Travel to Kenneth takes 5 minutes
-        start_barbara >= end_kenneth + ggp_to_china  # Travel from Kenneth to Barbara takes 23 minutes
+        b_start >= fd_to_ggp,
+        k_start >= b_end + ggp_to_ct
     )
 
-    # Add the disjunction of the two options
+    # At least one of the options must be true
     s.add(Or(option1, option2))
 
-    # Check if the problem is satisfiable
     if s.check() == sat:
         m = s.model()
-        # Convert times back to hours/minutes for readability
-        def to_time_str(minutes):
-            hours = (minutes + 540) // 60  # 9:00 AM is 540 minutes since midnight
-            mins = (minutes + 540) % 60
-            return f"{hours}:{mins:02d}"
+        k_start_val = m.evaluate(k_start).as_long()
+        k_end_val = m.evaluate(k_end).as_long()
+        b_start_val = m.evaluate(b_start).as_long()
+        b_end_val = m.evaluate(b_end).as_long()
 
-        start_k = m.eval(start_kenneth).as_long()
-        end_k = m.eval(end_kenneth).as_long()
-        start_b = m.eval(start_barbara).as_long()
-        end_b = m.eval(end_barbara).as_long()
+        def minutes_to_time(minutes):
+            time = datetime.datetime(2023, 1, 1, 9, 0) + datetime.timedelta(minutes=minutes)
+            return time.strftime("%H:%M")
 
-        print("SOLUTION:")
-        print(f"Meet Kenneth from {to_time_str(start_k)} to {to_time_str(end_k)}")
-        print(f"Meet Barbara from {to_time_str(start_b)} to {to_time_str(end_b)}")
+        k_start_time = minutes_to_time(k_start_val)
+        k_end_time = minutes_to_time(k_end_val)
+        b_start_time = minutes_to_time(b_start_val)
+        b_end_time = minutes_to_time(b_end_val)
+
+        if k_start_val < b_start_val:
+            itinerary = [
+                {"action": "meet", "person": "Kenneth", "start_time": k_start_time, "end_time": k_end_time},
+                {"action": "meet", "person": "Barbara", "start_time": b_start_time, "end_time": b_end_time}
+            ]
+        else:
+            itinerary = [
+                {"action": "meet", "person": "Barbara", "start_time": b_start_time, "end_time": b_end_time},
+                {"action": "meet", "person": "Kenneth", "start_time": k_start_time, "end_time": k_end_time}
+            ]
+
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+result = solve_scheduling_problem()
+print(result)

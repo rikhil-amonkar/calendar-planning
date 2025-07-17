@@ -145,7 +145,7 @@ Return only the Python code:"""
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=2000
+            max_tokens=20000
         )
         
         extracted_code = response.choices[0].message.content.strip()
@@ -190,7 +190,7 @@ Expected format: {expected_format}
 
 Instructions:
 1. If the output contains valid JSON in the expected format, extract and return it
-2. If the output indicates no plan was found (like "No valid itinerary found", "No solution found", "UNSAT", "unsat", etc.), return {{"no_plan": "reason"}}
+2. If the output indicates no plan was found or if the output is empty (like "", "No valid itinerary found", "No solution found", "UNSAT", "unsat", etc.), return {{"no_plan": "reason"}}
 3. If the output contains an execution error message (like "Error:", "Exception:", "Traceback:", etc.), return {{"error": "error_message"}}
 4. If the output is malformed or unclear, try to extract any useful information or return {{"error": "malformed_output"}}
 
@@ -201,7 +201,7 @@ Return only valid JSON:"""
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0,
-            max_tokens=1000
+            max_tokens=2000
         )
         
         result = json.loads(response.choices[0].message.content)
@@ -226,6 +226,41 @@ def extract_answer_basic(answer_str, task):
     # If answer_str is None or empty, return empty dict
     if not answer_str:
         return {}
+    
+    # For calendar task, try to extract using regex patterns first
+    if task == "calendar":
+        # Try to extract from natural language format like "Here is the proposed time: Monday, 13:00 - 13:30"
+        patterns = [
+            r"(?:Here is the proposed time:|SOLUTION:?|Time:?|Meeting:?)\s*(?:Day:?\s*)?([A-Za-z]+)(?:,?\s*|,\s*)(\d{1,2}:\d{2})\s*(?:-|to)\s*(\d{1,2}:\d{2})",
+            r"([A-Za-z]+)(?:,?\s*|,\s*)(\d{1,2}:\d{2})\s*(?:-|to)\s*(\d{1,2}:\d{2})",
+            r"Day:\s*([A-Za-z]+)\s*\nStart Time:\s*(\d{1,2}:\d{2})\s*\nEnd Time:\s*(\d{1,2}:\d{2})",
+            r"Day:\s*([A-Za-z]+)\s*Start Time:\s*(\d{1,2}:\d{2})\s*End Time:\s*(\d{1,2}:\d{2})"
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, answer_str, re.IGNORECASE | re.MULTILINE)
+            if match:
+                day = match.group(1).strip()
+                start_time = match.group(2).strip()
+                end_time = match.group(3).strip()
+                
+                # Convert to 24-hour format if needed
+                if "PM" in answer_str and int(start_time.split(':')[0]) < 12:
+                    start_hour = int(start_time.split(':')[0]) + 12
+                    start_time = f"{start_hour:02d}:{start_time.split(':')[1]}"
+                if "PM" in answer_str and int(end_time.split(':')[0]) < 12:
+                    end_hour = int(end_time.split(':')[0]) + 12
+                    end_time = f"{end_hour:02d}:{end_time.split(':')[1]}"
+                if "AM" in answer_str and int(start_time.split(':')[0]) == 12:
+                    start_time = f"00:{start_time.split(':')[1]}"
+                if "AM" in answer_str and int(end_time.split(':')[0]) == 12:
+                    end_time = f"00:{end_time.split(':')[1]}"
+                
+                return {
+                    "day": day,
+                    "start_time": start_time,
+                    "end_time": end_time
+                }
         
     # For meeting task, try to extract meeting information even if it doesn't start with SOLUTION:
     if task == "meeting":
@@ -647,6 +682,12 @@ async def process_single_example(
                 initial_prompt += "  - Vienna: Day 3-6 (4 days, including the flight day)\n"
                 initial_prompt += "- The flight day (Day 3) is counted for both Venice and Vienna.\n"
                 initial_prompt += "- Do NOT create separate flight entries in the JSON.\n"
+            if task == "meeting":
+                initial_prompt += "Your output should be a JSON-formatted dictionary with an 'itinerary' key containing a list of meeting entries.\n"
+                initial_prompt += "Each meeting entry should have the following format:\n"
+                initial_prompt += '{"action": "meet", "person": "<person_name>", "start_time": "<HH:MM>", "end_time": "<HH:MM>"}\n'
+                initial_prompt += "The time should be in 24-hour format. For example:\n"
+                initial_prompt += '{"itinerary": [{"action": "meet", "person": "David", "start_time": "13:00", "end_time": "14:00"}]}\n'
             initial_prompt += "Write a Python program that solves it using the Z3 solver. Always surround your final code with ```python\nYOUR_CODE\n```.\n"
             
             current_prompt = initial_prompt
@@ -866,7 +907,7 @@ async def process_single_example(
                 if execution_error:
                     # Scenario 3: Execution error - provide error message as feedback
                     logging.info(f"[{example_id}] Pass {pass_num} execution error, preparing error feedback")
-                    current_prompt = f"The previous Z3 solution returned an error: {execution_error}\n\nPlease revise your Z3 program to fix this error. The error suggests there may be an issue with the Z3 code.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
+                    current_prompt = f"The previous Z3 solution returned an error: {execution_output}\n\nPlease revise your Z3 program to fix this error. The error suggests there may be an issue with the Z3 code.\n\nMake sure to surround your final code with ```python\nYOUR_CODE\n```."
                 
                 elif no_plan_found:
                     # Scenario 4: No plan found - suggest adjusting solution

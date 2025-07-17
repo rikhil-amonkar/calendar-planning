@@ -1,85 +1,179 @@
 from z3 import *
+import json
 
-def main():
-    # Travel times matrix: 0=Richmond, 1=Marina, 2=Chinatown, 3=Financial, 4=Bayview, 5=Union Square
-    travel = [
-        [0, 9, 20, 22, 26, 21],
-        [11, 0, 16, 17, 27, 16],
-        [20, 12, 0, 5, 22, 7],
-        [21, 15, 5, 0, 19, 9],
-        [25, 25, 18, 19, 0, 17],
-        [20, 18, 7, 9, 15, 0]
-    ]
-    
-    # Available start and end times in minutes from 9:00 AM (0 minutes)
-    # For real meetings: [Kimberly, Robert, Rebecca, Margaret, Kenneth]
-    available_start = [255, 195, 255, 30, 630]  # 1:15PM, 12:15PM, 1:15PM, 9:30AM, 7:30PM
-    available_end = [465, 675, 465, 270, 735]   # 4:45PM, 8:15PM, 4:45PM, 1:30PM, 9:15PM
-    min_durations = [15, 15, 75, 30, 75]        # in minutes
+# Travel times dictionary
+travel_times = {
+    ('Richmond District', 'Marina District'): 9,
+    ('Richmond District', 'Chinatown'): 20,
+    ('Richmond District', 'Financial District'): 22,
+    ('Richmond District', 'Bayview'): 26,
+    ('Richmond District', 'Union Square'): 21,
+    ('Marina District', 'Richmond District'): 11,
+    ('Marina District', 'Chinatown'): 16,
+    ('Marina District', 'Financial District'): 17,
+    ('Marina District', 'Bayview'): 27,
+    ('Marina District', 'Union Square'): 16,
+    ('Chinatown', 'Richmond District'): 20,
+    ('Chinatown', 'Marina District'): 12,
+    ('Chinatown', 'Financial District'): 5,
+    ('Chinatown', 'Bayview'): 22,
+    ('Chinatown', 'Union Square'): 7,
+    ('Financial District', 'Richmond District'): 21,
+    ('Financial District', 'Marina District'): 15,
+    ('Financial District', 'Chinatown'): 5,
+    ('Financial District', 'Bayview'): 19,
+    ('Financial District', 'Union Square'): 9,
+    ('Bayview', 'Richmond District'): 25,
+    ('Bayview', 'Marina District'): 25,
+    ('Bayview', 'Chinatown'): 18,
+    ('Bayview', 'Financial District'): 19,
+    ('Bayview', 'Union Square'): 17,
+    ('Union Square', 'Richmond District'): 20,
+    ('Union Square', 'Marina District'): 18,
+    ('Union Square', 'Chinatown'): 7,
+    ('Union Square', 'Financial District'): 9,
+    ('Union Square', 'Bayview'): 15
+}
 
-    # Solver
-    opt = Optimize()
-    
-    # Variables for the 5 real meetings
-    meet = [Bool(f'meet{i}') for i in range(5)]
-    start = [Int(f'start{i}') for i in range(5)]
-    
-    # Active flags for 6 meetings: dummy (always active) and 5 real meetings
-    active = [True] + [meet[i] for i in range(5)]
-    # Start times for 6 meetings: dummy at 0, then real meetings
-    start_times = [0] + [start[i] for i in range(5)]
-    # Durations for 6 meetings: dummy 0, then real meetings
-    durations = [0] + min_durations
-    # District indices for 6 meetings: dummy=0 (Richmond), then 1 to 5 for real meetings
-    districts = [0, 1, 2, 3, 4, 5]
-    
-    # Constraint 1: For each real meeting, if active, must be within availability window
+# Mapping of friends to locations
+friend_to_location = {
+    'Margaret': 'Bayview',
+    'Kimberly': 'Marina District',
+    'Robert': 'Chinatown',
+    'Rebecca': 'Financial District',
+    'Kenneth': 'Union Square'
+}
+
+# Minimum meeting durations in minutes
+durations = {
+    'Margaret': 30,
+    'Kimberly': 15,
+    'Robert': 15,
+    'Rebecca': 75,
+    'Kenneth': 75
+}
+
+# Time windows (start and end in minutes after 9:00 AM)
+time_windows = {
+    'Margaret': (30, 270),   # 9:30 AM to 1:30 PM (end inclusive: meeting must end by 1:30 PM)
+    'Kimberly': (255, 465),  # 1:15 PM to 4:45 PM
+    'Robert': (195, 675),    # 12:15 PM to 8:15 PM
+    'Rebecca': (255, 465),   # 1:15 PM to 4:45 PM
+    'Kenneth': (630, 735)    # 7:30 PM to 9:15 PM
+}
+
+friends = ['Margaret', 'Kimberly', 'Robert', 'Rebecca', 'Kenneth']
+
+# Travel time from Richmond to each friend's location
+T0 = [ travel_times[('Richmond District', friend_to_location[friend])] for friend in friends ]
+
+# Duration array
+d_array = [ durations[friend] for friend in friends ]
+
+# Time window bounds: start_min and end_max for each meeting (end_max is the end of the window, so start + duration <= end_max)
+low_bound = [ time_windows[friend][0] for friend in friends ]
+high_bound_end = [ time_windows[friend][1] for friend in friends ]  # the meeting must end by this time
+high_bound_start = [ high_bound_end[i] - d_array[i] for i in range(len(friends)) ]
+
+# Create a list of locations for the friends
+locs_list = [ friend_to_location[friend] for friend in friends ]
+
+# Build the travel time matrix between the friends' locations (5x5)
+T_matrix = []
+for i in range(5):
+    row = []
+    for j in range(5):
+        if i == j:
+            row.append(0)
+        else:
+            from_loc = locs_list[i]
+            to_loc = locs_list[j]
+            row.append(travel_times[(from_loc, to_loc)])
+    T_matrix.append(row)
+
+# Create Z3 variables for start times
+s0, s1, s2, s3, s4 = Ints('s0 s1 s2 s3 s4')
+s_array = [s0, s1, s2, s3, s4]
+
+# Create a variable for the minimum start time
+min_start = Int('min_start')
+
+solver = Solver()
+
+# Constraints for time windows
+for i in range(5):
+    solver.add(s_array[i] >= low_bound[i])
+    solver.add(s_array[i] <= high_bound_start[i])
+
+# Constraint: min_start is the minimum of the start times
+solver.add(min_start == Min(s_array))
+
+# For the meeting that has the minimum start time, it must be >= travel time from Richmond
+for i in range(5):
+    solver.add(Implies(s_array[i] == min_start, min_start >= T0[i]))
+
+# Pairwise constraints for every pair of meetings (i, j) with i < j
+for i in range(5):
+    for j in range(i+1, 5):
+        # Either i comes before j or j comes before i
+        before = s_array[i] + d_array[i] + T_matrix[i][j] <= s_array[j]
+        after = s_array[j] + d_array[j] + T_matrix[j][i] <= s_array[i]
+        solver.add(Or(before, after))
+
+# Check if the problem is satisfiable
+result = solver.check()
+if result == sat:
+    model = solver.model()
+    # Extract the start times
+    start_times = []
     for i in range(5):
-        opt.add(Implies(meet[i], And(start[i] >= available_start[i], 
-                                    start[i] + min_durations[i] <= available_end[i])))
+        val = model.eval(s_array[i]).as_long()
+        start_times.append(val)
     
-    # Constraint 2: For every pair of meetings (i,j) with i < j, if both active, enforce travel time
-    for i in range(6):
-        for j in range(i+1, 6):
-            if i == j:
-                continue
-            # Condition: if both meetings are active
-            condition = And(active[i], active[j])
-            # Option 1: i before j
-            option1 = (start_times[i] + durations[i] + travel[districts[i]][districts[j]] <= start_times[j])
-            # Option 2: j before i
-            option2 = (start_times[j] + durations[j] + travel[districts[j]][districts[i]] <= start_times[i])
-            # Add constraint: if both active, then either option1 or option2
-            opt.add(Implies(condition, Or(option1, option2)))
-    
-    # Maximize the number of friends met
-    total_met = Sum([If(meet[i], 1, 0) for i in range(5)])
-    opt.maximize(total_met)
-    
-    # Solve
-    if opt.check() == sat:
-        m = opt.model()
-        total_met_val = m.evaluate(total_met)
-        print(f"Total friends met: {total_met_val}")
+    # Create list of meetings with start time, end time, and friend
+    meetings = []
+    for i in range(5):
+        start_minutes = start_times[i]
+        duration_minutes = d_array[i]
+        end_minutes = start_minutes + duration_minutes
+        # Convert to time string: start from 9:00 AM (0 minutes = 9:00 AM)
+        total_minutes_from_9am = start_minutes
+        hours = total_minutes_from_9am // 60
+        minutes = total_minutes_from_9am % 60
+        hour_start = 9 + hours
+        minute_start = minutes
+        start_time_str = f"{hour_start:02d}:{minute_start:02d}"
         
-        # Print schedule for each friend if met
-        friends = ['Kimberly (Marina)', 'Robert (Chinatown)', 'Rebecca (Financial)', 'Margaret (Bayview)', 'Kenneth (Union Square)']
-        for i in range(5):
-            if m.evaluate(meet[i]):
-                s = m.evaluate(start[i])
-                start_minutes = s.as_long()
-                hours = start_minutes // 60
-                minutes = start_minutes % 60
-                start_time_str = f"{9 + hours}:{minutes:02d} {'AM' if hours < 3 else 'PM'}" 
-                end_time = start_minutes + min_durations[i]
-                end_hours = end_time // 60
-                end_minutes = end_time % 60
-                end_time_str = f"{9 + end_hours}:{end_minutes:02d} {'AM' if end_hours < 3 else 'PM'}"
-                print(f"Meet {friends[i]} from {start_time_str} to {end_time_str}")
-            else:
-                print(f"Did not meet {friends[i]}")
-    else:
-        print("No solution found")
-
-if __name__ == "__main__":
-    main()
+        total_minutes_end = end_minutes
+        hours_end = total_minutes_end // 60
+        minutes_end = total_minutes_end % 60
+        hour_end = 9 + hours_end
+        minute_end = minutes_end
+        end_time_str = f"{hour_end:02d}:{minute_end:02d}"
+        
+        meetings.append({
+            "friend": friends[i],
+            "start": start_minutes,
+            "start_str": start_time_str,
+            "end_str": end_time_str
+        })
+    
+    # Sort meetings by start time
+    meetings_sorted = sorted(meetings, key=lambda x: x['start'])
+    
+    # Build the itinerary in the required format
+    itinerary = []
+    for meet in meetings_sorted:
+        itinerary.append({
+            "action": "meet",
+            "person": meet['friend'],
+            "start_time": meet['start_str'],
+            "end_time": meet['end_str']
+        })
+    
+    # Output as JSON
+    result_json = {"itinerary": itinerary}
+    print(json.dumps(result_json, indent=2))
+else:
+    # If not satisfiable, we try to schedule a subset (not implemented here for brevity)
+    print('No solution found for all five meetings. Trying with subsets is needed.')

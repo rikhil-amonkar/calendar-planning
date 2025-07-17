@@ -1,110 +1,98 @@
 from z3 import *
 
 def main():
-    # Travel time matrix: 4x4, index by [from][to]. Locations: 0=Castro, 1=Alamo, 2=Union, 3=Chinatown.
-    travel = [
-        [0, 8, 19, 20],
-        [8, 0, 14, 16],
-        [19, 15, 0, 7],
-        [22, 17, 7, 0]
+    meetings = ["Emily", "Barbara", "William"]
+    n = len(meetings)
+    
+    min_durations = [105, 60, 105]  # in minutes
+    
+    # Times in minutes from 9:00 AM
+    available_start = [
+        11 * 60 + 45,  # Emily: 11:45 AM
+        16 * 60 + 45,  # Barbara: 4:45 PM
+        17 * 60 + 15   # William: 5:15 PM
+    ]
+    available_end = [
+        15 * 60 + 15,  # Emily: 3:15 PM
+        18 * 60 + 15,  # Barbara: 6:15 PM
+        19 * 60 + 0    # William: 7:00 PM
     ]
     
-    # Friends: 0=Emily (Alamo Square), 1=Barbara (Union Square), 2=William (Chinatown)
-    loc = [1, 2, 3]  # Location indices for each friend
-    start_window = [165, 465, 495]  # Start times in minutes from 9:00 AM
-    end_window = [375, 555, 600]    # End times in minutes from 9:00 AM
-    duration = [105, 60, 105]       # Minimum meeting durations in minutes
+    # Location indices:
+    # Castro: 0, Alamo Square:1, Union Square:2, Chinatown:3
+    loc_index = [1, 2, 3]  # Emily at Alamo, Barbara at Union, William at Chinatown
     
-    # Create the solver and optimizer
-    opt = Optimize()
+    # Travel time matrix (from row to column)
+    travel = [
+        [0, 8, 19, 20],  # from Castro (0) to [0,1,2,3]
+        [8, 0, 14, 16],  # from Alamo (1) to [0,1,2,3]
+        [19, 15, 0, 7],  # from Union (2) to [0,1,2,3]
+        [22, 17, 7, 0]   # from Chinatown (3) to [0,1,2,3]
+    ]
+    
+    s = Optimize()
     
     # Decision variables
-    meet = [Bool(f'meet_{i}') for i in range(3)]  # Whether we meet each friend
-    s = [Int(f's_{i}') for i in range(3)]          # Start time for each friend's meeting
+    attended = [Bool(f'attended_{i}') for i in range(n)]
+    start = [Int(f'start_{i}') for i in range(n)]
+    end = [Int(f'end_{i}') for i in range(n)]
     
-    # Order variables for pairs: 
-    # b0: True if Emily (0) before Barbara (1)
-    # b1: True if Emily (0) before William (2)
-    # b2: True if Barbara (1) before William (2)
-    b0 = Bool('b0')
-    b1 = Bool('b1')
-    b2 = Bool('b2')
+    # Before matrix: before[i][j] is True if meeting i is before meeting j (both attended)
+    before = [[Bool(f'before_{i}_{j}') for j in range(n)] for i in range(n)]
     
-    # Constraints for each friend
-    for i in range(3):
-        # If meeting the friend, constraints on start time
-        opt.add(Implies(meet[i], s[i] >= travel[0][loc[i]]))  # Travel from start location
-        opt.add(Implies(meet[i], s[i] >= start_window[i]))     # Start after window opens
-        opt.add(Implies(meet[i], s[i] + duration[i] <= end_window[i]))  # End before window closes
+    # Constraints for each meeting
+    for i in range(n):
+        s.add(end[i] == start[i] + min_durations[i])
+        s.add(Implies(attended[i], start[i] >= available_start[i]))
+        s.add(Implies(attended[i], end[i] <= available_end[i]))
+        travel_time_i = travel[0][loc_index[i]]
+        s.add(Implies(attended[i], start[i] >= travel_time_i))
     
-    # Constraints for pairs of friends
-    # Emily (0) and Barbara (1)
-    opt.add(Implies(And(meet[0], meet[1]),
-                    If(b0, 
-                       s[1] >= s[0] + duration[0] + travel[loc[0]][loc[1]],
-                       s[0] >= s[1] + duration[1] + travel[loc[1]][loc[0]]
-                    )))
+    # Constraints for ordering and travel between meetings
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            s.add(Implies(And(attended[i], attended[j]), 
+                             Or(before[i][j], before[j][i])))
+            s.add(Implies(And(attended[i], attended[j]), 
+                             Not(And(before[i][j], before[j][i]))))
+            loc_i = loc_index[i]
+            loc_j = loc_index[j]
+            travel_ij = travel[loc_i][loc_j]
+            s.add(Implies(And(attended[i], attended[j], before[i][j]), 
+                             start[j] >= end[i] + travel_ij))
     
-    # Emily (0) and William (2)
-    opt.add(Implies(And(meet[0], meet[2]),
-                    If(b1,
-                       s[2] >= s[0] + duration[0] + travel[loc[0]][loc[2]],
-                       s[0] >= s[2] + duration[2] + travel[loc[2]][loc[0]]
-                    )))
+    # Maximize the number of attended meetings
+    num_attended = Sum([If(attended[i], 1, 0) for i in range(n)])
+    s.maximize(num_attended)
     
-    # Barbara (1) and William (2)
-    opt.add(Implies(And(meet[1], meet[2]),
-                    If(b2,
-                       s[2] >= s[1] + duration[1] + travel[loc[1]][loc[2]],
-                       s[1] >= s[2] + duration[2] + travel[loc[2]][loc[1]]
-                    )))
-    
-    # Transitivity constraints to avoid cycles when all three are met
-    opt.add(Implies(And(meet[0], meet[1], meet[2]),
-                   And(
-                       Not(And(b0, b2, Not(b1))),  # Avoid cycle: E before B, B before W, and W before E
-                       Not(And(b1, Not(b2), Not(b0)))  # Avoid cycle: E before W, W before B, and B before E
-                   ))
-    
-    # Maximize the number of friends met
-    opt.maximize(Sum([If(meet[i], 1, 0) for i in range(3)]))
-    
-    # Check for a solution
-    if opt.check() == sat:
-        model = opt.model()
-        # Convert start times to time strings
-        def minutes_to_time(minutes):
-            total_minutes = int(str(model.evaluate(minutes)))
-            hours = total_minutes // 60
-            minutes = total_minutes % 60
-            am_pm = "AM" if hours < 12 else "PM"
-            hours12 = hours if hours <= 12 else hours - 12
-            return f"{hours12}:{minutes:02d}{am_pm}"
-        
-        # Determine which friends are met and their times
-        schedule = []
-        friend_names = ["Emily", "Barbara", "William"]
-        locations = ["Alamo Square", "Union Square", "Chinatown"]
-        for i in range(3):
-            if model.evaluate(meet[i]):
-                start_val = model.evaluate(s[i])
-                start_time = minutes_to_time(s[i])
-                end_time = minutes_to_time(s[i] + duration[i])
-                schedule.append((start_val, friend_names[i], locations[i], start_time, end_time))
-        
+    # Solve and extract solution
+    if s.check() == sat:
+        m = s.model()
+        itinerary = []
+        for i in range(n):
+            if m.evaluate(attended[i]):
+                start_val = m.evaluate(start[i]).as_long()
+                end_val = m.evaluate(end[i]).as_long()
+                start_hour = 9 + start_val // 60
+                start_minute = start_val % 60
+                end_hour = 9 + end_val // 60
+                end_minute = end_val % 60
+                start_time = f"{start_hour:02d}:{start_minute:02d}"
+                end_time = f"{end_hour:02d}:{end_minute:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": meetings[i],
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
         # Sort by start time
-        schedule.sort(key=lambda x: int(str(x[0])))
-        
-        # Print the schedule
-        print("SOLUTION:")
-        if not schedule:
-            print("No friends were met.")
-        else:
-            print(f"Met {len(schedule)} friends:")
-            for _, name, location, start_str, end_str in schedule:
-                print(f"Meet {name} at {location} from {start_str} to {end_str}")
+        itinerary.sort(key=lambda x: x['start_time'])
+        result = {"itinerary": itinerary}
+        print(result)
     else:
-        print("SOLUTION:\nNo feasible schedule found.")
+        print('{"itinerary": []}')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

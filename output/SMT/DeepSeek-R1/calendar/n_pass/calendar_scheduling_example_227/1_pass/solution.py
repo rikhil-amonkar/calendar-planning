@@ -1,53 +1,60 @@
 from z3 import *
 
 def main():
-    # Busy intervals in minutes from 9:00 (each interval is [start, end])
-    david_busy = [[150, 180], [330, 360]]          # 11:30-12:00, 14:30-15:00
-    douglas_busy = [[30, 60], [150, 180], [240, 270], [330, 360]]  # 9:30-10:00, 11:30-12:00, 13:00-13:30, 14:30-15:00
-    ralph_busy = [[0, 30], [60, 120], [150, 210], [270, 360], [390, 420], [450, 480]]  # 9:00-9:30, 10:00-11:00, 11:30-12:30, 13:30-15:00, 15:30-16:00, 16:30-17:00
-    jordan_busy = [[0, 60], [180, 210], [240, 270], [330, 360], [390, 480]]  # 9:00-10:00, 12:00-12:30, 13:00-13:30, 14:30-15:00, 15:30-17:00
-    
-    # Initialize Z3 solver and integer variable for start time
+    # Create an integer variable for the start time in minutes
     s = Int('s')
+    
+    # Constraints list
+    constraints = []
+    
+    # Work hours: 9:00 (540) to 17:00 (1020). Meeting duration 30 minutes => s must be between 540 and 990 inclusive.
+    constraints.append(s >= 540)
+    constraints.append(s <= 990)
+    
+    # David's preference: not before 14:00 (840 minutes)
+    constraints.append(s >= 840)
+    
+    # Busy intervals in minutes (start, end) for each participant (except Natalie, who is free)
+    busy_intervals = [
+        # David's busy intervals
+        (690, 720), (870, 900),
+        # Douglas' busy intervals
+        (570, 600), (690, 720), (780, 810), (870, 900),
+        # Ralph's busy intervals
+        (540, 570), (600, 660), (690, 750), (810, 900), (930, 960), (990, 1020),
+        # Jordan's busy intervals
+        (540, 600), (720, 750), (780, 810), (870, 900), (930, 1020)
+    ]
+    
+    # For each busy interval, add constraint: meeting does not overlap
+    for (busy_start, busy_end) in busy_intervals:
+        constraints.append(Or(s + 30 <= busy_start, s >= busy_end))
+    
+    # Solve the constraints
     solver = Solver()
+    for c in constraints:
+        solver.add(c)
     
-    # Constraints: meeting within work hours (9:00-17:00) and David's preference (start >= 14:00)
-    solver.add(s >= 300)  # 14:00 is 300 minutes from 9:00
-    solver.add(s <= 450)  # Meeting must end by 17:00 (30 minutes before 480 minutes)
-    
-    # Add constraints for each participant's busy intervals
-    for start_busy, end_busy in david_busy:
-        solver.add(Or(s + 30 <= start_busy, s >= end_busy))
-    
-    for start_busy, end_busy in douglas_busy:
-        solver.add(Or(s + 30 <= start_busy, s >= end_busy))
-    
-    for start_busy, end_busy in ralph_busy:
-        solver.add(Or(s + 30 <= start_busy, s >= end_busy))
-    
-    for start_busy, end_busy in jordan_busy:
-        solver.add(Or(s + 30 <= start_busy, s >= end_busy))
-    
-    # Check for a solution
     if solver.check() == sat:
         model = solver.model()
-        start_val = model[s].as_long()
+        start_minutes = model[s].as_long()
         
-        # Convert start time to "HH:MM" format
-        start_hour = 9 + start_val // 60
-        start_minute = start_val % 60
-        start_time = f"{start_hour}:{start_minute:02d}"
+        # Convert start_minutes to HH:MM
+        hours = start_minutes // 60
+        minutes = start_minutes % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Calculate end time (30 minutes later)
-        end_val = start_val + 30
-        end_hour = 9 + end_val // 60
-        end_minute = end_val % 60
-        end_time = f"{end_hour}:{end_minute:02d}"
+        # Calculate end time (start_minutes + 30)
+        end_minutes = start_minutes + 30
+        end_hours = end_minutes // 60
+        end_minutes_remainder = end_minutes % 60
+        end_time = f"{end_hours:02d}:{end_minutes_remainder:02d}"
         
-        # Output the meeting details
-        print("Monday")
-        print(start_time)
-        print(end_time)
+        # Output the solution
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

@@ -4,96 +4,68 @@ def solve_scheduling():
     # Initialize solver
     s = Solver()
 
-    # Define variables for meeting start and end times
-    # Carol at Sunset District (10:15AM - 11:45AM), min 30 mins
+    # Define time variables in minutes since 9:00 AM (540 minutes)
+    # Meeting with Carol at Sunset District (10:15-11:45, min 30 mins)
     carol_start = Int('carol_start')
     carol_end = Int('carol_end')
 
-    # Rebecca at Mission District (11:30AM - 8:15PM), min 120 mins
+    # Meeting with Rebecca at Mission District (11:30-20:15, min 120 mins)
     rebecca_start = Int('rebecca_start')
     rebecca_end = Int('rebecca_end')
 
-    # Karen at Bayview (12:45PM - 3:00PM), min 120 mins
+    # Meeting with Karen at Bayview (12:45-15:00, min 120 mins)
     karen_start = Int('karen_start')
     karen_end = Int('karen_end')
 
-    # Convert all times to minutes since 9:00AM (540 minutes since midnight)
-    # Carol's availability: 10:15AM (615) to 11:45AM (705)
-    carol_available_start = 615 - 540  # 75
-    carol_available_end = 705 - 540    # 165
+    # Convert all times to minutes since 9:00 AM (540)
+    # Carol's window: 10:15 (75 mins) to 11:45 (165 mins)
+    carol_window_start = 75  # 10:15 - 9:00 = 1:15 = 75 mins
+    carol_window_end = 165   # 11:45 - 9:00 = 2:45 = 165 mins
 
-    # Rebecca's availability: 11:30AM (690) to 8:15PM (1215)
-    rebecca_available_start = 690 - 540  # 150
-    rebecca_available_end = 1215 - 540   # 675
+    # Rebecca's window: 11:30 (150 mins) to 20:15 (675 mins)
+    rebecca_window_start = 150  # 11:30 - 9:00 = 2:30 = 150 mins
+    rebecca_window_end = 675    # 20:15 - 9:00 = 11:15 = 675 mins
 
-    # Karen's availability: 12:45PM (765) to 3:00PM (900)
-    karen_available_start = 765 - 540    # 225
-    karen_available_end = 900 - 540      # 360
+    # Karen's window: 12:45 (225 mins) to 15:00 (360 mins)
+    karen_window_start = 225    # 12:45 - 9:00 = 3:45 = 225 mins
+    karen_window_end = 360      # 15:00 - 9:00 = 6:00 = 360 mins
 
-    # Travel times (in minutes)
-    travel_union_sunset = 26
-    travel_sunset_mission = 24
-    travel_mission_bayview = 15
-    travel_bayview_mission = 13
-    travel_mission_union = 15
-
-    # Constraints for Carol (Sunset District)
-    s.add(carol_start >= carol_available_start)
-    s.add(carol_end <= carol_available_end)
+    # Add constraints for Carol
+    s.add(carol_start >= carol_window_start)
+    s.add(carol_end <= carol_window_end)
     s.add(carol_end - carol_start >= 30)  # min 30 mins
 
-    # Constraints for Rebecca (Mission District)
-    s.add(rebecca_start >= rebecca_available_start)
-    s.add(rebecca_end <= rebecca_available_end)
+    # Add constraints for Rebecca
+    s.add(rebecca_start >= rebecca_window_start)
+    s.add(rebecca_end <= rebecca_window_end)
     s.add(rebecca_end - rebecca_start >= 120)  # min 120 mins
 
-    # Constraints for Karen (Bayview)
-    s.add(karen_start >= karen_available_start)
-    s.add(karen_end <= karen_available_end)
+    # Add constraints for Karen
+    s.add(karen_start >= karen_window_start)
+    s.add(karen_end <= karen_window_end)
     s.add(karen_end - karen_start >= 120)  # min 120 mins
 
-    # Initial location: Union Square at time 0 (9:00AM)
-    # Carol is first, so travel from Union Square to Sunset District (26 mins)
-    s.add(carol_start >= 0 + travel_union_sunset)
+    # Travel times from Union Square to Sunset District (26 mins)
+    # So Carol's meeting must start at least 26 mins after 9:00 AM (i.e., carol_start >= 26)
+    s.add(carol_start >= 26)
 
-    # After Carol, travel to Mission District to meet Rebecca (24 mins)
-    s.add(rebecca_start >= carol_end + travel_sunset_mission)
+    # After Carol, travel to Mission District (Sunset to Mission: 24 mins)
+    # So rebecca_start >= carol_end + 24
+    s.add(rebecca_start >= carol_end + 24)
 
-    # After Rebecca, travel to Bayview to meet Karen (15 mins)
-    s.add(karen_start >= rebecca_end + travel_mission_bayview)
+    # After Rebecca, travel to Bayview (Mission to Bayview: 15 mins)
+    # So karen_start >= rebecca_end + 15
+    s.add(karen_start >= rebecca_end + 15)
 
-    # Alternatively, if we meet Karen before Rebecca:
-    # This is another possible schedule, but we'll let Z3 find the best order
-
-    # Ensure no overlapping meetings
-    s.add(Or(
-        # Order: Carol -> Rebecca -> Karen
-        And(
-            carol_end <= rebecca_start,
-            rebecca_end <= karen_start
-        ),
-        # Order: Carol -> Karen -> Rebecca
-        And(
-            carol_end <= karen_start,
-            karen_end <= rebecca_start
-        )
-    ))
-
-    # Also, if we don't meet Carol first, but let's assume we do for simplicity
-
-    # Maximize total time with friends (sum of all meeting durations)
-    total_time = (carol_end - carol_start) + (rebecca_end - rebecca_start) + (karen_end - karen_start)
-    s.maximize(total_time)
-
-    # Check if a solution exists
+    # Check if all meetings can be scheduled
     if s.check() == sat:
         m = s.model()
-        # Convert back to hours and minutes
+        # Convert times back to HH:MM format
         def to_time(minutes):
-            total = 540 + minutes  # 9:00AM is 540 minutes
-            h = total // 60
-            m = total % 60
-            return f"{h}:{m:02d}"
+            total_mins = 540 + minutes  # 9:00 AM + minutes
+            h = total_mins // 60
+            m = total_mins % 60
+            return f"{h:02d}:{m:02d}"
 
         carol_s = m.eval(carol_start).as_long()
         carol_e = m.eval(carol_end).as_long()
@@ -102,12 +74,15 @@ def solve_scheduling():
         karen_s = m.eval(karen_start).as_long()
         karen_e = m.eval(karen_end).as_long()
 
-        print("SOLUTION:")
-        print(f"Meet Carol at Sunset District from {to_time(carol_s)} to {to_time(carol_e)}")
-        print(f"Meet Rebecca at Mission District from {to_time(rebecca_s)} to {to_time(rebecca_e)}")
-        print(f"Meet Karen at Bayview from {to_time(karen_s)} to {to_time(karen_e)}")
-        print(f"Total time with friends: {m.eval(total_time).as_long()} minutes")
+        itinerary = [
+            {"action": "meet", "person": "Carol", "start_time": to_time(carol_s), "end_time": to_time(carol_e)},
+            {"action": "meet", "person": "Rebecca", "start_time": to_time(rebecca_s), "end_time": to_time(rebecca_e)},
+            {"action": "meet", "person": "Karen", "start_time": to_time(karen_s), "end_time": to_time(karen_e)}
+        ]
+        return {"itinerary": itinerary}
     else:
-        print("No valid schedule found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Execute and print the solution
+solution = solve_scheduling()
+print(solution)

@@ -2,67 +2,67 @@ from z3 import *
 
 def main():
     # Define the variables
-    day = Int('day')
-    slot = Int('slot')
+    d = Int('d')  # day: 0 for Monday, 2 for Wednesday
+    s = Int('s')  # start time in minutes from midnight
+
+    # Create the solver with optimization
+    solver = Optimize()
     
-    # Busy slots for Monday
-    arthur_busy_mon = [4, 9, 12]
-    michael_busy_mon = [0, 1, 2, 3, 4, 5, 7, 10, 12, 13, 14, 15]
+    # Day must be either Monday (0) or Wednesday (2)
+    solver.add(Or(d == 0, d == 2))
     
-    # Busy slots for Wednesday
-    arthur_busy_wed = [2, 4, 6, 10, 14]
-    michael_busy_wed = [2, 3, 4, 5, 6, 8]
+    # Meeting must start at or after 9:00 (540 minutes) and end by 17:00 (1020 minutes)
+    solver.add(s >= 540)       # 9:00 in minutes
+    solver.add(s + 30 <= 1020) # Meeting ends by 17:00 (1020 minutes)
     
-    s = Optimize()
+    # Define busy intervals in minutes from midnight
+    arthur_mon = [(660, 690), (810, 840), (900, 930)]  # Monday meetings for Arthur
+    michael_mon = [(540, 720), (750, 780), (840, 870), (900, 1020)]  # Monday meetings for Michael
     
-    # Day must be Monday (0) or Wednesday (2)
-    s.add(Or(day == 0, day == 2))
-    # Slot must be between 0 and 15 inclusive
-    s.add(slot >= 0, slot <= 15)
+    arthur_wed = [(600, 630), (660, 690), (720, 750), (840, 870), (960, 990)]  # Wednesday meetings for Arthur
+    michael_wed = [(600, 750), (780, 810)]  # Wednesday meetings for Michael
     
-    # Helper function to check if a slot is not in a busy list
-    def not_in_busy(slot_var, busy_list):
-        return And([slot_var != busy for busy in busy_list])
+    # Add constraints for Monday: if d==0, the meeting must not overlap with any of Arthur's or Michael's meetings
+    for (start_busy, end_busy) in arthur_mon:
+        solver.add(Implies(d == 0, Or(s + 30 <= start_busy, s >= end_busy)))
+    for (start_busy, end_busy) in michael_mon:
+        solver.add(Implies(d == 0, Or(s + 30 <= start_busy, s >= end_busy)))
     
-    # Condition for Monday: slot not in Arthur's or Michael's busy list
-    mon_cond = And(not_in_busy(slot, arthur_busy_mon), 
-                   not_in_busy(slot, michael_busy_mon))
-    # Condition for Wednesday: slot not in Arthur's or Michael's busy list
-    wed_cond = And(not_in_busy(slot, arthur_busy_wed), 
-                   not_in_busy(slot, michael_busy_wed))
+    # Add constraints for Wednesday: if d==2, the meeting must not overlap with any of Arthur's or Michael's meetings
+    for (start_busy, end_busy) in arthur_wed:
+        solver.add(Implies(d == 2, Or(s + 30 <= start_busy, s >= end_busy)))
+    for (start_busy, end_busy) in michael_wed:
+        solver.add(Implies(d == 2, Or(s + 30 <= start_busy, s >= end_busy)))
     
-    # Add constraints based on the selected day
-    s.add(If(day == 0, mon_cond, wed_cond))
-    
-    # Minimize the score: day * 100 + slot to prioritize earlier day and slot
-    score = day * 100 + slot
-    s.minimize(score)
+    # Minimize total minutes from start of the week (Monday 00:00) to meeting start time
+    total_minutes = d * 24 * 60 + s
+    solver.minimize(total_minutes)
     
     # Check for a solution
-    if s.check() == sat:
-        m = s.model()
-        d = m[day].as_long()
-        sl = m[slot].as_long()
+    if solver.check() == sat:
+        model = solver.model()
+        day_val = model[d].as_long()
+        start_minutes = model[s].as_long()
         
-        # Convert slot to start time in minutes
-        total_minutes = 9 * 60 + sl * 30
-        hours = total_minutes // 60
-        minutes = total_minutes % 60
-        start_time = f"{hours:02d}:{minutes:02d}"
+        # Convert day value to day name
+        day_str = "Monday" if day_val == 0 else "Wednesday"
         
-        # Calculate end time
-        end_minutes = total_minutes + 30
-        end_hours = end_minutes // 60
-        end_minutes %= 60
-        end_time = f"{end_hours:02d}:{end_minutes:02d}"
+        # Convert start time to HH:MM format
+        hour = start_minutes // 60
+        minute = start_minutes % 60
+        start_time = f"{hour:02d}:{minute:02d}"
         
-        # Map day code to day name
-        day_name = "Monday" if d == 0 else "Wednesday"
+        # Calculate end time (start time + 30 minutes)
+        end_minutes = start_minutes + 30
+        end_hour = end_minutes // 60
+        end_minute = end_minutes % 60
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
         
-        # Print the solution
-        print(f"Day: {day_name}")
-        print(f"Start: {start_time}")
-        print(f"End: {end_time}")
+        # Output the solution in the required format
+        print("SOLUTION:")
+        print(f"Day: {day_str}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

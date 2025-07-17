@@ -1,95 +1,67 @@
-import z3
+from z3 import *
 
-def main():
-    # Convert time string to minutes since midnight
-    def time_str_to_minutes(time_str):
-        parts = time_str.split(':')
-        hours = int(parts[0])
-        minutes = int(parts[1])
-        return hours * 60 + minutes
+def time_to_minutes(time_str):
+    h, m = time_str.split(':')
+    h = int(h)
+    m = int(m)
+    return (h - 9) * 60 + m
 
-    # Predefined busy intervals for Natalie and William for each day
-    natalie_busy = {
-        0: [(time_str_to_minutes("9:00"), time_str_to_minutes("9:30")),
-            (time_str_to_minutes("10:00"), time_str_to_minutes("12:00")),
-            (time_str_to_minutes("12:30"), time_str_to_minutes("13:00")),
-            (time_str_to_minutes("14:00"), time_str_to_minutes("14:30")),
-            (time_str_to_minutes("15:00"), time_str_to_minutes("16:30"))],
-        1: [(time_str_to_minutes("9:00"), time_str_to_minutes("9:30")),
-            (time_str_to_minutes("10:00"), time_str_to_minutes("10:30")),
-            (time_str_to_minutes("12:30"), time_str_to_minutes("14:00")),
-            (time_str_to_minutes("16:00"), time_str_to_minutes("17:00"))],
-        2: [(time_str_to_minutes("11:00"), time_str_to_minutes("11:30")),
-            (time_str_to_minutes("16:00"), time_str_to_minutes("16:30"))],
-        3: [(time_str_to_minutes("10:00"), time_str_to_minutes("11:00")),
-            (time_str_to_minutes("11:30"), time_str_to_minutes("15:00")),
-            (time_str_to_minutes("15:30"), time_str_to_minutes("16:00")),
-            (time_str_to_minutes("16:30"), time_str_to_minutes("17:00"))]
-    }
+def minutes_to_time(minutes):
+    total_minutes = minutes
+    h = 9 + total_minutes // 60
+    m = total_minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-    william_busy = {
-        0: [(time_str_to_minutes("9:30"), time_str_to_minutes("11:00")),
-            (time_str_to_minutes("11:30"), time_str_to_minutes("17:00"))],
-        1: [(time_str_to_minutes("9:00"), time_str_to_minutes("13:00")),
-            (time_str_to_minutes("13:30"), time_str_to_minutes("16:00"))],
-        2: [(time_str_to_minutes("9:00"), time_str_to_minutes("12:30")),
-            (time_str_to_minutes("13:00"), time_str_to_minutes("14:30")),
-            (time_str_to_minutes("15:30"), time_str_to_minutes("16:00")),
-            (time_str_to_minutes("16:30"), time_str_to_minutes("17:00"))],
-        3: [(time_str_to_minutes("9:00"), time_str_to_minutes("10:30")),
-            (time_str_to_minutes("11:00"), time_str_to_minutes("11:30")),
-            (time_str_to_minutes("12:00"), time_str_to_minutes("12:30")),
-            (time_str_to_minutes("13:00"), time_str_to_minutes("14:00")),
-            (time_str_to_minutes("15:00"), time_str_to_minutes("17:00"))]
-    }
+natalie_busy = {
+    'Monday': [('9:00','9:30'), ('10:00','12:00'), ('12:30','13:00'), ('14:00','14:30'), ('15:00','16:30')],
+    'Tuesday': [('9:00','9:30'), ('10:00','10:30'), ('12:30','14:00'), ('16:00','17:00')],
+    'Wednesday': [('11:00','11:30'), ('16:00','16:30')],
+    'Thursday': [('10:00','11:00'), ('11:30','15:00'), ('15:30','16:00'), ('16:30','17:00')]
+}
 
-    # Z3 variables
-    s = z3.Int('s')  # Start time in minutes
-    d = z3.Int('d')  # Day: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday
+william_busy = {
+    'Monday': [('9:30','11:00'), ('11:30','17:00')],
+    'Tuesday': [('9:00','13:00'), ('13:30','16:00')],
+    'Wednesday': [('9:00','12:30'), ('13:00','14:30'), ('15:30','16:00'), ('16:30','17:00')],
+    'Thursday': [('9:00','10:30'), ('11:00','11:30'), ('12:00','12:30'), ('13:00','14:00'), ('15:00','17:00')]
+}
 
-    solver = z3.Solver()
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+solution_found = False
+result_day = None
+start_time_str = None
+end_time_str = None
 
-    # Constraints for day and start time
-    solver.add(d >= 0, d <= 3)
-    solver.add(s >= time_str_to_minutes("9:00"))
-    solver.add(s + 60 <= time_str_to_minutes("17:00"))  # Meeting ends by 17:00
-
-    # Constraints for Natalie's busy intervals
-    for day_index, intervals in natalie_busy.items():
-        for start, end in intervals:
-            solver.add(z3.Implies(d == day_index, z3.Or(s + 60 <= start, s >= end)))
-
-    # Constraints for William's busy intervals
-    for day_index, intervals in william_busy.items():
-        for start, end in intervals:
-            solver.add(z3.Implies(d == day_index, z3.Or(s + 60 <= start, s >= end)))
-
-    # Check for a solution
-    if solver.check() == z3.sat:
+for day in days:
+    s = Int('start')
+    solver = Solver()
+    solver.add(s >= 0)
+    solver.add(s <= 420)
+    
+    for interval in natalie_busy[day]:
+        start_busy = time_to_minutes(interval[0])
+        end_busy = time_to_minutes(interval[1])
+        solver.add(Or(s + 60 <= start_busy, s >= end_busy))
+    
+    for interval in william_busy[day]:
+        start_busy = time_to_minutes(interval[0])
+        end_busy = time_to_minutes(interval[1])
+        solver.add(Or(s + 60 <= start_busy, s >= end_busy))
+    
+    if solver.check() == sat:
         model = solver.model()
-        d_val = model[d].as_long()
-        s_val = model[s].as_long()
-        
-        # Convert day index to string
-        days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
-        day_str = days[d_val]
-        
-        # Format start and end times
-        def minutes_to_time_str(minutes):
-            h = minutes // 60
-            m = minutes % 60
-            return f"{h}:{m:02d}"
-        
-        start_time_str = minutes_to_time_str(s_val)
-        end_time_str = minutes_to_time_str(s_val + 60)
-        
-        # Output the solution
-        print("SOLUTION:")
-        print(f"Day: {day_str}")
-        print(f"Start Time: {start_time_str}")
-        print(f"End Time: {end_time_str}")
-    else:
-        print("No solution found")
+        start_val = model[s].as_long()
+        end_val = start_val + 60
+        start_time_str = minutes_to_time(start_val)
+        end_time_str = minutes_to_time(end_val)
+        result_day = day
+        solution_found = True
+        break
 
-if __name__ == "__main__":
-    main()
+if solution_found:
+    print("SOLUTION:")
+    print(f"Day: {result_day}")
+    print(f"Start Time: {start_time_str}")
+    print(f"End Time: {end_time_str}")
+else:
+    print("No solution found, but the problem states there is one.")

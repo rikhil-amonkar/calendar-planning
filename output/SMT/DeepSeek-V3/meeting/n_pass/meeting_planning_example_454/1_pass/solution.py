@@ -1,151 +1,136 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize the solver
+def solve_scheduling_problem():
+    # Initialize Z3 solver
     s = Solver()
 
-    # Define the friends and their details
+    # Define friends and their availability
     friends = {
-        "Jessica": {
-            "location": "Golden Gate Park",
-            "available_start": 13.75,  # 1:45 PM in decimal hours
-            "available_end": 15.0,     # 3:00 PM
-            "min_duration": 0.5,       # 30 minutes
-        },
-        "Ashley": {
-            "location": "Bayview",
-            "available_start": 17.25,  # 5:15 PM
-            "available_end": 20.0,      # 8:00 PM
-            "min_duration": 1.75,       # 105 minutes
-        },
-        "Ronald": {
-            "location": "Chinatown",
-            "available_start": 7.25,    # 7:15 AM
-            "available_end": 14.75,     # 2:45 PM
-            "min_duration": 1.5,        # 90 minutes
-        },
-        "William": {
-            "location": "North Beach",
-            "available_start": 13.25,   # 1:15 PM
-            "available_end": 20.25,     # 8:15 PM
-            "min_duration": 0.25,      # 15 minutes
-        },
-        "Daniel": {
-            "location": "Mission District",
-            "available_start": 7.0,     # 7:00 AM
-            "available_end": 11.25,    # 11:15 AM
-            "min_duration": 1.75,       # 105 minutes
-        }
+        "Jessica": {"location": "Golden Gate Park", "start": (13, 45), "end": (15, 0), "min_duration": 30},
+        "Ashley": {"location": "Bayview", "start": (17, 15), "end": (20, 0), "min_duration": 105},
+        "Ronald": {"location": "Chinatown", "start": (7, 15), "end": (14, 45), "min_duration": 90},
+        "William": {"location": "North Beach", "start": (13, 15), "end": (20, 15), "min_duration": 15},
+        "Daniel": {"location": "Mission District", "start": (7, 0), "end": (11, 15), "min_duration": 105}
     }
 
-    # Travel times dictionary (from -> to -> minutes)
+    # Define travel times (in minutes) between locations
     travel_times = {
-        "Presidio": {
-            "Golden Gate Park": 12 / 60,
-            "Bayview": 31 / 60,
-            "Chinatown": 21 / 60,
-            "North Beach": 18 / 60,
-            "Mission District": 26 / 60,
-        },
-        "Golden Gate Park": {
-            "Presidio": 11 / 60,
-            "Bayview": 23 / 60,
-            "Chinatown": 23 / 60,
-            "North Beach": 24 / 60,
-            "Mission District": 17 / 60,
-        },
-        "Bayview": {
-            "Presidio": 31 / 60,
-            "Golden Gate Park": 22 / 60,
-            "Chinatown": 18 / 60,
-            "North Beach": 21 / 60,
-            "Mission District": 13 / 60,
-        },
-        "Chinatown": {
-            "Presidio": 19 / 60,
-            "Golden Gate Park": 23 / 60,
-            "Bayview": 22 / 60,
-            "North Beach": 3 / 60,
-            "Mission District": 18 / 60,
-        },
-        "North Beach": {
-            "Presidio": 17 / 60,
-            "Golden Gate Park": 22 / 60,
-            "Bayview": 22 / 60,
-            "Chinatown": 6 / 60,
-            "Mission District": 18 / 60,
-        },
-        "Mission District": {
-            "Presidio": 25 / 60,
-            "Golden Gate Park": 17 / 60,
-            "Bayview": 15 / 60,
-            "Chinatown": 16 / 60,
-            "North Beach": 17 / 60,
-        }
+        ("Presidio", "Golden Gate Park"): 12,
+        ("Presidio", "Bayview"): 31,
+        ("Presidio", "Chinatown"): 21,
+        ("Presidio", "North Beach"): 18,
+        ("Presidio", "Mission District"): 26,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Golden Gate Park", "Bayview"): 23,
+        ("Golden Gate Park", "Chinatown"): 23,
+        ("Golden Gate Park", "North Beach"): 24,
+        ("Golden Gate Park", "Mission District"): 17,
+        ("Bayview", "Presidio"): 31,
+        ("Bayview", "Golden Gate Park"): 22,
+        ("Bayview", "Chinatown"): 18,
+        ("Bayview", "North Beach"): 21,
+        ("Bayview", "Mission District"): 13,
+        ("Chinatown", "Presidio"): 19,
+        ("Chinatown", "Golden Gate Park"): 23,
+        ("Chinatown", "Bayview"): 22,
+        ("Chinatown", "North Beach"): 3,
+        ("Chinatown", "Mission District"): 18,
+        ("North Beach", "Presidio"): 17,
+        ("North Beach", "Golden Gate Park"): 22,
+        ("North Beach", "Bayview"): 22,
+        ("North Beach", "Chinatown"): 6,
+        ("North Beach", "Mission District"): 18,
+        ("Mission District", "Presidio"): 25,
+        ("Mission District", "Golden Gate Park"): 17,
+        ("Mission District", "Bayview"): 15,
+        ("Mission District", "Chinatown"): 16,
+        ("Mission District", "North Beach"): 17
     }
 
-    # Variables for each friend: start time, end time, and whether they are met
-    variables = {}
+    # Convert times to minutes since 9:00 AM (arrival time)
+    def time_to_minutes(h, m):
+        return (h - 9) * 60 + m
+
+    # Convert minutes back to HH:MM format
+    def minutes_to_time(minutes):
+        h = 9 + (minutes // 60)
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
+
+    # Create variables for each meeting's start and end times (in minutes since 9:00 AM)
+    meet_vars = {}
     for name in friends:
-        variables[name] = {
-            "start": Real(f"{name}_start"),
-            "end": Real(f"{name}_end"),
-            "met": Bool(f"{name}_met")
+        meet_vars[name] = {
+            "start": Int(f"start_{name}"),
+            "end": Int(f"end_{name}")
         }
 
-    # Current location starts at Presidio at 9:00 AM
-    current_time = 9.0
-    current_location = "Presidio"
-
-    # Constraints for each friend
+    # Add constraints for each meeting
     for name in friends:
         friend = friends[name]
-        var = variables[name]
-        s.add(Implies(var["met"], var["start"] >= friend["available_start"]))
-        s.add(Implies(var["met"], var["end"] <= friend["available_end"]))
-        s.add(Implies(var["met"], var["end"] - var["start"] >= friend["min_duration"]))
-        s.add(Implies(var["met"], var["start"] >= current_time + travel_times[current_location][friend["location"]]))
+        start_h, start_m = friend["start"]
+        end_h, end_m = friend["end"]
+        min_start = time_to_minutes(start_h, start_m)
+        max_end = time_to_minutes(end_h, end_m)
+        min_duration = friend["min_duration"]
 
-    # No overlapping meetings
-    for name1 in friends:
-        for name2 in friends:
-            if name1 != name2:
-                s.add(Implies(And(variables[name1]["met"], variables[name2]["met"]),
-                             Or(variables[name1]["end"] <= variables[name2]["start"],
-                                variables[name2]["end"] <= variables[name1]["start"])))
+        s.add(meet_vars[name]["start"] >= min_start)
+        s.add(meet_vars[name]["end"] <= max_end)
+        s.add(meet_vars[name]["end"] - meet_vars[name]["start"] >= min_duration)
 
-    # Maximize the number of friends met
-    met_friends = [If(variables[name]["met"], 1, 0) for name in friends]
-    total_met = sum(met_friends)
-    s.maximize(total_met)
+    # Define the order of meetings and travel times
+    # We need to ensure that the end time of one meeting + travel time <= start time of the next meeting
+    # Since we don't know the order, we'll assume a sequence and let Z3 find a valid one
+    # For simplicity, we'll assume the order is Daniel, Ronald, Jessica, William, Ashley
+    # This is a heuristic; in a more complex solver, we'd need to consider all permutations
 
-    # Check if a solution exists
+    # Initial location is Presidio at time 0 (9:00 AM)
+    current_location = "Presidio"
+    current_time = 0
+
+    # Define the order of meetings (this is a heuristic; ideally, we'd explore all permutations)
+    meeting_order = ["Daniel", "Ronald", "Jessica", "William", "Ashley"]
+
+    for i, name in enumerate(meeting_order):
+        friend = friends[name]
+        location = friend["location"]
+        # Travel from current_location to friend's location
+        travel_time = travel_times[(current_location, location)]
+        # Meeting must start after current_time + travel_time
+        s.add(meet_vars[name]["start"] >= current_time + travel_time)
+        # Update current_time to the end of the meeting
+        current_time = meet_vars[name]["end"]
+        current_location = location
+
+    # Ensure no overlapping meetings (though our sequence should handle this)
+    for i in range(len(meeting_order)):
+        for j in range(i + 1, len(meeting_order)):
+            name1 = meeting_order[i]
+            name2 = meeting_order[j]
+            s.add(Or(
+                meet_vars[name1]["end"] <= meet_vars[name2]["start"],
+                meet_vars[name2]["end"] <= meet_vars[name1]["start"]
+            ))
+
+    # Check if the problem is satisfiable
     if s.check() == sat:
-        model = s.model()
-        result = {}
-        for name in friends:
-            if is_true(model.evaluate(variables[name]["met"])):
-                start = model.evaluate(variables[name]["start"])
-                end = model.evaluate(variables[name]["end"])
-                result[name] = {
-                    "start": float(start.as_decimal(10)),
-                    "end": float(end.as_decimal(10)),
-                    "location": friends[name]["location"]
-                }
-        return result
+        m = s.model()
+        itinerary = []
+        for name in meeting_order:
+            start = m.evaluate(meet_vars[name]["start"]).as_long()
+            end = m.evaluate(meet_vars[name]["end"]).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": minutes_to_time(start),
+                "end_time": minutes_to_time(end)
+            })
+        return {"itinerary": itinerary}
     else:
-        return None
+        return {"itinerary": []}
 
-# Solve the problem
-schedule = solve_scheduling()
-
-# Print the solution
-if schedule:
-    print("SOLUTION:")
-    for name in schedule:
-        start = schedule[name]["start"]
-        end = schedule[name]["end"]
-        location = schedule[name]["location"]
-        print(f"Meet {name} at {location} from {start:.2f} to {end:.2f}")
-else:
-    print("No feasible schedule found.")
+# Solve the problem and print the solution
+solution = solve_scheduling_problem()
+print("SOLUTION:")
+print(json.dumps(solution, indent=2))

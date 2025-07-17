@@ -1,51 +1,64 @@
-from z3 import *
+from z3 import Solver, Int, Or, And, If, sat
 
 def main():
-    d = Int('d')  # Day: 0 = Monday, 1 = Tuesday
-    s = Int('s')  # Time slot (0 to 15, each 30 minutes starting from 9:00)
+    s = Solver()
     
-    solver = Solver()
+    # Day: 0 = Monday, 1 = Tuesday
+    day = Int('day')
+    start = Int('start')  # in minutes from 9:00
     
-    # Only Monday (0) and Tuesday (1) are considered
-    solver.add(Or(d == 0, d == 1))
-    solver.add(s >= 0, s <= 15)  # 16 slots in a day (0 to 15)
+    # Day must be Monday (0) or Tuesday (1)
+    s.add(Or(day == 0, day == 1))
+    # Start time must be between 0 and 450 (since 480 - 30 = 450)
+    s.add(start >= 0, start <= 450)
     
-    # Cheryl's busy slots
-    cheryl_busy = {
-        0: [0, 5, 6, 7, 13],  # Monday
-        1: [12]                # Tuesday
-    }
-    for day, busy_slots in cheryl_busy.items():
-        solver.add(If(d == day, And([s != slot for slot in busy_slots]), True))
+    # Busy times in minutes from 9:00
+    # Cheryl on Monday: [0, 30), [150, 240), [390, 420)
+    cheryl_mon_constraints = And(
+        Or(start + 30 <= 0, start >= 30),
+        Or(start + 30 <= 150, start >= 240),
+        Or(start + 30 <= 390, start >= 420)
+    )
+    # Kyle on Monday: [0, 480)
+    kyle_mon_constraints = Or(start + 30 <= 0, start >= 480)
     
-    # Kyle's constraints
-    solver.add(If(d == 0, False, True))  # Monday entirely busy
-    solver.add(If(d == 1, s == 0, True)) # Tuesday only free at slot 0
+    # Cheryl on Tuesday: [360, 390)
+    cheryl_tue_constraints = Or(start + 30 <= 360, start >= 390)
+    # Kyle on Tuesday: [30, 480)
+    kyle_tue_constraints = Or(start + 30 <= 30, start >= 480)
     
-    if solver.check() == sat:
-        model = solver.model()
-        day_val = model[d].as_long()
-        slot_val = model[s].as_long()
+    # Add constraints based on the day
+    s.add(If(day == 0, 
+             And(cheryl_mon_constraints, kyle_mon_constraints),
+             If(day == 1,
+                And(cheryl_tue_constraints, kyle_tue_constraints),
+                False)))
+    
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        d = m[day].as_long()
+        st = m[start].as_long()
         
-        days = ["Monday", "Tuesday", "Wednesday"]
-        day_str = days[day_val]
+        # Convert start time to HH:MM
+        hours = 9 + st // 60
+        minutes = st % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Convert slot to start time (in minutes from 9:00)
-        start_minutes = slot_val * 30
-        start_hour = 9 + start_minutes // 60
-        start_minute = start_minutes % 60
-        end_minutes = start_minutes + 30
-        end_hour = 9 + end_minutes // 60
-        end_minute = end_minutes % 60
+        # Calculate end time
+        end_minutes = st + 30
+        end_hours = 9 + end_minutes // 60
+        end_minutes = end_minutes % 60
+        end_time = f"{end_hours:02d}:{end_minutes:02d}"
         
-        start_time = f"{start_hour}:{start_minute:02d}"
-        end_time = f"{end_hour}:{end_minute:02d}"
+        day_str = "Monday" if d == 0 else "Tuesday"
         
+        print("SOLUTION:")
         print(f"Day: {day_str}")
-        print(f"Start time: {start_time}")
-        print(f"End time: {end_time}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -1,50 +1,55 @@
 from z3 import *
+import json
 
 def solve_scheduling():
-    # Initialize the solver
+    # Create solver instance
     s = Solver()
-    
-    # Convert all times to minutes since 9:00 AM (540 minutes since midnight)
-    # Robert's availability: 11:15 AM to 5:45 PM
-    robert_start = (11 * 60 + 15) - (9 * 60)  # 135 minutes after 9:00 AM (11:15 AM is 2h15m after 9:00)
-    robert_end = (17 * 60 + 45) - (9 * 60)    # 525 minutes after 9:00 AM (5:45 PM is 8h45m after 9:00)
-    
-    # Variables for meeting start and end times (relative to 9:00 AM)
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
-    
-    # Travel time from Nob Hill to Presidio is 17 minutes
-    travel_time = 17
-    
+
+    # Define variables
+    meet_start = Int('meet_start')  # in minutes from 9:00 AM
+    meet_duration = Int('meet_duration')
+
     # Constraints
-    # 1. Meeting duration is at least 120 minutes
-    s.add(meeting_end - meeting_start >= 120)
-    
-    # 2. Meeting must be within Robert's availability
-    s.add(meeting_start >= robert_start)
-    s.add(meeting_end <= robert_end)
-    
-    # 3. Time to travel to Presidio: leave Nob Hill at (meeting_start - travel_time) >= 0 (since we arrive at Nob Hill at 9:00 AM (0 minutes))
-    s.add(meeting_start - travel_time >= 0)
-    
-    # Check if the constraints are satisfiable
+    # Robert's availability: 11:15 AM to 5:45 PM (135 to 525 minutes from 9:00 AM)
+    s.add(meet_start >= 135)  # 11:15 AM is 135 minutes after 9:00 AM
+    s.add(meet_start + meet_duration <= 525)  # 5:45 PM is 525 minutes after 9:00 AM
+    s.add(meet_duration >= 120)  # Minimum meeting duration
+
+    # Travel time: 17 minutes to Presidio
+    s.add(meet_start >= 17)  # Must have time to travel from Nob Hill to Presidio
+
+    # Maximize meeting duration (optional, but here we set it to exactly 120)
+    s.add(meet_duration == 120)
+
+    # Check if the solver can find a solution
     if s.check() == sat:
         m = s.model()
-        start = m[meeting_start].as_long()
-        end = m[meeting_end].as_long()
-        
-        # Convert times back to HH:MM format
-        def to_time_str(minutes):
-            total_minutes = 9 * 60 + minutes
-            h = total_minutes // 60
-            m = total_minutes % 60
-            return f"{h}:{m:02d}"
-        
-        start_time = to_time_str(start)
-        end_time = to_time_str(end)
-        
-        print(f"SOLUTION: Meet Robert from {start_time} to {end_time}.")
-    else:
-        print("No feasible schedule found.")
+        start = m[meet_start].as_long()
+        duration = m[meet_duration].as_long()
 
-solve_scheduling()
+        # Convert minutes to HH:MM format
+        start_hour = 9 + (start // 60)
+        start_min = start % 60
+        end_hour = 9 + ((start + duration) // 60)
+        end_min = (start + duration) % 60
+
+        start_time = f"{start_hour:02d}:{start_min:02d}"
+        end_time = f"{end_hour:02d}:{end_min:02d}"
+
+        itinerary = {
+            "itinerary": [
+                {
+                    "action": "meet",
+                    "person": "Robert",
+                    "start_time": start_time,
+                    "end_time": end_time
+                }
+            ]
+        }
+        return itinerary
+    else:
+        return {"itinerary": []}
+
+# Solve and print the solution
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

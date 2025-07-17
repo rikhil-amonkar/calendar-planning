@@ -1,66 +1,78 @@
 from z3 import *
 
 def main():
-    # Blocked times in minutes from 9:00 for Ronald and Amber for each day
-    ronald_blocked = {
-        0: [(90, 120), (180, 210), (390, 420)],  # Monday
-        1: [(0, 30), (180, 210), (390, 450)],     # Tuesday
-        2: [(30, 90), (120, 180), (210, 240), (270, 300), (450, 480)]  # Wednesday
+    # Hardcoded busy blocks in minutes from 9:00
+    ronald_busy = {
+        "Monday": [(90, 120), (180, 210), (390, 420)],
+        "Tuesday": [(0, 30), (180, 210), (390, 450)],
+        "Wednesday": [(30, 90), (120, 180), (210, 240), (270, 300), (450, 480)]
     }
     
-    amber_blocked = {
-        0: [(0, 30), (60, 90), (150, 180), (210, 300), (330, 360), (390, 480)],  # Monday
-        1: [(0, 30), (60, 150), (180, 210), (270, 390), (450, 480)],  # Tuesday
-        2: [(0, 30), (60, 90), (120, 270), (360, 390)]  # Wednesday
+    amber_busy = {
+        "Monday": [(0, 30), (60, 90), (150, 180), (210, 300), (330, 360), (390, 480)],
+        "Tuesday": [(0, 30), (60, 150), (180, 210), (270, 390), (450, 480)],
+        "Wednesday": [(0, 30), (60, 90), (120, 270), (360, 390)]
     }
+    
+    days_str = ["Monday", "Tuesday", "Wednesday"]
     
     # Create Z3 variables
-    day = Int('day')
-    start = Int('start')
+    day_var = Int('day')
+    start_var = Int('start')
     
-    # Constraints
-    constraints = []
-    constraints.append(day >= 0)
-    constraints.append(day <= 2)
-    constraints.append(start >= 0)
-    constraints.append(start <= 450)  # 450 minutes = 16:30 (since meeting is 30 min)
+    # Create solver
+    s = Optimize()
     
-    # Add constraints for avoiding blocked times
-    for d in [0, 1, 2]:
-        for (s, e) in ronald_blocked[d]:
-            constraints.append(Implies(day == d, Or(start + 30 <= s, start >= e)))
-        for (s, e) in amber_blocked[d]:
-            constraints.append(Implies(day == d, Or(start + 30 <= s, start >= e)))
+    # Day must be 0, 1, or 2
+    s.add(day_var >= 0, day_var <= 2)
+    # Start time must be between 0 and 450 (inclusive) to fit the meeting
+    s.add(start_var >= 0, start_var <= 450)
     
-    # Create optimizer and minimize the objective (earliest time)
-    opt = Optimize()
-    opt.add(constraints)
-    objective = day * 480 + start
-    opt.minimize(objective)
+    # For each day, add constraints that the meeting does not conflict with any busy block
+    for d in range(3):
+        day_name = days_str[d]
+        # Constraints for Ronald's busy blocks on this day
+        ronald_constraints = []
+        for block in ronald_busy[day_name]:
+            s_start, s_end = block
+            # Non-overlap: meeting ends before block starts OR meeting starts after block ends
+            ronald_constraints.append(Or(start_var + 30 <= s_start, start_var >= s_end))
+        # Constraints for Amber's busy blocks on this day
+        amber_constraints = []
+        for block in amber_busy[day_name]:
+            s_start, s_end = block
+            amber_constraints.append(Or(start_var + 30 <= s_start, start_var >= s_end))
+        
+        # If the meeting is on this day, then both participants must be free
+        s.add(Implies(day_var == d, And(And(ronald_constraints), And(amber_constraints)))
     
-    # Check for a solution
-    if opt.check() == sat:
-        m = opt.model()
-        d_val = m[day].as_long()
-        start_val = m[start].as_long()
+    # Minimize: earliest day and then earliest start time
+    s.minimize(day_var * 1000 + start_var)
+    
+    # Check for solution
+    if s.check() == sat:
+        m = s.model()
+        d_val = m[day_var].as_long()
+        start_val = m[start_var].as_long()
         
-        # Convert day value to day name
-        day_names = ['Monday', 'Tuesday', 'Wednesday']
-        day_str = day_names[d_val]
+        day_name = days_str[d_val]
+        # Convert start minutes to time
+        total_minutes = start_val
+        hours = 9 + total_minutes // 60
+        minutes = total_minutes % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Calculate start time
-        start_hour = 9 + start_val // 60
-        start_minute = start_val % 60
-        start_time = f"{start_hour}:{start_minute:02d}"
+        # Calculate end time (start + 30 minutes)
+        end_minutes = total_minutes + 30
+        end_hours = 9 + end_minutes // 60
+        end_minutes = end_minutes % 60
+        end_time = f"{end_hours:02d}:{end_minutes:02d}"
         
-        # Calculate end time (30 minutes after start)
-        end_val = start_val + 30
-        end_hour = 9 + end_val // 60
-        end_minute = end_val % 60
-        end_time = f"{end_hour}:{end_minute:02d}"
-        
-        # Print the solution
-        print(day_str, start_time, end_time)
+        # Output the solution
+        print("SOLUTION:")
+        print(f"Day: {day_name}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

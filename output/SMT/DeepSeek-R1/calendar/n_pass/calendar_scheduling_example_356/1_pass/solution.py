@@ -1,68 +1,69 @@
-from z3 import Solver, Int, Or, And, sat
+from z3 import *
 
 def main():
     # Initialize solver
     s = Solver()
     
-    # Define the start time variable S (in minutes from 9:00)
-    start_time = Int('start_time')
+    # Define start time in minutes from 9:00 (0 minutes = 9:00)
+    start = Int('start')
     
-    # Constraints: 360 <= start_time <= 450 (since meeting is 30 minutes, must end by 480)
-    s.add(start_time >= 360)
-    s.add(start_time <= 450)
+    # Possible start times: every 30 minutes from 0 (9:00) to 450 (16:30)
+    possible_starts = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450]
+    s.add(Or([start == ps for ps in possible_starts]))
     
-    # Busy intervals for each participant (in minutes from 9:00)
-    # Katherine: [180, 210], [240, 330]
-    # Julie: [0, 30], [90, 120], [270, 300], [360, 390]
-    # Angela: [0, 60], [90, 120], [150, 300], [330, 360], [450, 480]
-    # Nicholas: [30, 120], [150, 270], [300, 420], [450, 480]
-    # Carl: [0, 120], [150, 210], [240, 330], [360, 420], [450, 480]
+    # Define busy intervals for each participant (in minutes from 9:00)
+    katherine_busy = [(180, 210), (240, 330)]
+    rebecca_busy = []
+    julie_busy = [(0, 30), (90, 120), (270, 300), (360, 390)]
+    angela_busy = [(0, 60), (90, 120), (150, 300), (330, 360), (450, 480)]
+    nicholas_busy = [(30, 120), (150, 270), (300, 420), (450, 480)]
+    carl_busy = [(0, 120), (150, 210), (240, 330), (360, 420), (450, 480)]
     
-    # Katherine's constraints
-    s.add(Or(start_time + 30 <= 180, start_time >= 210))
-    s.add(Or(start_time + 30 <= 240, start_time >= 330))
+    # Function to add busy constraints for a participant
+    def add_busy_constraints(busy_intervals):
+        for (b_start, b_end) in busy_intervals:
+            s.add(Or(start + 30 <= b_start, start >= b_end))
     
-    # Julie's constraints
-    s.add(Or(start_time + 30 <= 0, start_time >= 30))
-    s.add(Or(start_time + 30 <= 90, start_time >= 120))
-    s.add(Or(start_time + 30 <= 270, start_time >= 300))
-    s.add(Or(start_time + 30 <= 360, start_time >= 390))
+    # Add constraints for each participant
+    add_busy_constraints(katherine_busy)
+    add_busy_constraints(rebecca_busy)
+    add_busy_constraints(julie_busy)
+    add_busy_constraints(angela_busy)
+    add_busy_constraints(nicholas_busy)
+    add_busy_constraints(carl_busy)
     
-    # Angela's constraints
-    s.add(Or(start_time + 30 <= 0, start_time >= 60))
-    s.add(Or(start_time + 30 <= 90, start_time >= 120))
-    s.add(Or(start_time + 30 <= 150, start_time >= 300))
-    s.add(Or(start_time + 30 <= 330, start_time >= 360))
-    s.add(Or(start_time + 30 <= 450, start_time >= 480))
+    # First, try to find a slot at or after 15:00 (360 minutes)
+    s.push()
+    s.add(start >= 360)
     
-    # Nicholas's constraints
-    s.add(Or(start_time + 30 <= 30, start_time >= 120))
-    s.add(Or(start_time + 30 <= 150, start_time >= 270))
-    s.add(Or(start_time + 30 <= 300, start_time >= 420))
-    s.add(Or(start_time + 30 <= 450, start_time >= 480))
-    
-    # Carl's constraints
-    s.add(Or(start_time + 30 <= 0, start_time >= 120))
-    s.add(Or(start_time + 30 <= 150, start_time >= 210))
-    s.add(Or(start_time + 30 <= 240, start_time >= 330))
-    s.add(Or(start_time + 30 <= 360, start_time >= 420))
-    s.add(Or(start_time + 30 <= 450, start_time >= 480))
-    
-    # Check for a solution
     if s.check() == sat:
         model = s.model()
-        start_minutes = model[start_time].as_long()
-        # Convert minutes back to time
-        hours = 9 + start_minutes // 60
-        minutes = start_minutes % 60
-        start_time_str = f"{hours:02d}:{minutes:02d}"
-        end_minutes = start_minutes + 30
-        end_hours = 9 + end_minutes // 60
-        end_minutes = end_minutes % 60
-        end_time_str = f"{end_hours:02d}:{end_minutes:02d}"
-        print(f"Meeting can be scheduled from {start_time_str} to {end_time_str}")
     else:
-        print("No solution found")
+        s.pop()
+        if s.check() == sat:
+            model = s.model()
+        else:
+            print("SOLUTION not found")
+            return
+    
+    start_val = model[start].as_long()
+    
+    # Convert minutes back to time string
+    total_minutes = start_val
+    hours = 9 + total_minutes // 60
+    minutes = total_minutes % 60
+    start_time = f"{hours:02d}:{minutes:02d}"
+    
+    end_minutes = total_minutes + 30
+    end_hours = 9 + end_minutes // 60
+    end_minutes = end_minutes % 60
+    end_time = f"{end_hours:02d}:{end_minutes:02d}"
+    
+    # Output the solution
+    print("SOLUTION:")
+    print(f"Day: Monday")
+    print(f"Start Time: {start_time}")
+    print(f"End Time: {end_time}")
 
 if __name__ == "__main__":
     main()

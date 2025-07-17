@@ -1,144 +1,383 @@
 from z3 import *
+import json
 
 def solve_scheduling():
     # Initialize solver
     s = Solver()
 
+    # Define time variables in minutes since 9:00 AM (540 minutes)
+    # Meeting start and end times for each friend
+    sarah_start = Int('sarah_start')
+    sarah_end = Int('sarah_end')
+    jeffrey_start = Int('jeffrey_start')
+    jeffrey_end = Int('jeffrey_end')
+    brian_start = Int('brian_start')
+    brian_end = Int('brian_end')
+
+    # Convert friends' availability windows to minutes since 9:00 AM
+    # Sarah: 4:00 PM to 6:15 PM (16:00 to 18:15) -> 960 to 1095 minutes
+    sarah_available_start = 16 * 60 - 540  # 960 - 540 = 420
+    sarah_available_end = (18 * 60 + 15) - 540  # 1095 - 540 = 555
+
+    # Jeffrey: 3:00 PM to 10:00 PM (15:00 to 22:00) -> 900 to 1320 minutes
+    jeffrey_available_start = 15 * 60 - 540  # 900 - 540 = 360
+    jeffrey_available_end = 22 * 60 - 540  # 1320 - 540 = 780
+
+    # Brian: 4:00 PM to 5:30 PM (16:00 to 17:30) -> 960 to 1050 minutes
+    brian_available_start = 16 * 60 - 540  # 960 - 540 = 420
+    brian_available_end = (17 * 60 + 30) - 540  # 1050 - 540 = 510
+
+    # Meeting durations in minutes
+    sarah_duration = 60
+    jeffrey_duration = 75
+    brian_duration = 75
+
+    # Add constraints for each meeting's duration and availability
+    s.add(sarah_start >= sarah_available_start)
+    s.add(sarah_end <= sarah_available_end)
+    s.add(sarah_end == sarah_start + sarah_duration)
+
+    s.add(jeffrey_start >= jeffrey_available_start)
+    s.add(jeffrey_end <= jeffrey_available_end)
+    s.add(jeffrey_end == jeffrey_start + jeffrey_duration)
+
+    s.add(brian_start >= brian_available_start)
+    s.add(brian_end <= brian_available_end)
+    s.add(brian_end == brian_start + brian_duration)
+
     # Travel times between locations (in minutes)
-    travel = {
-        ('Sunset', 'NorthBeach'): 29,
-        ('Sunset', 'UnionSquare'): 30,
-        ('Sunset', 'AlamoSquare'): 17,
-        ('NorthBeach', 'UnionSquare'): 7,
-        ('NorthBeach', 'AlamoSquare'): 16,
-        ('UnionSquare', 'NorthBeach'): 10,
-        ('UnionSquare', 'AlamoSquare'): 15,
-        ('AlamoSquare', 'NorthBeach'): 15,
-        ('AlamoSquare', 'UnionSquare'): 14
-    }
+    # Sunset to Union Square: 30
+    # Union Square to North Beach: 10
+    # North Beach to Alamo Square: 16
+    # Alamo Square to Union Square: 14
+    # Union Square to Alamo Square: 15
+    # North Beach to Union Square: 7
 
-    # Friend availability (minutes since 9:00 AM)
-    friends = {
-        'Sarah': {
-            'location': 'NorthBeach',
-            'start': 420,  # 4:00 PM (16*60 - 9*60)
-            'end': 555,    # 6:15 PM (18*60+15 - 9*60)
-            'duration': 60
-        },
-        'Jeffrey': {
-            'location': 'UnionSquare',
-            'start': 360,  # 3:00 PM (15*60 - 9*60)
-            'end': 780,    # 10:00 PM (22*60 - 9*60)
-            'duration': 75
-        },
-        'Brian': {
-            'location': 'AlamoSquare',
-            'start': 420,  # 4:00 PM (16*60 - 9*60)
-            'end': 510,    # 5:30 PM (17*60+30 - 9*60)
-            'duration': 75
-        }
-    }
-
-    # Decision variables
-    meet = {name: Bool(f'meet_{name}') for name in friends}
-    start = {name: Int(f'start_{name}') for name in friends}
-    end = {name: Int(f'end_{name}') for name in friends}
-
-    # Base constraints
-    for name in friends:
-        f = friends[name]
-        s.add(Implies(meet[name], 
-                     And(start[name] >= f['start'],
-                         end[name] == start[name] + f['duration'],
-                         end[name] <= f['end'])))
-
-    # Try to meet all three friends first
+    # Try meeting Jeffrey first, then Sarah, then Brian
     s.push()
-    s.add(And([meet[name] for name in friends]))
-
-    # Define possible meeting orders
-    # Order 1: Jeffrey -> Sarah -> Brian
-    order1 = And(
-        start['Jeffrey'] >= travel[('Sunset', 'UnionSquare')],
-        end['Jeffrey'] + travel[('UnionSquare', 'NorthBeach')] <= start['Sarah'],
-        end['Sarah'] + travel[('NorthBeach', 'AlamoSquare')] <= start['Brian']
-    )
-
-    # Order 2: Jeffrey -> Brian -> Sarah
-    order2 = And(
-        start['Jeffrey'] >= travel[('Sunset', 'UnionSquare')],
-        end['Jeffrey'] + travel[('UnionSquare', 'AlamoSquare')] <= start['Brian'],
-        end['Brian'] + travel[('AlamoSquare', 'NorthBeach')] <= start['Sarah']
-    )
-
-    s.add(Or(order1, order2))
-
+    s.add(jeffrey_start >= 30)  # travel from Sunset to Union Square
+    s.add(sarah_start >= jeffrey_end + 10)  # travel from Union Square to North Beach
+    s.add(brian_start >= sarah_end + 16)  # travel from North Beach to Alamo Square
     if s.check() == sat:
         model = s.model()
-        print("Optimal schedule meeting all three friends:")
-        schedule = []
-        for name in friends:
-            if is_true(model[meet[name]]):
-                s = model[start[name]].as_long()
-                e = model[end[name]].as_long()
-                schedule.append((name, s, e))
-        
-        schedule.sort(key=lambda x: x[1])
-        for name, s, e in schedule:
-            print(f"Meet {name} at {friends[name]['location']} from {9+s//60}:{s%60:02d} to {9+e//60}:{e%60:02d}")
-    else:
-        print("Cannot meet all three friends. Trying pairs...")
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        sarah_s = model.eval(sarah_start).as_long()
+        sarah_e = model.eval(sarah_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Sarah",
+            "start_time": to_time_str(sarah_s),
+            "end_time": to_time_str(sarah_e)
+        })
+
+        brian_s = model.eval(brian_start).as_long()
+        brian_e = model.eval(brian_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Brian",
+            "start_time": to_time_str(brian_s),
+            "end_time": to_time_str(brian_e)
+        })
+
         s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
 
-        # Try meeting pairs
-        for pair in [('Jeffrey', 'Sarah'), ('Jeffrey', 'Brian'), ('Sarah', 'Brian')]:
-            s.push()
-            s.add(And(meet[pair[0]], meet[pair[1]]))
-            s.add(And([Not(meet[name]) for name in friends if name not in pair]))
+    # Try meeting Jeffrey first, then Brian, then Sarah
+    s.push()
+    s.add(jeffrey_start >= 30)  # travel from Sunset to Union Square
+    s.add(brian_start >= jeffrey_end + 15)  # travel from Union Square to Alamo Square
+    s.add(sarah_start >= brian_end + 15)  # travel from Alamo Square to North Beach
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
 
-            if 'Jeffrey' in pair:
-                other = pair[1]
-                s.add(And(
-                    start['Jeffrey'] >= travel[('Sunset', 'UnionSquare')],
-                    end['Jeffrey'] + travel[('UnionSquare', friends[other]['location'])] <= start[other]
-                ))
-            else:
-                s.add(And(
-                    start['Sarah'] >= travel[('Sunset', 'NorthBeach')],
-                    end['Sarah'] + travel[('NorthBeach', 'AlamoSquare')] <= start['Brian']
-                ))
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
 
-            if s.check() == sat:
-                model = s.model()
-                print(f"Schedule meeting {pair[0]} and {pair[1]}:")
-                times = []
-                for name in pair:
-                    if is_true(model[meet[name]]):
-                        s = model[start[name]].as_long()
-                        e = model[end[name]].as_long()
-                        times.append((name, s, e))
-                
-                times.sort(key=lambda x: x[1])
-                for name, s, e in times:
-                    print(f"Meet {name} at {friends[name]['location']} from {9+s//60}:{s%60:02d} to {9+e//60}:{e%60:02d}")
-                break
-            s.pop()
-        else:
-            print("Cannot meet any two friends. Trying individuals...")
-            for name in friends:
-                s.push()
-                s.add(meet[name])
-                s.add(And([Not(meet[n]) for n in friends if n != name]))
-                s.add(start[name] >= travel[('Sunset', friends[name]['location'])])
+        brian_s = model.eval(brian_start).as_long()
+        brian_e = model.eval(brian_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Brian",
+            "start_time": to_time_str(brian_s),
+            "end_time": to_time_str(brian_e)
+        })
 
-                if s.check() == sat:
-                    model = s.model()
-                    s_time = model[start[name]].as_long()
-                    e_time = model[end[name]].as_long()
-                    print(f"Can only meet {name} at {friends[name]['location']} from {9+s_time//60}:{s_time%60:02d} to {9+e_time//60}:{e_time%60:02d}")
-                    break
-                s.pop()
-            else:
-                print("Cannot meet any friends with given constraints.")
+        sarah_s = model.eval(sarah_start).as_long()
+        sarah_e = model.eval(sarah_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Sarah",
+            "start_time": to_time_str(sarah_s),
+            "end_time": to_time_str(sarah_e)
+        })
 
-solve_scheduling()
+        s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
+
+    # Try meeting Brian first, then Sarah, then Jeffrey
+    s.push()
+    s.add(brian_start >= 17)  # travel from Sunset to Alamo Square
+    s.add(sarah_start >= brian_end + 15)  # travel from Alamo Square to North Beach
+    s.add(jeffrey_start >= sarah_end + 7)  # travel from North Beach to Union Square
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        brian_s = model.eval(brian_start).as_long()
+        brian_e = model.eval(brian_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Brian",
+            "start_time": to_time_str(brian_s),
+            "end_time": to_time_str(brian_e)
+        })
+
+        sarah_s = model.eval(sarah_start).as_long()
+        sarah_e = model.eval(sarah_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Sarah",
+            "start_time": to_time_str(sarah_s),
+            "end_time": to_time_str(sarah_e)
+        })
+
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
+
+    # Try meeting Sarah first, then Jeffrey, then Brian
+    s.push()
+    s.add(sarah_start >= 29)  # travel from Sunset to North Beach
+    s.add(jeffrey_start >= sarah_end + 7)  # travel from North Beach to Union Square
+    s.add(brian_start >= jeffrey_end + 15)  # travel from Union Square to Alamo Square
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        sarah_s = model.eval(sarah_start).as_long()
+        sarah_e = model.eval(sarah_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Sarah",
+            "start_time": to_time_str(sarah_s),
+            "end_time": to_time_str(sarah_e)
+        })
+
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        brian_s = model.eval(brian_start).as_long()
+        brian_e = model.eval(brian_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Brian",
+            "start_time": to_time_str(brian_s),
+            "end_time": to_time_str(brian_e)
+        })
+
+        s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
+
+    # If meeting all three is not possible, try meeting two friends
+    # Try meeting Jeffrey and Sarah
+    s.push()
+    s.add(jeffrey_start >= 30)  # travel from Sunset to Union Square
+    s.add(sarah_start >= jeffrey_end + 10)  # travel from Union Square to North Beach
+    s.add(brian_start == -1)  # not meeting Brian
+    s.add(brian_end == -1)
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        sarah_s = model.eval(sarah_start).as_long()
+        sarah_e = model.eval(sarah_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Sarah",
+            "start_time": to_time_str(sarah_s),
+            "end_time": to_time_str(sarah_e)
+        })
+
+        s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
+
+    # Try meeting Jeffrey and Brian
+    s.push()
+    s.add(jeffrey_start >= 30)  # travel from Sunset to Union Square
+    s.add(brian_start >= jeffrey_end + 15)  # travel from Union Square to Alamo Square
+    s.add(sarah_start == -1)  # not meeting Sarah
+    s.add(sarah_end == -1)
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        brian_s = model.eval(brian_start).as_long()
+        brian_e = model.eval(brian_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Brian",
+            "start_time": to_time_str(brian_s),
+            "end_time": to_time_str(brian_e)
+        })
+
+        s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
+
+    # Try meeting Sarah and Brian
+    s.push()
+    s.add(sarah_start >= 29)  # travel from Sunset to North Beach
+    s.add(brian_start >= sarah_end + 16)  # travel from North Beach to Alamo Square
+    s.add(jeffrey_start == -1)  # not meeting Jeffrey
+    s.add(jeffrey_end == -1)
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        sarah_s = model.eval(sarah_start).as_long()
+        sarah_e = model.eval(sarah_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Sarah",
+            "start_time": to_time_str(sarah_s),
+            "end_time": to_time_str(sarah_e)
+        })
+
+        brian_s = model.eval(brian_start).as_long()
+        brian_e = model.eval(brian_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Brian",
+            "start_time": to_time_str(brian_s),
+            "end_time": to_time_str(brian_e)
+        })
+
+        s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
+
+    # As a last resort, meet only Jeffrey
+    s.push()
+    s.add(jeffrey_start >= 30)
+    s.add(jeffrey_end == jeffrey_start + jeffrey_duration)
+    s.add(sarah_start == -1)
+    s.add(sarah_end == -1)
+    s.add(brian_start == -1)
+    s.add(brian_end == -1)
+    if s.check() == sat:
+        model = s.model()
+        itinerary = []
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        s.pop()
+        return {"itinerary": itinerary}
+    s.pop()
+
+    # If all else fails, return empty itinerary
+    return {"itinerary": []}
+
+# Solve the problem
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

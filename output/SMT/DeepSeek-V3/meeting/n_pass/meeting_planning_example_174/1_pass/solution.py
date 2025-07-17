@@ -1,78 +1,87 @@
 from z3 import *
+import datetime
 
 def solve_scheduling():
-    # Initialize solver
+    # Initialize Z3 solver
     s = Solver()
 
-    # Convert all times to minutes since 9:00 AM (540 minutes since midnight)
-    # Kenneth's window: 12:00 PM (720) to 3:45 PM (945)
-    kenneth_start_min = 720
-    kenneth_end_min = 945
-    # Thomas's window: 3:30 PM (1050) to 7:15 PM (1275)
-    thomas_start_min = 1050
-    thomas_end_min = 1275
+    # Define variables for meeting start and end times (in minutes since 9:00 AM)
+    # Kenneth's meeting at Mission District
+    k_start = Int('k_start')  # minutes from 9:00 AM
+    k_end = Int('k_end')
+    # Thomas's meeting at Pacific Heights
+    t_start = Int('t_start')
+    t_end = Int('t_end')
 
-    # Meeting durations in minutes
-    kenneth_duration = 45
-    thomas_duration = 75
+    # Convert friend availability to minutes since 9:00 AM
+    # Kenneth available from 12:00 PM to 3:45 PM (180 to 405 minutes)
+    k_available_start = (12 - 9) * 60  # 180 minutes
+    k_available_end = (15 - 9) * 60 + 45  # 405 minutes
+    # Thomas available from 3:30 PM to 7:15 PM (390 to 615 minutes)
+    t_available_start = (15 - 9) * 60 + 30  # 390 minutes
+    t_available_end = (19 - 9) * 60 + 15  # 615 minutes
 
-    # Variables for meeting start times
-    meet_kenneth_start = Int('meet_kenneth_start')
-    meet_kenneth_end = Int('meet_kenneth_end')
-    meet_thomas_start = Int('meet_thomas_start')
-    meet_thomas_end = Int('meet_thomas_end')
-
-    # Variables for travel times
-    # Initial location: Nob Hill at 9:00 AM (540)
-    # Possible sequences:
-    # Option 1: Nob Hill -> Mission (Kenneth) -> Pacific (Thomas)
-    # Option 2: Nob Hill -> Pacific (Thomas) -> Mission (Kenneth) -> but Thomas is only available after 3:30 PM, Kenneth before 3:45 PM. So this is impossible.
-    # So only Option 1 is feasible.
-
-    # Travel from Nob Hill to Mission District: 13 minutes
-    travel_to_kenneth = 13
-    # Travel from Mission District to Pacific Heights: 16 minutes
-    travel_to_thomas = 16
+    # Minimum durations in minutes
+    k_min_duration = 45
+    t_min_duration = 75
 
     # Constraints for Kenneth's meeting
-    s.add(meet_kenneth_start >= kenneth_start_min)
-    s.add(meet_kenneth_end <= kenneth_end_min)
-    s.add(meet_kenneth_end == meet_kenneth_start + kenneth_duration)
+    s.add(k_start >= k_available_start)
+    s.add(k_end <= k_available_end)
+    s.add(k_end - k_start >= k_min_duration)
 
     # Constraints for Thomas's meeting
-    s.add(meet_thomas_start >= thomas_start_min)
-    s.add(meet_thomas_end <= thomas_end_min)
-    s.add(meet_thomas_end == meet_thomas_start + thomas_duration)
+    s.add(t_start >= t_available_start)
+    s.add(t_end <= t_available_end)
+    s.add(t_end - t_start >= t_min_duration)
 
-    # Arrival at Mission District: must be after traveling from Nob Hill (540 + 13 = 553)
-    s.add(meet_kenneth_start >= 540 + travel_to_kenneth)
+    # Travel times between locations (in minutes)
+    # Nob Hill to Mission District: 13
+    # Mission District to Pacific Heights: 16
+    # Nob Hill to Pacific Heights: 8
+    # Pacific Heights to Mission District: 15
 
-    # Arrival at Pacific Heights: must be after meeting Kenneth and traveling to Pacific Heights
-    s.add(meet_thomas_start >= meet_kenneth_end + travel_to_thomas)
+    # We start at Nob Hill at 0 minutes (9:00 AM)
+    # Possible sequences:
+    # Option 1: Meet Kenneth first, then Thomas
+    #   - Travel Nob Hill to Mission District: 13 minutes
+    #   - Meet Kenneth: k_start >= 13, k_end
+    #   - Travel Mission District to Pacific Heights: 16 minutes
+    #   - t_start >= k_end + 16
+    # Option 2: Meet Thomas first, then Kenneth
+    #   - Travel Nob Hill to Pacific Heights: 8 minutes
+    #   - Meet Thomas: t_start >= 8, t_end
+    #   - Travel Pacific Heights to Mission District: 15 minutes
+    #   - k_start >= t_end + 15
+    # But Kenneth's availability ends at 405 minutes, and Thomas starts at earliest 390.
+    # So Option 2 is impossible because meeting Thomas first would require k_start >= t_end + 15 >= 390 + 75 + 15 = 480, but Kenneth's window ends at 405.
+    # Thus, only Option 1 is feasible.
 
-    # Check if the schedule is feasible
+    # So, we model Option 1:
+    s.add(k_start >= 13)  # travel to Mission District
+    s.add(t_start >= k_end + 16)  # travel to Pacific Heights after meeting Kenneth
+
+    # Ensure the schedule is feasible
     if s.check() == sat:
         m = s.model()
-        k_start = m.eval(meet_kenneth_start).as_long()
-        k_end = m.eval(meet_kenneth_end).as_long()
-        t_start = m.eval(meet_thomas_start).as_long()
-        t_end = m.eval(meet_thomas_end).as_long()
+        k_start_val = m.evaluate(k_start).as_long()
+        k_end_val = m.evaluate(k_end).as_long()
+        t_start_val = m.evaluate(t_start).as_long()
+        t_end_val = m.evaluate(t_end).as_long()
 
-        # Convert minutes back to time strings
-        def min_to_time(minutes):
-            h = (minutes // 60) % 24
-            m = minutes % 60
-            return f"{h:02d}:{m:02d}"
+        # Convert minutes since 9:00 AM to HH:MM format
+        def minutes_to_time(minutes):
+            time = datetime.datetime(2023, 1, 1, 9, 0) + datetime.timedelta(minutes=minutes)
+            return time.strftime("%H:%M")
 
-        k_start_time = min_to_time(k_start)
-        k_end_time = min_to_time(k_end)
-        t_start_time = min_to_time(t_start)
-        t_end_time = min_to_time(t_end)
-
-        print("SOLUTION:")
-        print(f"Meet Kenneth at Mission District from {k_start_time} to {k_end_time}")
-        print(f"Then travel to Pacific Heights and meet Thomas from {t_start_time} to {t_end_time}")
+        itinerary = [
+            {"action": "meet", "person": "Kenneth", "start_time": minutes_to_time(k_start_val), "end_time": minutes_to_time(k_end_val)},
+            {"action": "meet", "person": "Thomas", "start_time": minutes_to_time(t_start_val), "end_time": minutes_to_time(t_end_val)}
+        ]
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+solution = solve_scheduling()
+print("SOLUTION:")
+print(solution)

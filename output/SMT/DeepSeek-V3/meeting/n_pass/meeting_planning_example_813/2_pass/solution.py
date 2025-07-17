@@ -1,175 +1,263 @@
 from z3 import *
+import json
 
-def solve_scheduling():
+def solve_scheduling_problem():
     # Initialize Z3 solver
-    s = Solver()
+    solver = Solver()
 
-    # Define the locations and their available time windows (in minutes since midnight)
-    locations = {
-        'Marina District': (9*60, 24*60),  # Starting point, no meeting
-        'Embarcadero': (9*45, 18*60),      # Joshua
-        'Bayview': (9*45, 20*15),          # Jeffrey
-        'Union Square': (10*45, 20*15),    # Charles
-        'Chinatown': (7*60, 15*30),        # Joseph
-        'Sunset District': (9*60, 9*45),   # Elizabeth
-        'Golden Gate Park': (11*60, 19*30), # Matthew
-        'Financial District': (10*45, 11*15), # Carol
-        'Haight-Ashbury': (19*15, 20*30),  # Paul
-        'Mission District': (17*60, 21*45)  # Rebecca
+    # Define the friends and their constraints
+    friends = {
+        "Joshua": {
+            "location": "Embarcadero",
+            "available_start": "09:45",
+            "available_end": "18:00",
+            "min_duration": 105,
+        },
+        "Jeffrey": {
+            "location": "Bayview",
+            "available_start": "09:45",
+            "available_end": "20:15",
+            "min_duration": 75,
+        },
+        "Charles": {
+            "location": "Union Square",
+            "available_start": "10:45",
+            "available_end": "20:15",
+            "min_duration": 120,
+        },
+        "Joseph": {
+            "location": "Chinatown",
+            "available_start": "07:00",
+            "available_end": "15:30",
+            "min_duration": 60,
+        },
+        "Elizabeth": {
+            "location": "Sunset District",
+            "available_start": "09:00",
+            "available_end": "09:45",
+            "min_duration": 45,
+        },
+        "Matthew": {
+            "location": "Golden Gate Park",
+            "available_start": "11:00",
+            "available_end": "19:30",
+            "min_duration": 45,
+        },
+        "Carol": {
+            "location": "Financial District",
+            "available_start": "10:45",
+            "available_end": "11:15",
+            "min_duration": 15,
+        },
+        "Paul": {
+            "location": "Haight-Ashbury",
+            "available_start": "19:15",
+            "available_end": "20:30",
+            "min_duration": 15,
+        },
+        "Rebecca": {
+            "location": "Mission District",
+            "available_start": "17:00",
+            "available_end": "21:45",
+            "min_duration": 45,
+        },
     }
 
-    # Minimum meeting durations in minutes
-    min_durations = {
-        'Embarcadero': 105,
-        'Bayview': 75,
-        'Union Square': 120,
-        'Chinatown': 60,
-        'Sunset District': 45,
-        'Golden Gate Park': 45,
-        'Financial District': 15,
-        'Haight-Ashbury': 15,
-        'Mission District': 45
-    }
-
-    # Travel times between locations (in minutes)
+    # Travel times (in minutes) between locations
     travel_times = {
-        ('Marina District', 'Embarcadero'): 14,
-        ('Marina District', 'Bayview'): 27,
-        ('Marina District', 'Union Square'): 16,
-        ('Marina District', 'Chinatown'): 15,
-        ('Marina District', 'Sunset District'): 19,
-        ('Marina District', 'Golden Gate Park'): 18,
-        ('Marina District', 'Financial District'): 17,
-        ('Marina District', 'Haight-Ashbury'): 16,
-        ('Marina District', 'Mission District'): 20,
-        ('Embarcadero', 'Marina District'): 12,
-        ('Embarcadero', 'Bayview'): 21,
-        ('Embarcadero', 'Union Square'): 10,
-        ('Embarcadero', 'Chinatown'): 7,
-        ('Embarcadero', 'Sunset District'): 30,
-        ('Embarcadero', 'Golden Gate Park'): 25,
-        ('Embarcadero', 'Financial District'): 5,
-        ('Embarcadero', 'Haight-Ashbury'): 21,
-        ('Embarcadero', 'Mission District'): 20,
-        ('Bayview', 'Marina District'): 27,
-        ('Bayview', 'Embarcadero'): 19,
-        ('Bayview', 'Union Square'): 18,
-        ('Bayview', 'Chinatown'): 19,
-        ('Bayview', 'Sunset District'): 23,
-        ('Bayview', 'Golden Gate Park'): 22,
-        ('Bayview', 'Financial District'): 19,
-        ('Bayview', 'Haight-Ashbury'): 19,
-        ('Bayview', 'Mission District'): 13,
-        ('Union Square', 'Marina District'): 18,
-        ('Union Square', 'Embarcadero'): 11,
-        ('Union Square', 'Bayview'): 15,
-        ('Union Square', 'Chinatown'): 7,
-        ('Union Square', 'Sunset District'): 27,
-        ('Union Square', 'Golden Gate Park'): 22,
-        ('Union Square', 'Financial District'): 9,
-        ('Union Square', 'Haight-Ashbury'): 18,
-        ('Union Square', 'Mission District'): 14,
-        ('Chinatown', 'Marina District'): 12,
-        ('Chinatown', 'Embarcadero'): 5,
-        ('Chinatown', 'Bayview'): 20,
-        ('Chinatown', 'Union Square'): 7,
-        ('Chinatown', 'Sunset District'): 29,
-        ('Chinatown', 'Golden Gate Park'): 23,
-        ('Chinatown', 'Financial District'): 5,
-        ('Chinatown', 'Haight-Ashbury'): 19,
-        ('Chinatown', 'Mission District'): 17,
-        ('Sunset District', 'Marina District'): 21,
-        ('Sunset District', 'Embarcadero'): 30,
-        ('Sunset District', 'Bayview'): 22,
-        ('Sunset District', 'Union Square'): 30,
-        ('Sunset District', 'Chinatown'): 30,
-        ('Sunset District', 'Golden Gate Park'): 11,
-        ('Sunset District', 'Financial District'): 30,
-        ('Sunset District', 'Haight-Ashbury'): 15,
-        ('Sunset District', 'Mission District'): 25,
-        ('Golden Gate Park', 'Marina District'): 16,
-        ('Golden Gate Park', 'Embarcadero'): 25,
-        ('Golden Gate Park', 'Bayview'): 23,
-        ('Golden Gate Park', 'Union Square'): 22,
-        ('Golden Gate Park', 'Chinatown'): 23,
-        ('Golden Gate Park', 'Sunset District'): 10,
-        ('Golden Gate Park', 'Financial District'): 26,
-        ('Golden Gate Park', 'Haight-Ashbury'): 7,
-        ('Golden Gate Park', 'Mission District'): 17,
-        ('Financial District', 'Marina District'): 15,
-        ('Financial District', 'Embarcadero'): 4,
-        ('Financial District', 'Bayview'): 19,
-        ('Financial District', 'Union Square'): 9,
-        ('Financial District', 'Chinatown'): 5,
-        ('Financial District', 'Sunset District'): 30,
-        ('Financial District', 'Golden Gate Park'): 23,
-        ('Financial District', 'Haight-Ashbury'): 19,
-        ('Financial District', 'Mission District'): 17,
-        ('Haight-Ashbury', 'Marina District'): 17,
-        ('Haight-Ashbury', 'Embarcadero'): 20,
-        ('Haight-Ashbury', 'Bayview'): 18,
-        ('Haight-Ashbury', 'Union Square'): 19,
-        ('Haight-Ashbury', 'Chinatown'): 19,
-        ('Haight-Ashbury', 'Sunset District'): 15,
-        ('Haight-Ashbury', 'Golden Gate Park'): 7,
-        ('Haight-Ashbury', 'Financial District'): 21,
-        ('Haight-Ashbury', 'Mission District'): 11,
-        ('Mission District', 'Marina District'): 19,
-        ('Mission District', 'Embarcadero'): 19,
-        ('Mission District', 'Bayview'): 14,
-        ('Mission District', 'Union Square'): 15,
-        ('Mission District', 'Chinatown'): 16,
-        ('Mission District', 'Sunset District'): 24,
-        ('Mission District', 'Golden Gate Park'): 17,
-        ('Mission District', 'Financial District'): 15,
-        ('Mission District', 'Haight-Ashbury'): 12
+        "Marina District": {
+            "Embarcadero": 14,
+            "Bayview": 27,
+            "Union Square": 16,
+            "Chinatown": 15,
+            "Sunset District": 19,
+            "Golden Gate Park": 18,
+            "Financial District": 17,
+            "Haight-Ashbury": 16,
+            "Mission District": 20,
+        },
+        "Embarcadero": {
+            "Marina District": 12,
+            "Bayview": 21,
+            "Union Square": 10,
+            "Chinatown": 7,
+            "Sunset District": 30,
+            "Golden Gate Park": 25,
+            "Financial District": 5,
+            "Haight-Ashbury": 21,
+            "Mission District": 20,
+        },
+        "Bayview": {
+            "Marina District": 27,
+            "Embarcadero": 19,
+            "Union Square": 18,
+            "Chinatown": 19,
+            "Sunset District": 23,
+            "Golden Gate Park": 22,
+            "Financial District": 19,
+            "Haight-Ashbury": 19,
+            "Mission District": 13,
+        },
+        "Union Square": {
+            "Marina District": 18,
+            "Embarcadero": 11,
+            "Bayview": 15,
+            "Chinatown": 7,
+            "Sunset District": 27,
+            "Golden Gate Park": 22,
+            "Financial District": 9,
+            "Haight-Ashbury": 18,
+            "Mission District": 14,
+        },
+        "Chinatown": {
+            "Marina District": 12,
+            "Embarcadero": 5,
+            "Bayview": 20,
+            "Union Square": 7,
+            "Sunset District": 29,
+            "Golden Gate Park": 23,
+            "Financial District": 5,
+            "Haight-Ashbury": 19,
+            "Mission District": 17,
+        },
+        "Sunset District": {
+            "Marina District": 21,
+            "Embarcadero": 30,
+            "Bayview": 22,
+            "Union Square": 30,
+            "Chinatown": 30,
+            "Golden Gate Park": 11,
+            "Financial District": 30,
+            "Haight-Ashbury": 15,
+            "Mission District": 25,
+        },
+        "Golden Gate Park": {
+            "Marina District": 16,
+            "Embarcadero": 25,
+            "Bayview": 23,
+            "Union Square": 22,
+            "Chinatown": 23,
+            "Sunset District": 10,
+            "Financial District": 26,
+            "Haight-Ashbury": 7,
+            "Mission District": 17,
+        },
+        "Financial District": {
+            "Marina District": 15,
+            "Embarcadero": 4,
+            "Bayview": 19,
+            "Union Square": 9,
+            "Chinatown": 5,
+            "Sunset District": 30,
+            "Golden Gate Park": 23,
+            "Haight-Ashbury": 19,
+            "Mission District": 17,
+        },
+        "Haight-Ashbury": {
+            "Marina District": 17,
+            "Embarcadero": 20,
+            "Bayview": 18,
+            "Union Square": 19,
+            "Chinatown": 19,
+            "Sunset District": 15,
+            "Golden Gate Park": 7,
+            "Financial District": 21,
+            "Mission District": 11,
+        },
+        "Mission District": {
+            "Marina District": 19,
+            "Embarcadero": 19,
+            "Bayview": 14,
+            "Union Square": 15,
+            "Chinatown": 16,
+            "Sunset District": 24,
+            "Golden Gate Park": 17,
+            "Financial District": 15,
+            "Haight-Ashbury": 12,
+        },
     }
 
-    # Create variables for arrival and departure times at each location
-    arrival = {loc: Int(f'arrival_{loc}') for loc in locations}
-    departure = {loc: Int(f'departure_{loc}') for loc in locations}
+    # Convert time strings to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm - 540  # 9:00 AM is 540 minutes
 
-    # Starting point: Marina District at 9:00 AM
-    s.add(arrival['Marina District'] == 9 * 60)
-    s.add(departure['Marina District'] == 9 * 60)
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        total_minutes = 540 + minutes
+        hh = total_minutes // 60
+        mm = total_minutes % 60
+        return f"{hh:02d}:{mm:02d}"
 
-    # Constraints for each location
-    for loc in locations:
-        if loc == 'Marina District':
-            continue  # Already handled
-        start, end = locations[loc]
-        min_dur = min_durations.get(loc, 0)
-        s.add(arrival[loc] >= start)
-        s.add(departure[loc] <= end)
-        s.add(departure[loc] >= arrival[loc] + min_dur)
+    # Create variables for each friend's meeting start and end times
+    meeting_vars = {}
+    for name in friends:
+        start = Int(f"start_{name}")
+        end = Int(f"end_{name}")
+        meeting_vars[name] = (start, end)
 
-    # Define a possible order of visits (this is a simplification; ideally, we'd let Z3 determine the order)
-    order = ['Marina District', 'Sunset District', 'Golden Gate Park', 'Union Square', 
-             'Chinatown', 'Financial District', 'Embarcadero', 'Bayview', 
-             'Mission District', 'Haight-Ashbury']
+    # Add constraints for each friend's availability and duration
+    for name in friends:
+        friend = friends[name]
+        start, end = meeting_vars[name]
+        available_start = time_to_minutes(friend["available_start"])
+        available_end = time_to_minutes(friend["available_end"])
+        min_duration = friend["min_duration"]
 
-    # Add travel time constraints between consecutive locations in the order
-    for i in range(len(order) - 1):
-        loc1 = order[i]
-        loc2 = order[i + 1]
-        s.add(arrival[loc2] >= departure[loc1] + travel_times[(loc1, loc2)])
+        solver.add(start >= available_start)
+        solver.add(end <= available_end)
+        solver.add(end - start >= min_duration)
 
-    # Check if the schedule is feasible
-    if s.check() == sat:
-        m = s.model()
-        schedule = []
-        for loc in order:
-            if loc == 'Marina District':
-                continue
-            arr = m.evaluate(arrival[loc]).as_long()
-            dep = m.evaluate(departure[loc]).as_long()
-            schedule.append((loc, arr, dep))
-        
-        # Print the schedule
-        print("Feasible schedule found:")
-        for loc, arr, dep in schedule:
-            print(f"{loc}: {arr//60:02d}:{arr%60:02d} - {dep//60:02d}:{dep%60:02d}")
+    # Define the order of meetings using a list of names
+    meeting_order = list(friends.keys())
+
+    # Add constraints for travel times between consecutive meetings
+    for i in range(len(meeting_order) - 1):
+        current = meeting_order[i]
+        next_ = meeting_order[i + 1]
+        current_loc = friends[current]["location"]
+        next_loc = friends[next_]["location"]
+        travel_time = travel_times[current_loc][next_loc]
+        current_end = meeting_vars[current][1]
+        next_start = meeting_vars[next_][0]
+        solver.add(next_start >= current_end + travel_time)
+
+    # Ensure Elizabeth is met first (since she's only available at 9:00 AM)
+    elizabeth_start, elizabeth_end = meeting_vars["Elizabeth"]
+    solver.add(elizabeth_start == time_to_minutes("09:00"))
+    solver.add(elizabeth_end == time_to_minutes("09:45"))
+
+    # Ensure Carol is met during her availability (10:45 to 11:15)
+    carol_start, carol_end = meeting_vars["Carol"]
+    solver.add(carol_start >= time_to_minutes("10:45"))
+    solver.add(carol_end <= time_to_minutes("11:15"))
+
+    # Ensure Paul is met during his availability (19:15 to 20:30)
+    paul_start, paul_end = meeting_vars["Paul"]
+    solver.add(paul_start >= time_to_minutes("19:15"))
+    solver.add(paul_end <= time_to_minutes("20:30"))
+
+    # Try to solve the problem
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for name in friends:
+            start, end = meeting_vars[name]
+            start_time = model.eval(start).as_long()
+            end_time = model.eval(end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": minutes_to_time(start_time),
+                "end_time": minutes_to_time(end_time),
+            })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x["start_time"])
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Solve the problem and print the solution
+solution = solve_scheduling_problem()
+print("SOLUTION:")
+print(json.dumps(solution, indent=2))

@@ -1,88 +1,91 @@
 from z3 import *
+import datetime
 
-def solve_scheduling():
-    # Initialize the solver
-    s = Solver()
+# Define the travel times between districts
+travel_times = {
+    ('Richmond District', 'Pacific Heights'): 10,
+    ('Richmond District', 'Marina District'): 9,
+    ('Pacific Heights', 'Richmond District'): 12,
+    ('Pacific Heights', 'Marina District'): 6,
+    ('Marina District', 'Richmond District'): 11,  # Note: Typo in original data (Richmond vs Richmond)
+    ('Marina District', 'Pacific Heights'): 7,
+}
 
-    # Convert all times to minutes since 9:00 AM (540 minutes since midnight)
-    # Carol's availability: 11:30 AM (690) to 3:00 PM (900)
-    carol_start_avail = 690  # 11:30 AM in minutes since midnight
-    carol_end_avail = 900    # 3:00 PM in minutes since midnight
+# Correct the typo in the travel times dictionary
+travel_times[('Marina District', 'Richmond District')] = 11
 
-    # Jessica's availability: 3:30 PM (1050) to 4:45 PM (1125)
-    jessica_start_avail = 1050  # 3:30 PM
-    jessica_end_avail = 1125    # 4:45 PM
+# Friend availability
+carol_available_start = datetime.datetime.strptime("11:30", "%H:%M")
+carol_available_end = datetime.datetime.strptime("15:00", "%H:%M")
+carol_min_duration = 60  # minutes
 
-    # Variables for meeting start and end times
-    meet_carol_start = Int('meet_carol_start')
-    meet_carol_end = Int('meet_carol_end')
-    meet_jessica_start = Int('meet_jessica_start')
-    meet_jessica_end = Int('meet_jessica_end')
+jessica_available_start = datetime.datetime.strptime("15:30", "%H:%M")
+jessica_available_end = datetime.datetime.strptime("16:45", "%H:%M")
+jessica_min_duration = 45  # minutes
 
-    # Travel times (in minutes)
-    # From Richmond to Marina: 9
-    # From Marina to Pacific Heights: 7
-    # From Richmond to Pacific Heights: 10
-    # From Pacific Heights to Marina: 6
-    # From Marina to Richmond: 11
-    # From Pacific Heights to Richmond: 12
+# Create Z3 variables
+s = Solver()
 
-    # Constraints for Carol (Marina District)
-    s.add(meet_carol_start >= carol_start_avail)
-    s.add(meet_carol_end <= carol_end_avail)
-    s.add(meet_carol_end - meet_carol_start >= 60)  # at least 60 minutes
+# Meeting start times (in minutes since 9:00 AM)
+carol_meet_start = Int('carol_meet_start')
+carol_meet_end = Int('carol_meet_end')
+jessica_meet_start = Int('jessica_meet_start')
+jessica_meet_end = Int('jessica_meet_end')
 
-    # Constraints for Jessica (Pacific Heights)
-    s.add(meet_jessica_start >= jessica_start_avail)
-    s.add(meet_jessica_end <= jessica_end_avail)
-    s.add(meet_jessica_end - meet_jessica_start >= 45)  # at least 45 minutes
+# Current location starts at Richmond District at 9:00 AM (0 minutes)
+current_location = 'Richmond District'
 
-    # Starting at Richmond at 9:00 AM (540)
-    # Need to reach Carol (Marina) or Jessica (Pacific Heights) first.
-    # Let's model both possibilities: meeting Carol first or Jessica first.
+# Constraints for Carol meeting
+s.add(carol_meet_start >= (carol_available_start - datetime.datetime.strptime("9:00", "%H:%M")).total_seconds() / 60)
+s.add(carol_meet_end <= (carol_available_end - datetime.datetime.strptime("9:00", "%H:%M")).total_seconds() / 60)
+s.add(carol_meet_end - carol_meet_start >= carol_min_duration)
 
-    # Option 1: Meet Carol first, then Jessica
-    # Travel from Richmond to Marina: 9 minutes (arrive at Marina at 540 + 9 = 549)
-    # So meet_carol_start >= 549
-    # Then after meeting Carol, travel to Pacific Heights: 7 minutes
-    # So meet_jessica_start >= meet_carol_end + 7
-    # But Jessica's availability starts at 1050, so meet_jessica_start >= 1050
-    # So meet_carol_end + 7 <= meet_jessica_start
-    # And meet_carol_end + 7 <= 1125 - 45 = 1080 (since meet_jessica_end <= 1125)
-    # So this path is possible if meet_carol_end <= 1080 -7 = 1073
+# Travel to Carol (from Richmond to Marina)
+s.add(carol_meet_start >= travel_times[(current_location, 'Marina District')])
 
-    # Option 2: Meet Jessica first, then Carol
-    # But Carol's availability ends at 900, and Jessica's starts at 1050.
-    # Travel from Richmond to Pacific Heights: 10 minutes (arrive at 540 +10 = 550)
-    # But Jessica's availability starts at 1050, so waiting from 550 to 1050 is 500 minutes, which is too long.
-    # Then after meeting Jessica, travel to Marina: 6 minutes, but Carol's availability ends at 900, which is before Jessica's meeting starts.
-    # So this path is impossible.
+# Constraints for Jessica meeting
+s.add(jessica_meet_start >= (jessica_available_start - datetime.datetime.strptime("9:00", "%H:%M")).total_seconds() / 60)
+s.add(jessica_meet_end <= (jessica_available_end - datetime.datetime.strptime("9:00", "%H:%M")).total_seconds() / 60)
+s.add(jessica_meet_end - jessica_meet_start >= jessica_min_duration)
 
-    # Thus, only Option 1 is feasible.
+# Travel between meetings
+# Option 1: Carol first, then Jessica
+option1 = And(
+    jessica_meet_start >= carol_meet_end + travel_times[('Marina District', 'Pacific Heights')]
+)
 
-    # Add constraints for Option 1
-    s.add(meet_carol_start >= 540 + 9)  # arrive at Marina at 549
-    s.add(meet_jessica_start >= meet_carol_end + 7)  # travel to Pacific Heights after meeting Carol
-    s.add(meet_jessica_start >= jessica_start_avail)  # Jessica's availability starts at 1050
+# Option 2: Jessica first, then Carol (but this isn't possible due to time constraints)
+option2 = And(
+    carol_meet_start >= jessica_meet_end + travel_times[('Pacific Heights', 'Marina District')]
+)
 
-    # Check if the solver can find a solution
-    if s.check() == sat:
-        m = s.model()
-        carol_s = m.eval(meet_carol_start).as_long()
-        carol_e = m.eval(meet_carol_end).as_long()
-        jessica_s = m.eval(meet_jessica_start).as_long()
-        jessica_e = m.eval(meet_jessica_end).as_long()
+# We'll try option1 first since option2 is likely impossible
+s.add(option1)
 
-        # Convert times back to HH:MM format
-        def minutes_to_time(minutes):
-            h = minutes // 60
-            m = minutes % 60
-            return f"{h}:{m:02d}"
+# Maximize the total meeting time
+total_meeting_time = (carol_meet_end - carol_meet_start) + (jessica_meet_end - jessica_meet_start)
+optimize = Optimize()
+optimize.add(s.assertions())
+optimize.maximize(total_meeting_time)
 
-        print("SOLUTION:")
-        print(f"Meet Carol from {minutes_to_time(carol_s)} to {minutes_to_time(carol_e)}")
-        print(f"Meet Jessica from {minutes_to_time(jessica_s)} to {minutes_to_time(jessica_e)}")
-    else:
-        print("No feasible schedule found.")
-
-solve_scheduling()
+if optimize.check() == sat:
+    model = optimize.model()
+    carol_start = model[carol_meet_start].as_long()
+    carol_end = model[carol_meet_end].as_long()
+    jessica_start = model[jessica_meet_start].as_long()
+    jessica_end = model[jessica_meet_end].as_long()
+    
+    # Convert minutes since 9:00 AM to HH:MM format
+    def minutes_to_time(minutes):
+        base = datetime.datetime.strptime("9:00", "%H:%M")
+        delta = datetime.timedelta(minutes=minutes)
+        return (base + delta).strftime("%H:%M")
+    
+    itinerary = [
+        {"action": "meet", "person": "Carol", "start_time": minutes_to_time(carol_start), "end_time": minutes_to_time(carol_end)},
+        {"action": "meet", "person": "Jessica", "start_time": minutes_to_time(jessica_start), "end_time": minutes_to_time(jessica_end)}
+    ]
+    
+    print('{"itinerary": ' + str(itinerary).replace("'", '"') + '}')
+else:
+    print('{"itinerary": []}')

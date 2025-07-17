@@ -1,66 +1,48 @@
 from z3 import *
 
 def main():
-    # Initialize solver
-    s = Solver()
+    s = Int('s')
     
-    # Define start time in minutes from 9:00 (0 minutes = 9:00)
-    start = Int('start')
-    duration = 60
-    end = start + duration
-    
-    # Working hours: 9:00 (0 min) to 17:00 (480 min)
-    s.add(start >= 0)
-    s.add(end <= 480)
-    
-    # Danielle's meetings: converted to minutes
-    danielle_meetings = [
-        (0, 60),    # 9:00-10:00
-        (90, 120),   # 10:30-11:00
-        (330, 360),  # 14:30-15:00
-        (390, 420),  # 15:30-16:00
-        (450, 480)   # 16:30-17:00
-    ]
-    
+    # Convert busy times to minutes from 9:00
+    # Danielle's meetings
+    danielle = [(0, 60), (90, 120), (330, 360), (390, 420), (450, 480)]
     # Bruce's meetings
-    bruce_meetings = [
-        (120, 150), # 11:00-11:30
-        (210, 240), # 12:30-13:00
-        (300, 330), # 14:00-14:30
-        (390, 420)  # 15:30-16:00
-    ]
-    
+    bruce = [(120, 150), (210, 240), (300, 330), (390, 420)]
     # Eric's meetings
-    eric_meetings = [
-        (0, 30),    # 9:00-9:30
-        (60, 120),  # 10:00-11:00
-        (150, 240), # 11:30-13:00
-        (330, 390)  # 14:30-15:30
-    ]
+    eric = [(0, 30), (60, 120), (150, 240), (330, 390)]
     
-    # Function to add non-overlap constraints for each person's meetings
-    def add_non_overlap(meetings):
-        for meet_start, meet_end in meetings:
-            s.add(Or(end <= meet_start, start >= meet_end))
+    all_busy = [danielle, bruce, eric]
     
-    # Add constraints for each participant
-    add_non_overlap(danielle_meetings)
-    add_non_overlap(bruce_meetings)
-    add_non_overlap(eric_meetings)
+    constraints = [s >= 0, s <= 420]  # Meeting must start by 16:00 to end by 17:00
     
-    # Check for a solution
-    if s.check() == sat:
-        m = s.model()
-        start_min = m[start].as_long()
-        # Convert minutes back to time string
-        hours = 9 + start_min // 60
-        minutes = start_min % 60
-        start_time = f"{hours:02d}:{minutes:02d}"
-        end_min = start_min + 60
-        end_hours = 9 + end_min // 60
-        end_minutes = end_min % 60
-        end_time = f"{end_hours:02d}:{end_minutes:02d}"
-        print(f"Monday {start_time} to {end_time}")
+    for person in all_busy:
+        for interval in person:
+            a, b = interval
+            constraints.append(Or(s + 60 <= a, s >= b))
+    
+    solver = Solver()
+    solver.add(constraints)
+    
+    if solver.check() == sat:
+        model = solver.model()
+        start_minutes = model.eval(s).as_long()
+        
+        # Calculate start time (HH:MM)
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        start_time = f"{start_hour:02d}:{start_minute:02d}"
+        
+        # Calculate end time (start_minutes + 60 minutes)
+        end_minutes = start_minutes + 60
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
+        
+        # Output the solution
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

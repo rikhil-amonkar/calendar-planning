@@ -1,57 +1,51 @@
 from z3 import *
 
 def main():
-    # Initialize Z3 solver
-    s = Solver()
+    # Create a solver
+    solver = Solver()
     
-    # Define the start time variable (in minutes from 9:00)
-    start = Int('start')
-    duration = 30  # Meeting duration in minutes
+    # Define the start time variable in minutes
+    start_minutes = Int('start_minutes')
     
-    # Work hours: 9:00 (0 minutes) to 17:00 (480 minutes)
-    work_start = 0
-    work_end = 480
+    # Work hours: 9:00 (540 minutes) to 17:00 (1020 minutes)
+    # Meeting must start at or after 9:00 and end by 17:00
+    solver.add(start_minutes >= 540)
+    solver.add(start_minutes + 30 <= 1020)
     
-    # Evelyn's constraint: meeting must end by 13:00 (240 minutes from 9:00)
-    evelyn_end = 240
+    # Evelyn's constraint: meeting must end by 13:00 (780 minutes)
+    solver.add(start_minutes + 30 <= 780)
     
-    # Randy's blocked time intervals (half-open: [start, end))
-    blocks = [
-        (0, 90),    # 9:00 to 10:30
-        (120, 390), # 11:00 to 15:30
-        (420, 480)  # 16:00 to 17:00
-    ]
-    
-    # Add constraints
-    s.add(start >= work_start)  # Meeting starts at or after 9:00
-    s.add(start + duration <= work_end)  # Meeting ends by 17:00
-    s.add(start + duration <= evelyn_end)  # Meeting ends by 13:00 for Evelyn
-    
-    # Add constraints to avoid Randy's blocked times
-    for (a, b) in blocks:
-        s.add(Or(start + duration <= a, start >= b))
+    # Randy's blocked intervals (half-open: [start, end))
+    # Avoid [540, 630)
+    solver.add(Or(start_minutes + 30 <= 540, start_minutes >= 630))
+    # Avoid [660, 930)
+    solver.add(Or(start_minutes + 30 <= 660, start_minutes >= 930))
+    # Avoid [960, 1020)
+    solver.add(Or(start_minutes + 30 <= 960, start_minutes >= 1020))
     
     # Check for a solution
-    if s.check() == sat:
-        m = s.model()
-        start_minutes = m[start].as_long()
+    if solver.check() == sat:
+        model = solver.model()
+        s = model[start_minutes].as_long()
         
         # Convert start time to HH:MM
-        total_minutes = start_minutes
-        hours = total_minutes // 60
-        minutes = total_minutes % 60
-        start_time = f"{9 + hours}:{minutes:02d}"
+        start_hour = s // 60
+        start_minute = s % 60
+        start_time = f"{start_hour:02d}:{start_minute:02d}"
         
         # Calculate end time
-        end_minutes = start_minutes + duration
-        end_hours = end_minutes // 60
-        end_minutes = end_minutes % 60
-        end_time = f"{9 + end_hours}:{end_minutes:02d}"
+        end_minutes = s + 30
+        end_hour = end_minutes // 60
+        end_minute = end_minutes % 60
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
         
-        # Print the solution
-        print(f"Monday {start_time} to {end_time}")
+        # Output the solution in the required format
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

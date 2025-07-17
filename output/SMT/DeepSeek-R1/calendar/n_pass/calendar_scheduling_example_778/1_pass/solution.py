@@ -1,103 +1,69 @@
 from z3 import *
 
-def time_to_slot_index(time_str):
-    parts = time_str.split(':')
-    hour = int(parts[0])
-    minute = int(parts[1])
-    total_minutes = (hour - 9) * 60 + minute
-    return total_minutes // 30
-
-susan_events = [
-    ('Monday', ["12:30", "13:00"]),
-    ('Monday', ["13:30", "14:00"]),
-    ('Tuesday', ["11:30", "12:00"]),
-    ('Wednesday', ["9:30", "10:30"]),
-    ('Wednesday', ["14:00", "14:30"]),
-    ('Wednesday', ["15:30", "16:30"])
-]
-
-sandra_events = [
-    ('Monday', ["9:00", "13:00"]),
-    ('Monday', ["14:00", "15:00"]),
-    ('Monday', ["16:00", "16:30"]),
-    ('Tuesday', ["9:00", "9:30"]),
-    ('Tuesday', ["10:30", "12:00"]),
-    ('Tuesday', ["12:30", "13:30"]),
-    ('Tuesday', ["14:00", "14:30"]),
-    ('Tuesday', ["16:00", "17:00"]),
-    ('Wednesday', ["9:00", "11:30"]),
-    ('Wednesday', ["12:00", "12:30"]),
-    ('Wednesday', ["13:00", "17:00"])
-]
-
-day_map = {'Monday': 0, 'Tuesday': 1, 'Wednesday': 2}
-
-free_susan = [[True for _ in range(16)] for _ in range(3)]
-free_sandra = [[True for _ in range(16)] for _ in range(3)]
-
-for event in susan_events:
-    day_name, interval = event
-    start_str, end_str = interval
-    start_slot = time_to_slot_index(start_str)
-    end_slot = time_to_slot_index(end_str)
-    d_index = day_map[day_name]
-    for slot_index in range(start_slot, end_slot):
-        if slot_index < 16:
-            free_susan[d_index][slot_index] = False
-
-for event in sandra_events:
-    day_name, interval = event
-    start_str, end_str = interval
-    start_slot = time_to_slot_index(start_str)
-    end_slot = time_to_slot_index(end_str)
-    d_index = day_map[day_name]
-    for slot_index in range(start_slot, end_slot):
-        if slot_index < 16:
-            free_sandra[d_index][slot_index] = False
-
-free_both = [[free_susan[d][i] and free_sandra[d][i] for i in range(16)] for d in range(3)]
-
-constraints = []
-for d in range(3):
-    for i in range(16):
-        if free_both[d][i]:
-            constraints.append(And(day == d, slot == i))
-
-if not constraints:
-    print("No solution exists")
-else:
-    day = Int('day')
-    slot = Int('slot')
-    base_constraints = [
-        day >= 0, day <= 2,
-        slot >= 0, slot <= 15,
-        Or(constraints)
+def main():
+    # Blocked times in absolute minutes (from midnight) as (start, end) intervals
+    susan_blocks = [
+        [(12*60+30, 13*60), (13*60+30, 14*60)],  # Monday: 12:30-13:00, 13:30-14:00
+        [(11*60+30, 12*60)],                       # Tuesday: 11:30-12:00
+        [(9*60+30, 10*60+30), (14*60, 14*60+30), (15*60+30, 16*60+30)]  # Wednesday: 9:30-10:30, 14:00-14:30, 15:30-16:30
     ]
     
-    s1 = Solver()
-    s1.add(base_constraints)
-    s1.add(day != 1)
+    sandra_blocks = [
+        [(9*60, 13*60), (14*60, 15*60), (16*60, 16*60+30)],  # Monday: 9:00-13:00, 14:00-15:00, 16:00-16:30
+        [(9*60, 9*60+30), (10*60+30, 12*60), (12*60+30, 13*60+30), (14*60, 14*60+30), (16*60, 17*60)],  # Tuesday
+        [(9*60, 11*60+30), (12*60, 12*60+30), (13*60, 17*60)]  # Wednesday
+    ]
     
-    if s1.check() == sat:
-        m = s1.model()
+    # Create solver and variables
+    s = Solver()
+    day = Int('day')
+    start_abs = Int('start_abs')  # Absolute start time in minutes from midnight
+    
+    # Day must be 0, 1, or 2 (Monday, Tuesday, Wednesday)
+    s.add(day >= 0, day <= 2)
+    # Start time must be between 9:00 (540) and 16:30 (990) inclusive
+    s.add(start_abs >= 540, start_abs <= 990)
+    
+    # For each day, add constraints that the meeting does not overlap with blocked times
+    for d in range(3):
+        susan_avoid = [ Or(start_abs + 30 <= block[0], start_abs >= block[1]) for block in susan_blocks[d] ]
+        sandra_avoid = [ Or(start_abs + 30 <= block[0], start_abs >= block[1]) for block in sandra_blocks[d] ]
+        s.add(Implies(day == d, And(And(susan_avoid), And(sandra_avoid)))
+    
+    # First, try to avoid Tuesday (day=1)
+    s.push()
+    s.add(day != 1)
+    
+    if s.check() == sat:
+        m = s.model()
     else:
-        s2 = Solver()
-        s2.add(base_constraints)
-        s2.check()
-        m = s2.model()
+        s.pop()
+        s.check()
+        m = s.model()
     
+    # Extract the solution
     d_val = m[day].as_long()
-    s_val = m[slot].as_long()
+    start_val = m[start_abs].as_long()
+    end_val = start_val + 30
     
-    day_names = ["Monday", "Tuesday", "Wednesday"]
-    start_minutes = 9 * 60 + 30 * s_val
-    end_minutes = start_minutes + 30
-    start_hour = start_minutes // 60
-    start_minute = start_minutes % 60
-    end_hour = end_minutes // 60
-    end_minute = end_minutes % 60
+    # Convert day to string
+    days = ["Monday", "Tuesday", "Wednesday"]
+    day_str = days[d_val]
     
-    start_str = f"{start_hour}:{start_minute:02d}"
-    end_str = f"{end_hour}:{end_minute:02d}"
+    # Format start and end times as HH:MM
+    start_hour = start_val // 60
+    start_minute = start_val % 60
+    start_time = f"{start_hour:02d}:{start_minute:02d}"
     
-    print(f"('{day_names[d_val]}', '{start_str}', '{end_str}')")
+    end_hour = end_val // 60
+    end_minute = end_val % 60
+    end_time = f"{end_hour:02d}:{end_minute:02d}"
+    
+    # Output the solution
+    print("SOLUTION:")
+    print(f"Day: {day_str}")
+    print(f"Start Time: {start_time}")
+    print(f"End Time: {end_time}")
+
+if __name__ == "__main__":
+    main()

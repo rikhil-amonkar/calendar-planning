@@ -1,69 +1,99 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize the solver
-    s = Optimize()
+def solve_scheduling_problem():
+    # Initialize Z3 solver
+    s = Solver()
 
-    # Convert all times to minutes since 9:00 AM (540 minutes since midnight)
-    # Arrival time at North Beach: 9:00 AM (540 minutes)
-    emily_start_available = 16 * 60  # 4:00 PM (960 minutes since midnight, 420 since 9:00 AM)
-    emily_end_available = 17 * 60 + 15  # 5:15 PM (1035 minutes since midnight, 495 since 9:00 AM)
-    margaret_start_available = 19 * 60  # 7:00 PM (1140 minutes since midnight, 600 since 9:00 AM)
-    margaret_end_available = 21 * 60  # 9:00 PM (1260 minutes since midnight, 720 since 9:00 AM)
-
-    # Variables for meeting start and end times (in minutes since 9:00 AM)
-    emily_start = Int('emily_start')
+    # Variables for meeting Emily
+    emily_start = Int('emily_start')  # in minutes from 9:00 AM
     emily_end = Int('emily_end')
-    margaret_start = Int('margaret_start')
+
+    # Variables for meeting Margaret
+    margaret_start = Int('margaret_start')  # in minutes from 9:00 AM
     margaret_end = Int('margaret_end')
 
-    # Travel times (in minutes)
-    north_beach_to_union_square = 7
-    north_beach_to_russian_hill = 4
-    union_square_to_north_beach = 10
-    union_square_to_russian_hill = 13
-    russian_hill_to_north_beach = 5
-    russian_hill_to_union_square = 11
+    # Convert time constraints to minutes from 9:00 AM
+    # Emily's availability: 4:00 PM (16:00) to 5:15 PM (17:15) is 420 to 495 minutes from 9:00 AM
+    emily_min_start = 16 * 60 - 9 * 60  # 420 minutes (4:00 PM)
+    emily_max_end = 17 * 60 + 15 - 9 * 60  # 495 minutes (5:15 PM)
 
-    # Constraints for Emily
-    s.add(emily_start >= emily_start_available - 540)  # Convert to minutes since 9:00 AM
-    s.add(emily_end <= emily_end_available - 540)
-    s.add(emily_end - emily_start >= 45)
+    # Margaret's availability: 7:00 PM (19:00) to 9:00 PM (21:00) is 600 to 720 minutes from 9:00 AM
+    margaret_min_start = 19 * 60 - 9 * 60  # 600 minutes (7:00 PM)
+    margaret_max_end = 21 * 60 - 9 * 60  # 720 minutes (9:00 PM)
 
-    # Constraints for Margaret
-    s.add(margaret_start >= margaret_start_available - 540)
-    s.add(margaret_end <= margaret_end_available - 540)
-    s.add(margaret_end - margaret_start >= 120)
+    # Meeting durations
+    emily_duration = 45
+    margaret_duration = 120
 
-    # Travel constraints
-    # Assume we start at North Beach at time 0 (9:00 AM)
-    # We can either go to Union Square or Russian Hill first, but we must meet Emily and Margaret in their time windows.
-    # Since Emily is only available in the afternoon, and Margaret in the evening, we can meet Emily first, then Margaret.
+    # Constraints for Emily's meeting
+    s.add(emily_start >= emily_min_start)
+    s.add(emily_end <= emily_max_end)
+    s.add(emily_end == emily_start + emily_duration)
 
-    # Option 1: Go to Union Square first (to meet Emily), then to Russian Hill (to meet Margaret)
-    # Time to reach Union Square: 7 minutes
-    s.add(emily_start >= 7)  # Travel from North Beach to Union Square takes 7 minutes
-    # Time to go from Union Square to Russian Hill: 13 minutes
-    s.add(margaret_start >= emily_end + 13)
+    # Constraints for Margaret's meeting
+    s.add(margaret_start >= margaret_min_start)
+    s.add(margaret_end <= margaret_max_end)
+    s.add(margaret_end == margaret_start + margaret_duration)
 
-    # Option 2: Go to Russian Hill first, then to Union Square. But Margaret is only available in the evening, so this is not feasible.
-    # Therefore, Option 1 is the only feasible path.
+    # Travel times in minutes
+    # From North Beach to Union Square: 7 minutes
+    # From North Beach to Russian Hill: 4 minutes
+    # From Union Square to Russian Hill: 13 minutes
+    # From Russian Hill to Union Square: 11 minutes
+    # From Russian Hill to North Beach: 5 minutes
+    # From Union Square to North Beach: 10 minutes
 
-    # Maximize the total time spent with friends
-    total_time = (emily_end - emily_start) + (margaret_end - margaret_start)
-    s.maximize(total_time)
+    # We start at North Beach at 0 minutes (9:00 AM)
+    # Possible sequences:
+    # Option 1: Meet Emily first, then Margaret
+    #   - Travel from North Beach to Union Square: 7 minutes
+    #   - Then, travel from Union Square to Russian Hill: 13 minutes
+    #   - So, emily_start >= 7 (since we start at 0)
+    #   - margaret_start >= emily_end + 13
+    # Option 2: Meet Margaret first, then Emily
+    #   - Travel from North Beach to Russian Hill: 4 minutes
+    #   - Then, travel from Russian Hill to Union Square: 11 minutes
+    #   - So, margaret_start >= 4
+    #   - emily_start >= margaret_end + 11
+    # However, Emily's meeting must be before Margaret's because Margaret's meeting starts at 7:00 PM, which is after Emily's window.
+    # So, Option 1 is the only feasible sequence.
 
-    # Check if the problem is satisfiable
+    # Add travel constraints for Option 1: Emily first, then Margaret
+    s.add(emily_start >= 7)  # travel from North Beach to Union Square
+    s.add(margaret_start >= emily_end + 13)  # travel from Union Square to Russian Hill
+
+    # Check if the solver can find a solution
     if s.check() == sat:
         m = s.model()
-        print("Meeting with Emily:")
-        print(f"Start: {540 + m[emily_start].as_long()} minutes since midnight ({(540 + m[emily_start].as_long()) // 60}:{(540 + m[emily_start].as_long()) % 60:02d})")
-        print(f"End: {540 + m[emily_end].as_long()} minutes since midnight ({(540 + m[emily_end].as_long()) // 60}:{(540 + m[emily_end].as_long()) % 60:02d})")
-        print("Meeting with Margaret:")
-        print(f"Start: {540 + m[margaret_start].as_long()} minutes since midnight ({(540 + m[margaret_start].as_long()) // 60}:{(540 + m[margaret_start].as_long()) % 60:02d})")
-        print(f"End: {540 + m[margaret_end].as_long()} minutes since midnight ({(540 + m[margaret_end].as_long()) // 60}:{(540 + m[margaret_end].as_long()) % 60:02d})")
-        print(f"Total time with friends: {m[emily_end].as_long() - m[emily_start].as_long() + m[margaret_end].as_long() - m[margaret_start].as_long()} minutes")
-    else:
-        print("No feasible schedule found.")
+        # Extract the values
+        emily_start_val = m[emily_start].as_long()
+        emily_end_val = m[emily_end].as_long()
+        margaret_start_val = m[margaret_start].as_long()
+        margaret_end_val = m[margaret_end].as_long()
 
-solve_scheduling()
+        # Convert minutes back to HH:MM format from 9:00 AM
+        def minutes_to_time(minutes):
+            total_minutes = 9 * 60 + minutes
+            hours = total_minutes // 60
+            mins = total_minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        emily_start_time = minutes_to_time(emily_start_val)
+        emily_end_time = minutes_to_time(emily_end_val)
+        margaret_start_time = minutes_to_time(margaret_start_val)
+        margaret_end_time = minutes_to_time(margaret_end_val)
+
+        # Create the itinerary
+        itinerary = [
+            {"action": "meet", "person": "Emily", "start_time": emily_start_time, "end_time": emily_end_time},
+            {"action": "meet", "person": "Margaret", "start_time": margaret_start_time, "end_time": margaret_end_time}
+        ]
+
+        return {"itinerary": itinerary}
+    else:
+        return {"error": "No feasible schedule found"}
+
+# Solve the problem and print the result
+result = solve_scheduling_problem()
+print(json.dumps(result, indent=2))

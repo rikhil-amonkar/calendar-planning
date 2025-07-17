@@ -1,121 +1,258 @@
 from z3 import *
+import json
 
 def solve_scheduling():
-    # Initialize solver
-    s = Optimize()
+    # Initialize Z3 solver
+    s = Solver()
 
-    # Friends' data
-    friends = {
-        'Barbara': {'location': 'North Beach', 'start': 13.75, 'end': 20.25, 'min_duration': 1.0},
-        'Margaret': {'location': 'Presidio', 'start': 10.25, 'end': 15.25, 'min_duration': 0.5},
-        'Kevin': {'location': 'Haight-Ashbury', 'start': 20.0, 'end': 20.75, 'min_duration': 0.5},
-        'Kimberly': {'location': 'Union Square', 'start': 7.75, 'end': 16.75, 'min_duration': 0.5}
+    # Define time variables for each meeting and travel
+    # We'll represent times in minutes since 9:00 AM (540 minutes since midnight)
+    start_time = 540  # 9:00 AM in minutes
+
+    # Meeting durations (in minutes)
+    meet_barbara_duration = 60
+    meet_margaret_duration = 30
+    meet_kevin_duration = 30
+    meet_kimberly_duration = 30
+
+    # Available time windows for each friend (in minutes since midnight)
+    barbara_start = 13 * 60 + 45  # 1:45 PM
+    barbara_end = 20 * 60 + 15    # 8:15 PM
+    margaret_start = 10 * 60 + 15  # 10:15 AM
+    margaret_end = 15 * 60 + 15    # 3:15 PM
+    kevin_start = 20 * 60          # 8:00 PM
+    kevin_end = 20 * 60 + 45       # 8:45 PM
+    kimberly_start = 7 * 60 + 45   # 7:45 AM
+    kimberly_end = 16 * 60 + 45    # 4:45 PM
+
+    # Travel times between locations (in minutes)
+    travel_times = {
+        ('Bayview', 'North Beach'): 21,
+        ('Bayview', 'Presidio'): 31,
+        ('Bayview', 'Haight-Ashbury'): 19,
+        ('Bayview', 'Union Square'): 17,
+        ('North Beach', 'Bayview'): 22,
+        ('North Beach', 'Presidio'): 17,
+        ('North Beach', 'Haight-Ashbury'): 18,
+        ('North Beach', 'Union Square'): 7,
+        ('Presidio', 'Bayview'): 31,
+        ('Presidio', 'North Beach'): 18,
+        ('Presidio', 'Haight-Ashbury'): 15,
+        ('Presidio', 'Union Square'): 22,
+        ('Haight-Ashbury', 'Bayview'): 18,
+        ('Haight-Ashbury', 'North Beach'): 19,
+        ('Haight-Ashbury', 'Presidio'): 15,
+        ('Haight-Ashbury', 'Union Square'): 17,
+        ('Union Square', 'Bayview'): 15,
+        ('Union Square', 'North Beach'): 10,
+        ('Union Square', 'Presidio'): 24,
+        ('Union Square', 'Haight-Ashbury'): 18,
     }
 
-    # Travel times in hours (convert from minutes)
-    travel = {
-        ('Bayview', 'North Beach'): 21/60,
-        ('Bayview', 'Presidio'): 31/60,
-        ('Bayview', 'Haight-Ashbury'): 19/60,
-        ('Bayview', 'Union Square'): 17/60,
-        ('North Beach', 'Presidio'): 17/60,
-        ('North Beach', 'Haight-Ashbury'): 18/60,
-        ('North Beach', 'Union Square'): 7/60,
-        ('Presidio', 'Haight-Ashbury'): 15/60,
-        ('Presidio', 'Union Square'): 22/60,
-        ('Haight-Ashbury', 'Union Square'): 17/60,
-        # Add reverse directions
-        ('North Beach', 'Bayview'): 22/60,
-        ('Presidio', 'Bayview'): 31/60,
-        ('Haight-Ashbury', 'Bayview'): 18/60,
-        ('Union Square', 'Bayview'): 15/60,
-        ('Presidio', 'North Beach'): 18/60,
-        ('Haight-Ashbury', 'North Beach'): 19/60,
-        ('Union Square', 'North Beach'): 10/60,
-        ('Haight-Ashbury', 'Presidio'): 15/60,
-        ('Union Square', 'Presidio'): 24/60,
-        ('Union Square', 'Haight-Ashbury'): 18/60
-    }
+    # Define variables for meeting times
+    kimberly_start_var = Int('kimberly_start')
+    kimberly_end_var = Int('kimberly_end')
+    margaret_start_var = Int('margaret_start')
+    margaret_end_var = Int('margaret_end')
+    barbara_start_var = Int('barbara_start')
+    barbara_end_var = Int('barbara_end')
+    kevin_start_var = Int('kevin_start')
+    kevin_end_var = Int('kevin_end')
 
-    # Create variables
-    meet = {f: Bool(f'meet_{f}') for f in friends}
-    start = {f: Real(f'start_{f}') for f in friends}
-    end = {f: Real(f'end_{f}') for f in friends}
+    # Define whether we meet each person
+    meet_kimberly = Bool('meet_kimberly')
+    meet_margaret = Bool('meet_margaret')
+    meet_barbara = Bool('meet_barbara')
+    meet_kevin = Bool('meet_kevin')
 
-    # Current location and time
-    current_loc = 'Bayview'
-    current_time = 9.0
+    # Constraints for each possible meeting
+    # Kimberly (Union Square)
+    s.add(Implies(meet_kimberly, And(
+        kimberly_start_var >= kimberly_start,
+        kimberly_end_var <= kimberly_end,
+        kimberly_end_var == kimberly_start_var + meet_kimberly_duration
+    )))
+    s.add(Implies(Not(meet_kimberly), And(
+        kimberly_start_var == 0,
+        kimberly_end_var == 0
+    )))
 
-    # Basic constraints for each friend
-    for f in friends:
-        data = friends[f]
-        s.add(Implies(meet[f], start[f] >= data['start']))
-        s.add(Implies(meet[f], end[f] <= data['end']))
-        s.add(Implies(meet[f], end[f] - start[f] >= data['min_duration']))
+    # Margaret (Presidio)
+    s.add(Implies(meet_margaret, And(
+        margaret_start_var >= margaret_start,
+        margaret_end_var <= margaret_end,
+        margaret_end_var == margaret_start_var + meet_margaret_duration
+    )))
+    s.add(Implies(Not(meet_margaret), And(
+        margaret_start_var == 0,
+        margaret_end_var == 0
+    )))
 
-    # To handle ordering, we'll create position variables
-    # Each friend is assigned to a position (1-4)
-    position = {f: Int(f'pos_{f}') for f in friends}
-    for f in friends:
-        s.add(position[f] >= 1)
-        s.add(position[f] <= 4)
-    s.add(Distinct([position[f] for f in friends]))
+    # Barbara (North Beach)
+    s.add(Implies(meet_barbara, And(
+        barbara_start_var >= barbara_start,
+        barbara_end_var <= barbara_end,
+        barbara_end_var == barbara_start_var + meet_barbara_duration
+    )))
+    s.add(Implies(Not(meet_barbara), And(
+        barbara_start_var == 0,
+        barbara_end_var == 0
+    )))
 
-    # Variables for each position's start/end time and location
-    pos_start = [Real(f'pos_start_{i}') for i in range(1, 5)]
-    pos_end = [Real(f'pos_end_{i}') for i in range(1, 5)]
-    pos_loc = [String(f'pos_loc_{i}') for i in range(1, 5)]
+    # Kevin (Haight-Ashbury)
+    s.add(Implies(meet_kevin, And(
+        kevin_start_var >= kevin_start,
+        kevin_end_var <= kevin_end,
+        kevin_end_var == kevin_start_var + meet_kevin_duration
+    )))
+    s.add(Implies(Not(meet_kevin), And(
+        kevin_start_var == 0,
+        kevin_end_var == 0
+    )))
 
-    # Link friends to positions
-    for f in friends:
-        for i in range(1, 5):
-            s.add(Implies(And(meet[f], position[f] == i),
-                  And(pos_start[i-1] == start[f],
-                      pos_end[i-1] == end[f],
-                      pos_loc[i-1] == friends[f]['location'])))
+    # Define the sequence of meetings
+    # We'll model this as visiting locations in some order
+    locations = ['Bayview', 'Union Square', 'Presidio', 'North Beach', 'Haight-Ashbury']
+    arrival_times = {loc: Int(f'arrival_{loc}') for loc in locations}
+    departure_times = {loc: Int(f'departure_{loc}') for loc in locations}
 
-    # Add travel time constraints between positions
-    for i in range(1, 4):
-        # Get travel time between position i and i+1
-        travel_time = Real(f'travel_{i}')
-        s.add(travel_time >= 0)
-        for loc1 in ['Bayview', 'North Beach', 'Presidio', 'Haight-Ashbury', 'Union Square']:
-            for loc2 in ['Bayview', 'North Beach', 'Presidio', 'Haight-Ashbury', 'Union Square']:
-                if (loc1, loc2) in travel:
-                    s.add(Implies(And(pos_loc[i-1] == loc1, pos_loc[i] == loc2),
-                                travel_time == travel[(loc1, loc2)]))
-        
-        # Add time constraint
-        s.add(Implies(And(position[list(friends.keys())[0]] <= i,  # If position i is used
-                          position[list(friends.keys())[0]] <= i+1),  # and position i+1 is used
-                      pos_start[i] >= pos_end[i-1] + travel_time))
+    # Initial condition: start at Bayview at 9:00 AM
+    s.add(arrival_times['Bayview'] == start_time)
+    s.add(departure_times['Bayview'] == start_time)
 
-    # Maximize number of friends met
-    s.maximize(Sum([If(meet[f], 1, 0) for f in friends]))
+    # Define possible meeting orders using boolean variables
+    # We'll create variables for each possible transition
+    transitions = [
+        ('Bayview', 'Union Square'),
+        ('Bayview', 'Presidio'),
+        ('Bayview', 'North Beach'),
+        ('Bayview', 'Haight-Ashbury'),
+        ('Union Square', 'Presidio'),
+        ('Union Square', 'North Beach'),
+        ('Union Square', 'Haight-Ashbury'),
+        ('Presidio', 'Union Square'),
+        ('Presidio', 'North Beach'),
+        ('Presidio', 'Haight-Ashbury'),
+        ('North Beach', 'Union Square'),
+        ('North Beach', 'Presidio'),
+        ('North Beach', 'Haight-Ashbury'),
+        ('Haight-Ashbury', 'Union Square'),
+        ('Haight-Ashbury', 'Presidio'),
+        ('Haight-Ashbury', 'North Beach')
+    ]
 
-    # Solve and print results
+    # Create boolean variables for each possible transition
+    transition_vars = {t: Bool(f'transition_{t[0]}_{t[1]}') for t in transitions}
+
+    # Exactly one transition from Bayview
+    s.add(Or(
+        transition_vars[('Bayview', 'Union Square')],
+        transition_vars[('Bayview', 'Presidio')],
+        transition_vars[('Bayview', 'North Beach')],
+        transition_vars[('Bayview', 'Haight-Ashbury')]
+    ))
+
+    # For each meeting location, define arrival and departure times
+    for loc in ['Union Square', 'Presidio', 'North Beach', 'Haight-Ashbury']:
+        # Arrival time is departure from previous location + travel time
+        prev_locs = [prev for (prev, curr) in transitions if curr == loc]
+        s.add(Or([
+            And(
+                transition_vars[(prev, loc)],
+                arrival_times[loc] == departure_times[prev] + travel_times[(prev, loc)]
+            )
+            for prev in prev_locs
+        ]))
+
+        # Departure time is arrival time + meeting duration (if meeting happens)
+        if loc == 'Union Square':
+            s.add(departure_times[loc] == If(meet_kimberly, 
+                arrival_times[loc] + meet_kimberly_duration, 
+                arrival_times[loc]))
+            s.add(Implies(meet_kimberly, arrival_times[loc] == kimberly_start_var))
+        elif loc == 'Presidio':
+            s.add(departure_times[loc] == If(meet_margaret, 
+                arrival_times[loc] + meet_margaret_duration, 
+                arrival_times[loc]))
+            s.add(Implies(meet_margaret, arrival_times[loc] == margaret_start_var))
+        elif loc == 'North Beach':
+            s.add(departure_times[loc] == If(meet_barbara, 
+                arrival_times[loc] + meet_barbara_duration, 
+                arrival_times[loc]))
+            s.add(Implies(meet_barbara, arrival_times[loc] == barbara_start_var))
+        elif loc == 'Haight-Ashbury':
+            s.add(departure_times[loc] == If(meet_kevin, 
+                arrival_times[loc] + meet_kevin_duration, 
+                arrival_times[loc]))
+            s.add(Implies(meet_kevin, arrival_times[loc] == kevin_start_var))
+
+    # Try to meet all friends first
+    s.push()
+    s.add(And(meet_kimberly, meet_margaret, meet_barbara, meet_kevin))
+    
     if s.check() == sat:
-        m = s.model()
-        print("Optimal Schedule:")
-        scheduled = []
-        for f in friends:
-            if is_true(m[meet[f]]):
-                start_val = m.evaluate(start[f])
-                end_val = m.evaluate(end[f])
-                start_h = float(start_val.numerator_as_long())/float(start_val.denominator_as_long())
-                end_h = float(end_val.numerator_as_long())/float(end_val.denominator_as_long())
-                print(f"Meet {f} at {friends[f]['location']} from {start_h:.2f} to {end_h:.2f}")
-                scheduled.append((f, start_h, end_h))
-            else:
-                print(f"Cannot meet {f}")
-        
-        # Print schedule in order
-        scheduled.sort(key=lambda x: m.evaluate(position[x[0]]).as_long())
-        print("\nSchedule in order:")
-        for f, start_h, end_h in scheduled:
-            print(f"Meet {f} from {start_h:.2f} to {end_h:.2f}")
-        print(f"\nTotal friends met: {len(scheduled)}")
-    else:
-        print("No feasible schedule found")
+        model = s.model()
+        itinerary = []
 
-solve_scheduling()
+        def add_to_itinerary(person, start_var, end_var):
+            start = model[start_var].as_long()
+            end = model[end_var].as_long()
+            if start > 0 and end > 0:
+                itinerary.append({
+                    "action": "meet",
+                    "person": person,
+                    "start_time": f"{start//60:02d}:{start%60:02d}",
+                    "end_time": f"{end//60:02d}:{end%60:02d}"
+                })
+
+        add_to_itinerary("Kimberly", kimberly_start_var, kimberly_end_var)
+        add_to_itinerary("Margaret", margaret_start_var, margaret_end_var)
+        add_to_itinerary("Barbara", barbara_start_var, barbara_end_var)
+        add_to_itinerary("Kevin", kevin_start_var, kevin_end_var)
+
+        # Sort by start time
+        itinerary.sort(key=lambda x: x['start_time'])
+        s.pop()
+        return {"itinerary": itinerary}
+    else:
+        s.pop()
+        # If we can't meet all, try meeting 3
+        s.push()
+        s.add(Or(
+            And(meet_kimberly, meet_margaret, meet_barbara),
+            And(meet_kimberly, meet_margaret, meet_kevin),
+            And(meet_kimberly, meet_barbara, meet_kevin),
+            And(meet_margaret, meet_barbara, meet_kevin)
+        ))
+        
+        if s.check() == sat:
+            model = s.model()
+            itinerary = []
+
+            def add_to_itinerary(person, start_var, end_var):
+                start = model[start_var].as_long()
+                end = model[end_var].as_long()
+                if start > 0 and end > 0:
+                    itinerary.append({
+                        "action": "meet",
+                        "person": person,
+                        "start_time": f"{start//60:02d}:{start%60:02d}",
+                        "end_time": f"{end//60:02d}:{end%60:02d}"
+                    })
+
+            add_to_itinerary("Kimberly", kimberly_start_var, kimberly_end_var)
+            add_to_itinerary("Margaret", margaret_start_var, margaret_end_var)
+            add_to_itinerary("Barbara", barbara_start_var, barbara_end_var)
+            add_to_itinerary("Kevin", kevin_start_var, kevin_end_var)
+
+            # Sort by start time
+            itinerary.sort(key=lambda x: x['start_time'])
+            s.pop()
+            return {"itinerary": itinerary}
+        else:
+            s.pop()
+            return {"itinerary": []}
+
+# Solve the problem and print the solution
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

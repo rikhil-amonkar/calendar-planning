@@ -1,66 +1,87 @@
 from z3 import *
 
 def main():
-    # Initialize solver
-    s = Solver()
+    # Convert time string to minutes from 9:00
+    def time_to_minutes(time_str):
+        parts = time_str.split(':')
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        return (hours - 9) * 60 + minutes
+
+    # Blocked intervals for Gary and David on Monday and Tuesday
+    gary_intervals = {
+        0: [('9:30', '10:00'), ('11:00', '13:00'), ('14:00', '14:30'), ('16:30', '17:00')],
+        1: [('9:00', '9:30'), ('10:30', '11:00'), ('14:30', '16:00')]
+    }
     
-    # Define variables: day (0=Monday, 1=Tuesday) and start time in minutes from 9:00
-    day = Int('day')
-    start = Int('start')
+    david_intervals = {
+        0: [('9:00', '9:30'), ('10:00', '13:00'), ('14:30', '16:30')],
+        1: [('9:00', '9:30'), ('10:00', '10:30'), ('11:00', '12:30'), ('13:00', '14:30'), ('15:00', '16:00'), ('16:30', '17:00')]
+    }
     
-    # Day must be 0 or 1
-    s.add(Or(day == 0, day == 1))
-    # Start time must be between 0 and 420 (inclusive) to allow a 60-minute meeting ending by 480 (17:00)
-    s.add(start >= 0, start <= 420)
+    # Convert the intervals to minutes
+    gary_minutes = {}
+    david_minutes = {}
     
-    # Blocked intervals in minutes from 9:00
-    # Monday blocks
-    gary_monday = [(30, 60), (120, 240), (300, 330), (450, 480)]
-    david_monday = [(0, 30), (60, 240), (330, 450)]
-    monday_blocks = gary_monday + david_monday
+    for day in [0, 1]:
+        gary_minutes[day] = []
+        for start_str, end_str in gary_intervals[day]:
+            start_min = time_to_minutes(start_str)
+            end_min = time_to_minutes(end_str)
+            gary_minutes[day].append((start_min, end_min))
+            
+    for day in [0, 1]:
+        david_minutes[day] = []
+        for start_str, end_str in david_intervals[day]:
+            start_min = time_to_minutes(start_str)
+            end_min = time_to_minutes(end_str)
+            david_minutes[day].append((start_min, end_min))
     
-    # Tuesday blocks
-    gary_tuesday = [(0, 30), (90, 120), (330, 420)]
-    david_tuesday = [(0, 30), (60, 90), (120, 210), (240, 330), (360, 420), (450, 480)]
-    tuesday_blocks = gary_tuesday + david_tuesday
+    # Set up Z3 solver
+    solver = Solver()
+    day_var = Int('day')
+    start_var = Int('start')
     
-    # Constraints for Monday: if day is 0, the meeting must avoid all Monday blocks
-    monday_constraints = []
-    for (a, b) in monday_blocks:
-        # The meeting [start, start+60) must not overlap [a, b): so either ends before a or starts after b
-        monday_constraints.append(Or(start + 60 <= a, start >= b))
+    # Day must be 0 (Monday) or 1 (Tuesday)
+    solver.add(Or(day_var == 0, day_var == 1))
+    # Start time must be between 0 and 420 minutes (since 17:00 is 480 minutes, and meeting duration is 60 minutes)
+    solver.add(start_var >= 0)
+    solver.add(start_var <= 420)
     
-    # Constraints for Tuesday: if day is 1, the meeting must avoid all Tuesday blocks
-    tuesday_constraints = []
-    for (a, b) in tuesday_blocks:
-        tuesday_constraints.append(Or(start + 60 <= a, start >= b))
-    
-    # Add constraints based on the chosen day
-    s.add(Or(
-        And(day == 0, *monday_constraints),
-        And(day == 1, *tuesday_constraints)
-    ))
+    # Add constraints for Gary and David's blocked times
+    for day in [0, 1]:
+        for b_start, b_end in gary_minutes[day]:
+            # The meeting [start, start+60) must not overlap with [b_start, b_end)
+            solver.add(Implies(day_var == day, Or(start_var + 60 <= b_start, start_var >= b_end)))
+        for b_start, b_end in david_minutes[day]:
+            solver.add(Implies(day_var == day, Or(start_var + 60 <= b_start, start_var >= b_end)))
     
     # Check for a solution
-    if s.check() == sat:
-        m = s.model()
-        d_val = m[day].as_long()
-        start_val = m[start].as_long()
+    if solver.check() == sat:
+        model = solver.model()
+        day_val = model[day_var].as_long()
+        start_minutes = model[start_var].as_long()
         
-        # Convert start time to time string
-        total_minutes_start = start_val
-        start_hour = 9 + total_minutes_start // 60
-        start_minute = total_minutes_start % 60
-        start_time = f"{start_hour}:{start_minute:02d}"
+        # Convert day_val to day string
+        day_str = "Monday" if day_val == 0 else "Tuesday"
         
-        # Calculate end time
-        total_minutes_end = total_minutes_start + 60
-        end_hour = 9 + total_minutes_end // 60
-        end_minute = total_minutes_end % 60
-        end_time = f"{end_hour}:{end_minute:02d}"
+        # Convert start_minutes to time string (HH:MM)
+        total_minutes_start = start_minutes
+        hours_start = 9 + total_minutes_start // 60
+        minutes_start = total_minutes_start % 60
+        start_time = f"{hours_start:02d}:{minutes_start:02d}"
         
-        day_str = "Monday" if d_val == 0 else "Tuesday"
-        print(f"{day_str} {start_time} to {end_time}")
+        # Calculate end time (start + 60 minutes)
+        total_minutes_end = start_minutes + 60
+        hours_end = 9 + total_minutes_end // 60
+        minutes_end = total_minutes_end % 60
+        end_time = f"{hours_end:02d}:{minutes_end:02d}"
+        
+        # Output the solution
+        print("SOLUTION:")
+        print(f"Day: {day_str}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

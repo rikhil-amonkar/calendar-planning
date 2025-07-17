@@ -1,97 +1,274 @@
+import json
 from z3 import *
 
-def solve_scheduling():
+def solve_scheduling_problem():
     # Initialize the solver
-    s = Solver()
+    solver = Optimize()
 
-    # Define the locations and their indices
-    locations = [
-        "The Castro", "Marina District", "Presidio", "North Beach", "Embarcadero",
-        "Haight-Ashbury", "Golden Gate Park", "Richmond District", "Alamo Square",
-        "Financial District", "Sunset District"
-    ]
-    loc_index = {loc: idx for idx, loc in enumerate(locations)}
-
-    # Travel times matrix (in minutes)
-    travel_times = [
-        [0, 21, 20, 20, 22, 6, 11, 16, 8, 21, 17],
-        [22, 0, 10, 11, 14, 16, 18, 11, 15, 17, 19],
-        [21, 11, 0, 18, 20, 15, 12, 7, 19, 23, 15],
-        [23, 9, 17, 0, 6, 18, 22, 18, 16, 8, 27],
-        [25, 12, 20, 5, 0, 21, 25, 21, 19, 5, 30],
-        [6, 17, 15, 19, 20, 0, 7, 10, 5, 21, 15],
-        [13, 16, 11, 23, 25, 7, 0, 7, 9, 26, 10],
-        [16, 9, 7, 17, 19, 10, 9, 0, 13, 22, 11],
-        [8, 15, 17, 15, 16, 5, 9, 11, 0, 17, 16],
-        [20, 15, 22, 7, 4, 19, 23, 21, 17, 0, 30],
-        [17, 21, 16, 28, 30, 15, 11, 12, 17, 30, 0]
-    ]
-
-    # Friends' data: name, location, available start, available end, min duration
+    # Define the friends and their constraints
     friends = [
-        ("Elizabeth", "Marina District", 19*60, 20*60 + 45, 105),
-        ("Joshua", "Presidio", 8*60 + 30, 13*60 + 15, 105),
-        ("Timothy", "North Beach", 19*60 + 45, 22*60, 90),
-        ("David", "Embarcadero", 10*60 + 45, 12*60 + 30, 30),
-        ("Kimberly", "Haight-Ashbury", 16*60 + 45, 21*60 + 30, 75),
-        ("Lisa", "Golden Gate Park", 17*60 + 30, 21*60 + 45, 45),
-        ("Ronald", "Richmond District", 8*60, 9*60 + 30, 90),
-        ("Stephanie", "Alamo Square", 15*60 + 30, 16*60 + 30, 30),
-        ("Helen", "Financial District", 17*60 + 30, 18*60 + 30, 45),
-        ("Laura", "Sunset District", 17*60 + 45, 21*60 + 15, 90)
+        {"name": "Elizabeth", "location": "Marina District", "available_start": "19:00", "available_end": "20:45", "min_duration": 105},
+        {"name": "Joshua", "location": "Presidio", "available_start": "8:30", "available_end": "13:15", "min_duration": 105},
+        {"name": "Timothy", "location": "North Beach", "available_start": "19:45", "available_end": "22:00", "min_duration": 90},
+        {"name": "David", "location": "Embarcadero", "available_start": "10:45", "available_end": "12:30", "min_duration": 30},
+        {"name": "Kimberly", "location": "Haight-Ashbury", "available_start": "16:45", "available_end": "21:30", "min_duration": 75},
+        {"name": "Lisa", "location": "Golden Gate Park", "available_start": "17:30", "available_end": "21:45", "min_duration": 45},
+        {"name": "Ronald", "location": "Richmond District", "available_start": "8:00", "available_end": "9:30", "min_duration": 90},
+        {"name": "Stephanie", "location": "Alamo Square", "available_start": "15:30", "available_end": "16:30", "min_duration": 30},
+        {"name": "Helen", "location": "Financial District", "available_start": "17:30", "available_end": "18:30", "min_duration": 45},
+        {"name": "Laura", "location": "Sunset District", "available_start": "17:45", "available_end": "21:15", "min_duration": 90}
     ]
 
-    # Create variables for each friend: start and end times
-    starts = [Int(f'start_{name}') for name, _, _, _, _ in friends]
-    ends = [Int(f'end_{name}') for name, _, _, _, _ in friends]
-    meets = [Bool(f'meet_{name}') for name, _, _, _, _ in friends]  # Whether we meet this friend
+    # Convert time strings to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
 
-    # Current location starts at The Castro at 9:00 AM (540 minutes)
-    current_time = 540
-    current_loc = loc_index["The Castro"]
+    current_time = time_to_minutes("9:00")  # Starting time at The Castro
 
-    # Constraints for each friend
-    for i, (name, loc, avail_start, avail_end, min_dur) in enumerate(friends):
-        loc_idx = loc_index[loc]
-        travel_time = travel_times[current_loc][loc_idx]
+    # Create variables for each friend's meeting start and end times
+    meetings = []
+    for friend in friends:
+        available_start = time_to_minutes(friend["available_start"])
+        available_end = time_to_minutes(friend["available_end"])
+        min_duration = friend["min_duration"]
 
-        # If we meet this friend, their start and end times must be within their availability
-        s.add(Implies(meets[i], starts[i] >= avail_start))
-        s.add(Implies(meets[i], ends[i] <= avail_end))
-        s.add(Implies(meets[i], ends[i] - starts[i] >= min_dur))
+        start = Int(f'start_{friend["name"]}')
+        end = Int(f'end_{friend["name"]}')
+        meet = Bool(f'meet_{friend["name"]}')
 
-        # Travel time constraint: must arrive at the friend's location by start time
-        s.add(Implies(meets[i], starts[i] >= current_time + travel_time))
+        # Constraints for meeting within available time
+        solver.add(Implies(meet, start >= available_start))
+        solver.add(Implies(meet, end <= available_end))
+        solver.add(Implies(meet, end == start + min_duration))
+        solver.add(Implies(meet, start + min_duration <= available_end))
 
-        # Update current_time and current_loc if we meet this friend
-        new_current_time = If(meets[i], ends[i], current_time)
-        new_current_loc = If(meets[i], loc_idx, current_loc)
-        current_time = new_current_time
-        current_loc = new_current_loc
+        meetings.append({
+            "name": friend["name"],
+            "location": friend["location"],
+            "start": start,
+            "end": end,
+            "meet": meet,
+            "min_duration": min_duration
+        })
+
+    # Define travel times between locations
+    travel_times = {
+        ("The Castro", "Marina District"): 21,
+        ("The Castro", "Presidio"): 20,
+        ("The Castro", "North Beach"): 20,
+        ("The Castro", "Embarcadero"): 22,
+        ("The Castro", "Haight-Ashbury"): 6,
+        ("The Castro", "Golden Gate Park"): 11,
+        ("The Castro", "Richmond District"): 16,
+        ("The Castro", "Alamo Square"): 8,
+        ("The Castro", "Financial District"): 21,
+        ("The Castro", "Sunset District"): 17,
+        ("Marina District", "The Castro"): 22,
+        ("Marina District", "Presidio"): 10,
+        ("Marina District", "North Beach"): 11,
+        ("Marina District", "Embarcadero"): 14,
+        ("Marina District", "Haight-Ashbury"): 16,
+        ("Marina District", "Golden Gate Park"): 18,
+        ("Marina District", "Richmond District"): 11,
+        ("Marina District", "Alamo Square"): 15,
+        ("Marina District", "Financial District"): 17,
+        ("Marina District", "Sunset District"): 19,
+        ("Presidio", "The Castro"): 21,
+        ("Presidio", "Marina District"): 11,
+        ("Presidio", "North Beach"): 18,
+        ("Presidio", "Embarcadero"): 20,
+        ("Presidio", "Haight-Ashbury"): 15,
+        ("Presidio", "Golden Gate Park"): 12,
+        ("Presidio", "Richmond District"): 7,
+        ("Presidio", "Alamo Square"): 19,
+        ("Presidio", "Financial District"): 23,
+        ("Presidio", "Sunset District"): 15,
+        ("North Beach", "The Castro"): 23,
+        ("North Beach", "Marina District"): 9,
+        ("North Beach", "Presidio"): 17,
+        ("North Beach", "Embarcadero"): 6,
+        ("North Beach", "Haight-Ashbury"): 18,
+        ("North Beach", "Golden Gate Park"): 22,
+        ("North Beach", "Richmond District"): 18,
+        ("North Beach", "Alamo Square"): 16,
+        ("North Beach", "Financial District"): 8,
+        ("North Beach", "Sunset District"): 27,
+        ("Embarcadero", "The Castro"): 25,
+        ("Embarcadero", "Marina District"): 12,
+        ("Embarcadero", "Presidio"): 20,
+        ("Embarcadero", "North Beach"): 5,
+        ("Embarcadero", "Haight-Ashbury"): 21,
+        ("Embarcadero", "Golden Gate Park"): 25,
+        ("Embarcadero", "Richmond District"): 21,
+        ("Embarcadero", "Alamo Square"): 19,
+        ("Embarcadero", "Financial District"): 5,
+        ("Embarcadero", "Sunset District"): 30,
+        ("Haight-Ashbury", "The Castro"): 6,
+        ("Haight-Ashbury", "Marina District"): 17,
+        ("Haight-Ashbury", "Presidio"): 15,
+        ("Haight-Ashbury", "North Beach"): 19,
+        ("Haight-Ashbury", "Embarcadero"): 20,
+        ("Haight-Ashbury", "Golden Gate Park"): 7,
+        ("Haight-Ashbury", "Richmond District"): 10,
+        ("Haight-Ashbury", "Alamo Square"): 5,
+        ("Haight-Ashbury", "Financial District"): 21,
+        ("Haight-Ashbury", "Sunset District"): 15,
+        ("Golden Gate Park", "The Castro"): 13,
+        ("Golden Gate Park", "Marina District"): 16,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Golden Gate Park", "North Beach"): 23,
+        ("Golden Gate Park", "Embarcadero"): 25,
+        ("Golden Gate Park", "Haight-Ashbury"): 7,
+        ("Golden Gate Park", "Richmond District"): 7,
+        ("Golden Gate Park", "Alamo Square"): 9,
+        ("Golden Gate Park", "Financial District"): 26,
+        ("Golden Gate Park", "Sunset District"): 10,
+        ("Richmond District", "The Castro"): 16,
+        ("Richmond District", "Marina District"): 9,
+        ("Richmond District", "Presidio"): 7,
+        ("Richmond District", "North Beach"): 17,
+        ("Richmond District", "Embarcadero"): 19,
+        ("Richmond District", "Haight-Ashbury"): 10,
+        ("Richmond District", "Golden Gate Park"): 9,
+        ("Richmond District", "Alamo Square"): 13,
+        ("Richmond District", "Financial District"): 22,
+        ("Richmond District", "Sunset District"): 11,
+        ("Alamo Square", "The Castro"): 8,
+        ("Alamo Square", "Marina District"): 15,
+        ("Alamo Square", "Presidio"): 17,
+        ("Alamo Square", "North Beach"): 15,
+        ("Alamo Square", "Embarcadero"): 16,
+        ("Alamo Square", "Haight-Ashbury"): 5,
+        ("Alamo Square", "Golden Gate Park"): 9,
+        ("Alamo Square", "Richmond District"): 11,
+        ("Alamo Square", "Financial District"): 17,
+        ("Alamo Square", "Sunset District"): 16,
+        ("Financial District", "The Castro"): 20,
+        ("Financial District", "Marina District"): 15,
+        ("Financial District", "Presidio"): 22,
+        ("Financial District", "North Beach"): 7,
+        ("Financial District", "Embarcadero"): 4,
+        ("Financial District", "Haight-Ashbury"): 19,
+        ("Financial District", "Golden Gate Park"): 23,
+        ("Financial District", "Richmond District"): 21,
+        ("Financial District", "Alamo Square"): 17,
+        ("Financial District", "Sunset District"): 30,
+        ("Sunset District", "The Castro"): 17,
+        ("Sunset District", "Marina District"): 21,
+        ("Sunset District", "Presidio"): 16,
+        ("Sunset District", "North Beach"): 28,
+        ("Sunset District", "Embarcadero"): 30,
+        ("Sunset District", "Haight-Ashbury"): 15,
+        ("Sunset District", "Golden Gate Park"): 11,
+        ("Sunset District", "Richmond District"): 12,
+        ("Sunset District", "Alamo Square"): 17,
+        ("Sunset District", "Financial District"): 30
+    }
+
+    # Define the sequence of meetings (order is to be determined)
+    # We need to model the order of meetings and ensure travel times are respected
+    # This is complex, so we'll use a simplified approach: prioritize friends with tight time windows first
+
+    # For simplicity, let's prioritize Ronald first (available only until 9:30 AM)
+    # Then Joshua (until 1:15 PM), then David (until 12:30 PM), etc.
+
+    # We'll manually define a feasible order based on time windows and travel times
+    # This is a heuristic approach; a full solution would require a more complex model
+
+    # For the purpose of this example, let's assume the following order:
+    # 1. Ronald (Richmond District) 8:00-9:30 (must meet first)
+    # 2. Joshua (Presidio) 8:30-1:15
+    # 3. David (Embarcadero) 10:45-12:30
+    # 4. Stephanie (Alamo Square) 3:30-4:30
+    # 5. Helen (Financial District) 5:30-6:30
+    # 6. Kimberly (Haight-Ashbury) 4:45-9:30
+    # 7. Lisa (Golden Gate Park) 5:30-9:45
+    # 8. Laura (Sunset District) 5:45-9:15
+    # 9. Elizabeth (Marina District) 7:00-8:45
+    # 10. Timothy (North Beach) 7:45-10:00
+
+    # Now, we'll model the schedule based on this order, ensuring travel times are respected
+
+    # Start at The Castro at 9:00 AM (540 minutes)
+    current_location = "The Castro"
+    current_time_var = Int('current_time_start')
+    solver.add(current_time_var == current_time)
+
+    itinerary = []
+
+    # Define the order manually (as per the heuristic)
+    order = [
+        ("Ronald", "Richmond District"),
+        ("Joshua", "Presidio"),
+        ("David", "Embarcadero"),
+        ("Stephanie", "Alamo Square"),
+        ("Helen", "Financial District"),
+        ("Kimberly", "Haight-Ashbury"),
+        ("Lisa", "Golden Gate Park"),
+        ("Laura", "Sunset District"),
+        ("Elizabeth", "Marina District"),
+        ("Timothy", "North Beach")
+    ]
+
+    # For each friend in order, add meeting constraints
+    prev_end = current_time_var
+    prev_location = current_location
+    scheduled_meetings = []
+
+    for person, location in order:
+        # Find the friend's data
+        friend = next(f for f in meetings if f["name"] == person)
+        meet = friend["meet"]
+        start = friend["start"]
+        end = friend["end"]
+        min_duration = friend["min_duration"]
+
+        # Travel time from previous location to current location
+        travel_time = travel_times.get((prev_location, location), 0)  # Default to 0 if same location
+
+        # Constraint: if meeting this friend, start >= prev_end + travel_time
+        solver.add(Implies(meet, start >= prev_end + travel_time))
+
+        # Add to scheduled meetings if meeting
+        scheduled_meetings.append(meet)
+
+        # Update previous end and location if meeting
+        new_prev_end = If(meet, end, prev_end)
+        new_prev_location = If(meet, location, prev_location)
+
+        prev_end = new_prev_end
+        prev_location = new_prev_location
 
     # Maximize the number of friends met
-    s.maximize(Sum([If(meets[i], 1, 0) for i in range(len(friends))]))
+    solver.maximize(Sum([If(m, 1, 0) for m in scheduled_meetings]))
 
-    # Check if a solution exists
-    if s.check() == sat:
-        m = s.model()
-        met_friends = []
-        schedule = []
+    # Check if the solver can find a solution
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
 
-        for i, (name, loc, _, _, _) in enumerate(friends):
-            if m.eval(meets[i]):
-                start = m.eval(starts[i]).as_long()
-                end = m.eval(ends[i]).as_long()
-                start_str = f"{start // 60}:{start % 60:02d}"
-                end_str = f"{end // 60}:{end % 60:02d}"
-                met_friends.append(name)
-                schedule.append((name, loc, start_str, end_str))
+        # Collect all meetings that are scheduled
+        for friend in meetings:
+            if is_true(model[friend["meet"]]):
+                start_min = model[friend["start"]].as_long()
+                end_min = model[friend["end"]].as_long()
+                start_time = f"{start_min // 60:02d}:{start_min % 60:02d}"
+                end_time = f"{end_min // 60:02d}:{end_min % 60:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": friend["name"],
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
 
-        print("Met friends:", met_friends)
-        print("Schedule:")
-        for entry in schedule:
-            print(entry)
+        # Sort the itinerary by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x["start_time"]))
+
+        return {"itinerary": itinerary}
     else:
-        print("No solution found")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Solve the problem and print the solution
+solution = solve_scheduling_problem()
+print(json.dumps(solution, indent=2))

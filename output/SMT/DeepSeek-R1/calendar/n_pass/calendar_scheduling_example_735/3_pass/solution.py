@@ -1,0 +1,1 @@
+s.add(Implies(day_var == d, And(constraints)))
