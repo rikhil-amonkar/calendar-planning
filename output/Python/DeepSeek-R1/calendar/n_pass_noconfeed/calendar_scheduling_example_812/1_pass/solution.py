@@ -1,78 +1,84 @@
 def main():
+    # Define work hours (9:00 to 17:00) in minutes
+    work_start = 9 * 60  # 540 minutes
+    work_end = 17 * 60   # 1020 minutes
+
+    # Days to consider
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-    work_start = 540   # 9:00 in minutes from midnight
-    work_end = 1020    # 17:00
-    slot_duration = 30  # meeting duration
 
-    # Generate time slots for one day: from 9:00 to 16:30 (inclusive)
-    slots = []
-    current = work_start
-    while current <= work_end - slot_duration:
-        slots.append(current)
-        current += slot_duration
-
-    # Predefined busy intervals for Mary and Alexis (in minutes)
+    # Busy intervals in minutes for each participant per day
     mary_busy = {
-        'Monday': [],
-        'Tuesday': [(600, 630), (930, 960)],      # 10:00-10:30, 15:30-16:00
-        'Wednesday': [(570, 600), (900, 930)],    # 9:30-10:00, 15:00-15:30
-        'Thursday': [(540, 600), (630, 690)]      # 9:00-10:00, 10:30-11:30
+        'Tuesday': [(10*60, 10*60+30), (15*60+30, 16*60)],
+        'Wednesday': [(9*60+30, 10*60), (15*60, 15*60+30)],
+        'Thursday': [(9*60, 10*60), (10*60+30, 11*60+30)]
     }
 
     alexis_busy = {
-        'Monday': [(540, 600), (630, 720), (750, 990)],      # 9:00-10:00, 10:30-12:00, 12:30-16:30
-        'Tuesday': [(540, 600), (630, 690), (720, 930), (960, 1020)], # 9:00-10:00, 10:30-11:30, 12:00-15:30, 16:00-17:00
-        'Wednesday': [(540, 660), (690, 1020)],               # 9:00-11:00, 11:30-17:00
-        'Thursday': [(600, 720), (840, 870), (930, 960), (990, 1020)] # 10:00-12:00, 14:00-14:30, 15:30-16:00, 16:30-17:00
+        'Monday': [(9*60, 10*60), (10*60+30, 12*60), (12*60+30, 16*60+30)],
+        'Tuesday': [(9*60, 10*60), (10*60+30, 11*60+30), (12*60, 15*60+30), (16*60, 17*60)],
+        'Wednesday': [(9*60, 11*60), (11*60+30, 17*60)],
+        'Thursday': [(10*60, 12*60), (14*60, 14*60+30), (15*60+30, 16*60), (16*60+30, 17*60)]
     }
 
-    # Iterate over days in order
+    # Iterate over each day to find the earliest available slot
     for day in days:
-        # Initialize free slots for Mary and Alexis as all True
-        free_mary = [True] * len(slots)
-        free_alexis = [True] * len(slots)
+        # Collect all busy intervals for this day
+        busy_intervals = []
         
-        # Mark Mary's busy slots for this day
-        for (busy_start, busy_end) in mary_busy[day]:
-            for idx, slot_start in enumerate(slots):
-                slot_end = slot_start + slot_duration
-                # Check for overlap: [slot_start, slot_end) and [busy_start, busy_end)
-                if slot_start < busy_end and slot_end > busy_start:
-                    free_mary[idx] = False
-                    
-        # Mark Alexis's busy slots for this day
-        for (busy_start, busy_end) in alexis_busy[day]:
-            for idx, slot_start in enumerate(slots):
-                slot_end = slot_start + slot_duration
-                if slot_start < busy_end and slot_end > busy_start:
-                    free_alexis[idx] = False
-                    
-        # Find the first free slot for both
-        for idx in range(len(slots)):
-            if free_mary[idx] and free_alexis[idx]:
-                start_min = slots[idx]
-                end_min = start_min + slot_duration
-                
-                # Convert start time to HH:MM
-                start_hour = start_min // 60
-                start_minute = start_min % 60
-                start_str = f"{start_hour:02d}:{start_minute:02d}"
-                
-                # Convert end time to HH:MM
-                end_hour = end_min // 60
-                end_minute = end_min % 60
-                end_str = f"{end_hour:02d}:{end_minute:02d}"
-                
-                # Format time range as HH:MM:HH:MM
-                time_range = f"{start_str}:{end_str}"
-                
-                # Output day and time range
-                print(day)
-                print(time_range)
+        # Add Mary's busy intervals if the day exists
+        if day in mary_busy:
+            busy_intervals.extend(mary_busy[day])
+        
+        # Add Alexis' busy intervals if the day exists
+        if day in alexis_busy:
+            busy_intervals.extend(alexis_busy[day])
+        
+        # If no busy intervals, the entire day is free -> schedule at 9:00
+        if not busy_intervals:
+            start_time = work_start
+            end_time = start_time + 30
+            # Format the time and output
+            print(f"{day}")
+            print(f"{start_time//60:02d}:{start_time%60:02d}:{end_time//60:02d}:{end_time%60:02d}")
+            return
+        
+        # Sort busy intervals by start time
+        busy_intervals.sort(key=lambda x: x[0])
+        
+        # Merge overlapping or adjacent intervals
+        merged = []
+        current_start, current_end = busy_intervals[0]
+        for interval in busy_intervals[1:]:
+            if interval[0] <= current_end:
+                current_end = max(current_end, interval[1])
+            else:
+                merged.append((current_start, current_end))
+                current_start, current_end = interval
+        merged.append((current_start, current_end))
+        
+        # Find free intervals
+        free_intervals = []
+        current = work_start
+        
+        # Check before first meeting
+        for start, end in merged:
+            if current < start:
+                free_intervals.append((current, start))
+            current = max(current, end)
+        
+        # Check after last meeting
+        if current < work_end:
+            free_intervals.append((current, work_end))
+        
+        # Check each free interval for a 30-minute slot
+        for start, end in free_intervals:
+            if end - start >= 30:
+                meeting_start = start
+                meeting_end = start + 30
+                # Format the time and output
+                print(f"{day}")
+                print(f"{meeting_start//60:02d}:{meeting_start%60:02d}:{meeting_end//60:02d}:{meeting_end%60:02d}")
                 return
-                
-    # If no slot found (though guaranteed), output a fallback
-    print("No slot found")
 
 if __name__ == "__main__":
     main()

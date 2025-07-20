@@ -1,80 +1,74 @@
-def time_to_minutes(time_str):
-    h, m = map(int, time_str.split(':'))
-    return h * 60 + m
+def compute_free_intervals(busy_intervals, work_start, work_end):
+    if not busy_intervals:
+        return [(work_start, work_end)]
+    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
+    free = []
+    current = work_start
+    for s, e in sorted_busy:
+        s_clip = max(s, work_start)
+        e_clip = min(e, work_end)
+        if s_clip >= e_clip:
+            continue
+        if current < s_clip:
+            free.append((current, s_clip))
+        current = max(current, e_clip)
+    if current < work_end:
+        free.append((current, work_end))
+    return free
 
-def minutes_to_time(mins):
-    h, m = divmod(mins, 60)
-    return f"{h:02d}:{m:02d}"
-
-def merge_intervals(intervals):
-    if not intervals:
-        return []
-    intervals.sort(key=lambda x: x[0])
-    merged = [intervals[0]]
-    for current in intervals[1:]:
-        last = merged[-1]
-        if current[0] <= last[1]:
-            merged[-1] = (last[0], max(last[1], current[1]))
+def find_common_slots(free1, free2):
+    common = []
+    i = j = 0
+    while i < len(free1) and j < len(free2):
+        low = max(free1[i][0], free2[j][0])
+        high = min(free1[i][1], free2[j][1])
+        if low < high:
+            common.append((low, high))
+        if free1[i][1] < free2[j][1]:
+            i += 1
         else:
-            merged.append(current)
-    return merged
+            j += 1
+    return common
 
 def main():
-    stephanie_schedule = {
-        'Monday': [('9:30','10:00'), ('10:30','11:00'), ('11:30','12:00'), ('14:00','14:30')],
-        'Tuesday': [('12:00','13:00')],
-        'Wednesday': [('9:00','10:00'), ('13:00','14:00')]
+    stephanie_busy = {
+        'Monday': [(570, 600), (630, 660), (690, 720), (840, 870)],
+        'Tuesday': [(720, 780)],
+        'Wednesday': [(540, 600), (780, 840)],
     }
     
-    betty_schedule = {
-        'Monday': [('9:00','10:00'), ('11:00','11:30'), ('14:30','15:00'), ('15:30','16:00')],
-        'Tuesday': [('9:00','9:30'), ('11:30','12:00'), ('12:30','14:30'), ('15:30','16:00')],
-        'Wednesday': [('10:00','11:30'), ('12:00','14:00'), ('14:30','17:00')]
+    betty_busy = {
+        'Monday': [(540, 600), (660, 690), (870, 900), (930, 960)],
+        'Tuesday': [(540, 570), (690, 720)],
+        'Wednesday': [(600, 690), (720, 840), (870, 1020)],
     }
     
-    work_start = time_to_minutes('9:00')
-    days = ['Tuesday', 'Wednesday', 'Monday']
-    meeting_duration = 60
+    days_order = ['Tuesday', 'Wednesday', 'Monday']
+    work_start_min = 9 * 60  # 9:00
     
-    for day in days:
+    for day in days_order:
         if day == 'Tuesday':
-            work_end = time_to_minutes('12:30')
+            work_end_min = 12 * 60 + 30  # 12:30
         else:
-            work_end = time_to_minutes('17:00')
+            work_end_min = 17 * 60  # 17:00
         
-        busy_intervals = []
-        for meet in stephanie_schedule.get(day, []):
-            s, e = meet
-            busy_intervals.append((time_to_minutes(s), time_to_minutes(e)))
-        for meet in betty_schedule.get(day, []):
-            s, e = meet
-            busy_intervals.append((time_to_minutes(s), time_to_minutes(e)))
+        s_busy = stephanie_busy.get(day, [])
+        b_busy = betty_busy.get(day, [])
         
-        if not busy_intervals:
-            free_intervals = [(work_start, work_end)]
-        else:
-            merged = merge_intervals(busy_intervals)
-            free_intervals = []
-            current = work_start
-            for start, end in merged:
-                if current < start:
-                    free_intervals.append((current, start))
-                current = max(current, end)
-            if current < work_end:
-                free_intervals.append((current, work_end))
+        s_free = compute_free_intervals(s_busy, work_start_min, work_end_min)
+        b_free = compute_free_intervals(b_busy, work_start_min, work_end_min)
+        common_free = find_common_slots(s_free, b_free)
         
-        for start, end in free_intervals:
-            if end - start >= meeting_duration:
-                meeting_start = start
-                meeting_end = start + meeting_duration
-                start_str = minutes_to_time(meeting_start)
-                end_str = minutes_to_time(meeting_end)
+        for start, end in common_free:
+            if end - start >= 60:
+                slot_start = start
+                slot_end = start + 60
+                start_hr, start_min = divmod(slot_start, 60)
+                end_hr, end_min = divmod(slot_end, 60)
+                time_str = f"{start_hr:02d}:{start_min:02d}:{end_hr:02d}:{end_min:02d}"
                 print(day)
-                print(f"{start_str}:{end_str}")
+                print(time_str)
                 return
-    
-    # Fallback if no slot found (shouldn't happen per problem)
-    print("No suitable time found")
 
 if __name__ == "__main__":
     main()

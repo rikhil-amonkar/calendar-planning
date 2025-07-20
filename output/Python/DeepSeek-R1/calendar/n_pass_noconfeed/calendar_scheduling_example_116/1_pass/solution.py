@@ -1,80 +1,96 @@
-def time_str_to_minutes(time_str):
-    parts = time_str.split(':')
-    return int(parts[0]) * 60 + int(parts[1])
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
 
-# Work hours: 9:00 to 17:00 (Monday)
-work_start = 9 * 60   # 540 minutes (9:00)
-work_end = 17 * 60    # 1020 minutes (17:00)
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
 
-# Meeting duration
-duration = 30
+def compute_free(busy_intervals, work_start, work_end):
+    if not busy_intervals:
+        return [(work_start, work_end)]
+    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
+    free = []
+    current_start = work_start
+    for s_busy, e_busy in sorted_busy:
+        if current_start < s_busy:
+            free.append((current_start, s_busy))
+        current_start = max(current_start, e_busy)
+    if current_start < work_end:
+        free.append((current_start, work_end))
+    return free
 
-# Anna's preference: not before 14:30 (870 minutes)
-anna_pref_start = 14 * 60 + 30
-
-# Collect all busy intervals from every participant
-busy_intervals = []
-
-# Adam's schedule
-busy_intervals.append((time_str_to_minutes("14:00"), time_str_to_minutes("15:00")))
-
-# John's schedule
-busy_intervals.append((time_str_to_minutes("13:00"), time_str_to_minutes("13:30")))
-busy_intervals.append((time_str_to_minutes("14:00"), time_str_to_minutes("14:30")))
-busy_intervals.append((time_str_to_minutes("15:30"), time_str_to_minutes("16:00")))
-busy_intervals.append((time_str_to_minutes("16:30"), time_str_to_minutes("17:00")))
-
-# Stephanie's schedule
-busy_intervals.append((time_str_to_minutes("9:30"), time_str_to_minutes("10:00")))
-busy_intervals.append((time_str_to_minutes("10:30"), time_str_to_minutes("11:00")))
-busy_intervals.append((time_str_to_minutes("11:30"), time_str_to_minutes("16:00")))
-busy_intervals.append((time_str_to_minutes("16:30"), time_str_to_minutes("17:00")))
-
-# Anna's schedule
-busy_intervals.append((time_str_to_minutes("9:30"), time_str_to_minutes("10:00")))
-busy_intervals.append((time_str_to_minutes("12:00"), time_str_to_minutes("12:30")))
-busy_intervals.append((time_str_to_minutes("13:00"), time_str_to_minutes("15:30")))
-busy_intervals.append((time_str_to_minutes("16:30"), time_str_to_minutes("17:00")))
-
-# Merge overlapping busy intervals
-busy_intervals.sort(key=lambda x: x[0])
-merged_busy = []
-if busy_intervals:
-    current_start, current_end = busy_intervals[0]
-    for interval in busy_intervals[1:]:
-        s, e = interval
-        if s <= current_end:
-            current_end = max(current_end, e)
+def intersect_intervals(intervals1, intervals2):
+    if not intervals1 or not intervals2:
+        return []
+    i, j = 0, 0
+    result = []
+    while i < len(intervals1) and j < len(intervals2):
+        a1, a2 = intervals1[i]
+        b1, b2 = intervals2[j]
+        start = max(a1, b1)
+        end = min(a2, b2)
+        if start < end:
+            result.append((start, end))
+        if a2 < b2:
+            i += 1
         else:
-            merged_busy.append((current_start, current_end))
-            current_start, current_end = s, e
-    merged_busy.append((current_start, current_end))
+            j += 1
+    return result
 
-# Compute free intervals within work hours
-free_intervals = []
-current = work_start
-for s, e in merged_busy:
-    if current < s:
-        free_intervals.append((current, s))
-    current = max(current, e)  # Ensure we move forward
-if current < work_end:
-    free_intervals.append((current, work_end))
+def main():
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 30
+    preference_start = time_to_minutes("14:30")
+    
+    busy = {
+        'Adam': [(time_to_minutes("14:00"), time_to_minutes("15:00"))],
+        'John': [
+            (time_to_minutes("13:00"), time_to_minutes("13:30")),
+            (time_to_minutes("14:00"), time_to_minutes("14:30")),
+            (time_to_minutes("15:30"), time_to_minutes("16:00")),
+            (time_to_minutes("16:30"), time_to_minutes("17:00"))
+        ],
+        'Stephanie': [
+            (time_to_minutes("09:30"), time_to_minutes("10:00")),
+            (time_to_minutes("10:30"), time_to_minutes("11:00")),
+            (time_to_minutes("11:30"), time_to_minutes("16:00")),
+            (time_to_minutes("16:30"), time_to_minutes("17:00"))
+        ],
+        'Anna': [
+            (time_to_minutes("09:30"), time_to_minutes("10:00")),
+            (time_to_minutes("12:00"), time_to_minutes("12:30")),
+            (time_to_minutes("13:00"), time_to_minutes("15:30")),
+            (time_to_minutes("16:30"), time_to_minutes("17:00"))
+        ]
+    }
+    
+    persons = ['Adam', 'John', 'Stephanie', 'Anna']
+    free_intervals = {}
+    for person in persons:
+        free_intervals[person] = compute_free(busy[person], work_start, work_end)
+    
+    common = free_intervals[persons[0]]
+    for i in range(1, len(persons)):
+        common = intersect_intervals(common, free_intervals[persons[i]])
+    
+    candidate_meetings = []
+    for s, e in common:
+        if e - s >= meeting_duration:
+            t_start = max(s, preference_start)
+            if t_start + meeting_duration <= e:
+                candidate_meetings.append((t_start, t_start + meeting_duration))
+    
+    if candidate_meetings:
+        candidate_meetings.sort(key=lambda x: x[0])
+        meeting_start, meeting_end = candidate_meetings[0]
+        time_range_str = f"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}"
+        print("Monday")
+        print(time_range_str)
+    else:
+        print("No solution found")
 
-# Find first free interval that fits meeting and Anna's preference
-for start_free, end_free in free_intervals:
-    candidate_start = max(start_free, anna_pref_start)
-    if candidate_start + duration <= end_free:
-        meeting_start = candidate_start
-        meeting_end = candidate_start + duration
-        break
-
-# Format meeting time as HH:MM:HH:MM
-s_hour = meeting_start // 60
-s_min = meeting_start % 60
-e_hour = meeting_end // 60
-e_min = meeting_end % 60
-time_range_str = f"{s_hour:02d}:{s_min:02d}:{e_hour:02d}:{e_min:02d}"
-
-# Output the day and time range
-print("Monday")
-print(time_range_str)
+if __name__ == "__main__":
+    main()

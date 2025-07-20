@@ -1,72 +1,65 @@
-def min_to_time(minutes):
+def time_to_minutes(time_str):
+    h, m = time_str.split(':')
+    return int(h) * 60 + int(m)
+
+def minutes_to_time(minutes):
     h = minutes // 60
     m = minutes % 60
     return f"{h:02d}:{m:02d}"
 
-# Define work hours and meeting duration
-work_start = 540   # 9:00 in minutes
-work_end = 1020    # 17:00 in minutes
-meeting_duration = 30
-roger_pref_start = 750  # 12:30 in minutes
+# Given constraints
+work_start = time_to_minutes("12:30")  # 750 minutes (12:30)
+work_end = time_to_minutes("17:00")    # 1020 minutes (17:00)
+total_minutes = work_end - work_start   # 270 minutes
 
-# Busy intervals for each participant (start, end) in minutes [start, end)
-busy_intervals = [
-    # Kathleen
-    (870, 930),
-    # Carolyn
-    (720, 750), (780, 810),
-    # Cheryl
-    (540, 570), (600, 690), (750, 810), (840, 1020),
-    # Virginia
-    (570, 690), (720, 750), (780, 810), (870, 930), (960, 1020),
-    # Angela
-    (570, 600), (630, 690), (720, 750), (780, 810), (840, 990)
-]
+# Participants and their busy intervals (as time strings)
+participants_busy = {
+    "Daniel": [],
+    "Kathleen": [("14:30", "15:30")],
+    "Carolyn": [("13:00", "13:30")],  # Ignored 12:00-12:30 as it ends at work_start
+    "Roger": [],
+    "Cheryl": [("12:30", "13:30"), ("14:00", "17:00")],
+    "Virginia": [("13:00", "13:30"), ("14:30", "15:30"), ("16:00", "17:00")],
+    "Angela": [("13:00", "13:30"), ("14:00", "16:30")]
+}
 
-# Merge busy intervals
-if busy_intervals:
-    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
-    merged_busy = []
-    start_curr, end_curr = sorted_busy[0]
-    for interval in sorted_busy[1:]:
-        s, e = interval
-        if s <= end_curr:
-            end_curr = max(end_curr, e)
-        else:
-            merged_busy.append((start_curr, end_curr))
-            start_curr, end_curr = s, e
-    merged_busy.append((start_curr, end_curr))
-else:
-    merged_busy = []
+# Initialize free_all as all True for the entire period
+free_all = [True] * total_minutes
 
-# Compute free intervals within work hours
-free_intervals = []
-current = work_start
-for start_busy, end_busy in merged_busy:
-    if current < start_busy:
-        free_intervals.append((current, start_busy))
-    current = max(current, end_busy)
-if current < work_end:
-    free_intervals.append((current, work_end))
+for busy_list in participants_busy.values():
+    free_p = [True] * total_minutes
+    for (s_str, e_str) in busy_list:
+        s = time_to_minutes(s_str)
+        e = time_to_minutes(e_str)
+        if s >= work_end or e <= work_start:
+            continue
+        busy_start = max(s, work_start)
+        busy_end = min(e, work_end)
+        if busy_start >= busy_end:
+            continue
+        start_idx = busy_start - work_start
+        end_idx = busy_end - work_start
+        for j in range(start_idx, end_idx):
+            if j < total_minutes:
+                free_p[j] = False
+    for idx in range(total_minutes):
+        free_all[idx] = free_all[idx] and free_p[idx]
 
-# Find the first meeting slot that meets duration and Roger's preference
-meeting_slot = None
-for start, end in free_intervals:
-    slot_length = end - start
-    if slot_length < meeting_duration:
-        continue
-    candidate_start = max(start, roger_pref_start)
-    if candidate_start + meeting_duration <= end:
-        meeting_slot = (candidate_start, candidate_start + meeting_duration)
+# Search for the first 30 consecutive free minutes
+n = 30
+start_idx = None
+for i in range(0, total_minutes - n + 1):
+    if all(free_all[i:i + n]):
+        start_idx = i
         break
 
-# Output the result
-if meeting_slot:
-    start_str = min_to_time(meeting_slot[0])
-    end_str = min_to_time(meeting_slot[1])
-    print("Monday")
-    print(f"{start_str}:{end_str}")
+if start_idx is None:
+    print("No suitable time found")
 else:
-    # According to the problem, a solution exists, so this is a fallback
+    start_minute = work_start + start_idx
+    end_minute = start_minute + n
+    start_time_str = minutes_to_time(start_minute)
+    end_time_str = minutes_to_time(end_minute)
+    time_range_str = f"{start_time_str}:{end_time_str}"
     print("Monday")
-    print("13:30:14:00")
+    print(time_range_str)

@@ -1,33 +1,60 @@
-def min_to_time_str(minutes):
-    total_minutes = minutes
-    hour = 9 + total_minutes // 60
-    minute = total_minutes % 60
-    return f"{hour:02d}:{minute:02d}"
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1]) if len(parts) > 1 else 0
+    return hours * 60 + minutes
 
-# Define available intervals (in minutes from 9:00, [start, end))
-evelyn_available = [(0, 240)]  # 9:00 to 13:00 (exclusive)
-randy_available = [(90, 120), (390, 420)]  # 10:30-11:00 and 15:30-16:00
+def minutes_to_time(mins):
+    hours = mins // 60
+    minutes = mins % 60
+    return f"{hours:02d}:{minutes:02d}"
 
-duration = 30  # Meeting duration in minutes
+# Given constraints
+day = "Monday"
+work_start = "9:00"
+work_end = "17:00"
+meeting_duration = 30
 
-found = False
-slot_start = None
-for r_int in randy_available:
-    for e_int in evelyn_available:
-        start_overlap = max(r_int[0], e_int[0])
-        end_overlap = min(r_int[1], e_int[1])
-        if end_overlap - start_overlap >= duration:
-            slot_start = start_overlap
-            found = True
-            break
-    if found:
+# Evelyn: available until 13:00 (so 9:00-13:00)
+evelyn_start = time_to_minutes("9:00")
+evelyn_end = time_to_minutes("13:00")
+
+# Randy's busy periods (converted to minutes)
+randy_busy = [
+    (time_to_minutes("9:00"), time_to_minutes("10:30")),
+    (time_to_minutes("11:00"), time_to_minutes("15:30")),
+    (time_to_minutes("16:00"), time_to_minutes("17:00"))
+]
+
+# Calculate Randy's free slots within work hours
+work_start_min = time_to_minutes(work_start)
+work_end_min = time_to_minutes(work_end)
+free_slots = []
+current = work_start_min
+
+# Sort busy periods by start time
+randy_busy.sort(key=lambda x: x[0])
+
+for start, end in randy_busy:
+    if current < start:
+        free_slots.append((current, start))
+    current = end
+if current < work_end_min:
+    free_slots.append((current, work_end_min))
+
+# Find a free slot that fits meeting duration and aligns with Evelyn's availability
+for slot_start, slot_end in free_slots:
+    slot_duration = slot_end - slot_start
+    if slot_duration < meeting_duration:
+        continue
+        
+    # Check overlap with Evelyn's availability
+    overlap_start = max(slot_start, evelyn_start)
+    overlap_end = min(slot_end, evelyn_end)
+    if overlap_end - overlap_start >= meeting_duration:
+        meeting_start = overlap_start
+        meeting_end = meeting_start + meeting_duration
+        start_str = minutes_to_time(meeting_start)
+        end_str = minutes_to_time(meeting_end)
+        print(f"{day} {start_str}:{end_str}")
         break
-
-if found:
-    start_str = min_to_time_str(slot_start)
-    end_str = min_to_time_str(slot_start + duration)
-    time_output = start_str + ":" + end_str
-    print("Monday")
-    print(time_output)
-else:
-    print("No suitable time found.")

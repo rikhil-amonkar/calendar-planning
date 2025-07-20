@@ -1,89 +1,76 @@
 def main():
-    # Convert time string to minutes since midnight
-    def time_to_minutes(time_str):
-        parts = time_str.split(':')
-        return int(parts[0]) * 60 + int(parts[1])
+    # Convert time to minutes for easier calculation
+    work_start = 9 * 60  # 9:00
+    work_end = 17 * 60   # 17:00
+    meeting_duration = 30  # minutes
+    deadline = 13 * 60 + 30  # 13:30 in minutes
 
-    # Convert minutes back to HH:MM format
-    def minutes_to_time(minutes):
-        hours = minutes // 60
-        mins = minutes % 60
-        return f"{hours:02d}:{mins:02d}"
-
-    # Work hours: 9:00 to 17:00 (540 to 1020 minutes)
-    work_start = time_to_minutes("09:00")
-    work_end = time_to_minutes("17:00")
-    
-    # Wednesday only (since Mon/Tue are blocked for Ruth)
-    day = "Wednesday"
-    
-    # Nicole's busy times on Wednesday (converted to minutes)
-    nicole_busy = [
-        (time_to_minutes("10:00"), time_to_minutes("11:00")),
-        (time_to_minutes("12:30"), time_to_minutes("15:00")),
-        (time_to_minutes("16:00"), time_to_minutes("17:00"))
+    # Wednesday busy intervals in minutes (start, end)
+    busy_nicole = [
+        (10 * 60, 11 * 60),          # 10:00-11:00
+        (12 * 60 + 30, 15 * 60),     # 12:30-15:00
+        (16 * 60, 17 * 60)           # 16:00-17:00
     ]
-    
-    # Ruth's busy times on Wednesday (converted to minutes)
-    # Also, Ruth doesn't want to meet after 13:30, so set work_end_ruth to 13:30 (810 minutes)
-    work_end_ruth = time_to_minutes("13:30")
-    ruth_busy = [
-        (time_to_minutes("09:00"), time_to_minutes("10:30")),
-        (time_to_minutes("11:00"), time_to_minutes("11:30")),
-        (time_to_minutes("12:00"), time_to_minutes("12:30"))
+    busy_ruth = [
+        (9 * 60, 10 * 60 + 30),      # 9:00-10:30
+        (11 * 60, 11 * 60 + 30),     # 11:00-11:30
+        (12 * 60, 12 * 60 + 30),     # 12:00-12:30
+        (13 * 60 + 30, 15 * 60 + 30),# 13:30-15:30
+        (16 * 60, 16 * 60 + 30)      # 16:00-16:30
     ]
-    
-    # Function to calculate free intervals given work start, work end, and busy intervals
-    def get_free_intervals(work_start, work_end, busy_intervals):
-        if not busy_intervals:
-            return [(work_start, work_end)]
-        # Sort busy intervals by start time
-        sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
-        free_intervals = []
-        current_start = work_start
-        
-        for start, end in sorted_busy:
-            if current_start < start:
-                free_intervals.append((current_start, start))
-            current_start = max(current_start, end)
-        if current_start < work_end:
-            free_intervals.append((current_start, work_end))
-        return free_intervals
 
-    # Get free intervals for Nicole (entire work day) and Ruth (only until 13:30)
-    nicole_free = get_free_intervals(work_start, work_end, nicole_busy)
-    ruth_free = get_free_intervals(work_start, work_end_ruth, ruth_busy)
-    
-    # Find overlapping free intervals between Nicole and Ruth
-    overlapping = []
-    for n_start, n_end in nicole_free:
-        for r_start, r_end in ruth_free:
-            low = max(n_start, r_start)
-            high = min(n_end, r_end)
-            if low < high:  # There is an overlap
-                overlapping.append((low, high))
-    
-    # Find the first overlapping interval that can fit a 30-minute meeting
+    # Generate free intervals for Nicole
+    free_nicole = []
+    current = work_start
+    for start, end in sorted(busy_nicole, key=lambda x: x[0]):
+        if current < start:
+            free_nicole.append((current, start))
+        current = end
+    if current < work_end:
+        free_nicole.append((current, work_end))
+
+    # Generate free intervals for Ruth
+    free_ruth = []
+    current = work_start
+    for start, end in sorted(busy_ruth, key=lambda x: x[0]):
+        if current < start:
+            free_ruth.append((current, start))
+        current = end
+    if current < work_end:
+        free_ruth.append((current, work_end))
+
+    # Find first overlapping free slot of at least 30 minutes that ends by deadline
     meeting_start = None
-    for start, end in overlapping:
-        if end - start >= 30:  # At least 30 minutes available
-            meeting_start = start
+    day = "Wednesday"
+    for nic_start, nic_end in free_nicole:
+        for ruth_start, ruth_end in free_ruth:
+            # Calculate overlap
+            overlap_start = max(nic_start, ruth_start)
+            overlap_end = min(nic_end, ruth_end)
+            if overlap_start >= overlap_end:
+                continue
+            # Available end is min(overlap_end, deadline) to enforce deadline
+            available_end = min(overlap_end, deadline)
+            # Check if a 30-minute slot exists within the overlap ending by deadline
+            if overlap_start + meeting_duration <= available_end:
+                meeting_start = overlap_start
+                break
+        if meeting_start is not None:
             break
-    
-    if meeting_start is None:
-        # According to the problem, there is a solution, so this should not happen
-        print("No suitable time found")
-        return
-    
-    meeting_end = meeting_start + 30
-    
-    # Convert to time strings
-    start_str = minutes_to_time(meeting_start)
-    end_str = minutes_to_time(meeting_end)
-    
-    # Output day and time range in HH:MM:HH:MM format
+
+    # Convert meeting start and end to HH:MM format
+    start_hour = meeting_start // 60
+    start_minute = meeting_start % 60
+    end_meeting = meeting_start + meeting_duration
+    end_hour = end_meeting // 60
+    end_minute = end_meeting % 60
+
+    # Format as HH:MM:HH:MM
+    time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+
+    # Output day and time string
     print(day)
-    print(f"{start_str}:{end_str}")
+    print(time_str)
 
 if __name__ == "__main__":
     main()

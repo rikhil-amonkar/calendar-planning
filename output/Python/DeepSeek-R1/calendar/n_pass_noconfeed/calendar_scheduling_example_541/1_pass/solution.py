@@ -1,74 +1,66 @@
 def time_to_minutes(time_str):
-    hours, minutes = map(int, time_str.split(':'))
-    return hours * 60 + minutes
+    h, m = map(int, time_str.split(':'))
+    return h * 60 + m
 
 def minutes_to_time(minutes):
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours:02d}:{mins:02d}"
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-def main():
-    # Define work hours
-    work_start = time_to_minutes("09:00")
-    work_end = time_to_minutes("17:00")
-    
-    # Define blocked intervals in minutes
-    kayla_blocks = [
-        ("10:00", "10:30"),
-        ("14:30", "16:00")
-    ]
-    rebecca_blocks = [
-        ("09:00", "13:00"),
-        ("13:30", "15:00"),
-        ("15:30", "16:00")
-    ]
-    
-    # Convert all blocks to minutes
-    all_blocks = []
-    for start, end in kayla_blocks:
-        all_blocks.append((time_to_minutes(start), time_to_minutes(end)))
-    for start, end in rebecca_blocks:
-        all_blocks.append((time_to_minutes(start), time_to_minutes(end)))
-    
-    # Sort blocks by start time
-    all_blocks.sort(key=lambda x: x[0])
-    
-    # Merge overlapping intervals
-    merged = []
-    current_start, current_end = all_blocks[0]
-    for start, end in all_blocks[1:]:
-        if start <= current_end:
-            current_end = max(current_end, end)
-        else:
-            merged.append((current_start, current_end))
-            current_start, current_end = start, end
-    merged.append((current_start, current_end))
-    
-    # Find free slots between work hours
-    free_slots = []
-    previous_end = work_start
-    
-    for start, end in merged:
-        if start > previous_end:
-            free_slots.append((previous_end, start))
-        previous_end = max(previous_end, end)
-    
-    if previous_end < work_end:
-        free_slots.append((previous_end, work_end))
-    
-    # Find first free slot that can fit 60 minutes
-    meeting_duration = 60
-    for start_min, end_min in free_slots:
-        if end_min - start_min >= meeting_duration:
-            meeting_start = start_min
-            meeting_end = start_min + meeting_duration
-            # Format the time as HH:MM:HH:MM
-            time_str = f"{minutes_to_time(meeting_start)}:{minutes_to_time(meeting_end)}"
-            print(f"Monday:{time_str}")
-            return
-    
-    # If no slot found (though problem states there's a solution)
-    print("No suitable time found")
+work_start = time_to_minutes("9:00")
+work_end = time_to_minutes("17:00")
+meeting_duration = 60
 
-if __name__ == "__main__":
-    main()
+kayla_busy = [
+    ("10:00", "10:30"),
+    ("14:30", "16:00")
+]
+
+rebecca_busy = [
+    ("9:00", "13:00"),
+    ("13:30", "15:00"),
+    ("15:30", "16:00")
+]
+
+def get_free_intervals(busy_intervals, work_start, work_end):
+    busy_minutes = []
+    for start, end in busy_intervals:
+        s_min = time_to_minutes(start)
+        e_min = time_to_minutes(end)
+        busy_minutes.append((s_min, e_min))
+    
+    busy_minutes.sort()
+    
+    free_intervals = []
+    current = work_start
+    
+    for start, end in busy_minutes:
+        if current < start:
+            free_intervals.append((current, start))
+        current = max(current, end)
+    
+    if current < work_end:
+        free_intervals.append((current, work_end))
+    
+    return free_intervals
+
+kayla_free = get_free_intervals(kayla_busy, work_start, work_end)
+rebecca_free = get_free_intervals(rebecca_busy, work_start, work_end)
+
+found_slot = None
+for k_start, k_end in kayla_free:
+    for r_start, r_end in rebecca_free:
+        overlap_start = max(k_start, r_start)
+        overlap_end = min(k_end, r_end)
+        if overlap_start < overlap_end and (overlap_end - overlap_start) >= meeting_duration:
+            found_slot = (overlap_start, overlap_start + meeting_duration)
+            break
+    if found_slot:
+        break
+
+if found_slot:
+    start_time = minutes_to_time(found_slot[0])
+    end_time = minutes_to_time(found_slot[1])
+    print(f"Monday {start_time}:{end_time}")
+else:
+    print("No suitable slot found")

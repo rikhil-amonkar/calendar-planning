@@ -1,79 +1,93 @@
 def main():
-    work_start_min = 9 * 60  # 9:00 in minutes
-    work_end_min = 17 * 60   # 17:00 in minutes
-    meeting_duration = 30    # minutes
+    work_start = 9 * 60  # 540 minutes (9:00)
+    work_end = 17 * 60    # 1020 minutes (17:00)
+    duration = 30         # Meeting duration in minutes
 
-    # Convert time string to minutes
-    def time_str_to_minutes(time_str):
-        parts = time_str.split(':')
-        return int(parts[0]) * 60 + int(parts[1])
-
-    # Define busy intervals for each participant
-    participants_busy = {
-        'Andrea': [],
-        'Jack': [("9:00", "9:30"), ("14:00", "14:30")],
-        'Madison': [("9:30", "10:30"), ("13:00", "14:00"), ("15:00", "15:30"), ("16:30", "17:00")],
-        'Rachel': [("9:30", "10:30"), ("11:00", "11:30"), ("12:00", "13:30"), ("14:30", "15:30"), ("16:00", "17:00")],
-        'Douglas': [("9:00", "11:30"), ("12:00", "16:30")],
-        'Ryan': [("9:00", "9:30"), ("13:00", "14:00"), ("14:30", "17:00")]
-    }
-
-    # Collect all busy intervals in minutes
-    all_busy = []
-    for person, intervals in participants_busy.items():
-        for interval in intervals:
-            start_min = time_str_to_minutes(interval[0])
-            end_min = time_str_to_minutes(interval[1])
-            all_busy.append((start_min, end_min))
+    # List all busy intervals in minutes since midnight
+    busy = []
     
-    # Sort intervals by start time
-    all_busy.sort(key=lambda x: x[0])
+    # Andrea: no meetings
+    # Jack
+    busy.append((9*60, 9*60+30))       # 9:00-9:30
+    busy.append((14*60, 14*60+30))      # 14:00-14:30
     
-    # Merge intervals
-    merged_busy = []
-    if all_busy:
-        merged_busy = [all_busy[0]]
-        for i in range(1, len(all_busy)):
-            current = all_busy[i]
-            last = merged_busy[-1]
-            if current[0] <= last[1]:
-                merged_busy[-1] = (last[0], max(last[1], current[1]))
+    # Madison
+    busy.append((9*60+30, 10*60+30))   # 9:30-10:30
+    busy.append((13*60, 14*60))         # 13:00-14:00
+    busy.append((15*60, 15*60+30))      # 15:00-15:30
+    busy.append((16*60+30, 17*60))      # 16:30-17:00
+    
+    # Rachel
+    busy.append((9*60+30, 10*60+30))    # 9:30-10:30
+    busy.append((11*60, 11*60+30))       # 11:00-11:30
+    busy.append((12*60, 13*60+30))       # 12:00-13:30
+    busy.append((14*60+30, 15*60+30))    # 14:30-15:30
+    busy.append((16*60, 17*60))          # 16:00-17:00
+    
+    # Douglas
+    busy.append((9*60, 11*60+30))        # 9:00-11:30
+    busy.append((12*60, 16*60+30))       # 12:00-16:30
+    
+    # Ryan
+    busy.append((9*60, 9*60+30))         # 9:00-9:30
+    busy.append((13*60, 14*60))           # 13:00-14:00
+    busy.append((14*60+30, 17*60))        # 14:30-17:00
+
+    # Merge overlapping busy intervals
+    if not busy:
+        merged = []
+    else:
+        busy.sort()
+        merged = [busy[0]]
+        for i in range(1, len(busy)):
+            current_start, current_end = busy[i]
+            last_start, last_end = merged[-1]
+            if current_start <= last_end:
+                merged[-1] = (last_start, max(last_end, current_end))
             else:
-                merged_busy.append(current)
+                merged.append(busy[i])
     
-    # Find free gaps
-    gaps = []
-    current_start = work_start_min
-    for busy_interval in merged_busy:
-        if busy_interval[0] > current_start:
-            gap_duration = busy_interval[0] - current_start
-            if gap_duration >= meeting_duration:
-                gaps.append((current_start, busy_interval[0]))
-        current_start = max(current_start, busy_interval[1])
-    
-    # Check after the last busy interval
-    if current_start < work_end_min:
-        gap_duration = work_end_min - current_start
-        if gap_duration >= meeting_duration:
-            gaps.append((current_start, work_end_min))
-    
-    # Select the first gap
-    if gaps:
-        gap_start, gap_end = gaps[0]
-        meeting_start = gap_start
-        meeting_end = meeting_start + meeting_duration
+    # Find free intervals within work hours
+    free_intervals = []
+    if merged:
+        # Before first meeting
+        if work_start < merged[0][0]:
+            free_intervals.append((work_start, merged[0][0]))
         
-        # Convert meeting times back to HH:MM format
-        def min_to_time(minutes):
-            h = minutes // 60
-            m = minutes % 60
-            return f"{h:02d}:{m:02d}"
+        # Between meetings
+        for i in range(1, len(merged)):
+            prev_end = merged[i-1][1]
+            current_start = merged[i][0]
+            if prev_end < current_start:
+                free_intervals.append((prev_end, current_start))
         
+        # After last meeting
+        if merged[-1][1] < work_end:
+            free_intervals.append((merged[-1][1], work_end))
+    else:
+        free_intervals.append((work_start, work_end))
+    
+    # Find first free interval that can fit the meeting
+    meeting_start = None
+    for start, end in free_intervals:
+        if end - start >= duration:
+            meeting_start = start
+            meeting_end = start + duration
+            break
+    
+    # Convert meeting time to HH:MM format
+    def min_to_time(minutes):
+        h = minutes // 60
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
+    
+    if meeting_start is not None:
         start_str = min_to_time(meeting_start)
         end_str = min_to_time(meeting_end)
-        
-        print("Monday")
-        print(f"{start_str}:{end_str}")
+        time_range = f"{start_str}:{end_str}"
+        print(f"Monday:{time_range}")
+    else:
+        print("No suitable time found")
 
 if __name__ == "__main__":
     main()

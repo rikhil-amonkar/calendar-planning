@@ -1,78 +1,66 @@
-from datetime import time
+def time_to_min(time_str):
+    h, m = time_str.split(':')
+    return int(h) * 60 + int(m)
 
-def main():
-    # Define work hours
-    work_start = time(9, 0)
-    work_end = time(17, 0)
-    
-    # Define Ruth's busy times for each day
-    busy_times = {
-        'Monday': [(time(9, 0), time(17, 0))],
-        'Tuesday': [(time(9, 0), time(17, 0))],
-        'Wednesday': [(time(9, 0), time(17, 0))],
-        'Thursday': [
-            (time(9, 0), time(11, 0)),
-            (time(11, 30), time(14, 30)),
-            (time(15, 0), time(17, 0))
-        ]
-    }
-    
-    candidate_day = None
-    candidate_start = None
-    candidate_end = None
-    
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-    
-    for day in days:
-        busy_intervals = busy_times[day]
-        # Sort busy intervals by start time
-        busy_intervals_sorted = sorted(busy_intervals, key=lambda x: x[0])
-        free_intervals = []
-        current = work_start
-        
-        # Compute free intervals by subtracting busy times
-        for busy_start, busy_end in busy_intervals_sorted:
-            if current < busy_start:
-                free_intervals.append((current, busy_start))
-            current = max(current, busy_end)
-        if current < work_end:
-            free_intervals.append((current, work_end))
-        
-        # Check each free interval for availability
-        for start, end in free_intervals:
-            start_minutes = start.hour * 60 + start.minute
-            end_minutes = end.hour * 60 + end.minute
-            duration = end_minutes - start_minutes
-            if duration < 30:  # Skip if less than meeting duration
-                continue
-            
-            # Calculate slot end time
-            slot_end_minutes = start_minutes + 30
-            slot_end_hr = slot_end_minutes // 60
-            slot_end_min = slot_end_minutes % 60
-            slot_end = time(slot_end_hr, slot_end_min)
-            
-            # Apply Julie's preference: avoid Thursday before 11:30
-            if day == 'Thursday' and start < time(11, 30):
-                continue  # Skip this slot
-            
-            candidate_day = day
-            candidate_start = start
-            candidate_end = slot_end
-            break  # Found a candidate, break inner loop
-        
-        if candidate_day:
-            break  # Found a candidate, break outer loop
-    
-    # Format the output
-    if candidate_day:
-        start_str = candidate_start.strftime('%H:%M')
-        end_str = candidate_end.strftime('%H:%M')
-        time_range = f"{start_str}:{end_str}"
-        print(candidate_day)
-        print(time_range)
-    else:
-        print("No suitable time found")  # Should not happen per problem statement
+def min_to_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-if __name__ == "__main__":
-    main()
+# Define days to check
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+
+# Julie's free intervals in minutes (start, end) for each day
+# Julie is free 9:00-17:00 on Mon, Tue, Wed; on Thu, avoid before 11:30 -> free from 11:30 to 17:00
+julie_free = {
+    'Monday': [(time_to_min('09:00'), time_to_min('17:00'))],
+    'Tuesday': [(time_to_min('09:00'), time_to_min('17:00'))],
+    'Wednesday': [(time_to_min('09:00'), time_to_min('17:00'))],
+    'Thursday': [(time_to_min('11:30'), time_to_min('17:00'))]
+}
+
+# Ruth's free intervals in minutes (start, end) for each day
+# Ruth is free on Thursday: 11:00-11:30 and 14:30-15:00
+ruth_free = {
+    'Monday': [],
+    'Tuesday': [],
+    'Wednesday': [],
+    'Thursday': [
+        (time_to_min('11:00'), time_to_min('11:30')),
+        (time_to_min('14:30'), time_to_min('15:00'))
+    ]
+}
+
+# Meeting duration in minutes
+meeting_duration = 30
+
+# Iterate through each day to find a suitable time
+for day in days:
+    julie_intervals = julie_free[day]
+    ruth_intervals = ruth_free[day]
+    
+    # Check all interval pairs for Julie and Ruth on this day
+    for j_start, j_end in julie_intervals:
+        for r_start, r_end in ruth_intervals:
+            # Find the overlapping interval
+            overlap_start = max(j_start, r_start)
+            overlap_end = min(j_end, r_end)
+            overlap_duration = overlap_end - overlap_start
+            
+            # Check if the overlap is sufficient for the meeting
+            if overlap_duration >= meeting_duration:
+                # Schedule the meeting at the beginning of the overlap
+                meeting_start = overlap_start
+                meeting_end = meeting_start + meeting_duration
+                
+                # Convert times to HH:MM format
+                start_str = min_to_time(meeting_start)
+                end_str = min_to_time(meeting_end)
+                
+                # Output the day and time range in HH:MM:HH:MM format
+                print(day)
+                print(f"{start_str}:{end_str}")
+                exit(0)
+
+# If no slot is found (though the problem states there is a solution)
+print("No suitable time found")

@@ -1,97 +1,99 @@
-def time_to_minutes(time_str):
-    h, m = time_str.split(':')
-    return int(h) * 60 + int(m)
-
-def minutes_to_time(m):
-    h = m // 60
-    mm = m % 60
-    return f"{h:02d}:{mm:02d}"
-
 def main():
-    # Work hours and constraints
-    work_start = time_to_minutes("9:00")
-    work_end = time_to_minutes("17:00")
-    constraint_start = time_to_minutes("14:00")  # Wayne's constraint
+    # Define work hours: 9:00 to 17:00 (in minutes: 540 to 1020)
+    work_start = 9 * 60   # 540 minutes (9:00)
+    work_end = 17 * 60    # 1020 minutes (17:00)
+    meeting_duration = 30  # minutes
+    # Wayne's constraint: avoid before 14:00 (840 minutes)
+    constraint_start = 14 * 60  # 840 minutes (14:00)
 
-    # Participants' busy schedules (each meeting as (start, end) in time strings)
-    wayne_busy = []
-    melissa_busy = [("10:00", "11:00"), ("12:30", "14:00"), ("15:00", "15:30")]
-    catherine_busy = []
-    gregory_busy = [("12:30", "13:00"), ("15:30", "16:00")]
-    victoria_busy = [("9:00", "9:30"), ("10:30", "11:30"), ("13:00", "14:00"), ("14:30", "15:00"), ("15:30", "16:30")]
-    thomas_busy = [("10:00", "12:00"), ("12:30", "13:00"), ("14:30", "16:00")]
-    jennifer_busy = [("9:00", "9:30"), ("10:00", "10:30"), ("11:00", "13:00"), ("13:30", "14:30"), ("15:00", "15:30"), ("16:00", "16:30")]
+    # List all busy intervals in minutes (start, end) - exclusive end
+    busy_intervals = []
 
-    # Combine all busy intervals
-    all_busy = []
-    schedules = [wayne_busy, melissa_busy, catherine_busy, gregory_busy, victoria_busy, thomas_busy, jennifer_busy]
-    
-    for schedule in schedules:
-        for (s_str, e_str) in schedule:
-            s_min = time_to_minutes(s_str)
-            e_min = time_to_minutes(e_str)
-            # Clip to constraint_start and work_end
-            if e_min <= constraint_start or s_min >= work_end:
-                continue
-            s_clip = max(s_min, constraint_start)
-            e_clip = min(e_min, work_end)
-            if e_clip > s_clip:
-                all_busy.append((s_clip, e_clip))
-    
-    # If no busy intervals, entire constraint period is free
-    if not all_busy:
-        # Check if the constraint period is long enough
-        if work_end - constraint_start >= 30:
-            start_time = constraint_start
-            end_time = start_time + 30
-            print("Monday")
-            print(f"{minutes_to_time(start_time)}:{minutes_to_time(end_time)}")
-            return
-        else:
-            # Should not happen per problem statement
-            print("Monday\nNo suitable time found")
-            return
-    
-    # Sort and merge busy intervals
-    all_busy.sort(key=lambda x: x[0])
+    # Wayne: free entire day but avoids meetings before 14:00 -> add busy from 9:00 to 14:00
+    busy_intervals.append((work_start, constraint_start))
+
+    # Melissa
+    busy_intervals.append((10 * 60, 11 * 60))      # 10:00-11:00 -> [600, 660)
+    busy_intervals.append((12 * 60 + 30, 14 * 60))  # 12:30-14:00 -> [750, 840)
+    busy_intervals.append((15 * 60, 15 * 60 + 30))  # 15:00-15:30 -> [900, 930)
+
+    # Catherine: free all day -> no intervals
+
+    # Gregory
+    busy_intervals.append((12 * 60 + 30, 13 * 60))    # 12:30-13:00 -> [750, 780)
+    busy_intervals.append((15 * 60 + 30, 16 * 60))    # 15:30-16:00 -> [930, 960)
+
+    # Victoria
+    busy_intervals.append((9 * 60, 9 * 60 + 30))       # 9:00-9:30 -> [540, 570)
+    busy_intervals.append((10 * 60 + 30, 11 * 60 + 30)) # 10:30-11:30 -> [630, 690)
+    busy_intervals.append((13 * 60, 14 * 60))           # 13:00-14:00 -> [780, 840)
+    busy_intervals.append((14 * 60 + 30, 15 * 60))      # 14:30-15:00 -> [870, 900)
+    busy_intervals.append((15 * 60 + 30, 16 * 60 + 30)) # 15:30-16:30 -> [930, 990)
+
+    # Thomas
+    busy_intervals.append((10 * 60, 12 * 60))         # 10:00-12:00 -> [600, 720)
+    busy_intervals.append((12 * 60 + 30, 13 * 60))     # 12:30-13:00 -> [750, 780)
+    busy_intervals.append((14 * 60 + 30, 16 * 60))     # 14:30-16:00 -> [870, 960)
+
+    # Jennifer
+    busy_intervals.append((9 * 60, 9 * 60 + 30))       # 9:00-9:30 -> [540, 570)
+    busy_intervals.append((10 * 60, 10 * 60 + 30))     # 10:00-10:30 -> [600, 630)
+    busy_intervals.append((11 * 60, 13 * 60))           # 11:00-13:00 -> [660, 780)
+    busy_intervals.append((13 * 60 + 30, 14 * 60 + 30)) # 13:30-14:30 -> [810, 870)
+    busy_intervals.append((15 * 60, 15 * 60 + 30))      # 15:00-15:30 -> [900, 930)
+    busy_intervals.append((16 * 60, 16 * 60 + 30))      # 16:00-16:30 -> [960, 990)
+
+    # Sort busy intervals by start time
+    busy_intervals.sort(key=lambda x: x[0])
+
+    # Merge overlapping busy intervals
     merged_busy = []
-    current_start, current_end = all_busy[0]
-    for i in range(1, len(all_busy)):
-        s, e = all_busy[i]
-        if s <= current_end:
-            if e > current_end:
-                current_end = e
-        else:
-            merged_busy.append((current_start, current_end))
-            current_start, current_end = s, e
-    merged_busy.append((current_start, current_end))
-    
-    # Find free intervals in [constraint_start, work_end]
+    if busy_intervals:
+        current_start, current_end = busy_intervals[0]
+        for s, e in busy_intervals[1:]:
+            if s <= current_end:
+                current_end = max(current_end, e)
+            else:
+                merged_busy.append((current_start, current_end))
+                current_start, current_end = s, e
+        merged_busy.append((current_start, current_end))
+    else:
+        merged_busy = []
+
+    # Compute free intervals within work hours
     free_intervals = []
-    # Before first busy interval
-    if constraint_start < merged_busy[0][0]:
-        free_intervals.append((constraint_start, merged_busy[0][0]))
-    # Between busy intervals
-    for i in range(len(merged_busy) - 1):
-        free_start = merged_busy[i][1]
-        free_end = merged_busy[i+1][0]
-        if free_end > free_start:
-            free_intervals.append((free_start, free_end))
-    # After last busy interval
-    if merged_busy[-1][1] < work_end:
-        free_intervals.append((merged_busy[-1][1], work_end))
-    
-    # Find the first free interval of at least 30 minutes
-    for s, e in free_intervals:
-        if e - s >= 30:
-            start_meeting = s
-            end_meeting = s + 30
-            print("Monday")
-            print(f"{minutes_to_time(start_meeting)}:{minutes_to_time(end_meeting)}")
-            return
-    
-    # Should not happen per problem statement
-    print("Monday\nNo suitable time found")
+    prev_end = work_start
+    for start, end in merged_busy:
+        if start > prev_end:
+            free_intervals.append((prev_end, start))
+        prev_end = end
+    if prev_end < work_end:
+        free_intervals.append((prev_end, work_end))
+
+    # Find first free interval that can accommodate the meeting after constraint_start
+    meeting_start = None
+    for start, end in free_intervals:
+        candidate_start = max(start, constraint_start)
+        candidate_end = candidate_start + meeting_duration
+        if candidate_end <= end:
+            meeting_start = candidate_start
+            meeting_end = candidate_end
+            break
+
+    # Convert meeting_start and meeting_end to time strings
+    def minutes_to_time(minutes):
+        h = minutes // 60
+        m = minutes % 60
+        return f"{h:02d}:{m:02d}"
+
+    if meeting_start is not None:
+        start_str = minutes_to_time(meeting_start)
+        end_str = minutes_to_time(meeting_end)
+        day = "Monday"
+        print(f"{day}:{start_str}:{end_str}")
+    else:
+        # According to the problem, there is a solution, so this should not happen.
+        print("No suitable time found")
 
 if __name__ == "__main__":
     main()

@@ -1,58 +1,73 @@
 def main():
-    work_start = 0  # 9:00 in minutes from 9:00
-    work_end = 480   # 17:00
-    eric_busy = [(180, 240), (300, 360)]
-    henry_busy = [(30, 60), (90, 120), (150, 210), (240, 270), (330, 360), (420, 480)]
-
-    def get_free_intervals(busy_intervals, start_time, end_time):
-        if not busy_intervals:
-            return [(start_time, end_time)]
-        sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
-        free = []
-        current = start_time
-        for s, e in sorted_busy:
-            if current < s:
-                free.append((current, s))
-            current = e
-        if current < end_time:
-            free.append((current, end_time))
-        return free
-
-    free_eric = get_free_intervals(eric_busy, work_start, work_end)
-    free_henry = get_free_intervals(henry_busy, work_start, work_end)
-
-    candidate_slots = []
-    for e_int in free_eric:
-        for h_int in free_henry:
-            start_over = max(e_int[0], h_int[0])
-            end_over = min(e_int[1], h_int[1])
-            if start_over < end_over and (end_over - start_over) >= 30:
-                candidate_slots.append((start_over, end_over))
-
-    candidate_meetings = []
-    for s, e in candidate_slots:
-        meeting_end = s + 30
-        candidate_meetings.append((s, meeting_end))
-
-    preferred_meetings = [meeting for meeting in candidate_meetings if meeting[1] <= 60]
-
-    if preferred_meetings:
-        chosen_meeting = min(preferred_meetings, key=lambda x: x[0])
-    else:
-        chosen_meeting = min(candidate_meetings, key=lambda x: x[0])
-
-    def format_time(minutes):
-        total_minutes = minutes
-        hours = 9 + total_minutes // 60
-        minutes_part = total_minutes % 60
-        return f"{hours:02d}:{minutes_part:02d}"
-
-    start_str = format_time(chosen_meeting[0])
-    end_str = format_time(chosen_meeting[1])
-    time_range_str = f"{start_str}:{end_str}"
-
+    work_start = 9 * 60  # 540 minutes (9:00)
+    work_end = 17 * 60   # 1020 minutes (17:00)
+    
+    # Eric's busy intervals in minutes: (start, end)
+    eric_busy = [(12*60, 13*60), (14*60, 15*60)]
+    # Henry's busy intervals in minutes: (start, end)
+    henry_busy = [(9*60+30, 10*60), (10*60+30, 11*60), (11*60+30, 12*60+30), 
+                  (13*60, 13*60+30), (14*60+30, 15*60), (16*60, 17*60)]
+    
+    # Function to compute free intervals given busy intervals and work hours
+    def get_free_intervals(busy_list, work_start, work_end):
+        if not busy_list:
+            return [(work_start, work_end)]
+        sorted_busy = sorted(busy_list, key=lambda x: x[0])
+        free_intervals = []
+        current_start = work_start
+        for start, end in sorted_busy:
+            if current_start < start:
+                free_intervals.append((current_start, start))
+            current_start = end
+        if current_start < work_end:
+            free_intervals.append((current_start, work_end))
+        return free_intervals
+    
+    eric_free = get_free_intervals(eric_busy, work_start, work_end)
+    henry_free = get_free_intervals(henry_busy, work_start, work_end)
+    
+    # Find common free intervals
+    common_free = []
+    for e_start, e_end in eric_free:
+        for h_start, h_end in henry_free:
+            start = max(e_start, h_start)
+            end = min(e_end, h_end)
+            if start < end:
+                common_free.append((start, end))
+    
+    # Sort common free intervals by start time
+    common_free.sort(key=lambda x: x[0])
+    
+    meeting_start_min = None
+    meeting_end_min = None
+    preference_end = 10 * 60  # 10:00 in minutes (600)
+    
+    # Try to find a slot ending by 10:00 (600 minutes)
+    for start, end in common_free:
+        available_end = min(end, preference_end)
+        if available_end - start >= 30:
+            meeting_start_min = start
+            meeting_end_min = start + 30
+            break
+    
+    # If no slot before 10:00, find the first available 30-minute slot
+    if meeting_start_min is None:
+        for start, end in common_free:
+            if end - start >= 30:
+                meeting_start_min = start
+                meeting_end_min = start + 30
+                break
+    
+    # Convert meeting times to HH:MM format
+    start_hour = meeting_start_min // 60
+    start_minute = meeting_start_min % 60
+    end_hour = meeting_end_min // 60
+    end_minute = meeting_end_min % 60
+    
+    time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
+    
     print("Monday")
-    print(time_range_str)
+    print(time_str)
 
 if __name__ == "__main__":
     main()

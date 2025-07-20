@@ -1,88 +1,77 @@
 def main():
-    # Convert time to minutes function
-    def time_to_minutes(time_str):
-        parts = list(map(int, time_str.split(':')))
-        return parts[0] * 60 + parts[1]
+    # Define work hours in minutes from midnight (9:00=540, 17:00=1020)
+    work_start = 540
+    work_end = 1020
+    meeting_duration = 30
     
-    # Convert minutes to time string (HH:MM)
-    def minutes_to_time(minutes):
-        hours = minutes // 60
-        mins = minutes % 60
-        return f"{hours:02d}:{mins:02d}"
+    # Busy intervals for each participant (start, end) in minutes
+    participants_busy = {
+        'Joe': [(570, 600), (630, 660)],
+        'Keith': [(690, 720), (900, 930)],
+        'Patricia': [(540, 570), (780, 810)],
+        'Nancy': [(540, 660), (690, 990)],
+        'Pamela': [(540, 600), (630, 660), (690, 750), (780, 840), (870, 900), (930, 960), (990, 1020)]
+    }
     
-    # Work hours (9:00 to 17:00) in minutes
-    work_start = 9 * 60   # 540 minutes
-    work_end = 17 * 60    # 1020 minutes
+    # Function to compute free intervals within work hours
+    def get_free_intervals(busy_list, start_bound, end_bound):
+        if not busy_list:
+            return [(start_bound, end_bound)]
+        sorted_busy = sorted(busy_list, key=lambda x: x[0])
+        free = []
+        current_start = start_bound
+        for start, end in sorted_busy:
+            if current_start < start:
+                free.append((current_start, start))
+            current_start = max(current_start, end)
+        if current_start < end_bound:
+            free.append((current_start, end_bound))
+        return free
     
-    # Busy intervals for all participants (start and end in minutes)
-    busy_intervals = [
-        # Joe's meetings
-        (time_to_minutes("9:30"), time_to_minutes("10:00")),
-        (time_to_minutes("10:30"), time_to_minutes("11:00")),
-        # Keith's blocked times
-        (time_to_minutes("11:30"), time_to_minutes("12:00")),
-        (time_to_minutes("15:00"), time_to_minutes("15:30")),
-        # Patricia's blocked times
-        (time_to_minutes("9:00"), time_to_minutes("9:30")),
-        (time_to_minutes("13:00"), time_to_minutes("13:30")),
-        # Nancy's blocked times
-        (time_to_minutes("9:00"), time_to_minutes("11:00")),
-        (time_to_minutes("11:30"), time_to_minutes("16:30")),
-        # Pamela's blocked times
-        (time_to_minutes("9:00"), time_to_minutes("10:00")),
-        (time_to_minutes("10:30"), time_to_minutes("11:00")),
-        (time_to_minutes("11:30"), time_to_minutes("12:30")),
-        (time_to_minutes("13:00"), time_to_minutes("14:00")),
-        (time_to_minutes("14:30"), time_to_minutes("15:00")),
-        (time_to_minutes("15:30"), time_to_minutes("16:00")),
-        (time_to_minutes("16:30"), time_to_minutes("17:00"))
-    ]
+    # Function to intersect two sets of intervals
+    def intersect_intervals(intervals1, intervals2):
+        result = []
+        for (s1, e1) in intervals1:
+            for (s2, e2) in intervals2:
+                start_overlap = max(s1, s2)
+                end_overlap = min(e1, e2)
+                if start_overlap < end_overlap:
+                    result.append((start_overlap, end_overlap))
+        return result
     
-    # Create events: (time, delta) where +1 for busy start, -1 for busy end
-    events = []
-    for start, end in busy_intervals:
-        events.append((start, 1))
-        events.append((end, -1))
-    
-    # Sort events by time, and for same time: process ends (-1) before starts (1)
-    events.sort(key=lambda x: (x[0], x[1]))
-    
-    # Find free intervals by scanning events
+    # Calculate free intervals for each participant
     free_intervals = []
-    counter = 0
-    free_start = work_start  # current free period starts at work_start
+    for busy in participants_busy.values():
+        free_intervals.append(get_free_intervals(busy, work_start, work_end))
     
-    for time, delta in events:
-        if counter == 0:  # currently free
-            # If time is after current free_start, record free interval [free_start, time]
-            if time > free_start:
-                free_intervals.append((free_start, time))
-        counter += delta
-        if counter == 0:  # just became free
-            free_start = time  # next free period starts at this end time
+    # Find common free intervals
+    common_free = free_intervals[0]
+    for i in range(1, len(free_intervals)):
+        common_free = intersect_intervals(common_free, free_intervals[i])
     
-    # After processing events, check if there's free time until work_end
-    if counter == 0 and free_start < work_end:
-        free_intervals.append((free_start, work_end))
+    # Sort to find earliest interval
+    common_free_sorted = sorted(common_free, key=lambda x: x[0])
     
-    # Find the first free interval with at least 30 minutes
+    # Find the first common free interval with sufficient duration
     meeting_start = None
-    for start, end in free_intervals:
-        if end - start >= 30:
+    for start, end in common_free_sorted:
+        if end - start >= meeting_duration:
             meeting_start = start
-            meeting_end = meeting_start + 30
+            meeting_end = start + meeting_duration
             break
     
-    # Convert meeting times to HH:MM format and output
-    if meeting_start is not None:
-        start_hour = meeting_start // 60
-        start_min = meeting_start % 60
-        end_hour = meeting_end // 60
-        end_min = meeting_end % 60
-        time_str = f"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}"
-        print(f"Monday {time_str}")
-    else:
-        print("No suitable time found")
+    # Convert minutes to HH:MM format
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        minutes = minutes % 60
+        return f"{hours:02d}:{minutes:02d}"
+    
+    start_str = minutes_to_time(meeting_start)
+    end_str = minutes_to_time(meeting_end)
+    
+    # Output day and time in HH:MM:HH:MM format
+    print("Monday")
+    print(f"{start_str}:{end_str}")
 
 if __name__ == "__main__":
     main()

@@ -1,90 +1,108 @@
-def time_str_to_minutes(time_str):
-    parts = time_str.split(':')
-    return int(parts[0]) * 60 + int(parts[1])
+def time_to_minutes(time_str):
+    h, m = time_str.split(':')
+    return int(h) * 60 + int(m)
 
 def minutes_to_time(minutes):
     h = minutes // 60
     m = minutes % 60
     return f"{h:02d}:{m:02d}"
 
-def get_free_intervals(base, busy_list):
-    free = [base]
-    for busy_interval in busy_list:
-        new_free = []
-        for interval in free:
-            if busy_interval[1] <= interval[0] or busy_interval[0] >= interval[1]:
-                new_free.append(interval)
-            else:
-                if interval[0] < busy_interval[0]:
-                    new_free.append([interval[0], busy_interval[0]])
-                if interval[1] > busy_interval[1]:
-                    new_free.append([busy_interval[1], interval[1]])
-        free = new_free
-    return free
-
-def get_common_intervals(intervals1, intervals2):
-    common = []
-    for i1 in intervals1:
-        for i2 in intervals2:
-            start = max(i1[0], i2[0])
-            end = min(i1[1], i2[1])
-            if start < end:
-                common.append([start, end])
-    return common
+def get_free_intervals(busy_list, work_start, work_end):
+    work_hours = (work_start, work_end)
+    if not busy_list:
+        return [(work_start, work_end)]
+    
+    busy_intervals = []
+    for start_str, end_str in busy_list:
+        s = time_to_minutes(start_str)
+        e = time_to_minutes(end_str)
+        s_clip = max(s, work_start)
+        e_clip = min(e, work_end)
+        if s_clip < e_clip:
+            busy_intervals.append((s_clip, e_clip))
+    
+    if not busy_intervals:
+        return [(work_start, work_end)]
+    
+    busy_intervals.sort(key=lambda x: x[0])
+    free_intervals = []
+    current_start = work_start
+    for s, e in busy_intervals:
+        if s > current_start:
+            free_intervals.append((current_start, s))
+        current_start = max(current_start, e)
+    if current_start < work_end:
+        free_intervals.append((current_start, work_end))
+    return free_intervals
 
 def main():
-    work_start = 540   # 9:00
-    work_end = 1020    # 17:00
-    duration = 30
-
-    betty_base = {
-        'Tuesday': [900, 1020],   # 15:00 to 17:00
-        'Thursday': [900, 1020],
-        'Wednesday': [work_start, work_end]
+    work_hours_base = (9*60, 17*60)
+    betty_work_hours = {
+        "Thursday": (15*60, 17*60)
     }
-
-    scott_base = {
-        'Tuesday': [work_start, work_end],
-        'Wednesday': [work_start, work_end],
-        'Thursday': [work_start, work_end]
-    }
-
-    busy = {
-        'Tuesday': {
-            'Betty': [[540, 570], [690, 720], [750, 780], [810, 840], [990, 1020]],
-            'Scott': [[540, 570], [600, 660], [690, 720], [750, 810], [840, 900], [960, 990]]
+    
+    busy_times = {
+        "Betty": {
+            "Wednesday": [
+                ("9:30", "10:30"),
+                ("13:00", "13:30"),
+                ("14:00", "14:30")
+            ],
+            "Thursday": [
+                ("9:30", "10:00"),
+                ("11:30", "12:00"),
+                ("14:00", "14:30"),
+                ("15:00", "15:30"),
+                ("16:30", "17:00")
+            ]
         },
-        'Wednesday': {
-            'Betty': [[570, 630], [780, 810], [840, 870]],
-            'Scott': [[570, 750], [780, 810], [840, 870], [900, 930], [960, 990]]
-        },
-        'Thursday': {
-            'Betty': [[570, 600], [690, 720], [840, 870], [900, 930], [990, 1020]],
-            'Scott': [[540, 570], [600, 630], [660, 720], [750, 780], [900, 960], [990, 1020]]
+        "Scott": {
+            "Wednesday": [
+                ("9:30", "12:30"),
+                ("13:00", "13:30"),
+                ("14:00", "14:30"),
+                ("15:00", "15:30"),
+                ("16:00", "16:30")
+            ],
+            "Thursday": [
+                ("9:00", "9:30"),
+                ("10:00", "10:30"),
+                ("11:00", "12:00"),
+                ("12:30", "13:00"),
+                ("15:00", "16:00"),
+                ("16:30", "17:00")
+            ]
         }
     }
-
-    days = ['Tuesday', 'Thursday', 'Wednesday']
     
-    for day in days:
-        betty_busy = busy[day]['Betty']
-        scott_busy = busy[day]['Scott']
+    days_to_check = ["Thursday", "Wednesday"]
+    meeting_duration = 30
+    
+    for day in days_to_check:
+        # Get work hours for Betty for this day
+        work_betty = betty_work_hours.get(day, work_hours_base)
+        # Get free intervals for Betty
+        betty_busy = busy_times["Betty"].get(day, [])
+        free_betty = get_free_intervals(betty_busy, work_betty[0], work_betty[1])
         
-        betty_free = get_free_intervals(betty_base[day], betty_busy)
-        scott_free = get_free_intervals(scott_base[day], scott_busy)
+        # Scott's work hours are always base
+        scott_busy = busy_times["Scott"].get(day, [])
+        free_scott = get_free_intervals(scott_busy, work_hours_base[0], work_hours_base[1])
         
-        common_free = get_common_intervals(betty_free, scott_free)
-        
-        for interval in common_free:
-            start_min, end_min = interval
-            if end_min - start_min >= duration:
-                meeting_start = start_min
-                meeting_end = start_min + duration
-                start_str = minutes_to_time(meeting_start)
-                end_str = minutes_to_time(meeting_end)
-                print(day)
-                print(f"{start_str}:{end_str}")
-                return
+        # Find an overlapping free interval of at least meeting_duration
+        for fb in free_betty:
+            for fs in free_scott:
+                start_over = max(fb[0], fs[0])
+                end_over = min(fb[1], fs[1])
+                if end_over - start_over >= meeting_duration:
+                    start_time = minutes_to_time(start_over)
+                    end_time = minutes_to_time(start_over + meeting_duration)
+                    print(day)
+                    print(f"{start_time}:{end_time}")
+                    return
+    
+    # According to the problem, a solution exists, so we should always find one.
+    print("No suitable time found")
 
 if __name__ == "__main__":
     main()

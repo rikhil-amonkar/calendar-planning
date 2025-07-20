@@ -1,74 +1,68 @@
-def time_str_to_minutes(time_str):
-    parts = time_str.split(':')
-    hour = int(parts[0])
-    minute = int(parts[1])
-    return hour * 60 + minute
-
-def minutes_to_time(minutes):
-    hour = minutes // 60
-    minute = minutes % 60
-    return f"{hour:02d}:{minute:02d}"
-
 def main():
-    # Work hours: 9:00 to 17:00 (540 to 1020 minutes)
-    work_start = 540
-    work_end = 1020
-    meeting_duration = 60  # minutes
-
-    # Roy's busy times for each day (as list of start-end string tuples)
-    roy_busy = {
-        'Monday': [('10:00', '11:30'), ('12:00', '13:00'), ('14:00', '14:30'), ('15:00', '17:00')],
-        'Tuesday': [('10:30', '11:30'), ('12:00', '14:30'), ('15:00', '15:30'), ('16:00', '17:00')],
-        'Wednesday': [('9:30', '11:30'), ('12:30', '14:00'), ('14:30', '15:30'), ('16:30', '17:00')]
+    work_start = 540  # 9:00 in minutes from midnight
+    work_end = 1020    # 17:00 in minutes
+    days = ['Monday', 'Tuesday', 'Wednesday']
+    busy_times = {
+        'Monday': [
+            [600, 690],   # 10:00 to 11:30
+            [720, 780],   # 12:00 to 13:00
+            [840, 870],   # 14:00 to 14:30
+            [900, 1020]   # 15:00 to 17:00
+        ],
+        'Tuesday': [
+            [630, 690],   # 10:30 to 11:30
+            [720, 870],   # 12:00 to 14:30
+            [900, 930],   # 15:00 to 15:30
+            [960, 1020]   # 16:00 to 17:00
+        ],
+        'Wednesday': [
+            [570, 690],   # 9:30 to 11:30
+            [750, 840],   # 12:30 to 14:00
+            [870, 930],   # 14:30 to 15:30
+            [990, 1020]   # 16:30 to 17:00
+        ]
     }
 
-    days = ['Monday', 'Tuesday', 'Wednesday']
-
     for day in days:
-        # Convert busy intervals to minutes and merge overlapping intervals
-        intervals = []
-        for interval in roy_busy[day]:
-            start_min = time_str_to_minutes(interval[0])
-            end_min = time_str_to_minutes(interval[1])
-            intervals.append((start_min, end_min))
-        
-        # Sort intervals by start time
-        intervals.sort(key=lambda x: x[0])
-        merged = []
-        for interval in intervals:
-            if not merged:
-                merged.append(interval)
-            else:
-                last = merged[-1]
-                if interval[0] <= last[1]:
-                    merged[-1] = (last[0], max(last[1], interval[1]))
-                else:
-                    merged.append(interval)
-        
-        # Calculate free intervals within work hours
-        free_intervals = []
-        current_start = work_start
-        for interval in merged:
-            if current_start < interval[0]:
-                free_intervals.append((current_start, interval[0]))
-            current_start = max(current_start, interval[1])
-        if current_start < work_end:
-            free_intervals.append((current_start, work_end))
-        
-        # Check each free interval for a slot of meeting_duration
-        for interval in free_intervals:
-            start, end = interval
-            if end - start >= meeting_duration:
-                meeting_start = start
-                meeting_end = meeting_start + meeting_duration
-                # Convert to HH:MM strings
-                start_str = minutes_to_time(meeting_start)
-                end_str = minutes_to_time(meeting_end)
-                # Format as HH:MM:HH:MM
-                s_h, s_m = start_str.split(':')
-                e_h, e_m = end_str.split(':')
+        busy_list = busy_times[day]
+        if not busy_list:
+            free_interval = [work_start, work_end]
+            if free_interval[1] - free_interval[0] >= 60:
+                meeting_start = free_interval[0]
+                meeting_end = meeting_start + 60
+                start_hour = meeting_start // 60
+                start_min = meeting_start % 60
+                end_hour = meeting_end // 60
+                end_min = meeting_end % 60
+                time_str = f"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}"
                 print(day)
-                print(f"{s_h}:{s_m}:{e_h}:{e_m}")
+                print(time_str)
+                return
+        
+        sorted_busy = sorted(busy_list, key=lambda x: x[0])
+        free_intervals = []
+        current = work_start
+        
+        for interval in sorted_busy:
+            if interval[0] > current:
+                free_intervals.append([current, interval[0]])
+            current = max(current, interval[1])
+        if current < work_end:
+            free_intervals.append([current, work_end])
+        
+        for free in free_intervals:
+            start_free, end_free = free
+            duration = end_free - start_free
+            if duration >= 60:
+                meeting_start = start_free
+                meeting_end = meeting_start + 60
+                start_hour = meeting_start // 60
+                start_min = meeting_start % 60
+                end_hour = meeting_end // 60
+                end_min = meeting_end % 60
+                time_str = f"{start_hour:02d}:{start_min:02d}:{end_hour:02d}:{end_min:02d}"
+                print(day)
+                print(time_str)
                 return
 
 if __name__ == "__main__":

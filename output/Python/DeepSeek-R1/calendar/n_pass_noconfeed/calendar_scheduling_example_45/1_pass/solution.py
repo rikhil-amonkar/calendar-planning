@@ -1,53 +1,47 @@
 def main():
-    # Work hours: 9:00 to 17:00
-    work_start = 9 * 60  # 540 minutes
-    work_end = 17 * 60   # 1020 minutes
+    # Work hours: 9:00 to 17:00 (480 minutes from 9:00)
+    work_start = 0  # 9:00 in minutes (relative to 9:00)
+    work_end = 480  # 17:00 (8 hours * 60 minutes)
 
-    # Samuel's busy intervals in minutes
-    busy_samuel = [
-        (9 * 60, 10 * 60 + 30),    # 9:00 to 10:30
-        (11 * 60 + 30, 12 * 60),   # 11:30 to 12:00
-        (13 * 60, 13 * 60 + 30),   # 13:00 to 13:30
-        (14 * 60, 16 * 60),        # 14:00 to 16:00
-        (16 * 60 + 30, 17 * 60)    # 16:30 to 17:00
+    # Samuel's busy blocks in minutes relative to 9:00
+    busy_blocks = [
+        (0, 90),    # 9:00-10:30
+        (150, 180), # 11:30-12:00
+        (240, 270), # 13:00-13:30
+        (300, 420), # 14:00-16:00
+        (450, 480)  # 16:30-17:00
     ]
-    
-    # Sort the busy intervals by start time (though they are already sorted)
-    busy_samuel.sort()
-    
+
     # Calculate free intervals
-    free_intervals = []
+    free_blocks = []
     current = work_start
-    for start, end in busy_samuel:
+    for start, end in busy_blocks:
         if current < start:
-            free_intervals.append((current, start))
+            free_blocks.append((current, start))
         current = end
     if current < work_end:
-        free_intervals.append((current, work_end))
-    
-    # Duration of the meeting in minutes
+        free_blocks.append((current, work_end))
+
+    # Find earliest 30-minute slot
     duration = 30
-    
-    # Find the earliest free interval that can accommodate the meeting
     meeting_start = None
-    meeting_end = None
-    for start, end in free_intervals:
+    for start, end in free_blocks:
         if end - start >= duration:
             meeting_start = start
-            meeting_end = start + duration
             break
-    
-    # Convert meeting times back to HH:MM format
-    start_hour = meeting_start // 60
+
+    # Convert meeting time to HH:MM format
+    start_hour = 9 + meeting_start // 60
     start_minute = meeting_start % 60
-    end_hour = meeting_end // 60
-    end_minute = meeting_end % 60
-    
-    # Format as two-digit strings
+    end_hour = 9 + (meeting_start + duration) // 60
+    end_minute = (meeting_start + duration) % 60
+
+    # Format the time string as HH:MM:HH:MM
     time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
     
-    print(time_str)
+    # Output day and time range
     print("Monday")
+    print(time_str)
 
 if __name__ == "__main__":
     main()

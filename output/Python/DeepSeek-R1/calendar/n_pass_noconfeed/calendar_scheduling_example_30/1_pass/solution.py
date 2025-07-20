@@ -1,105 +1,78 @@
 def main():
-    # Convert time string to minutes since midnight
-    def time_to_minutes(time_str):
-        h, m = map(int, time_str.split(':'))
-        return h * 60 + m
-
-    # Convert minutes to time string (HH:MM)
-    def minutes_to_time(minutes):
-        h = minutes // 60
-        m = minutes % 60
-        return f"{h:02d}:{m:02d}"
-
-    # Define work hours and meeting duration
-    work_start = time_to_minutes("9:00")
-    work_end = time_to_minutes("17:00")
-    meeting_duration = 30
-    preference_threshold = time_to_minutes("14:00")  # 14:00 in minutes
-
-    # Define busy intervals for each participant (in minutes since midnight)
-    jeffrey_busy = [
-        ("9:30", "10:00"),
-        ("10:30", "11:00")
-    ]
-    jeffrey_intervals = [(time_to_minutes(s), time_to_minutes(e)) for s, e in jeffrey_busy]
-
-    virginia_busy = [
-        ("9:00", "9:30"),
-        ("10:00", "10:30"),
-        ("14:30", "15:00"),
-        ("16:00", "16:30")
-    ]
-    virginia_intervals = [(time_to_minutes(s), time_to_minutes(e)) for s, e in virginia_busy]
-
-    melissa_busy = [
-        ("9:00", "11:30"),
-        ("12:00", "12:30"),
-        ("13:00", "15:00"),
-        ("16:00", "17:00")
-    ]
-    melissa_intervals = [(time_to_minutes(s), time_to_minutes(e)) for s, e in melissa_busy]
-
-    # Combine all busy intervals
-    all_busy = jeffrey_intervals + virginia_intervals + melissa_intervals
+    # Define work hours (9:00 to 17:00) in minutes
+    work_start = 9 * 60  # 540 minutes (9:00)
+    work_end = 17 * 60   # 1020 minutes (17:00)
     
-    # Sort by start time
-    all_busy.sort(key=lambda x: x[0])
+    # Define all busy intervals in minutes (start, end)
+    busy_intervals = [
+        [570, 600],   # Jeffrey: 9:30-10:00
+        [630, 660],   # Jeffrey: 10:30-11:00
+        [540, 570],   # Virginia: 9:00-9:30
+        [600, 630],   # Virginia: 10:00-10:30
+        [870, 900],   # Virginia: 14:30-15:00
+        [960, 990],   # Virginia: 16:00-16:30
+        [540, 690],   # Melissa: 9:00-11:30
+        [720, 750],   # Melissa: 12:00-12:30
+        [780, 900],   # Melissa: 13:00-15:00
+        [960, 1020]   # Melissa: 16:00-17:00
+    ]
     
-    # Merge overlapping intervals
+    # Sort busy intervals by start time
+    busy_intervals.sort(key=lambda x: x[0])
+    
+    # Merge overlapping busy intervals
     merged = []
-    if all_busy:
-        current_start, current_end = all_busy[0]
-        for start, end in all_busy[1:]:
-            if start <= current_end:
-                current_end = max(current_end, end)
-            else:
-                merged.append((current_start, current_end))
-                current_start, current_end = start, end
-        merged.append((current_start, current_end))
+    current_start, current_end = busy_intervals[0]
+    for interval in busy_intervals[1:]:
+        if interval[0] <= current_end:
+            current_end = max(current_end, interval[1])
+        else:
+            merged.append([current_start, current_end])
+            current_start, current_end = interval
+    merged.append([current_start, current_end])
     
-    # Find free intervals within work hours
+    # Calculate free intervals within work hours
     free_intervals = []
-    start = work_start
-    for busy_start, busy_end in merged:
-        if start < busy_start:
-            free_intervals.append((start, busy_start))
-        start = busy_end
-    if start < work_end:
-        free_intervals.append((start, work_end))
+    prev_end = work_start
+    for interval in merged:
+        start, end = interval
+        if start > prev_end:
+            free_intervals.append([prev_end, start])
+        prev_end = end
+    if prev_end < work_end:
+        free_intervals.append([prev_end, work_end])
     
-    # Find the earliest suitable meeting time
-    candidate_preferred = None
-    candidate_non_preferred = None
+    # Find a meeting slot (30 minutes) that ends by 14:00 (840 minutes) if possible
+    candidate = None
+    preference_end = 14 * 60  # 840 minutes (14:00)
+    for interval in free_intervals:
+        start_free, end_free = interval
+        # Check if meeting fits and ends by 14:00
+        if start_free + 30 <= min(end_free, preference_end):
+            candidate = start_free
+            break
     
-    for start_free, end_free in free_intervals:
-        available_duration = end_free - start_free
-        if available_duration >= meeting_duration:
-            meeting_start = start_free
-            meeting_end = meeting_start + meeting_duration
-            # Check if meeting ends before preference threshold (14:00)
-            if meeting_end <= preference_threshold:
-                candidate_preferred = (meeting_start, meeting_end)
+    # If no candidate found in preference pass, find any 30-minute slot
+    if candidate is None:
+        for interval in free_intervals:
+            start_free, end_free = interval
+            if end_free - start_free >= 30:
+                candidate = start_free
                 break
-            elif candidate_non_preferred is None:
-                candidate_non_preferred = (meeting_start, meeting_end)
     
-    # Determine which candidate to use
-    if candidate_preferred:
-        meeting_start, meeting_end = candidate_preferred
-    elif candidate_non_preferred:
-        meeting_start, meeting_end = candidate_non_preferred
-    else:
-        # According to the problem, there is a solution, so this should not happen
-        raise Exception("No suitable time found")
+    # Convert candidate time to HH:MM format
+    start_hour = candidate // 60
+    start_minute = candidate % 60
+    end_minutes = candidate + 30
+    end_hour = end_minutes // 60
+    end_minute = end_minutes % 60
     
-    # Format the meeting time
-    start_str = minutes_to_time(meeting_start)
-    end_str = minutes_to_time(meeting_end)
-    time_range_str = f"{start_str}:{end_str}"
+    # Format as HH:MM:HH:MM
+    time_str = f"{start_hour:02d}:{start_minute:02d}:{end_hour:02d}:{end_minute:02d}"
     
-    # Output the day and time range
+    # Output the day and time string
     print("Monday")
-    print(time_range_str)
+    print(time_str)
 
 if __name__ == "__main__":
     main()
