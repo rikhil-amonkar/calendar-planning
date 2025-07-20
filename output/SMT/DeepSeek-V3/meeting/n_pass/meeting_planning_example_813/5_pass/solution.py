@@ -1,95 +1,93 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize solver
+def solve_scheduling_problem():
     s = Solver()
 
-    # Define locations and their time windows (in minutes since midnight)
-    locations = {
-        'Marina': (9*60, 24*60),       # Starting location
-        'Embarcadero': (9*45, 18*60),   # Joshua
-        'Bayview': (9*45, 20*15),       # Jeffrey
-        'UnionSquare': (10*45, 20*15),  # Charles
-        'Chinatown': (7*60, 15*30),     # Joseph
-        'Sunset': (9*60, 9*45),         # Elizabeth
-        'GoldenGate': (11*60, 19*30),   # Matthew
-        'Financial': (10*45, 11*15),    # Carol
-        'Haight': (19*15, 20*30),       # Paul
-        'Mission': (17*60, 21*45)       # Rebecca
+    # Define friends data with availability and duration requirements
+    friends = {
+        "Elizabeth": {"location": "Sunset District", "start": "09:00", "end": "09:45", "duration": 45},
+        "Joseph": {"location": "Chinatown", "start": "07:00", "end": "15:30", "duration": 60},
+        "Carol": {"location": "Financial District", "start": "10:45", "end": "11:15", "duration": 15},
+        "Matthew": {"location": "Golden Gate Park", "start": "11:00", "end": "19:30", "duration": 45},
+        "Charles": {"location": "Union Square", "start": "10:45", "end": "20:15", "duration": 120},
+        "Joshua": {"location": "Embarcadero", "start": "09:45", "end": "18:00", "duration": 105},
+        "Jeffrey": {"location": "Bayview", "start": "09:45", "end": "20:15", "duration": 75},
+        "Rebecca": {"location": "Mission District", "start": "17:00", "end": "21:45", "duration": 45},
+        "Paul": {"location": "Haight-Ashbury", "start": "19:15", "end": "20:30", "duration": 15},
     }
 
-    # Minimum meeting durations (minutes)
-    min_durations = {
-        'Embarcadero': 105,
-        'Bayview': 75,
-        'UnionSquare': 120,
-        'Chinatown': 60,
-        'Sunset': 45,
-        'GoldenGate': 45,
-        'Financial': 15,
-        'Haight': 15,
-        'Mission': 45
+    # Travel times between locations (in minutes)
+    travel = {
+        "Sunset District": {"Chinatown": 29, "Financial District": 30, "Golden Gate Park": 11},
+        "Chinatown": {"Financial District": 5, "Golden Gate Park": 23, "Union Square": 7},
+        "Financial District": {"Golden Gate Park": 23, "Union Square": 9, "Embarcadero": 5},
+        "Golden Gate Park": {"Union Square": 22, "Embarcadero": 25, "Bayview": 23},
+        "Union Square": {"Embarcadero": 10, "Bayview": 15, "Mission District": 14},
+        "Embarcadero": {"Bayview": 21, "Mission District": 20, "Haight-Ashbury": 21},
+        "Bayview": {"Mission District": 13, "Haight-Ashbury": 19},
+        "Mission District": {"Haight-Ashbury": 12},
     }
 
-    # Travel times between locations (minutes)
-    travel_times = {
-        ('Marina', 'Sunset'): 19,
-        ('Sunset', 'GoldenGate'): 11,
-        ('GoldenGate', 'UnionSquare'): 22,
-        ('UnionSquare', 'Chinatown'): 7,
-        ('Chinatown', 'Financial'): 5,
-        ('Financial', 'Embarcadero'): 4,
-        ('Embarcadero', 'Bayview'): 21,
-        ('Bayview', 'Mission'): 13,
-        ('Mission', 'Haight'): 12
-    }
+    # Helper functions for time conversion
+    def time_to_min(t):
+        h, m = map(int, t.split(':'))
+        return h * 60 + m - 540  # 9:00 AM is 540 minutes
 
-    # Create variables for arrival and departure times
-    arrival = {loc: Int(f'arr_{loc}') for loc in locations}
-    departure = {loc: Int(f'dep_{loc}') for loc in locations}
+    def min_to_time(m):
+        total = 540 + m
+        return f"{total//60:02d}:{total%60:02d}"
 
-    # Starting constraints at Marina District
-    s.add(arrival['Marina'] == 9*60)
-    s.add(departure['Marina'] == 9*60)
+    # Create variables for each meeting
+    vars = {}
+    for name in friends:
+        start = Int(f"start_{name}")
+        end = Int(f"end_{name}")
+        vars[name] = (start, end)
+        s.add(start >= time_to_min(friends[name]["start"]))
+        s.add(end <= time_to_min(friends[name]["end"]))
+        s.add(end - start >= friends[name]["duration"])
 
-    # Add constraints for each location
-    for loc in locations:
-        if loc == 'Marina':
-            continue
-        start, end = locations[loc]
-        s.add(arrival[loc] >= start)
-        s.add(departure[loc] <= end)
-        s.add(departure[loc] >= arrival[loc] + min_durations[loc])
+    # Fixed meeting with Elizabeth at 9:00 AM
+    s.add(vars["Elizabeth"][0] == 0)
+    s.add(vars["Elizabeth"][1] == 45)
 
-    # Define visit order
-    visit_order = [
-        'Marina', 'Sunset', 'GoldenGate', 'UnionSquare',
-        'Chinatown', 'Financial', 'Embarcadero', 'Bayview',
-        'Mission', 'Haight'
-    ]
+    # Define meeting order that makes geographic sense
+    order = ["Elizabeth", "Joseph", "Carol", "Matthew", "Charles", "Joshua", "Jeffrey", "Rebecca", "Paul"]
 
-    # Add travel time constraints
-    for i in range(len(visit_order)-1):
-        from_loc = visit_order[i]
-        to_loc = visit_order[i+1]
-        s.add(arrival[to_loc] >= departure[from_loc] + travel_times[(from_loc, to_loc)])
+    # Add travel time constraints between consecutive meetings
+    for i in range(len(order)-1):
+        curr = order[i]
+        next_ = order[i+1]
+        curr_loc = friends[curr]["location"]
+        next_loc = friends[next_]["location"]
+        s.add(vars[next_][0] >= vars[curr][1] + travel[curr_loc][next_loc])
 
-    # Check for solution
+    # Special constraints for tight windows
+    s.add(vars["Carol"][0] >= time_to_min("10:45"))
+    s.add(vars["Carol"][1] <= time_to_min("11:15"))
+    s.add(vars["Paul"][0] >= time_to_min("19:15"))
+    s.add(vars["Paul"][1] <= time_to_min("20:30"))
+
+    # Try to solve
     if s.check() == sat:
         m = s.model()
-        print("OPTIMAL SCHEDULE FOUND:\n")
-        print("{:<15} {:<12} {:<12}".format("Location", "Arrival", "Departure"))
-        print("-"*40)
-        
-        for loc in visit_order:
-            if loc == 'Marina':
-                continue
-            arr = m.evaluate(arrival[loc]).as_long()
-            dep = m.evaluate(departure[loc]).as_long()
-            print("{:<15} {:02d}:{:02d}     {:02d}:{:02d}".format(
-                loc, arr//60, arr%60, dep//60, dep%60))
+        schedule = []
+        for name in order:
+            start = m.eval(vars[name][0]).as_long()
+            end = m.eval(vars[name][1]).as_long()
+            schedule.append({
+                "action": "meet",
+                "person": name,
+                "start_time": min_to_time(start),
+                "end_time": min_to_time(end),
+            })
+        return {"itinerary": schedule}
     else:
-        print("No feasible schedule exists that meets all constraints")
+        # If no solution found, try relaxing some constraints
+        print("No solution found with current constraints")
+        return {"itinerary": []}
 
-# Run the solver
-solve_scheduling()
+solution = solve_scheduling_problem()
+print("SOLUTION:")
+print(json.dumps(solution, indent=2))

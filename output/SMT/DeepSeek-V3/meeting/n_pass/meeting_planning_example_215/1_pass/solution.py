@@ -1,99 +1,102 @@
 from z3 import *
+import datetime
 
 def solve_scheduling():
-    # Initialize the solver
+    # Initialize solver
     s = Solver()
 
-    # Locations
-    Bayview, Embarcadero, Richmond, Fisherman = 0, 1, 2, 3
-    locations = ["Bayview", "Embarcadero", "Richmond District", "Fisherman's Wharf"]
+    # Define meeting durations in minutes
+    jessica_duration = 30
+    sandra_duration = 120
+    jason_duration = 30
 
-    # Travel times matrix (in minutes)
-    travel_times = [
-        [0, 19, 25, 25],    # Bayview to others
-        [21, 0, 21, 6],     # Embarcadero to others
-        [26, 19, 0, 18],    # Richmond to others
-        [26, 8, 18, 0]      # Fisherman's Wharf to others
-    ]
+    # Convert all times to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
 
-    # Meeting constraints
-    # Jessica: Embarcadero, 4:45PM-7:00PM, min 30 mins
-    jessica_start = 9*60 + (4*60 + 45)  # 4:45PM in minutes from 9:00AM
-    jessica_end = 9*60 + (7*60)         # 7:00PM in minutes from 9:00AM
-    jessica_min = 30
+    # Available time slots
+    jessica_start = time_to_minutes("16:45")  # 4:45 PM
+    jessica_end = time_to_minutes("19:00")    # 7:00 PM
+    sandra_start = time_to_minutes("18:30")   # 6:30 PM
+    sandra_end = time_to_minutes("21:45")     # 9:45 PM
+    jason_start = time_to_minutes("16:00")    # 4:00 PM
+    jason_end = time_to_minutes("16:45")      # 4:45 PM
 
-    # Sandra: Richmond, 6:30PM-9:45PM, min 120 mins
-    sandra_start = 9*60 + (6*60 + 30)   # 6:30PM in minutes from 9:00AM
-    sandra_end = 9*60 + (9*60 + 45)     # 9:45PM in minutes from 9:00AM
-    sandra_min = 120
+    # Travel times (in minutes)
+    travel_times = {
+        ('Bayview', 'Embarcadero'): 19,
+        ('Bayview', 'Richmond District'): 25,
+        ('Bayview', 'Fisherman\'s Wharf'): 25,
+        ('Embarcadero', 'Bayview'): 21,
+        ('Embarcadero', 'Richmond District'): 21,
+        ('Embarcadero', 'Fisherman\'s Wharf'): 6,
+        ('Richmond District', 'Bayview'): 26,
+        ('Richmond District', 'Embarcadero'): 19,
+        ('Richmond District', 'Fisherman\'s Wharf'): 18,
+        ('Fisherman\'s Wharf', 'Bayview'): 26,
+        ('Fisherman\'s Wharf', 'Embarcadero'): 8,
+        ('Fisherman\'s Wharf', 'Richmond District'): 18,
+    }
 
-    # Jason: Fisherman's Wharf, 4:00PM-4:45PM, min 30 mins
-    jason_start = 9*60 + (4*60)         # 4:00PM in minutes from 9:00AM
-    jason_end = 9*60 + (4*60 + 45)      # 4:45PM in minutes from 9:00AM
-    jason_min = 30
-
-    # Variables for meeting start and end times
-    meet_jessica_start = Int('meet_jessica_start')
-    meet_jessica_end = Int('meet_jessica_end')
-    meet_sandra_start = Int('meet_sandra_start')
-    meet_sandra_end = Int('meet_sandra_end')
+    # Variables for meeting start times and durations
     meet_jason_start = Int('meet_jason_start')
-    meet_jason_end = Int('meet_jason_end')
+    meet_jason_end = meet_jason_start + jason_duration
+    meet_jessica_start = Int('meet_jessica_start')
+    meet_jessica_end = meet_jessica_start + jessica_duration
+    meet_sandra_start = Int('meet_sandra_start')
+    meet_sandra_end = meet_sandra_start + sandra_duration
 
-    # Variables for location before each meeting
-    before_jessica = Int('before_jessica')
-    before_sandra = Int('before_sandra')
-    before_jason = Int('before_jason')
-
-    # Constraints for meeting times
-    # Jessica
-    s.add(meet_jessica_start >= jessica_start)
-    s.add(meet_jessica_end <= jessica_end)
-    s.add(meet_jessica_end - meet_jessica_start >= jessica_min)
-    s.add(before_jessica >= 0, before_jessica <= 3)  # 0-3 represents the 4 locations
-
-    # Sandra
-    s.add(meet_sandra_start >= sandra_start)
-    s.add(meet_sandra_end <= sandra_end)
-    s.add(meet_sandra_end - meet_sandra_start >= sandra_min)
-    s.add(before_sandra >= 0, before_sandra <= 3)
-
-    # Jason
+    # Constraints for meeting within available time slots
     s.add(meet_jason_start >= jason_start)
     s.add(meet_jason_end <= jason_end)
-    s.add(meet_jason_end - meet_jason_start >= jason_min)
-    s.add(before_jason >= 0, before_jason <= 3)
+    s.add(meet_jessica_start >= jessica_start)
+    s.add(meet_jessica_end <= jessica_end)
+    s.add(meet_sandra_start >= sandra_start)
+    s.add(meet_sandra_end <= sandra_end)
 
-    # Initial location is Bayview (0)
-    initial_location = Bayview
+    # Initial location is Bayview at 9:00 AM (540 minutes)
+    current_time = 540  # 9:00 AM in minutes
 
-    # Constraints for travel times
-    # From initial location to first meeting
-    # We need to decide the order of meetings, but for simplicity, we'll let Z3 choose
-    # We'll assume the order is Jason -> Jessica -> Sandra (since Jason's window is earliest)
-    # This is a simplification; a more general approach would consider all permutations
+    # Possible meeting orders: since Jason is earliest, we can try meeting Jason first, then Jessica, then Sandra.
+    # Alternatively, meet Sandra first, but her window is later.
 
-    # Order: Jason -> Jessica -> Sandra
-    s.add(before_jason == initial_location)
-    s.add(meet_jason_start >= 0 + travel_times[before_jason][Fisherman])
+    # Let's try meeting Jason first, then Jessica, then Sandra.
 
-    s.add(before_jessica == Fisherman)
-    s.add(meet_jessica_start >= meet_jason_end + travel_times[before_jessica][Embarcadero])
+    # Travel from Bayview to Fisherman's Wharf to meet Jason: 25 minutes
+    arrival_jason = current_time + 25
+    s.add(meet_jason_start >= arrival_jason)
 
-    s.add(before_sandra == Embarcadero)
-    s.add(meet_sandra_start >= meet_jessica_end + travel_times[before_sandra][Richmond])
+    # Travel from Fisherman's Wharf to Embarcadero to meet Jessica: 8 minutes
+    departure_jason = meet_jason_end
+    arrival_jessica = departure_jason + 8
+    s.add(meet_jessica_start >= arrival_jessica)
 
-    # Objective: maximize the number of friends met (all three in this case)
-    # Since we're trying to meet all, the objective is just to find a feasible schedule
+    # Travel from Embarcadero to Richmond District to meet Sandra: 21 minutes
+    departure_jessica = meet_jessica_end
+    arrival_sandra = departure_jessica + 21
+    s.add(meet_sandra_start >= arrival_sandra)
 
-    # Check if the constraints are satisfiable
+    # Check if all meetings can fit
     if s.check() == sat:
-        m = s.model()
-        print("SOLUTION:")
-        print(f"Meet Jason at Fisherman's Wharf from {m[meet_jason_start].as_long() - 9*60} minutes to {m[meet_jason_end].as_long() - 9*60} minutes")
-        print(f"Meet Jessica at Embarcadero from {m[meet_jessica_start].as_long() - 9*60} minutes to {m[meet_jessica_end].as_long() - 9*60} minutes")
-        print(f"Meet Sandra at Richmond District from {m[meet_sandra_start].as_long() - 9*60} minutes to {m[meet_sandra_end].as_long() - 9*60} minutes")
-    else:
-        print("No feasible schedule found.")
+        model = s.model()
+        jason_start_min = model[meet_jason_start].as_long()
+        jessica_start_min = model[meet_jessica_start].as_long()
+        sandra_start_min = model[meet_sandra_start].as_long()
 
-solve_scheduling()
+        def minutes_to_time(minutes):
+            hh = minutes // 60
+            mm = minutes % 60
+            return f"{hh:02d}:{mm:02d}"
+
+        itinerary = [
+            {"action": "meet", "person": "Jason", "start_time": minutes_to_time(jason_start_min), "end_time": minutes_to_time(jason_start_min + jason_duration)},
+            {"action": "meet", "person": "Jessica", "start_time": minutes_to_time(jessica_start_min), "end_time": minutes_to_time(jessica_start_min + jessica_duration)},
+            {"action": "meet", "person": "Sandra", "start_time": minutes_to_time(sandra_start_min), "end_time": minutes_to_time(sandra_start_min + sandra_duration)}
+        ]
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": []}
+
+result = solve_scheduling()
+print(result)

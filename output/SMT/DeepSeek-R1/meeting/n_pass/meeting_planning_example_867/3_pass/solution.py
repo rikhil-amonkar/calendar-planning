@@ -1,153 +1,196 @@
 from z3 import *
+import json
 
-def main():
-    # Travel time matrix (10x10: indices 0 to 9)
-    travel = [
-        [0, 11, 19, 12, 18, 23, 17, 10, 15, 7],
-        [12, 0, 15, 16, 14, 22, 19, 20, 24, 17],
-        [18, 14, 0, 15, 15, 15, 18, 20, 27, 22],
-        [11, 15, 12, 0, 22, 13, 6, 12, 21, 15],
-        [19, 13, 18, 23, 0, 25, 27, 25, 23, 22],
-        [22, 22, 13, 12, 26, 0, 9, 18, 27, 25],
-        [16, 20, 16, 7, 27, 10, 0, 11, 19, 18],
-        [10, 20, 21, 10, 27, 18, 9, 0, 11, 9],
-        [15, 25, 30, 21, 22, 29, 21, 12, 0, 11],
-        [7, 17, 22, 16, 23, 24, 16, 7, 10, 0]
-    ]
-    
-    # Friend data: location index, window start (minutes from 9:00 AM), window end, min_time
-    window_start = [0] * 10
-    window_end = [0] * 10
-    min_time_arr = [0] * 10
-    
-    # Elizabeth (location 1)
-    window_start[1] = 90    # 10:30 AM
-    window_end[1] = 660     # 8:00 PM
-    min_time_arr[1] = 90
-    
-    # David (location 2)
-    window_start[2] = 375   # 3:15 PM
-    window_end[2] = 600     # 7:00 PM
-    min_time_arr[2] = 45
-    
-    # Sandra (location 3)
-    window_start[3] = 0     # 9:00 AM (adjusted)
-    window_end[3] = 660     # 8:00 PM
-    min_time_arr[3] = 120
-    
-    # Thomas (location 4)
-    window_start[4] = 630   # 7:30 PM
-    window_end[4] = 690     # 8:30 PM
-    min_time_arr[4] = 30
-    
-    # Robert (location 5)
-    window_start[5] = 60    # 10:00 AM
-    window_end[5] = 360     # 3:00 PM
-    min_time_arr[5] = 15
-    
-    # Kenneth (location 6)
-    window_start[6] = 105   # 10:45 AM
-    window_end[6] = 240     # 1:00 PM
-    min_time_arr[6] = 45
-    
-    # Melissa (location 7)
-    window_start[7] = 555   # 6:15 PM
-    window_end[7] = 660     # 8:00 PM
-    min_time_arr[7] = 15
-    
-    # Kimberly (location 8)
-    window_start[8] = 75    # 10:15 AM
-    window_end[8] = 555     # 6:15 PM
-    min_time_arr[8] = 105
-    
-    # Amanda (location 9)
-    window_start[9] = 0     # 9:00 AM (adjusted)
-    window_end[9] = 585     # 6:45 PM
-    min_time_arr[9] = 15
-    
-    # Initialize Z3 variables
-    next_vars = [Int('next_%d' % i) for i in range(0, 10)]
-    meet_vars = [Bool('meet_%d' % i) for i in range(1, 10)]
-    start_vars = [Int('start_%d' % i) for i in range(1, 10)]
-    
-    s = Optimize()
-    
-    # Constraint 1: next_0 in [1..9,10]
-    s.add(Or([next_vars[0] == i for i in range(1, 11)]))
-    
-    # Constraint 2: for i in 1..9, next_i in [1..9,10] and next_i != i
-    for i in range(1, 10):
-        s.add(Or([next_vars[i] == j for j in range(1, 11)]))
-        s.add(next_vars[i] != i)
-    
-    # Constraint 3: for each friend i (location i, i in 1..9), meet_i is true iff exactly one j in 0..9 has next_j == i
-    for idx, i in enumerate(range(1, 10)):
-        meet_i = meet_vars[idx]
-        cond = (Sum([If(next_vars[j] == i, 1, 0) for j in range(0, 10)]) == 1)
-        s.add(meet_i == cond)
-    
-    # Constraint 4: exactly one j in 0..9 has next_j == 10
-    s.add(Sum([If(next_vars[j] == 10, 1, 0) for j in range(0, 10)]) == 1)
-    
-    # Constraint 8: for j in 1..9, if next_j == i (for any i in 1..10), then meet_j must be true
-    for j in range(1, 10):
-        for i_val in range(1, 11):
-            s.add(Implies(next_vars[j] == i_val, meet_vars[j-1]))
-    
-    # Define T_j: T0 = 0, and for j in 1..9, T_j = if meet_j then start_j + min_time_j else 0
-    T = [0] * 10
-    T[0] = 0
-    for j in range(1, 10):
-        T[j] = If(meet_vars[j-1], start_vars[j-1] + min_time_arr[j], 0)
-    
-    # Constraint 5: for each friend i (location i, i in 1..9) and for each j in 0..9, 
-    # if next_j == i then start_i >= T_j + travel[j][i]
-    for i_loc in range(1, 10):
-        idx_i = i_loc - 1
-        for j_loc in range(0, 10):
-            s.add(Implies(next_vars[j_loc] == i_loc, 
-                          start_vars[idx_i] >= T[j_loc] + travel[j_loc][i_loc]))
-    
-    # Constraint 6: for each friend i, window constraints
-    for i_loc in range(1, 10):
-        idx_i = i_loc - 1
-        s.add(Implies(meet_vars[idx_i], start_vars[idx_i] >= window_start[i_loc]))
-        s.add(Implies(meet_vars[idx_i], start_vars[idx_i] + min_time_arr[i_loc] <= window_end[i_loc]))
-        s.add(start_vars[idx_i] >= 0)
-        s.add(start_vars[idx_i] <= 690)
-    
-    # Constraint 7: for each j in 0..9, if next_j == 10, then T_j <= 690
-    for j_loc in range(0, 10):
-        s.add(Implies(next_vars[j_loc] == 10, T[j_loc] <= 690))
-    
-    # Objective: maximize the number of friends met
-    objective = Sum([If(meet_vars[i], 1, 0) for i in range(0, 9)])
-    s.maximize(objective)
-    
-    # Solve
-    if s.check() == sat:
-        m = s.model()
-        print("SOLUTION:")
-        num_met = 0
-        for i in range(0, 9):
-            if m.evaluate(meet_vars[i]):
-                num_met += 1
-        print(f"Total friends met: {num_met}")
-        for i in range(0, 10):
-            next_val = m.evaluate(next_vars[i])
-            print(f"next_{i} = {next_val}")
-        for i in range(1, 10):
-            idx = i-1
-            if m.evaluate(meet_vars[idx]):
-                start_val = m.evaluate(start_vars[idx])
-                minutes = start_val.as_long()
-                hours = 9 + minutes // 60
-                mins = minutes % 60
-                print(f"Meet friend at location {i} starting at {hours}:{mins:02d}, duration {min_time_arr[i]} minutes")
-            else:
-                print(f"Do not meet friend at location {i}")
-    else:
-        print("No solution found")
+# Define travel times between locations
+travel_times = {
+    "Haight-Ashbury": {
+        "Mission District": 11,
+        "Union Square": 19,
+        "Pacific Heights": 12,
+        "Bayview": 18,
+        "Fisherman's Wharf": 23,
+        "Marina District": 17,
+        "Richmond District": 10,
+        "Sunset District": 15,
+        "Golden Gate Park": 7
+    },
+    "Mission District": {
+        "Haight-Ashbury": 12,
+        "Union Square": 15,
+        "Pacific Heights": 16,
+        "Bayview": 14,
+        "Fisherman's Wharf": 22,
+        "Marina District": 19,
+        "Richmond District": 20,
+        "Sunset District": 24,
+        "Golden Gate Park": 17
+    },
+    "Union Square": {
+        "Haight-Ashbury": 18,
+        "Mission District": 14,
+        "Pacific Heights": 15,
+        "Bayview": 15,
+        "Fisherman's Wharf": 15,
+        "Marina District": 18,
+        "Richmond District": 20,
+        "Sunset District": 27,
+        "Golden Gate Park": 22
+    },
+    "Pacific Heights": {
+        "Haight-Ashbury": 11,
+        "Mission District": 15,
+        "Union Square": 12,
+        "Bayview": 22,
+        "Fisherman's Wharf": 13,
+        "Marina District": 6,
+        "Richmond District": 12,
+        "Sunset District": 21,
+        "Golden Gate Park": 15
+    },
+    "Bayview": {
+        "Haight-Ashbury": 19,
+        "Mission District": 13,
+        "Union Square": 18,
+        "Pacific Heights": 23,
+        "Fisherman's Wharf": 25,
+        "Marina District": 27,
+        "Richmond District": 25,
+        "Sunset District": 23,
+        "Golden Gate Park": 22
+    },
+    "Fisherman's Wharf": {
+        "Haight-Ashbury": 22,
+        "Mission District": 22,
+        "Union Square": 13,
+        "Pacific Heights": 12,
+        "Bayview": 26,
+        "Marina District": 9,
+        "Richmond District": 18,
+        "Sunset District": 27,
+        "Golden Gate Park": 25
+    },
+    "Marina District": {
+        "Haight-Ashbury": 16,
+        "Mission District": 20,
+        "Union Square": 16,
+        "Pacific Heights": 7,
+        "Bayview": 27,
+        "Fisherman's Wharf": 10,
+        "Richmond District": 11,
+        "Sunset District": 19,
+        "Golden Gate Park": 18
+    },
+    "Richmond District": {
+        "Haight-Ashbury": 10,
+        "Mission District": 20,
+        "Union Square": 21,
+        "Pacific Heights": 10,
+        "Bayview": 27,
+        "Fisherman's Wharf": 18,
+        "Marina District": 9,
+        "Sunset District": 11,
+        "Golden Gate Park": 9
+    },
+    "Sunset District": {
+        "Haight-Ashbury": 15,
+        "Mission District": 25,
+        "Union Square": 30,
+        "Pacific Heights": 21,
+        "Bayview": 22,
+        "Fisherman's Wharf": 29,
+        "Marina District": 21,
+        "Richmond District": 12,
+        "Golden Gate Park": 11
+    },
+    "Golden Gate Park": {
+        "Haight-Ashbury": 7,
+        "Mission District": 17,
+        "Union Square": 22,
+        "Pacific Heights": 16,
+        "Bayview": 23,
+        "Fisherman's Wharf": 24,
+        "Marina District": 16,
+        "Richmond District": 7,
+        "Sunset District": 10
+    }
+}
 
-if __name__ == '__main__':
-    main()
+# Corrected friends' details: (name, location, window_start, window_end, min_duration)
+friends = [
+    ("Elizabeth", "Mission District", 630, 1200, 90),      # 10:30AM to 8:00PM
+    ("David", "Union Square", 915, 1140, 45),              # 3:15PM to 7:00PM
+    ("Sandra", "Pacific Heights", 420, 1200, 120),         # 7:00AM to 8:00PM
+    ("Thomas", "Bayview", 1170, 1230, 30),                 # 7:30PM to 8:30PM
+    ("Robert", "Fisherman's Wharf", 600, 900, 15),         # 10:00AM to 3:00PM
+    ("Kenneth", "Marina District", 645, 780, 45),          # 10:45AM to 1:00PM
+    ("Melissa", "Richmond District", 1095, 1200, 15),      # 6:15PM to 8:00PM
+    ("Kimberly", "Sunset District", 615, 1095, 105),       # 10:15AM to 6:15PM
+    ("Amanda", "Golden Gate Park", 465, 1125, 15)          # 7:45AM to 6:45PM
+]
+
+# Initialize Z3 optimizer
+opt = Optimize()
+
+# Create variables: meet[i] and start_times[i]
+meet = [Bool(f"meet_{i}") for i in range(9)]
+start_times = [Int(f"start_{i}") for i in range(9)]
+
+# Constraint: Time windows for each friend if met
+for i in range(9):
+    name, loc, w_start, w_end, dur = friends[i]
+    opt.add(Implies(meet[i], And(start_times[i] >= w_start, start_times[i] + dur <= w_end)))
+
+# Constraint: Travel time from start location (Haight-Ashbury) to each friend
+arrival_time = 540  # 9:00AM = 540 minutes
+for i in range(9):
+    name, loc, w_start, w_end, dur = friends[i]
+    travel_time = travel_times["Haight-Ashbury"][loc]
+    opt.add(Implies(meet[i], start_times[i] >= arrival_time + travel_time))
+
+# Constraint: For every pair of friends, if both are met, ensure travel time between them is respected
+for i in range(9):
+    for j in range(i + 1, 9):
+        name_i, loc_i, w_start_i, w_end_i, dur_i = friends[i]
+        name_j, loc_j, w_start_j, w_end_j, dur_j = friends[j]
+        t_ij = travel_times[loc_i][loc_j]
+        t_ji = travel_times[loc_j][loc_i]
+        # Disjunction: either i then j or j then i
+        disj = Or(
+            start_times[i] + dur_i + t_ij <= start_times[j],
+            start_times[j] + dur_j + t_ji <= start_times[i]
+        )
+        opt.add(Implies(And(meet[i], meet[j]), disj))
+
+# Objective: Maximize the number of friends met
+obj = Sum([If(meet[i], 1, 0) for i in range(9)])
+opt.maximize(obj)
+
+# Solve the problem
+itinerary = []
+if opt.check() == sat:
+    m = opt.model()
+    # Collect scheduled meetings
+    meetings = []
+    for i in range(9):
+        if is_true(m.eval(meet[i])):
+            start_val = m.eval(start_times[i])
+            if is_int_value(start_val):
+                start_min = start_val.as_long()
+                name, loc, w_start, w_end, dur = friends[i]
+                end_min = start_min + dur
+                # Format time as HH:MM
+                start_time_str = f"{start_min // 60:02d}:{start_min % 60:02d}"
+                end_time_str = f"{end_min // 60:02d}:{end_min % 60:02d}"
+                meetings.append({
+                    "person": name,
+                    "start_min": start_min,
+                    "start_time": start_time_str,
+                    "end_time": end_time_str
+                })
+    # Sort meetings by start time
+    meetings.sort(key=lambda x: x["start_min"])
+    itinerary = [{"action": "meet", "person": m["person"], "start_time": m["start_time"], "end_time": m["end_time"]} for m in meetings]
+
+# Output the solution
+print("SOLUTION:")
+print(json.dumps({"itinerary": itinerary}, indent=2))

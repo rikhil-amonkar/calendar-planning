@@ -1,59 +1,58 @@
 from z3 import *
 
+def time_str_to_minutes(time_str):
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return (hour - 9) * 60 + minute
+
+def minutes_to_time(minutes):
+    total_minutes = minutes
+    hours = 9 + total_minutes // 60
+    mins = total_minutes % 60
+    return hours, mins
+
 def main():
-    # Initialize the solver
-    s = Solver()
-    
-    # Meeting duration in minutes
-    meeting_duration = 60
-    
-    # Total work hours in minutes (9:00 to 17:00 is 8 hours = 480 minutes)
-    total_minutes = 480
-    
-    # Define the start time variable in minutes from 9:00
-    S = Int('S')
-    
-    # Constraint: Start time must be within [0, total_minutes - meeting_duration]
-    s.add(S >= 0)
-    s.add(S <= total_minutes - meeting_duration)
-    
-    # Define busy intervals for each participant in minutes from 9:00
-    # Format: list of (start_minute, end_minute) for each busy block
-    busy_times = {
-        'Joshua': [(120, 210), (270, 330), (450, 480)],
-        'Jerry': [(0, 30), (90, 180), (210, 240), (270, 300), (330, 360), (390, 420)],
-        'Jesse': [(0, 30), (90, 180), (210, 240), (330, 360), (390, 450)],
-        'Kenneth': [(90, 210), (270, 300), (330, 360), (390, 420), (450, 480)]
+    busy_participants = {
+        "Joshua": ["11:00 to 12:30", "13:30 to 14:30", "16:30 to 17:00"],
+        "Jerry": ["9:00 to 9:30", "10:30 to 12:00", "12:30 to 13:00", "13:30 to 14:00", "14:30 to 15:00", "15:30 to 16:00"],
+        "Jesse": ["9:00 to 9:30", "10:30 to 12:00", "12:30 to 13:00", "14:30 to 15:00", "15:30 to 16:30"],
+        "Kenneth": ["10:30 to 12:30", "13:30 to 14:00", "14:30 to 15:00", "15:30 to 16:00", "16:30 to 17:00"]
     }
     
-    # Participants with no busy times: Evelyn, Kevin, Gerald (no constraints needed)
+    intervals_list = []
+    for participant, interval_strs in busy_participants.items():
+        for interval_str in interval_strs:
+            parts = interval_str.split(' to ')
+            if len(parts) < 2:
+                continue
+            start_str = parts[0].strip()
+            end_str = parts[1].strip()
+            start_min = time_str_to_minutes(start_str)
+            end_min = time_str_to_minutes(end_str)
+            intervals_list.append((start_min, end_min))
     
-    # Add constraints for each participant's busy intervals
-    for participant, intervals in busy_times.items():
-        for (a, b) in intervals:
-            # The meeting [S, S+meeting_duration] should not overlap with [a, b)
-            # This means: either meeting ends before a or meeting starts after b
-            s.add(Or(S + meeting_duration <= a, S >= b))
+    s = Solver()
+    start_var = Int('start')
+    s.add(start_var >= 0)
+    s.add(start_var <= 420)
     
-    # Check for a solution
+    for (b_start, b_end) in intervals_list:
+        s.add(Or(start_var + 60 <= b_start, start_var >= b_end))
+    
     if s.check() == sat:
         model = s.model()
-        start_minutes = model[S].as_long()
+        start_val = model[start_var].as_long()
+        start_hour, start_minute = minutes_to_time(start_val)
+        end_hour, end_minute = minutes_to_time(start_val + 60)
         
-        # Convert start_minutes back to time in HH:MM format
-        start_hour = 9 + start_minutes // 60
-        start_minute = start_minutes % 60
+        start_time_str = f"{start_hour}:{start_minute:02d}"
+        end_time_str = f"{end_hour}:{end_minute:02d}"
         
-        # Calculate end time
-        end_minutes = start_minutes + meeting_duration
-        end_hour = 9 + end_minutes // 60
-        end_minute = end_minutes % 60
-        
-        # Format the output
-        start_time = f"{start_hour:02d}:{start_minute:02d}"
-        end_time = f"{end_hour:02d}:{end_minute:02d}"
-        
-        print(f"Monday {start_time} to {end_time}")
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time_str}")
+        print(f"End Time: {end_time_str}")
     else:
         print("No solution found")
 

@@ -1,98 +1,89 @@
 from z3 import *
+import json
 
 def solve_scheduling():
-    # Initialize solver
     s = Solver()
 
-    # Locations and their indices
-    locations = {
-        'Sunset District': 0,
-        'Russian Hill': 1,
-        'Chinatown': 2,
-        'Presidio': 3,
-        'Fisherman\'s Wharf': 4
-    }
-    
-    # Travel times matrix (in minutes)
-    travel_times = [
-        [0, 24, 30, 16, 29],    # Sunset District to others
-        [23, 0, 9, 14, 7],      # Russian Hill to others
-        [29, 7, 0, 19, 8],       # Chinatown to others
-        [15, 14, 21, 0, 19],     # Presidio to others
-        [27, 7, 12, 17, 0]       # Fisherman's Wharf to others
-    ]
+    # Time variables in minutes since 9:00 AM
+    michelle_start = Int('michelle_start')
+    michelle_end = Int('michelle_end')
+    robert_start = Int('robert_start')
+    robert_end = Int('robert_end')
+    george_start = Int('george_start')
+    george_end = Int('george_end')
+    william_start = Int('william_start')
+    william_end = Int('william_end')
 
-    # Friends' data: name, location, start time (minutes since 9:00AM), end time, min duration
-    friends = [
-        ('William', locations['Russian Hill'], 6*60 + 30, 8*60 + 45, 105),
-        ('Michelle', locations['Chinatown'], 8*60 + 15 - 9*60, 14*60 - 9*60, 15),
-        ('George', locations['Presidio'], 10*60 + 30 - 9*60, 18*60 + 45 - 9*60, 30),
-        ('Robert', locations['Fisherman\'s Wharf'], 0, 1*60 + 45, 30)
-    ]
-    
-    # Variables for each friend: start time (minutes since 9:00AM), end time, and a flag indicating if met
-    start_vars = [Int(f'start_{name}') for name, _, _, _, _ in friends]
-    end_vars = [Int(f'end_{name}') for name, _, _, _, _ in friends]
-    met_vars = [Bool(f'met_{name}') for name, _, _, _, _ in friends]
+    # Availability windows in minutes since 9:00 AM
+    michelle_available_start = -45  # 8:15 AM is 45 minutes before 9:00 AM
+    michelle_available_end = 300    # 2:00 PM is 300 minutes after 9:00 AM
+    robert_available_start = 0
+    robert_available_end = 285      # 1:45 PM is 285 minutes
+    george_available_start = 90     # 10:30 AM is 90 minutes
+    george_available_end = 585      # 6:45 PM is 585 minutes
+    william_available_start = 570   # 6:30 PM is 570 minutes
+    william_available_end = 705     # 8:45 PM is 705 minutes
 
-    # Base time is 9:00 AM (0 minutes since 9:00 AM)
-    current_time = 0
-    current_location = locations['Sunset District']
+    # Minimum durations
+    michelle_min_duration = 15
+    robert_min_duration = 30
+    george_min_duration = 30
+    william_min_duration = 105
 
-    # Constraints for each friend
-    for i, (name, loc, friend_start, friend_end, min_duration) in enumerate(friends):
-        # If meeting the friend, the meeting must be within their window and last at least min_duration
-        s.add(Implies(met_vars[i], start_vars[i] >= friend_start))
-        s.add(Implies(met_vars[i], end_vars[i] <= friend_end))
-        s.add(Implies(met_vars[i], end_vars[i] == start_vars[i] + min_duration))
-        
-        # If not meeting the friend, start and end times are irrelevant (but we set them to 0 for simplicity)
-        s.add(Implies(Not(met_vars[i]), start_vars[i] == 0))
-        s.add(Implies(Not(met_vars[i]), end_vars[i] == 0))
+    # Constraints for each meeting
+    s.add(michelle_start >= michelle_available_start)
+    s.add(michelle_end <= michelle_available_end)
+    s.add(michelle_end - michelle_start >= michelle_min_duration)
 
-    # Ordering constraints: meetings must be scheduled in some order with travel times
-    # We need to sequence the meetings properly
-    # This is a simplified approach; a more precise method would involve sequencing variables
-    # For simplicity, we'll assume meetings are scheduled in some order with travel times
-    
-    # To model the sequence, we can use auxiliary variables to represent the order
-    # However, this is complex; instead, we'll use a heuristic to prioritize friends with tighter windows
-    
-    # Maximize the number of friends met
-    s.maximize(Sum([If(met_vars[i], 1, 0) for i in range(len(friends))]))
+    s.add(robert_start >= robert_available_start)
+    s.add(robert_end <= robert_available_end)
+    s.add(robert_end - robert_start >= robert_min_duration)
 
-    # Check for a solution
+    s.add(george_start >= george_available_start)
+    s.add(george_end <= george_available_end)
+    s.add(george_end - george_start >= george_min_duration)
+
+    s.add(william_start >= william_available_start)
+    s.add(william_end <= william_available_end)
+    s.add(william_end - william_start >= william_min_duration)
+
+    # Starting at Sunset District at time 0 (9:00 AM)
+    # Assume the order is Michelle (Chinatown), Robert (Fisherman's Wharf), George (Presidio), William (Russian Hill)
+    # Travel times:
+    # Sunset to Chinatown: 30 minutes
+    s.add(michelle_start >= 30)
+    # Chinatown to Fisherman's Wharf: 8 minutes
+    s.add(robert_start >= michelle_end + 8)
+    # Fisherman's Wharf to Presidio: 17 minutes
+    s.add(george_start >= robert_end + 17)
+    # Presidio to Russian Hill: 14 minutes
+    s.add(william_start >= george_end + 14)
+
     if s.check() == sat:
-        m = s.model()
-        print("Optimal Schedule:")
-        total_met = 0
-        schedule = []
-        for i, (name, loc, friend_start, friend_end, min_duration) in enumerate(friends):
-            if m.evaluate(met_vars[i]):
-                start = m.evaluate(start_vars[i]).as_long()
-                end = m.evaluate(end_vars[i]).as_long()
-                start_time = f"{9 + start // 60}:{start % 60:02d}"
-                end_time = f"{9 + end // 60}:{end % 60:02d}"
-                print(f"Meet {name} at {list(locations.keys())[loc]} from {start_time} to {end_time}")
-                total_met += 1
-                schedule.append((start, end, loc, name))
-            else:
-                print(f"Cannot meet {name}")
-        print(f"Total friends met: {total_met}")
-        
-        # Print the schedule in order
-        schedule.sort()
-        print("\nSchedule in order:")
-        prev_end = 0
-        prev_loc = locations['Sunset District']
-        for start, end, loc, name in schedule:
-            travel = travel_times[prev_loc][loc]
-            travel_start = max(prev_end, start - travel)
-            print(f"Travel from {list(locations.keys())[prev_loc]} to {list(locations.keys())[loc]} at {9 + travel_start // 60}:{travel_start % 60:02d} (takes {travel} mins)")
-            print(f"Meet {name} from {9 + start // 60}:{start % 60:02d} to {9 + end // 60}:{end % 60:02d}")
-            prev_end = end
-            prev_loc = loc
-    else:
-        print("No feasible schedule found.")
+        model = s.model()
+        michelle_s = model.eval(michelle_start).as_long()
+        michelle_e = model.eval(michelle_end).as_long()
+        robert_s = model.eval(robert_start).as_long()
+        robert_e = model.eval(robert_end).as_long()
+        george_s = model.eval(george_start).as_long()
+        george_e = model.eval(george_end).as_long()
+        william_s = model.eval(william_start).as_long()
+        william_e = model.eval(william_end).as_long()
 
-solve_scheduling()
+        def minutes_to_time(m):
+            hours = 9 + m // 60
+            minutes = m % 60
+            return f"{hours:02d}:{minutes:02d}"
+
+        itinerary = [
+            {"action": "meet", "person": "Michelle", "start_time": minutes_to_time(michelle_s), "end_time": minutes_to_time(michelle_e)},
+            {"action": "meet", "person": "Robert", "start_time": minutes_to_time(robert_s), "end_time": minutes_to_time(robert_e)},
+            {"action": "meet", "person": "George", "start_time": minutes_to_time(george_s), "end_time": minutes_to_time(george_e)},
+            {"action": "meet", "person": "William", "start_time": minutes_to_time(william_s), "end_time": minutes_to_time(william_e)}
+        ]
+        return {"itinerary": itinerary}
+    else:
+        return {"error": "No feasible schedule found"}
+
+result = solve_scheduling()
+print(json.dumps(result, indent=2))

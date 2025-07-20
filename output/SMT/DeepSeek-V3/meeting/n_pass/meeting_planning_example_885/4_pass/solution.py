@@ -1,168 +1,226 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize the solver
+def solve_scheduling_problem():
     s = Optimize()
 
-    # Define friends and their availability
+    # Friends data
     friends = {
-        'Mark': {'location': 'Marina District', 'start': 18.75, 'end': 21.0, 'min_duration': 1.5},
-        'Karen': {'location': 'Financial District', 'start': 9.5, 'end': 12.75, 'min_duration': 1.5},
-        'Barbara': {'location': 'Alamo Square', 'start': 10.0, 'end': 19.5, 'min_duration': 1.5},
-        'Nancy': {'location': 'Golden Gate Park', 'start': 16.75, 'end': 20.0, 'min_duration': 1.75},
-        'David': {'location': 'The Castro', 'start': 9.0, 'end': 18.0, 'min_duration': 2.0},
-        'Linda': {'location': 'Bayview', 'start': 18.25, 'end': 19.75, 'min_duration': 0.75},
-        'Kevin': {'location': 'Sunset District', 'start': 10.0, 'end': 17.75, 'min_duration': 2.0},
-        'Matthew': {'location': 'Haight-Ashbury', 'start': 10.25, 'end': 15.5, 'min_duration': 0.75},
-        'Andrew': {'location': 'Nob Hill', 'start': 11.75, 'end': 16.75, 'min_duration': 1.75}
+        "Mark": {"location": "Marina District", "start": "18:45", "end": "21:00", "min_duration": 90},
+        "Karen": {"location": "Financial District", "start": "09:30", "end": "12:45", "min_duration": 90},
+        "Barbara": {"location": "Alamo Square", "start": "10:00", "end": "19:30", "min_duration": 90},
+        "Nancy": {"location": "Golden Gate Park", "start": "16:45", "end": "20:00", "min_duration": 105},
+        "David": {"location": "The Castro", "start": "09:00", "end": "18:00", "min_duration": 120},
+        "Linda": {"location": "Bayview", "start": "18:15", "end": "19:45", "min_duration": 45},
+        "Kevin": {"location": "Sunset District", "start": "10:00", "end": "17:45", "min_duration": 120},
+        "Matthew": {"location": "Haight-Ashbury", "start": "10:15", "end": "15:30", "min_duration": 45},
+        "Andrew": {"location": "Nob Hill", "start": "11:45", "end": "16:45", "min_duration": 105}
     }
 
-    # Complete travel times (in hours)
+    # Helper functions to convert time
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
+
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    # Travel times dictionary (from the problem statement)
     travel_times = {
-        ('Russian Hill', 'Marina District'): 7/60,
-        ('Russian Hill', 'Financial District'): 11/60,
-        ('Russian Hill', 'Alamo Square'): 15/60,
-        ('Russian Hill', 'Golden Gate Park'): 21/60,
-        ('Russian Hill', 'The Castro'): 21/60,
-        ('Russian Hill', 'Bayview'): 23/60,
-        ('Russian Hill', 'Sunset District'): 23/60,
-        ('Russian Hill', 'Haight-Ashbury'): 17/60,
-        ('Russian Hill', 'Nob Hill'): 5/60,
-        ('Marina District', 'Russian Hill'): 8/60,
-        ('Marina District', 'Financial District'): 17/60,
-        ('Marina District', 'Alamo Square'): 15/60,
-        ('Marina District', 'Golden Gate Park'): 18/60,
-        ('Marina District', 'The Castro'): 22/60,
-        ('Marina District', 'Bayview'): 27/60,
-        ('Marina District', 'Sunset District'): 19/60,
-        ('Marina District', 'Haight-Ashbury'): 16/60,
-        ('Marina District', 'Nob Hill'): 12/60,
-        ('Financial District', 'Russian Hill'): 11/60,
-        ('Financial District', 'Marina District'): 15/60,
-        ('Financial District', 'Alamo Square'): 17/60,
-        ('Financial District', 'Golden Gate Park'): 23/60,
-        ('Financial District', 'The Castro'): 20/60,
-        ('Financial District', 'Bayview'): 19/60,
-        ('Financial District', 'Sunset District'): 30/60,
-        ('Financial District', 'Haight-Ashbury'): 19/60,
-        ('Financial District', 'Nob Hill'): 8/60,
-        ('Alamo Square', 'Russian Hill'): 13/60,
-        ('Alamo Square', 'Marina District'): 15/60,
-        ('Alamo Square', 'Financial District'): 17/60,
-        ('Alamo Square', 'Golden Gate Park'): 9/60,
-        ('Alamo Square', 'The Castro'): 8/60,
-        ('Alamo Square', 'Bayview'): 16/60,
-        ('Alamo Square', 'Sunset District'): 16/60,
-        ('Alamo Square', 'Haight-Ashbury'): 5/60,
-        ('Alamo Square', 'Nob Hill'): 11/60,
-        ('Golden Gate Park', 'Russian Hill'): 19/60,
-        ('Golden Gate Park', 'Marina District'): 16/60,
-        ('Golden Gate Park', 'Financial District'): 26/60,
-        ('Golden Gate Park', 'Alamo Square'): 9/60,
-        ('Golden Gate Park', 'The Castro'): 13/60,
-        ('Golden Gate Park', 'Bayview'): 23/60,
-        ('Golden Gate Park', 'Sunset District'): 10/60,
-        ('Golden Gate Park', 'Haight-Ashbury'): 7/60,
-        ('Golden Gate Park', 'Nob Hill'): 20/60,
-        ('The Castro', 'Russian Hill'): 18/60,
-        ('The Castro', 'Marina District'): 21/60,
-        ('The Castro', 'Financial District'): 21/60,
-        ('The Castro', 'Alamo Square'): 8/60,
-        ('The Castro', 'Golden Gate Park'): 11/60,
-        ('The Castro', 'Bayview'): 19/60,
-        ('The Castro', 'Sunset District'): 17/60,
-        ('The Castro', 'Haight-Ashbury'): 6/60,
-        ('The Castro', 'Nob Hill'): 16/60,
-        ('Bayview', 'Russian Hill'): 23/60,
-        ('Bayview', 'Marina District'): 27/60,
-        ('Bayview', 'Financial District'): 19/60,
-        ('Bayview', 'Alamo Square'): 16/60,
-        ('Bayview', 'Golden Gate Park'): 22/60,
-        ('Bayview', 'The Castro'): 19/60,
-        ('Bayview', 'Sunset District'): 23/60,
-        ('Bayview', 'Haight-Ashbury'): 19/60,
-        ('Bayview', 'Nob Hill'): 20/60,
-        ('Sunset District', 'Russian Hill'): 24/60,
-        ('Sunset District', 'Marina District'): 21/60,
-        ('Sunset District', 'Financial District'): 30/60,
-        ('Sunset District', 'Alamo Square'): 17/60,
-        ('Sunset District', 'Golden Gate Park'): 11/60,
-        ('Sunset District', 'The Castro'): 17/60,
-        ('Sunset District', 'Bayview'): 22/60,
-        ('Sunset District', 'Haight-Ashbury'): 15/60,
-        ('Sunset District', 'Nob Hill'): 27/60,
-        ('Haight-Ashbury', 'Russian Hill'): 17/60,
-        ('Haight-Ashbury', 'Marina District'): 17/60,
-        ('Haight-Ashbury', 'Financial District'): 21/60,
-        ('Haight-Ashbury', 'Alamo Square'): 5/60,
-        ('Haight-Ashbury', 'Golden Gate Park'): 7/60,
-        ('Haight-Ashbury', 'The Castro'): 6/60,
-        ('Haight-Ashbury', 'Bayview'): 18/60,
-        ('Haight-Ashbury', 'Sunset District'): 15/60,
-        ('Haight-Ashbury', 'Nob Hill'): 15/60,
-        ('Nob Hill', 'Russian Hill'): 5/60,
-        ('Nob Hill', 'Marina District'): 11/60,
-        ('Nob Hill', 'Financial District'): 9/60,
-        ('Nob Hill', 'Alamo Square'): 11/60,
-        ('Nob Hill', 'Golden Gate Park'): 17/60,
-        ('Nob Hill', 'The Castro'): 17/60,
-        ('Nob Hill', 'Bayview'): 19/60,
-        ('Nob Hill', 'Sunset District'): 24/60,
-        ('Nob Hill', 'Haight-Ashbury'): 13/60,
+        "Russian Hill": {
+            "Marina District": 7,
+            "Financial District": 11,
+            "Alamo Square": 15,
+            "Golden Gate Park": 21,
+            "The Castro": 21,
+            "Bayview": 23,
+            "Sunset District": 23,
+            "Haight-Ashbury": 17,
+            "Nob Hill": 5
+        },
+        "Marina District": {
+            "Russian Hill": 8,
+            "Financial District": 17,
+            "Alamo Square": 15,
+            "Golden Gate Park": 18,
+            "The Castro": 22,
+            "Bayview": 27,
+            "Sunset District": 19,
+            "Haight-Ashbury": 16,
+            "Nob Hill": 12
+        },
+        "Financial District": {
+            "Russian Hill": 11,
+            "Marina District": 15,
+            "Alamo Square": 17,
+            "Golden Gate Park": 23,
+            "The Castro": 20,
+            "Bayview": 19,
+            "Sunset District": 30,
+            "Haight-Ashbury": 19,
+            "Nob Hill": 8
+        },
+        "Alamo Square": {
+            "Russian Hill": 13,
+            "Marina District": 15,
+            "Financial District": 17,
+            "Golden Gate Park": 9,
+            "The Castro": 8,
+            "Bayview": 16,
+            "Sunset District": 16,
+            "Haight-Ashbury": 5,
+            "Nob Hill": 11
+        },
+        "Golden Gate Park": {
+            "Russian Hill": 19,
+            "Marina District": 16,
+            "Financial District": 26,
+            "Alamo Square": 9,
+            "The Castro": 13,
+            "Bayview": 23,
+            "Sunset District": 10,
+            "Haight-Ashbury": 7,
+            "Nob Hill": 20
+        },
+        "The Castro": {
+            "Russian Hill": 18,
+            "Marina District": 21,
+            "Financial District": 21,
+            "Alamo Square": 8,
+            "Golden Gate Park": 11,
+            "Bayview": 19,
+            "Sunset District": 17,
+            "Haight-Ashbury": 6,
+            "Nob Hill": 16
+        },
+        "Bayview": {
+            "Russian Hill": 23,
+            "Marina District": 27,
+            "Financial District": 19,
+            "Alamo Square": 16,
+            "Golden Gate Park": 22,
+            "The Castro": 19,
+            "Sunset District": 23,
+            "Haight-Ashbury": 19,
+            "Nob Hill": 20
+        },
+        "Sunset District": {
+            "Russian Hill": 24,
+            "Marina District": 21,
+            "Financial District": 30,
+            "Alamo Square": 17,
+            "Golden Gate Park": 11,
+            "The Castro": 17,
+            "Bayview": 22,
+            "Haight-Ashbury": 15,
+            "Nob Hill": 27
+        },
+        "Haight-Ashbury": {
+            "Russian Hill": 17,
+            "Marina District": 17,
+            "Financial District": 21,
+            "Alamo Square": 5,
+            "Golden Gate Park": 7,
+            "The Castro": 6,
+            "Bayview": 18,
+            "Sunset District": 15,
+            "Nob Hill": 15
+        },
+        "Nob Hill": {
+            "Russian Hill": 5,
+            "Marina District": 11,
+            "Financial District": 9,
+            "Alamo Square": 11,
+            "Golden Gate Park": 17,
+            "The Castro": 17,
+            "Bayview": 19,
+            "Sunset District": 24,
+            "Haight-Ashbury": 13
+        }
     }
 
-    # Create variables for meeting times
-    meeting_start = {name: Real(f'start_{name}') for name in friends}
-    meeting_end = {name: Real(f'end_{name}') for name in friends}
+    def get_travel_time(from_loc, to_loc):
+        return travel_times.get(from_loc, {}).get(to_loc, 0)
 
-    # Starting point
-    current_time = 9.0  # 9:00 AM
-    current_location = 'Russian Hill'
-
-    # Basic constraints for each meeting
+    # Create meeting variables
+    meetings = {}
     for name in friends:
-        s.add(meeting_start[name] >= friends[name]['start'])
-        s.add(meeting_end[name] <= friends[name]['end'])
-        s.add(meeting_end[name] - meeting_start[name] >= friends[name]['min_duration'])
+        start_var = Int(f'start_{name}')
+        end_var = Int(f'end_{name}')
+        meetings[name] = {
+            'start': start_var,
+            'end': end_var,
+            'location': friends[name]['location'],
+            'min_duration': friends[name]['min_duration'],
+            'available_start': time_to_minutes(friends[name]['start']),
+            'available_end': time_to_minutes(friends[name]['end'])
+        }
+        s.add(start_var >= meetings[name]['available_start'])
+        s.add(end_var <= meetings[name]['available_end'])
+        s.add(end_var == start_var + meetings[name]['min_duration'])
 
-    # Create a list to track meeting order
-    meeting_order = [name for name in friends]
-    
-    # Add travel time constraints between consecutive meetings
-    for i in range(len(meeting_order)-1):
-        current = meeting_order[i]
-        next_meeting = meeting_order[i+1]
-        travel_time = travel_times.get(
-            (friends[current]['location'], friends[next_meeting]['location']), 0)
-        s.add(meeting_start[next_meeting] >= meeting_end[current] + travel_time)
+    # Current location and time
+    current_location = "Russian Hill"
+    current_time = 540  # 9:00 AM
 
-    # Maximize the number of friends met
-    met = [If(And(meeting_start[name] >= friends[name]['start'],
-               meeting_end[name] <= friends[name]['end'],
-               meeting_end[name] - meeting_start[name] >= friends[name]['min_duration']), 1, 0)
-           for name in friends]
-    total_met = Sum(met)
-    s.maximize(total_met)
+    # To model the sequence, we'll assume an arbitrary order and add constraints
+    # that for any two meetings, one must be after the other plus travel time
+    meeting_names = list(meetings.keys())
+    for i in range(len(meeting_names)):
+        for j in range(i + 1, len(meeting_names)):
+            name1 = meeting_names[i]
+            name2 = meeting_names[j]
+            loc1 = meetings[name1]['location']
+            loc2 = meetings[name2]['location']
+            travel_time = get_travel_time(loc1, loc2)
+            # Either meeting1 is before meeting2 with travel time
+            before = And(
+                meetings[name1]['end'] + travel_time <= meetings[name2]['start']
+            )
+            # Or meeting2 is before meeting1 with travel time from loc2 to loc1
+            travel_time_reverse = get_travel_time(loc2, loc1)
+            after = And(
+                meetings[name2]['end'] + travel_time_reverse <= meetings[name1]['start']
+            )
+            s.add(Or(before, after))
 
-    # Solve and print results
+    # Also, all meetings must start after current_time (9:00 AM) plus travel time from Russian Hill
+    for name in meetings:
+        loc = meetings[name]['location']
+        travel_time = get_travel_time(current_location, loc)
+        s.add(meetings[name]['start'] >= current_time + travel_time)
+
+    # Maximize the number of meetings
+    meeting_active = {}
+    for name in meetings:
+        active = Bool(f'active_{name}')
+        meeting_active[name] = active
+        s.add(active == (meetings[name]['start'] >= current_time))
+
+    s.maximize(Sum([If(active, 1, 0) for active in meeting_active.values()]))
+
+    # Check if the solver can find a solution
     if s.check() == sat:
-        m = s.model()
-        print("Optimal Schedule:")
-        scheduled = []
-        for name in friends:
-            start = m[meeting_start[name]].as_fraction()
-            end = m[meeting_end[name]].as_fraction()
-            if m.evaluate(met[list(friends.keys()).index(name)]).as_long() == 1:
-                scheduled.append((float(start), name))
-                print(f"Meet {name} at {friends[name]['location']} from {start} to {end}")
-        
-        # Print in chronological order
-        print("\nChronological Order:")
-        for time, name in sorted(scheduled):
-            print(f"{time:.2f}: Meet {name} at {friends[name]['location']}")
-        
-        print(f"\nTotal friends met: {m.evaluate(total_met)}")
+        model = s.model()
+        itinerary = []
+        for name in meetings:
+            if model[meeting_active[name]]:
+                start_val = model[meetings[name]['start']].as_long()
+                end_val = model[meetings[name]['end']].as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": minutes_to_time(start_val),
+                    "end_time": minutes_to_time(end_val)
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x['start_time']))
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Run the solver and print the result
+result = solve_scheduling_problem()
+print(json.dumps(result, indent=2))

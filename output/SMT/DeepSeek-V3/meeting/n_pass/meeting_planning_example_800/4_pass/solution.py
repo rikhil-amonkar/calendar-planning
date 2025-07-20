@@ -1,124 +1,196 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize Z3 solver
-    s = Optimize()
-    
-    # Locations and their indices
-    locations = {
-        'Union Square': 0,
-        'The Castro': 1,
-        'North Beach': 2,
-        'Embarcadero': 3,
-        'Alamo Square': 4,
-        'Nob Hill': 5,
-        'Presidio': 6,
-        'Fisherman\'s Wharf': 7,
-        'Mission District': 8,
-        'Haight-Ashbury': 9
+def solve_scheduling_problem():
+    # Initialize Z3 optimizer
+    opt = Optimize()
+
+    # Define the friends and their constraints
+    friends = {
+        "Melissa": {"location": "The Castro", "available_start": "20:15", "available_end": "21:15", "duration": 30},
+        "Kimberly": {"location": "North Beach", "available_start": "07:00", "available_end": "10:30", "duration": 15},
+        "Joseph": {"location": "Embarcadero", "available_start": "15:30", "available_end": "19:30", "duration": 75},
+        "Barbara": {"location": "Alamo Square", "available_start": "20:45", "available_end": "21:45", "duration": 15},
+        "Kenneth": {"location": "Nob Hill", "available_start": "12:15", "available_end": "17:15", "duration": 105},
+        "Joshua": {"location": "Presidio", "available_start": "16:30", "available_end": "18:15", "duration": 105},
+        "Brian": {"location": "Fisherman's Wharf", "available_start": "09:30", "available_end": "15:30", "duration": 45},
+        "Steven": {"location": "Mission District", "available_start": "19:30", "available_end": "21:00", "duration": 90},
+        "Betty": {"location": "Haight-Ashbury", "available_start": "19:00", "available_end": "20:30", "duration": 90}
     }
-    
-    # Travel times matrix (from_location_index, to_location_index) -> minutes
-    travel_times = [
-        [0, 17, 10, 11, 15, 9, 24, 15, 14, 18],  # Union Square
-        [19, 0, 20, 22, 8, 16, 20, 24, 7, 6],     # The Castro
-        [7, 23, 0, 6, 16, 7, 17, 5, 18, 18],      # North Beach
-        [10, 25, 5, 0, 19, 10, 20, 6, 20, 21],    # Embarcadero
-        [14, 8, 15, 16, 0, 11, 17, 19, 10, 5],    # Alamo Square
-        [7, 17, 8, 9, 11, 0, 17, 10, 13, 13],    # Nob Hill
-        [22, 21, 18, 20, 19, 18, 0, 19, 26, 15],  # Presidio
-        [13, 27, 6, 8, 21, 11, 17, 0, 22, 22],    # Fisherman's Wharf
-        [15, 7, 17, 19, 11, 12, 25, 22, 0, 12],   # Mission District
-        [19, 6, 19, 20, 5, 15, 15, 23, 11, 0]     # Haight-Ashbury
-    ]
-    
-    # Friends data: name, location, start_time, end_time, min_duration
-    friends = [
-        ('Melissa', 'The Castro', (20, 15), (21, 15), 30),
-        ('Kimberly', 'North Beach', (7, 0), (10, 30), 15),
-        ('Joseph', 'Embarcadero', (15, 30), (19, 30), 75),
-        ('Barbara', 'Alamo Square', (20, 45), (21, 45), 15),
-        ('Kenneth', 'Nob Hill', (12, 15), (17, 15), 105),
-        ('Joshua', 'Presidio', (16, 30), (18, 15), 105),
-        ('Brian', 'Fisherman\'s Wharf', (9, 30), (15, 30), 45),
-        ('Steven', 'Mission District', (19, 30), (21, 0), 90),
-        ('Betty', 'Haight-Ashbury', (19, 0), (20, 30), 90)
-    ]
-    
-    # Convert time to minutes since midnight
-    def time_to_minutes(h, m):
-        return h * 60 + m
-    
-    # Current location is Union Square at 9:00 AM (540 minutes)
-    initial_time = time_to_minutes(9, 0)
-    current_location = locations['Union Square']
-    
-    # Variables for each friend: start, end, and whether they are met
-    friend_vars = []
-    for name, loc, (sh, sm), (eh, em), min_dur in friends:
-        start_min = time_to_minutes(sh, sm)
-        end_min = time_to_minutes(eh, em)
-        loc_idx = locations[loc]
-        
-        start = Int(f'start_{name}')
-        end = Int(f'end_{name}')
-        met = Bool(f'met_{name}')
-        
-        # Constraints for time window and duration
-        s.add(Implies(met, start >= start_min))
-        s.add(Implies(met, end <= end_min))
-        s.add(Implies(met, end == start + min_dur))
-        
-        friend_vars.append((name, loc_idx, start, end, met))
-    
-    # Sequence constraints: meetings must be scheduled in order with travel times
-    # We'll create an order variable for each meeting to determine the sequence
-    order = [Int(f'order_{name}') for name, _, _, _, _ in friend_vars]
-    s.add(Distinct(order))
-    for i in range(len(order)):
-        s.add(order[i] >= 0)
-        s.add(order[i] < len(order))
-    
-    # For each pair of meetings, if one comes after another, enforce travel time
-    for i in range(len(friend_vars)):
-        for j in range(len(friend_vars)):
-            if i == j:
-                continue
-            name_i, loc_i, start_i, end_i, met_i = friend_vars[i]
-            name_j, loc_j, start_j, end_j, met_j = friend_vars[j]
-            s.add(Implies(And(met_i, met_j, order[i] < order[j]),
-                          start_j >= end_i + travel_times[loc_i][loc_j]))
-    
-    # The first meeting must start after initial_time + travel from Union Square to its location
-    for i in range(len(friend_vars)):
-        name, loc, start, end, met = friend_vars[i]
-        s.add(Implies(And(met, order[i] == 0),
-                      start >= initial_time + travel_times[current_location][loc]))
-    
-    # Maximize the number of friends met
-    total_met = Sum([If(met, 1, 0) for (_, _, _, _, met) in friend_vars])
-    s.maximize(total_met)
-    
-    # Solve
-    if s.check() == sat:
-        model = s.model()
-        scheduled_meetings = []
-        for (name, loc_idx, start, end, met) in friend_vars:
-            if is_true(model[met]):
-                start_val = model[start].as_long()
-                end_val = model[end].as_long()
-                loc = [k for k, v in locations.items() if v == loc_idx][0]
-                scheduled_meetings.append((name, loc, start_val, end_val))
-        
-        # Sort by start time
-        scheduled_meetings.sort(key=lambda x: x[2])
-        
-        print("Optimal Schedule:")
-        for meeting in scheduled_meetings:
-            name, loc, start, end = meeting
-            print(f"Meet {name} at {loc} from {start//60}:{start%60:02d} to {end//60}:{end%60:02d}")
-        print(f"Total friends met: {len(scheduled_meetings)}")
-    else:
-        print("No feasible schedule found.")
 
-solve_scheduling()
+    # Convert time strings to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm - 540  # 9:00 AM is 540 minutes
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        total_minutes = 540 + minutes
+        hh = total_minutes // 60
+        mm = total_minutes % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    # Define travel times (in minutes)
+    travel_times = {
+        ("Union Square", "The Castro"): 17,
+        ("Union Square", "North Beach"): 10,
+        ("Union Square", "Embarcadero"): 11,
+        ("Union Square", "Alamo Square"): 15,
+        ("Union Square", "Nob Hill"): 9,
+        ("Union Square", "Presidio"): 24,
+        ("Union Square", "Fisherman's Wharf"): 15,
+        ("Union Square", "Mission District"): 14,
+        ("Union Square", "Haight-Ashbury"): 18,
+        ("The Castro", "Union Square"): 19,
+        ("The Castro", "North Beach"): 20,
+        ("The Castro", "Embarcadero"): 22,
+        ("The Castro", "Alamo Square"): 8,
+        ("The Castro", "Nob Hill"): 16,
+        ("The Castro", "Presidio"): 20,
+        ("The Castro", "Fisherman's Wharf"): 24,
+        ("The Castro", "Mission District"): 7,
+        ("The Castro", "Haight-Ashbury"): 6,
+        ("North Beach", "Union Square"): 7,
+        ("North Beach", "The Castro"): 23,
+        ("North Beach", "Embarcadero"): 6,
+        ("North Beach", "Alamo Square"): 16,
+        ("North Beach", "Nob Hill"): 7,
+        ("North Beach", "Presidio"): 17,
+        ("North Beach", "Fisherman's Wharf"): 5,
+        ("North Beach", "Mission District"): 18,
+        ("North Beach", "Haight-Ashbury"): 18,
+        ("Embarcadero", "Union Square"): 10,
+        ("Embarcadero", "The Castro"): 25,
+        ("Embarcadero", "North Beach"): 5,
+        ("Embarcadero", "Alamo Square"): 19,
+        ("Embarcadero", "Nob Hill"): 10,
+        ("Embarcadero", "Presidio"): 20,
+        ("Embarcadero", "Fisherman's Wharf"): 6,
+        ("Embarcadero", "Mission District"): 20,
+        ("Embarcadero", "Haight-Ashbury"): 21,
+        ("Alamo Square", "Union Square"): 14,
+        ("Alamo Square", "The Castro"): 8,
+        ("Alamo Square", "North Beach"): 15,
+        ("Alamo Square", "Embarcadero"): 16,
+        ("Alamo Square", "Nob Hill"): 11,
+        ("Alamo Square", "Presidio"): 17,
+        ("Alamo Square", "Fisherman's Wharf"): 19,
+        ("Alamo Square", "Mission District"): 10,
+        ("Alamo Square", "Haight-Ashbury"): 5,
+        ("Nob Hill", "Union Square"): 7,
+        ("Nob Hill", "The Castro"): 17,
+        ("Nob Hill", "North Beach"): 8,
+        ("Nob Hill", "Embarcadero"): 9,
+        ("Nob Hill", "Alamo Square"): 11,
+        ("Nob Hill", "Presidio"): 17,
+        ("Nob Hill", "Fisherman's Wharf"): 10,
+        ("Nob Hill", "Mission District"): 13,
+        ("Nob Hill", "Haight-Ashbury"): 13,
+        ("Presidio", "Union Square"): 22,
+        ("Presidio", "The Castro"): 21,
+        ("Presidio", "North Beach"): 18,
+        ("Presidio", "Embarcadero"): 20,
+        ("Presidio", "Alamo Square"): 19,
+        ("Presidio", "Nob Hill"): 18,
+        ("Presidio", "Fisherman's Wharf"): 19,
+        ("Presidio", "Mission District"): 26,
+        ("Presidio", "Haight-Ashbury"): 15,
+        ("Fisherman's Wharf", "Union Square"): 13,
+        ("Fisherman's Wharf", "The Castro"): 27,
+        ("Fisherman's Wharf", "North Beach"): 6,
+        ("Fisherman's Wharf", "Embarcadero"): 8,
+        ("Fisherman's Wharf", "Alamo Square"): 21,
+        ("Fisherman's Wharf", "Nob Hill"): 11,
+        ("Fisherman's Wharf", "Presidio"): 17,
+        ("Fisherman's Wharf", "Mission District"): 22,
+        ("Fisherman's Wharf", "Haight-Ashbury"): 22,
+        ("Mission District", "Union Square"): 15,
+        ("Mission District", "The Castro"): 7,
+        ("Mission District", "North Beach"): 17,
+        ("Mission District", "Embarcadero"): 19,
+        ("Mission District", "Alamo Square"): 11,
+        ("Mission District", "Nob Hill"): 12,
+        ("Mission District", "Presidio"): 25,
+        ("Mission District", "Fisherman's Wharf"): 22,
+        ("Mission District", "Haight-Ashbury"): 12,
+        ("Haight-Ashbury", "Union Square"): 19,
+        ("Haight-Ashbury", "The Castro"): 6,
+        ("Haight-Ashbury", "North Beach"): 19,
+        ("Haight-Ashbury", "Embarcadero"): 20,
+        ("Haight-Ashbury", "Alamo Square"): 5,
+        ("Haight-Ashbury", "Nob Hill"): 15,
+        ("Haight-Ashbury", "Presidio"): 15,
+        ("Haight-Ashbury", "Fisherman's Wharf"): 23,
+        ("Haight-Ashbury", "Mission District"): 11
+    }
+
+    # Create Z3 variables for each meeting's start and end times
+    meeting_vars = {}
+    for name in friends:
+        start = Int(f"start_{name}")
+        end = Int(f"end_{name}")
+        meeting_vars[name] = {"start": start, "end": end}
+
+    # Add constraints for each meeting
+    for name in friends:
+        friend = friends[name]
+        start = meeting_vars[name]["start"]
+        end = meeting_vars[name]["end"]
+        available_start = time_to_minutes(friend["available_start"])
+        available_end = time_to_minutes(friend["available_end"])
+        duration = friend["duration"]
+
+        # Meeting must be within available time
+        opt.add(start >= available_start)
+        opt.add(end <= available_end)
+        opt.add(end == start + duration)
+
+    # Add constraints for travel times between meetings
+    names = list(friends.keys())
+    for i in range(len(names)):
+        for j in range(i+1, len(names)):  # Avoid duplicate constraints
+            name1 = names[i]
+            name2 = names[j]
+            loc1 = friends[name1]["location"]
+            loc2 = friends[name2]["location"]
+            travel_time = travel_times.get((loc1, loc2), 0)
+            
+            # Only one meeting can happen at a time considering travel
+            opt.add(Or(
+                meeting_vars[name1]["end"] + travel_time <= meeting_vars[name2]["start"],
+                meeting_vars[name2]["end"] + travel_time <= meeting_vars[name1]["start"]
+            ))
+
+    # Prioritize meeting as many friends as possible
+    # We'll use a Boolean variable for each meeting indicating whether it is scheduled
+    scheduled = {}
+    for name in friends:
+        scheduled[name] = Bool(f"scheduled_{name}")
+        opt.add(Implies(scheduled[name], meeting_vars[name]["start"] >= 0))
+
+    # Maximize the number of scheduled meetings
+    opt.maximize(Sum([If(scheduled[name], 1, 0) for name in friends]))
+
+    # Check if the constraints are satisfiable
+    if opt.check() == sat:
+        m = opt.model()
+        itinerary = []
+        for name in friends:
+            if is_true(m[scheduled[name]]):
+                start = m[meeting_vars[name]["start"]].as_long()
+                end = m[meeting_vars[name]["end"]].as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": minutes_to_time(start),
+                    "end_time": minutes_to_time(end)
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x["start_time"]))
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": []}
+
+# Solve the problem and print the solution
+solution = solve_scheduling_problem()
+print(json.dumps(solution, indent=2))

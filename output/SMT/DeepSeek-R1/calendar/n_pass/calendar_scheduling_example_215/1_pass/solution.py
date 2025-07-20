@@ -1,73 +1,53 @@
 from z3 import *
 
 def main():
+    # Initialize the optimizer
+    opt = Optimize()
+    
     # Start time in minutes from 9:00
-    s = Int('s')
+    start = Int('start')
+    opt.add(start >= 0)
+    opt.add(start <= 450)  # 450 minutes = 16:30, ensuring meeting ends by 17:00
     
-    # Work hours: 9:00 (0 min) to 17:00 (480 min)
-    # Meeting must start between 0 and 450 (inclusive) to end by 480
-    constraints = [s >= 0, s <= 450]
-    
-    # Busy times in minutes from 9:00
-    cynthia_busy = [
-        (30, 90),    # 9:30-10:30
-        (150, 180),  # 11:30-12:00
-        (240, 270),  # 13:00-13:30
-        (360, 420)   # 15:00-16:00
-    ]
-    
-    lauren_busy = [
-        (0, 30),     # 9:00-9:30
-        (90, 120),   # 10:30-11:00
-        (150, 180),  # 11:30-12:00
-        (240, 270),  # 13:00-13:30
-        (300, 330),  # 14:00-14:30
-        (360, 390),  # 15:00-15:30
-        (420, 480)   # 16:00-17:00
-    ]
-    
-    robert_busy = [
-        (90, 120),   # 10:30-11:00
-        (150, 180),  # 11:30-12:00
-        (210, 270),  # 12:30-13:30
-        (300, 420)   # 14:00-16:00
-    ]
+    # Busy intervals for each participant (start, end) in minutes from 9:00
+    busy_times = {
+        'Cynthia': [(30, 90), (150, 180), (240, 270), (360, 420)],
+        'Lauren': [(0, 30), (90, 120), (150, 180), (240, 270), (300, 330), (360, 390), (420, 480)],
+        'Robert': [(90, 120), (150, 180), (210, 270), (300, 420)]
+    }
     
     # Add constraints for each participant's busy intervals
-    for start_busy, end_busy in cynthia_busy:
-        constraints.append(Or(s + 30 <= start_busy, s >= end_busy))
-        
-    for start_busy, end_busy in lauren_busy:
-        constraints.append(Or(s + 30 <= start_busy, s >= end_busy))
-        
-    for start_busy, end_busy in robert_busy:
-        constraints.append(Or(s + 30 <= start_busy, s >= end_busy))
+    for intervals in busy_times.values():
+        for (busy_start, busy_end) in intervals:
+            opt.add(Or(start + 30 <= busy_start, start >= busy_end))
     
-    # Create solver and minimize start time
-    opt = Optimize()
-    opt.add(constraints)
-    opt.minimize(s)
+    # Minimize the start time to find the earliest slot
+    opt.minimize(start)
     
+    # Check for a solution
     if opt.check() == sat:
         m = opt.model()
-        start_min = m.eval(s).as_long()
-        # Convert start time to HH:MM
-        start_hour = 9 + start_min // 60
-        start_minute = start_min % 60
-        start_time = f"{start_hour:02d}:{start_minute:02d}"
+        start_val = m[start].as_long()
         
-        # Calculate end time
-        end_min = start_min + 30
-        end_hour = 9 + end_min // 60
-        end_minute = end_min % 60
-        end_time = f"{end_hour:02d}:{end_minute:02d}"
+        # Convert start_val to HH:MM format
+        total_minutes = start_val
+        hours = 9 + total_minutes // 60
+        minutes = total_minutes % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Output the meeting details
-        print("Monday")
-        print(start_time)
-        print(end_time)
+        # Calculate end time (start + 30 minutes)
+        end_val = start_val + 30
+        end_hours = 9 + end_val // 60
+        end_minutes = end_val % 60
+        end_time = f"{end_hours:02d}:{end_minutes:02d}"
+        
+        # Output the solution
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

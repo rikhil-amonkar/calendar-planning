@@ -1,91 +1,103 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize solver
+    # Initialize the solver
     s = Solver()
-    
+
+    # Define variables for meeting start and end times
+    # Meeting Laura in Mission District
+    laura_start = Int('laura_start')
+    laura_end = Int('laura_end')
+    # Meeting Anthony in Financial District
+    anthony_start = Int('anthony_start')
+    anthony_end = Int('anthony_end')
+
     # Convert all times to minutes since 9:00 AM (540 minutes)
-    # Laura's availability: 12:15 PM to 7:45 PM (735 to 1170 minutes since midnight)
-    # Anthony's availability: 12:30 PM to 2:45 PM (750 to 885 minutes since midnight)
-    # Since we start at 9:00 AM (540 minutes), we'll adjust all times relative to 9:00 AM.
-    # So Laura's availability: 12:15 PM is 3*60 + 15 = 195 minutes after 9:00 AM.
-    # Anthony's availability: 12:30 PM is 3*60 + 30 = 210 minutes after 9:00 AM.
-    
-    # Meeting start and end times (relative to 9:00 AM)
-    meet_laura_start = Int('meet_laura_start')
-    meet_laura_end = Int('meet_laura_end')
-    meet_anthony_start = Int('meet_anthony_start')
-    meet_anthony_end = Int('meet_anthony_end')
-    
-    # Laura's availability: 195 to 675 minutes after 9:00 AM (12:15 PM to 7:45 PM is 3h15m to 10h45m after 9:00 AM)
-    laura_start_min = 195
-    laura_end_max = 675  # 7:45 PM is 10h45m after 9:00 AM (10*60 + 45 = 645? Wait no: 12:15 PM is 3h15m after 9:00 AM, 7:45 PM is 10h45m after 9:00 AM. So 10*60 +45=645. So laura_end_max is 645.
-    # Correction: 12:15 PM is 3h15m after 9:00 AM (195 minutes), 7:45 PM is 10h45m after 9:00 AM (645 minutes).
-    
-    # Anthony's availability: 210 to 285 minutes after 9:00 AM (12:30 PM to 2:45 PM is 3h30m to 5h45m after 9:00 AM)
-    anthony_start_min = 210
-    anthony_end_max = 285  # 2:45 PM is 5h45m after 9:00 AM (5*60 +45=345 minutes? Wait no: 12:30 PM is 3h30m (210 minutes), 2:45 PM is 5h45m (345 minutes). So anthony_end_max is 345.
-    # Wait, the original note says Anthony is available from 12:30 PM to 2:45 PM. So 12:30 PM is 3h30m after 9:00 AM (210 minutes), 2:45 PM is 5h45m after 9:00 AM (345 minutes). So anthony_end_max is 345.
-    
-    # Meeting duration constraints
-    s.add(meet_laura_end == meet_laura_start + 75)  # Laura's meeting lasts 75 minutes
-    s.add(meet_anthony_end == meet_anthony_start + 30)  # Anthony's meeting lasts 30 minutes
-    
-    # Availability constraints
-    s.add(meet_laura_start >= laura_start_min)
-    s.add(meet_laura_end <= laura_end_max)
-    s.add(meet_anthony_start >= anthony_start_min)
-    s.add(meet_anthony_end <= anthony_end_max)
-    
-    # Travel times
-    # The Castro to Mission District: 7 minutes
-    # The Castro to Financial District: 20 minutes
-    # Mission District to Financial District: 17 minutes
-    # Financial District to Mission District: 17 minutes
-    
-    # We start at The Castro at time 0 (9:00 AM).
-    # We need to schedule the meetings with Laura and Anthony, possibly with travel in between.
-    
-    # There are two possible orders:
-    # 1. Meet Anthony first, then Laura.
-    # 2. Meet Laura first, then Anthony.
-    
-    # We'll create two separate scenarios and let Z3 choose the feasible one.
-    
-    # Scenario 1: Meet Anthony first, then Laura.
+    laura_available_start = 12 * 60 + 15  # 12:15 PM in minutes
+    laura_available_end = 19 * 60 + 45    # 19:45 PM in minutes
+    anthony_available_start = 12 * 60 + 30  # 12:30 PM in minutes
+    anthony_available_end = 14 * 60 + 45    # 14:45 PM in minutes
+
+    # Add constraints for Laura's meeting
+    s.add(laura_start >= laura_available_start)
+    s.add(laura_end <= laura_available_end)
+    s.add(laura_end - laura_start >= 75)  # 75 minutes minimum
+
+    # Add constraints for Anthony's meeting
+    s.add(anthony_start >= anthony_available_start)
+    s.add(anthony_end <= anthony_available_end)
+    s.add(anthony_end - anthony_start >= 30)  # 30 minutes minimum
+
+    # Possible schedules: meet Laura first or Anthony first
+    # We need to model the travel times between locations
+
+    # Scenario 1: Meet Anthony first, then Laura
+    # Travel from Castro to Financial District: 20 minutes
+    # Then from Financial District to Mission District: 17 minutes
     scenario1 = And(
-        meet_anthony_start >= 20,  # Travel from Castro to Financial District takes 20 minutes.
-        meet_laura_start >= meet_anthony_end + 17  # Travel from Financial to Mission takes 17 minutes.
+        anthony_start >= 540 + 20,  # 9:00 AM + 20 minutes travel
+        laura_start >= anthony_end + 17  # Travel from Financial to Mission
     )
-    
-    # Scenario 2: Meet Laura first, then Anthony.
+
+    # Scenario 2: Meet Laura first, then Anthony
+    # Travel from Castro to Mission District: 7 minutes
+    # Then from Mission District to Financial District: 17 minutes
     scenario2 = And(
-        meet_laura_start >= 7,  # Travel from Castro to Mission takes 7 minutes.
-        meet_anthony_start >= meet_laura_end + 17  # Travel from Mission to Financial takes 17 minutes.
+        laura_start >= 540 + 7,  # 9:00 AM + 7 minutes travel
+        anthony_start >= laura_end + 17  # Travel from Mission to Financial
     )
-    
-    # Add either scenario1 or scenario2 to the solver.
+
+    # Add either scenario1 or scenario2 to the solver
     s.add(Or(scenario1, scenario2))
-    
-    # Check if a solution exists.
+
+    # Check if a solution exists
     if s.check() == sat:
         m = s.model()
-        laura_start = m.eval(meet_laura_start).as_long()
-        anthony_start = m.eval(meet_anthony_start).as_long()
-        
-        # Convert times back to HH:MM format.
-        def minutes_to_time(minutes):
-            hours = 9 + (minutes // 60)
-            mins = minutes % 60
-            return f"{hours}:{mins:02d}"
-        
-        laura_start_time = minutes_to_time(laura_start)
-        anthony_start_time = minutes_to_time(anthony_start)
-        
-        print("SOLUTION:")
-        print(f"Meet Anthony at Financial District from {anthony_start_time} for 30 minutes.")
-        print(f"Meet Laura at Mission District from {laura_start_time} for 75 minutes.")
-    else:
-        print("No feasible schedule found.")
+        # Extract the times
+        laura_s = m.evaluate(laura_start).as_long()
+        laura_e = m.evaluate(laura_end).as_long()
+        anthony_s = m.evaluate(anthony_start).as_long()
+        anthony_e = m.evaluate(anthony_end).as_long()
 
-solve_scheduling()
+        # Convert minutes back to HH:MM format
+        def to_time_str(minutes):
+            hh = minutes // 60
+            mm = minutes % 60
+            return f"{hh:02d}:{mm:02d}"
+
+        itinerary = []
+        # Determine the order of meetings based on start times
+        if anthony_s < laura_s:
+            itinerary.append({
+                "action": "meet",
+                "person": "Anthony",
+                "start_time": to_time_str(anthony_s),
+                "end_time": to_time_str(anthony_e)
+            })
+            itinerary.append({
+                "action": "meet",
+                "person": "Laura",
+                "start_time": to_time_str(laura_s),
+                "end_time": to_time_str(laura_e)
+            })
+        else:
+            itinerary.append({
+                "action": "meet",
+                "person": "Laura",
+                "start_time": to_time_str(laura_s),
+                "end_time": to_time_str(laura_e)
+            })
+            itinerary.append({
+                "action": "meet",
+                "person": "Anthony",
+                "start_time": to_time_str(anthony_s),
+                "end_time": to_time_str(anthony_e)
+            })
+
+        return {"itinerary": itinerary}
+    else:
+        return {"error": "No feasible schedule found"}
+
+# Execute the solver
+solution = solve_scheduling()
+print(solution)

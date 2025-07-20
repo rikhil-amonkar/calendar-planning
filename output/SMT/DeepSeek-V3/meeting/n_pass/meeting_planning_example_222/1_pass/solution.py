@@ -1,88 +1,128 @@
 from z3 import *
+import datetime
 
-def solve_scheduling():
-    # Initialize solver
+def solve_scheduling_problem():
+    # Initialize the solver
     s = Solver()
 
-    # Define variables for meeting start and end times
-    # Helen at North Beach
-    helen_start = Int('helen_start')  # in minutes since 9:00 AM (540)
+    # Define the travel times (in minutes)
+    travel_times = {
+        ('Nob Hill', 'North Beach'): 8,
+        ('Nob Hill', 'Fisherman\'s Wharf'): 11,
+        ('Nob Hill', 'Bayview'): 19,
+        ('North Beach', 'Nob Hill'): 7,
+        ('North Beach', 'Fisherman\'s Wharf'): 5,
+        ('North Beach', 'Bayview'): 22,
+        ('Fisherman\'s Wharf', 'Nob Hill'): 11,
+        ('Fisherman\'s Wharf', 'North Beach'): 6,
+        ('Fisherman\'s Wharf', 'Bayview'): 26,
+        ('Bayview', 'Nob Hill'): 20,
+        ('Bayview', 'North Beach'): 21,
+        ('Bayview', 'Fisherman\'s Wharf'): 25,
+    }
+
+    # Convert all times to minutes since 00:00 for easier arithmetic
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
+
+    # Convert minutes back to HH:MM format
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    # Define the arrival time at Nob Hill
+    arrival_time = time_to_minutes("09:00")
+
+    # Define friends' availability and meeting constraints
+    friends = {
+        'Helen': {
+            'location': 'North Beach',
+            'available_start': time_to_minutes("07:00"),
+            'available_end': time_to_minutes("16:45"),
+            'min_duration': 120,
+        },
+        'Kimberly': {
+            'location': 'Fisherman\'s Wharf',
+            'available_start': time_to_minutes("16:30"),
+            'available_end': time_to_minutes("21:00"),
+            'min_duration': 45,
+        },
+        'Patricia': {
+            'location': 'Bayview',
+            'available_start': time_to_minutes("18:00"),
+            'available_end': time_to_minutes("21:15"),
+            'min_duration': 120,
+        }
+    }
+
+    # Create variables for each meeting's start and end times
+    helen_start = Int('helen_start')
     helen_end = Int('helen_end')
-    
-    # Kimberly at Fisherman's Wharf
     kimberly_start = Int('kimberly_start')
     kimberly_end = Int('kimberly_end')
-    
-    # Patricia at Bayview
     patricia_start = Int('patricia_start')
     patricia_end = Int('patricia_end')
-    
-    # Define travel times (in minutes)
-    # From Nob Hill to North Beach: 8
-    # From North Beach to Fisherman's Wharf: 5
-    # From Fisherman's Wharf to Bayview: 26
-    
-    # Constraints for Helen (North Beach: 7:00 AM - 4:45 PM, min 120 minutes)
-    # Convert times to minutes since 9:00 AM (540 minutes since midnight)
-    # Helen's availability: 7:00 AM (420) to 4:45 PM (16*60 + 45 = 1005)
-    # Since our time starts at 9:00 AM (540), subtract 540 to get relative times
-    helen_min_start = 420 - 540  # 7:00 AM is -120 (relative to 9:00 AM)
-    helen_max_end = 1005 - 540    # 4:45 PM is 465 (relative to 9:00 AM)
-    
-    s.add(helen_start >= helen_min_start)
-    s.add(helen_end <= helen_max_end)
-    s.add(helen_end - helen_start >= 120)  # min 120 minutes
-    
-    # Constraints for Kimberly (Fisherman's Wharf: 4:30 PM - 9:00 PM, min 45 minutes)
-    # 4:30 PM is 16*60 + 30 = 990; 9:00 PM is 21*60 = 1260
-    kimberly_min_start = 990 - 540  # 450
-    kimberly_max_end = 1260 - 540   # 720
-    s.add(kimberly_start >= kimberly_min_start)
-    s.add(kimberly_end <= kimberly_max_end)
-    s.add(kimberly_end - kimberly_start >= 45)
-    
-    # Constraints for Patricia (Bayview: 6:00 PM - 9:15 PM, min 120 minutes)
-    # 6:00 PM is 18*60 = 1080; 9:15 PM is 21*60 + 15 = 1275
-    patricia_min_start = 1080 - 540  # 540
-    patricia_max_end = 1275 - 540    # 735
-    s.add(patricia_start >= patricia_min_start)
-    s.add(patricia_end <= patricia_max_end)
-    s.add(patricia_end - patricia_start >= 120)
-    
-    # Travel constraints
-    # Start at Nob Hill at time 0 (9:00 AM)
-    # First travel to North Beach (Helen): takes 8 minutes
-    s.add(helen_start >= 8)  # can't meet Helen before arriving at North Beach
-    
-    # Travel from North Beach to Fisherman's Wharf (Kimberly): takes 5 minutes
-    s.add(kimberly_start >= helen_end + 5)
-    
-    # Travel from Fisherman's Wharf to Bayview (Patricia): takes 26 minutes
-    s.add(patricia_start >= kimberly_end + 26)
-    
-    # Check if all constraints can be satisfied
+
+    # Add constraints for each meeting
+    # Helen's meeting
+    s.add(helen_start >= arrival_time + travel_times[('Nob Hill', 'North Beach')])
+    s.add(helen_end == helen_start + friends['Helen']['min_duration'])
+    s.add(helen_start >= friends['Helen']['available_start'])
+    s.add(helen_end <= friends['Helen']['available_end'])
+
+    # Travel from Helen to Kimberly
+    travel_helen_kim = travel_times[('North Beach', 'Fisherman\'s Wharf')]
+    s.add(kimberly_start >= helen_end + travel_helen_kim)
+    s.add(kimberly_end == kimberly_start + friends['Kimberly']['min_duration'])
+    s.add(kimberly_start >= friends['Kimberly']['available_start'])
+    s.add(kimberly_end <= friends['Kimberly']['available_end'])
+
+    # Travel from Kimberly to Patricia
+    travel_kim_pat = travel_times[('Fisherman\'s Wharf', 'Bayview')]
+    s.add(patricia_start >= kimberly_end + travel_kim_pat)
+    s.add(patricia_end == patricia_start + friends['Patricia']['min_duration'])
+    s.add(patricia_start >= friends['Patricia']['available_start'])
+    s.add(patricia_end <= friends['Patricia']['available_end'])
+
+    # Check if the solver can find a solution
     if s.check() == sat:
-        m = s.model()
-        # Convert times back to absolute minutes since midnight
-        base_time = 540  # 9:00 AM in minutes since midnight
-        helen_s = m.eval(helen_start).as_long() + base_time
-        helen_e = m.eval(helen_end).as_long() + base_time
-        kimberly_s = m.eval(kimberly_start).as_long() + base_time
-        kimberly_e = m.eval(kimberly_end).as_long() + base_time
-        patricia_s = m.eval(patricia_start).as_long() + base_time
-        patricia_e = m.eval(patricia_end).as_long() + base_time
-        
-        # Print the schedule
-        print("SOLUTION:")
-        print(f"Meet Helen at North Beach from {minutes_to_time(helen_s)} to {minutes_to_time(helen_e)}")
-        print(f"Meet Kimberly at Fisherman's Wharf from {minutes_to_time(kimberly_s)} to {minutes_to_time(kimberly_e)}")
-        print(f"Meet Patricia at Bayview from {minutes_to_time(patricia_s)} to {minutes_to_time(patricia_e)}")
+        model = s.model()
+        itinerary = []
+
+        # Extract the meeting times
+        helen_s = model[helen_start].as_long()
+        helen_e = model[helen_end].as_long()
+        kimberly_s = model[kimberly_start].as_long()
+        kimberly_e = model[kimberly_end].as_long()
+        patricia_s = model[patricia_start].as_long()
+        patricia_e = model[patricia_end].as_long()
+
+        # Add meetings to the itinerary
+        itinerary.append({
+            "action": "meet",
+            "person": "Helen",
+            "start_time": minutes_to_time(helen_s),
+            "end_time": minutes_to_time(helen_e)
+        })
+        itinerary.append({
+            "action": "meet",
+            "person": "Kimberly",
+            "start_time": minutes_to_time(kimberly_s),
+            "end_time": minutes_to_time(kimberly_e)
+        })
+        itinerary.append({
+            "action": "meet",
+            "person": "Patricia",
+            "start_time": minutes_to_time(patricia_s),
+            "end_time": minutes_to_time(patricia_e)
+        })
+
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found.")
+        return {"itinerary": []}
 
-def minutes_to_time(minutes):
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours:02d}:{mins:02d}"
-
-solve_scheduling()
+# Solve the problem and print the solution
+solution = solve_scheduling_problem()
+print(solution)

@@ -1,51 +1,66 @@
-from z3 import Solver, Int, Or, And
+from z3 import *
 
-def main():
-    # Initialize Z3 solver and variable
-    s = Solver()
-    start_min = Int('start_min')
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    return int(parts[0]) * 60 + int(parts[1])
 
-    # Total available time: 9:00 (0 min) to 17:00 (480 min)
-    # Meeting duration: 30 minutes, so start must be between 0 and 450 minutes
-    s.add(start_min >= 0)
-    s.add(start_min <= 450)  # 480 - 30 = 450
+def minutes_to_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-    # Define busy intervals in minutes for each participant (relative to 9:00)
-    john_busy = [(150, 180), (300, 330)]
-    megan_busy = [(180, 210), (300, 360), (390, 420)]
-    brandon_busy = []  # No meetings
-    kimberly_busy = [(0, 30), (60, 90), (120, 330), (360, 420), (450, 480)]
-    sean_busy = [(60, 120), (150, 300), (360, 390)]
-    lori_busy = [(0, 30), (90, 180), (240, 330), (420, 450)]
+# Define the participants' busy intervals in minutes
+busy_intervals = [
+    # John's meetings
+    [(time_to_minutes("11:30"), time_to_minutes("12:00")),
+     (time_to_minutes("14:00"), time_to_minutes("14:30"))],
+    # Megan's meetings
+    [(time_to_minutes("12:00"), time_to_minutes("12:30")),
+     (time_to_minutes("14:00"), time_to_minutes("15:00")),
+     (time_to_minutes("15:30"), time_to_minutes("16:00"))],
+    # Brandon has no meetings, so skip
+    [],
+    # Kimberly's meetings
+    [(time_to_minutes("9:00"), time_to_minutes("9:30")),
+     (time_to_minutes("10:00"), time_to_minutes("10:30")),
+     (time_to_minutes("11:00"), time_to_minutes("14:30")),
+     (time_to_minutes("15:00"), time_to_minutes("16:00")),
+     (time_to_minutes("16:30"), time_to_minutes("17:00"))],
+    # Sean's meetings
+    [(time_to_minutes("10:00"), time_to_minutes("11:00")),
+     (time_to_minutes("11:30"), time_to_minutes("14:00")),
+     (time_to_minutes("15:00"), time_to_minutes("15:30"))],
+    # Lori's meetings
+    [(time_to_minutes("9:00"), time_to_minutes("9:30")),
+     (time_to_minutes("10:30"), time_to_minutes("12:00")),
+     (time_to_minutes("13:00"), time_to_minutes("14:30")),
+     (time_to_minutes("16:00"), time_to_minutes("16:30"))]
+]
 
-    # Combine all participants' busy intervals
-    all_busy = [john_busy, megan_busy, brandon_busy, kimberly_busy, sean_busy, lori_busy]
+# Initialize Z3 solver and variables
+s = Solver()
+start_time = Int('start_time')
 
-    # Add constraints for each participant
-    for participant in all_busy:
-        for (busy_start, busy_end) in participant:
-            # Ensure meeting does not overlap with busy interval
-            s.add(Or(
-                start_min + 30 <= busy_start,
-                start_min >= busy_end
-            ))
+# Constraints: meeting must be within 9:00 to 17:00 and last 30 minutes
+s.add(start_time >= time_to_minutes("9:00"))
+s.add(start_time <= time_to_minutes("16:30"))  # 16:30 + 30 min = 17:00
 
-    # Check if a solution exists
-    if s.check() == sat:
-        model = s.model()
-        start_val = model[start_min].as_long()
-        # Convert minutes back to time string
-        total_minutes = start_val
-        hours = 9 + total_minutes // 60
-        minutes = total_minutes % 60
-        start_time = f"{hours}:{minutes:02d}"
-        end_minutes = total_minutes + 30
-        end_hours = 9 + end_minutes // 60
-        end_min = end_minutes % 60
-        end_time = f"{end_hours}:{end_min:02d}"
-        print(f"Monday {start_time} to {end_time}")
-    else:
-        print("No solution found")
+# Add constraints for each participant's busy intervals
+for intervals in busy_intervals:
+    for (busy_start, busy_end) in intervals:
+        # The meeting does not overlap if it ends before busy_start or starts after busy_end
+        s.add(Or(start_time + 30 <= busy_start, start_time >= busy_end))
 
-if __name__ == "__main__":
-    main()
+# Check if a solution exists
+if s.check() == sat:
+    m = s.model()
+    start_minutes = m[start_time].as_long()
+    end_minutes = start_minutes + 30
+    start_str = minutes_to_time(start_minutes)
+    end_str = minutes_to_time(end_minutes)
+    print("SOLUTION:")
+    print("Day: Monday")
+    print(f"Start Time: {start_str}")
+    print(f"End Time: {end_str}")
+else:
+    print("No solution found")

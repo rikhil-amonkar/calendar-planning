@@ -1,40 +1,56 @@
 from z3 import *
+import json
 
 def solve_scheduling():
-    # Initialize the solver
+    # Create a solver instance
     s = Solver()
 
-    # Convert all times to minutes since midnight
-    # Kenneth's availability: 2:15 PM to 7:45 PM
-    kenneth_start = 14 * 60 + 15  # 2:15 PM in minutes since midnight
-    kenneth_end = 19 * 60 + 45    # 7:45 PM in minutes since midnight
+    # Define variables for meeting start and end times (in minutes since 9:00 AM)
+    start = Int('start')
+    end = Int('end')
 
-    # Meeting start and end times (in minutes since midnight)
-    meeting_start = Int('meeting_start')
-    meeting_end = Int('meeting_end')
+    # Kenneth's availability in minutes since 9:00 AM
+    kenneth_start = 315  # 2:15 PM
+    kenneth_end = 645    # 7:45 PM
 
-    # Constraints
-    s.add(meeting_start >= kenneth_start)
-    s.add(meeting_end <= kenneth_end)
-    s.add(meeting_end - meeting_start >= 90)  # At least 90 minutes
-    s.add(meeting_start < meeting_end)
+    # Travel time is 11 minutes (but not directly relevant for meeting time constraints)
+    travel_time = 11
 
-    # Travel time: 11 minutes from Fisherman's Wharf to Nob Hill
-    # You arrive at Fisherman's Wharf at 9:00 AM (540 minutes since midnight)
-    # Earliest you can arrive at Nob Hill is 540 + 11 = 551 minutes (9:11 AM)
-    # Since Kenneth is only available from 2:15 PM, no additional constraint is needed here
+    # Constraints:
+    # 1. Meeting must start within Kenneth's availability
+    s.add(start >= kenneth_start)
+    # 2. Meeting must end within Kenneth's availability
+    s.add(end <= kenneth_end)
+    # 3. Meeting duration must be at least 90 minutes
+    s.add(end - start >= 90)
 
     # Check if the constraints are satisfiable
     if s.check() == sat:
         m = s.model()
-        start = m[meeting_start].as_long()
-        end = m[meeting_end].as_long()
-        # Convert minutes back to time
-        start_hour = start // 60
-        start_min = start % 60
-        end_hour = end // 60
-        end_min = end % 60
-        print(f"Meet Kenneth from {start_hour}:{start_min:02d} to {end_hour}:{end_min:02d}")
+        start_time = m[start].as_long()
+        end_time = m[end].as_long()
+
+        # Convert minutes since 9:00 AM to 24-hour time format
+        def minutes_to_time(minutes):
+            total_minutes = 9 * 60 + minutes  # 9:00 AM + minutes
+            hours = (total_minutes // 60) % 24
+            mins = total_minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+
+        start_str = minutes_to_time(start_time)
+        end_str = minutes_to_time(end_time)
+
+        itinerary = {
+            "itinerary": [
+                {
+                    "action": "meet",
+                    "person": "Kenneth",
+                    "start_time": start_str,
+                    "end_time": end_str
+                }
+            ]
+        }
+        print(json.dumps(itinerary, indent=2))
     else:
         print("No valid schedule found.")
 

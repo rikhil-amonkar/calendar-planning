@@ -1,58 +1,60 @@
 from z3 import *
 
 def main():
-    # Define the variables
-    day = Int('day')
-    s = Int('s')  # start time in minutes after 9:00 on the chosen day
-
-    # Precomputed free intervals for Samuel for Monday, Tuesday, Wednesday
-    # Each interval is (start_minutes, end_minutes) relative to 9:00
-    free_intervals = [
-        [ (0, 90), (120, 180), (210, 240), (360, 390), (450, 480) ],   # Monday
-        [ (180, 300), (390, 450) ],                                     # Tuesday
-        [ (0, 90), (120, 150), (180, 210), (240, 300), (330, 360), (420, 480) ]  # Wednesday
-    ]
-
-    # Condition: the meeting must fit into one of the free intervals of the chosen day
-    cond = False
-    for d, day_intervals in enumerate(free_intervals):
-        for interval in day_intervals:
-            a, b = interval
-            # The meeting [s, s+30) must be within [a, b)
-            # So: s >= a and s+30 <= b  => s <= b-30
-            cond = Or(cond, And(day == d, s >= a, s <= b-30))
+    d = Int('d')
+    s = Int('s')
     
-    solver = Optimize()
-    solver.add(day >= 0, day <= 2)
-    solver.add(s >= 0, s <= 450)  # 450 = 480 (8 hours) - 30 minutes
-    solver.add(cond)
+    # Define the busy intervals for Samuel in minutes (from start of day, [start, end))
+    Monday_busy = [(630, 660), (720, 750), (780, 900), (930, 990)]
+    Tuesday_busy = [(540, 720), (840, 930), (990, 1020)]
+    Wednesday_busy = [(630, 660), (690, 720), (750, 780), (840, 870), (900, 960)]
     
-    # Total minutes from Monday 00:00 to the meeting start time
-    # Monday 9:00 is 9*60 = 540 minutes from Monday 00:00
-    total_minutes = day * 1440 + 540 + s
-    solver.minimize(total_minutes)
+    solver = Solver()
+    solver.add(d >= 0, d <= 2)
+    solver.add(s >= 540, s <= 990)
     
-    if solver.check() == sat:
-        m = solver.model()
-        d_val = m[day].as_long()
+    # Monday constraint: if d==0, then avoid Monday_busy
+    monday_constraint = True
+    for (busy_start, busy_end) in Monday_busy:
+        monday_constraint = And(monday_constraint, Or(s + 30 <= busy_start, s >= busy_end))
+    solver.add(If(d == 0, monday_constraint, True))
+    
+    # Tuesday constraint: if d==1, then avoid Tuesday_busy
+    tuesday_constraint = True
+    for (busy_start, busy_end) in Tuesday_busy:
+        tuesday_constraint = And(tuesday_constraint, Or(s + 30 <= busy_start, s >= busy_end))
+    solver.add(If(d == 1, tuesday_constraint, True))
+    
+    # Wednesday constraint: if d==2, then avoid Wednesday_busy
+    wednesday_constraint = True
+    for (busy_start, busy_end) in Wednesday_busy:
+        wednesday_constraint = And(wednesday_constraint, Or(s + 30 <= busy_start, s >= busy_end))
+    solver.add(If(d == 2, wednesday_constraint, True))
+    
+    opt = Optimize()
+    opt.add(solver.assertions())
+    objective = d * 1440 + s
+    opt.minimize(objective)
+    
+    if opt.check() == sat:
+        m = opt.model()
+        day_val = m[d].as_long()
         s_val = m[s].as_long()
         
-        days = ["Monday", "Tuesday", "Wednesday"]
-        day_str = days[d_val]
+        day_str = ["Monday", "Tuesday", "Wednesday"][day_val]
+        start_hour = s_val // 60
+        start_minute = s_val % 60
+        start_time = f"{start_hour:02d}:{start_minute:02d}"
         
-        total_minutes_start = 9 * 60 + s_val
-        hours = total_minutes_start // 60
-        minutes = total_minutes_start % 60
-        start_time = f"{hours:02d}:{minutes:02d}"
+        end_minutes = s_val + 30
+        end_hour = end_minutes // 60
+        end_minute = end_minutes % 60
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
         
-        total_minutes_end = total_minutes_start + 30
-        end_hours = total_minutes_end // 60
-        end_minutes = total_minutes_end % 60
-        end_time = f"{end_hours:02d}:{end_minutes:02d}"
-        
-        print(day_str)
-        print(start_time)
-        print(end_time)
+        print("SOLUTION:")
+        print(f"Day: {day_str}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

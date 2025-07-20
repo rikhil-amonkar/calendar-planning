@@ -1,93 +1,108 @@
 from z3 import *
 
 def solve_itinerary():
-    # Cities with correct spelling
+    # Cities
     cities = ['Hamburg', 'Munich', 'Manchester', 'Lyon', 'Split']
-    city_to_int = {city: i for i, city in enumerate(cities)}
-    int_to_city = {i: city for i, city in enumerate(cities)}
+    city_to_idx = {city: idx for idx, city in enumerate(cities)}
+    idx_to_city = {idx: city for idx, city in enumerate(cities)}
     
-    # Corrected direct flights (undirected)
-    direct_flights = [
-        ('Split', 'Munich'),
-        ('Munich', 'Manchester'),
-        ('Hamburg', 'Manchester'),
-        ('Hamburg', 'Munich'),
-        ('Split', 'Lyon'),
-        ('Lyon', 'Munich'),
-        ('Hamburg', 'Split'),
-        ('Manchester', 'Split')
-    ]
+    # Direct flights: adjacency list
+    direct_flights = {
+        'Split': ['Munich', 'Lyon', 'Hamburg'],
+        'Munich': ['Split', 'Manchester', 'Hamburg', 'Lyon'],
+        'Manchester': ['Munich', 'Hamburg', 'Split'],
+        'Hamburg': ['Manchester', 'Munich', 'Split'],
+        'Lyon': ['Split', 'Munich']
+    }
     
-    # Create adjacency list with corrected city names
-    adjacency = {i: set() for i in range(len(cities))}
-    for a, b in direct_flights:
-        a_idx = city_to_int[a]
-        b_idx = city_to_int[b]
-        adjacency[a_idx].add(b_idx)
-        adjacency[b_idx].add(a_idx)
+    # Create Z3 variables: for each day, which city are we in?
+    days = 20
+    X = [Int(f'X_{i}') for i in range(days)]
     
     s = Solver()
-    day_vars = [Int(f'day_{i}') for i in range(1, 21)]
     
-    # Each day must be assigned to a valid city
-    for var in day_vars:
-        s.add(var >= 0, var < len(cities))
+    # Each day's assignment must be a valid city index (0 to 4)
+    for x in X:
+        s.add(And(x >= 0, x <= 4))
     
-    # Fixed day constraints
-    s.add(day_vars[18] == city_to_int['Manchester'])  # Day 19
-    s.add(day_vars[19] == city_to_int['Manchester'])  # Day 20
-    s.add(day_vars[12] == city_to_int['Lyon'])       # Day 13
-    s.add(day_vars[13] == city_to_int['Lyon'])       # Day 14
+    # Fixed constraints:
+    # Manchester on days 19 and 20 (indices 18 and 19)
+    s.add(X[18] == city_to_idx['Manchester'])
+    s.add(X[19] == city_to_idx['Manchester'])
     
-    # Transition constraints with proper adjacency checks
-    for i in range(19):
-        current = day_vars[i]
-        next_day = day_vars[i+1]
-        # Either stay in same city or move to adjacent city
-        s.add(Or(
-            current == next_day,
-            *[And(current == a, next_day == b) for a in range(len(cities)) for b in adjacency[a]]
-        ))
+    # Lyon on days 13 and 14 (indices 12 and 13)
+    s.add(X[12] == city_to_idx['Lyon'])
+    s.add(X[13] == city_to_idx['Lyon'])
     
-    # Total days constraints with proper counting
-    s.add(Sum([If(var == city_to_int['Hamburg'], 1, 0) for var in day_vars]) == 7)
-    s.add(Sum([If(var == city_to_int['Munich'], 1, 0) for var in day_vars]) == 6)
-    s.add(Sum([If(var == city_to_int['Manchester'], 1, 0) for var in day_vars]) == 2)
-    s.add(Sum([If(var == city_to_int['Lyon'], 1, 0) for var in day_vars]) == 2)
-    s.add(Sum([If(var == city_to_int['Split'], 1, 0) for var in day_vars]) == 7)
+    # Flight transitions: consecutive days must be connected by direct flights
+    for i in range(days - 1):
+        current_city = X[i]
+        next_city = X[i+1]
+        # The next city must be in the direct_flights list of the current city
+        # We create a disjunction of possible transitions
+        constraints = []
+        for city in cities:
+            for neighbor in direct_flights.get(city, []):
+                constraints.append(And(current_city == city_to_idx[city], next_city == city_to_idx[neighbor]))
+        s.add(Or(constraints))
     
-    # Additional constraints to help the solver
-    # Must start in a city that can reach all required cities
-    # Must end in Manchester (already constrained)
+    # Duration constraints:
+    # Count days per city, including overlapping flight days
+    counts = {city: 0 for city in cities}
+    for city in cities:
+        counts[city] = Sum([If(X[i] == city_to_idx[city], 1, 0) for i in range(days)])
     
+    s.add(counts['Hamburg'] == 7)
+    s.add(counts['Munich'] == 6)
+    s.add(counts['Manchester'] == 2)
+    s.add(counts['Lyon'] == 2)
+    s.add(counts['Split'] == 7)
+    
+    # Check and get model
     if s.check() == sat:
-        model = s.model()
+        m = s.model()
         itinerary = []
-        for i in range(20):
-            day = i + 1
-            city_idx = model.evaluate(day_vars[i]).as_long()
-            city = int_to_city[city_idx]
-            itinerary.append({'day': day, 'city': city})
+        for i in range(days):
+            city_idx = m.evaluate(X[i]).as_long()
+            itinerary.append({'day': i+1, 'city': idx_to_city[city_idx]})
+        
+        # Verify transitions
+        valid = True
+        for i in range(days - 1):
+            current_city = itinerary[i]['city']
+            next_city = itinerary[i+1]['city']
+            if next_city not in direct_flights[current_city]:
+                valid = False
+                print(f"Invalid transition from {current_city} to {next_city} on day {i+1}")
+                break
+        if not valid:
+            raise ValueError("Invalid transitions in itinerary")
+        
+        # Verify counts
+        count_check = {city: 0 for city in cities}
+        for entry in itinerary:
+            count_check[entry['city']] += 1
+        expected_counts = {
+            'Hamburg': 7,
+            'Munich': 6,
+            'Manchester': 2,
+            'Lyon': 2,
+            'Split': 7
+        }
+        for city in cities:
+            if count_check[city] != expected_counts[city]:
+                print(f"Count mismatch for {city}: {count_check[city]} vs {expected_counts[city]}")
+                valid = False
+        if not valid:
+            raise ValueError("Count mismatch in itinerary")
+        
         return {'itinerary': itinerary}
     else:
-        # Try relaxing constraints if no solution found
-        # For example, allow more flexibility in total days
-        # This is just a fallback - the original constraints should work
-        s.push()
-        s.add(Sum([If(var == city_to_int['Hamburg'], 1, 0) for var in day_vars]) >= 6)
-        s.add(Sum([If(var == city_to_int['Munich'], 1, 0) for var in day_vars]) >= 5)
-        if s.check() == sat:
-            model = s.model()
-            itinerary = []
-            for i in range(20):
-                day = i + 1
-                city_idx = model.evaluate(day_vars[i]).as_long()
-                city = int_to_city[city_idx]
-                itinerary.append({'day': day, 'city': city})
-            return {'itinerary': itinerary, 'note': 'Relaxed constraints used'}
-        else:
-            return {'error': 'No valid itinerary found even with relaxed constraints'}
+        raise ValueError("No valid itinerary found")
 
-result = solve_itinerary()
-import json
-print(json.dumps(result, indent=2))
+# Generate and print the itinerary
+try:
+    itinerary = solve_itinerary()
+    print(itinerary)
+except ValueError as e:
+    print(e)

@@ -1,172 +1,315 @@
-from itertools import combinations
 from z3 import *
+import re
 
-def main():
-    # Map location names to indices
-    loc_index_map = {
-        "Union Square": 0,
-        "Presidio": 1,
-        "Alamo Square": 2,
-        "Marina District": 3,
-        "Financial District": 4,
-        "Nob Hill": 5,
-        "Sunset District": 6,
-        "Chinatown": 7,
-        "Russian Hill": 8,
-        "North Beach": 9,
-        "Haight-Ashbury": 10
-    }
-
-    # Build travel time matrix (11x11)
-    travel = [
-        [0, 24, 15, 18, 9, 9, 27, 7, 13, 10, 18],
-        [22, 0, 19, 11, 23, 18, 15, 21, 14, 18, 15],
-        [14, 17, 0, 15, 17, 11, 16, 15, 13, 15, 5],
-        [16, 10, 15, 0, 17, 12, 19, 15, 8, 11, 16],
-        [9, 22, 17, 15, 0, 8, 30, 5, 11, 7, 19],
-        [7, 17, 11, 11, 9, 0, 24, 6, 5, 8, 13],
-        [30, 16, 17, 21, 30, 27, 0, 30, 24, 28, 15],
-        [7, 19, 17, 12, 5, 9, 29, 0, 7, 3, 19],
-        [10, 14, 15, 7, 11, 5, 23, 9, 0, 5, 17],
-        [7, 17, 16, 9, 8, 7, 27, 6, 4, 0, 18],
-        [19, 15, 5, 17, 21, 15, 15, 19, 17, 19, 0]
-    ]
-
-    # Friends data: (friend_index, name, location_index, window_low, window_high, min_duration)
-    friends_info = [
-        (0, "Kimberly", loc_index_map["Presidio"], 390, 420, 15),
-        (1, "Elizabeth", loc_index_map["Alamo Square"], 615, 675, 15),
-        (2, "Joshua", loc_index_map["Marina District"], 90, 315, 45),
-        (3, "Sandra", loc_index_map["Financial District"], 630, 675, 45),
-        (4, "Kenneth", loc_index_map["Nob Hill"], 225, 765, 30),
-        (5, "Betty", loc_index_map["Sunset District"], 300, 600, 60),
-        (6, "Deborah", loc_index_map["Chinatown"], 495, 690, 15),
-        (7, "Barbara", loc_index_map["Russian Hill"], 510, 735, 120),
-        (8, "Steven", loc_index_map["North Beach"], 525, 705, 90),
-        (9, "Daniel", loc_index_map["Haight-Ashbury"], 570, 585, 15)
-    ]
-
-    # Helper function to convert minutes since 9:00 AM to time string
-    def min_to_time(mins):
-        total_minutes = 9 * 60 + mins
-        hours = total_minutes // 60
-        mins_part = total_minutes % 60
-        if hours >= 13:
-            suffix = "PM"
-            hours12 = hours - 12
-        elif hours == 12:
-            suffix = "PM"
-            hours12 = 12
+def time_str_to_minutes_since_9am(s):
+    s = s.strip().upper()
+    if s.endswith("PM"):
+        if s.split(':')[0] == "12":
+            hours = 12
         else:
-            suffix = "AM"
-            hours12 = hours
-        return f"{hours12}:{mins_part:02d} {suffix}"
-
-    # Function to get travel time between two friend indices
-    def get_travel_time(friend_i, friend_j):
-        loc_i = friends_info[friend_i][2]
-        loc_j = friends_info[friend_j][2]
-        return travel[loc_i][loc_j]
-
-    # Generate subsets in decreasing order of size
-    all_friend_indices = list(range(len(friends_info)))
-    all_subsets = []
-    for r in range(len(all_friend_indices), 0, -1):
-        for comb in combinations(all_friend_indices, r):
-            all_subsets.append(comb)
-
-    # Try each subset
-    found = False
-    model_res = None
-    order_res = None
-    S_res = None
-    chosen_subset = None
-    k_res = 0
-
-    for subset in all_subsets:
-        k = len(subset)
-        s = Solver()
-        
-        # Order variables: o0, o1, ... o_{k-1}
-        o = [Int(f'o_{i}') for i in range(k)]
-        # Start times for each friend (for all 10 friends, but we only constrain those in the subset)
-        S = RealVector('S', len(friends_info))  # S0, S1, ... S9
-        
-        # Constraints for order: distinct and each in the subset
-        s.add(Distinct(o))
-        for j in range(k):
-            s.add(Or([o[j] == f for f in subset]))
-        
-        # Helper function to get location index of a friend index
-        def get_loc_idx(friend_idx):
-            return friends_info[friend_idx][2]
-        
-        # Chain constraints for travel and meeting durations
-        # First meeting: must be after traveling from start (Union Square, index0) to the first friend's location
-        first_friend = o[0]
-        loc_first = get_loc_idx(first_friend)
-        travel_time_first = travel[0][loc_first]  # from Union Square (0) to the first friend's location
-        s.add(S[first_friend] >= travel_time_first)
-        
-        for j in range(1, k):
-            prev_friend = o[j-1]
-            curr_friend = o[j]
-            # Travel time from previous friend's location to current friend's location
-            travel_time = get_travel_time(prev_friend, curr_friend)
-            # The current meeting must start after the previous meeting ends plus travel time
-            s.add(S[curr_friend] >= S[prev_friend] + friends_info[prev_friend][5] + travel_time)
-        
-        # Window constraints for each friend in the subset
-        for f in subset:
-            s.add(S[f] >= friends_info[f][3])
-            s.add(S[f] + friends_info[f][5] <= friends_info[f][4])
-        
-        # Check satisfiability
-        if s.check() == sat:
-            model = s.model()
-            found = True
-            model_res = model
-            order_res = o
-            S_res = S
-            chosen_subset = subset
-            k_res = k
-            break
-    
-    # Output results
-    if not found:
-        print("No valid schedule found to meet any friends.")
+            hours = int(s.split(':')[0]) + 12
+        minutes_str = s.split(':')[1].replace("PM", "").strip()
+        minutes = int(minutes_str)
     else:
-        print(f"We can meet {len(chosen_subset)} friends: {', '.join(friends_info[f][1] for f in chosen_subset)}")
-        print("Schedule:")
-        # Evaluate the order
-        order_eval = []
-        for j in range(k_res):
-            o_val = model_res.evaluate(order_res[j])
-            if is_int_value(o_val):
-                order_eval.append(o_val.as_long())
-            else:
-                # If Z3 returns a constant expression
-                order_eval.append(int(str(o_val)))
-        # For each meeting in the order
-        for idx, friend_idx in enumerate(order_eval):
-            s_val = model_res.evaluate(S_res[friend_idx])
-            # Convert s_val to integer minutes
-            if is_rational_value(s_val):
-                num = s_val.numerator_as_long()
-                den = s_val.denominator_as_long()
-                start_min = num // den
-            elif is_int_value(s_val):
-                start_min = s_val.as_long()
-            else:
-                # Fallback: try converting the string representation to float then int
-                start_min = int(float(str(s_val)))
-            duration = friends_info[friend_idx][5]
-            end_min = start_min + duration
-            start_str = min_to_time(start_min)
-            end_str = min_to_time(end_min)
-            friend_name = friends_info[friend_idx][1]
-            location = [name for name, idx_val in loc_index_map.items() if idx_val == friends_info[friend_idx][2]][0]
-            print(f"  {idx+1}: Meet {friend_name} at {location} from {start_str} to {end_str}")
+        if s.split(':')[0] == "12":
+            hours = 0
+        else:
+            hours = int(s.split(':')[0])
+        minutes_str = s.split(':')[1].replace("AM", "").strip()
+        minutes = int(minutes_str)
+    total_minutes = hours * 60 + minutes
+    ref_9am = 9 * 60
+    return total_minutes - ref_9am
 
-if __name__ == '__main__':
-    main()
+travel_data = """
+Union Square to Presidio: 24.
+Union Square to Alamo Square: 15.
+Union Square to Marina District: 18.
+Union Square to Financial District: 9.
+Union Square to Nob Hill: 9.
+Union Square to Sunset District: 27.
+Union Square to Chinatown: 7.
+Union Square to Russian Hill: 13.
+Union Square to North Beach: 10.
+Union Square to Haight-Ashbury: 18.
+Presidio to Union Square: 22.
+Presidio to Alamo Square: 19.
+Presidio to Marina District: 11.
+Presidio to Financial District: 23.
+Presidio to Nob Hill: 18.
+Presidio to Sunset District: 15.
+Presidio to Chinatown: 21.
+Presidio to Russian Hill: 14.
+Presidio to North Beach: 18.
+Presidio to Haight-Ashbury: 15.
+Alamo Square to Union Square: 14.
+Alamo Square to Presidio: 17.
+Alamo Square to Marina District: 15.
+Alamo Square to Financial District: 17.
+Alamo Square to Nob Hill: 11.
+Alamo Square to Sunset District: 16.
+Alamo Square to Chinatown: 15.
+Alamo Square to Russian Hill: 13.
+Alamo Square to North Beach: 15.
+Alamo Square to Haight-Ashbury: 5.
+Marina District to Union Square: 16.
+Marina District to Presidio: 10.
+Marina District to Alamo Square: 15.
+Marina District to Financial District: 17.
+Marina District to Nob Hill: 12.
+Marina District to Sunset District: 19.
+Marina District to Chinatown: 15.
+Marina District to Russian Hill: 8.
+Marina District to North Beach: 11.
+Marina District to Haight-Ashbury: 16.
+Financial District to Union Square: 9.
+Financial District to Presidio: 22.
+Financial District to Alamo Square: 17.
+Financial District to Marina District: 15.
+Financial District to Nob Hill: 8.
+Financial District to Sunset District: 30.
+Financial District to Chinatown: 5.
+Financial District to Russian Hill: 11.
+Financial District to North Beach: 7.
+Financial District to Haight-Ashbury: 19.
+Nob Hill to Union Square: 7.
+Nob Hill to Presidio: 17.
+Nob Hill to Alamo Square: 11.
+Nob Hill to Marina District: 11.
+Nob Hill to Financial District: 9.
+Nob Hill to Sunset District: 24.
+Nob Hill to Chinatown: 6.
+Nob Hill to Russian Hill: 5.
+Nob Hill to North Beach: 8.
+Nob Hill to Haight-Ashbury: 13.
+Sunset District to Union Square: 30.
+Sunset District to Presidio: 16.
+Sunset District to Alamo Square: 17.
+Sunset District to Marina District: 21.
+Sunset District to Financial District: 30.
+Sunset District to Nob Hill: 27.
+Sunset District to Chinatown: 30.
+Sunset District to Russian Hill: 24.
+Sunset District to North Beach: 28.
+Sunset District to Haight-Ashbury: 15.
+Chinatown to Union Square: 7.
+Chinatown to Presidio: 19.
+Chinatown to Alamo Square: 17.
+Chinatown to Marina District: 12.
+Chinatown to Financial District: 5.
+Chinatown to Nob Hill: 9.
+Chinatown to Sunset District: 29.
+Chinatown to Russian Hill: 7.
+Chinatown to North Beach: 3.
+Chinatown to Haight-Ashbury: 19.
+Russian Hill to Union Square: 10.
+Russian Hill to Presidio: 14.
+Russian Hill to Alamo Square: 15.
+Russian Hill to Marina District: 7.
+Russian Hill to Financial District: 11.
+Russian Hill to Nob Hill: 5.
+Russian Hill to Sunset District: 23.
+Russian Hill to Chinatown: 9.
+Russian Hill to North Beach: 5.
+Russian Hill to Haight-Ashbury: 17.
+North Beach to Union Square: 7.
+North Beach to Presidio: 17.
+North Beach to Alamo Square: 16.
+North Beach to Marina District: 9.
+North Beach to Financial District: 8.
+North Beach to Nob Hill: 7.
+North Beach to Sunset District: 27.
+North Beach to Chinatown: 6.
+North Beach to Russian Hill: 4.
+North Beach to Haight-Ashbury: 18.
+Haight-Ashbury to Union Square: 19.
+Haight-Ashbury to Presidio: 15.
+Haight-Ashbury to Alamo Square: 5.
+Haight-Ashbury to Marina District: 17.
+Haight-Ashbury to Financial District: 21.
+Haight-Ashbury to Nob Hill: 15.
+Haight-Ashbury to Sunset District: 15.
+Haight-Ashbury to Chinatown: 19.
+Haight-Ashbury to Russian Hill: 17.
+Haight-Ashbury to North Beach: 19.
+"""
+
+travel_dict = {}
+lines = travel_data.strip().split('\n')
+for line in lines:
+    line = line.strip()
+    if not line:
+        continue
+    parts = line.split(':')
+    if len(parts) < 2:
+        continue
+    time_val = int(parts[-1].strip().rstrip('.'))
+    from_to_str = parts[0].strip()
+    if " to " in from_to_str:
+        from_loc, to_loc = from_to_str.split(" to ", 1)
+        from_loc = from_loc.strip()
+        to_loc = to_loc.strip()
+        key = (from_loc, to_loc)
+        travel_dict[key] = time_val
+
+friends = [
+    {'name': 'Kimberly', 'location': 'Presidio', 
+     'start_win': time_str_to_minutes_since_9am("3:30PM"), 
+     'end_win': time_str_to_minutes_since_9am("4:00PM"), 
+     'min_duration': 15},
+    {'name': 'Elizabeth', 'location': 'Alamo Square', 
+     'start_win': time_str_to_minutes_since_9am("7:15PM"), 
+     'end_win': time_str_to_minutes_since_9am("8:15PM"), 
+     'min_duration': 15},
+    {'name': 'Joshua', 'location': 'Marina District', 
+     'start_win': time_str_to_minutes_since_9am("10:30AM"), 
+     'end_win': time_str_to_minutes_since_9am("2:15PM"), 
+     'min_duration': 45},
+    {'name': 'Sandra', 'location': 'Financial District', 
+     'start_win': time_str_to_minutes_since_9am("7:30PM"), 
+     'end_win': time_str_to_minutes_since_9am("8:15PM"), 
+     'min_duration': 45},
+    {'name': 'Kenneth', 'location': 'Nob Hill', 
+     'start_win': time_str_to_minutes_since_9am("12:45PM"), 
+     'end_win': time_str_to_minutes_since_9am("9:45PM"), 
+     'min_duration': 30},
+    {'name': 'Betty', 'location': 'Sunset District', 
+     'start_win': time_str_to_minutes_since_9am("2:00PM"), 
+     'end_win': time_str_to_minutes_since_9am("7:00PM"), 
+     'min_duration': 60},
+    {'name': 'Deborah', 'location': 'Chinatown', 
+     'start_win': time_str_to_minutes_since_9am("5:15PM"), 
+     'end_win': time_str_to_minutes_since_9am("8:30PM"), 
+     'min_duration': 15},
+    {'name': 'Barbara', 'location': 'Russian Hill', 
+     'start_win': time_str_to_minutes_since_9am("5:30PM"), 
+     'end_win': time_str_to_minutes_since_9am("9:15PM"), 
+     'min_duration': 120},
+    {'name': 'Steven', 'location': 'North Beach', 
+     'start_win': time_str_to_minutes_since_9am("5:45PM"), 
+     'end_win': time_str_to_minutes_since_9am("8:45PM"), 
+     'min_duration': 90},
+    {'name': 'Daniel', 'location': 'Haight-Ashbury', 
+     'start_win': time_str_to_minutes_since_9am("6:30PM"), 
+     'end_win': time_str_to_minutes_since_9am("6:45PM"), 
+     'min_duration': 15}
+]
+
+n_friends = len(friends)
+
+s = Optimize()
+
+meet = [Bool(f"meet_{i}") for i in range(n_friends)]
+start = [Int(f"start_{i}") for i in range(n_friends)]
+end = [Int(f"end_{i}") for i in range(n_friends)]
+
+n_events = n_friends + 1
+before = [[None for _ in range(n_events)] for _ in range(n_events)]
+for i in range(n_events):
+    for j in range(n_events):
+        if i != j:
+            before[i][j] = Bool(f"before_{i}_{j}")
+
+dummy_start_index = 0
+friend_event_offset = 1
+
+for j in range(n_friends):
+    event_j = j + friend_event_offset
+    s.add(Implies(meet[j], before[dummy_start_index][event_j]))
+    s.add(Implies(meet[j], Not(before[event_j][dummy_start_index])))
+
+for i in range(n_friends):
+    event_i = i + friend_event_offset
+    for j in range(n_friends):
+        if i == j:
+            continue
+        event_j = j + friend_event_offset
+        s.add(Implies(And(meet[i], meet[j]), 
+                     before[event_i][event_j] == Not(before[event_j][event_i])))
+        s.add(Implies(And(meet[i], meet[j]), 
+                     Or(before[event_i][event_j], before[event_j][event_i])))
+
+for i in range(n_events):
+    for j in range(n_events):
+        if i == j:
+            continue
+        for k in range(n_events):
+            if i == k or j == k:
+                continue
+            cond_i = True
+            cond_j = True
+            cond_k = True
+            if i != dummy_start_index:
+                cond_i = meet[i - friend_event_offset]
+            if j != dummy_start_index:
+                cond_j = meet[j - friend_event_offset]
+            if k != dummy_start_index:
+                cond_k = meet[k - friend_event_offset]
+            condition = And(cond_i, cond_j, cond_k)
+            s.add(Implies(condition, 
+                          Implies(And(before[i][j], before[j][k]), 
+                                  before[i][k])))
+
+for j in range(n_friends):
+    s.add(Implies(meet[j], start[j] >= friends[j]['start_win']))
+    s.add(Implies(meet[j], end[j] == start[j] + friends[j]['min_duration']))
+    s.add(Implies(meet[j], end[j] <= friends[j]['end_win']))
+
+for j in range(n_friends):
+    if not meet[j]:
+        continue
+    event_j = j + friend_event_offset
+    for i in range(n_events):
+        if i == event_j:
+            continue
+        cond_i_met = True
+        if i != dummy_start_index:
+            friend_i_index = i - friend_event_offset
+            cond_i_met = meet[friend_i_index]
+        condition = And(meet[j], cond_i_met, before[i][event_j])
+        if i == dummy_start_index:
+            from_loc = 'Union Square'
+            to_loc = friends[j]['location']
+            travel_time = travel_dict.get((from_loc, to_loc))
+            if travel_time is None:
+                print(f"Travel time not found: {from_loc} to {to_loc}")
+                travel_time = 1000
+            s.add(Implies(condition, start[j] >= travel_time))
+        else:
+            friend_i_index = i - friend_event_offset
+            from_loc = friends[friend_i_index]['location']
+            to_loc = friends[j]['location']
+            travel_time = travel_dict.get((from_loc, to_loc))
+            if travel_time is None:
+                print(f"Travel time not found: {from_loc} to {to_loc}")
+                travel_time = 1000
+            s.add(Implies(condition, start[j] >= end[friend_i_index] + travel_time))
+
+s.maximize(Sum([If(meet[i], 1, 0) for i in range(n_friends)]))
+
+if s.check() == sat:
+    model = s.model()
+    itinerary = []
+    for i in range(n_friends):
+        if model.eval(meet[i]):
+            start_val = model.eval(start[i]).as_long()
+            end_val = model.eval(end[i]).as_long()
+            total_minutes_start = 9*60 + start_val
+            hours_start = total_minutes_start // 60
+            minutes_start = total_minutes_start % 60
+            start_time_str = f"{int(hours_start)}:{int(minutes_start):02d}"
+            total_minutes_end = 9*60 + end_val
+            hours_end = total_minutes_end // 60
+            minutes_end = total_minutes_end % 60
+            end_time_str = f"{int(hours_end)}:{int(minutes_end):02d}"
+            itinerary.append({
+                "action": "meet",
+                "person": friends[i]['name'],
+                "start_time": start_time_str,
+                "end_time": end_time_str
+            })
+    itinerary_sorted = sorted(itinerary, key=lambda x: x['start_time'])
+    print('SOLUTION:')
+    print(f'{{"itinerary": {itinerary_sorted}}}')
+else:
+    print("No solution found")

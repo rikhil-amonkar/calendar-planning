@@ -1,57 +1,50 @@
-from z3 import Int, Solver, Or
+from z3 import *
 
 def time_to_minutes(time_str):
-    h, m = map(int, time_str.split(':'))
-    return h * 60 + m - 9 * 60  # Subtract 540 minutes (9 hours) to start from 0 at 9:00
+    parts = time_str.split(':')
+    hour = int(parts[0])
+    minute = int(parts[1])
+    return (hour - 9) * 60 + minute
 
-def minutes_to_time(minutes):
-    total_minutes = minutes + 9 * 60
-    h = total_minutes // 60
-    m = total_minutes % 60
-    return f"{h:02d}:{m:02d}"
-
-# Define work day boundaries in minutes (9:00 to 17:00)
-work_start = 0  # 9:00
-work_end = 480  # 17:00 (8 hours * 60 minutes)
-meeting_duration = 60  # 1 hour
-
-# Convert blocked times to minutes relative to 9:00
-kayla_blocked = [
-    (time_to_minutes("10:00"), time_to_minutes("10:30")),
-    (time_to_minutes("14:30"), time_to_minutes("16:00"))
+kayla_blocks = [
+    ("10:00", "10:30"),
+    ("14:30", "16:00")
 ]
 
-rebecca_blocked = [
-    (time_to_minutes("9:00"), time_to_minutes("13:00")),
-    (time_to_minutes("13:30"), time_to_minutes("15:00")),
-    (time_to_minutes("15:30"), time_to_minutes("16:00"))
+rebecca_blocks = [
+    ("9:00", "13:00"),
+    ("13:30", "15:00"),
+    ("15:30", "16:00")
 ]
 
-# Combine all blocked intervals
-all_blocked = kayla_blocked + rebecca_blocked
+kayla_intervals = [(time_to_minutes(start), time_to_minutes(end)) for start, end in kayla_blocks]
+rebecca_intervals = [(time_to_minutes(start), time_to_minutes(end)) for start, end in rebecca_blocks]
 
-# Create Z3 solver and variable for meeting start time
-s = Solver()
-start = Int('start')
+S = Int('S')
+solver = Solver()
 
-# Meeting must be within work hours
-s.add(start >= work_start)
-s.add(start + meeting_duration <= work_end)
+solver.add(S >= 0)
+solver.add(S + 60 <= 480)
 
-# Meeting must not overlap with any blocked intervals
-for block_start, block_end in all_blocked:
-    s.add(Or(start + meeting_duration <= block_start, start >= block_end))
+for (a, b) in kayla_intervals:
+    solver.add(Or(S + 60 <= a, S >= b))
 
-# Check for solution
-if s.check() == z3.sat:
-    model = s.model()
-    start_minutes = model[start].as_long()
-    start_time_str = minutes_to_time(start_minutes)
-    end_time_str = minutes_to_time(start_minutes + meeting_duration)
-    
-    print("SOLUTION:")
+for (a, b) in rebecca_intervals:
+    solver.add(Or(S + 60 <= a, S >= b))
+
+if solver.check() == sat:
+    model = solver.model()
+    start_minutes = model[S].as_long()
+    total_minutes = start_minutes
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    start_time = f"{9 + hours}:{minutes:02d}"
+    end_minutes = start_minutes + 60
+    end_hours = 9 + end_minutes // 60
+    end_minutes_remainder = end_minutes % 60
+    end_time = f"{end_hours}:{end_minutes_remainder:02d}"
     print("Day: Monday")
-    print(f"Start Time: {start_time_str}")
-    print(f"End Time: {end_time_str}")
+    print(f"Start Time: {start_time}")
+    print(f"End Time: {end_time}")
 else:
     print("No solution found")

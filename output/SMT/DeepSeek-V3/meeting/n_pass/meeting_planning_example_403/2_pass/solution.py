@@ -1,153 +1,130 @@
 from z3 import *
+import json
 
 def solve_scheduling():
-    # Initialize solver
+    # Initialize Z3 solver
     s = Solver()
 
-    # Convert all times to minutes since 9:00 AM (0 minutes)
-    # Friends' availability windows in minutes since 9:00 AM
-    # Andrew: Golden Gate Park, 11:45AM (165 mins) to 2:30PM (330 mins)
-    andrew_start = 165
-    andrew_end = 330
-    # Sarah: Pacific Heights, 4:15PM (435 mins) to 6:45PM (525 mins)
-    sarah_start = 435
-    sarah_end = 525
-    # Nancy: Presidio, 5:30PM (510 mins) to 7:15PM (555 mins)
-    nancy_start = 510
-    nancy_end = 555
-    # Rebecca: Chinatown, 9:45AM (45 mins) to 9:30PM (750 mins)
-    rebecca_start = 45
-    rebecca_end = 750
-    # Robert: The Castro, 8:30AM (-30 mins) to 2:15PM (315 mins)
-    # Adjusted to start at 9:00 AM (0 mins) since we arrive at 9:00 AM
-    robert_start = 0
-    robert_end = 315
+    # Define friends and their availability
+    friends = {
+        "Andrew": {"location": "Golden Gate Park", "start": "11:45", "end": "14:30", "min_duration": 75},
+        "Sarah": {"location": "Pacific Heights", "start": "16:15", "end": "18:45", "min_duration": 15},
+        "Nancy": {"location": "Presidio", "start": "17:30", "end": "19:15", "min_duration": 60},
+        "Rebecca": {"location": "Chinatown", "start": "09:45", "end": "21:30", "min_duration": 90},
+        "Robert": {"location": "The Castro", "start": "08:30", "end": "14:15", "min_duration": 30}
+    }
 
-    # Meeting durations in minutes
-    andrew_min_duration = 75
-    sarah_min_duration = 15
-    nancy_min_duration = 60
-    rebecca_min_duration = 90
-    robert_min_duration = 30
+    # Convert time strings to minutes since 9:00 AM (540 minutes since midnight)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
 
-    # Variables for start and end times of each meeting
-    andrew_meet_start = Real('andrew_meet_start')
-    andrew_meet_end = Real('andrew_meet_end')
-    sarah_meet_start = Real('sarah_meet_start')
-    sarah_meet_end = Real('sarah_meet_end')
-    nancy_meet_start = Real('nancy_meet_start')
-    nancy_meet_end = Real('nancy_meet_end')
-    rebecca_meet_start = Real('rebecca_meet_start')
-    rebecca_meet_end = Real('rebecca_meet_end')
-    robert_meet_start = Real('robert_meet_start')
-    robert_meet_end = Real('robert_meet_end')
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
 
-    # Constraints for each meeting's duration and availability
-    # Andrew
-    s.add(andrew_meet_start >= andrew_start)
-    s.add(andrew_meet_end <= andrew_end)
-    s.add(andrew_meet_end - andrew_meet_start >= andrew_min_duration)
-    # Sarah
-    s.add(sarah_meet_start >= sarah_start)
-    s.add(sarah_meet_end <= sarah_end)
-    s.add(sarah_meet_end - sarah_meet_start >= sarah_min_duration)
-    # Nancy
-    s.add(nancy_meet_start >= nancy_start)
-    s.add(nancy_meet_end <= nancy_end)
-    s.add(nancy_meet_end - nancy_meet_start >= nancy_min_duration)
-    # Rebecca
-    s.add(rebecca_meet_start >= rebecca_start)
-    s.add(rebecca_meet_end <= rebecca_end)
-    s.add(rebecca_meet_end - rebecca_meet_start >= rebecca_min_duration)
-    # Robert
-    s.add(robert_meet_start >= robert_start)
-    s.add(robert_meet_end <= robert_end)
-    s.add(robert_meet_end - robert_meet_start >= robert_min_duration)
+    # Parse availability windows
+    for name, data in friends.items():
+        data["start_min"] = time_to_minutes(data["start"])
+        data["end_min"] = time_to_minutes(data["end"])
+
+    # Define variables for each meeting's start and end times
+    meet_vars = {}
+    for name in friends:
+        start_var = Int(f'start_{name}')
+        end_var = Int(f'end_{name}')
+        meet_vars[name] = (start_var, end_var)
+
+    # Current location starts at Union Square at 9:00 AM (540 minutes)
+    current_time = 540  # 9:00 AM in minutes
+    current_location = "Union Square"
 
     # Travel times dictionary (from -> to -> minutes)
     travel_times = {
-        'Union Square': {
-            'Golden Gate Park': 22,
-            'Pacific Heights': 15,
-            'Presidio': 24,
-            'Chinatown': 7,
-            'The Castro': 19
+        "Union Square": {
+            "Golden Gate Park": 22,
+            "Pacific Heights": 15,
+            "Presidio": 24,
+            "Chinatown": 7,
+            "The Castro": 19
         },
-        'Golden Gate Park': {
-            'Union Square': 22,
-            'Pacific Heights': 16,
-            'Presidio': 11,
-            'Chinatown': 23,
-            'The Castro': 13
+        "Golden Gate Park": {
+            "Union Square": 22,
+            "Pacific Heights": 16,
+            "Presidio": 11,
+            "Chinatown": 23,
+            "The Castro": 13
         },
-        'Pacific Heights': {
-            'Union Square': 12,
-            'Golden Gate Park': 15,
-            'Presidio': 11,
-            'Chinatown': 11,
-            'The Castro': 16
+        "Pacific Heights": {
+            "Union Square": 12,
+            "Golden Gate Park": 15,
+            "Presidio": 11,
+            "Chinatown": 11,
+            "The Castro": 16
         },
-        'Presidio': {
-            'Union Square': 22,
-            'Golden Gate Park': 12,
-            'Pacific Heights': 11,
-            'Chinatown': 21,
-            'The Castro': 21
+        "Presidio": {
+            "Union Square": 22,
+            "Golden Gate Park": 12,
+            "Pacific Heights": 11,
+            "Chinatown": 21,
+            "The Castro": 21
         },
-        'Chinatown': {
-            'Union Square': 7,
-            'Golden Gate Park': 23,
-            'Pacific Heights': 10,
-            'Presidio': 19,
-            'The Castro': 22
+        "Chinatown": {
+            "Union Square": 7,
+            "Golden Gate Park": 23,
+            "Pacific Heights": 10,
+            "Presidio": 19,
+            "The Castro": 22
         },
-        'The Castro': {
-            'Union Square': 19,
-            'Golden Gate Park': 11,
-            'Pacific Heights': 16,
-            'Presidio': 20,
-            'Chinatown': 20
+        "The Castro": {
+            "Union Square": 19,
+            "Golden Gate Park": 11,
+            "Pacific Heights": 16,
+            "Presidio": 20,
+            "Chinatown": 20
         }
     }
 
-    # Locations of each friend
-    friend_locations = {
-        'Andrew': 'Golden Gate Park',
-        'Sarah': 'Pacific Heights',
-        'Nancy': 'Presidio',
-        'Rebecca': 'Chinatown',
-        'Robert': 'The Castro'
-    }
+    # Define the sequence of meetings to attempt
+    sequence = ["Robert", "Rebecca", "Andrew", "Sarah", "Nancy"]
 
-    # Assume an order of visiting friends: Robert -> Rebecca -> Andrew -> Sarah -> Nancy
-    # Start at Union Square at time 0
-    # Travel to Robert at The Castro: 19 mins
-    s.add(robert_meet_start >= 19)
-    # After Robert, travel to Rebecca at Chinatown: 20 mins
-    s.add(rebecca_meet_start >= robert_meet_end + travel_times['The Castro']['Chinatown'])
-    # After Rebecca, travel to Andrew at Golden Gate Park: 23 mins
-    s.add(andrew_meet_start >= rebecca_meet_end + travel_times['Chinatown']['Golden Gate Park'])
-    # After Andrew, travel to Sarah at Pacific Heights: 16 mins
-    s.add(sarah_meet_start >= andrew_meet_end + travel_times['Golden Gate Park']['Pacific Heights'])
-    # After Sarah, travel to Nancy at Presidio: 11 mins
-    s.add(nancy_meet_start >= sarah_meet_end + travel_times['Pacific Heights']['Presidio'])
+    # Add constraints for each meeting in the sequence
+    prev_end = current_time
+    prev_loc = current_location
+    for name in sequence:
+        start_var, end_var = meet_vars[name]
+        friend = friends[name]
+        s.add(start_var >= friend["start_min"])
+        s.add(end_var <= friend["end_min"])
+        s.add(end_var >= start_var + friend["min_duration"])
 
-    # Check if the schedule is feasible
+        # Travel time from previous location to current friend's location
+        travel_time = travel_times[prev_loc][friend["location"]]
+        s.add(start_var >= prev_end + travel_time)
+
+        prev_end = end_var
+        prev_loc = friend["location"]
+
+    # Check if the constraints are satisfiable
     if s.check() == sat:
-        m = s.model()
-        print("Feasible schedule found:")
-        # Convert minutes back to time format for readability
-        def minutes_to_time(minutes):
-            hours = int(minutes) // 60
-            mins = int(minutes) % 60
-            return f"{9 + hours}:{mins:02d} {'AM' if hours < 3 else 'PM'}"
-
-        print(f"Meet Robert at The Castro: from {minutes_to_time(m[robert_meet_start].as_long())} to {minutes_to_time(m[robert_meet_end].as_long())}")
-        print(f"Meet Rebecca at Chinatown: from {minutes_to_time(m[rebecca_meet_start].as_long())} to {minutes_to_time(m[rebecca_meet_end].as_long())}")
-        print(f"Meet Andrew at Golden Gate Park: from {minutes_to_time(m[andrew_meet_start].as_long())} to {minutes_to_time(m[andrew_meet_end].as_long())}")
-        print(f"Meet Sarah at Pacific Heights: from {minutes_to_time(m[sarah_meet_start].as_long())} to {minutes_to_time(m[sarah_meet_end].as_long())}")
-        print(f"Meet Nancy at Presidio: from {minutes_to_time(m[nancy_meet_start].as_long())} to {minutes_to_time(m[nancy_meet_end].as_long())}")
+        model = s.model()
+        itinerary = []
+        for name in sequence:
+            start_var, end_var = meet_vars[name]
+            start_time = model.eval(start_var).as_long()
+            end_time = model.eval(end_var).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": name,
+                "start_time": minutes_to_time(start_time),
+                "end_time": minutes_to_time(end_time)
+            })
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found with the assumed order.")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Execute the solver
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

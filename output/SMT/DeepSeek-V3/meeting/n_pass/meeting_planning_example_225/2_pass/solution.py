@@ -1,150 +1,209 @@
 from z3 import *
+import json
 
 def solve_scheduling():
     # Initialize solver
     s = Solver()
 
-    # Locations
-    locations = ['Sunset', 'NorthBeach', 'UnionSquare', 'AlamoSquare']
-    
-    # Travel times (in minutes) as a dictionary of dictionaries
-    travel_times = {
-        'Sunset': {'NorthBeach': 29, 'UnionSquare': 30, 'AlamoSquare': 17},
-        'NorthBeach': {'Sunset': 27, 'UnionSquare': 7, 'AlamoSquare': 16},
-        'UnionSquare': {'Sunset': 26, 'NorthBeach': 10, 'AlamoSquare': 15},
-        'AlamoSquare': {'Sunset': 16, 'NorthBeach': 15, 'UnionSquare': 14}
-    }
+    # Define time variables in minutes since 9:00 AM (540 minutes)
+    # Meeting start and end times for each friend
+    sarah_start = Int('sarah_start')
+    sarah_end = Int('sarah_end')
+    jeffrey_start = Int('jeffrey_start')
+    jeffrey_end = Int('jeffrey_end')
+    brian_start = Int('brian_start')
+    brian_end = Int('brian_end')
 
-    # Convert all times to minutes since 9:00 AM (540 minutes)
-    def time_to_minutes(h, m):
-        return h * 60 + m - 540  # 9:00 AM is 540 minutes since midnight
+    # Convert friends' availability windows to minutes since 9:00 AM
+    # Sarah: 4:00 PM to 6:15 PM (16:00 to 18:15) -> 960 to 1095 minutes
+    sarah_available_start = 16 * 60 - 540  # 960 - 540 = 420
+    sarah_available_end = (18 * 60 + 15) - 540  # 1095 - 540 = 555
 
-    # Friend constraints
-    friends = {
-        'Sarah': {
-            'location': 'NorthBeach',
-            'start': time_to_minutes(16, 0),  # 4:00 PM
-            'end': time_to_minutes(18, 15),    # 6:15 PM
-            'duration': 60                     # 60 minutes
-        },
-        'Jeffrey': {
-            'location': 'UnionSquare',
-            'start': time_to_minutes(15, 0),  # 3:00 PM
-            'end': time_to_minutes(22, 0),    # 10:00 PM
-            'duration': 75                     # 75 minutes
-        },
-        'Brian': {
-            'location': 'AlamoSquare',
-            'start': time_to_minutes(16, 0),   # 4:00 PM
-            'end': time_to_minutes(17, 30),   # 5:30 PM
-            'duration': 75                     # 75 minutes
-        }
-    }
+    # Jeffrey: 3:00 PM to 10:00 PM (15:00 to 22:00) -> 900 to 1320 minutes
+    jeffrey_available_start = 15 * 60 - 540  # 900 - 540 = 360
+    jeffrey_available_end = 22 * 60 - 540  # 1320 - 540 = 780
 
-    # Variables for each friend's meeting start times
-    meeting_start = {name: Int(f'start_{name}') for name in friends}
-    meeting_attended = {name: Bool(f'attend_{name}') for name in friends}
+    # Brian: 4:00 PM to 5:30 PM (16:00 to 17:30) -> 960 to 1050 minutes
+    brian_available_start = 16 * 60 - 540  # 960 - 540 = 420
+    brian_available_end = (17 * 60 + 30) - 540  # 1050 - 540 = 510
 
-    # Current location starts at Sunset District at time 0 (9:00 AM)
-    current_location = 'Sunset'
-    current_time = 0
+    # Meeting durations in minutes
+    sarah_duration = 60
+    jeffrey_duration = 75
+    brian_duration = 75
 
-    # Basic constraints for each friend's meeting
-    for name in friends:
-        friend = friends[name]
-        # If attending, meeting must be within friend's availability
-        s.add(Implies(meeting_attended[name], 
-                      And(meeting_start[name] >= friend['start'],
-                          meeting_start[name] + friend['duration'] <= friend['end'])))
+    # Add constraints for each meeting's duration and availability
+    s.add(sarah_start >= sarah_available_start)
+    s.add(sarah_end <= sarah_available_end)
+    s.add(sarah_end == sarah_start + sarah_duration)
 
-    # We can't be in two places at once, so meetings must be scheduled with travel time
-    # We'll create an order of meetings and ensure travel time is accounted for
+    s.add(jeffrey_start >= jeffrey_available_start)
+    s.add(jeffrey_end <= jeffrey_available_end)
+    s.add(jeffrey_end == jeffrey_start + jeffrey_duration)
 
-    # Try to meet all three friends if possible
-    all_meetings = And([meeting_attended[name] for name in friends])
-    s.push()
-    s.add(all_meetings)
+    s.add(brian_start >= brian_available_start)
+    s.add(brian_end <= brian_available_end)
+    s.add(brian_end == brian_start + brian_duration)
 
-    # Possible orders:
-    # 1. Jeffrey -> Sarah -> Brian
-    order1 = And(
-        meeting_start['Jeffrey'] + friends['Jeffrey']['duration'] + 
-        travel_times['UnionSquare']['NorthBeach'] <= meeting_start['Sarah'],
-        meeting_start['Sarah'] + friends['Sarah']['duration'] + 
-        travel_times['NorthBeach']['AlamoSquare'] <= meeting_start['Brian'],
-        meeting_start['Jeffrey'] >= travel_times['Sunset']['UnionSquare']
-    )
+    # Travel times between locations (in minutes)
+    # Sunset to Union Square: 30
+    # Union Square to North Beach: 10
+    # North Beach to Alamo Square: 16
 
-    # 2. Jeffrey -> Brian -> Sarah
-    order2 = And(
-        meeting_start['Jeffrey'] + friends['Jeffrey']['duration'] + 
-        travel_times['UnionSquare']['AlamoSquare'] <= meeting_start['Brian'],
-        meeting_start['Brian'] + friends['Brian']['duration'] + 
-        travel_times['AlamoSquare']['NorthBeach'] <= meeting_start['Sarah'],
-        meeting_start['Jeffrey'] >= travel_times['Sunset']['UnionSquare']
-    )
+    # Assume initial location is Sunset District (arrival at 9:00 AM)
+    # We'll try to meet Jeffrey first, then Sarah, then Brian
+    s.add(jeffrey_start >= 30)  # travel from Sunset to Union Square
+    s.add(sarah_start >= jeffrey_end + 10)  # travel from Union Square to North Beach
+    s.add(brian_start >= sarah_end + 16)  # travel from North Beach to Alamo Square
 
-    s.add(Or(order1, order2))
-
+    # Check if all meetings can fit
     if s.check() == sat:
         model = s.model()
-        print("Optimal schedule (meeting all three friends):")
-        for name in sorted(friends.keys(), key=lambda x: model[meeting_start[x]].as_long()):
-            if is_true(model[meeting_attended[name]]):
-                start = model[meeting_start[name]].as_long()
-                end = start + friends[name]['duration']
-                print(f"Meet {name} at {friends[name]['location']} from {start//60+9}:{start%60:02d} to {end//60+9}:{end%60:02d}")
+        itinerary = []
+        # Convert times back to HH:MM format (minutes since 9:00 AM)
+        def to_time_str(minutes):
+            total_minutes = 540 + minutes
+            h = total_minutes // 60
+            m = total_minutes % 60
+            return f"{h:02d}:{m:02d}"
+
+        jeffrey_s = model.eval(jeffrey_start).as_long()
+        jeffrey_e = model.eval(jeffrey_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Jeffrey",
+            "start_time": to_time_str(jeffrey_s),
+            "end_time": to_time_str(jeffrey_e)
+        })
+
+        sarah_s = model.eval(sarah_start).as_long()
+        sarah_e = model.eval(sarah_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Sarah",
+            "start_time": to_time_str(sarah_s),
+            "end_time": to_time_str(sarah_e)
+        })
+
+        brian_s = model.eval(brian_start).as_long()
+        brian_e = model.eval(brian_end).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Brian",
+            "start_time": to_time_str(brian_s),
+            "end_time": to_time_str(brian_e)
+        })
+
+        return {"itinerary": itinerary}
     else:
-        print("Cannot meet all three friends. Trying combinations of two...")
+        # If meeting all three is not possible, try meeting two friends
+        s.push()
+        s.add(jeffrey_start >= 30)  # travel from Sunset to Union Square
+        s.add(sarah_start >= jeffrey_end + 10)  # travel from Union Square to North Beach
+        # Remove Brian's meeting constraints
+        s.add(brian_start == -1)  # dummy, not meeting Brian
+        s.add(brian_end == -1)
+        if s.check() == sat:
+            model = s.model()
+            itinerary = []
+            def to_time_str(minutes):
+                total_minutes = 540 + minutes
+                h = total_minutes // 60
+                m = total_minutes % 60
+                return f"{h:02d}:{m:02d}"
+
+            jeffrey_s = model.eval(jeffrey_start).as_long()
+            jeffrey_e = model.eval(jeffrey_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Jeffrey",
+                "start_time": to_time_str(jeffrey_s),
+                "end_time": to_time_str(jeffrey_e)
+            })
+
+            sarah_s = model.eval(sarah_start).as_long()
+            sarah_e = model.eval(sarah_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Sarah",
+                "start_time": to_time_str(sarah_s),
+                "end_time": to_time_str(sarah_e)
+            })
+
+            s.pop()
+            return {"itinerary": itinerary}
         s.pop()
 
-        # Try meeting two friends
-        for combo in [('Jeffrey', 'Sarah'), ('Jeffrey', 'Brian'), ('Sarah', 'Brian')]:
-            s.push()
-            s.add(And([meeting_attended[name] for name in combo]))
-            s.add(Not(Or([meeting_attended[name] for name in friends if name not in combo]))
+        # Try meeting Jeffrey and Brian
+        s.push()
+        s.add(jeffrey_start >= 30)  # travel from Sunset to Union Square
+        s.add(brian_start >= jeffrey_end + 15)  # travel from Union Square to Alamo Square
+        s.add(sarah_start == -1)  # not meeting Sarah
+        s.add(sarah_end == -1)
+        if s.check() == sat:
+            model = s.model()
+            itinerary = []
+            def to_time_str(minutes):
+                total_minutes = 540 + minutes
+                h = total_minutes // 60
+                m = total_minutes % 60
+                return f"{h:02d}:{m:02d}"
 
-            # Jeffrey first
-            if 'Jeffrey' in combo:
-                other = combo[1]
-                s.add(And(
-                    meeting_start['Jeffrey'] + friends['Jeffrey']['duration'] + 
-                    travel_times['UnionSquare'][friends[other]['location']] <= meeting_start[other],
-                    meeting_start['Jeffrey'] >= travel_times['Sunset']['UnionSquare']
-                ))
-            else:
-                # Sarah and Brian
-                s.add(And(
-                    meeting_start['Sarah'] + friends['Sarah']['duration'] + 
-                    travel_times['NorthBeach']['AlamoSquare'] <= meeting_start['Brian'],
-                    meeting_start['Sarah'] >= travel_times['Sunset']['NorthBeach']
-                ))
+            jeffrey_s = model.eval(jeffrey_start).as_long()
+            jeffrey_e = model.eval(jeffrey_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Jeffrey",
+                "start_time": to_time_str(jeffrey_s),
+                "end_time": to_time_str(jeffrey_e)
+            })
 
-            if s.check() == sat:
-                model = s.model()
-                print(f"Schedule meeting {combo[0]} and {combo[1]}:")
-                for name in sorted(combo, key=lambda x: model[meeting_start[x]].as_long()):
-                    start = model[meeting_start[name]].as_long()
-                    end = start + friends[name]['duration']
-                    print(f"Meet {name} at {friends[name]['location']} from {start//60+9}:{start%60:02d} to {end//60+9}:{end%60:02d}")
-                break
+            brian_s = model.eval(brian_start).as_long()
+            brian_e = model.eval(brian_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Brian",
+                "start_time": to_time_str(brian_s),
+                "end_time": to_time_str(brian_e)
+            })
+
             s.pop()
-        else:
-            print("Cannot meet any two friends. Trying individual meetings...")
-            for name in friends:
-                s.push()
-                s.add(meeting_attended[name])
-                s.add(Not(Or([meeting_attended[n] for n in friends if n != name])))
-                s.add(meeting_start[name] >= travel_times['Sunset'][friends[name]['location']])
+            return {"itinerary": itinerary}
+        s.pop()
 
-                if s.check() == sat:
-                    model = s.model()
-                    start = model[meeting_start[name]].as_long()
-                    end = start + friends[name]['duration']
-                    print(f"Can only meet {name} at {friends[name]['location']} from {start//60+9}:{start%60:02d} to {end//60+9}:{end%60:02d}")
-                    break
-                s.pop()
-            else:
-                print("Cannot meet any friends with given constraints.")
+        # As a last resort, meet only Jeffrey
+        s.push()
+        s.add(jeffrey_start >= 30)
+        s.add(jeffrey_end == jeffrey_start + jeffrey_duration)
+        s.add(sarah_start == -1)
+        s.add(sarah_end == -1)
+        s.add(brian_start == -1)
+        s.add(brian_end == -1)
+        if s.check() == sat:
+            model = s.model()
+            itinerary = []
+            def to_time_str(minutes):
+                total_minutes = 540 + minutes
+                h = total_minutes // 60
+                m = total_minutes % 60
+                return f"{h:02d}:{m:02d}"
 
-solve_scheduling()
+            jeffrey_s = model.eval(jeffrey_start).as_long()
+            jeffrey_e = model.eval(jeffrey_end).as_long()
+            itinerary.append({
+                "action": "meet",
+                "person": "Jeffrey",
+                "start_time": to_time_str(jeffrey_s),
+                "end_time": to_time_str(jeffrey_e)
+            })
+
+            s.pop()
+            return {"itinerary": itinerary}
+        s.pop()
+
+        # If all else fails, return empty itinerary
+        return {"itinerary": []}
+
+# Solve the problem
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

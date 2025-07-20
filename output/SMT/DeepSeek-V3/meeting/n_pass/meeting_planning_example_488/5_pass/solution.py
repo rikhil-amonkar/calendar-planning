@@ -1,113 +1,177 @@
 from z3 import *
+import itertools
 
-def solve_schedule():
+def solve_scheduling():
     # Initialize solver
     s = Solver()
 
-    # Define variables for each meeting's start and end times (in minutes since 9:00 AM)
-    ronald_start = Int('ronald_start')
-    ronald_end = Int('ronald_end')
-    helen_start = Int('helen_start')
-    helen_end = Int('helen_end')
-    joshua_start = Int('joshua_start')
-    joshua_end = Int('joshua_end')
-    margaret_start = Int('margaret_start')
-    margaret_end = Int('margaret_end')
+    # Define the friends and their constraints
+    friends = {
+        "Ronald": {
+            "location": "Nob Hill",
+            "available_start": "10:00",
+            "available_end": "17:00",
+            "min_duration": 105,
+        },
+        "Sarah": {
+            "location": "Russian Hill",
+            "available_start": "07:15",
+            "available_end": "09:30",
+            "min_duration": 45,
+        },
+        "Helen": {
+            "location": "The Castro",
+            "available_start": "13:30",
+            "available_end": "17:00",
+            "min_duration": 120,
+        },
+        "Joshua": {
+            "location": "Sunset District",
+            "available_start": "14:15",
+            "available_end": "19:30",
+            "min_duration": 90,
+        },
+        "Margaret": {
+            "location": "Haight-Ashbury",
+            "available_start": "10:15",
+            "available_end": "22:00",
+            "min_duration": 60,
+        }
+    }
 
-    # Convert time windows to minutes since 9:00 AM
-    ronald_window = (60, 480)    # 10:00 AM - 5:00 PM
-    helen_window = (270, 480)    # 1:30 PM - 5:00 PM
-    joshua_window = (315, 630)   # 2:15 PM - 7:30 PM
-    margaret_window = (75, 780)  # 10:15 AM - 10:00 PM
+    # Convert time strings to minutes since midnight
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
 
-    # Minimum meeting durations
-    min_ronald = 105
-    min_helen = 120
-    min_joshua = 90
-    min_margaret = 60
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
 
-    # Travel times (in minutes)
-    pac_haight = 11   # Pacific Heights to Haight-Ashbury
-    haight_nob = 15   # Haight-Ashbury to Nob Hill
-    nob_castro = 17   # Nob Hill to The Castro
-    castro_sunset = 17 # The Castro to Sunset District
+    # Current location and time
+    current_location = "Pacific Heights"
+    current_time = time_to_minutes("09:00")
 
-    # Add constraints for each meeting
-    # Ronald
-    s.add(ronald_start >= ronald_window[0])
-    s.add(ronald_end <= ronald_window[1])
-    s.add(ronald_end - ronald_start >= min_ronald)
+    # Travel times dictionary: from -> to -> minutes
+    travel_times = {
+        "Pacific Heights": {
+            "Nob Hill": 8,
+            "Russian Hill": 7,
+            "The Castro": 16,
+            "Sunset District": 21,
+            "Haight-Ashbury": 11,
+        },
+        "Nob Hill": {
+            "Pacific Heights": 8,
+            "Russian Hill": 5,
+            "The Castro": 17,
+            "Sunset District": 25,
+            "Haight-Ashbury": 13,
+        },
+        "Russian Hill": {
+            "Pacific Heights": 7,
+            "Nob Hill": 5,
+            "The Castro": 21,
+            "Sunset District": 23,
+            "Haight-Ashbury": 17,
+        },
+        "The Castro": {
+            "Pacific Heights": 16,
+            "Nob Hill": 16,
+            "Russian Hill": 18,
+            "Sunset District": 17,
+            "Haight-Ashbury": 6,
+        },
+        "Sunset District": {
+            "Pacific Heights": 21,
+            "Nob Hill": 27,
+            "Russian Hill": 24,
+            "The Castro": 17,
+            "Haight-Ashbury": 15,
+        },
+        "Haight-Ashbury": {
+            "Pacific Heights": 12,
+            "Nob Hill": 15,
+            "Russian Hill": 17,
+            "The Castro": 6,
+            "Sunset District": 15,
+        }
+    }
 
-    # Helen
-    s.add(helen_start >= helen_window[0])
-    s.add(helen_end <= helen_window[1])
-    s.add(helen_end - helen_start >= min_helen)
+    # Since Sarah's availability is before our arrival, we can't meet her
+    friends_to_meet = ["Ronald", "Helen", "Joshua", "Margaret"]
 
-    # Joshua
-    s.add(joshua_start >= joshua_window[0])
-    s.add(joshua_end <= joshua_window[1])
-    s.add(joshua_end - joshua_start >= min_joshua)
+    # Generate all possible permutations of the friends to meet
+    best_schedule = None
+    max_meetings = 0
 
-    # Margaret
-    s.add(margaret_start >= margaret_window[0])
-    s.add(margaret_end <= margaret_window[1])
-    s.add(margaret_end - margaret_start >= min_margaret)
+    for order in itertools.permutations(friends_to_meet):
+        # Create variables for each meeting's start and end times
+        schedule = {}
+        for friend in order:
+            schedule[friend] = {
+                "start": Int(f"start_{friend}"),
+                "end": Int(f"end_{friend}"),
+            }
 
-    # Define meeting sequence with travel times
-    # Start at Pacific Heights at time 0
-    # First meeting: Margaret at Haight-Ashbury
-    s.add(margaret_start >= pac_haight)
+        # Create a solver for this order
+        temp_s = Solver()
 
-    # From Margaret to Ronald
-    s.add(ronald_start >= margaret_end + haight_nob)
+        # Add constraints for each friend
+        prev_location = current_location
+        prev_end = current_time
+        feasible = True
 
-    # From Ronald to Helen
-    s.add(helen_start >= ronald_end + nob_castro)
+        for friend in order:
+            friend_info = friends[friend]
+            loc = friend_info["location"]
+            start_var = schedule[friend]["start"]
+            end_var = schedule[friend]["end"]
+            available_start = time_to_minutes(friend_info["available_start"])
+            available_end = time_to_minutes(friend_info["available_end"])
+            min_duration = friend_info["min_duration"]
 
-    # From Helen to Joshua
-    s.add(joshua_start >= helen_end + castro_sunset)
+            # Meeting must be within available window
+            temp_s.add(start_var >= available_start)
+            temp_s.add(end_var <= available_end)
+            temp_s.add(end_var == start_var + min_duration)
 
-    # Check if schedule is feasible
-    if s.check() == sat:
-        m = s.model()
-        
-        def format_time(minutes):
-            hours = 9 + minutes // 60
-            mins = minutes % 60
-            ampm = "AM" if hours < 12 else "PM"
-            hours = hours if hours <= 12 else hours - 12
-            return f"{hours}:{mins:02d} {ampm}"
+            # Travel time from previous location
+            travel_time = travel_times[prev_location][loc]
+            temp_s.add(start_var >= prev_end + travel_time)
 
-        print("\nOptimal Schedule:")
-        print("-----------------")
-        print(f"1. Meet Margaret at Haight-Ashbury:")
-        print(f"   Start: {format_time(m[margaret_start].as_long())}")
-        print(f"   End:   {format_time(m[margaret_end].as_long())}")
-        print(f"   Duration: {min_margaret} minutes")
-        
-        print(f"\n2. Travel to Nob Hill (15 minutes)")
-        
-        print(f"\n3. Meet Ronald at Nob Hill:")
-        print(f"   Start: {format_time(m[ronald_start].as_long())}")
-        print(f"   End:   {format_time(m[ronald_end].as_long())}")
-        print(f"   Duration: {min_ronald} minutes")
-        
-        print(f"\n4. Travel to The Castro (17 minutes)")
-        
-        print(f"\n5. Meet Helen at The Castro:")
-        print(f"   Start: {format_time(m[helen_start].as_long())}")
-        print(f"   End:   {format_time(m[helen_end].as_long())}")
-        print(f"   Duration: {min_helen} minutes")
-        
-        print(f"\n6. Travel to Sunset District (17 minutes)")
-        
-        print(f"\n7. Meet Joshua at Sunset District:")
-        print(f"   Start: {format_time(m[joshua_start].as_long())}")
-        print(f"   End:   {format_time(m[joshua_end].as_long())}")
-        print(f"   Duration: {min_joshua} minutes")
-        
-        print("\nTotal meetings scheduled: 4")
+            # Update previous location and end time
+            prev_location = loc
+            prev_end = end_var
+
+        # Check if this order is feasible
+        if temp_s.check() == sat:
+            model = temp_s.model()
+            current_meetings = 0
+            itinerary = []
+            for friend in order:
+                start_val = model.evaluate(schedule[friend]["start"]).as_long()
+                end_val = model.evaluate(schedule[friend]["end"]).as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "person": friend,
+                    "start_time": minutes_to_time(start_val),
+                    "end_time": minutes_to_time(end_val),
+                })
+                current_meetings += 1
+
+            # Prefer schedules that meet more friends
+            if current_meetings > max_meetings or (current_meetings == max_meetings and best_schedule is None):
+                max_meetings = current_meetings
+                best_schedule = itinerary
+
+    if best_schedule is not None:
+        return {"itinerary": best_schedule}
     else:
-        print("\nNo feasible schedule found that meets all constraints.")
+        return {"itinerary": []}
 
-solve_schedule()
+# Run the solver and print the result
+result = solve_scheduling()
+print(result)

@@ -1,54 +1,85 @@
-from z3 import *
+from z3 import Int, Solver, Or, And
 
-def main():
-    # Meeting duration in minutes
-    duration = 30
-    # Total available time in minutes (9:00 to 17:00)
-    total_minutes = 480
+def time_to_minutes(time_str):
+    hours, minutes = map(int, time_str.split(':'))
+    return hours * 60 + minutes
 
-    # Busy intervals for each participant in minutes (from 9:00)
-    lisa_busy = [(0, 60), (90, 150), (210, 240), (420, 450)]
-    bobby_busy = [(0, 30), (60, 90), (150, 180), (360, 390)]
-    randy_busy = [(30, 60), (90, 120), (150, 210), (240, 270), (330, 390), (420, 450)]
-    
-    # Create a Z3 integer variable for the start time
-    s = Int('s')
-    
-    # Constraints: meeting must be within work hours (9:00 to 17:00)
-    constraints = [s >= 0, s + duration <= total_minutes]
-    
-    # Add constraints for each participant's busy intervals
-    # For each busy interval (start, end), the meeting must either end before the interval starts or start after the interval ends.
-    def add_busy_constraints(busy_intervals):
-        for (start_int, end_int) in busy_intervals:
-            constraints.append(Or(s + duration <= start_int, s >= end_int))
-    
-    add_busy_constraints(lisa_busy)
-    add_busy_constraints(bobby_busy)
-    add_busy_constraints(randy_busy)
-    
-    # Use an optimizer to find the earliest start time
-    opt = Optimize()
-    opt.add(constraints)
-    opt.minimize(s)
-    
-    if opt.check() == sat:
-        m = opt.model()
-        start_minutes = m.eval(s).as_long()
-        
-        # Convert start_minutes back to time string
-        hours = 9 + start_minutes // 60
-        minutes = start_minutes % 60
-        start_time = f"{hours}:{minutes:02d}"
-        
-        end_minutes = start_minutes + duration
-        hours_end = 9 + end_minutes // 60
-        minutes_end = end_minutes % 60
-        end_time = f"{hours_end}:{minutes_end:02d}"
-        
-        print(f"Monday {start_time} to {end_time}")
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    minutes = minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+# Busy intervals in minutes
+lisa_busy = [
+    ("9:00", "10:00"),
+    ("10:30", "11:30"),
+    ("12:30", "13:00"),
+    ("16:00", "16:30")
+]
+lisa_intervals = [(time_to_minutes(s), time_to_minutes(e)) for s, e in lisa_busy]
+
+bobby_busy = [
+    ("9:00", "9:30"),
+    ("10:00", "10:30"),
+    ("11:30", "12:00"),
+    ("15:00", "15:30")
+]
+bobby_intervals = [(time_to_minutes(s), time_to_minutes(e)) for s, e in bobby_busy]
+
+randy_busy = [
+    ("9:30", "10:00"),
+    ("10:30", "11:00"),
+    ("11:30", "12:30"),
+    ("13:00", "13:30"),
+    ("14:30", "15:30"),
+    ("16:00", "16:30")
+]
+randy_intervals = [(time_to_minutes(s), time_to_minutes(e)) for s, e in randy_busy]
+
+s = Solver()
+start = Int('start')
+end = start + 30  # meeting duration
+
+# Work hours: 9:00 (540) to 17:00 (1020)
+s.add(start >= 540)
+s.add(end <= 1020)
+
+# Function to add no-overlap constraints
+def add_no_overlap_constraints(intervals):
+    for (busy_start, busy_end) in intervals:
+        s.add(Or(end <= busy_start, start >= busy_end))
+
+add_no_overlap_constraints(lisa_intervals)
+add_no_overlap_constraints(bobby_intervals)
+add_no_overlap_constraints(randy_intervals)
+
+# First, try to respect Bobby's preference: meeting ends by 15:00 (900 minutes)
+s.push()
+s.add(end <= 900)
+
+if s.check() == z3.sat:
+    m = s.model()
+    start_min = m[start].as_long()
+    end_min = start_min + 30
+    start_time = minutes_to_time(start_min)
+    end_time = minutes_to_time(end_min)
+    solution_found = True
+else:
+    s.pop()  # Remove the preference constraint
+    if s.check() == z3.sat:
+        m = s.model()
+        start_min = m[start].as_long()
+        end_min = start_min + 30
+        start_time = minutes_to_time(start_min)
+        end_time = minutes_to_time(end_min)
+        solution_found = True
     else:
-        print("No solution found")
+        solution_found = False
 
-if __name__ == "__main__":
-    main()
+if solution_found:
+    print("SOLUTION:")
+    print("Day: Monday")
+    print(f"Start Time: {start_time}")
+    print(f"End Time: {end_time}")
+else:
+    print("No solution found")

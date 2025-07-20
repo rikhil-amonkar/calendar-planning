@@ -1,151 +1,124 @@
 from z3 import *
+import json
 
 def solve_scheduling():
     # Initialize solver
     s = Solver()
 
-    # Friends and their details
+    # Define friends and their details
     friends = {
-        'Steven': {'location': 'North Beach', 'start': 17.5, 'end': 20.5, 'duration': 0.25},
-        'Sarah': {'location': 'Golden Gate Park', 'start': 17.0, 'end': 19.25, 'duration': 1.25},
-        'Brian': {'location': 'Embarcadero', 'start': 14.25, 'end': 16.0, 'duration': 1.75},
-        'Stephanie': {'location': 'Haight-Ashbury', 'start': 10.25, 'end': 12.25, 'duration': 1.25},
-        'Melissa': {'location': 'Richmond District', 'start': 14.0, 'end': 19.5, 'duration': 0.5},
-        'Nancy': {'location': 'Nob Hill', 'start': 8.25, 'end': 12.75, 'duration': 1.5},
-        'David': {'location': 'Marina District', 'start': 11.25, 'end': 13.25, 'duration': 2.0},
-        'James': {'location': 'Presidio', 'start': 15.0, 'end': 18.25, 'duration': 2.0},
-        'Elizabeth': {'location': 'Union Square', 'start': 11.5, 'end': 21.0, 'duration': 1.0},
-        'Robert': {'location': 'Financial District', 'start': 13.25, 'end': 15.25, 'duration': 0.75}
+        "Steven": {"location": "North Beach", "start": 17*60 + 30, "end": 20*60 + 30, "duration": 15},
+        "Sarah": {"location": "Golden Gate Park", "start": 17*60 + 0, "end": 19*60 + 15, "duration": 75},
+        "Brian": {"location": "Embarcadero", "start": 14*60 + 15, "end": 16*60 + 0, "duration": 105},
+        "Stephanie": {"location": "Haight-Ashbury", "start": 10*60 + 15, "end": 12*60 + 15, "duration": 75},
+        "Melissa": {"location": "Richmond District", "start": 14*60 + 0, "end": 19*60 + 30, "duration": 30},
+        "Nancy": {"location": "Nob Hill", "start": 8*60 + 15, "end": 12*60 + 45, "duration": 90},
+        "David": {"location": "Marina District", "start": 11*60 + 15, "end": 13*60 + 15, "duration": 120},
+        "James": {"location": "Presidio", "start": 15*60 + 0, "end": 18*60 + 15, "duration": 120},
+        "Elizabeth": {"location": "Union Square", "start": 11*60 + 30, "end": 21*60 + 0, "duration": 60},
+        "Robert": {"location": "Financial District", "start": 13*60 + 15, "end": 15*60 + 15, "duration": 45}
     }
 
-    # Travel times (simplified as a dictionary of dictionaries)
+    # Define travel times (in minutes) between locations. The Castro is starting point.
     travel_times = {
-        'The Castro': {
-            'North Beach': 20/60, 'Golden Gate Park': 11/60, 'Embarcadero': 22/60,
-            'Haight-Ashbury': 6/60, 'Richmond District': 16/60, 'Nob Hill': 16/60,
-            'Marina District': 21/60, 'Presidio': 20/60, 'Union Square': 19/60,
-            'Financial District': 21/60
-        },
-        'North Beach': {
-            'The Castro': 23/60, 'Golden Gate Park': 22/60, 'Embarcadero': 6/60,
-            'Haight-Ashbury': 18/60, 'Richmond District': 18/60, 'Nob Hill': 7/60,
-            'Marina District': 9/60, 'Presidio': 17/60, 'Union Square': 7/60,
-            'Financial District': 8/60
-        },
-        'Golden Gate Park': {
-            'The Castro': 13/60, 'North Beach': 23/60, 'Embarcadero': 25/60,
-            'Haight-Ashbury': 7/60, 'Richmond District': 7/60, 'Nob Hill': 20/60,
-            'Marina District': 16/60, 'Presidio': 11/60, 'Union Square': 22/60,
-            'Financial District': 26/60
-        },
-        'Embarcadero': {
-            'The Castro': 25/60, 'North Beach': 5/60, 'Golden Gate Park': 25/60,
-            'Haight-Ashbury': 21/60, 'Richmond District': 21/60, 'Nob Hill': 10/60,
-            'Marina District': 12/60, 'Presidio': 20/60, 'Union Square': 10/60,
-            'Financial District': 5/60
-        },
-        'Haight-Ashbury': {
-            'The Castro': 6/60, 'North Beach': 19/60, 'Golden Gate Park': 7/60,
-            'Embarcadero': 20/60, 'Richmond District': 10/60, 'Nob Hill': 15/60,
-            'Marina District': 17/60, 'Presidio': 15/60, 'Union Square': 19/60,
-            'Financial District': 21/60
-        },
-        'Richmond District': {
-            'The Castro': 16/60, 'North Beach': 17/60, 'Golden Gate Park': 9/60,
-            'Embarcadero': 19/60, 'Haight-Ashbury': 10/60, 'Nob Hill': 17/60,
-            'Marina District': 9/60, 'Presidio': 7/60, 'Union Square': 21/60,
-            'Financial District': 22/60
-        },
-        'Nob Hill': {
-            'The Castro': 17/60, 'North Beach': 8/60, 'Golden Gate Park': 17/60,
-            'Embarcadero': 9/60, 'Haight-Ashbury': 13/60, 'Richmond District': 14/60,
-            'Marina District': 11/60, 'Presidio': 17/60, 'Union Square': 7/60,
-            'Financial District': 9/60
-        },
-        'Marina District': {
-            'The Castro': 22/60, 'North Beach': 11/60, 'Golden Gate Park': 18/60,
-            'Embarcadero': 14/60, 'Haight-Ashbury': 16/60, 'Richmond District': 11/60,
-            'Nob Hill': 12/60, 'Presidio': 10/60, 'Union Square': 16/60,
-            'Financial District': 17/60
-        },
-        'Presidio': {
-            'The Castro': 21/60, 'North Beach': 18/60, 'Golden Gate Park': 12/60,
-            'Embarcadero': 20/60, 'Haight-Ashbury': 15/60, 'Richmond District': 7/60,
-            'Nob Hill': 18/60, 'Marina District': 11/60, 'Union Square': 22/60,
-            'Financial District': 23/60
-        },
-        'Union Square': {
-            'The Castro': 17/60, 'North Beach': 10/60, 'Golden Gate Park': 22/60,
-            'Embarcadero': 11/60, 'Haight-Ashbury': 18/60, 'Richmond District': 20/60,
-            'Nob Hill': 9/60, 'Marina District': 18/60, 'Presidio': 24/60,
-            'Financial District': 9/60
-        },
-        'Financial District': {
-            'The Castro': 20/60, 'North Beach': 7/60, 'Golden Gate Park': 23/60,
-            'Embarcadero': 4/60, 'Haight-Ashbury': 19/60, 'Richmond District': 21/60,
-            'Nob Hill': 8/60, 'Marina District': 15/60, 'Presidio': 22/60,
-            'Union Square': 9/60
-        }
+        ("The Castro", "North Beach"): 20,
+        ("The Castro", "Golden Gate Park"): 11,
+        ("The Castro", "Embarcadero"): 22,
+        ("The Castro", "Haight-Ashbury"): 6,
+        ("The Castro", "Richmond District"): 16,
+        ("The Castro", "Nob Hill"): 16,
+        ("The Castro", "Marina District"): 21,
+        ("The Castro", "Presidio"): 20,
+        ("The Castro", "Union Square"): 19,
+        ("The Castro", "Financial District"): 21,
+        ("North Beach", "Golden Gate Park"): 22,
+        ("North Beach", "Embarcadero"): 6,
+        ("North Beach", "Haight-Ashbury"): 18,
+        ("North Beach", "Richmond District"): 18,
+        ("North Beach", "Nob Hill"): 7,
+        ("North Beach", "Marina District"): 9,
+        ("North Beach", "Presidio"): 17,
+        ("North Beach", "Union Square"): 7,
+        ("North Beach", "Financial District"): 8,
+        ("Golden Gate Park", "Embarcadero"): 25,
+        ("Golden Gate Park", "Haight-Ashbury"): 7,
+        ("Golden Gate Park", "Richmond District"): 7,
+        ("Golden Gate Park", "Nob Hill"): 20,
+        ("Golden Gate Park", "Marina District"): 16,
+        ("Golden Gate Park", "Presidio"): 11,
+        ("Golden Gate Park", "Union Square"): 22,
+        ("Golden Gate Park", "Financial District"): 26,
+        ("Embarcadero", "Haight-Ashbury"): 21,
+        ("Embarcadero", "Richmond District"): 21,
+        ("Embarcadero", "Nob Hill"): 10,
+        ("Embarcadero", "Marina District"): 12,
+        ("Embarcadero", "Presidio"): 20,
+        ("Embarcadero", "Union Square"): 10,
+        ("Embarcadero", "Financial District"): 5,
+        ("Haight-Ashbury", "Richmond District"): 10,
+        ("Haight-Ashbury", "Nob Hill"): 15,
+        ("Haight-Ashbury", "Marina District"): 17,
+        ("Haight-Ashbury", "Presidio"): 15,
+        ("Haight-Ashbury", "Union Square"): 19,
+        ("Haight-Ashbury", "Financial District"): 21,
+        ("Richmond District", "Nob Hill"): 17,
+        ("Richmond District", "Marina District"): 9,
+        ("Richmond District", "Presidio"): 7,
+        ("Richmond District", "Union Square"): 21,
+        ("Richmond District", "Financial District"): 22,
+        ("Nob Hill", "Marina District"): 11,
+        ("Nob Hill", "Presidio"): 17,
+        ("Nob Hill", "Union Square"): 7,
+        ("Nob Hill", "Financial District"): 9,
+        ("Marina District", "Presidio"): 10,
+        ("Marina District", "Union Square"): 16,
+        ("Marina District", "Financial District"): 17,
+        ("Presidio", "Union Square"): 22,
+        ("Presidio", "Financial District"): 23,
+        ("Union Square", "Financial District"): 9
     }
 
-    # Create variables for each friend's meeting start and end times
-    start_vars = {}
-    end_vars = {}
+    # Create variables for each friend's meeting start and end times (in minutes since 9:00 AM)
+    variables = {}
     for name in friends:
-        start_vars[name] = Real(f'start_{name}')
-        end_vars[name] = Real(f'end_{name}')
+        start_var = Int(f'start_{name}')
+        end_var = Int(f'end_{name}')
+        variables[name] = {'start': start_var, 'end': end_var}
 
-    # Current location starts at The Castro at 9:00 AM (9.0 hours)
-    current_time = 9.0
-    current_location = 'The Castro'
-
-    # Constraints for each friend
+    # Add constraints for each friend
     for name in friends:
         friend = friends[name]
-        s.add(start_vars[name] >= friend['start'])
-        s.add(end_vars[name] <= friend['end'])
-        s.add(end_vars[name] == start_vars[name] + friend['duration'])
+        s.add(variables[name]['start'] >= friend['start'] - 9*60)  # Convert to minutes since 9:00 AM
+        s.add(variables[name]['end'] <= friend['end'] - 9*60)
+        s.add(variables[name]['end'] - variables[name]['start'] >= friend['duration'])
 
-    # Define the order of meetings (heuristic)
-    meeting_order = ['Nancy', 'Stephanie', 'David', 'Elizabeth', 'Robert', 'Brian', 'James', 'Melissa', 'Sarah', 'Steven']
+    # Define the order of meetings using a list of friends
+    order = ["Nancy", "Stephanie", "David", "Elizabeth", "Robert", "Brian", "James", "Melissa", "Sarah", "Steven"]
 
-    # Add constraints based on the meeting order
-    for i in range(len(meeting_order)):
-        if i == 0:
-            # First meeting: Nancy at Nob Hill
-            s.add(start_vars[meeting_order[i]] >= current_time + travel_times[current_location][friends[meeting_order[i]]['location']])
-        else:
-            prev_friend = meeting_order[i-1]
-            current_friend = meeting_order[i]
-            travel_time = travel_times[friends[prev_friend]['location']][friends[current_friend]['location']]
-            s.add(start_vars[current_friend] >= end_vars[prev_friend] + travel_time)
+    # Add travel time constraints between consecutive meetings
+    current_location = "The Castro"
+    current_time = 0
+    for name in order:
+        friend_loc = friends[name]["location"]
+        travel_time = travel_times.get((current_location, friend_loc), 0)
+        s.add(variables[name]['start'] >= current_time + travel_time)
+        current_time = variables[name]['end']
+        current_location = friend_loc
 
-    # Check if the constraints are satisfiable
+    # Check if the schedule is feasible
     if s.check() == sat:
         m = s.model()
-        schedule = []
-        for name in meeting_order:
-            start = m.evaluate(start_vars[name])
-            end = m.evaluate(end_vars[name])
-            # Convert start and end times to hours and minutes
-            start_val = float(str(start))
-            start_hour = int(start_val)
-            start_min = int((start_val - start_hour) * 60)
-            end_val = float(str(end))
-            end_hour = int(end_val)
-            end_min = int((end_val - end_hour) * 60)
-            schedule.append((name, friends[name]['location'], start_hour, start_min, end_hour, end_min))
-        # Sort the schedule by start time
-        schedule.sort(key=lambda x: (x[2], x[3]))
-        return schedule
+        itinerary = []
+        for name in order:
+            start = m[variables[name]['start']].as_long()
+            end = m[variables[name]['end']].as_long()
+            start_time = f"{(start + 9*60) // 60:02d}:{(start + 9*60) % 60:02d}"
+            end_time = f"{(end + 9*60) // 60:02d}:{(end + 9*60) % 60:02d}"
+            itinerary.append({"action": "meet", "person": name, "start_time": start_time, "end_time": end_time})
+        return {"itinerary": itinerary}
     else:
-        return None
+        return {"error": "No feasible schedule found"}
 
-schedule = solve_scheduling()
-if schedule:
-    print("SOLUTION:")
-    for meeting in schedule:
-        name, location, start_hour, start_min, end_hour, end_min = meeting
-        print(f"Meet {name} at {location} from {start_hour:02d}:{start_min:02d} to {end_hour:02d}:{end_min:02d}")
-else:
-    print("No feasible schedule found.")
+# Solve and print the result
+result = solve_scheduling()
+print(json.dumps(result, indent=2))

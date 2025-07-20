@@ -1,172 +1,140 @@
 from z3 import *
+import json
+from itertools import combinations
 
 def solve_scheduling():
-    # Initialize the solver
     s = Optimize()
 
-    # Define the friends and their details
+    # Friends data with locations, time windows, and required durations
     friends = {
-        'Kevin': {'location': 'Mission District', 'start': 20.75, 'end': 21.75, 'duration': 1.0},
-        'Mark': {'location': 'Fisherman\'s Wharf', 'start': 17.25, 'end': 20.0, 'duration': 1.5},
-        'Jessica': {'location': 'Russian Hill', 'start': 9.0, 'end': 15.0, 'duration': 2.0},
-        'Jason': {'location': 'Marina District', 'start': 15.25, 'end': 21.75, 'duration': 2.0},
-        'John': {'location': 'North Beach', 'start': 9.75, 'end': 18.0, 'duration': 0.25},
-        'Karen': {'location': 'Chinatown', 'start': 16.75, 'end': 19.0, 'duration': 1.25},
-        'Sarah': {'location': 'Pacific Heights', 'start': 17.5, 'end': 18.25, 'duration': 0.75},
-        'Amanda': {'location': 'The Castro', 'start': 20.0, 'end': 21.25, 'duration': 1.0},
-        'Nancy': {'location': 'Nob Hill', 'start': 9.75, 'end': 13.0, 'duration': 0.75},
-        'Rebecca': {'location': 'Sunset District', 'start': 8.75, 'end': 15.0, 'duration': 1.25}
+        "Kevin": {"location": "Mission District", "start": 20*60+45, "end": 21*60+45, "duration": 60},
+        "Mark": {"location": "Fisherman's Wharf", "start": 17*60+15, "end": 20*60+0, "duration": 90},
+        "Jessica": {"location": "Russian Hill", "start": 9*60+0, "end": 15*60+0, "duration": 120},
+        "Jason": {"location": "Marina District", "start": 15*60+15, "end": 21*60+45, "duration": 120},
+        "John": {"location": "North Beach", "start": 9*60+45, "end": 18*60+0, "duration": 15},
+        "Karen": {"location": "Chinatown", "start": 16*60+45, "end": 19*60+0, "duration": 75},
+        "Sarah": {"location": "Pacific Heights", "start": 17*60+30, "end": 18*60+15, "duration": 45},
+        "Amanda": {"location": "The Castro", "start": 20*60+0, "end": 21*60+15, "duration": 60},
+        "Nancy": {"location": "Nob Hill", "start": 9*60+45, "end": 13*60+0, "duration": 45},
+        "Rebecca": {"location": "Sunset District", "start": 8*60+45, "end": 15*60+0, "duration": 75}
     }
 
-    # Define travel times (in hours)
+    # Travel times between locations (minutes)
     travel_times = {
-        ('Union Square', 'Mission District'): 14/60,
-        ('Union Square', 'Fisherman\'s Wharf'): 15/60,
-        ('Union Square', 'Russian Hill'): 13/60,
-        ('Union Square', 'Marina District'): 18/60,
-        ('Union Square', 'North Beach'): 10/60,
-        ('Union Square', 'Chinatown'): 7/60,
-        ('Union Square', 'Pacific Heights'): 15/60,
-        ('Union Square', 'The Castro'): 17/60,
-        ('Union Square', 'Nob Hill'): 9/60,
-        ('Union Square', 'Sunset District'): 27/60,
-        ('Mission District', 'Union Square'): 15/60,
-        ('Mission District', 'Fisherman\'s Wharf'): 22/60,
-        ('Mission District', 'Russian Hill'): 15/60,
-        ('Mission District', 'Marina District'): 19/60,
-        ('Mission District', 'North Beach'): 17/60,
-        ('Mission District', 'Chinatown'): 16/60,
-        ('Mission District', 'Pacific Heights'): 16/60,
-        ('Mission District', 'The Castro'): 7/60,
-        ('Mission District', 'Nob Hill'): 12/60,
-        ('Mission District', 'Sunset District'): 24/60,
-        ('Fisherman\'s Wharf', 'Union Square'): 13/60,
-        ('Fisherman\'s Wharf', 'Mission District'): 22/60,
-        ('Fisherman\'s Wharf', 'Russian Hill'): 7/60,
-        ('Fisherman\'s Wharf', 'Marina District'): 9/60,
-        ('Fisherman\'s Wharf', 'North Beach'): 6/60,
-        ('Fisherman\'s Wharf', 'Chinatown'): 12/60,
-        ('Fisherman\'s Wharf', 'Pacific Heights'): 12/60,
-        ('Fisherman\'s Wharf', 'The Castro'): 27/60,
-        ('Fisherman\'s Wharf', 'Nob Hill'): 11/60,
-        ('Fisherman\'s Wharf', 'Sunset District'): 27/60,
-        ('Russian Hill', 'Union Square'): 10/60,
-        ('Russian Hill', 'Mission District'): 16/60,
-        ('Russian Hill', 'Fisherman\'s Wharf'): 7/60,
-        ('Russian Hill', 'Marina District'): 7/60,
-        ('Russian Hill', 'North Beach'): 5/60,
-        ('Russian Hill', 'Chinatown'): 9/60,
-        ('Russian Hill', 'Pacific Heights'): 7/60,
-        ('Russian Hill', 'The Castro'): 21/60,
-        ('Russian Hill', 'Nob Hill'): 5/60,
-        ('Russian Hill', 'Sunset District'): 23/60,
-        ('Marina District', 'Union Square'): 16/60,
-        ('Marina District', 'Mission District'): 20/60,
-        ('Marina District', 'Fisherman\'s Wharf'): 10/60,
-        ('Marina District', 'Russian Hill'): 8/60,
-        ('Marina District', 'North Beach'): 11/60,
-        ('Marina District', 'Chinatown'): 15/60,
-        ('Marina District', 'Pacific Heights'): 7/60,
-        ('Marina District', 'The Castro'): 22/60,
-        ('Marina District', 'Nob Hill'): 12/60,
-        ('Marina District', 'Sunset District'): 19/60,
-        ('North Beach', 'Union Square'): 7/60,
-        ('North Beach', 'Mission District'): 18/60,
-        ('North Beach', 'Fisherman\'s Wharf'): 5/60,
-        ('North Beach', 'Russian Hill'): 4/60,
-        ('North Beach', 'Marina District'): 9/60,
-        ('North Beach', 'Chinatown'): 6/60,
-        ('North Beach', 'Pacific Heights'): 8/60,
-        ('North Beach', 'The Castro'): 23/60,
-        ('North Beach', 'Nob Hill'): 7/60,
-        ('North Beach', 'Sunset District'): 27/60,
-        ('Chinatown', 'Union Square'): 7/60,
-        ('Chinatown', 'Mission District'): 17/60,
-        ('Chinatown', 'Fisherman\'s Wharf'): 8/60,
-        ('Chinatown', 'Russian Hill'): 7/60,
-        ('Chinatown', 'Marina District'): 12/60,
-        ('Chinatown', 'North Beach'): 3/60,
-        ('Chinatown', 'Pacific Heights'): 10/60,
-        ('Chinatown', 'The Castro'): 22/60,
-        ('Chinatown', 'Nob Hill'): 9/60,
-        ('Chinatown', 'Sunset District'): 29/60,
-        ('Pacific Heights', 'Union Square'): 12/60,
-        ('Pacific Heights', 'Mission District'): 15/60,
-        ('Pacific Heights', 'Fisherman\'s Wharf'): 13/60,
-        ('Pacific Heights', 'Russian Hill'): 7/60,
-        ('Pacific Heights', 'Marina District'): 6/60,
-        ('Pacific Heights', 'North Beach'): 9/60,
-        ('Pacific Heights', 'Chinatown'): 11/60,
-        ('Pacific Heights', 'The Castro'): 16/60,
-        ('Pacific Heights', 'Nob Hill'): 8/60,
-        ('Pacific Heights', 'Sunset District'): 21/60,
-        ('The Castro', 'Union Square'): 19/60,
-        ('The Castro', 'Mission District'): 7/60,
-        ('The Castro', 'Fisherman\'s Wharf'): 24/60,
-        ('The Castro', 'Russian Hill'): 18/60,
-        ('The Castro', 'Marina District'): 21/60,
-        ('The Castro', 'North Beach'): 20/60,
-        ('The Castro', 'Chinatown'): 22/60,
-        ('The Castro', 'Pacific Heights'): 16/60,
-        ('The Castro', 'Nob Hill'): 16/60,
-        ('The Castro', 'Sunset District'): 17/60,
-        ('Nob Hill', 'Union Square'): 7/60,
-        ('Nob Hill', 'Mission District'): 13/60,
-        ('Nob Hill', 'Fisherman\'s Wharf'): 10/60,
-        ('Nob Hill', 'Russian Hill'): 5/60,
-        ('Nob Hill', 'Marina District'): 11/60,
-        ('Nob Hill', 'North Beach'): 8/60,
-        ('Nob Hill', 'Chinatown'): 6/60,
-        ('Nob Hill', 'Pacific Heights'): 8/60,
-        ('Nob Hill', 'The Castro'): 17/60,
-        ('Nob Hill', 'Sunset District'): 24/60,
-        ('Sunset District', 'Union Square'): 30/60,
-        ('Sunset District', 'Mission District'): 25/60,
-        ('Sunset District', 'Fisherman\'s Wharf'): 29/60,
-        ('Sunset District', 'Russian Hill'): 24/60,
-        ('Sunset District', 'Marina District'): 21/60,
-        ('Sunset District', 'North Beach'): 28/60,
-        ('Sunset District', 'Chinatown'): 30/60,
-        ('Sunset District', 'Pacific Heights'): 21/60,
-        ('Sunset District', 'The Castro'): 17/60,
-        ('Sunset District', 'Nob Hill'): 27/60
+        ("Union Square", "Mission District"): 14,
+        ("Union Square", "Fisherman's Wharf"): 15,
+        ("Union Square", "Russian Hill"): 13,
+        ("Union Square", "Marina District"): 18,
+        ("Union Square", "North Beach"): 10,
+        ("Union Square", "Chinatown"): 7,
+        ("Union Square", "Pacific Heights"): 15,
+        ("Union Square", "The Castro"): 17,
+        ("Union Square", "Nob Hill"): 9,
+        ("Union Square", "Sunset District"): 27,
+        ("Mission District", "Fisherman's Wharf"): 22,
+        ("Mission District", "Russian Hill"): 15,
+        ("Mission District", "Marina District"): 19,
+        ("Mission District", "North Beach"): 17,
+        ("Mission District", "Chinatown"): 16,
+        ("Mission District", "Pacific Heights"): 16,
+        ("Mission District", "The Castro"): 7,
+        ("Mission District", "Nob Hill"): 12,
+        ("Mission District", "Union Square"): 15,
+        ("Fisherman's Wharf", "Russian Hill"): 7,
+        ("Fisherman's Wharf", "Marina District"): 9,
+        ("Fisherman's Wharf", "North Beach"): 6,
+        ("Fisherman's Wharf", "Chinatown"): 12,
+        ("Fisherman's Wharf", "Pacific Heights"): 12,
+        ("Fisherman's Wharf", "The Castro"): 27,
+        ("Fisherman's Wharf", "Nob Hill"): 11,
+        ("Fisherman's Wharf", "Union Square"): 13,
+        ("Russian Hill", "Marina District"): 7,
+        ("Russian Hill", "North Beach"): 5,
+        ("Russian Hill", "Chinatown"): 9,
+        ("Russian Hill", "Pacific Heights"): 7,
+        ("Russian Hill", "The Castro"): 21,
+        ("Russian Hill", "Nob Hill"): 5,
+        ("Russian Hill", "Union Square"): 10,
+        ("Marina District", "North Beach"): 11,
+        ("Marina District", "Chinatown"): 15,
+        ("Marina District", "Pacific Heights"): 7,
+        ("Marina District", "The Castro"): 22,
+        ("Marina District", "Nob Hill"): 12,
+        ("Marina District", "Union Square"): 16,
+        ("North Beach", "Chinatown"): 6,
+        ("North Beach", "Pacific Heights"): 8,
+        ("North Beach", "The Castro"): 23,
+        ("North Beach", "Nob Hill"): 7,
+        ("North Beach", "Union Square"): 7,
+        ("Chinatown", "Pacific Heights"): 10,
+        ("Chinatown", "The Castro"): 22,
+        ("Chinatown", "Nob Hill"): 9,
+        ("Chinatown", "Union Square"): 7,
+        ("Pacific Heights", "The Castro"): 16,
+        ("Pacific Heights", "Nob Hill"): 8,
+        ("Pacific Heights", "Union Square"): 12,
+        ("The Castro", "Nob Hill"): 16,
+        ("The Castro", "Union Square"): 19,
+        ("Nob Hill", "Union Square"): 7,
+        # Add reverse directions
+        **{ (b,a):t for (a,b),t in travel_times.items() if (b,a) not in travel_times }
     }
 
-    # Create variables for each friend's meeting start and end times
-    meeting_start = {name: Real(f'start_{name}') for name in friends}
-    meeting_end = {name: Real(f'end_{name}') for name in friends}
-    meet = {name: Bool(f'meet_{name}') for name in friends}  # Whether to meet the friend
+    # Create variables for meeting start times
+    start_vars = {name: Int(f"start_{name}") for name in friends}
+    meet_vars = {name: Bool(f"meet_{name}") for name in friends}  # Whether we meet this friend
 
-    # Current location starts at Union Square
-    current_location = 'Union Square'
-    current_time = 9.0  # 9:00 AM
+    # Current location starts at Union Square at 9:00 AM (540 minutes)
+    current_time = 540
+    current_location = "Union Square"
 
     # Constraints for each friend
     for name in friends:
         friend = friends[name]
-        s.add(Implies(meet[name], meeting_start[name] >= friend['start']))
-        s.add(Implies(meet[name], meeting_end[name] <= friend['end']))
-        s.add(Implies(meet[name], meeting_end[name] == meeting_start[name] + friend['duration']))
+        s.add(Implies(meet_vars[name], start_vars[name] >= friend["start"]))
+        s.add(Implies(meet_vars[name], start_vars[name] + friend["duration"] <= friend["end"]))
+        s.add(Implies(Not(meet_vars[name]), start_vars[name] == -1))  # Not meeting
 
-    # Ensure that if we meet a friend, we have enough time to travel to them
-    # This is a simplified version; a more accurate approach would sequence the meetings
-    # and account for travel times between them. For brevity, we'll assume we can meet
-    # as many friends as possible without overlapping, given their time windows.
+    # No overlapping meetings and travel time constraints
+    for (name1, name2) in combinations(friends.keys(), 2):
+        # Either meeting1 is before meeting2 with travel time, or vice versa
+        loc1 = friends[name1]["location"]
+        loc2 = friends[name2]["location"]
+        travel = travel_times.get((loc1, loc2), 60)  # Default large if no direct route
 
-    # Maximize the number of friends met
-    s.maximize(Sum([If(meet[name], 1, 0) for name in friends]))
+        s.add(Implies(And(meet_vars[name1], meet_vars[name2]),
+              Or(
+                  start_vars[name1] + friends[name1]["duration"] + travel <= start_vars[name2],
+                  start_vars[name2] + friends[name2]["duration"] + travel <= start_vars[name1]
+              ))
 
-    # Check if a solution exists
+    # Must meet Kevin (last meeting of the day)
+    s.add(meet_vars["Kevin"])
+    s.add(start_vars["Kevin"] + friends["Kevin"]["duration"] == friends["Kevin"]["end"])
+
+    # Maximize number of friends met
+    s.maximize(Sum([If(meet_vars[name], 1, 0) for name in friends]))
+
+    # Solve
     if s.check() == sat:
-        m = s.model()
-        print("SOLUTION:")
-        print("Friends to meet and their meeting times:")
+        model = s.model()
+        itinerary = []
         for name in friends:
-            if is_true(m.evaluate(meet[name])):
-                start = m.evaluate(meeting_start[name])
-                end = m.evaluate(meeting_end[name])
-                print(f"{name}: {start} to {end} at {friends[name]['location']}")
+            if model.evaluate(meet_vars[name]):
+                start = model.evaluate(start_vars[name]).as_long()
+                end = start + friends[name]["duration"]
+                itinerary.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": f"{start//60:02d}:{start%60:02d}",
+                    "end_time": f"{end//60:02d}:{end%60:02d}",
+                    "location": friends[name]["location"]
+                })
+        # Sort by start time
+        itinerary.sort(key=lambda x: int(x["start_time"][:2])*60 + int(x["start_time"][3:]))
+        return {"itinerary": [ {k:v for k,v in item.items() if k != "location"} for item in itinerary ]}
     else:
-        print("No solution found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+solution = solve_scheduling()
+print(json.dumps(solution, indent=2))

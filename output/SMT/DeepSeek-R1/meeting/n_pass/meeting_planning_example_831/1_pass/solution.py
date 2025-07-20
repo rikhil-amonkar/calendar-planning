@@ -1,206 +1,150 @@
 from z3 import *
+import json
 
 def main():
-    # Define the travel time matrix (10x10: indices 0 to 9 for locations)
-    travel_matrix = [
-        [0, 19, 19, 23, 22, 15, 20, 12, 21, 7],   # 0: Presidio
-        [17, 0, 21, 11, 13, 27, 8, 25, 12, 18],    # 1: Fisherman's Wharf
-        [17, 19, 0, 17, 14, 16, 16, 9, 15, 11],    # 2: Alamo Square
-        [22, 10, 17, 0, 9, 30, 4, 23, 5, 21],      # 3: Financial District
-        [24, 15, 15, 9, 0, 27, 11, 22, 7, 20],     # 4: Union Square
-        [16, 29, 17, 30, 30, 0, 30, 11, 30, 12],   # 5: Sunset District
-        [20, 6, 19, 5, 10, 30, 0, 25, 7, 21],      # 6: Embarcadero
-        [11, 24, 9, 26, 22, 10, 25, 0, 23, 7],     # 7: Golden Gate Park
-        [19, 8, 17, 5, 7, 29, 5, 23, 0, 20],       # 8: Chinatown
-        [7, 18, 13, 22, 21, 11, 19, 9, 20, 0]      # 9: Richmond District
+    friends_data = [
+        {"name": "Jeffrey", "location": "Fisherman's Wharf", "available_start": 75, "available_end": 240, "min_duration": 90},
+        {"name": "Ronald", "location": "Alamo Square", "available_start": 0, "available_end": 345, "min_duration": 120},
+        {"name": "Jason", "location": "Financial District", "available_start": 105, "available_end": 420, "min_duration": 105},
+        {"name": "Melissa", "location": "Union Square", "available_start": 525, "available_end": 555, "min_duration": 15},
+        {"name": "Elizabeth", "location": "Sunset District", "available_start": 345, "available_end": 510, "min_duration": 105},
+        {"name": "Margaret", "location": "Embarcadero", "available_start": 255, "available_end": 600, "min_duration": 90},
+        {"name": "George", "location": "Golden Gate Park", "available_start": 600, "available_end": 780, "min_duration": 75},
+        {"name": "Richard", "location": "Chinatown", "available_start": 30, "available_end": 720, "min_duration": 15},
+        {"name": "Laura", "location": "Richmond District", "available_start": 45, "available_end": 540, "min_duration": 60}
     ]
     
-    # Meeting data: [min_start, max_end, min_duration] in minutes from 9:00 AM
-    meetings = [
-        (75, 240, 90),    # 1: Jeffrey (Fisherman's Wharf)
-        (0, 345, 120),    # 2: Ronald (Alamo Square) - window starts at 7:45AM, effective start at 0 (9:00AM)
-        (105, 420, 105),  # 3: Jason (Financial District)
-        (525, 555, 15),   # 4: Melissa (Union Square)
-        (345, 510, 105),  # 5: Elizabeth (Sunset District)
-        (255, 600, 90),   # 6: Margaret (Embarcadero)
-        (600, 780, 75),   # 7: George (Golden Gate Park)
-        (30, 720, 15),    # 8: Richard (Chinatown)
-        (45, 540, 60)     # 9: Laura (Richmond District)
-    ]
+    travel_time = {
+        'Presidio': {
+            "Fisherman's Wharf": 19, "Alamo Square": 19, "Financial District": 23, "Union Square": 22,
+            "Sunset District": 15, "Embarcadero": 20, "Golden Gate Park": 12, "Chinatown": 21, "Richmond District": 7
+        },
+        "Fisherman's Wharf": {
+            'Presidio': 17, "Alamo Square": 21, "Financial District": 11, "Union Square": 13, "Sunset District": 27,
+            "Embarcadero": 8, "Golden Gate Park": 25, "Chinatown": 12, "Richmond District": 18
+        },
+        "Alamo Square": {
+            'Presidio': 17, "Fisherman's Wharf": 19, "Financial District": 17, "Union Square": 14, "Sunset District": 16,
+            "Embarcadero": 16, "Golden Gate Park": 9, "Chinatown": 15, "Richmond District": 11
+        },
+        "Financial District": {
+            'Presidio': 22, "Fisherman's Wharf": 10, "Alamo Square": 17, "Union Square": 9, "Sunset District": 30,
+            "Embarcadero": 4, "Golden Gate Park": 23, "Chinatown": 5, "Richmond District": 21
+        },
+        "Union Square": {
+            'Presidio': 24, "Fisherman's Wharf": 15, "Alamo Square": 15, "Financial District": 9, "Sunset District": 27,
+            "Embarcadero": 11, "Golden Gate Park": 22, "Chinatown": 7, "Richmond District": 20
+        },
+        "Sunset District": {
+            'Presidio': 16, "Fisherman's Wharf": 29, "Alamo Square": 17, "Financial District": 30, "Union Square": 30,
+            "Embarcadero": 30, "Golden Gate Park": 11, "Chinatown": 30, "Richmond District": 12
+        },
+        "Embarcadero": {
+            'Presidio': 20, "Fisherman's Wharf": 6, "Alamo Square": 19, "Financial District": 5, "Union Square": 10,
+            "Sunset District": 30, "Golden Gate Park": 25, "Chinatown": 7, "Richmond District": 21
+        },
+        "Golden Gate Park": {
+            'Presidio': 11, "Fisherman's Wharf": 24, "Alamo Square": 9, "Financial District": 26, "Union Square": 22,
+            "Sunset District": 10, "Embarcadero": 25, "Chinatown": 23, "Richmond District": 7
+        },
+        "Chinatown": {
+            'Presidio': 19, "Fisherman's Wharf": 8, "Alamo Square": 17, "Financial District": 5, "Union Square": 7,
+            "Sunset District": 29, "Embarcadero": 5, "Golden Gate Park": 23, "Richmond District": 20
+        },
+        "Richmond District": {
+            'Presidio': 7, "Fisherman's Wharf": 18, "Alamo Square": 13, "Financial District": 22, "Union Square": 21,
+            "Sunset District": 11, "Embarcadero": 19, "Golden Gate Park": 9, "Chinatown": 20
+        }
+    }
+
+    s = Optimize()
+    n = len(friends_data)
+    include = [Bool(f'include_{i}') for i in range(n)]
+    start = [Int(f'start_{i}') for i in range(n)]
+    end = [Int(f'end_{i}') for i in range(n)]
+    order = [Int(f'order_{i}') for i in range(n)]
     
-    n_nodes = 10  # 0 to 9: Presidio and 9 friend locations
-    n_meetings = 9  # 9 friends
-    sink = 10  # sink node index
+    k = Sum([If(include[i], 1, 0) for i in range(n)])
     
-    s = Solver()
-    
-    # x[i][j]: if we travel from node i to node j (j can be sink=10)
-    x = []
-    for i in range(n_nodes):
-        row = []
-        for j in range(n_nodes + 1):  # j from 0 to 10
-            if i == j:
-                row.append(Bool(f"x_{i}_{j}"))  # will be set to False later
-            else:
-                row.append(Bool(f"x_{i}_{j}"))
-        x.append(row)
-    
-    # visited[i] for meeting nodes 1 to 9 (index 0 to 8 in visited list)
-    visited = [Bool(f"visited_{i+1}") for i in range(n_meetings)]
-    
-    # time_var[i]: time arriving at node i (for i in 0..9)
-    time_var = [Real(f"time_{i}") for i in range(n_nodes)]
-    
-    # For meeting nodes 1..9: start and end times
-    start_var = [Real(f"start_{i+1}") for i in range(n_meetings)]
-    end_var = [Real(f"end_{i+1}") for i in range(n_meetings)]
-    
-    # u[i] for MTZ (for i in 0..9)
-    u = [Int(f"u_{i}") for i in range(n_nodes)]
-    
-    # Constraints:
-    
-    # 1. Start at node0 (Presidio): time0 = 0, u0 = 0
-    s.add(time_var[0] == 0)
-    s.add(u[0] == 0)
-    
-    # 2. Exactly one outgoing edge from start (node0) to j in 1..10
-    s.add(Sum([x[0][j] for j in range(1, n_nodes + 1)]) == 1)
-    
-    # 3. No self loops: for any i, x[i][i] is False
-    for i in range(n_nodes):
-        s.add(x[i][i] == False)
-    
-    # 4. For meeting nodes i in 1..9 (index 1 to 9 in node index, and meetings[i-1] for meeting data)
-    for i in range(1, n_nodes):  # node index i from 1 to 9
-        # visited[i-1] corresponds to the meeting at node i (since visited index: node1 is at index0 in visited list)
-        s.add(visited[i-1] == Or([x[j][i] for j in range(0, n_nodes) if j != i]))
-        
-        # If visited, then one incoming and one outgoing edge (excluding self and sink for outgoing includes sink)
-        s.add(If(visited[i-1],
+    for i, friend in enumerate(friends_data):
+        s.add(If(include[i],
                  And(
-                     Sum([If(x[j][i], 1, 0) for j in range(0, n_nodes) if j != i]) == 1,
-                     Sum([If(x[i][j], 1, 0) for j in range(0, n_nodes+1) if j != i]) == 1
+                     start[i] >= friend["available_start"],
+                     end[i] <= friend["available_end"],
+                     end[i] == start[i] + friend["min_duration"],
+                     order[i] >= 0,
+                     order[i] < k
                  ),
                  And(
-                     Sum([If(x[j][i], 1, 0) for j in range(0, n_nodes) if j != i]) == 0,
-                     Sum([If(x[i][j], 1, 0) for j in range(0, n_nodes+1) if j != i]) == 0
+                     start[i] == 0,
+                     end[i] == 0,
+                     order[i] == -1
                  )))
-        
-        # Time constraints for the meeting at node i (if visited)
-        meeting_idx = i-1  # index in meetings list
-        min_start, max_end, min_dur = meetings[meeting_idx]
-        s.add(If(visited[i-1],
-                 And(
-                     start_var[i-1] == If(time_var[i] >= min_start, time_var[i], min_start),
-                     end_var[i-1] == start_var[i-1] + min_dur,
-                     end_var[i-1] <= max_end
-                 ),
-                 True))
-        
-        # MTZ: if visited, then u[i] is between 1 and 9
-        s.add(If(visited[i-1], And(u[i] >= 1, u[i] <= n_meetings), True))
     
-    # 5. For edges: from i to j (j in 1..9 or sink)
-    for i in range(0, n_nodes):
-        for j in range(0, n_nodes + 1):
+    for i in range(n):
+        for j in range(i + 1, n):
+            s.add(If(And(include[i], include[j]), order[i] != order[j]))
+    
+    s.add(Or([And(include[i], order[i] == 0) for i in range(n)]))
+    
+    for t in range(1, 9):
+        cond = Or([And(include[i], order[i] == t) for i in range(n)])
+        prev_exists = Or([And(include[j], order[j] == t - 1) for j in range(n)])
+        s.add(Implies(cond, prev_exists))
+    
+    for i, friend in enumerate(friends_data):
+        loc = friend["location"]
+        time_from_start = travel_time['Presidio'][loc]
+        s.add(If(And(include[i], order[i] == 0), start[i] >= time_from_start, True))
+    
+    for i in range(n):
+        for j in range(n):
             if i == j:
                 continue
-            if j < n_nodes:  # j is a node in 0..9
-                if j == 0:
-                    # We do not allow any edge to node0 (start) except from sink? We don't want to go back to start.
-                    s.add(x[i][j] == False)
-                else:
-                    # j in 1..9
-                    s.add(If(x[i][j],
-                             And(
-                                 time_var[j] == If(i == 0, 
-                                                   time_var[i] + travel_matrix[i][j], 
-                                                   end_var[i-1] + travel_matrix[i][j]),
-                                 u[j] == If(i == 0, 1, u[i] + 1)
-                             ),
-                             True))
-            else:
-                # j is sink (10)
-                s.add(If(x[i][j], 
-                         True, 
-                         True))
+            loc_i = friends_data[i]["location"]
+            loc_j = friends_data[j]["location"]
+            travel_ij = travel_time[loc_i][loc_j]
+            s.add(If(And(include[i], include[j], order[j] == order[i] + 1),
+                     start[j] >= end[i] + travel_ij,
+                     True))
     
-    # 6. Additional MTZ: ensure distinct u for visited nodes? 
-    # Since we set u[j] = u[i] + 1 for edges, and u0=0, and u for meetings>=1, it should be distinct naturally.
+    s.maximize(k)
     
-    # Objective: maximize the number of visited meetings
-    total_visited = Sum([If(v, 1, 0) for v in visited])
-    s.maximize(total_visited)
-    
-    # Solve
+    itinerary = []
     if s.check() == sat:
-        model = s.model()
-        total_met = model.eval(total_visited)
-        print(f"Total friends met: {total_met}")
+        m = s.model()
+        included_indices = []
+        for i in range(n):
+            if is_true(m.evaluate(include[i])):
+                included_indices.append(i)
         
-        # Reconstruct the path
-        path = []
-        current = 0  # start at Presidio
-        while current != sink:
-            next_node = None
-            for j in range(0, n_nodes + 1):
-                if j == current:
-                    continue
-                if is_true(model[x[current][j]]):
-                    next_node = j
-                    break
-            if next_node is None:
-                break
-            if next_node == sink:
-                break
-            path.append(next_node)
-            current = next_node
-        
-        # Print the schedule
-        print("Schedule:")
-        current_time_minutes = 0  # start at 9:00 AM (0 minutes)
-        current_location = 0  # Presidio
-        for node in path:
-            # Travel to node
-            travel_time = travel_matrix[current_location][node]
-            arrival_time = current_time_minutes + travel_time
-            # Get meeting data
-            meeting_idx = node - 1
-            min_start, max_end, min_dur = meetings[meeting_idx]
-            # Start time is max(arrival_time, min_start)
-            start_time = max(arrival_time, min_start)
-            end_time = start_time + min_dur
-            # Convert times to HH:MM
-            def to_time(minutes):
-                hours = 9 + minutes // 60
-                mins = minutes % 60
-                return f"{int(hours):02d}:{int(mins):02d}"
-            
-            location_names = [
-                "Presidio",
-                "Fisherman's Wharf (Jeffrey)",
-                "Alamo Square (Ronald)",
-                "Financial District (Jason)",
-                "Union Square (Melissa)",
-                "Sunset District (Elizabeth)",
-                "Embarcadero (Margaret)",
-                "Golden Gate Park (George)",
-                "Chinatown (Richard)",
-                "Richmond District (Laura)"
-            ]
-            print(f"Travel from {location_names[current_location]} to {location_names[node]}: {travel_time} minutes.")
-            print(f"  Arrive at {to_time(arrival_time)}")
-            print(f"  Meeting starts at {to_time(start_time)}, ends at {to_time(end_time)} (duration: {min_dur} minutes)")
-            current_time_minutes = end_time
-            current_location = node
-        
-        # Print which friends were met
-        for i in range(n_meetings):
-            if is_true(model[visited[i]]):
-                print(f"Met friend at {location_names[i+1]}")
+        meetings = []
+        for i in included_indices:
+            start_val = m.evaluate(start[i])
+            end_val = m.evaluate(end[i])
+            if isinstance(start_val, IntNumRef) and isinstance(end_val, IntNumRef):
+                start_min = start_val.as_long()
+                end_min = end_val.as_long()
+                hours_start = 9 + start_min // 60
+                minutes_start = start_min % 60
+                hours_end = 9 + end_min // 60
+                minutes_end = end_min % 60
+                start_str = f"{hours_start:02d}:{minutes_start:02d}"
+                end_str = f"{hours_end:02d}:{minutes_end:02d}"
+                meetings.append({
+                    "action": "meet",
+                    "person": friends_data[i]["name"],
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        meetings.sort(key=lambda x: x['start_time'])
+        itinerary = meetings
     else:
-        print("No solution found")
+        itinerary = []
+    
+    result = {"itinerary": itinerary}
+    print("SOLUTION:")
+    print(json.dumps(result))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

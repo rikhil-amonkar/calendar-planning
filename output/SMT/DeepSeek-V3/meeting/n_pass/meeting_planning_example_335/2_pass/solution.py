@@ -1,147 +1,145 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize solver
-    s = Solver()
+def solve_scheduling_problem():
+    # Initialize Z3 optimizer
+    opt = Optimize()
 
-    # Define locations and friends
-    locations = ['Pacific Heights', 'North Beach', 'Financial District', 'Alamo Square', 'Mission District']
-    friends = {
-        'Helen': {'location': 'North Beach', 'start': 9*60, 'end': 17*60, 'duration': 15},
-        'Betty': {'location': 'Financial District', 'start': 19*60, 'end': 21*60 + 45, 'duration': 90},
-        'Amanda': {'location': 'Alamo Square', 'start': 19*60 + 45, 'end': 21*60, 'duration': 60},
-        'Kevin': {'location': 'Mission District', 'start': 10*60 + 45, 'end': 14*60 + 45, 'duration': 45}
-    }
+    # Define the people and their constraints
+    people = [
+        {"name": "Helen", "location": "North Beach", "start_window": "09:00", "end_window": "17:00", "min_duration": 15},
+        {"name": "Betty", "location": "Financial District", "start_window": "19:00", "end_window": "21:45", "min_duration": 90},
+        {"name": "Amanda", "location": "Alamo Square", "start_window": "19:45", "end_window": "21:00", "min_duration": 60},
+        {"name": "Kevin", "location": "Mission District", "start_window": "10:45", "end_window": "14:45", "min_duration": 45}
+    ]
 
-    # Travel times dictionary (from -> to -> minutes)
+    # Convert time strings to minutes since midnight for easier handling
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
+
+    # Convert minutes back to time string
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
+
+    # Parse time windows to minutes
+    for person in people:
+        person["start_min"] = time_to_minutes(person["start_window"])
+        person["end_min"] = time_to_minutes(person["end_window"])
+        person["min_duration_min"] = person["min_duration"]
+
+    # Define travel times between locations (in minutes)
     travel_times = {
-        'Pacific Heights': {
-            'North Beach': 9,
-            'Financial District': 13,
-            'Alamo Square': 10,
-            'Mission District': 15
-        },
-        'North Beach': {
-            'Pacific Heights': 8,
-            'Financial District': 8,
-            'Alamo Square': 16,
-            'Mission District': 18
-        },
-        'Financial District': {
-            'Pacific Heights': 13,
-            'North Beach': 7,
-            'Alamo Square': 17,
-            'Mission District': 17
-        },
-        'Alamo Square': {
-            'Pacific Heights': 10,
-            'North Beach': 15,
-            'Financial District': 17,
-            'Mission District': 10
-        },
-        'Mission District': {
-            'Pacific Heights': 16,
-            'North Beach': 17,
-            'Financial District': 17,
-            'Alamo Square': 11
-        }
+        ("Pacific Heights", "North Beach"): 9,
+        ("Pacific Heights", "Financial District"): 13,
+        ("Pacific Heights", "Alamo Square"): 10,
+        ("Pacific Heights", "Mission District"): 15,
+        ("North Beach", "Pacific Heights"): 8,
+        ("North Beach", "Financial District"): 8,
+        ("North Beach", "Alamo Square"): 16,
+        ("North Beach", "Mission District"): 18,
+        ("Financial District", "Pacific Heights"): 13,
+        ("Financial District", "North Beach"): 7,
+        ("Financial District", "Alamo Square"): 17,
+        ("Financial District", "Mission District"): 17,
+        ("Alamo Square", "Pacific Heights"): 10,
+        ("Alamo Square", "North Beach"): 15,
+        ("Alamo Square", "Financial District"): 17,
+        ("Alamo Square", "Mission District"): 10,
+        ("Mission District", "Pacific Heights"): 16,
+        ("Mission District", "North Beach"): 17,
+        ("Mission District", "Financial District"): 17,
+        ("Mission District", "Alamo Square"): 11
     }
 
-    # Variables for each friend's meeting start and end times
-    meeting_start = {name: Int(f'start_{name}') for name in friends}
-    meeting_end = {name: Int(f'end_{name}') for name in friends}
+    # Current location starts at Pacific Heights at 9:00 AM (540 minutes)
+    current_time = 540  # 9:00 AM in minutes
+    current_location = "Pacific Heights"
 
-    # Variables to indicate whether a friend is met
-    meet_friend = {name: Bool(f'meet_{name}') for name in friends}
+    # Variables to represent whether each person is met
+    meet_vars = {person["name"]: Bool(f"meet_{person['name']}") for person in people}
 
-    # Current location and time tracking variables
-    current_location = 'Pacific Heights'
-    current_time = 9 * 60  # 9:00 AM in minutes
+    # Variables for start and end times of each meeting
+    start_times = {person["name"]: Int(f"start_{person['name']}") for person in people}
+    end_times = {person["name"]: Int(f"end_{person['name']}") for person in people}
 
-    # Constraints for each friend
-    for name in friends:
-        friend = friends[name]
-        loc = friend['location']
-        duration = friend['duration']
-        start_window = friend['start']
-        end_window = friend['end']
+    itinerary = []
 
-        # If meeting the friend, the meeting must be within their window and last at least the required duration
-        s.add(Implies(meet_friend[name], And(
-            meeting_start[name] >= start_window,
-            meeting_end[name] <= end_window,
-            meeting_end[name] == meeting_start[name] + duration
-        )))
+    # Constraints for each person
+    for person in people:
+        name = person["name"]
+        opt.add(Implies(meet_vars[name], start_times[name] >= person["start_min"]))
+        opt.add(Implies(meet_vars[name], end_times[name] <= person["end_min"]))
+        opt.add(Implies(meet_vars[name], end_times[name] == start_times[name] + person["min_duration_min"]))
+        opt.add(Implies(Not(meet_vars[name]), start_times[name] == -1))
+        opt.add(Implies(Not(meet_vars[name]), end_times[name] == -1))
 
-        # If not meeting the friend, the meeting times are irrelevant (but we set them to 0 for simplicity)
-        s.add(Implies(Not(meet_friend[name]), And(
-            meeting_start[name] == 0,
-            meeting_end[name] == 0
-        )))
+    # Constraints for ordering meetings and travel times
+    # We'll try to meet Kevin first, then Helen, then Amanda, then Betty
+    # This is based on their time windows
 
-    # Order of meetings and travel times
-    # We'll assume the following order: Kevin -> Helen -> Betty or Amanda
-    # This is a heuristic to simplify the problem
+    # Start at Pacific Heights at 9:00 AM (540 minutes)
+    prev_end = current_time
+    prev_location = current_location
 
-    # Kevin's meeting
-    s.add(Implies(meet_friend['Kevin'], And(
-        meeting_start['Kevin'] >= current_time + travel_times[current_location]['Mission District'],
-        meeting_start['Kevin'] >= friends['Kevin']['start'],
-        meeting_end['Kevin'] == meeting_start['Kevin'] + friends['Kevin']['duration'],
-        meeting_end['Kevin'] <= friends['Kevin']['end']
-    )))
+    # Try to meet Kevin first
+    kevin = next(p for p in people if p["name"] == "Kevin")
+    travel_time = travel_times[(prev_location, kevin["location"])]
+    opt.add(Implies(meet_vars["Kevin"], start_times["Kevin"] >= prev_end + travel_time))
+    opt.add(Implies(meet_vars["Kevin"], end_times["Kevin"] == start_times["Kevin"] + kevin["min_duration_min"]))
+    opt.add(Implies(meet_vars["Kevin"], start_times["Kevin"] >= kevin["start_min"]))
+    opt.add(Implies(meet_vars["Kevin"], end_times["Kevin"] <= kevin["end_min"]))
 
-    # After Kevin, travel to Helen's location
-    s.add(Implies(And(meet_friend['Kevin'], meet_friend['Helen']), And(
-        meeting_start['Helen'] >= meeting_end['Kevin'] + travel_times['Mission District']['North Beach'],
-        meeting_start['Helen'] >= friends['Helen']['start'],
-        meeting_end['Helen'] == meeting_start['Helen'] + friends['Helen']['duration'],
-        meeting_end['Helen'] <= friends['Helen']['end']
-    )))
+    # After Kevin, try to meet Helen
+    helen = next(p for p in people if p["name"] == "Helen")
+    travel_time_kevin_helen = travel_times[(kevin["location"], helen["location"])]
+    opt.add(Implies(And(meet_vars["Kevin"], meet_vars["Helen"]), start_times["Helen"] >= end_times["Kevin"] + travel_time_kevin_helen))
+    opt.add(Implies(meet_vars["Helen"], end_times["Helen"] == start_times["Helen"] + helen["min_duration_min"]))
+    opt.add(Implies(meet_vars["Helen"], start_times["Helen"] >= helen["start_min"]))
+    opt.add(Implies(meet_vars["Helen"], end_times["Helen"] <= helen["end_min"]))
 
-    # After Helen, travel to Betty or Amanda
-    # Betty's meeting
-    s.add(Implies(And(meet_friend['Helen'], meet_friend['Betty']), And(
-        meeting_start['Betty'] >= meeting_end['Helen'] + travel_times['North Beach']['Financial District'],
-        meeting_start['Betty'] >= friends['Betty']['start'],
-        meeting_end['Betty'] == meeting_start['Betty'] + friends['Betty']['duration'],
-        meeting_end['Betty'] <= friends['Betty']['end']
-    )))
+    # After Helen, try to meet Amanda
+    amanda = next(p for p in people if p["name"] == "Amanda")
+    travel_time_helen_amanda = travel_times[(helen["location"], amanda["location"])]
+    opt.add(Implies(And(meet_vars["Helen"], meet_vars["Amanda"]), start_times["Amanda"] >= end_times["Helen"] + travel_time_helen_amanda))
+    opt.add(Implies(meet_vars["Amanda"], end_times["Amanda"] == start_times["Amanda"] + amanda["min_duration_min"]))
+    opt.add(Implies(meet_vars["Amanda"], start_times["Amanda"] >= amanda["start_min"]))
+    opt.add(Implies(meet_vars["Amanda"], end_times["Amanda"] <= amanda["end_min"]))
 
-    # Amanda's meeting
-    s.add(Implies(And(meet_friend['Helen'], meet_friend['Amanda']), And(
-        meeting_start['Amanda'] >= meeting_end['Helen'] + travel_times['North Beach']['Alamo Square'],
-        meeting_start['Amanda'] >= friends['Amanda']['start'],
-        meeting_end['Amanda'] == meeting_start['Amanda'] + friends['Amanda']['duration'],
-        meeting_end['Amanda'] <= friends['Amanda']['end']
-    )))
+    # After Amanda, try to meet Betty
+    betty = next(p for p in people if p["name"] == "Betty")
+    travel_time_amanda_betty = travel_times[(amanda["location"], betty["location"])]
+    opt.add(Implies(And(meet_vars["Amanda"], meet_vars["Betty"]), start_times["Betty"] >= end_times["Amanda"] + travel_time_amanda_betty))
+    opt.add(Implies(meet_vars["Betty"], end_times["Betty"] == start_times["Betty"] + betty["min_duration_min"]))
+    opt.add(Implies(meet_vars["Betty"], start_times["Betty"] >= betty["start_min"]))
+    opt.add(Implies(meet_vars["Betty"], end_times["Betty"] <= betty["end_min"]))
 
-    # Cannot meet both Betty and Amanda due to time constraints
-    s.add(Or(Not(meet_friend['Betty']), Not(meet_friend['Amanda'])))
+    # Maximize the number of people met
+    opt.maximize(Sum([If(meet_vars[p["name"]], 1, 0) for p in people]))
 
-    # Maximize the number of friends met
-    # We'll use a binary search approach to find the maximum number of friends that can be met
-    max_friends = 0
-    optimal_schedule = None
-
-    for num_friends in range(len(friends), 0, -1):
-        s.push()
-        s.add(Sum([If(meet_friend[name], 1, 0) for name in friends]) >= num_friends)
-        if s.check() == sat:
-            m = s.model()
-            max_friends = num_friends
-            optimal_schedule = m
-            break
-        s.pop()
-
-    if optimal_schedule is not None:
-        print(f"Optimal schedule meets {max_friends} friends:")
-        for name in friends:
-            if optimal_schedule.evaluate(meet_friend[name]):
-                start = optimal_schedule.evaluate(meeting_start[name])
-                end = optimal_schedule.evaluate(meeting_end[name])
-                print(f"Meet {name} at {friends[name]['location']} from {start//60}:{start%60:02d} to {end//60}:{end%60:02d}")
+    # Check if the optimizer can find a solution
+    if opt.check() == sat:
+        model = opt.model()
+        itinerary = []
+        for person in people:
+            name = person["name"]
+            if is_true(model[meet_vars[name]]):
+                start = model[start_times[name]].as_long()
+                end = model[end_times[name]].as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": minutes_to_time(start),
+                    "end_time": minutes_to_time(end)
+                })
+        # Sort the itinerary by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x["start_time"]))
+        return {"itinerary": itinerary}
     else:
-        print("No feasible schedule found.")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Solve the problem and print the solution
+solution = solve_scheduling_problem()
+print(json.dumps(solution, indent=2))

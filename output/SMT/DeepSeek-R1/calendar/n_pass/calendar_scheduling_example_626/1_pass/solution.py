@@ -1,39 +1,39 @@
 from z3 import *
 
 def main():
-    # Create solver
-    s_solver = Solver()
+    # Initialize the solver
+    s = Solver()
     
-    # Variables
+    # Define the variables: day (0 for Monday, 1 for Tuesday) and start time in minutes from 9:00
     day = Int('day')
-    s = Int('s')  # start time in minutes after 9:00
+    start_minutes = Int('start_minutes')
     
-    # Day must be 0 (Monday) or 1 (Tuesday)
-    s_solver.add(Or(day == 0, day == 1))
-    # Start time must be within [0, 420] minutes (so meeting ends by 17:00)
-    s_solver.add(s >= 0, s <= 420)
+    # Constraints for day: must be 0 or 1
+    s.add(Or(day == 0, day == 1))
+    # Constraints for start_minutes: must be between 0 (9:00) and 420 (16:00)
+    s.add(start_minutes >= 0)
+    s.add(start_minutes <= 420)  # 420 minutes = 7 hours, so 16:00 is the latest start
     
-    # Busy intervals for Patricia on Monday: (start_minute, end_minute) from 9:00
-    pat_mon = [
+    # Patricia's busy intervals in minutes from 9:00
+    patricia_monday = [
         (60, 90),    # 10:00-10:30
         (150, 180),  # 11:30-12:00
         (240, 270),  # 13:00-13:30
         (330, 390),  # 14:30-15:30
         (420, 450)   # 16:00-16:30
     ]
-    # Busy intervals for Jesse on Monday
-    jes_mon = [
-        (0, 480)     # Entire day blocked (9:00-17:00)
-    ]
-    
-    # Busy intervals for Patricia on Tuesday
-    pat_tue = [
+    patricia_tuesday = [
         (60, 90),    # 10:00-10:30
         (120, 180),  # 11:00-12:00
-        (300, 420)   # 14:00-16:00
+        (300, 420),  # 14:00-16:00
+        (450, 480)   # 16:30-17:00
     ]
-    # Busy intervals for Jesse on Tuesday
-    jes_tue = [
+    
+    # Jesse's busy intervals in minutes from 9:00
+    jesse_monday = [
+        (0, 480)     # Entire day blocked (9:00-17:00)
+    ]
+    jesse_tuesday = [
         (120, 150),  # 11:00-11:30
         (180, 210),  # 12:00-12:30
         (240, 300),  # 13:00-14:00
@@ -41,40 +41,50 @@ def main():
         (390, 480)   # 15:30-17:00
     ]
     
-    # Add constraints: for each day, if selected, avoid all busy intervals for both participants
-    # For Monday
-    for (b_start, b_end) in pat_mon:
-        s_solver.add(Or(day != 0, Or(s + 60 <= b_start, s >= b_end)))
-    for (b_start, b_end) in jes_mon:
-        s_solver.add(Or(day != 0, Or(s + 60 <= b_start, s >= b_end)))
+    # Function to add constraints for a participant's busy intervals
+    def add_busy_constraints(busy_intervals, day_val):
+        constraints = []
+        for (busy_start, busy_end) in busy_intervals:
+            # The meeting must not overlap with any busy interval: either ends before the busy interval starts or starts after it ends
+            constraints.append(Or(day != day_val, 
+                                  start_minutes + 60 <= busy_start, 
+                                  start_minutes >= busy_end))
+        s.add(constraints)
     
-    # For Tuesday
-    for (b_start, b_end) in pat_tue:
-        s_solver.add(Or(day != 1, Or(s + 60 <= b_start, s >= b_end)))
-    for (b_start, b_end) in jes_tue:
-        s_solver.add(Or(day != 1, Or(s + 60 <= b_start, s >= b_end)))
+    # Add constraints for Patricia and Jesse for both days
+    add_busy_constraints(patricia_monday, 0)
+    add_busy_constraints(patricia_tuesday, 1)
+    add_busy_constraints(jesse_monday, 0)
+    add_busy_constraints(jesse_tuesday, 1)
     
-    # Check for solution
-    if s_solver.check() == sat:
-        model = s_solver.model()
+    # Check for a solution
+    if s.check() == sat:
+        model = s.model()
         d = model[day].as_long()
-        start_minute = model[s].as_long()
+        start_min = model[start_minutes].as_long()
         
-        # Convert start_minute to time string
-        hours = 9 + start_minute // 60
-        minutes = start_minute % 60
-        start_time = f"{hours:02d}:{minutes:02d}"
+        # Convert start_min to time string
+        total_minutes = start_min
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        start_hour = 9 + hours
+        start_time = f"{start_hour:02d}:{minutes:02d}"
         
-        # Calculate end time (start_minute + 60 minutes)
-        end_minute = start_minute + 60
-        end_hours = 9 + end_minute // 60
-        end_minutes = end_minute % 60
-        end_time = f"{end_hours:02d}:{end_minutes:02d}"
+        # Calculate end time (start_min + 60 minutes)
+        end_min = total_minutes + 60
+        end_hours = end_min // 60
+        end_minutes = end_min % 60
+        end_hour = 9 + end_hours
+        end_time = f"{end_hour:02d}:{end_minutes:02d}"
         
-        # Map day integer to string
-        day_str = "Monday" if d == 0 else "Tuesday"
+        # Map day value to day name
+        day_name = "Monday" if d == 0 else "Tuesday"
         
-        print(f"Meeting scheduled on {day_str} from {start_time} to {end_time}")
+        # Print solution in required format
+        print("SOLUTION:")
+        print(f"Day: {day_name}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

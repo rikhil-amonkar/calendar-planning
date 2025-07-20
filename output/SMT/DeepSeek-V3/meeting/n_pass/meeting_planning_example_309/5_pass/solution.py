@@ -1,110 +1,146 @@
 from z3 import *
+import datetime
 
-def solve_scheduling():
-    # Initialize solver
-    s = Optimize()
+def solve_scheduling_problem():
+    # Initialize Z3 optimizer
+    opt = Optimize()
 
-    # Friends' information
+    # Define locations and travel times (in minutes)
+    locations = {
+        'Financial District': 0,
+        'Chinatown': 1,
+        'Alamo Square': 2,
+        'Bayview': 3,
+        'Fisherman\'s Wharf': 4
+    }
+
+    travel_times = [
+        [0, 5, 17, 19, 10],    # Financial District to others
+        [5, 0, 17, 22, 8],     # Chinatown to others
+        [17, 16, 0, 16, 19],   # Alamo Square to others
+        [19, 18, 16, 0, 25],    # Bayview to others
+        [11, 12, 20, 26, 0]     # Fisherman's Wharf to others
+    ]
+
+    # Friends' availability and constraints
     friends = {
-        'Nancy': {'location': 'Chinatown', 'start': 9.5, 'end': 13.5, 'min_duration': 1.5},
-        'Mary': {'location': 'Alamo Square', 'start': 7.0, 'end': 21.0, 'min_duration': 1.25},
-        'Jessica': {'location': 'Bayview', 'start': 11.25, 'end': 13.75, 'min_duration': 0.75},
-        'Rebecca': {'location': 'Fisherman\'s Wharf', 'start': 7.0, 'end': 8.5, 'min_duration': 0.75}
+        'Nancy': {
+            'location': 'Chinatown',
+            'start': datetime.time(9, 30),
+            'end': datetime.time(13, 30),
+            'duration': 90  # minutes
+        },
+        'Mary': {
+            'location': 'Alamo Square',
+            'start': datetime.time(7, 0),
+            'end': datetime.time(21, 0),
+            'duration': 75  # minutes
+        },
+        'Jessica': {
+            'location': 'Bayview',
+            'start': datetime.time(11, 15),
+            'end': datetime.time(13, 45),
+            'duration': 45  # minutes
+        },
+        'Rebecca': {
+            'location': 'Fisherman\'s Wharf',
+            'start': datetime.time(7, 0),
+            'end': datetime.time(8, 30),
+            'duration': 45  # minutes
+        }
     }
 
-    # Travel times in hours
-    travel = {
-        ('Financial District', 'Chinatown'): 5/60,
-        ('Financial District', 'Alamo Square'): 17/60,
-        ('Financial District', 'Bayview'): 19/60,
-        ('Financial District', 'Fisherman\'s Wharf'): 10/60,
-        ('Chinatown', 'Financial District'): 5/60,
-        ('Chinatown', 'Alamo Square'): 17/60,
-        ('Chinatown', 'Bayview'): 22/60,
-        ('Chinatown', 'Fisherman\'s Wharf'): 8/60,
-        ('Alamo Square', 'Financial District'): 17/60,
-        ('Alamo Square', 'Chinatown'): 16/60,
-        ('Alamo Square', 'Bayview'): 16/60,
-        ('Alamo Square', 'Fisherman\'s Wharf'): 19/60,
-        ('Bayview', 'Financial District'): 19/60,
-        ('Bayview', 'Chinatown'): 18/60,
-        ('Bayview', 'Alamo Square'): 16/60,
-        ('Bayview', 'Fisherman\'s Wharf'): 25/60,
-        ('Fisherman\'s Wharf', 'Financial District'): 11/60,
-        ('Fisherman\'s Wharf', 'Chinatown'): 12/60,
-        ('Fisherman\'s Wharf', 'Alamo Square'): 20/60,
-        ('Fisherman\'s Wharf', 'Bayview'): 26/60
-    }
+    # Current time starts at 9:00 AM in Financial District
+    current_time = datetime.datetime.combine(datetime.date.today(), datetime.time(9, 0))
+    current_location = 'Financial District'
 
-    # Decision variables
-    meet = {f: Bool(f'meet_{f}') for f in friends}
-    start = {f: Real(f'start_{f}') for f in friends}
-    end = {f: Real(f'end_{f}') for f in friends}
+    # Variables to track meetings
+    meetings = []
+    meet_vars = []  # To track which meetings are scheduled
 
-    # Basic constraints for each friend
-    for f in friends:
-        info = friends[f]
-        s.add(Implies(meet[f], start[f] >= info['start']))
-        s.add(Implies(meet[f], end[f] <= info['end']))
-        s.add(Implies(meet[f], end[f] - start[f] >= info['min_duration']))
+    # For each friend, create variables
+    for friend, details in friends.items():
+        start_var = Int(f'start_{friend}')
+        end_var = Int(f'end_{friend}')
+        duration_var = details['duration']
+        meet_var = Bool(f'meet_{friend}')  # Whether we meet this friend
 
-    # Sequence constraints - try all possible meeting orders
-    friend_list = list(friends.keys())
-    for i in range(len(friend_list)):
-        for j in range(i+1, len(friend_list)):
-            f1 = friend_list[i]
-            f2 = friend_list[j]
-            # If both meetings happen, account for travel time
-            s.add(Implies(And(meet[f1], meet[f2]),
-                         Or(
-                             start[f2] >= end[f1] + travel[(friends[f1]['location'], friends[f2]['location'])],
-                             start[f1] >= end[f2] + travel[(friends[f2]['location'], friends[f1]['location'])]
-                         )))
+        # Convert friend's availability to minutes since 9:00 AM
+        friend_start = (details['start'].hour - 9) * 60 + details['start'].minute
+        friend_end = (details['end'].hour - 9) * 60 + details['end'].minute
 
-    # Starting from Financial District at 9:00 AM
-    # First meeting must account for travel from Financial District
-    first_meeting_constraints = []
-    for f in friends:
-        travel_time = travel[('Financial District', friends[f]['location'])]
-        first_meeting_constraints.append(
-            Implies(meet[f], start[f] >= 9.0 + travel_time)
-        )
-    s.add(Or([meet[f] for f in friends]))  # Must meet at least one friend
-    s.add(And(first_meeting_constraints))
+        # Constraints if we meet this friend
+        opt.add(Implies(meet_var, start_var >= max(friend_start, 0)))  # Can't start before 9:00
+        opt.add(Implies(meet_var, end_var <= friend_end))
+        opt.add(Implies(meet_var, end_var == start_var + duration_var))
 
-    # Objective: maximize number of friends met
-    s.maximize(Sum([If(meet[f], 1, 0) for f in friends]))
+        meetings.append({
+            'friend': friend,
+            'start_var': start_var,
+            'end_var': end_var,
+            'meet_var': meet_var,
+            'location': details['location'],
+            'duration': duration_var
+        })
+        meet_vars.append(meet_var)
 
-    # Solve
-    if s.check() == sat:
-        m = s.model()
-        print("Optimal schedule found:")
+    # Add constraints for meeting sequence and travel times
+    for i in range(len(meetings)):
+        for j in range(i + 1, len(meetings)):
+            m1 = meetings[i]
+            m2 = meetings[j]
+
+            # Travel time between locations
+            travel_time = travel_times[locations[m1['location']]][locations[m2['location']]]
+
+            # If both meetings happen, they must not overlap with travel time
+            opt.add(Implies(And(m1['meet_var'], m2['meet_var']),
+                    Or(
+                        m1['end_var'] + travel_time <= m2['start_var'],
+                        m2['end_var'] + travel_time <= m1['start_var']
+                    )))
+
+    # First meeting must be after travel from Financial District
+    for meeting in meetings:
+        travel_time = travel_times[locations[current_location]][locations[meeting['location']]]
+        opt.add(Implies(meeting['meet_var'], meeting['start_var'] >= travel_time))
+
+    # Special case for Rebecca (early morning meeting)
+    # Since we start at 9:00 AM, we can't meet Rebecca (7:00-8:30 AM)
+    rebecca_meet = [m['meet_var'] for m in meetings if m['friend'] == 'Rebecca'][0]
+    opt.add(Not(rebecca_meet))
+
+    # Maximize number of meetings first, then total meeting time
+    num_meetings = Sum([If(var, 1, 0) for var in meet_vars])
+    total_time = Sum([If(m['meet_var'], m['duration'], 0) for m in meetings])
+    opt.maximize(num_meetings)
+    opt.maximize(total_time)
+
+    # Check if a solution exists
+    if opt.check() == sat:
+        model = opt.model()
+        scheduled_meetings = []
+        for meeting in meetings:
+            if model[meeting['meet_var']]:
+                start_min = model[meeting['start_var']].as_long()
+                end_min = start_min + meeting['duration']
+                start_time = (datetime.datetime.combine(datetime.date.today(), datetime.time(9, 0)) + 
+                             datetime.timedelta(minutes=start_min)).time()
+                end_time = (datetime.datetime.combine(datetime.date.today(), datetime.time(9, 0)) + 
+                           datetime.timedelta(minutes=end_min)).time()
+                scheduled_meetings.append({
+                    'action': 'meet',
+                    'person': meeting['friend'],
+                    'start_time': start_time.strftime('%H:%M'),
+                    'end_time': end_time.strftime('%H:%M')
+                })
         
-        # Collect scheduled meetings
-        scheduled = []
-        for f in friends:
-            if is_true(m.eval(meet[f])):
-                scheduled.append((f, float(m.eval(start[f]).as_decimal(3)), 
-                                float(m.eval(end[f]).as_decimal(3))))
-        
-        # Sort by start time
-        scheduled.sort(key=lambda x: x[1])
-        
-        # Print schedule
-        current_location = 'Financial District'
-        current_time = 9.0
-        total_met = 0
-        
-        for f, start_time, end_time in scheduled:
-            travel_time = travel[(current_location, friends[f]['location'])]
-            print(f"{current_time:.2f}: Travel from {current_location} to {friends[f]['location']} ({travel_time*60:.0f} min)")
-            print(f"{start_time:.2f}-{end_time:.2f}: Meet {f} at {friends[f]['location']}")
-            current_location = friends[f]['location']
-            current_time = end_time
-            total_met += 1
-        
-        print(f"\nTotal friends met: {total_met}")
+        # Sort meetings by start time
+        scheduled_meetings.sort(key=lambda x: x['start_time'])
+        return {'itinerary': scheduled_meetings}
     else:
-        print("No feasible schedule found that meets all constraints.")
+        return {'itinerary': []}
 
-solve_scheduling()
+# Run the optimizer
+result = solve_scheduling_problem()
+print(result)

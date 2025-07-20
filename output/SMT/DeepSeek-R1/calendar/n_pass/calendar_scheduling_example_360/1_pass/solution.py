@@ -1,46 +1,52 @@
 from z3 import *
 
 def main():
-    start = Int('start')
-    solver = Solver()
+    s = Solver()
+    S = Int('S')
     
-    busy_intervals = [
-        (60, 90), (420, 450),    # Emily
-        (90, 120), (300, 330),    # Maria
-        (30, 60), (90, 210), (270, 300), (330, 390), (420, 480),  # Carl
-        (30, 120), (150, 180), (210, 270), (300, 360), (420, 480),  # David
-        (30, 90), (120, 150), (210, 270), (330, 480)   # Frank
-    ]
+    # Constraints: S must be between 0 and 450 minutes (9:00 to 16:30 start)
+    s.add(S >= 0)
+    s.add(S <= 450)
     
-    solver.add(start >= 0)
-    solver.add(start <= 450)
+    # Busy intervals for each person (each interval is (start_minutes, end_minutes))
+    emily = [(60, 90), (420, 450)]
+    mason = []
+    maria = [(90, 120), (300, 330)]
+    carl = [(30, 60), (90, 210), (270, 300), (330, 390), (420, 480)]
+    david = [(30, 120), (150, 180), (210, 270), (300, 360), (420, 480)]
+    frank = [(30, 90), (120, 150), (210, 270), (330, 480)]
     
-    for (b_start, b_end) in busy_intervals:
-        solver.add(Or(start + 30 <= b_start, start >= b_end))
+    persons = [emily, mason, maria, carl, david, frank]
     
-    if solver.check() == sat:
-        model = solver.model()
-        start_minutes = model[start].as_long()
+    # Add constraints for each busy interval
+    for person in persons:
+        for (start, end) in person:
+            s.add(Or(S + 30 <= start, S >= end))
+    
+    # Check if a solution exists
+    if s.check() == sat:
+        model = s.model()
+        start_minutes = model[S].as_long()
         
+        # Convert start_minutes to time string (HH:MM)
         total_minutes = start_minutes
-        hours = total_minutes // 60
+        hours = 9 + total_minutes // 60
         minutes = total_minutes % 60
-        start_hour = 9 + hours
-        start_minute = minutes
-        start_str = f"{start_hour}:{start_minute:02d}"
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        end_minutes = total_minutes + 30
-        hours_end = end_minutes // 60
-        minutes_end = end_minutes % 60
-        end_hour = 9 + hours_end
-        end_minute = minutes_end
-        end_str = f"{end_hour}:{end_minute:02d}"
+        # Calculate end time (start_minutes + 30 minutes)
+        total_minutes_end = start_minutes + 30
+        hours_end = 9 + total_minutes_end // 60
+        minutes_end = total_minutes_end % 60
+        end_time = f"{hours_end:02d}:{minutes_end:02d}"
         
-        print("Monday")
-        print(start_str)
-        print(end_str)
+        # Output the solution
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
-        print("No solution found")
+        print("No solution found, but the problem states there is one.")
 
 if __name__ == "__main__":
     main()

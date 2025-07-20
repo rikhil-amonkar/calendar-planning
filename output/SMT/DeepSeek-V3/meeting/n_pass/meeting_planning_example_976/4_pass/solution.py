@@ -1,149 +1,201 @@
 from z3 import *
 
-def solve_scheduling():
-    # Initialize solver
-    s = Optimize()
+# Define all locations and friends with their availability
+locations = ["Embarcadero", "Bayview", "Chinatown", "Alamo Square", "Nob Hill", 
+             "Presidio", "Union Square", "The Castro", "North Beach", 
+             "Fisherman's Wharf", "Marina District"]
 
-    # Friends and their details
-    friends = {
-        'Matthew': {'location': 'Bayview', 'start': 19.25, 'end': 22.0, 'min_duration': 2.0},
-        'Karen': {'location': 'Chinatown', 'start': 19.25, 'end': 21.25, 'min_duration': 1.5},
-        'Sarah': {'location': 'Alamo Square', 'start': 20.0, 'end': 21.75, 'min_duration': 1.75},
-        'Jessica': {'location': 'Nob Hill', 'start': 16.5, 'end': 18.75, 'min_duration': 2.0},
-        'Stephanie': {'location': 'Presidio', 'start': 7.5, 'end': 10.25, 'min_duration': 1.0},
-        'Mary': {'location': 'Union Square', 'start': 16.75, 'end': 21.5, 'min_duration': 1.0},
-        'Charles': {'location': 'The Castro', 'start': 16.5, 'end': 22.0, 'min_duration': 1.75},
-        'Nancy': {'location': 'North Beach', 'start': 14.75, 'end': 20.0, 'min_duration': 0.25},
-        'Thomas': {'location': 'Fisherman\'s Wharf', 'start': 13.5, 'end': 19.0, 'min_duration': 0.5},
-        'Brian': {'location': 'Marina District', 'start': 12.25, 'end': 18.0, 'min_duration': 1.0}
-    }
+friends = {
+    "Matthew": {"location": "Bayview", "start": 1290, "end": 1320, "duration": 120},
+    "Karen": {"location": "Chinatown", "start": 1290, "end": 1305, "duration": 90},
+    "Sarah": {"location": "Alamo Square", "start": 1320, "end": 1335, "duration": 105},
+    "Jessica": {"location": "Nob Hill", "start": 1170, "end": 1185, "duration": 120},
+    "Stephanie": {"location": "Presidio", "start": 450, "end": 615, "duration": 60},
+    "Mary": {"location": "Union Square", "start": 1185, "end": 1290, "duration": 60},
+    "Charles": {"location": "The Castro", "start": 1170, "end": 1320, "duration": 105},
+    "Nancy": {"location": "North Beach", "start": 1005, "end": 1200, "duration": 15},
+    "Thomas": {"location": "Fisherman's Wharf", "start": 930, "end": 1140, "duration": 30},
+    "Brian": {"location": "Marina District", "start": 855, "end": 1080, "duration": 60}
+}
 
-    # Travel times (in hours)
-    travel_times = {
-        'Embarcadero': {'Bayview': 21/60, 'Chinatown': 7/60, 'Alamo Square': 19/60, 'Nob Hill': 10/60,
-                        'Presidio': 20/60, 'Union Square': 10/60, 'The Castro': 25/60, 'North Beach': 5/60,
-                        'Fisherman\'s Wharf': 6/60, 'Marina District': 12/60},
-        'Bayview': {'Embarcadero': 19/60, 'Chinatown': 19/60, 'Alamo Square': 16/60, 'Nob Hill': 20/60,
-                    'Presidio': 32/60, 'Union Square': 18/60, 'The Castro': 19/60, 'North Beach': 22/60,
-                    'Fisherman\'s Wharf': 25/60, 'Marina District': 27/60},
-        'Chinatown': {'Embarcadero': 5/60, 'Bayview': 20/60, 'Alamo Square': 17/60, 'Nob Hill': 9/60,
-                      'Presidio': 19/60, 'Union Square': 7/60, 'The Castro': 22/60, 'North Beach': 3/60,
-                      'Fisherman\'s Wharf': 8/60, 'Marina District': 12/60},
-        'Alamo Square': {'Embarcadero': 16/60, 'Bayview': 16/60, 'Chinatown': 15/60, 'Nob Hill': 11/60,
-                         'Presidio': 17/60, 'Union Square': 14/60, 'The Castro': 8/60, 'North Beach': 15/60,
-                         'Fisherman\'s Wharf': 19/60, 'Marina District': 15/60},
-        'Nob Hill': {'Embarcadero': 9/60, 'Bayview': 19/60, 'Chinatown': 6/60, 'Alamo Square': 11/60,
-                     'Presidio': 17/60, 'Union Square': 7/60, 'The Castro': 17/60, 'North Beach': 8/60,
-                     'Fisherman\'s Wharf': 10/60, 'Marina District': 11/60},
-        'Presidio': {'Embarcadero': 20/60, 'Bayview': 31/60, 'Chinatown': 21/60, 'Alamo Square': 19/60,
-                     'Nob Hill': 18/60, 'Union Square': 22/60, 'The Castro': 21/60, 'North Beach': 18/60,
-                     'Fisherman\'s Wharf': 19/60, 'Marina District': 11/60},
-        'Union Square': {'Embarcadero': 11/60, 'Bayview': 15/60, 'Chinatown': 7/60, 'Alamo Square': 15/60,
-                         'Nob Hill': 9/60, 'Presidio': 24/60, 'The Castro': 17/60, 'North Beach': 10/60,
-                         'Fisherman\'s Wharf': 15/60, 'Marina District': 18/60},
-        'The Castro': {'Embarcadero': 22/60, 'Bayview': 19/60, 'Chinatown': 22/60, 'Alamo Square': 8/60,
-                       'Nob Hill': 16/60, 'Presidio': 20/60, 'Union Square': 19/60, 'North Beach': 20/60,
-                       'Fisherman\'s Wharf': 24/60, 'Marina District': 21/60},
-        'North Beach': {'Embarcadero': 6/60, 'Bayview': 25/60, 'Chinatown': 6/60, 'Alamo Square': 16/60,
-                        'Nob Hill': 7/60, 'Presidio': 17/60, 'Union Square': 7/60, 'The Castro': 23/60,
-                        'Fisherman\'s Wharf': 5/60, 'Marina District': 9/60},
-        'Fisherman\'s Wharf': {'Embarcadero': 8/60, 'Bayview': 26/60, 'Chinatown': 12/60, 'Alamo Square': 21/60,
-                               'Nob Hill': 11/60, 'Presidio': 17/60, 'Union Square': 13/60, 'The Castro': 27/60,
-                               'North Beach': 6/60, 'Marina District': 9/60},
-        'Marina District': {'Embarcadero': 14/60, 'Bayview': 27/60, 'Chinatown': 15/60, 'Alamo Square': 15/60,
-                            'Nob Hill': 12/60, 'Presidio': 10/60, 'Union Square': 16/60, 'The Castro': 22/60,
-                            'North Beach': 11/60, 'Fisherman\'s Wharf': 10/60}
-    }
+# Complete travel times matrix (minutes between locations)
+travel_times = {
+    ("Embarcadero", "Bayview"): 21,
+    ("Embarcadero", "Chinatown"): 7,
+    ("Embarcadero", "Alamo Square"): 19,
+    ("Embarcadero", "Nob Hill"): 10,
+    ("Embarcadero", "Presidio"): 20,
+    ("Embarcadero", "Union Square"): 10,
+    ("Embarcadero", "The Castro"): 25,
+    ("Embarcadero", "North Beach"): 5,
+    ("Embarcadero", "Fisherman's Wharf"): 6,
+    ("Embarcadero", "Marina District"): 12,
+    ("Bayview", "Embarcadero"): 19,
+    ("Bayview", "Chinatown"): 19,
+    ("Bayview", "Alamo Square"): 16,
+    ("Bayview", "Nob Hill"): 20,
+    ("Bayview", "Presidio"): 32,
+    ("Bayview", "Union Square"): 18,
+    ("Bayview", "The Castro"): 19,
+    ("Bayview", "North Beach"): 22,
+    ("Bayview", "Fisherman's Wharf"): 25,
+    ("Bayview", "Marina District"): 27,
+    ("Chinatown", "Embarcadero"): 5,
+    ("Chinatown", "Bayview"): 20,
+    ("Chinatown", "Alamo Square"): 17,
+    ("Chinatown", "Nob Hill"): 9,
+    ("Chinatown", "Presidio"): 19,
+    ("Chinatown", "Union Square"): 7,
+    ("Chinatown", "The Castro"): 22,
+    ("Chinatown", "North Beach"): 3,
+    ("Chinatown", "Fisherman's Wharf"): 8,
+    ("Chinatown", "Marina District"): 12,
+    ("Alamo Square", "Embarcadero"): 16,
+    ("Alamo Square", "Bayview"): 16,
+    ("Alamo Square", "Chinatown"): 15,
+    ("Alamo Square", "Nob Hill"): 11,
+    ("Alamo Square", "Presidio"): 17,
+    ("Alamo Square", "Union Square"): 14,
+    ("Alamo Square", "The Castro"): 8,
+    ("Alamo Square", "North Beach"): 15,
+    ("Alamo Square", "Fisherman's Wharf"): 19,
+    ("Alamo Square", "Marina District"): 15,
+    ("Nob Hill", "Embarcadero"): 9,
+    ("Nob Hill", "Bayview"): 19,
+    ("Nob Hill", "Chinatown"): 6,
+    ("Nob Hill", "Alamo Square"): 11,
+    ("Nob Hill", "Presidio"): 17,
+    ("Nob Hill", "Union Square"): 7,
+    ("Nob Hill", "The Castro"): 17,
+    ("Nob Hill", "North Beach"): 8,
+    ("Nob Hill", "Fisherman's Wharf"): 10,
+    ("Nob Hill", "Marina District"): 11,
+    ("Presidio", "Embarcadero"): 20,
+    ("Presidio", "Bayview"): 31,
+    ("Presidio", "Chinatown"): 21,
+    ("Presidio", "Alamo Square"): 19,
+    ("Presidio", "Nob Hill"): 18,
+    ("Presidio", "Union Square"): 22,
+    ("Presidio", "The Castro"): 21,
+    ("Presidio", "North Beach"): 18,
+    ("Presidio", "Fisherman's Wharf"): 19,
+    ("Presidio", "Marina District"): 11,
+    ("Union Square", "Embarcadero"): 11,
+    ("Union Square", "Bayview"): 15,
+    ("Union Square", "Chinatown"): 7,
+    ("Union Square", "Alamo Square"): 15,
+    ("Union Square", "Nob Hill"): 9,
+    ("Union Square", "Presidio"): 24,
+    ("Union Square", "The Castro"): 17,
+    ("Union Square", "North Beach"): 10,
+    ("Union Square", "Fisherman's Wharf"): 15,
+    ("Union Square", "Marina District"): 18,
+    ("The Castro", "Embarcadero"): 22,
+    ("The Castro", "Bayview"): 19,
+    ("The Castro", "Chinatown"): 22,
+    ("The Castro", "Alamo Square"): 8,
+    ("The Castro", "Nob Hill"): 16,
+    ("The Castro", "Presidio"): 20,
+    ("The Castro", "Union Square"): 19,
+    ("The Castro", "North Beach"): 20,
+    ("The Castro", "Fisherman's Wharf"): 24,
+    ("The Castro", "Marina District"): 21,
+    ("North Beach", "Embarcadero"): 6,
+    ("North Beach", "Bayview"): 25,
+    ("North Beach", "Chinatown"): 6,
+    ("North Beach", "Alamo Square"): 16,
+    ("North Beach", "Nob Hill"): 7,
+    ("North Beach", "Presidio"): 17,
+    ("North Beach", "Union Square"): 7,
+    ("North Beach", "The Castro"): 23,
+    ("North Beach", "Fisherman's Wharf"): 5,
+    ("North Beach", "Marina District"): 9,
+    ("Fisherman's Wharf", "Embarcadero"): 8,
+    ("Fisherman's Wharf", "Bayview"): 26,
+    ("Fisherman's Wharf", "Chinatown"): 12,
+    ("Fisherman's Wharf", "Alamo Square"): 21,
+    ("Fisherman's Wharf", "Nob Hill"): 11,
+    ("Fisherman's Wharf", "Presidio"): 17,
+    ("Fisherman's Wharf", "Union Square"): 13,
+    ("Fisherman's Wharf", "The Castro"): 27,
+    ("Fisherman's Wharf", "North Beach"): 6,
+    ("Fisherman's Wharf", "Marina District"): 9,
+    ("Marina District", "Embarcadero"): 14,
+    ("Marina District", "Bayview"): 27,
+    ("Marina District", "Chinatown"): 15,
+    ("Marina District", "Alamo Square"): 15,
+    ("Marina District", "Nob Hill"): 12,
+    ("Marina District", "Presidio"): 10,
+    ("Marina District", "Union Square"): 16,
+    ("Marina District", "The Castro"): 22,
+    ("Marina District", "North Beach"): 11,
+    ("Marina District", "Fisherman's Wharf"): 10
+}
 
-    # Create variables
-    arrival = {name: Real(f'arrival_{name}') for name in friends}
-    departure = {name: Real(f'departure_{name}') for name in friends}
-    met = {name: Bool(f'met_{name}') for name in friends}
-    order = {name: Int(f'order_{name}') for name in friends}
+def minutes_to_time(minutes):
+    total_minutes = 540 + minutes  # 9:00 AM is 540 minutes
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-    # Current location and time
-    current_time = 9.0  # 9:00 AM
-    current_location = 'Embarcadero'
+# Create optimizer
+opt = Optimize()
 
-    # Basic constraints for each friend
-    for name in friends:
-        friend = friends[name]
-        s.add(Implies(met[name], 
-                     And(arrival[name] >= friend['start'],
-                         departure[name] <= friend['end'],
-                         departure[name] - arrival[name] >= friend['min_duration'])))
-        s.add(Implies(Not(met[name]), 
-                     And(arrival[name] == 0, departure[name] == 0, order[name] == -1)))
+# Variables for each meeting
+meetings = {}
+for friend in friends:
+    start = Int(f"start_{friend}")
+    duration = friends[friend]["duration"]
+    end = Int(f"end_{friend}")
+    meetings[friend] = {"start": start, "end": end}
+    
+    # Meeting must be within friend's availability
+    opt.add(start >= friends[friend]["start"] - 540)
+    opt.add(end <= friends[friend]["end"] - 540)
+    opt.add(end == start + duration)
 
-    # Order constraints
-    for name in friends:
-        s.add(Implies(met[name], order[name] >= 0))
-        s.add(Implies(Not(met[name]), order[name] == -1))
+# No overlapping meetings with travel time
+for f1 in friends:
+    for f2 in friends:
+        if f1 != f2:
+            loc1 = friends[f1]["location"]
+            loc2 = friends[f2]["location"]
+            travel = travel_times.get((loc1, loc2), 0)
+            opt.add(Or(
+                meetings[f1]["end"] + travel <= meetings[f2]["start"],
+                meetings[f2]["end"] + travel <= meetings[f1]["start"]
+            ))
 
-    # Sequence constraints
-    for name1 in friends:
-        for name2 in friends:
-            if name1 == name2:
-                continue
-            loc1 = friends[name1]['location']
-            loc2 = friends[name2]['location']
-            travel = travel_times[loc1][loc2]
-            s.add(Implies(And(met[name1], met[name2], order[name1] < order[name2]),
-                         arrival[name2] >= departure[name1] + travel))
+# Maximize number of meetings (count of friends met)
+met = [Int(f"met_{friend}") for friend in friends]
+for i, friend in enumerate(friends):
+    opt.add(met[i] == If(And(meetings[friend]["start"] >= 0, 
+                             meetings[friend]["end"] <= friends[friend]["end"] - 540), 
+                         1, 0))
 
-    # Initial constraint
-    for name in friends:
-        loc = friends[name]['location']
-        travel = travel_times[current_location][loc]
-        s.add(Implies(And(met[name], order[name] == 0),
-                     arrival[name] >= current_time + travel))
+total_met = Int("total_met")
+opt.add(total_met == sum(met))
+opt.maximize(total_met)
 
-    # All met friends must have unique order numbers
-    s.add(Distinct([order[name] for name in friends if met[name]]))
-    for name in friends:
-        s.add(order[name] >= -1)
-        s.add(order[name] < len(friends))
-
-    # Maximize number of friends met
-    s.maximize(Sum([If(met[name], 1, 0) for name in friends]))
-
-    if s.check() == sat:
-        m = s.model()
-        schedule = []
-        for name in friends:
-            if is_true(m.evaluate(met[name])):
-                a = m.evaluate(arrival[name])
-                d = m.evaluate(departure[name])
-                o = m.evaluate(order[name])
-                
-                # Convert Z3 values to float safely
-                def to_float(val):
-                    if is_rational_value(val):
-                        return float(val.numerator_as_long())/float(val.denominator_as_long())
-                    elif is_int_value(val):
-                        return float(val.as_long())
-                    else:
-                        return float(str(val))
-                
-                a_val = to_float(a)
-                d_val = to_float(d)
-                o_val = o.as_long()
-                schedule.append((name, a_val, d_val, o_val))
-        
-        # Sort by order
-        schedule.sort(key=lambda x: x[3])
-        return schedule
-    else:
-        return None
-
-# Run the solver
-schedule = solve_scheduling()
-
-# Print the solution
-print("SOLUTION:")
-if schedule:
-    print("Optimal schedule meeting the following friends in order:")
-    for i, (name, arrival, departure, order) in enumerate(schedule):
-        print(f"{i+1}. {name}: {arrival:.2f} - {departure:.2f} at {friends[name]['location']}")
+# Solve
+if opt.check() == sat:
+    m = opt.model()
+    itinerary = []
+    for friend in friends:
+        start_val = m[meetings[friend]["start"]]
+        end_val = m[meetings[friend]["end"]]
+        if start_val is not None and end_val is not None:
+            start = start_val.as_long()
+            end = end_val.as_long()
+            if start >= 0 and end <= friends[friend]["end"] - 540:
+                itinerary.append({
+                    "action": "meet",
+                    "person": friend,
+                    "start_time": minutes_to_time(start),
+                    "end_time": minutes_to_time(end)
+                })
+    # Sort itinerary by start time
+    itinerary.sort(key=lambda x: int(x["start_time"].replace(":", "")))
+    print({"itinerary": itinerary})
 else:
-    print("No feasible schedule found.")
+    print({"itinerary": []})

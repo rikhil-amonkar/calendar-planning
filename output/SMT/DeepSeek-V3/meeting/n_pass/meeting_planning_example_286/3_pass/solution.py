@@ -1,106 +1,88 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize solver with optimization capabilities
-    opt = Optimize()
+    # Initialize solver
+    s = Solver()
 
-    # Define variables for meeting start and end times (in minutes since 9:00 AM)
+    # Define time variables in minutes since 9:00 AM (540 minutes)
+    # Meeting with Carol at Sunset District (10:15-11:45, min 30 mins)
     carol_start = Int('carol_start')
     carol_end = Int('carol_end')
+
+    # Meeting with Rebecca at Mission District (11:30-20:15, min 120 mins)
     rebecca_start = Int('rebecca_start')
     rebecca_end = Int('rebecca_end')
+
+    # Meeting with Karen at Bayview (12:45-15:00, min 120 mins)
     karen_start = Int('karen_start')
     karen_end = Int('karen_end')
 
-    # Convert all times to minutes since 9:00 AM (540 minutes since midnight)
-    # Carol: 10:15 AM (615) to 11:45 AM (705) → 75 to 165 minutes
-    # Rebecca: 11:30 AM (690) to 8:15 PM (1215) → 150 to 675 minutes
-    # Karen: 12:45 PM (765) to 3:00 PM (900) → 225 to 360 minutes
+    # Convert all times to minutes since 9:00 AM (540)
+    # Carol's window: 10:15 (75 mins) to 11:45 (165 mins)
+    carol_window_start = 75  # 10:15 - 9:00 = 1:15 = 75 mins
+    carol_window_end = 165   # 11:45 - 9:00 = 2:45 = 165 mins
 
-    # Meeting duration constraints
-    opt.add(carol_end - carol_start >= 30)    # Minimum 30 minutes with Carol
-    opt.add(rebecca_end - rebecca_start >= 120)  # Minimum 120 minutes with Rebecca
-    opt.add(karen_end - karen_start >= 120)   # Minimum 120 minutes with Karen
+    # Rebecca's window: 11:30 (150 mins) to 20:15 (675 mins)
+    rebecca_window_start = 150  # 11:30 - 9:00 = 2:30 = 150 mins
+    rebecca_window_end = 675    # 20:15 - 9:00 = 11:15 = 675 mins
 
-    # Availability constraints
-    opt.add(carol_start >= 75)    # 10:15 AM
-    opt.add(carol_end <= 165)     # 11:45 AM
-    opt.add(rebecca_start >= 150) # 11:30 AM
-    opt.add(rebecca_end <= 675)   # 8:15 PM
-    opt.add(karen_start >= 225)   # 12:45 PM
-    opt.add(karen_end <= 360)     # 3:00 PM
+    # Karen's window: 12:45 (225 mins) to 15:00 (360 mins)
+    karen_window_start = 225    # 12:45 - 9:00 = 3:45 = 225 mins
+    karen_window_end = 360      # 15:00 - 9:00 = 6:00 = 360 mins
 
-    # Travel times between locations (in minutes)
-    travel_times = {
-        ('Union Square', 'Sunset District'): 26,
-        ('Union Square', 'Mission District'): 14,
-        ('Union Square', 'Bayview'): 15,
-        ('Sunset District', 'Mission District'): 24,
-        ('Sunset District', 'Bayview'): 22,
-        ('Mission District', 'Bayview'): 15,
-        ('Mission District', 'Sunset District'): 24,
-        ('Bayview', 'Mission District'): 13,
-        ('Bayview', 'Sunset District'): 23
-    }
+    # Add constraints for Carol
+    s.add(carol_start >= carol_window_start)
+    s.add(carol_end <= carol_window_end)
+    s.add(carol_end - carol_start >= 30)  # min 30 mins
 
-    # We'll consider two possible meeting orders:
-    # 1. Carol → Rebecca → Karen
-    # 2. Carol → Karen → Rebecca
+    # Add constraints for Rebecca
+    s.add(rebecca_start >= rebecca_window_start)
+    s.add(rebecca_end <= rebecca_window_end)
+    s.add(rebecca_end - rebecca_start >= 120)  # min 120 mins
 
-    # Create boolean variables to represent which order we choose
-    order1 = Bool('order1')  # Carol → Rebecca → Karen
-    order2 = Bool('order2')  # Carol → Karen → Rebecca
+    # Add constraints for Karen
+    s.add(karen_start >= karen_window_start)
+    s.add(karen_end <= karen_window_end)
+    s.add(karen_end - karen_start >= 120)  # min 120 mins
 
-    # Exactly one order must be selected
-    opt.add(Or(order1, order2))
-    opt.add(Not(And(order1, order2)))
+    # Travel times from Union Square to Sunset District (26 mins)
+    # So Carol's meeting must start at least 26 mins after 9:00 AM (i.e., carol_start >= 26)
+    s.add(carol_start >= 26)
 
-    # Constraints for order1 (Carol → Rebecca → Karen)
-    opt.add(Implies(order1,
-        And(
-            carol_start >= travel_times[('Union Square', 'Sunset District')],
-            rebecca_start >= carol_end + travel_times[('Sunset District', 'Mission District')],
-            karen_start >= rebecca_end + travel_times[('Mission District', 'Bayview')]
-        )
-    ))
+    # After Carol, travel to Mission District (Sunset to Mission: 24 mins)
+    # So rebecca_start >= carol_end + 24
+    s.add(rebecca_start >= carol_end + 24)
 
-    # Constraints for order2 (Carol → Karen → Rebecca)
-    opt.add(Implies(order2,
-        And(
-            carol_start >= travel_times[('Union Square', 'Sunset District')],
-            karen_start >= carol_end + travel_times[('Sunset District', 'Bayview')],
-            rebecca_start >= karen_end + travel_times[('Bayview', 'Mission District')]
-        )
-    ))
+    # After Rebecca, travel to Bayview (Mission to Bayview: 15 mins)
+    # So karen_start >= rebecca_end + 15
+    s.add(karen_start >= rebecca_end + 15)
 
-    # Maximize total meeting time
-    total_time = (carol_end - carol_start) + (rebecca_end - rebecca_start) + (karen_end - karen_start)
-    opt.maximize(total_time)
+    # Check if all meetings can be scheduled
+    if s.check() == sat:
+        m = s.model()
+        # Convert times back to HH:MM format
+        def to_time(minutes):
+            total_mins = 540 + minutes  # 9:00 AM + minutes
+            h = total_mins // 60
+            m = total_mins % 60
+            return f"{h:02d}:{m:02d}"
 
-    if opt.check() == sat:
-        m = opt.model()
-        
-        def format_time(minutes):
-            total = 540 + minutes  # 9:00 AM is 540 minutes
-            hours = total // 60
-            mins = total % 60
-            period = "AM" if hours < 12 else "PM"
-            if hours > 12:
-                hours -= 12
-            return f"{hours}:{mins:02d} {period}"
+        carol_s = m.eval(carol_start).as_long()
+        carol_e = m.eval(carol_end).as_long()
+        rebecca_s = m.eval(rebecca_start).as_long()
+        rebecca_e = m.eval(rebecca_end).as_long()
+        karen_s = m.eval(karen_start).as_long()
+        karen_e = m.eval(karen_end).as_long()
 
-        print("SOLUTION:")
-        print(f"Meet Carol at Sunset District from {format_time(m[carol_start].as_long())} to {format_time(m[carol_end].as_long())}")
-        print(f"Meet Rebecca at Mission District from {format_time(m[rebecca_start].as_long())} to {format_time(m[rebecca_end].as_long())}")
-        print(f"Meet Karen at Bayview from {format_time(m[karen_start].as_long())} to {format_time(m[karen_end].as_long())}")
-        print(f"Total meeting time: {m.eval(total_time).as_long()} minutes")
-        
-        # Print which order was selected
-        if is_true(m[order1]):
-            print("Meeting order: Carol → Rebecca → Karen")
-        else:
-            print("Meeting order: Carol → Karen → Rebecca")
+        itinerary = [
+            {"action": "meet", "person": "Carol", "start_time": to_time(carol_s), "end_time": to_time(carol_e)},
+            {"action": "meet", "person": "Rebecca", "start_time": to_time(rebecca_s), "end_time": to_time(rebecca_e)},
+            {"action": "meet", "person": "Karen", "start_time": to_time(karen_s), "end_time": to_time(karen_e)}
+        ]
+        return {"itinerary": itinerary}
     else:
-        print("No valid schedule found that meets all constraints")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Execute and print the solution
+solution = solve_scheduling()
+print(solution)

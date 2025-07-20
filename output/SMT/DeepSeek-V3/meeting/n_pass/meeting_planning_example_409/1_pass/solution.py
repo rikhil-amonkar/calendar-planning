@@ -1,79 +1,177 @@
 from z3 import *
+import json
 
 def solve_scheduling():
     # Initialize solver
     s = Solver()
 
-    # Locations and their indices
-    locations = {
-        'Fisherman\'s Wharf': 0,
-        'Bayview': 1,
-        'Golden Gate Park': 2,
-        'Nob Hill': 3,
-        'Marina District': 4,
-        'Embarcadero': 5
+    # Define the friends and their availability
+    friends = {
+        "Thomas": {"location": "Bayview", "start": (15, 30), "end": (18, 30), "min_duration": 120},
+        "Stephanie": {"location": "Golden Gate Park", "start": (18, 30), "end": (21, 45), "min_duration": 30},
+        "Laura": {"location": "Nob Hill", "start": (8, 45), "end": (16, 15), "min_duration": 30},
+        "Betty": {"location": "Marina District", "start": (18, 45), "end": (21, 45), "min_duration": 45},
+        "Patricia": {"location": "Embarcadero", "start": (17, 30), "end": (22, 0), "min_duration": 45}
     }
 
-    # Travel times matrix (in minutes)
-    travel_times = [
-        [0, 26, 25, 11, 9, 8],       # Fisherman's Wharf
-        [25, 0, 22, 20, 25, 19],      # Bayview
-        [24, 23, 0, 20, 16, 25],      # Golden Gate Park
-        [11, 19, 17, 0, 11, 9],       # Nob Hill
-        [10, 27, 18, 12, 0, 14],      # Marina District
-        [6, 21, 25, 10, 12, 0]        # Embarcadero
-    ]
+    # Define travel times (from_location, to_location) -> minutes
+    travel_times = {
+        ("Fisherman's Wharf", "Bayview"): 26,
+        ("Fisherman's Wharf", "Golden Gate Park"): 25,
+        ("Fisherman's Wharf", "Nob Hill"): 11,
+        ("Fisherman's Wharf", "Marina District"): 9,
+        ("Fisherman's Wharf", "Embarcadero"): 8,
+        ("Bayview", "Fisherman's Wharf"): 25,
+        ("Bayview", "Golden Gate Park"): 22,
+        ("Bayview", "Nob Hill"): 20,
+        ("Bayview", "Marina District"): 25,
+        ("Bayview", "Embarcadero"): 19,
+        ("Golden Gate Park", "Fisherman's Wharf"): 24,
+        ("Golden Gate Park", "Bayview"): 23,
+        ("Golden Gate Park", "Nob Hill"): 20,
+        ("Golden Gate Park", "Marina District"): 16,
+        ("Golden Gate Park", "Embarcadero"): 25,
+        ("Nob Hill", "Fisherman's Wharf"): 11,
+        ("Nob Hill", "Bayview"): 19,
+        ("Nob Hill", "Golden Gate Park"): 17,
+        ("Nob Hill", "Marina District"): 11,
+        ("Nob Hill", "Embarcadero"): 9,
+        ("Marina District", "Fisherman's Wharf"): 10,
+        ("Marina District", "Bayview"): 27,
+        ("Marina District", "Golden Gate Park"): 18,
+        ("Marina District", "Nob Hill"): 12,
+        ("Marina District", "Embarcadero"): 14,
+        ("Embarcadero", "Fisherman's Wharf"): 6,
+        ("Embarcadero", "Bayview"): 21,
+        ("Embarcadero", "Golden Gate Park"): 25,
+        ("Embarcadero", "Nob Hill"): 10,
+        ("Embarcadero", "Marina District"): 12
+    }
 
-    # Friend data: name, location, start time (in minutes from 9:00AM), end time, min duration
-    friends = [
-        ('Thomas', 'Bayview', 15*60 + 30, 18*60 + 30, 120),
-        ('Stephanie', 'Golden Gate Park', 18*60 + 30, 21*60 + 45, 30),
-        ('Laura', 'Nob Hill', 8*60 + 45 - 9*60, 16*60 + 15 - 9*60, 30),
-        ('Betty', 'Marina District', 18*60 + 45 - 9*60, 21*60 + 45 - 9*60, 45),
-        ('Patricia', 'Embarcadero', 17*60 + 30 - 9*60, 22*60 - 9*60, 45)
-    ]
+    # Convert times to minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(h, m):
+        return h * 60 + m
 
-    # Variables for arrival and departure times at each location
-    arrival = [Int(f'arrival_{loc}') for loc in locations.keys()]
-    departure = [Int(f'departure_{loc}') for loc in locations.keys()]
+    current_location = "Fisherman's Wharf"
+    current_time = time_to_minutes(9, 0)  # 9:00 AM in minutes
 
-    # Initial constraints: start at Fisherman's Wharf at 9:00AM (time 0)
-    s.add(arrival[locations['Fisherman\'s Wharf']] == 0)
-    s.add(departure[locations['Fisherman\'s Wharf']] >= 0)
+    # Variables for each meeting: start and end times in minutes since 9:00 AM
+    meetings = {}
+    for name in friends:
+        start_var = Int(f'start_{name}')
+        end_var = Int(f'end_{name}')
+        meetings[name] = {'start': start_var, 'end': end_var}
 
-    # Constraints for each friend
-    meet_friends = [Bool(f'meet_{name}') for name, _, _, _, _ in friends]
-    for i, (name, loc, start, end, min_dur) in enumerate(friends):
-        loc_idx = locations[loc]
-        # If we meet the friend, arrival and departure must be within their window
-        s.add(Implies(meet_friends[i], arrival[loc_idx] >= start))
-        s.add(Implies(meet_friends[i], departure[loc_idx] <= end))
-        s.add(Implies(meet_friends[i], departure[loc_idx] - arrival[loc_idx] >= min_dur))
+    # Constraints for each meeting
+    for name in friends:
+        friend = friends[name]
+        start_min = time_to_minutes(*friend['start'])
+        end_min = time_to_minutes(*friend['end'])
+        s.add(meetings[name]['start'] >= start_min)
+        s.add(meetings[name]['end'] <= end_min)
+        s.add(meetings[name]['end'] - meetings[name]['start'] >= friend['min_duration'])
 
-    # Path constraints: ensure travel times are respected
-    # We need to model the order of visits, but for simplicity, we'll assume a linear path
-    # This is a simplification; a more complex model would involve sequencing variables
-    # For now, we'll assume we visit each location at most once and in some order
-    # This is a placeholder; a full solution would require a more sophisticated approach
-    # For the sake of this example, we'll prioritize meeting as many friends as possible
-    # and let Z3 find a feasible schedule
+    # Order of meetings and travel times
+    # We need to sequence the meetings considering travel times
+    # This is complex, so we'll assume an order and check feasibility
+    # Let's try to meet Laura first (since she's available earliest), then Thomas, then Patricia, then Betty or Stephanie
 
-    # Objective: maximize the number of friends met
-    s.maximize(Sum([If(meet_friends[i], 1, 0) for i in range(len(friends))]))
+    # Meeting Laura first
+    laura_start = meetings['Laura']['start']
+    laura_end = meetings['Laura']['end']
+    s.add(laura_start >= current_time)
+    travel_to_laura = travel_times[(current_location, friends['Laura']['location'])]
+    s.add(laura_start >= current_time + travel_to_laura)
 
-    # Check if a solution exists
+    # After Laura, meet Thomas
+    thomas_start = meetings['Thomas']['start']
+    thomas_end = meetings['Thomas']['end']
+    travel_laura_to_thomas = travel_times[(friends['Laura']['location'], friends['Thomas']['location'])]
+    s.add(thomas_start >= laura_end + travel_laura_to_thomas)
+
+    # After Thomas, meet Patricia
+    patricia_start = meetings['Patricia']['start']
+    patricia_end = meetings['Patricia']['end']
+    travel_thomas_to_patricia = travel_times[(friends['Thomas']['location'], friends['Patricia']['location'])]
+    s.add(patricia_start >= thomas_end + travel_thomas_to_patricia)
+
+    # After Patricia, meet Betty
+    betty_start = meetings['Betty']['start']
+    betty_end = meetings['Betty']['end']
+    travel_patricia_to_betty = travel_times[(friends['Patricia']['location'], friends['Betty']['location'])]
+    s.add(betty_start >= patricia_end + travel_patricia_to_betty)
+
+    # After Betty, meet Stephanie
+    stephanie_start = meetings['Stephanie']['start']
+    stephanie_end = meetings['Stephanie']['end']
+    travel_betty_to_stephanie = travel_times[(friends['Betty']['location'], friends['Stephanie']['location'])]
+    s.add(stephanie_start >= betty_end + travel_betty_to_stephanie)
+
+    # Check if we can meet all friends
     if s.check() == sat:
-        m = s.model()
-        print("Optimal Schedule:")
-        total_friends_met = 0
-        for i, (name, loc, _, _, _) in enumerate(friends):
-            if m.evaluate(meet_friends[i]):
-                total_friends_met += 1
-                arr = m.evaluate(arrival[locations[loc]])
-                dep = m.evaluate(departure[locations[loc]])
-                print(f"Meet {name} at {loc} from {arr} to {dep}")
-        print(f"Total friends met: {total_friends_met}")
-    else:
-        print("No feasible schedule found.")
+        model = s.model()
+        itinerary = []
 
-solve_scheduling()
+        # Helper function to convert minutes back to HH:MM
+        def minutes_to_time(m):
+            h = m // 60
+            m = m % 60
+            return f"{h:02d}:{m:02d}"
+
+        # Add Laura meeting
+        laura_s = model.evaluate(meetings['Laura']['start']).as_long()
+        laura_e = model.evaluate(meetings['Laura']['end']).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Laura",
+            "start_time": minutes_to_time(laura_s),
+            "end_time": minutes_to_time(laura_e)
+        })
+
+        # Add Thomas meeting
+        thomas_s = model.evaluate(meetings['Thomas']['start']).as_long()
+        thomas_e = model.evaluate(meetings['Thomas']['end']).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Thomas",
+            "start_time": minutes_to_time(thomas_s),
+            "end_time": minutes_to_time(thomas_e)
+        })
+
+        # Add Patricia meeting
+        patricia_s = model.evaluate(meetings['Patricia']['start']).as_long()
+        patricia_e = model.evaluate(meetings['Patricia']['end']).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Patricia",
+            "start_time": minutes_to_time(patricia_s),
+            "end_time": minutes_to_time(patricia_e)
+        })
+
+        # Add Betty meeting
+        betty_s = model.evaluate(meetings['Betty']['start']).as_long()
+        betty_e = model.evaluate(meetings['Betty']['end']).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Betty",
+            "start_time": minutes_to_time(betty_s),
+            "end_time": minutes_to_time(betty_e)
+        })
+
+        # Add Stephanie meeting
+        stephanie_s = model.evaluate(meetings['Stephanie']['start']).as_long()
+        stephanie_e = model.evaluate(meetings['Stephanie']['end']).as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": "Stephanie",
+            "start_time": minutes_to_time(stephanie_s),
+            "end_time": minutes_to_time(stephanie_e)
+        })
+
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": []}
+
+# Execute the solver
+result = solve_scheduling()
+print(json.dumps(result, indent=2))

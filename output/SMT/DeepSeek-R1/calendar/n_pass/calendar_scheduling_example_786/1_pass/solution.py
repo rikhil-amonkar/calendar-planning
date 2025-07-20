@@ -1,73 +1,89 @@
 from z3 import *
 
 def main():
-    # Initialize variables
-    day = Int('day')
-    start = Int('start')
-    
-    # Initialize solvers
-    s_hard = Solver()
-    s_pref = Solver()
-    
-    # Hard constraints for day and time
-    s_hard.add(Or(day == 0, day == 1, day == 2))
-    s_hard.add(start >= 540)  # 9:00
-    s_hard.add(start <= 990)  # 16:30, so meeting ends by 17:00
-    
-    # Amy's constraints
-    amy_wed = And(Or(start + 30 <= 660, start >= 690),  # Avoid 11:00-11:30
-                  Or(start + 30 <= 810, start >= 840))  # Avoid 13:30-14:00
-    amy_constraint = If(day == 2, amy_wed, True)
-    s_hard.add(amy_constraint)
-    
-    # Pamela's constraints
-    pam_mon = And(start >= 630, Or(start + 30 <= 660, start >= 990))
-    pam_tue = (start == 570)  # Only free at 9:30-10:00
-    pam_wed = And(start >= 570,
-                  Or(start + 30 <= 600, start >= 660),
-                  Or(start + 30 <= 690, start >= 810),
-                  Or(start + 30 <= 870, start >= 900),
-                  Or(start + 30 <= 960, start >= 990))
-    pam_constraint = If(day == 0, pam_mon, If(day == 1, pam_tue, If(day == 2, pam_wed, False)))
-    s_hard.add(pam_constraint)
-    
-    # Copy hard constraints to preference solver
-    for c in s_hard.assertions():
-        s_pref.add(c)
-    
-    # Add Pamela's preferences as soft constraints
-    s_pref.add(day != 0)  # Avoid Monday
-    s_pref.add(If(Or(day == 1, day == 2), start >= 960, True)  # After 16:00 on Tue/Wed
-    
-    # Check for solution with preferences first
-    if s_pref.check() == sat:
-        model = s_pref.model()
-    else:
-        # Fall back to hard constraints if preferences can't be satisfied
-        s_hard.check()
-        model = s_hard.model()
-    
-    # Extract solution
-    day_val = model[day].as_long()
-    start_val = model[start].as_long()
-    end_val = start_val + 30
-    
-    # Convert day to string
-    days = ["Monday", "Tuesday", "Wednesday"]
-    day_str = days[day_val]
-    
-    # Format start and end times
-    def format_time(minutes):
-        h = minutes // 60
-        m = minutes % 60
-        return f"{h:02d}:{m:02d}"
-    
-    start_time = format_time(start_val)
-    end_time = format_time(end_val)
-    
-    print(f"Day: {day_str}")
-    print(f"Start Time: {start_time}")
-    print(f"End Time: {end_time}")
+    # Create variables
+    d = Int('d')  # day: 0=Monday, 1=Tuesday, 2=Wednesday
+    s = Int('s')  # start time in minutes from 9:00
 
-if __name__ == "__main__":
+    # Constraints list
+    constraints = []
+
+    # Day must be 0, 1, or 2
+    constraints.append(d >= 0)
+    constraints.append(d <= 2)
+
+    # Start time must be between 0 (9:00) and 450 (16:30) inclusive, because meeting ends by 17:00 (480 minutes from 9:00)
+    constraints.append(s >= 0)
+    constraints.append(s <= 450)
+
+    # Define busy periods as half-open intervals [start, end)
+    amy_busy = {
+        0: [],  # Monday
+        1: [],  # Tuesday
+        2: [(120, 150), (270, 300)]  # Wednesday: 11:00-11:30, 13:30-14:00
+    }
+
+    pamela_busy = {
+        0: [(0, 90), (120, 450)],  # Monday: 9:00-10:30, 11:00-16:30
+        1: [(0, 30), (60, 480)],   # Tuesday: 9:00-9:30, 10:00-17:00
+        2: [(0, 30), (60, 120), (150, 270), (330, 360), (420, 450)]  # Wednesday: various periods
+    }
+
+    # Function to avoid overlapping with busy intervals
+    def avoid_busy_intervals(participant_busy):
+        list_constraints = []
+        for day, intervals in participant_busy.items():
+            for (b_start, b_end) in intervals:
+                # If the meeting day is `day`, then ensure no overlap with [b_start, b_end)
+                c = Implies(d == day, Or(s >= b_end, s + 30 <= b_start))
+                list_constraints.append(c)
+        return list_constraints
+
+    # Add constraints for Amy and Pamela
+    constraints.extend(avoid_busy_intervals(amy_busy))
+    constraints.extend(avoid_busy_intervals(pamela_busy))
+
+    # Define penalty for preferences
+    penalty = Int('penalty')
+    # Penalty: 100 for Monday, 50 for Wednesday before 16:00 (16:00 is 420 minutes from 9:00), 0 otherwise
+    penalty_def = If(d == 0, 100, If(And(d == 2, s < 420), 50, 0))
+    constraints.append(penalty == penalty_def)
+
+    # Use Optimize to minimize penalty
+    opt = Optimize()
+    opt.add(constraints)
+    opt.minimize(penalty)
+
+    # Check for a solution
+    if opt.check() == sat:
+        m = opt.model()
+        day_val = m[d].as_long()
+        s_val = m[s].as_long()
+        days = ["Monday", "Tuesday", "Wednesday"]
+        day_str = days[day_val]
+        
+        # Calculate start time (HH:MM)
+        total_minutes = s_val
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        start_hour = 9 + hours
+        start_min = minutes
+        start_time = f"{start_hour:02d}:{minutes:02d}"
+        
+        # Calculate end time (start time + 30 minutes)
+        end_minutes = s_val + 30
+        hours_end = end_minutes // 60
+        minutes_end = end_minutes % 60
+        end_hour = 9 + hours_end
+        end_time = f"{end_hour:02d}:{minutes_end:02d}"
+        
+        # Output the solution
+        print("SOLUTION:")
+        print(f"Day: {day_str}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
+    else:
+        print("No solution found")
+
+if __name__ == '__main__':
     main()

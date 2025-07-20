@@ -1,53 +1,52 @@
 from z3 import *
 
 def main():
-    # Define busy times in minutes from 9:00 (start of day)
+    # Initialize solver
+    s = Solver()
+    # Start time in minutes from 9:00 (0 to 450 inclusive)
+    start = Int('start')
+    s.add(start >= 0, start <= 450)  # 450 minutes = 16:30, meeting ends at 17:00
+
+    # Define busy intervals for each participant (in minutes from 9:00)
     busy_times = {
         'Megan': [(0, 30), (60, 120), (180, 210)],
         'Christine': [(0, 30), (150, 180), (240, 300), (390, 450)],
-        'Gabriel': [],
         'Sara': [(150, 180), (330, 360)],
         'Bruce': [(30, 60), (90, 180), (210, 300), (330, 360), (390, 450)],
         'Kathryn': [(60, 390), (420, 450)],
-        'Billy': [(0, 30), (120, 150), (180, 300), (330, 390)]
+        'Billy': [(0, 30), (120, 150), (180, 300), (330, 390)],
+        # Gabriel is free all day, no constraints
     }
-    
-    # Initialize Z3 solver and variable for meeting start time (in minutes)
-    s = Solver()
-    start = Int('start')
-    
-    # Meeting must be within 9:00 to 17:00 (start between 0 and 450 minutes inclusive)
-    s.add(start >= 0)
-    s.add(start <= 450)
-    
-    # Add constraints for each participant
-    for person, intervals in busy_times.items():
-        for interval in intervals:
-            s_start, s_end = interval
-            # Ensure meeting does not overlap: either ends before interval starts or starts after interval ends
-            s.add(Or(start + 30 <= s_start, start >= s_end))
-    
+
+    # Add constraints for each participant's busy intervals
+    for participant, intervals in busy_times.items():
+        for (busy_start, busy_end) in intervals:
+            s.add(Or(start + 30 <= busy_start, start >= busy_end))
+
     # Check for a solution
     if s.check() == sat:
         model = s.model()
-        start_val = model[start].as_long()
+        start_minutes = model[start].as_long()
         
-        # Convert start time back to HH:MM format
-        total_minutes = 9 * 60 + start_val
-        hours = total_minutes // 60
+        # Convert start_minutes to time string
+        total_minutes = start_minutes
+        hours = 9 + total_minutes // 60
         minutes = total_minutes % 60
         start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Calculate end time (30 minutes later)
-        end_minutes = start_val + 30
-        total_end_minutes = 9 * 60 + end_minutes
-        end_hours = total_end_minutes // 60
-        end_minutes = total_end_minutes % 60
-        end_time = f"{end_hours:02d}:{end_minutes:02d}"
+        # Calculate end time
+        end_minutes = start_minutes + 30
+        hours_end = 9 + end_minutes // 60
+        minutes_end = end_minutes % 60
+        end_time = f"{hours_end:02d}:{minutes_end:02d}"
         
-        print(f"Monday, {start_time} to {end_time}")
+        # Output the solution
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
-        print("No suitable time found")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

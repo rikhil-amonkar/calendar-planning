@@ -1,51 +1,53 @@
 from z3 import *
 
 def main():
-    s = Int('s')
-    solver = Solver()
+    # Initialize the solver
+    s = Solver()
     
-    # Meeting must be within 9:00 to 17:00 (0 to 480 minutes) and end by 17:00 (s <= 450)
-    solver.add(s >= 0, s <= 450)
+    # Define the start time in minutes from 9:00
+    start = Int('start')
     
-    # Patrick's busy intervals (in minutes from 9:00)
-    patrick = [(0, 30), (60, 90), (270, 300), (420, 450)]
-    for a, b in patrick:
-        solver.add(Or(s + 30 <= a, s >= b))
+    # Total working minutes: 9:00 (0 min) to 17:00 (480 min)
+    # Meeting duration is 30 minutes, so start must be between 0 and 450 inclusive
+    s.add(start >= 0)
+    s.add(start <= 450)  # 480 - 30 = 450
     
-    # Kayla's busy intervals
-    kayla = [(210, 270), (360, 390), (420, 450)]
-    for a, b in kayla:
-        solver.add(Or(s + 30 <= a, s >= b))
+    # Busy intervals for each participant in minutes (relative to 9:00)
+    patrick_busy = [(0, 30), (60, 90), (270, 300), (420, 450)]
+    kayla_busy = [(210, 270), (360, 390), (420, 450)]
+    carl_busy = [(90, 120), (180, 210), (240, 270), (330, 480)]
+    christian_busy = [(0, 210), (240, 300), (330, 480)]
     
-    # Carl's busy intervals
-    carl = [(90, 120), (180, 210), (240, 270), (330, 480)]
-    for a, b in carl:
-        solver.add(Or(s + 30 <= a, s >= b))
+    # Combine all busy intervals
+    all_busy = patrick_busy + kayla_busy + carl_busy + christian_busy
     
-    # Christian's busy intervals
-    christian = [(0, 210), (240, 300), (330, 480)]
-    for a, b in christian:
-        solver.add(Or(s + 30 <= a, s >= b))
+    # For each busy interval, add constraint: meeting must not overlap
+    for a, b in all_busy:
+        # The meeting is [start, start+30]
+        # Non-overlap: either meeting ends before a or starts after b
+        s.add(Or(start + 30 <= a, start >= b))
     
-    # Check for a solution
-    if solver.check() == sat:
-        m = solver.model()
-        start_min = m[s].as_long()
+    # Check if there's a solution
+    if s.check() == sat:
+        m = s.model()
+        start_min = m.eval(start).as_long()
         
-        # Convert start_min to HH:MM format
-        hours = start_min // 60
+        # Convert minutes back to time string
+        hours = 9 + start_min // 60
         minutes = start_min % 60
-        start_hour = 9 + hours
-        start_str = f"{start_hour}:{minutes:02d}"
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Calculate end time (start_min + 30 minutes)
+        # Calculate end time (start + 30 minutes)
         end_min = start_min + 30
-        hours_end = end_min // 60
-        minutes_end = end_min % 60
-        end_hour = 9 + hours_end
-        end_str = f"{end_hour}:{minutes_end:02d}"
+        end_hours = 9 + end_min // 60
+        end_minutes = end_min % 60
+        end_time = f"{end_hours:02d}:{end_minutes:02d}"
         
-        print(f"Monday {start_str} to {end_str}")
+        # Output in the required format
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

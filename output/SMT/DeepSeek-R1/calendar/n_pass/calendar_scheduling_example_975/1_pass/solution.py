@@ -1,105 +1,79 @@
 from z3 import *
 
-def time_to_minutes(time_str):
-    parts = time_str.split(':')
-    hours = int(parts[0])
-    minutes = int(parts[1])
-    return (hours - 9) * 60 + minutes
-
 def main():
-    # Preprocess Nicole's meetings
-    nicole_meetings = {
-        1: [("16:00", "16:30")],    # Tuesday
-        2: [("15:00", "15:30")],    # Wednesday
-        4: [("12:00", "12:30"), ("15:30", "16:00")]  # Friday
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    
+    # Nicole's busy times in minutes from 9:00 (each interval is [start, end))
+    nicole_busy = {
+        'Tuesday': [(420, 450)],
+        'Wednesday': [(360, 390)],
+        'Friday': [(180, 210), (390, 420)]
     }
     
-    # Preprocess Daniel's meetings
-    daniel_meetings = {
-        0: [("9:00", "12:30"), ("13:00", "13:30"), ("14:00", "16:30")],  # Monday
-        1: [("9:00", "10:30"), ("11:30", "12:30"), ("13:00", "13:30"), ("15:00", "16:00"), ("16:30", "17:00")],  # Tuesday
-        2: [("9:00", "10:00"), ("11:00", "12:30"), ("13:00", "13:30"), ("14:00", "14:30"), ("16:30", "17:00")],  # Wednesday
-        3: [("11:00", "12:00"), ("13:00", "14:00"), ("15:00", "15:30")],  # Thursday
-        4: [("10:00", "11:00"), ("11:30", "12:00"), ("12:30", "14:30"), ("15:00", "15:30"), ("16:00", "16:30")]  # Friday
+    # Daniel's busy times in minutes from 9:00 (each interval is [start, end))
+    daniel_busy = {
+        'Monday': [(0, 210), (240, 270), (300, 450)],
+        'Tuesday': [(0, 90), (150, 210), (240, 270), (360, 420), (450, 480)],
+        'Wednesday': [(0, 60), (120, 210), (240, 270), (300, 330), (450, 480)],
+        'Thursday': [(120, 180), (240, 300), (360, 390)],
+        'Friday': [(60, 120), (150, 180), (210, 330), (360, 390), (420, 450)]
     }
     
-    # Convert time strings to minutes for Nicole
-    nicole_busy = {}
-    for day, intervals in nicole_meetings.items():
-        nicole_busy[day] = [(time_to_minutes(s), time_to_minutes(e)) for s, e in intervals]
+    # Initialize Z3 variables
+    day_var = Int('day')
+    start_var = Int('start')  # in minutes from 9:00
     
-    # Convert time strings to minutes for Daniel
-    daniel_busy = {}
-    for day, intervals in daniel_meetings.items():
-        daniel_busy[day] = [(time_to_minutes(s), time_to_minutes(e)) for s, e in intervals]
-    
-    # Z3 variables
-    day = Int('day')
-    start = Int('start')
-    
-    s = Optimize()
+    # Initialize the optimizer
+    opt = Optimize()
     
     # Day must be between 0 (Monday) and 4 (Friday)
-    s.add(day >= 0, day <= 4)
-    # Start time must allow the meeting to end by 17:00 (480 minutes from 9:00)
-    s.add(start >= 0, start <= 420)
+    opt.add(day_var >= 0, day_var <= 4)
+    # Start time must be between 0 and 420 minutes (so the meeting ends by 17:00)
+    opt.add(start_var >= 0, start_var <= 420)
     
-    # Constraints per day
-    constraints = []
-    for d in range(5):
-        # Nicole's busy intervals on day d
-        nicole_conds = []
-        if d in nicole_busy:
-            for s_busy, e_busy in nicole_busy[d]:
-                nicole_conds.append(Or(start >= e_busy, start + 60 <= s_busy))
-        else:
-            nicole_conds = [True]  # No meetings, so condition always true
+    # Add constraints for each day
+    for i, day_name in enumerate(days):
+        # For Nicole: if the meeting is on this day, it must avoid her busy intervals
+        if day_name in nicole_busy:
+            for interval in nicole_busy[day_name]:
+                s, e = interval
+                # Meeting [start, start+60] must not overlap [s, e)
+                opt.add(Implies(day_var == i, Or(start_var + 60 <= s, start_var >= e)))
         
-        # Daniel's busy intervals on day d
-        daniel_conds = []
-        if d in daniel_busy:
-            for s_busy, e_busy in daniel_busy[d]:
-                daniel_conds.append(Or(start >= e_busy, start + 60 <= s_busy))
-        else:
-            daniel_conds = [True]  # No meetings, so condition always true
-        
-        # Combined conditions for day d
-        day_constraint = And(And(nicole_conds), And(daniel_conds))
-        constraints.append(If(day == d, day_constraint, True))
+        # For Daniel: similarly avoid his busy intervals
+        if day_name in daniel_busy:
+            for interval in daniel_busy[day_name]:
+                s, e = interval
+                opt.add(Implies(day_var == i, Or(start_var + 60 <= s, start_var >= e)))
     
-    s.add(And(constraints))
+    # Define the total minutes from Monday 9:00 to minimize
+    total_minutes = day_var * 480 + start_var
+    opt.minimize(total_minutes)
     
-    # Minimize: earliest day and then earliest start time
-    s.minimize(day * 480 + start)
-    
-    # Solve
-    if s.check() == sat:
-        m = s.model()
-        d_val = m[day].as_long()
-        start_minutes = m[start].as_long()
+    # Check for a solution
+    if opt.check() == sat:
+        model = opt.model()
+        d_val = model[day_var].as_long()
+        s_val = model[start_var].as_long()
         
-        # Convert day index to name
-        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        day_name = days[d_val]
+        # Convert start time from minutes to HH:MM format
+        start_hour = 9 + s_val // 60
+        start_minute = s_val % 60
+        start_time = f"{start_hour:02d}:{start_minute:02d}"
         
-        # Calculate start time in HH:MM
-        total_minutes_start = start_minutes
-        hours_start = 9 + total_minutes_start // 60
-        minutes_start = total_minutes_start % 60
-        start_time = f"{hours_start:02d}:{minutes_start:02d}"
+        # Calculate end time (start time + 60 minutes)
+        end_val = s_val + 60
+        end_hour = 9 + end_val // 60
+        end_minute = end_val % 60
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
         
-        # Calculate end time in HH:MM
-        end_minutes = start_minutes + 60
-        hours_end = 9 + end_minutes // 60
-        minutes_end = end_minutes % 60
-        end_time = f"{hours_end:02d}:{minutes_end:02d}"
-        
-        # Output the result
-        print(f"Day: {day_name}")
+        # Output the solution
+        print("SOLUTION:")
+        print(f"Day: {days[d_val]}")
         print(f"Start Time: {start_time}")
         print(f"End Time: {end_time}")
     else:
-        print("No solution found, but the problem states there is one.")
+        print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

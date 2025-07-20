@@ -1,56 +1,80 @@
 from z3 import *
 
 def main():
-    s = Int('s')
+    # Create an optimizer
+    s = Optimize()
+    
+    # Start time in minutes from 9:00 (0 minutes = 9:00)
+    start = Int('start')
+    
+    # Meeting duration is 30 minutes
     duration = 30
-
-    # Hard constraints: work hours and existing schedules
-    constraints = [
-        s >= 0,
-        s + duration <= 480,
-        # Eric's blocked times: 12:00-13:00 (180-240 min) and 14:00-15:00 (300-360 min)
-        Or(s + duration <= 180, s >= 240),
-        Or(s + duration <= 300, s >= 360),
-        # Henry's blocked times
-        Or(s + duration <= 30, s >= 60),    # 9:30-10:00
-        Or(s + duration <= 90, s >= 120),   # 10:30-11:00
-        Or(s + duration <= 150, s >= 210),  # 11:30-12:30
-        Or(s + duration <= 240, s >= 270),  # 13:00-13:30
-        Or(s + duration <= 330, s >= 360),  # 14:30-15:00
-        s + duration <= 420                 # 16:00-17:00
+    
+    # Total available minutes from 9:00 to 17:00 (8 hours = 480 minutes)
+    total_minutes = 480
+    s.add(start >= 0)
+    s.add(start <= total_minutes - duration)  # Meeting must end by 17:00
+    
+    # Eric's blocked times in minutes from 9:00
+    eric_blocked1_start = (12 - 9) * 60   # 180 minutes (12:00)
+    eric_blocked1_end = (13 - 9) * 60     # 240 minutes (13:00)
+    eric_blocked2_start = (14 - 9) * 60   # 300 minutes (14:00)
+    eric_blocked2_end = (15 - 9) * 60     # 360 minutes (15:00)
+    
+    # Constraints for Eric: meeting must not overlap with blocked times
+    s.add(Or(
+        start + duration <= eric_blocked1_start,
+        start >= eric_blocked1_end
+    ))
+    s.add(Or(
+        start + duration <= eric_blocked2_start,
+        start >= eric_blocked2_end
+    ))
+    
+    # Henry's meetings in minutes from 9:00
+    henry_meetings = [
+        ((9.5 - 9) * 60, (10 - 9) * 60),        # 9:30-10:00 -> 30-60
+        ((10.5 - 9) * 60, (11 - 9) * 60),       # 10:30-11:00 -> 90-120
+        ((11.5 - 9) * 60, (12.5 - 9) * 60),     # 11:30-12:30 -> 150-210
+        ((13 - 9) * 60, (13.5 - 9) * 60),       # 13:00-13:30 -> 240-270
+        ((14.5 - 9) * 60, (15 - 9) * 60),       # 14:30-15:00 -> 330-360
+        ((16 - 9) * 60, (17 - 9) * 60)          # 16:00-17:00 -> 420-480
     ]
     
-    # Henry's preference: meeting should end by 10:00 (60 minutes)
-    preference = (s + duration <= 60)
+    # Constraints for Henry: meeting must not overlap with any scheduled meeting
+    for mtg_start, mtg_end in henry_meetings:
+        s.add(Or(
+            start + duration <= mtg_start,
+            start >= mtg_end
+        ))
     
-    solver = Solver()
-    solver.add(constraints)
-    solver.add(preference)
+    # Minimize start time to get the earliest possible meeting (preferably before 10:00)
+    s.minimize(start)
     
-    if solver.check() == sat:
-        model = solver.model()
-        start_minutes = model[s].as_long()
+    # Check for a solution
+    if s.check() == sat:
+        m = s.model()
+        start_minutes = m[start].as_long()
+        
+        # Convert start_minutes back to time string
+        hours = start_minutes // 60
+        minutes = start_minutes % 60
+        start_time = f"{9 + hours:02d}:{minutes:02d}"
+        
+        # Calculate end time
+        end_minutes = start_minutes + duration
+        end_hours = end_minutes // 60
+        end_minutes = end_minutes % 60
+        end_time = f"{9 + end_hours:02d}:{end_minutes:02d}"
+        
+        # Output the solution in the required format
+        print("SOLUTION:")
+        print("Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
-        solver2 = Solver()
-        solver2.add(constraints)
-        if solver2.check() == sat:
-            model = solver2.model()
-            start_minutes = model[s].as_long()
-        else:
-            print("No solution found")
-            return
-
-    # Convert minutes to time strings
-    total_minutes_end = start_minutes + duration
-    start_hour = 9 + start_minutes // 60
-    start_minute = start_minutes % 60
-    end_hour = 9 + total_minutes_end // 60
-    end_minute = total_minutes_end % 60
-
-    start_time = f"{start_hour}:{start_minute:02d}"
-    end_time = f"{end_hour}:{end_minute:02d}"
-    
-    print("Monday", start_time, end_time)
+        # According to the problem, a solution exists, so this should not happen
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

@@ -1,80 +1,133 @@
 from z3 import *
+import datetime
 
-def solve_scheduling():
-    # Initialize solver
-    s = Solver()
+# Define travel times between locations (in minutes)
+travel_times = {
+    ("Bayview", "Union Square"): 17,
+    ("Bayview", "Presidio"): 31,
+    ("Union Square", "Bayview"): 15,
+    ("Union Square", "Presidio"): 24,
+    ("Presidio", "Bayview"): 31,
+    ("Presidio", "Union Square"): 22,
+}
 
-    # Define variables for meeting times (in minutes since midnight)
-    richard_start = Int('richard_start')
-    richard_end = Int('richard_end')
-    charles_start = Int('charles_start')
-    charles_end = Int('charles_end')
+# Friend availability information
+friends = {
+    "Richard": {
+        "location": "Union Square",
+        "available_start": datetime.time(8, 45),  # 8:45 AM
+        "available_end": datetime.time(13, 0),    # 1:00 PM
+        "min_duration": 120,                     # 2 hours
+    },
+    "Charles": {
+        "location": "Presidio",
+        "available_start": datetime.time(9, 45),  # 9:45 AM
+        "available_end": datetime.time(13, 0),    # 1:00 PM
+        "min_duration": 120,                     # 2 hours
+    },
+}
 
-    # Time constants (in minutes since midnight)
-    arrival_time = 540  # 9:00 AM
-    richard_available_start = 525  # 8:45 AM
-    richard_available_end = 780    # 1:00 PM
-    charles_available_start = 585  # 9:45 AM
-    charles_available_end = 780    # 1:00 PM
+# Initialize solver
+solver = Solver()
 
-    # Travel times (in minutes)
-    bayview_to_union_square = 17
-    bayview_to_presidio = 31
-    union_square_to_presidio = 24
-    presidio_to_union_square = 22
+# Create variables for meeting times (in minutes since 9:00 AM)
+meetings = {}
+for name in friends:
+    meetings[name] = {
+        "start": Int(f"start_{name}"),
+        "end": Int(f"end_{name}"),
+    }
 
-    # Base constraints for both scenarios
-    s.add(richard_end - richard_start >= 120)  # At least 2 hours with Richard
-    s.add(charles_end - charles_start >= 120)  # At least 2 hours with Charles
-    s.add(richard_start >= richard_available_start)
-    s.add(richard_end <= richard_available_end)
-    s.add(charles_start >= charles_available_start)
-    s.add(charles_end <= charles_available_end)
+# Convert time to minutes since 9:00 AM
+def time_to_minutes(t):
+    base = datetime.datetime.combine(datetime.date.today(), datetime.time(9, 0))
+    current = datetime.datetime.combine(datetime.date.today(), t)
+    return int((current - base).total_seconds() / 60)
 
-    # Create two scenarios
-    scenario1 = Solver()
-    scenario2 = Solver()
+# Convert minutes back to time string
+def minutes_to_time(m):
+    base = datetime.datetime.combine(datetime.date.today(), datetime.time(9, 0))
+    delta = datetime.timedelta(minutes=int(m))
+    current = base + delta
+    return current.time().strftime("%H:%M")
 
-    # Scenario 1: Meet Richard first, then Charles
-    scenario1.add(richard_start >= arrival_time + bayview_to_union_square)
-    scenario1.add(charles_start >= richard_end + union_square_to_presidio)
-    for c in s.assertions():
-        scenario1.add(c)
+# Add constraints for each friend's meeting
+for name, info in friends.items():
+    start = meetings[name]["start"]
+    end = meetings[name]["end"]
+    available_start = time_to_minutes(info["available_start"])
+    available_end = time_to_minutes(info["available_end"])
+    min_duration = info["min_duration"]
 
-    # Scenario 2: Meet Charles first, then Richard
-    scenario2.add(charles_start >= arrival_time + bayview_to_presidio)
-    scenario2.add(richard_start >= charles_end + presidio_to_union_square)
-    for c in s.assertions():
-        scenario2.add(c)
+    # Meeting must start after friend becomes available (but not before 9:00 AM)
+    solver.add(start >= max(0, available_start))
+    
+    # Meeting must end before friend becomes unavailable
+    solver.add(end <= available_end)
+    
+    # Meeting duration must be at least min_duration
+    solver.add(end - start >= min_duration)
+    
+    # Start must be before end
+    solver.add(start < end)
 
-    # Check which scenario works
-    result = None
-    if scenario1.check() == sat:
-        result = scenario1.model()
-        order = "Meet Richard first (9:17 AM), then Charles"
-    elif scenario2.check() == sat:
-        result = scenario2.model()
-        order = "Meet Charles first (9:31 AM), then Richard"
-    else:
-        print("No feasible schedule found")
-        return
+# We start at Bayview at 9:00 AM (0 minutes)
+current_location = "Bayview"
+current_time = 0
 
-    # Convert times to readable format
-    def format_time(minutes):
-        h = minutes // 60
-        m = minutes % 60
-        return f"{h}:{m:02d} AM" if h < 12 else f"{h-12}:{m:02d} PM"
+# Try meeting Richard first
+def try_richard_first():
+    temp_solver = Solver()
+    temp_solver.add(solver.assertions())
+    
+    # Travel to Union Square to meet Richard
+    travel_time = travel_times[("Bayview", "Union Square")]
+    temp_solver.add(meetings["Richard"]["start"] >= current_time + travel_time)
+    
+    # After meeting Richard, travel to Presidio to meet Charles
+    travel_time = travel_times[("Union Square", "Presidio")]
+    temp_solver.add(meetings["Charles"]["start"] >= meetings["Richard"]["end"] + travel_time)
+    
+    if temp_solver.check() == sat:
+        return temp_solver.model()
+    return None
 
-    # Get meeting times
-    rs = result.eval(richard_start).as_long()
-    re = result.eval(richard_end).as_long()
-    cs = result.eval(charles_start).as_long()
-    ce = result.eval(charles_end).as_long()
+# Try meeting Charles first
+def try_charles_first():
+    temp_solver = Solver()
+    temp_solver.add(solver.assertions())
+    
+    # Travel to Presidio to meet Charles
+    travel_time = travel_times[("Bayview", "Presidio")]
+    temp_solver.add(meetings["Charles"]["start"] >= current_time + travel_time)
+    
+    # After meeting Charles, travel to Union Square to meet Richard
+    travel_time = travel_times[("Presidio", "Union Square")]
+    temp_solver.add(meetings["Richard"]["start"] >= meetings["Charles"]["end"] + travel_time)
+    
+    if temp_solver.check() == sat:
+        return temp_solver.model()
+    return None
 
-    # Print solution
-    print("SOLUTION:")
-    print(f"Optimal meeting order: {order}")
-    print(f"Richard meeting: {format_time(rs)} to {format_time(re)}")
-    print(f"Charles meeting: {format_time(cs)} to {format_time(ce)}")
+# Try both orders
+model = try_richard_first() or try_charles_first()
 
-solve_scheduling()
+if model:
+    itinerary = []
+    for name in friends:
+        start = model[meetings[name]["start"]].as_long()
+        end = model[meetings[name]["end"]].as_long()
+        itinerary.append({
+            "action": "meet",
+            "person": name,
+            "start_time": minutes_to_time(start),
+            "end_time": minutes_to_time(end),
+        })
+    
+    # Sort by start time
+    itinerary.sort(key=lambda x: x["start_time"])
+    
+    print('SOLUTION:')
+    print({"itinerary": itinerary})
+else:
+    print("No valid schedule found that meets all constraints")

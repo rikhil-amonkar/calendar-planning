@@ -1,217 +1,173 @@
 from z3 import *
+import json
 
-def solve_scheduling():
-    # Initialize the solver
+def solve_scheduling_problem():
+    # Initialize solver
     s = Solver()
 
     # Define variables for meeting start and end times
-    # Melissa at Financial District
-    melissa_start = Int('melissa_start')
-    melissa_end = Int('melissa_end')
-    # Emily at Presidio
-    emily_start = Int('emily_start')
+    # Emily at Presidio: 4:15PM to 9:00PM, min 105 minutes
+    emily_start = Int('emily_start')  # in minutes from 9:00AM (540)
     emily_end = Int('emily_end')
-    # Joseph at Richmond District
+
+    # Joseph at Richmond District: 5:15PM to 10:00PM, min 120 minutes
     joseph_start = Int('joseph_start')
     joseph_end = Int('joseph_end')
 
-    # Define travel time variables (in minutes since 9:00 AM)
-    travel_to_melissa = 11  # Fisherman's Wharf to Financial District
-    travel_to_emily = 17    # Fisherman's Wharf to Presidio
-    travel_to_joseph = 18   # Fisherman's Wharf to Richmond District
-    travel_melissa_to_emily = 23  # Financial District to Presidio
-    travel_melissa_to_joseph = 22 # Financial District to Richmond District
-    travel_emily_to_melissa = 23  # Presidio to Financial District
-    travel_emily_to_joseph = 7    # Presidio to Richmond District
-    travel_joseph_to_melissa = 22 # Richmond District to Financial District
-    travel_joseph_to_emily = 7    # Richmond District to Presidio
+    # Melissa at Financial District: 3:45PM to 9:45PM, min 75 minutes
+    melissa_start = Int('melissa_start')
+    melissa_end = Int('melissa_end')
 
-    # Convert friend availability times to minutes since 9:00 AM
-    emily_available_start = (16 * 60 + 15) - (9 * 60)  # 4:15 PM is 16:15, 9:00 AM is 9:00
-    emily_available_end = (21 * 60) - (9 * 60)         # 9:00 PM is 21:00
-    joseph_available_start = (17 * 60 + 15) - (9 * 60)  # 5:15 PM is 17:15
-    joseph_available_end = (22 * 60) - (9 * 60)         # 10:00 PM is 22:00
-    melissa_available_start = (15 * 60 + 45) - (9 * 60) # 3:45 PM is 15:45
-    melissa_available_end = (21 * 60 + 45) - (9 * 60)   # 9:45 PM is 21:45
+    # Convert all times to minutes since 9:00AM (540 minutes since midnight)
+    # Emily's window: 4:15PM is 16*60 +15 = 975 minutes since midnight, 975-540=435 minutes since 9AM
+    emily_window_start = 435  # 4:15PM is 435 minutes after 9:00AM
+    emily_window_end = 720     # 9:00PM is 720 minutes after 9:00AM (21:00 - 9:00 = 12 hours = 720 minutes)
 
-    # Meeting duration constraints
-    s.add(melissa_end - melissa_start >= 75)
+    # Joseph's window: 5:15PM is 17*60 +15 = 1035 minutes since midnight, 1035-540=495 minutes since 9AM
+    joseph_window_start = 495
+    joseph_window_end = 780    # 10:00PM is 22:00 -9:00 = 13 hours = 780 minutes
+
+    # Melissa's window: 3:45PM is 15*60 +45 = 945 minutes since midnight, 945-540=405 minutes since 9AM
+    melissa_window_start = 405
+    melissa_window_end = 765   # 9:45PM is 21:45 -9:00 = 12 hours 45 minutes = 765 minutes
+
+    # Add constraints for each meeting's duration and window
+    s.add(emily_start >= emily_window_start)
+    s.add(emily_end <= emily_window_end)
     s.add(emily_end - emily_start >= 105)
+
+    s.add(joseph_start >= joseph_window_start)
+    s.add(joseph_end <= joseph_window_end)
     s.add(joseph_end - joseph_start >= 120)
 
-    # Meeting must be within friend's availability
-    s.add(melissa_start >= melissa_available_start)
-    s.add(melissa_end <= melissa_available_end)
-    s.add(emily_start >= emily_available_start)
-    s.add(emily_end <= emily_available_end)
-    s.add(joseph_start >= joseph_available_start)
-    s.add(joseph_end <= joseph_available_end)
+    s.add(melissa_start >= melissa_window_start)
+    s.add(melissa_end <= melissa_window_end)
+    s.add(melissa_end - melissa_start >= 75)
 
-    # The initial location is Fisherman's Wharf at time 0 (9:00 AM)
-    # We need to decide the order of meetings. There are 3! = 6 possible orders.
-    # We'll model the order as a choice between the possible permutations.
+    # Define travel times (in minutes)
+    # From Fisherman's Wharf (starting point) to others:
+    # FW to Presidio: 17
+    # FW to Richmond: 18
+    # FW to Financial: 11
 
-    # Let's define variables to represent the order.
-    # We'll use three integers to represent the order of meetings:
-    # 1: Melissa, 2: Emily, 3: Joseph
-    # So the order could be 1-2-3, 1-3-2, 2-1-3, etc.
+    # Travel times between locations:
+    travel = {
+        ('Fishermans Wharf', 'Presidio'): 17,
+        ('Fishermans Wharf', 'Richmond District'): 18,
+        ('Fishermans Wharf', 'Financial District'): 11,
+        ('Presidio', 'Richmond District'): 7,
+        ('Presidio', 'Financial District'): 23,
+        ('Richmond District', 'Presidio'): 7,
+        ('Richmond District', 'Financial District'): 22,
+        ('Financial District', 'Presidio'): 22,
+        ('Financial District', 'Richmond District'): 21,
+    }
 
-    # To model the order, we'll create auxiliary variables and constraints.
-    # Alternatively, we can try all possible orders by creating separate constraints for each order.
+    # We need to model the sequence of meetings and travel times.
+    # Let's assume the order is Melissa, Emily, Joseph (but the solver will find the feasible order)
+    # We'll need to consider all possible permutations of the three meetings and choose the feasible one.
 
-    # We'll model the order as follows: first, second, third meetings.
-    # Each meeting is assigned a position in the sequence.
+    # We'll model the problem by considering all possible orders of meetings and adding constraints accordingly.
 
-    # Create a list to hold the possible orders
+    # Let's create variables to represent the order.
+    # We'll have three meetings: 0 (Melissa), 1 (Emily), 2 (Joseph)
+    # The order will be a permutation of [0,1,2]
+    # For each possible order, we'll add constraints and check feasibility.
+
+    # Since Z3 doesn't directly handle permutations, we'll need to model the order explicitly.
+    # Alternatively, we can try all possible orders in separate solver instances and pick the feasible one.
+
+    # Let's try all possible orders (6 permutations) and find the first feasible one.
+
     orders = [
-        ('melissa', 'emily', 'joseph'),
-        ('melissa', 'joseph', 'emily'),
-        ('emily', 'melissa', 'joseph'),
-        ('emily', 'joseph', 'melissa'),
-        ('joseph', 'melissa', 'emily'),
-        ('joseph', 'emily', 'melissa')
+        [0, 1, 2],  # Melissa -> Emily -> Joseph
+        [0, 2, 1],  # Melissa -> Joseph -> Emily
+        [1, 0, 2],  # Emily -> Melissa -> Joseph
+        [1, 2, 0],  # Emily -> Joseph -> Melissa
+        [2, 0, 1],  # Joseph -> Melissa -> Emily
+        [2, 1, 0],  # Joseph -> Emily -> Melissa
     ]
 
-    # We'll create a sub-solver for each order and check satisfiability
-    # Alternatively, we can use a single solver with disjunctions, but it's more complex.
-
-    # For simplicity, we'll iterate over possible orders and check each one.
-    # This is less elegant but straightforward.
-
-    found_solution = False
-    solution = None
+    feasible_solution = None
 
     for order in orders:
-        # Create a new solver for this order
-        temp_s = Solver()
+        s_temp = Solver()
 
-        # Add the same base constraints
-        temp_s.add(melissa_end - melissa_start >= 75)
-        temp_s.add(emily_end - emily_start >= 105)
-        temp_s.add(joseph_end - joseph_start >= 120)
-        temp_s.add(melissa_start >= melissa_available_start)
-        temp_s.add(melissa_end <= melissa_available_end)
-        temp_s.add(emily_start >= emily_available_start)
-        temp_s.add(emily_end <= emily_available_end)
-        temp_s.add(joseph_start >= joseph_available_start)
-        temp_s.add(joseph_end <= joseph_available_end)
+        # Add the meeting constraints
+        s_temp.add(emily_start >= emily_window_start)
+        s_temp.add(emily_end <= emily_window_end)
+        s_temp.add(emily_end - emily_start >= 105)
 
-        first, second, third = order
+        s_temp.add(joseph_start >= joseph_window_start)
+        s_temp.add(joseph_end <= joseph_window_end)
+        s_temp.add(joseph_end - joseph_start >= 120)
 
-        # Constraints for the first meeting
-        if first == 'melissa':
-            # Start at Fisherman's Wharf, travel to Financial District (11 minutes)
-            temp_s.add(melissa_start >= travel_to_melissa)
-            first_end = melissa_end
-            first_location = 'melissa'
-        elif first == 'emily':
-            # Travel to Presidio (17 minutes)
-            temp_s.add(emily_start >= travel_to_emily)
-            first_end = emily_end
-            first_location = 'emily'
-        elif first == 'joseph':
-            # Travel to Richmond District (18 minutes)
-            temp_s.add(joseph_start >= travel_to_joseph)
-            first_end = joseph_end
-            first_location = 'joseph'
+        s_temp.add(melissa_start >= melissa_window_start)
+        s_temp.add(melissa_end <= melissa_window_end)
+        s_temp.add(melissa_end - melissa_start >= 75)
 
-        # Constraints for the second meeting
-        if second == 'melissa':
-            # Travel from first_location to Financial District
-            if first_location == 'emily':
-                travel_time = travel_emily_to_melissa
-            elif first_location == 'joseph':
-                travel_time = travel_joseph_to_melissa
-            else:
-                travel_time = 0  # shouldn't happen
-            temp_s.add(melissa_start >= first_end + travel_time)
-            second_end = melissa_end
-            second_location = 'melissa'
-        elif second == 'emily':
-            # Travel from first_location to Presidio
-            if first_location == 'melissa':
-                travel_time = travel_melissa_to_emily
-            elif first_location == 'joseph':
-                travel_time = travel_joseph_to_emily
-            else:
-                travel_time = 0
-            temp_s.add(emily_start >= first_end + travel_time)
-            second_end = emily_end
-            second_location = 'emily'
-        elif second == 'joseph':
-            # Travel from first_location to Richmond District
-            if first_location == 'melissa':
-                travel_time = travel_melissa_to_joseph
-            elif first_location == 'emily':
-                travel_time = travel_emily_to_joseph
-            else:
-                travel_time = 0
-            temp_s.add(joseph_start >= first_end + travel_time)
-            second_end = joseph_end
-            second_location = 'joseph'
+        # Variables to track the current location and time
+        current_time = 0  # starting at 9:00AM (0 minutes after)
+        current_location = 'Fishermans Wharf'
 
-        # Constraints for the third meeting
-        if third == 'melissa':
-            # Travel from second_location to Financial District
-            if second_location == 'emily':
-                travel_time = travel_emily_to_melissa
-            elif second_location == 'joseph':
-                travel_time = travel_joseph_to_melissa
-            else:
-                travel_time = 0
-            temp_s.add(melissa_start >= second_end + travel_time)
-        elif third == 'emily':
-            # Travel from second_location to Presidio
-            if second_location == 'melissa':
-                travel_time = travel_melissa_to_emily
-            elif second_location == 'joseph':
-                travel_time = travel_joseph_to_emily
-            else:
-                travel_time = 0
-            temp_s.add(emily_start >= second_end + travel_time)
-        elif third == 'joseph':
-            # Travel from second_location to Richmond District
-            if second_location == 'melissa':
-                travel_time = travel_melissa_to_joseph
-            elif second_location == 'emily':
-                travel_time = travel_emily_to_joseph
-            else:
-                travel_time = 0
-            temp_s.add(joseph_start >= second_end + travel_time)
+        # Process meetings in the current order
+        meetings = []
+        for meeting_idx in order:
+            if meeting_idx == 0:
+                person = 'Melissa'
+                location = 'Financial District'
+                start = melissa_start
+                end = melissa_end
+            elif meeting_idx == 1:
+                person = 'Emily'
+                location = 'Presidio'
+                start = emily_start
+                end = emily_end
+            elif meeting_idx == 2:
+                person = 'Joseph'
+                location = 'Richmond District'
+                start = joseph_start
+                end = joseph_end
+
+            # Add travel time from current_location to meeting location
+            travel_time = travel.get((current_location, location), 0)
+            s_temp.add(start >= current_time + travel_time)
+
+            # Update current_time and location
+            current_time = end
+            current_location = location
+
+            meetings.append((person, start, end))
 
         # Check if this order is feasible
-        if temp_s.check() == sat:
-            model = temp_s.model()
-            # Extract the solution
-            solution = {
-                'order': order,
-                'melissa_start': model[melissa_start].as_long(),
-                'melissa_end': model[melissa_end].as_long(),
-                'emily_start': model[emily_start].as_long(),
-                'emily_end': model[emily_end].as_long(),
-                'joseph_start': model[joseph_start].as_long(),
-                'joseph_end': model[joseph_end].as_long()
-            }
-            found_solution = True
+        if s_temp.check() == sat:
+            model = s_temp.model()
+            # Extract the meeting times
+            itinerary = []
+            for person, start_var, end_var in meetings:
+                start_val = model.evaluate(start_var).as_long()
+                end_val = model.evaluate(end_var).as_long()
+                # Convert minutes since 9:00AM to HH:MM
+                start_hh = 9 + start_val // 60
+                start_mm = start_val % 60
+                end_hh = 9 + end_val // 60
+                end_mm = end_val % 60
+                start_time = f"{start_hh:02d}:{start_mm:02d}"
+                end_time = f"{end_hh:02d}:{end_mm:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": person,
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
+            feasible_solution = {"itinerary": itinerary}
             break
 
-    if not found_solution:
-        print("No feasible schedule found.")
-        return None
+    if feasible_solution is None:
+        return {"itinerary": []}
+    else:
+        return feasible_solution
 
-    # Convert the solution to human-readable times
-    def minutes_to_time(minutes):
-        hours = 9 + minutes // 60
-        mins = minutes % 60
-        return f"{hours}:{mins:02d}"
-
-    print("SOLUTION:")
-    print(f"Order of meetings: {solution['order']}")
-    print(f"Meet Melissa from {minutes_to_time(solution['melissa_start'])} to {minutes_to_time(solution['melissa_end'])}")
-    print(f"Meet Emily from {minutes_to_time(solution['emily_start'])} to {minutes_to_time(solution['emily_end'])}")
-    print(f"Meet Joseph from {minutes_to_time(solution['joseph_start'])} to {minutes_to_time(solution['joseph_end'])}")
-
-    return solution
-
-# Call the function to solve the problem
-solve_scheduling()
+# Solve the problem and print the solution
+solution = solve_scheduling_problem()
+print(json.dumps(solution, indent=2))

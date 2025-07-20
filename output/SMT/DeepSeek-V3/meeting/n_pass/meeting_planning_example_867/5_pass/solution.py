@@ -1,165 +1,179 @@
 from z3 import *
+import json
 
 def solve_scheduling():
+    # Initialize Z3 solver with optimization
     opt = Optimize()
 
-    # Define all locations
-    locations = [
-        "Haight-Ashbury",
-        "Mission District",
-        "Union Square",
-        "Pacific Heights",
-        "Bayview",
-        "Fisherman's Wharf",
-        "Marina District",
-        "Richmond District",
-        "Sunset District",
-        "Golden Gate Park"
+    # Define friends and their details
+    friends = [
+        {"name": "Elizabeth", "location": "Mission District", "start": 10.5*60, "end": 20*60, "duration": 90},
+        {"name": "David", "location": "Union Square", "start": 15.25*60, "end": 19*60, "duration": 45},
+        {"name": "Sandra", "location": "Pacific Heights", "start": 7*60, "end": 20*60, "duration": 120},
+        {"name": "Thomas", "location": "Bayview", "start": 19.5*60, "end": 20.5*60, "duration": 30},
+        {"name": "Robert", "location": "Fisherman's Wharf", "start": 10*60, "end": 15*60, "duration": 15},
+        {"name": "Kenneth", "location": "Marina District", "start": 10.75*60, "end": 13*60, "duration": 45},
+        {"name": "Melissa", "location": "Richmond District", "start": 18.25*60, "end": 20*60, "duration": 15},
+        {"name": "Kimberly", "location": "Sunset District", "start": 10.25*60, "end": 18.25*60, "duration": 105},
+        {"name": "Amanda", "location": "Golden Gate Park", "start": 7.75*60, "end": 18.75*60, "duration": 15}
     ]
 
-    # Complete travel times dictionary (in minutes)
+    # Travel times dictionary
     travel_times = {
-        "Haight-Ashbury": {
-            "Mission District": 11, "Union Square": 19, "Pacific Heights": 12,
-            "Bayview": 18, "Fisherman's Wharf": 23, "Marina District": 17,
-            "Richmond District": 10, "Sunset District": 15, "Golden Gate Park": 7
-        },
-        "Mission District": {
-            "Haight-Ashbury": 12, "Union Square": 15, "Pacific Heights": 16,
-            "Bayview": 14, "Fisherman's Wharf": 22, "Marina District": 19,
-            "Richmond District": 20, "Sunset District": 24, "Golden Gate Park": 17
-        },
-        "Union Square": {
-            "Haight-Ashbury": 18, "Mission District": 14, "Pacific Heights": 15,
-            "Bayview": 15, "Fisherman's Wharf": 15, "Marina District": 18,
-            "Richmond District": 20, "Sunset District": 27, "Golden Gate Park": 22
-        },
-        "Pacific Heights": {
-            "Haight-Ashbury": 11, "Mission District": 15, "Union Square": 12,
-            "Bayview": 22, "Fisherman's Wharf": 13, "Marina District": 6,
-            "Richmond District": 12, "Sunset District": 21, "Golden Gate Park": 15
-        },
-        "Bayview": {
-            "Haight-Ashbury": 19, "Mission District": 13, "Union Square": 18,
-            "Pacific Heights": 23, "Fisherman's Wharf": 25, "Marina District": 27,
-            "Richmond District": 25, "Sunset District": 23, "Golden Gate Park": 22
-        },
-        "Fisherman's Wharf": {
-            "Haight-Ashbury": 22, "Mission District": 22, "Union Square": 13,
-            "Pacific Heights": 12, "Bayview": 26, "Marina District": 9,
-            "Richmond District": 18, "Sunset District": 27, "Golden Gate Park": 25
-        },
-        "Marina District": {
-            "Haight-Ashbury": 16, "Mission District": 20, "Union Square": 16,
-            "Pacific Heights": 7, "Bayview": 27, "Fisherman's Wharf": 10,
-            "Richmond District": 11, "Sunset District": 19, "Golden Gate Park": 18
-        },
-        "Richmond District": {
-            "Haight-Ashbury": 10, "Mission District": 20, "Union Square": 21,
-            "Pacific Heights": 10, "Bayview": 27, "Fisherman's Wharf": 18,
-            "Marina District": 9, "Sunset District": 11, "Golden Gate Park": 9
-        },
-        "Sunset District": {
-            "Haight-Ashbury": 15, "Mission District": 25, "Union Square": 30,
-            "Pacific Heights": 21, "Bayview": 22, "Fisherman's Wharf": 29,
-            "Marina District": 21, "Richmond District": 12, "Golden Gate Park": 11
-        },
-        "Golden Gate Park": {
-            "Haight-Ashbury": 7, "Mission District": 17, "Union Square": 22,
-            "Pacific Heights": 16, "Bayview": 23, "Fisherman's Wharf": 24,
-            "Marina District": 16, "Richmond District": 7, "Sunset District": 10
-        }
+        ("Haight-Ashbury", "Mission District"): 11,
+        ("Haight-Ashbury", "Union Square"): 19,
+        ("Haight-Ashbury", "Pacific Heights"): 12,
+        ("Haight-Ashbury", "Bayview"): 18,
+        ("Haight-Ashbury", "Fisherman's Wharf"): 23,
+        ("Haight-Ashbury", "Marina District"): 17,
+        ("Haight-Ashbury", "Richmond District"): 10,
+        ("Haight-Ashbury", "Sunset District"): 15,
+        ("Haight-Ashbury", "Golden Gate Park"): 7,
+        ("Mission District", "Haight-Ashbury"): 12,
+        ("Mission District", "Union Square"): 15,
+        ("Mission District", "Pacific Heights"): 16,
+        ("Mission District", "Bayview"): 14,
+        ("Mission District", "Fisherman's Wharf"): 22,
+        ("Mission District", "Marina District"): 19,
+        ("Mission District", "Richmond District"): 20,
+        ("Mission District", "Sunset District"): 24,
+        ("Mission District", "Golden Gate Park"): 17,
+        ("Union Square", "Haight-Ashbury"): 18,
+        ("Union Square", "Mission District"): 14,
+        ("Union Square", "Pacific Heights"): 15,
+        ("Union Square", "Bayview"): 15,
+        ("Union Square", "Fisherman's Wharf"): 15,
+        ("Union Square", "Marina District"): 18,
+        ("Union Square", "Richmond District"): 20,
+        ("Union Square", "Sunset District"): 27,
+        ("Union Square", "Golden Gate Park"): 22,
+        ("Pacific Heights", "Haight-Ashbury"): 11,
+        ("Pacific Heights", "Mission District"): 15,
+        ("Pacific Heights", "Union Square"): 12,
+        ("Pacific Heights", "Bayview"): 22,
+        ("Pacific Heights", "Fisherman's Wharf"): 13,
+        ("Pacific Heights", "Marina District"): 6,
+        ("Pacific Heights", "Richmond District"): 12,
+        ("Pacific Heights", "Sunset District"): 21,
+        ("Pacific Heights", "Golden Gate Park"): 15,
+        ("Bayview", "Haight-Ashbury"): 19,
+        ("Bayview", "Mission District"): 13,
+        ("Bayview", "Union Square"): 18,
+        ("Bayview", "Pacific Heights"): 23,
+        ("Bayview", "Fisherman's Wharf"): 25,
+        ("Bayview", "Marina District"): 27,
+        ("Bayview", "Richmond District"): 25,
+        ("Bayview", "Sunset District"): 23,
+        ("Bayview", "Golden Gate Park"): 22,
+        ("Fisherman's Wharf", "Haight-Ashbury"): 22,
+        ("Fisherman's Wharf", "Mission District"): 22,
+        ("Fisherman's Wharf", "Union Square"): 13,
+        ("Fisherman's Wharf", "Pacific Heights"): 12,
+        ("Fisherman's Wharf", "Bayview"): 26,
+        ("Fisherman's Wharf", "Marina District"): 9,
+        ("Fisherman's Wharf", "Richmond District"): 18,
+        ("Fisherman's Wharf", "Sunset District"): 27,
+        ("Fisherman's Wharf", "Golden Gate Park"): 25,
+        ("Marina District", "Haight-Ashbury"): 16,
+        ("Marina District", "Mission District"): 20,
+        ("Marina District", "Union Square"): 16,
+        ("Marina District", "Pacific Heights"): 7,
+        ("Marina District", "Bayview"): 27,
+        ("Marina District", "Fisherman's Wharf"): 10,
+        ("Marina District", "Richmond District"): 11,
+        ("Marina District", "Sunset District"): 19,
+        ("Marina District", "Golden Gate Park"): 18,
+        ("Richmond District", "Haight-Ashbury"): 10,
+        ("Richmond District", "Mission District"): 20,
+        ("Richmond District", "Union Square"): 21,
+        ("Richmond District", "Pacific Heights"): 10,
+        ("Richmond District", "Bayview"): 27,
+        ("Richmond District", "Fisherman's Wharf"): 18,
+        ("Richmond District", "Marina District"): 9,
+        ("Richmond District", "Sunset District"): 11,
+        ("Richmond District", "Golden Gate Park"): 9,
+        ("Sunset District", "Haight-Ashbury"): 15,
+        ("Sunset District", "Mission District"): 25,
+        ("Sunset District", "Union Square"): 30,
+        ("Sunset District", "Pacific Heights"): 21,
+        ("Sunset District", "Bayview"): 22,
+        ("Sunset District", "Fisherman's Wharf"): 29,
+        ("Sunset District", "Marina District"): 21,
+        ("Sunset District", "Richmond District"): 12,
+        ("Sunset District", "Golden Gate Park"): 11,
+        ("Golden Gate Park", "Haight-Ashbury"): 7,
+        ("Golden Gate Park", "Mission District"): 17,
+        ("Golden Gate Park", "Union Square"): 22,
+        ("Golden Gate Park", "Pacific Heights"): 16,
+        ("Golden Gate Park", "Bayview"): 23,
+        ("Golden Gate Park", "Fisherman's Wharf"): 24,
+        ("Golden Gate Park", "Marina District"): 16,
+        ("Golden Gate Park", "Richmond District"): 7,
+        ("Golden Gate Park", "Sunset District"): 10
     }
 
-    # Friends' data: (name, location, available_start, available_end, min_duration in hours)
-    friends = [
-        ("Elizabeth", "Mission District", 10.5, 20.0, 1.5),
-        ("David", "Union Square", 15.25, 19.0, 0.75),
-        ("Sandra", "Pacific Heights", 7.0, 20.0, 2.0),
-        ("Thomas", "Bayview", 19.5, 20.5, 0.5),
-        ("Robert", "Fisherman's Wharf", 10.0, 15.0, 0.25),
-        ("Kenneth", "Marina District", 10.75, 13.0, 0.75),
-        ("Melissa", "Richmond District", 18.25, 20.0, 0.25),
-        ("Kimberly", "Sunset District", 10.25, 18.25, 1.75),
-        ("Amanda", "Golden Gate Park", 7.75, 18.75, 0.25)
-    ]
-
-    # Convert time to minutes since midnight for easier calculations
-    def time_to_minutes(t):
-        hours = int(t)
-        minutes = int((t - hours) * 60)
-        return hours * 60 + minutes
-
-    # Variables
-    meeting_start = {name: Int(f"start_{name}") for name, _, _, _, _ in friends}
-    meeting_end = {name: Int(f"end_{name}") for name, _, _, _, _ in friends}
-    is_met = {name: Bool(f"met_{name}") for name, _, _, _, _ in friends}
-    meeting_order = {name: Int(f"order_{name}") for name, _, _, _, _ in friends}
-
-    # Constraints for each friend
-    for name, loc, start, end, dur in friends:
-        start_min = time_to_minutes(start)
-        end_min = time_to_minutes(end)
-        dur_min = int(dur * 60)
+    # Create variables and constraints for each friend
+    for friend in friends:
+        friend["start_var"] = Int(f"start_{friend['name']}")
+        friend["end_var"] = Int(f"end_{friend['name']}")
+        friend["met"] = Bool(f"met_{friend['name']}")
         
-        opt.add(Implies(is_met[name], meeting_start[name] >= start_min))
-        opt.add(Implies(is_met[name], meeting_end[name] <= end_min))
-        opt.add(Implies(is_met[name], meeting_end[name] == meeting_start[name] + dur_min))
-        opt.add(Implies(is_met[name], meeting_order[name] >= 0))
+        # Time window constraints
+        opt.add(Implies(friend["met"], friend["start_var"] >= friend["start"]))
+        opt.add(Implies(friend["met"], friend["end_var"] <= friend["end"]))
+        opt.add(Implies(friend["met"], friend["end_var"] - friend["start_var"] >= friend["duration"]))
 
-    # Meeting sequencing constraints
-    for i, (name1, loc1, _, _, _) in enumerate(friends):
-        for j, (name2, loc2, _, _, _) in enumerate(friends):
-            if i != j:
-                # Either meeting1 is before meeting2 (with travel time) or vice versa
-                opt.add(Implies(And(is_met[name1], is_met[name2]),
-                              Or(
-                                  And(meeting_order[name1] < meeting_order[name2],
-                                      meeting_end[name1] + travel_times[loc1][loc2] <= meeting_start[name2]),
-                                  And(meeting_order[name2] < meeting_order[name1],
-                                      meeting_end[name2] + travel_times[loc2][loc1] <= meeting_start[name1])
-                              )))
+    # Starting point
+    current_location = "Haight-Ashbury"
+    current_time = 540  # 9:00 AM in minutes
 
-    # Starting at Haight-Ashbury at 9:00 AM (540 minutes)
-    start_time = time_to_minutes(9.0)
-    opt.add(Sum([If(is_met[name], 1, 0) for name, _, _, _, _ in friends]) >= 1)  # Must meet at least one friend
-    for name, loc, _, _, _ in friends:
-        opt.add(Implies(And(is_met[name], meeting_order[name] == 0),
-                       meeting_start[name] >= start_time + travel_times["Haight-Ashbury"][loc]))
+    # Create meeting order variables
+    order = []
+    for i, friend in enumerate(friends):
+        order.append((friend["met"], friend))
 
-    # All meeting orders must be unique
-    opt.add(Distinct([meeting_order[name] for name, _, _, _, _ in friends]))
+    # Add sequencing constraints
+    for i in range(len(friends)):
+        for j in range(i+1, len(friends)):
+            f1 = friends[i]
+            f2 = friends[j]
+            # Either f1 is before f2 or vice versa
+            opt.add(Implies(And(f1["met"], f2["met"]),
+                       Or(
+                           And(f1["end_var"] + travel_times[(f1["location"], f2["location"])] <= f2["start_var"]),
+                           And(f2["end_var"] + travel_times[(f2["location"], f1["location"])] <= f1["start_var"])
+                       )))
 
-    # Maximize number of friends met
-    opt.maximize(Sum([If(is_met[name], 1, 0) for name, _, _, _, _ in friends]))
+    # First meeting must be reachable from starting point
+    for friend in friends:
+        opt.add(Implies(friend["met"], 
+                      friend["start_var"] >= current_time + travel_times[(current_location, friend["location"])]))
 
+    # Maximize the number of friends met
+    opt.maximize(Sum([If(f["met"], 1, 0) for f in friends]))
+
+    # Solve the problem
     if opt.check() == sat:
         model = opt.model()
-        print("SOLUTION:")
-        scheduled = []
-        for name, loc, _, _, _ in friends:
-            if is_true(model[is_met[name]]):
-                start = model[meeting_start[name]].as_long()
-                end = model[meeting_end[name]].as_long()
-                order = model[meeting_order[name]].as_long()
-                
-                start_hr = start // 60
-                start_min = start % 60
-                end_hr = end // 60
-                end_min = end % 60
-                
-                scheduled.append((
-                    order,
-                    name,
-                    loc,
-                    f"{start_hr:02d}:{start_min:02d}",
-                    f"{end_hr:02d}:{end_min:02d}"
-                ))
-        
-        scheduled.sort()
-        for order, name, loc, start, end in scheduled:
-            print(f"{order+1}. Meet {name} at {loc} from {start} to {end}")
+        itinerary = []
+        for friend in friends:
+            if is_true(model[friend["met"]]):
+                start = model[friend["start_var"]].as_long()
+                end = model[friend["end_var"]].as_long()
+                start_time = f"{start // 60:02d}:{start % 60:02d}"
+                end_time = f"{end // 60:02d}:{end % 60:02d}"
+                itinerary.append({
+                    "action": "meet",
+                    "person": friend["name"],
+                    "start_time": start_time,
+                    "end_time": end_time
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: x["start_time"])
+        return {"itinerary": itinerary}
     else:
-        print("No valid schedule found that meets all constraints")
+        return {"itinerary": []}
 
-solve_scheduling()
+# Solve the problem and print the result
+result = solve_scheduling()
+print(json.dumps(result, indent=2))

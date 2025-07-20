@@ -1,53 +1,21 @@
 from z3 import *
 
-def solve_scheduling():
+def solve_scheduling_problem():
     # Initialize solver
-    s = Solver()
+    solver = Solver()
 
-    # Define variables for each meeting's start and end times (in minutes since 9:00 AM)
-    # Convert all times to minutes from 9:00 AM (540 minutes from midnight)
-    # Russian Hill arrival time: 0 minutes (since it's 9:00 AM)
-    
-    # Meeting with Timothy at Embarcadero
-    timothy_start = Int('timothy_start')
-    timothy_end = Int('timothy_end')
-    # Timothy's availability: 9:45 AM (45 mins) to 5:45 PM (17*60 + 45 = 1065 mins)
-    timothy_available_start = 45  # 9:45 AM is 45 mins after 9:00 AM
-    timothy_available_end = 1065   # 5:45 PM is 1065 mins after 9:00 AM (17*60 +45)
-    
-    # Meeting with Ashley at Mission District
-    ashley_start = Int('ashley_start')
-    ashley_end = Int('ashley_end')
-    # Ashley's availability: 8:30 PM (20*60 +30 = 1230 mins) to 9:15 PM (21*60 +15 = 1275 mins)
-    ashley_available_start = 1230 - 540  # 690 mins after 9:00 AM
-    ashley_available_end = 1275 - 540    # 735 mins after 9:00 AM
-    
-    # Meeting with Patricia at Nob Hill
-    patricia_start = Int('patricia_start')
-    patricia_end = Int('patricia_end')
-    # Patricia's availability: 6:30 PM (18*60 +30 = 1110 mins) to 9:45 PM (21*60 +45 = 1305 mins)
-    patricia_available_start = 1110 - 540  # 570 mins after 9:00 AM
-    patricia_available_end = 1305 - 540    # 765 mins after 9:00 AM
+    # Define time in minutes since 9:00 AM (540 minutes)
+    def time_to_minutes(time_str):
+        hh, mm = map(int, time_str.split(':'))
+        return hh * 60 + mm
 
-    # Add constraints for each meeting's duration and availability
-    # Timothy: at least 120 minutes
-    s.add(timothy_start >= timothy_available_start)
-    s.add(timothy_end <= timothy_available_end)
-    s.add(timothy_end - timothy_start >= 120)
-    
-    # Ashley: at least 45 minutes
-    s.add(ashley_start >= ashley_available_start)
-    s.add(ashley_end <= ashley_available_end)
-    s.add(ashley_end - ashley_start >= 45)
-    
-    # Patricia: at least 90 minutes
-    s.add(patricia_start >= patricia_available_start)
-    s.add(patricia_end <= patricia_available_end)
-    s.add(patricia_end - patricia_start >= 90)
+    def minutes_to_time(minutes):
+        hh = minutes // 60
+        mm = minutes % 60
+        return f"{hh:02d}:{mm:02d}"
 
-    # Current location starts at Russian Hill (time 0)
-    # Define travel times
-    travel = {
+    # Travel times dictionary: (from, to) -> minutes
+    travel_times = {
         ('Russian Hill', 'Nob Hill'): 5,
         ('Russian Hill', 'Mission District'): 16,
         ('Russian Hill', 'Embarcadero'): 8,
@@ -62,138 +30,101 @@ def solve_scheduling():
         ('Embarcadero', 'Mission District'): 20,
     }
 
-    # Define the order of meetings and travels
-    # We need to sequence the meetings: possibly Timothy first, then Ashley, then Patricia
-    # Or other orders. We'll try to find a feasible sequence.
+    # Friends' availability
+    friends = {
+        'Patricia': {
+            'location': 'Nob Hill',
+            'start': time_to_minutes('18:30'),  # 6:30 PM
+            'end': time_to_minutes('21:45'),     # 9:45 PM
+            'duration': 90
+        },
+        'Ashley': {
+            'location': 'Mission District',
+            'start': time_to_minutes('20:30'),   # 8:30 PM
+            'end': time_to_minutes('21:15'),     # 9:15 PM
+            'duration': 45
+        },
+        'Timothy': {
+            'location': 'Embarcadero',
+            'start': time_to_minutes('09:45'),   # 9:45 AM
+            'end': time_to_minutes('17:45'),     # 5:45 PM
+            'duration': 120
+        }
+    }
 
-    # Option 1: Timothy -> Ashley -> Patricia
-    # Travel from Russian Hill to Embarcadero: 8 mins
-    s.add(timothy_start >= 8)  # start after travel
-    
-    # Travel from Embarcadero to Mission District: 20 mins
-    # So ashley_start >= timothy_end + 20
-    s.add(ashley_start >= timothy_end + 20)
-    
-    # Travel from Mission District to Nob Hill: 12 mins
-    # So patricia_start >= ashley_end + 12
-    s.add(patricia_start >= ashley_end + 12)
-    
-    # Check if this sequence is possible
-    if s.check() == sat:
-        m = s.model()
-        print("SOLUTION:")
-        print("Meeting Timothy at Embarcadero from", 
-              convert_to_time(m[timothy_start].as_long()), 
-              "to", convert_to_time(m[timothy_end].as_long()))
-        print("Travel to Mission District, arriving by", 
-              convert_to_time(m[ashley_start].as_long()))
-        print("Meeting Ashley at Mission District from", 
-              convert_to_time(m[ashley_start].as_long()), 
-              "to", convert_to_time(m[ashley_end].as_long()))
-        print("Travel to Nob Hill, arriving by", 
-              convert_to_time(m[patricia_start].as_long()))
-        print("Meeting Patricia at Nob Hill from", 
-              convert_to_time(m[patricia_start].as_long()), 
-              "to", convert_to_time(m[patricia_end].as_long()))
-        return
+    # Variables for each meeting: start and end times in minutes since 9:00 AM (540)
+    meet_vars = {}
+    for name in friends:
+        meet_vars[name] = {
+            'start': Int(f'start_{name}'),
+            'end': Int(f'end_{name}'),
+            'met': Bool(f'met_{name}')
+        }
 
-    # If Option 1 doesn't work, try another sequence
-    s.reset()
-    s = Solver()
+    # Current location starts at Russian Hill at 9:00 AM (540 minutes)
+    current_time = 540  # 9:00 AM in minutes
+    current_location = 'Russian Hill'
 
-    # Re-add the meeting constraints
-    s.add(timothy_start >= timothy_available_start)
-    s.add(timothy_end <= timothy_available_end)
-    s.add(timothy_end - timothy_start >= 120)
-    
-    s.add(ashley_start >= ashley_available_start)
-    s.add(ashley_end <= ashley_available_end)
-    s.add(ashley_end - ashley_start >= 45)
-    
-    s.add(patricia_start >= patricia_available_start)
-    s.add(patricia_end <= patricia_available_end)
-    s.add(patricia_end - patricia_start >= 90)
+    # Constraints for each friend
+    for name in friends:
+        data = friends[name]
+        var = meet_vars[name]
+        solver.add(var['start'] >= data['start'])
+        solver.add(var['end'] <= data['end'])
+        solver.add(var['end'] == var['start'] + data['duration'])
+        # The meeting must happen if met is True
+        solver.add(Implies(var['met'], And(var['start'] >= current_time, var['end'] <= data['end'])))
 
-    # Option 2: Timothy -> Patricia -> Ashley
-    # Travel Russian Hill to Embarcadero: 8 mins
-    s.add(timothy_start >= 8)
-    
-    # Travel Embarcadero to Nob Hill: 10 mins
-    s.add(patricia_start >= timothy_end + 10)
-    
-    # Travel Nob Hill to Mission District: 13 mins
-    s.add(ashley_start >= patricia_end + 13)
-    
-    if s.check() == sat:
-        m = s.model()
-        print("SOLUTION:")
-        print("Meeting Timothy at Embarcadero from", 
-              convert_to_time(m[timothy_start].as_long()), 
-              "to", convert_to_time(m[timothy_end].as_long()))
-        print("Travel to Nob Hill, arriving by", 
-              convert_to_time(m[patricia_start].as_long()))
-        print("Meeting Patricia at Nob Hill from", 
-              convert_to_time(m[patricia_start].as_long()), 
-              "to", convert_to_time(m[patricia_end].as_long()))
-        print("Travel to Mission District, arriving by", 
-              convert_to_time(m[ashley_start].as_long()))
-        print("Meeting Ashley at Mission District from", 
-              convert_to_time(m[ashley_start].as_long()), 
-              "to", convert_to_time(m[ashley_end].as_long()))
-        return
+    # Let's try to meet Timothy first, then Patricia, then Ashley.
+    # This is a heuristic; a more general solution would involve sequencing variables.
 
-    # If neither sequence works, try another
-    s.reset()
-    s = Solver()
+    # Timothy's meeting
+    t_start = meet_vars['Timothy']['start']
+    t_end = meet_vars['Timothy']['end']
+    solver.add(Implies(meet_vars['Timothy']['met'], t_start >= current_time + travel_times[(current_location, 'Embarcadero')]))
+    solver.add(Implies(meet_vars['Timothy']['met'], t_end <= friends['Timothy']['end']))
 
-    s.add(timothy_start >= timothy_available_start)
-    s.add(timothy_end <= timothy_available_end)
-    s.add(timothy_end - timothy_start >= 120)
-    
-    s.add(ashley_start >= ashley_available_start)
-    s.add(ashley_end <= ashley_available_end)
-    s.add(ashley_end - ashley_start >= 45)
-    
-    s.add(patricia_start >= patricia_available_start)
-    s.add(patricia_end <= patricia_available_end)
-    s.add(patricia_end - patricia_start >= 90)
+    # After Timothy, travel to Patricia's location (Nob Hill)
+    next_time_after_t = t_end + travel_times[('Embarcadero', 'Nob Hill')]
+    p_start = meet_vars['Patricia']['start']
+    p_end = meet_vars['Patricia']['end']
+    solver.add(Implies(And(meet_vars['Timothy']['met'], meet_vars['Patricia']['met']), p_start >= next_time_after_t))
 
-    # Option 3: Patricia -> Ashley -> Timothy (but Timothy's window is earlier)
-    # This likely won't work, but just for completeness
-    # Travel Russian Hill to Nob Hill: 5 mins
-    s.add(patricia_start >= 5)
-    
-    # Travel Nob Hill to Mission District: 13 mins
-    s.add(ashley_start >= patricia_end + 13)
-    
-    # Travel Mission District to Embarcadero: 19 mins
-    s.add(timothy_start >= ashley_end + 19)
-    
-    if s.check() == sat:
-        m = s.model()
-        print("SOLUTION:")
-        print("Meeting Patricia at Nob Hill from", 
-              convert_to_time(m[patricia_start].as_long()), 
-              "to", convert_to_time(m[patricia_end].as_long()))
-        print("Travel to Mission District, arriving by", 
-              convert_to_time(m[ashley_start].as_long()))
-        print("Meeting Ashley at Mission District from", 
-              convert_to_time(m[ashley_start].as_long()), 
-              "to", convert_to_time(m[ashley_end].as_long()))
-        print("Travel to Embarcadero, arriving by", 
-              convert_to_time(m[timothy_start].as_long()))
-        print("Meeting Timothy at Embarcadero from", 
-              convert_to_time(m[timothy_start].as_long()), 
-              "to", convert_to_time(m[timothy_end].as_long()))
-        return
+    # After Patricia, travel to Ashley's location (Mission District)
+    next_time_after_p = p_end + travel_times[('Nob Hill', 'Mission District')]
+    a_start = meet_vars['Ashley']['start']
+    a_end = meet_vars['Ashley']['end']
+    solver.add(Implies(And(meet_vars['Patricia']['met'], meet_vars['Ashley']['met']), a_start >= next_time_after_p))
 
-    print("No feasible schedule found.")
+    # Maximize the number of friends met
+    solver.maximize(
+        Sum([
+            If(meet_vars['Timothy']['met'], 1, 0),
+            If(meet_vars['Patricia']['met'], 1, 0),
+            If(meet_vars['Ashley']['met'], 1, 0)
+        ])
+    )
 
-def convert_to_time(minutes):
-    # Convert minutes since 9:00 AM back to HH:MM format
-    total_minutes = 540 + minutes  # 9:00 AM is 540 minutes since midnight
-    hours = total_minutes // 60
-    mins = total_minutes % 60
-    return f"{hours}:{mins:02d}"
+    # Check if a solution exists
+    if solver.check() == sat:
+        model = solver.model()
+        itinerary = []
+        for name in friends:
+            if is_true(model.eval(meet_vars[name]['met'])):
+                start = model.eval(meet_vars[name]['start']).as_long()
+                end = model.eval(meet_vars[name]['end']).as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": minutes_to_time(start),
+                    "end_time": minutes_to_time(end)
+                })
+        # Sort itinerary by start time
+        itinerary.sort(key=lambda x: time_to_minutes(x['start_time']))
+        return {"itinerary": itinerary}
+    else:
+        return {"itinerary": []}
 
-solve_scheduling()
+# Run the solver and print the result
+result = solve_scheduling_problem()
+print(result)

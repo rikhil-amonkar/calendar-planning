@@ -1,77 +1,67 @@
 from z3 import *
 
 def main():
-    # Initialize variables
+    # Create solver and variables
     day = Int('day')
     start = Int('start')
+    end = start + 30  # Meeting duration is 30 minutes
+
+    s = Optimize()
     
-    # Create solver for Step 1 (with preference)
-    s1 = Solver()
+    # Day must be either Monday (0) or Tuesday (1)
+    s.add(Or(day == 0, day == 1))
     
-    # Hard constraints
-    s1.add(Or(day == 0, day == 1))  # Day is Monday (0) or Tuesday (1)
-    s1.add(start >= 540)             # Meeting starts at or after 9:00
-    s1.add(start <= 990)             # Meeting starts at or before 16:30 (to end by 17:00)
+    # Meeting must be within 9:00 to 17:00 (0 to 480 minutes)
+    s.add(start >= 0)
+    s.add(end <= 480)
     
-    # Define busy intervals (half-open [start, end))
-    shirley_monday = [(630, 660), (720, 750), (960, 990)]
-    shirley_tuesday = [(570, 600)]
-    albert_monday = [(540, 1020)]
-    albert_tuesday = [(570, 660), (690, 750), (780, 960), (990, 1020)]
+    # Monday: Albert is busy from 9:00 to 17:00 (entire day)
+    # This makes scheduling on Monday impossible
+    s.add(Implies(day == 0, Or(end <= 0, start >= 480)))
     
-    # Function to add non-overlap constraints
-    def no_overlap(day_val, intervals):
-        constraints = []
-        for (busy_start, busy_end) in intervals:
-            constraints.append(Or(start + 30 <= busy_start, start >= busy_end))
-        return Implies(day == day_val, And(*constraints))
+    # Tuesday constraints
+    # Avoid Shirley's busy interval: [30, 60) (9:30 to 10:00)
+    # Avoid Albert's busy intervals: [30, 120), [150, 210), [240, 420), [450, 480)
+    s.add(Implies(day == 1, 
+                And(
+                    Or(end <= 30, start >= 60),    # Avoid Shirley's busy [30,60)
+                    Or(end <= 30, start >= 120),   # Avoid Albert's [30,120)
+                    Or(end <= 150, start >= 210),  # Avoid Albert's [150,210)
+                    Or(end <= 240, start >= 420),  # Avoid Albert's [240,420)
+                    end <= 450                    # Avoid Albert's [450,480)
+                )))
     
-    # Add non-overlap constraints for Shirley
-    s1.add(no_overlap(0, shirley_monday))
-    s1.add(no_overlap(1, shirley_tuesday))
-    # Add non-overlap constraints for Albert
-    s1.add(no_overlap(0, albert_monday))
-    s1.add(no_overlap(1, albert_tuesday))
+    # Minimize (day * 10000 + start) to get earliest day and earliest start time
+    s.minimize(day * 10000 + start)
     
-    # Preference constraint: on Tuesday, meeting must end by 10:30 (630 minutes)
-    s1.add(Implies(day == 1, start + 30 <= 630))
-    
-    # Step 1: Try to solve with preference
-    if s1.check() == sat:
-        m = s1.model()
+    if s.check() == sat:
+        m = s.model()
+        d = m[day].as_long()
+        st_val = m[start].as_long()
+        
+        # Convert start time from minutes to HH:MM format
+        total_minutes = st_val
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        start_hour = 9 + hours
+        start_time = f"{start_hour:02d}:{minutes:02d}"
+        
+        # Calculate end time (start time + 30 minutes)
+        end_minutes = st_val + 30
+        end_hours = end_minutes // 60
+        end_minutes_remainder = end_minutes % 60
+        end_hour = 9 + end_hours
+        end_time = f"{end_hour:02d}:{end_minutes_remainder:02d}"
+        
+        day_str = "Monday" if d == 0 else "Tuesday"
+        
+        # Print solution in required format
+        print("SOLUTION:")
+        print(f"Day: {day_str}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
-        # Step 2: Solve without preference
-        s2 = Solver()
-        s2.add(Or(day == 0, day == 1))
-        s2.add(start >= 540, start <= 990)
-        s2.add(no_overlap(0, shirley_monday))
-        s2.add(no_overlap(1, shirley_tuesday))
-        s2.add(no_overlap(0, albert_monday))
-        s2.add(no_overlap(1, albert_tuesday))
-        s2.check()
-        m = s2.model()
-    
-    # Extract solution
-    day_val = m[day].as_long()
-    start_val = m[start].as_long()
-    end_val = start_val + 30
-    
-    # Convert day to string
-    day_str = "Monday" if day_val == 0 else "Tuesday"
-    
-    # Convert start and end times to HH:MM format
-    def format_time(minutes):
-        hours = minutes // 60
-        mins = minutes % 60
-        return f"{hours:02d}:{mins:02d}"
-    
-    start_str = format_time(start_val)
-    end_str = format_time(end_val)
-    
-    # Output the solution
-    print(f"Day: {day_str}")
-    print(f"Start time: {start_str}")
-    print(f"End time: {end_str}")
+        print("No solution found")
 
 if __name__ == "__main__":
     main()

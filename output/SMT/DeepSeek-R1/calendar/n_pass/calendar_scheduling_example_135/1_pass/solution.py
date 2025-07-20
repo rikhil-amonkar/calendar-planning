@@ -1,66 +1,55 @@
 from z3 import *
 
 def main():
-    # Create solver
-    s = Solver()
+    # Define the variable for the slot index (0 to 15)
+    T = Int('T')
+    solver = Solver()
     
-    # Define the start time in minutes from 9:00
-    start = Int('start')
+    # T must be between 0 and 15 inclusive (16 slots)
+    solver.add(T >= 0, T <= 15)
     
-    # Meeting duration in minutes
-    duration = 30
-    
-    # Work day end: 17:00 is 480 minutes from 9:00
-    work_end = 480
-    
-    # Constraint: meeting must start between 0 (9:00) and 450 (16:30) inclusive
-    s.add(start >= 0)
-    s.add(start + duration <= work_end)  # Ends by 17:00
-    
-    # Busy intervals for each participant (in minutes from 9:00)
-    # Eric has no meetings, so no constraints
-    
-    # Ashley: [10:00-10:30), [11:00-12:00), [12:30-13:00), [15:00-16:00)
+    # Ashley's busy intervals in minutes from 9:00 (start, end)
     ashley_busy = [(60, 90), (120, 180), (210, 240), (360, 420)]
+    for (s, e) in ashley_busy:
+        # The meeting slot is [T*30, T*30+30)
+        # It should not overlap with [s, e): either meeting ends before s or starts after e
+        solver.add(Or(T*30 >= e, T*30 + 30 <= s))
     
-    # Ronald: [9:00-9:30), [10:00-11:30), [12:30-14:00), [14:30-17:00)
+    # Ronald's busy intervals
     ronald_busy = [(0, 30), (60, 150), (210, 300), (330, 480)]
+    for (s, e) in ronald_busy:
+        solver.add(Or(T*30 >= e, T*30 + 30 <= s))
     
-    # Larry: [9:00-12:00), [13:00-17:00)
+    # Larry's busy intervals
     larry_busy = [(0, 180), (240, 480)]
+    for (s, e) in larry_busy:
+        solver.add(Or(T*30 >= e, T*30 + 30 <= s))
     
-    # Function to add constraints for a participant's busy intervals
-    def add_busy_constraints(busy_intervals):
-        for (busy_start, busy_end) in busy_intervals:
-            # The meeting must not overlap with [busy_start, busy_end)
-            s.add(Or(start + duration <= busy_start, start >= busy_end))
-    
-    # Add constraints for Ashley, Ronald, and Larry
-    add_busy_constraints(ashley_busy)
-    add_busy_constraints(ronald_busy)
-    add_busy_constraints(larry_busy)
-    
-    # Check if a solution exists
-    if s.check() == sat:
-        m = s.model()
-        start_minutes = m.evaluate(start).as_long()
+    # Check for a solution
+    if solver.check() == sat:
+        model = solver.model()
+        t_val = model[T].as_long()
         
-        # Convert start_minutes back to time string
-        total_minutes = start_minutes
-        hours = 9 + total_minutes // 60
-        minutes = total_minutes % 60
-        start_time = f"{hours:02d}:{minutes:02d}"
+        # Calculate start time in minutes from 9:00
+        start_minutes = t_val * 30
+        start_hour = 9 + start_minutes // 60
+        start_minute = start_minutes % 60
+        end_minutes = start_minutes + 30
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
         
-        # Calculate end time
-        end_minutes = start_minutes + duration
-        end_hours = 9 + end_minutes // 60
-        end_minutes_remainder = end_minutes % 60
-        end_time = f"{end_hours:02d}:{end_minutes_remainder:02d}"
+        # Format the time as HH:MM
+        start_time = f"{start_hour:02d}:{start_minute:02d}"
+        end_time = f"{end_hour:02d}:{end_minute:02d}"
         
-        # Print the solution
-        print(f"Monday, {start_time}, {end_time}")
+        # Output the solution
+        print("SOLUTION:")
+        print(f"Day: Monday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
-        print("No solution found")
+        # According to the problem, there is a solution, but handle no solution case
+        print("SOLUTION: No solution found")
 
 if __name__ == "__main__":
     main()

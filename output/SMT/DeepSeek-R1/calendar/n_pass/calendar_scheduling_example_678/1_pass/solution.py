@@ -4,69 +4,68 @@ def main():
     # Create solver
     s = Solver()
     
-    # Variables
-    day = Int('day')
-    start = Int('start')
+    # D: 0 for Monday, 1 for Tuesday
+    D = Int('D')
+    # S: start time in minutes from 9:00 (0 to 420)
+    S = Int('S')
     
-    # Day must be 0 (Monday) or 1 (Tuesday)
-    s.add(Or(day == 0, day == 1))
+    # Constraints on D and S
+    s.add(Or(D == 0, D == 1))
+    s.add(S >= 0)
+    s.add(S <= 420)  # because meeting must end by 17:00 (which is 480 minutes from 9:00, so 480-60=420)
     
-    # Start time must be between 0 and 420 minutes (9:00 to 16:00 inclusive for a 1-hour meeting)
-    s.add(start >= 0)
-    s.add(start <= 420)
+    # Russell constraints
+    # For Monday (D=0): avoid [90,120) -> condition: S+60<=90 OR S>=120
+    # For Tuesday (D=1): avoid [240,270) -> condition: S+60<=240 OR S>=270, and also preference: S>=270
+    russell_constraint = If(D == 0,
+                            Or(S + 60 <= 90, S >= 120),
+                            And(Or(S + 60 <= 240, S >= 270), S >= 270)
+                           )
+    s.add(russell_constraint)
     
-    # Russell's constraints
-    # Monday: avoid [90, 120) -> 10:30 to 11:00
-    russell_monday = Or(start + 60 <= 90, start >= 120)
-    
-    # Tuesday: avoid [240, 270) -> 13:00 to 13:30 and start at or after 270 (13:30)
-    russell_tuesday_busy = Or(start + 60 <= 240, start >= 270)
-    russell_tuesday_pref = (start >= 270)
-    russell_tuesday = And(russell_tuesday_busy, russell_tuesday_pref)
-    
-    # Combine Russell's constraints based on day
-    s.add(If(day == 0, russell_monday, russell_tuesday))
-    
-    # Alexander's constraints
+    # Alexander constraints
     # Monday: avoid [0,150), [180,330), [360,480)
-    alex_monday = And(
-        Or(start + 60 <= 0, start >= 150),   # Avoid [0,150)
-        Or(start + 60 <= 180, start >= 330),  # Avoid [180,330)
-        Or(start + 60 <= 360, start >= 480)   # Avoid [360,480)
-    )
-    
     # Tuesday: avoid [0,60), [240,300), [360,390), [420,450)
-    alex_tuesday = And(
-        Or(start + 60 <= 0, start >= 60),    # Avoid [0,60)
-        Or(start + 60 <= 240, start >= 300),  # Avoid [240,300)
-        Or(start + 60 <= 360, start >= 390),  # Avoid [360,390)
-        Or(start + 60 <= 420, start >= 450)   # Avoid [420,450)
-    )
-    
-    # Combine Alexander's constraints based on day
-    s.add(If(day == 0, alex_monday, alex_tuesday))
+    alexander_constraint = If(D == 0,
+                             And(
+                                 Or(S + 60 <= 0, S >= 150),   # [0,150)
+                                 Or(S + 60 <= 180, S >= 330),  # [180,330)
+                                 Or(S + 60 <= 360, S >= 480)   # [360,480)
+                             ),
+                             And(
+                                 Or(S + 60 <= 0, S >= 60),    # [0,60)
+                                 Or(S + 60 <= 240, S >= 300),  # [240,300)
+                                 Or(S + 60 <= 360, S >= 390),  # [360,390)
+                                 Or(S + 60 <= 420, S >= 450)   # [420,450)
+                             )
+                            )
+    s.add(alexander_constraint)
     
     # Check for a solution
     if s.check() == sat:
         m = s.model()
-        d = m[day].as_long()
-        st = m[start].as_long()
+        d_val = m[D].as_long()
+        s_val = m[S].as_long()
         
-        # Convert start time to hours and minutes
-        hours = st // 60
-        minutes = st % 60
-        start_time = f"{9 + hours:02d}:{minutes:02d}"
+        # Convert day value to string
+        day_str = "Monday" if d_val == 0 else "Tuesday"
         
-        # Calculate end time
-        end_time_minutes = st + 60
-        end_hours = end_time_minutes // 60
-        end_minutes = end_time_minutes % 60
-        end_time = f"{9 + end_hours:02d}:{end_minutes:02d}"
+        # Calculate start time in HH:MM format
+        start_hour = 9 + s_val // 60
+        start_minute = s_val % 60
+        start_str = f"{start_hour:02d}:{start_minute:02d}"
         
-        # Map day to string
-        day_str = "Monday" if d == 0 else "Tuesday"
+        # Calculate end time (start time + 60 minutes)
+        end_minutes = s_val + 60
+        end_hour = 9 + end_minutes // 60
+        end_minute = end_minutes % 60
+        end_str = f"{end_hour:02d}:{end_minute:02d}"
         
-        print(f"Meeting scheduled on {day_str} from {start_time} to {end_time}")
+        # Output the solution
+        print("SOLUTION:")
+        print(f"Day: {day_str}")
+        print(f"Start Time: {start_str}")
+        print(f"End Time: {end_str}")
     else:
         print("No solution found")
 

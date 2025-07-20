@@ -1,47 +1,39 @@
 from z3 import *
 
 def main():
-    # Create a solver
-    s = Int('s')
-    solver = Solver()
+    s = Solver()
+    start = Int('start')
     
-    # Convert time to minutes: 9:00 = 540, 11:00 = 660
-    work_start = 540
-    meeting_end_limit = 660
-    meeting_duration = 30
+    # Meeting must be within 9:00 to 11:00 on Tuesday
+    s.add(start >= 0)
+    s.add(start + 30 <= 120)  # 30 minutes meeting, ending by 11:00 (120 minutes from 9:00)
     
-    # Time constraints: within work hours and meeting ends by 11:00
-    solver.add(s >= work_start)
-    solver.add(s + meeting_duration <= meeting_end_limit)
+    # Amanda's constraints: avoid 9:00-9:30 (0-30 minutes) and 10:00-10:30 (60-90 minutes)
+    s.add(start >= 30)  # After 9:30
+    s.add(Or(start >= 90, start + 30 <= 60))  # Avoid 10:00-10:30 by starting after 10:30 or ending before 10:00
     
-    # Amanda's busy intervals on Tuesday in minutes: [540, 570) and [600, 630)
-    amanda_intervals = [(540, 570), (600, 630)]
-    for start, end in amanda_intervals:
-        # Non-overlap condition: meeting ends before the interval starts or starts after the interval ends
-        solver.add(Or(s + meeting_duration <= start, s >= end))
+    # Nathan's constraint: avoid 9:00-10:30 (0-90 minutes)
+    s.add(start >= 90)  # After 10:30
     
-    # Nathan's busy interval on Tuesday: [540, 630)
-    nathan_interval_start = 540
-    nathan_interval_end = 630
-    solver.add(Or(s + meeting_duration <= nathan_interval_start, s >= nathan_interval_end))
-    
-    # Check for a solution
-    if solver.check() == sat:
-        model = solver.model()
-        start_minutes = model[s].as_long()
+    if s.check() == sat:
+        m = s.model()
+        start_val = m[start].as_long()
         
-        # Convert start time to hours and minutes
-        start_hour = start_minutes // 60
-        start_minute = start_minutes % 60
-        end_minutes = start_minutes + meeting_duration
-        end_hour = end_minutes // 60
-        end_minute = end_minutes % 60
+        # Convert minutes to time string
+        total_minutes = start_val
+        hours = 9 + total_minutes // 60
+        minutes = total_minutes % 60
+        start_time = f"{hours:02d}:{minutes:02d}"
         
-        # Format the output
-        day = "Tuesday"
-        start_time = f"{start_hour:02d}:{start_minute:02d}"
-        end_time = f"{end_hour:02d}:{end_minute:02d}"
-        print(f"{day} {start_time} to {end_time}")
+        end_val = start_val + 30
+        end_hours = 9 + end_val // 60
+        end_minutes = end_val % 60
+        end_time = f"{end_hours:02d}:{end_minutes:02d}"
+        
+        print("SOLUTION:")
+        print("Day: Tuesday")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 

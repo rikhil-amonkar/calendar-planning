@@ -1,10 +1,9 @@
 from z3 import *
 
 def solve_scheduling():
-    # Initialize solver with optimization
-    opt = Optimize()
+    s = Solver()
 
-    # Define variables for meeting start and end times (in minutes since 9:00 AM)
+    # Define time variables in minutes since 9:00 AM
     carol_start = Int('carol_start')
     carol_end = Int('carol_end')
     rebecca_start = Int('rebecca_start')
@@ -12,92 +11,115 @@ def solve_scheduling():
     karen_start = Int('karen_start')
     karen_end = Int('karen_end')
 
-    # Availability windows (minutes since 9:00 AM)
-    carol_min, carol_max = 75, 165    # 10:15 AM - 11:45 AM
-    rebecca_min, rebecca_max = 150, 675  # 11:30 AM - 8:15 PM
-    karen_min, karen_max = 225, 360    # 12:45 PM - 3:00 PM
+    # Time windows in minutes since 9:00 AM
+    carol_window = (75, 165)    # 10:15-11:45
+    rebecca_window = (150, 675) # 11:30-20:15
+    karen_window = (225, 360)   # 12:45-15:00
 
     # Minimum meeting durations
-    min_carol = 30
-    min_rebecca = 120
-    min_karen = 120
-
-    # Meeting duration constraints
-    opt.add(carol_end - carol_start >= min_carol)
-    opt.add(rebecca_end - rebecca_start >= min_rebecca)
-    opt.add(karen_end - karen_start >= min_karen)
-
-    # Availability constraints
-    opt.add(carol_start >= carol_min, carol_end <= carol_max)
-    opt.add(rebecca_start >= rebecca_min, rebecca_end <= rebecca_max)
-    opt.add(karen_start >= karen_min, karen_end <= karen_max)
+    carol_min = 30
+    rebecca_min = 120
+    karen_min = 120
 
     # Travel times between locations (minutes)
     travel = {
         ('Union Square', 'Sunset District'): 26,
-        ('Union Square', 'Mission District'): 14,
-        ('Union Square', 'Bayview'): 15,
         ('Sunset District', 'Mission District'): 24,
-        ('Sunset District', 'Bayview'): 22,
         ('Mission District', 'Bayview'): 15,
-        ('Bayview', 'Mission District'): 13
+        ('Union Square', 'Mission District'): 14,
+        ('Mission District', 'Union Square'): 15,
+        ('Union Square', 'Bayview'): 15,
+        ('Bayview', 'Mission District'): 13,
+        ('Sunset District', 'Bayview'): 22,
+        ('Bayview', 'Sunset District'): 23,
+        ('Mission District', 'Sunset District'): 24,
+        ('Bayview', 'Union Square'): 17,
+        ('Sunset District', 'Union Square'): 30
     }
 
-    # We'll consider all possible meeting orders that make sense
-    # Order 1: Carol → Rebecca → Karen
-    order1 = And(
-        carol_start >= travel[('Union Square', 'Sunset District')],
-        rebecca_start >= carol_end + travel[('Sunset District', 'Mission District')],
-        karen_start >= rebecca_end + travel[('Mission District', 'Bayview')]
-    )
+    # Try different meeting orders
+    orders = [
+        ['Carol', 'Rebecca', 'Karen'],  # Sunset -> Mission -> Bayview
+        ['Rebecca', 'Karen', 'Carol'],  # Mission -> Bayview -> Sunset
+        ['Rebecca', 'Carol', 'Karen'],  # Mission -> Sunset -> Bayview
+        ['Carol', 'Karen', 'Rebecca'],  # Sunset -> Bayview -> Mission
+        ['Karen', 'Rebecca', 'Carol'],  # Bayview -> Mission -> Sunset
+        ['Karen', 'Carol', 'Rebecca']   # Bayview -> Sunset -> Mission
+    ]
 
-    # Order 2: Carol → Karen → Rebecca
-    order2 = And(
-        carol_start >= travel[('Union Square', 'Sunset District')],
-        karen_start >= carol_end + travel[('Sunset District', 'Bayview')],
-        rebecca_start >= karen_end + travel[('Bayview', 'Mission District')]
-    )
-
-    # Order 3: Rebecca → Carol → Karen
-    order3 = And(
-        rebecca_start >= travel[('Union Square', 'Mission District')],
-        carol_start >= rebecca_end + travel[('Mission District', 'Sunset District')],
-        karen_start >= carol_end + travel[('Sunset District', 'Bayview')]
-    )
-
-    # Add all possible orders to the solver
-    opt.add(Or(order1, order2, order3))
-
-    # Maximize total meeting time
-    total_time = (carol_end - carol_start) + (rebecca_end - rebecca_start) + (karen_end - karen_start)
-    opt.maximize(total_time)
-
-    if opt.check() == sat:
-        m = opt.model()
+    for order in orders:
+        s.push()
         
-        def format_time(minutes):
-            total = 540 + minutes  # 9:00 AM is 540 minutes
-            hours = total // 60
-            mins = total % 60
-            period = "AM" if hours < 12 else "PM"
-            if hours > 12:
-                hours -= 12
-            return f"{hours}:{mins:02d} {period}"
-
-        print("SOLUTION:")
-        print(f"• Meet Carol at Sunset District from {format_time(m[carol_start].as_long())} to {format_time(m[carol_end].as_long())}")
-        print(f"• Meet Rebecca at Mission District from {format_time(m[rebecca_start].as_long())} to {format_time(m[rebecca_end].as_long())}")
-        print(f"• Meet Karen at Bayview from {format_time(m[karen_start].as_long())} to {format_time(m[karen_end].as_long())}")
-        print(f"\nTotal meeting time: {m.eval(total_time).as_long()} minutes")
+        # Set up meeting variables based on order
+        meetings = []
+        for i, person in enumerate(order):
+            if person == 'Carol':
+                meetings.append(('Carol', carol_start, carol_end, carol_window, carol_min))
+            elif person == 'Rebecca':
+                meetings.append(('Rebecca', rebecca_start, rebecca_end, rebecca_window, rebecca_min))
+            elif person == 'Karen':
+                meetings.append(('Karen', karen_start, karen_end, karen_window, karen_min))
         
-        # Determine which order was used
-        if m.eval(order1):
-            print("Meeting order: Carol → Rebecca → Karen")
-        elif m.eval(order2):
-            print("Meeting order: Carol → Karen → Rebecca")
-        else:
-            print("Meeting order: Rebecca → Carol → Karen")
-    else:
-        print("No valid schedule found that meets all constraints")
+        # Add constraints for each meeting
+        for person, start, end, window, min_dur in meetings:
+            s.add(start >= window[0])
+            s.add(end <= window[1])
+            s.add(end - start >= min_dur)
+        
+        # Add travel time constraints between meetings
+        for i in range(len(meetings)-1):
+            current_person = meetings[i][0]
+            next_person = meetings[i+1][0]
+            
+            # Determine travel time between current and next location
+            if current_person == 'Carol' and next_person == 'Rebecca':
+                travel_time = travel[('Sunset District', 'Mission District')]
+            elif current_person == 'Carol' and next_person == 'Karen':
+                travel_time = travel[('Sunset District', 'Bayview')]
+            elif current_person == 'Rebecca' and next_person == 'Karen':
+                travel_time = travel[('Mission District', 'Bayview')]
+            elif current_person == 'Rebecca' and next_person == 'Carol':
+                travel_time = travel[('Mission District', 'Sunset District')]
+            elif current_person == 'Karen' and next_person == 'Rebecca':
+                travel_time = travel[('Bayview', 'Mission District')]
+            elif current_person == 'Karen' and next_person == 'Carol':
+                travel_time = travel[('Bayview', 'Sunset District')]
+            
+            s.add(meetings[i+1][1] >= meetings[i][2] + travel_time)
+        
+        # First meeting must account for travel from Union Square
+        first_person = meetings[0][0]
+        if first_person == 'Carol':
+            s.add(meetings[0][1] >= travel[('Union Square', 'Sunset District')])
+        elif first_person == 'Rebecca':
+            s.add(meetings[0][1] >= travel[('Union Square', 'Mission District')])
+        elif first_person == 'Karen':
+            s.add(meetings[0][1] >= travel[('Union Square', 'Bayview')])
+        
+        if s.check() == sat:
+            m = s.model()
+            
+            def to_time(minutes):
+                h = (540 + minutes) // 60
+                m = (540 + minutes) % 60
+                return f"{h:02d}:{m:02d}"
+            
+            itinerary = []
+            for person, start, end, _, _ in meetings:
+                s_time = m.eval(start).as_long()
+                e_time = m.eval(end).as_long()
+                itinerary.append({
+                    "action": "meet",
+                    "person": person,
+                    "start_time": to_time(s_time),
+                    "end_time": to_time(e_time)
+                })
+            
+            return {"itinerary": itinerary}
+        
+        s.pop()
+    
+    return {"itinerary": []}
 
-solve_scheduling()
+solution = solve_scheduling()
+print(solution)

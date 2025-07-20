@@ -1,62 +1,53 @@
 from z3 import *
 
 def main():
-    # Define variables
-    day = Int('day')
-    start_minutes = Int('start_minutes')  # Minutes from 9:00 on the chosen day
-
-    s = Solver()
-
-    # Day must be 0 (Monday) or 1 (Tuesday)
-    s.add(Or(day == 0, day == 1))
+    d = Int('d')
+    start_minutes = Int('start_minutes')
     
-    # Start time constraints: 0 minutes (9:00) to 450 minutes (16:30) since meeting is 30 minutes until 17:00
-    s.add(start_minutes >= 0)
-    s.add(start_minutes <= 450)  # 480 - 30 = 450
+    s = Optimize()
     
-    # Constraints based on Harold's existing schedule
-    # Monday: free only from 10:00 to 10:30 (60 to 90 minutes from 9:00)
-    monday_ok = And(day == 0, start_minutes >= 60, start_minutes + 30 <= 90)
+    s.add(Or(d == 0, d == 1))
+    s.add(start_minutes >= 540)  # 9:00 in minutes (9*60)
+    s.add(start_minutes <= 990)  # 16:30 in minutes (16*60 + 30)
     
-    # Tuesday: free intervals
-    tuesday_ok = And(day == 1, 
-                      Or(And(start_minutes >= 30, start_minutes + 30 <= 90),    # 9:30-10:00
-                         And(start_minutes >= 150, start_minutes + 30 <= 210),  # 11:30-12:00
-                         And(start_minutes >= 180, start_minutes + 30 <= 210),  # 12:00-12:30
-                         And(start_minutes >= 270, start_minutes + 30 <= 330),  # 13:30-14:00
-                         And(start_minutes >= 300, start_minutes + 30 <= 330),  # 14:00-14:30
-                         And(start_minutes >= 390, start_minutes + 30 <= 420)   # 15:30-16:00
-                      ))
+    # Monday constraint: only free from 10:00 to 10:30 (600 to 630 minutes)
+    monday_constraint = And(d == 0, start_minutes == 600)
     
-    s.add(Or(monday_ok, tuesday_ok))
+    # Tuesday constraints: free slots between busy times
+    slot1 = And(start_minutes >= 570, start_minutes + 30 <= 630)  # 9:30-10:30
+    slot2 = And(start_minutes >= 690, start_minutes + 30 <= 750)  # 11:30-12:30
+    slot3 = And(start_minutes >= 810, start_minutes + 30 <= 870)  # 13:30-14:30
+    slot4 = And(start_minutes >= 930, start_minutes + 30 <= 960)  # 15:30-16:00
+    tuesday_constraint = And(d == 1, Or(slot1, slot2, slot3, slot4))
     
-    # Harold's preferences: avoid Monday and Tuesday before 14:30 (330 minutes from 9:00)
-    s.add(day != 0)  # Avoid Monday
-    # For Tuesday, ensure meeting starts at or after 14:30 (330 minutes)
-    s.add(If(day == 1, start_minutes >= 330, True))
+    s.add(If(d == 0, monday_constraint, tuesday_constraint))
     
-    # Check for a solution
+    cost = If(d == 0, 1, 0)
+    cost = cost + If(And(d == 1, start_minutes < 870), 1, 0)
+    s.minimize(cost)
+    
     if s.check() == sat:
         m = s.model()
-        d = m[day].as_long()
-        st_minutes = m[start_minutes].as_long()
+        day_val = m[d].as_long()
+        start_val = m[start_minutes].as_long()
         
-        # Convert minutes to time string
-        hours = st_minutes // 60
-        minutes = st_minutes % 60
-        start_time = f"{9 + hours}:{minutes:02d}"
+        day_str = "Monday" if day_val == 0 else "Tuesday"
         
-        end_minutes = st_minutes + 30
-        end_hours = end_minutes // 60
-        end_minutes_remainder = end_minutes % 60
-        end_time = f"{9 + end_hours}:{end_minutes_remainder:02d}"
+        start_hour = start_val // 60
+        start_min = start_val % 60
+        start_time = f"{start_hour:02d}:{start_min:02d}"
         
-        day_str = "Monday" if d == 0 else "Tuesday"
+        end_val = start_val + 30
+        end_hour = end_val // 60
+        end_min = end_val % 60
+        end_time = f"{end_hour:02d}:{end_min:02d}"
+        
+        print("SOLUTION:")
         print(f"Day: {day_str}")
-        print(f"Start: {start_time}")
-        print(f"End: {end_time}")
+        print(f"Start Time: {start_time}")
+        print(f"End Time: {end_time}")
     else:
         print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

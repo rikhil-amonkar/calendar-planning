@@ -1,127 +1,103 @@
 from z3 import *
 
-def make_travel_time_expr(src, dst, matrix):
-    expr = matrix[0][0]
-    for i in range(6):
-        for j in range(6):
-            expr = If(And(src == i, dst == j), matrix[i][j], expr)
-    return expr
-
 def main():
-    loc_index = {
-        "Financial District": 0,
-        "Russian Hill": 1,
-        "Sunset District": 2,
-        "North Beach": 3,
-        "The Castro": 4,
-        "Golden Gate Park": 5
+    # Correct travel time matrix based on problem description
+    travel_time = {
+        'FD': {'RH': 10, 'SD': 30, 'NB': 8, 'TC': 20, 'GG': 26},
+        'RH': {'FD': 10, 'SD': 23, 'NB': 5, 'TC': 18, 'GG': 19},
+        'SD': {'FD': 30, 'RH': 23, 'NB': 27, 'TC': 17, 'GG': 11},
+        'NB': {'FD': 8, 'RH': 5, 'SD': 27, 'TC': 20, 'GG': 24},
+        'TC': {'FD': 20, 'RH': 18, 'SD': 17, 'NB': 20, 'GG': 13},
+        'GG': {'FD': 26, 'RH': 19, 'SD': 11, 'NB': 24, 'TC': 13}
     }
     
-    travel_matrix = [
-        [0, 10, 31, 7, 23, 23],
-        [11, 0, 23, 5, 21, 21],
-        [30, 24, 0, 29, 17, 11],
-        [8, 4, 27, 0, 22, 22],
-        [20, 18, 17, 20, 0, 11],
-        [26, 19, 10, 24, 13, 0]
-    ]
-    
+    # Friends' data: name, location, duration, available start (minutes from 9:00), available end
     friends = [
-        ("Ronald", "Russian Hill", (4*60+45, 8*60+15), 105),
-        ("Patricia", "Sunset District", (0*60+15, 13*60), 60),
-        ("Laura", "North Beach", (3*60+30, 3*60+45), 15),
-        ("Emily", "The Castro", (7*60+15, 9*60+30), 60),
-        ("Mary", "Golden Gate Park", (6*60, 7*60+30), 60)
+        ('Patricia', 'SD', 60, 15, 780),    # 9:15 AM to 10:00 PM
+        ('Ronald', 'RH', 105, 285, 495),    # 1:45 PM to 5:15 PM
+        ('Laura', 'NB', 15, 210, 225),      # 12:30 PM to 12:45 PM
+        ('Emily', 'TC', 60, 435, 570),      # 4:15 PM to 6:30 PM
+        ('Mary', 'GG', 60, 360, 450)        # 3:00 PM to 4:30 PM
     ]
     
     n = len(friends)
     opt = Optimize()
     
-    meet = [Bool(f'meet_{i}') for i in range(n)]
-    slot_used = [Bool(f'slot_used_{k}') for k in range(n)]
-    assign = [[Bool(f'assign_{i}_{k}') for k in range(n)] for i in range(n)]
-    loc = [Int(f'loc_{k}') for k in range(n)]
-    start_time = [Int(f'start_time_{k}') for k in range(n)]
-    end_time = [Int(f'end_time_{k}') for k in range(n)]
-    travel_time = [Int(f'travel_time_{k}') for k in range(n)]
-    arrival_time = [Int(f'arrival_time_{k}') for k in range(n)]
+    # Variables: for each friend, whether we attend, start time, and position in the sequence
+    attend = [Bool(f"attend_{i}") for i in range(n)]
+    start = [Int(f"start_{i}") for i in range(n)]
+    end = [Int(f"end_{i}") for i in range(n)]
+    position = [Int(f"position_{i}") for i in range(n)]
     
-    for k in range(1, n):
-        opt.add(Implies(slot_used[k], slot_used[k-1]))
+    # End time is start time plus duration
+    for i, (name, loc, dur, avail_start, avail_end) in enumerate(friends):
+        opt.add(end[i] == start[i] + dur)
     
+    # Constraints for each friend
+    for i, (name, loc, dur, avail_start, avail_end) in enumerate(friends):
+        # If attending, meeting must be within availability window
+        opt.add(Implies(attend[i], And(start[i] >= avail_start, end[i] <= avail_end)))
+        # If attending, start time must account for travel from FD
+        opt.add(Implies(attend[i], start[i] >= travel_time['FD'][loc]))
+        # Position must be valid if attending
+        opt.add(Implies(attend[i], And(position[i] >= 0, position[i] < n)))
+        opt.add(Implies(Not(attend[i]), position[i] == -1))
+    
+    # All attended meetings must have distinct positions
     for i in range(n):
-        opt.add(meet[i] == Or([assign[i][k] for k in range(n)]))
-        opt.add(If(meet[i], PbEq([(assign[i][k], 1) for k in range(n)], 1), 
-                  And([Not(assign[i][k]) for k in range(n)])))
+        for j in range(i+1, n):
+            opt.add(Implies(And(attend[i], attend[j]), position[i] != position[j]))
     
-    for k in range(n):
-        opt.add(If(slot_used[k], PbEq([(assign[i][k], 1) for i in range(n)], 1),
-                  And([Not(assign[i][k]) for i in range(n)])))
+    # Position order must match chronological order
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                opt.add(Implies(And(attend[i], attend[j], position[i] < position[j]), start[i] < start[j]))
     
-    for k in range(n):
-        for i in range(n):
-            opt.add(Implies(assign[i][k], loc[k] == loc_index[friends[i][1]]))
+    # Travel time constraints between consecutive meetings in position sequence
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                # j is immediately after i in position
+                cond = And(attend[i], attend[j], position[j] == position[i] + 1)
+                loc_i = friends[i][1]
+                loc_j = friends[j][1]
+                travel_ij = travel_time[loc_i][loc_j]
+                opt.add(Implies(cond, start[j] >= end[i] + travel_ij))
     
-    for k in range(n):
-        min_dur = Int(f'min_dur_{k}')
-        window_start = Int(f'window_start_{k}')
-        window_end = Int(f'window_end_{k}')
-        for i in range(n):
-            opt.add(Implies(assign[i][k], min_dur == friends[i][3]))
-            opt.add(Implies(assign[i][k], window_start == friends[i][2][0]))
-            opt.add(Implies(assign[i][k], window_end == friends[i][2][1]))
-        opt.add(Implies(slot_used[k], 
-                        And(start_time[k] >= window_start,
-                            start_time[k] + min_dur <= window_end,
-                            end_time[k] == start_time[k] + min_dur)))
+    # Maximize number of attended meetings
+    obj = Sum([If(attend[i], 1, 0) for i in range(n)])
+    total_time = Sum([If(attend[i], start[i], 0) for i in range(n)])
+    opt.maximize(obj)
+    opt.minimize(total_time)  # Secondary objective: minimize total start time
     
-    for k in range(n):
-        if k == 0:
-            prev_loc = 0
-            current_loc = loc[0]
-        else:
-            prev_loc = loc[k-1]
-            current_loc = loc[k]
-        expr = make_travel_time_expr(prev_loc, current_loc, travel_matrix)
-        opt.add(travel_time[k] == If(slot_used[k], expr, 0))
-    
-    for k in range(n):
-        if k == 0:
-            opt.add(arrival_time[0] == travel_time[0])
-        else:
-            opt.add(arrival_time[k] == end_time[k-1] + travel_time[k])
-        opt.add(Implies(slot_used[k], 
-                        And(arrival_time[k] <= start_time[k],
-                            start_time[k] >= 0)))
-    
-    total_meetings = Sum([If(meet[i], 1, 0) for i in range(n)])
-    opt.maximize(total_meetings)
-    
+    # Solve and output
     if opt.check() == sat:
-        m = opt.model()
+        model = opt.model()
         schedule = []
-        for k in range(n):
-            if m.evaluate(slot_used[k]):
-                for i in range(n):
-                    if m.evaluate(assign[i][k]):
-                        name = friends[i][0]
-                        location = friends[i][1]
-                        start_val = m.evaluate(start_time[k]).as_long()
-                        start_hour = 9 + start_val // 60
-                        start_min = start_val % 60
-                        end_val = start_val + friends[i][3]
-                        end_hour = 9 + end_val // 60
-                        end_min = end_val % 60
-                        schedule.append((k, name, location, 
-                                        f"{start_hour}:{start_min:02d}", 
-                                        f"{end_hour}:{end_min:02d}"))
-        schedule.sort(key=lambda x: x[0])
-        print("SOLUTION:")
-        for slot in schedule:
-            print(f"Meet {slot[1]} at {slot[2]} from {slot[3]} to {slot[4]}")
-        print(f"Total meetings: {len(schedule)}")
+        for i, (name, loc, dur, avail_start, avail_end) in enumerate(friends):
+            if model.evaluate(attend[i]):
+                start_val = model.evaluate(start[i]).as_long()
+                end_val = model.evaluate(end[i]).as_long()
+                # Convert minutes to time string
+                start_hour = 9 + start_val // 60
+                start_minute = start_val % 60
+                end_hour = 9 + end_val // 60
+                end_minute = end_val % 60
+                start_str = f"{start_hour}:{start_minute:02d}"
+                end_str = f"{end_hour}:{end_minute:02d}"
+                schedule.append({
+                    "action": "meet",
+                    "person": name,
+                    "start_time": start_str,
+                    "end_time": end_str
+                })
+        # Sort schedule by start time
+        schedule.sort(key=lambda x: x['start_time'])
+        print('SOLUTION:')
+        print(f'{{"itinerary": {schedule}}}')
     else:
-        print("No solution found.")
+        print("No solution found")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
