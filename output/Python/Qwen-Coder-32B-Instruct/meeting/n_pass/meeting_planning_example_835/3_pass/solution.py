@@ -1,0 +1,178 @@
+import json
+from datetime import datetime, timedelta
+
+# Define travel times
+travel_times = {
+    ("Pacific Heights", "Golden Gate Park"): 15,
+    ("Pacific Heights", "The Castro"): 16,
+    ("Pacific Heights", "Bayview"): 22,
+    ("Pacific Heights", "Marina District"): 6,
+    ("Pacific Heights", "Union Square"): 12,
+    ("Pacific Heights", "Sunset District"): 21,
+    ("Pacific Heights", "Alamo Square"): 10,
+    ("Pacific Heights", "Financial District"): 13,
+    ("Pacific Heights", "Mission District"): 15,
+    ("Golden Gate Park", "Pacific Heights"): 16,
+    ("Golden Gate Park", "The Castro"): 13,
+    ("Golden Gate Park", "Bayview"): 23,
+    ("Golden Gate Park", "Marina District"): 16,
+    ("Golden Gate Park", "Union Square"): 22,
+    ("Golden Gate Park", "Sunset District"): 10,
+    ("Golden Gate Park", "Alamo Square"): 9,
+    ("Golden Gate Park", "Financial District"): 26,
+    ("Golden Gate Park", "Mission District"): 17,
+    ("The Castro", "Pacific Heights"): 16,
+    ("The Castro", "Golden Gate Park"): 11,
+    ("The Castro", "Bayview"): 19,
+    ("The Castro", "Marina District"): 21,
+    ("The Castro", "Union Square"): 19,
+    ("The Castro", "Sunset District"): 17,
+    ("The Castro", "Alamo Square"): 8,
+    ("The Castro", "Financial District"): 21,
+    ("The Castro", "Mission District"): 7,
+    ("Bayview", "Pacific Heights"): 23,
+    ("Bayview", "Golden Gate Park"): 22,
+    ("Bayview", "The Castro"): 19,
+    ("Bayview", "Marina District"): 27,
+    ("Bayview", "Union Square"): 18,
+    ("Bayview", "Sunset District"): 23,
+    ("Bayview", "Alamo Square"): 16,
+    ("Bayview", "Financial District"): 19,
+    ("Bayview", "Mission District"): 13,
+    ("Marina District", "Pacific Heights"): 7,
+    ("Marina District", "Golden Gate Park"): 18,
+    ("Marina District", "The Castro"): 22,
+    ("Marina District", "Bayview"): 27,
+    ("Marina District", "Union Square"): 16,
+    ("Marina District", "Sunset District"): 19,
+    ("Marina District", "Alamo Square"): 15,
+    ("Marina District", "Financial District"): 17,
+    ("Marina District", "Mission District"): 20,
+    ("Union Square", "Pacific Heights"): 15,
+    ("Union Square", "Golden Gate Park"): 22,
+    ("Union Square", "The Castro"): 17,
+    ("Union Square", "Bayview"): 15,
+    ("Union Square", "Marina District"): 18,
+    ("Union Square", "Sunset District"): 27,
+    ("Union Square", "Alamo Square"): 15,
+    ("Union Square", "Financial District"): 9,
+    ("Union Square", "Mission District"): 14,
+    ("Sunset District", "Pacific Heights"): 21,
+    ("Sunset District", "Golden Gate Park"): 11,
+    ("Sunset District", "The Castro"): 17,
+    ("Sunset District", "Bayview"): 22,
+    ("Sunset District", "Marina District"): 21,
+    ("Sunset District", "Union Square"): 30,
+    ("Sunset District", "Alamo Square"): 16,
+    ("Sunset District", "Financial District"): 30,
+    ("Sunset District", "Mission District"): 25,
+    ("Alamo Square", "Pacific Heights"): 10,
+    ("Alamo Square", "Golden Gate Park"): 9,
+    ("Alamo Square", "The Castro"): 8,
+    ("Alamo Square", "Bayview"): 16,
+    ("Alamo Square", "Marina District"): 15,
+    ("Alamo Square", "Union Square"): 14,
+    ("Alamo Square", "Sunset District"): 16,
+    ("Alamo Square", "Financial District"): 17,
+    ("Alamo Square", "Mission District"): 10,
+    ("Financial District", "Pacific Heights"): 13,
+    ("Financial District", "Golden Gate Park"): 23,
+    ("Financial District", "The Castro"): 20,
+    ("Financial District", "Bayview"): 19,
+    ("Financial District", "Marina District"): 15,
+    ("Financial District", "Union Square"): 9,
+    ("Financial District", "Sunset District"): 30,
+    ("Financial District", "Alamo Square"): 17,
+    ("Financial District", "Mission District"): 17,
+    ("Mission District", "Pacific Heights"): 16,
+    ("Mission District", "Golden Gate Park"): 17,
+    ("Mission District", "The Castro"): 7,
+    ("Mission District", "Bayview"): 14,
+    ("Mission District", "Marina District"): 19,
+    ("Mission District", "Union Square"): 15,
+    ("Mission District", "Sunset District"): 24,
+    ("Mission District", "Alamo Square"): 11,
+    ("Mission District", "Financial District"): 15,
+}
+
+# Define meetings
+meetings = {
+    "Helen": {"location": "Golden Gate Park", "start": "9:30", "end": "12:15", "min_duration": 45},
+    "Steven": {"location": "The Castro", "start": "20:15", "end": "22:00", "min_duration": 105},
+    "Deborah": {"location": "Bayview", "start": "8:30", "end": "12:00", "min_duration": 30},
+    "Matthew": {"location": "Marina District", "start": "9:15", "end": "14:15", "min_duration": 45},
+    "Joseph": {"location": "Union Square", "start": "14:15", "end": "18:45", "min_duration": 120},
+    "Ronald": {"location": "Sunset District", "start": "16:00", "end": "20:45", "min_duration": 60},
+    "Robert": {"location": "Alamo Square", "start": "18:30", "end": "21:15", "min_duration": 120},
+    "Rebecca": {"location": "Financial District", "start": "14:45", "end": "16:15", "min_duration": 30},
+    "Elizabeth": {"location": "Mission District", "start": "18:30", "end": "21:00", "min_duration": 120},
+}
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, "%H:%M").time()
+
+def time_to_str(dt):
+    return dt.strftime("%H:%M")
+
+def add_minutes_to_time(time, minutes):
+    return (datetime.combine(datetime.min, time) + timedelta(minutes=minutes)).time()
+
+def find_meeting_schedule(meetings, travel_times):
+    start_time = parse_time("9:00")
+    current_location = "Pacific Heights"
+    itinerary = []
+
+    # Sort meetings by start time
+    sorted_meetings = sorted(meetings.items(), key=lambda x: parse_time(x[1]['start']))
+
+    for name, meeting in sorted_meetings:
+        meeting_start = parse_time(meeting['start'])
+        meeting_end = parse_time(meeting['end'])
+        min_duration = timedelta(minutes=meeting['min_duration']).seconds / 60
+
+        # Calculate travel time to the meeting location
+        travel_time = travel_times[(current_location, meeting['location'])]
+
+        # Check if we can reach the meeting location on time
+        if add_minutes_to_time(start_time, travel_time) <= meeting_start:
+            # Calculate potential meeting end time
+            potential_meeting_start = add_minutes_to_time(start_time, travel_time)
+            potential_meeting_end = add_minutes_to_time(potential_meeting_start, min_duration)
+
+            # Ensure we don't exceed the meeting's end time
+            if potential_meeting_end <= meeting_end:
+                # Special case for Matthew's meeting time
+                if name == "Matthew":
+                    # Ensure Matthew's meeting is within his available time
+                    matthew_start = parse_time(meeting['start'])
+                    matthew_end = parse_time(meeting['end'])
+                    if matthew_start <= potential_meeting_start <= matthew_end and matthew_start <= potential_meeting_end <= matthew_end:
+                        # Add to itinerary
+                        itinerary.append({
+                            "action": "meet",
+                            "location": meeting['location'],
+                            "person": name,
+                            "start_time": time_to_str(potential_meeting_start),
+                            "end_time": time_to_str(potential_meeting_end)
+                        })
+                        # Update current location and start time
+                        current_location = meeting['location']
+                        start_time = potential_meeting_end
+                else:
+                    # Add to itinerary
+                    itinerary.append({
+                        "action": "meet",
+                        "location": meeting['location'],
+                        "person": name,
+                        "start_time": time_to_str(potential_meeting_start),
+                        "end_time": time_to_str(potential_meeting_end)
+                    })
+                    # Update current location and start time
+                    current_location = meeting['location']
+                    start_time = potential_meeting_end
+
+    return itinerary
+
+itinerary = find_meeting_schedule(meetings, travel_times)
+result = {"itinerary": itinerary}
+print(json.dumps(result, indent=2))
