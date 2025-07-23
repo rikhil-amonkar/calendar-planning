@@ -1,56 +1,68 @@
 def time_to_minutes(time_str):
-    hours, minutes = map(int, time_str.split(':'))
-    return hours * 60 + minutes
+    parts = time_str.split(':')
+    return int(parts[0]) * 60 + int(parts[1])
 
-def minutes_to_time(total_minutes):
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
-    return f"{hours:02d}:{minutes:02d}"
+def minutes_to_time(mins):
+    h = mins // 60
+    m = mins % 60
+    return f"{h:02d}:{m:02d}"
 
-def get_free_intervals(busy_intervals, work_start, work_end):
-    if not busy_intervals:
+def get_free_intervals(work_start, work_end, busy_list):
+    if not busy_list:
         return [(work_start, work_end)]
-    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
+    sorted_busy = sorted(busy_list, key=lambda x: x[0])
     free = []
-    current_start = work_start
+    current = work_start
     for start, end in sorted_busy:
-        if current_start < start:
-            free.append((current_start, start))
-        current_start = max(current_start, end)
-    if current_start < work_end:
-        free.append((current_start, work_end))
+        if current < start:
+            free.append((current, start))
+        current = max(current, end)
+    if current < work_end:
+        free.append((current, work_end))
     return free
 
-def intersect_intervals(intervals_a, intervals_b):
-    i, j = 0, 0
-    common = []
-    while i < len(intervals_a) and j < len(intervals_b):
-        a_start, a_end = intervals_a[i]
-        b_start, b_end = intervals_b[j]
-        start = max(a_start, b_start)
-        end = min(a_end, b_end)
-        if start < end:
-            common.append((start, end))
-        if a_end < b_end:
+def intersect_intervals(list1, list2):
+    if not list1 or not list2:
+        return []
+    i = j = 0
+    intersections = []
+    while i < len(list1) and j < len(list2):
+        a1, a2 = list1[i]
+        b1, b2 = list2[j]
+        low = max(a1, b1)
+        high = min(a2, b2)
+        if low < high:
+            intersections.append((low, high))
+        if a2 < b2:
             i += 1
         else:
             j += 1
-    return common
+    return intersections
 
 def main():
-    work_start_min = time_to_minutes("9:00")
-    work_end_min = time_to_minutes("17:00")
-    meeting_duration = 30
-
-    amy_busy = {
-        'Wednesday': [
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    days = ["Monday", "Tuesday", "Wednesday"]
+    
+    busy_amy = {
+        "Monday": [],
+        "Tuesday": [],
+        "Wednesday": [
             (time_to_minutes("11:00"), time_to_minutes("11:30")),
             (time_to_minutes("13:30"), time_to_minutes("14:00"))
         ]
     }
-
-    pamela_busy = {
-        'Wednesday': [
+    
+    busy_pamela = {
+        "Monday": [
+            (time_to_minutes("9:00"), time_to_minutes("10:30")),
+            (time_to_minutes("11:00"), time_to_minutes("16:30"))
+        ],
+        "Tuesday": [
+            (time_to_minutes("9:00"), time_to_minutes("9:30")),
+            (time_to_minutes("10:00"), time_to_minutes("17:00"))
+        ],
+        "Wednesday": [
             (time_to_minutes("9:00"), time_to_minutes("9:30")),
             (time_to_minutes("10:00"), time_to_minutes("11:00")),
             (time_to_minutes("11:30"), time_to_minutes("13:30")),
@@ -58,31 +70,43 @@ def main():
             (time_to_minutes("16:00"), time_to_minutes("16:30"))
         ]
     }
-
-    # Only consider Wednesday due to preference
-    day = "Wednesday"
     
-    # Get free intervals for Amy and Pamela on Wednesday
-    amy_free = get_free_intervals(amy_busy.get(day, []), work_start_min, work_end_min)
-    pamela_free = get_free_intervals(pamela_busy[day], work_start_min, work_end_min)
+    candidates = []
+    for day in days:
+        free_amy = get_free_intervals(work_start, work_end, busy_amy[day])
+        free_pamela = get_free_intervals(work_start, work_end, busy_pamela[day])
+        free_both = intersect_intervals(free_amy, free_pamela)
+        
+        for s, e in free_both:
+            duration = e - s
+            if duration < 30:
+                continue
+                
+            if day in ["Tuesday", "Wednesday"]:
+                after_start = max(s, 960)
+                if after_start + 30 <= e and after_start + 30 <= work_end:
+                    priority = 1 if day == "Wednesday" else 2
+                    candidates.append((day, after_start, after_start + 30, priority))
+                
+                before_end = min(e, 960)
+                if before_end - s >= 30:
+                    priority = 3 if day == "Wednesday" else 4
+                    candidates.append((day, s, s + 30, priority))
+            else:
+                if s + 30 <= e:
+                    candidates.append((day, s, s + 30, 5))
     
-    # Find common free intervals
-    common_free = intersect_intervals(amy_free, pamela_free)
-    
-    # Filter for intervals starting at or after 16:00 (960 minutes)
-    preferred_start_min = time_to_minutes("16:00")
-    candidate = None
-    for start, end in common_free:
-        if start >= preferred_start_min and (end - start) >= meeting_duration:
-            candidate = (start, start + meeting_duration)
-            break
-    
-    if candidate:
-        start_min, end_min = candidate
-        start_time = minutes_to_time(start_min)
-        end_time = minutes_to_time(end_min)
-        print(day)
-        print(f"{start_time}:{end_time}")
+    if not candidates:
+        print("No solution found")
+        return
+        
+    candidates.sort(key=lambda x: x[3])
+    best_candidate = candidates[0]
+    day, start_min, end_min, _ = best_candidate
+    start_time = minutes_to_time(start_min)
+    end_time = minutes_to_time(end_min)
+    print(day)
+    print(f"{start_time}:{end_time}")
 
 if __name__ == "__main__":
     main()

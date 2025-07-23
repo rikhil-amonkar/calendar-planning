@@ -1,111 +1,67 @@
-def main():
-    work_start_min = 9 * 60  # 9:00 in minutes
-    work_end_min = 17 * 60   # 17:00 in minutes
-    helen_constraint_end = 13 * 60 + 30  # 13:30 in minutes
-    meeting_duration = 30
+def get_free_intervals(blocked, start_bound, end_bound):
+    if not blocked:
+        return [(start_bound, end_bound)]
+    blocked_sorted = sorted(blocked, key=lambda x: x[0])
+    free = []
+    current = start_bound
+    for block in blocked_sorted:
+        if block[0] > current:
+            free.append((current, block[0]))
+        current = max(current, block[1])
+    if current < end_bound:
+        free.append((current, end_bound))
+    return free
 
-    margaret_busy = [
-        [9*60, 10*60],     # 9:00-10:00
-        [10*60+30, 11*60], # 10:30-11:00
-        [11*60+30, 12*60], # 11:30-12:00
-        [13*60, 13*60+30], # 13:00-13:30
-        [15*60, 15*60+30]  # 15:00-15:30
-    ]
-    
-    donna_busy = [
-        [14*60+30, 15*60], # 14:30-15:00
-        [16*60, 16*60+30]  # 16:00-16:30
-    ]
-    
-    helen_busy = [
-        [9*60, 9*60+30],   # 9:00-9:30
-        [10*60, 11*60+30], # 10:00-11:30
-        [13*60, 14*60],    # 13:00-14:00
-        [14*60+30, 15*60], # 14:30-15:00
-        [15*60+30, 17*60]  # 15:30-17:00
-    ]
-    
-    all_busy = []
-    
-    for interval in margaret_busy:
-        s, e = interval
-        if e <= work_start_min or s >= helen_constraint_end:
-            continue
-        s_clip = max(s, work_start_min)
-        e_clip = min(e, helen_constraint_end)
-        if s_clip < e_clip:
-            all_busy.append([s_clip, e_clip])
-    
-    for interval in donna_busy:
-        s, e = interval
-        if e <= work_start_min or s >= helen_constraint_end:
-            continue
-        s_clip = max(s, work_start_min)
-        e_clip = min(e, helen_constraint_end)
-        if s_clip < e_clip:
-            all_busy.append([s_clip, e_clip])
-    
-    for interval in helen_busy:
-        s, e = interval
-        if e <= work_start_min or s >= helen_constraint_end:
-            continue
-        s_clip = max(s, work_start_min)
-        e_clip = min(e, helen_constraint_end)
-        if s_clip < e_clip:
-            all_busy.append([s_clip, e_clip])
-    
-    if not all_busy:
-        merged_busy = []
-    else:
-        all_busy.sort(key=lambda x: x[0])
-        merged_busy = []
-        start_curr, end_curr = all_busy[0]
-        for i in range(1, len(all_busy)):
-            s, e = all_busy[i]
-            if s <= end_curr:
-                if e > end_curr:
-                    end_curr = e
-            else:
-                merged_busy.append([start_curr, end_curr])
-                start_curr, end_curr = s, e
-        merged_busy.append([start_curr, end_curr])
-    
-    free_intervals = []
-    current = work_start_min
-    for interval in merged_busy:
-        s, e = interval
-        if current < s:
-            free_intervals.append([current, s])
-            current = e
+def intersect_intervals(intervals1, intervals2):
+    if not intervals1 or not intervals2:
+        return []
+    i = j = 0
+    result = []
+    while i < len(intervals1) and j < len(intervals2):
+        low = max(intervals1[i][0], intervals2[j][0])
+        high = min(intervals1[i][1], intervals2[j][1])
+        if low < high:
+            result.append((low, high))
+        if intervals1[i][1] < intervals2[j][1]:
+            i += 1
         else:
-            if e > current:
-                current = e
-    if current < helen_constraint_end:
-        free_intervals.append([current, helen_constraint_end])
-    
-    meeting_start = None
-    for interval in free_intervals:
-        start_free, end_free = interval
-        if end_free - start_free >= meeting_duration:
-            meeting_start = start_free
-            break
-    
-    if meeting_start is None:
-        print("No suitable time found")
-        return
-    
-    meeting_end = meeting_start + meeting_duration
-    
-    def minutes_to_time(minutes):
-        hours = minutes // 60
-        mins = minutes % 60
-        return f"{hours:02d}:{mins:02d}"
-    
-    start_str = minutes_to_time(meeting_start)
-    end_str = minutes_to_time(meeting_end)
-    
-    print("Monday")
-    print(f"{start_str}:{end_str}")
+            j += 1
+    return result
 
-if __name__ == "__main__":
-    main()
+def minutes_to_time(minutes):
+    total_minutes = minutes
+    hours = 9 + total_minutes // 60
+    minutes = total_minutes % 60
+    return f"{hours:02d}:{minutes:02d}"
+
+# Given constraints for Monday (in minutes from 9:00, where 0 = 9:00)
+margaret_blocked = [(0, 60), (90, 120), (150, 180), (240, 270)]
+donna_blocked = []  # No blocks in the relevant time frame
+helen_blocked = [(0, 30), (60, 150), (240, 270)]
+
+# Time horizon: meeting must end by 13:30 (270 minutes from 9:00)
+work_start = 0
+work_end = 270
+
+# Get free intervals for each participant
+margaret_free = get_free_intervals(margaret_blocked, work_start, work_end)
+donna_free = get_free_intervals(donna_blocked, work_start, work_end)
+helen_free = get_free_intervals(helen_blocked, work_start, work_end)
+
+# Find common free intervals
+common = intersect_intervals(donna_free, margaret_free)
+common = intersect_intervals(common, helen_free)
+
+# Find a 30-minute slot
+meeting_slot = None
+for interval in common:
+    start, end = interval
+    if end - start >= 30:
+        meeting_slot = (start, start + 30)
+        break
+
+# Convert and output
+start_time_str = minutes_to_time(meeting_slot[0])
+end_time_str = minutes_to_time(meeting_slot[1])
+time_range_str = f"{start_time_str}:{end_time_str}"
+print(f"Monday {time_range_str}")

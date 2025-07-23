@@ -1,102 +1,70 @@
-def time_str_to_minutes(time_str):
-    parts = time_str.split(':')
-    hour = int(parts[0])
-    minute = int(parts[1])
-    return hour * 60 + minute
-
-def minutes_to_time_str(minutes):
-    hour = minutes // 60
-    minute = minutes % 60
-    return f"{hour:02d}:{minute:02d}"
-
-def compute_free_intervals(busy_intervals, work_start, work_end):
-    if not busy_intervals:
-        return [(work_start, work_end)]
-    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
-    free = []
-    current = work_start
-    for s, e in sorted_busy:
-        if current < s:
-            free.append((current, s))
-        current = max(current, e)
-    if current < work_end:
-        free.append((current, work_end))
-    return free
-
-def intersect_intervals(intervals_a, intervals_b):
-    i = j = 0
-    result = []
-    while i < len(intervals_a) and j < len(intervals_b):
-        low = max(intervals_a[i][0], intervals_b[j][0])
-        high = min(intervals_a[i][1], intervals_b[j][1])
-        if low < high:
-            result.append((low, high))
-        if intervals_a[i][1] < intervals_b[j][1]:
-            i += 1
-        else:
-            j += 1
-    return result
-
 def main():
-    work_start_min = time_str_to_minutes("9:00")
-    work_end_min = time_str_to_minutes("12:30")  # meeting must end by 12:30
-    duration_min = 60
+    # Define work hours: 9:00 to 17:00, but constrained by Denise's preference to end by 12:30
+    work_start = 9 * 60  # 9:00 in minutes
+    work_end = 12 * 60 + 30  # 12:30 in minutes (meeting must end by this time)
+    duration = 60  # meeting duration in minutes
 
-    ryan_busy_str = [("9:00", "9:30"), ("12:30", "13:00")]
-    ruth_busy_str = []
-    denise_busy_str = [("9:30", "10:30"), ("12:00", "13:00"), ("14:30", "16:30")]
-
-    ryan_busy_min = []
-    for s, e in ryan_busy_str:
-        s_min = time_str_to_minutes(s)
-        e_min = time_str_to_minutes(e)
-        s_min = max(s_min, work_start_min)
-        e_min = min(e_min, work_end_min)
-        if s_min < e_min:
-            ryan_busy_min.append((s_min, e_min))
-
-    ruth_busy_min = []
-    for s, e in ruth_busy_str:
-        s_min = time_str_to_minutes(s)
-        e_min = time_str_to_minutes(e)
-        s_min = max(s_min, work_start_min)
-        e_min = min(e_min, work_end_min)
-        if s_min < e_min:
-            ruth_busy_min.append((s_min, e_min))
-
-    denise_busy_min = []
-    for s, e in denise_busy_str:
-        s_min = time_str_to_minutes(s)
-        e_min = time_str_to_minutes(e)
-        s_min = max(s_min, work_start_min)
-        e_min = min(e_min, work_end_min)
-        if s_min < e_min:
-            denise_busy_min.append((s_min, e_min))
-
-    free_ryan = compute_free_intervals(ryan_busy_min, work_start_min, work_end_min)
-    free_ruth = compute_free_intervals(ruth_busy_min, work_start_min, work_end_min)
-    free_denise = compute_free_intervals(denise_busy_min, work_start_min, work_end_min)
-
-    common = intersect_intervals(free_ryan, free_ruth)
-    common = intersect_intervals(common, free_denise)
-
+    # Busy intervals in minutes (start inclusive, end exclusive)
+    ryan_busy = [(9*60, 9*60+30), (12*60+30, 13*60)]
+    ruth_busy = []  # No meetings
+    denise_busy = [(9*60+30, 10*60+30), (12*60, 13*60), (14*60+30, 16*60+30)]
+    
+    # Combine all busy intervals
+    all_busy = ryan_busy + ruth_busy + denise_busy
+    
+    # Clip intervals to the working window [work_start, work_end] and remove empties
+    clipped_busy = []
+    for start, end in all_busy:
+        new_start = max(start, work_start)
+        new_end = min(end, work_end)
+        if new_start < new_end:
+            clipped_busy.append((new_start, new_end))
+    
+    # Merge overlapping or adjacent intervals
+    if not clipped_busy:
+        merged_busy = []
+    else:
+        clipped_busy.sort()
+        merged_busy = []
+        current_start, current_end = clipped_busy[0]
+        for s, e in clipped_busy[1:]:
+            if s <= current_end:
+                current_end = max(current_end, e)
+            else:
+                merged_busy.append((current_start, current_end))
+                current_start, current_end = s, e
+        merged_busy.append((current_start, current_end))
+    
+    # Find free intervals within [work_start, work_end]
+    free_intervals = []
+    prev_end = work_start
+    for s, e in merged_busy:
+        if s > prev_end:
+            free_intervals.append((prev_end, s))
+        prev_end = e
+    if prev_end < work_end:
+        free_intervals.append((prev_end, work_end))
+    
+    # Find the first free interval that can fit the meeting
     meeting_start = None
-    for s, e in common:
-        if e - s >= duration_min:
-            meeting_start = s
+    for start, end in free_intervals:
+        if end - start >= duration:
+            meeting_start = start
             break
-
+    
     if meeting_start is None:
         print("No solution found")
-        return
-
-    meeting_end = meeting_start + duration_min
-    start_str = minutes_to_time_str(meeting_start)
-    end_str = minutes_to_time_str(meeting_end)
-    time_range_str = start_str + ':' + end_str
-
-    print("Monday")
-    print(time_range_str)
+    else:
+        meeting_end = meeting_start + duration
+        # Convert minutes to HH:MM format
+        def format_time(mins):
+            h, m = divmod(mins, 60)
+            return f"{h:02d}:{m:02d}"
+        
+        start_str = format_time(meeting_start)
+        end_str = format_time(meeting_end)
+        print("Monday")
+        print(f"{start_str}:{end_str}")
 
 if __name__ == "__main__":
     main()

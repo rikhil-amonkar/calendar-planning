@@ -1,5 +1,5 @@
 """
-Parallel Scheduling Program with Iterative LLM Refinement
+Parallel Scheduling Program with Iterative LLM Refinement But No Constraint Feedback
 
 This program solves calendar scheduling, meeting planning, and trip planning problems using LLMs
 to generate and iteratively refine Python solutions. It processes multiple examples in parallel
@@ -1127,10 +1127,10 @@ Examples:
                 
                 # Check for execution errors
                 has_execution_error = (error is not None or 
-                                      "Error" in (output or "") or 
-                                      "Exception" in (output or "") or 
-                                      "Traceback" in (output or "") or 
-                                      not (output or "").strip())
+                                    "Error" in (output or "") or 
+                                    "Exception" in (output or "") or 
+                                    "Traceback" in (output or "") or 
+                                    not (output or "").strip())
                 
                 # Parse output and golden plan with timing
                 pred_extract_start = time.time()
@@ -1140,6 +1140,17 @@ Examples:
                 gold_extract_start = time.time()
                 golden_output = config["parse_golden"](example_data["golden_plan"])
                 gold_extract_time = time.time() - gold_extract_start
+                
+                # Task-specific plan detection
+                if task == "calendar":
+                    has_no_plan = (not has_execution_error and 
+                                (predicted_output is None or 
+                                "day" not in predicted_output or 
+                                "time_range" not in predicted_output))
+                else:  # meeting or trip
+                    has_no_plan = (not has_execution_error and 
+                                (predicted_output is None or 
+                                not predicted_output.get("itinerary")))
                 
                 # Evaluate constraints with timing
                 constraint_eval_start = time.time()
@@ -1152,6 +1163,8 @@ Examples:
                 # Determine status
                 if has_execution_error:
                     status = "Error"
+                elif has_no_plan:
+                    status = "No plan generated"
                 elif constraints_satisfied:
                     status = "Correct plan"
                 else:
@@ -1160,6 +1173,7 @@ Examples:
                 # Prepare evaluation result
                 eval_result = {
                     "has_execution_error": has_execution_error,
+                    "has_no_plan": has_no_plan,
                     "execution_output": output if not has_execution_error else error,
                     "pred": predicted_output,
                     "gold": golden_output,
@@ -1185,19 +1199,30 @@ Examples:
                     eval_result
                 )
                 
-                # Update state - mark as completed if no execution errors (regardless of correctness)
-                self.state.update_example(task, example_id, pass_num, not has_execution_error, is_exact_match)
+                # Update state - mark as completed if we have some valid solution (even if wrong)
+                self.state.update_example(task, example_id, pass_num, 
+                                        constraints_satisfied, is_exact_match)
                 self.state.save()
                 
-                # NEW LOGIC: Only continue refinement if there are code errors
-                if has_execution_error:
-                    # Prepare feedback for next iteration - only about execution errors
-                    feedback_parts = [
-                        f"Previous code execution failed with error:\n{error if error else output}",
-                        f"\nGenerated code that caused the error:\n```python\n{code}\n```",
-                        "\nPlease fix the code to eliminate execution errors."
-                    ]
-                    current_prompt = "\n".join(feedback_parts)
+                # Only continue refinement if:
+                # 1. There are code execution errors, OR
+                # 2. The code runs but produces no valid plan
+                if has_execution_error or has_no_plan:
+                    if has_execution_error:
+                        feedback = [
+                            f"Previous code execution failed with error:\n{error if error else output}",
+                            f"\nGenerated code that caused the error:\n```python\n{code}\n```",
+                            "\nPlease fix the code to eliminate execution errors."
+                        ]
+                    else:  # has_no_plan
+                        feedback = [
+                            "The generated code ran successfully but produced no valid plan.",
+                            f"\nCode output:\n{output}",
+                            f"\nGenerated code:\n```python\n{code}\n```",
+                            "\nPlease revise the code to generate a valid plan that meets the requirements."
+                        ]
+                    
+                    current_prompt = "\n".join(feedback)
                 else:
                     # Stop refinement since we have a valid solution (even if wrong)
                     logging.info(f"Found executable solution for {task} example {example_id} in pass {pass_num}")
@@ -1321,7 +1346,12 @@ class EvaluationState:
             completed = sum(1 for e in self.data[task].values() if e["completed"])
             exact_matches = sum(
                 1 for e in self.data[task].values() 
-                if any(p["is_exact_match"] for p in e["passes"])
+                if any(p["is_exact_match"] for p in e["passes"]))
+            
+            # Count no-plan cases
+            no_plan_cases = sum(
+                1 for e in self.data[task].values()
+                if any(p.get("has_no_plan", False) for p in e["passes"])
             )
             
             avg_passes = sum(
@@ -1332,6 +1362,7 @@ class EvaluationState:
             print(f"  Examples: {total}")
             print(f"  Completed: {completed} ({completed/total:.1%})")
             print(f"  Exact matches: {exact_matches} ({exact_matches/total:.1%})")
+            print(f"  No-plan cases: {no_plan_cases} ({no_plan_cases/total:.1%})")
             print(f"  Average passes per example: {avg_passes:.1f}")
 
 if __name__ == "__main__":

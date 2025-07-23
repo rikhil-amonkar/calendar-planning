@@ -1,106 +1,73 @@
-def time_to_minutes(time_str):
-    parts = time_str.split(':')
-    hours = int(parts[0])
-    minutes = int(parts[1])
-    total_minutes = (hours - 9) * 60 + minutes
-    return total_minutes
+def free_intervals(busy_list, work_start, work_end):
+    if not busy_list:
+        return [[work_start, work_end]]
+    busy_list.sort(key=lambda x: x[0])
+    free = []
+    current = work_start
+    for start_busy, end_busy in busy_list:
+        if current < start_busy:
+            free.append([current, start_busy])
+        current = max(current, end_busy)
+    if current < work_end:
+        free.append([current, work_end])
+    return free
 
-def minutes_to_time(minutes_val):
-    total_minutes = minutes_val
-    hours = 9 + total_minutes // 60
-    minutes = total_minutes % 60
-    return f"{hours:02d}:{minutes:02d}"
+def intersect_intervals(intervalsA, intervalsB):
+    i, j = 0, 0
+    result = []
+    while i < len(intervalsA) and j < len(intervalsB):
+        a_start, a_end = intervalsA[i]
+        b_start, b_end = intervalsB[j]
+        start = max(a_start, b_start)
+        end = min(a_end, b_end)
+        if start < end:
+            result.append([start, end])
+        if a_end < b_end:
+            i += 1
+        else:
+            j += 1
+    return result
 
 def main():
-    day = "Monday"
-    meeting_duration = 30
-    day_end_minutes = time_to_minutes("16:00")  # Meeting must end by 16:00
-
-    # Busy intervals for Juan
-    juan_intervals = [
-        ("9:00", "10:30"),
-        ("15:30", "16:00")
-    ]
-    # Busy intervals for Marilyn
-    marilyn_intervals = [
-        ("11:00", "11:30"),
-        ("12:30", "13:00")
-    ]
-    # Busy intervals for Ronald
-    ronald_intervals = [
-        ("9:00", "10:30"),
-        ("12:00", "12:30"),
-        ("13:00", "13:30"),
-        ("14:00", "16:30")  # Will be clipped to 16:00
-    ]
+    # Work hours: 9:00 to 17:00 (540 to 1020 minutes)
+    work_start = 540
+    work_end = 1020
+    duration = 30
     
-    all_busy = []
+    # Juan cannot meet after 16:00 (960 minutes)
+    busy_juan = [[540, 630], [930, 960]]  # 9:00-10:30, 15:30-16:00
+    free_juan = free_intervals(busy_juan, work_start, 960)  # work_end for Juan is 16:00
     
-    for start_str, end_str in juan_intervals:
-        start_min = time_to_minutes(start_str)
-        end_min = time_to_minutes(end_str)
-        if start_min < day_end_minutes:  # Only consider intervals within the effective day
-            end_min = min(end_min, day_end_minutes)
-            if end_min > start_min:
-                all_busy.append((start_min, end_min))
+    busy_marilyn = [[660, 690], [750, 780]]  # 11:00-11:30, 12:30-13:00
+    free_marilyn = free_intervals(busy_marilyn, work_start, work_end)
     
-    for start_str, end_str in marilyn_intervals:
-        start_min = time_to_minutes(start_str)
-        end_min = time_to_minutes(end_str)
-        if start_min < day_end_minutes:
-            end_min = min(end_min, day_end_minutes)
-            if end_min > start_min:
-                all_busy.append((start_min, end_min))
+    busy_ronald = [[540, 630], [720, 750], [780, 810], [840, 990]]  # 9:00-10:30, 12:00-12:30, 13:00-13:30, 14:00-16:30
+    free_ronald = free_intervals(busy_ronald, work_start, work_end)
     
-    for start_str, end_str in ronald_intervals:
-        start_min = time_to_minutes(start_str)
-        end_min = time_to_minutes(end_str)
-        if start_min < day_end_minutes:
-            end_min = min(end_min, day_end_minutes)
-            if end_min > start_min:
-                all_busy.append((start_min, end_min))
+    # Find common free intervals
+    common = intersect_intervals(free_juan, free_marilyn)
+    common = intersect_intervals(common, free_ronald)
     
-    if not all_busy:
-        merged = []
-    else:
-        all_busy.sort(key=lambda x: x[0])
-        merged = []
-        current_start, current_end = all_busy[0]
-        for interval in all_busy[1:]:
-            if interval[0] <= current_end:
-                current_end = max(current_end, interval[1])
-            else:
-                merged.append((current_start, current_end))
-                current_start, current_end = interval
-        merged.append((current_start, current_end))
-    
-    current_time = 0
-    slot_found = False
-    slot_start_min = None
-    slot_end_min = None
-    
-    for start, end in merged:
-        if start - current_time >= meeting_duration:
-            slot_start_min = current_time
-            slot_end_min = current_time + meeting_duration
-            slot_found = True
+    # Find the first slot of at least 30 minutes
+    meeting_start = None
+    for start, end in common:
+        if end - start >= duration:
+            meeting_start = start
             break
-        current_time = max(current_time, end)
     
-    if not slot_found:
-        if day_end_minutes - current_time >= meeting_duration:
-            slot_start_min = current_time
-            slot_end_min = current_time + meeting_duration
-            slot_found = True
+    # Convert meeting_start to time
+    start_h = meeting_start // 60
+    start_m = meeting_start % 60
+    meeting_end = meeting_start + duration
+    end_h = meeting_end // 60
+    end_m = meeting_end % 60
     
-    if slot_found:
-        start_time_str = minutes_to_time(slot_start_min)
-        end_time_str = minutes_to_time(slot_end_min)
-        time_range_str = f"{start_time_str}:{end_time_str}"
-        print(day)
-        print(time_range_str)
-    else:
-        print("No suitable slot found")
+    # Format the time string
+    time_str = f"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}"
+    
+    # Output
+    print("Monday")
+    print(time_str)
 
 if __name__ == "__main__":
     main()

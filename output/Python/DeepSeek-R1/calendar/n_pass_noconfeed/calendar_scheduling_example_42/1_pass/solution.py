@@ -1,85 +1,91 @@
+def time_to_minutes(time_str):
+    parts = time_str.split(':')
+    return int(parts[0]) * 60 + int(parts[1])
+
+def minutes_to_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h:02d}:{m:02d}"
+
+def compute_free_intervals(busy_intervals, work_start, work_end):
+    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
+    free_intervals = []
+    current = work_start
+    for s, e in sorted_busy:
+        if current < s:
+            free_intervals.append((current, s))
+        current = e
+    if current < work_end:
+        free_intervals.append((current, work_end))
+    return free_intervals
+
+def intersect_intervals(intervals1, intervals2):
+    i = j = 0
+    result = []
+    while i < len(intervals1) and j < len(intervals2):
+        low = max(intervals1[i][0], intervals2[j][0])
+        high = min(intervals1[i][1], intervals2[j][1])
+        if low < high:
+            result.append((low, high))
+        if intervals1[i][1] < intervals2[j][1]:
+            i += 1
+        else:
+            j += 1
+    return result
+
 def main():
-    # Work hours: 9:00 to 17:00 (480 minutes)
-    day_start = 9 * 60  # 9:00 in minutes since midnight
-    day_end = 17 * 60   # 17:00 in minutes since midnight
-    duration = 60        # 1 hour meeting
-
-    # Convert time string to minutes since midnight
-    def time_to_minutes(time_str):
-        parts = time_str.split(':')
-        hour = int(parts[0])
-        minute = int(parts[1])
-        return hour * 60 + minute
-
-    # Busy intervals for each participant (in minutes since midnight)
+    work_start = time_to_minutes("9:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 60
+    
+    # Julie's busy intervals
     julie_busy = [
-        ("9:00", "9:30"), ("11:00", "11:30"), ("12:00", "12:30"), 
-        ("13:30", "14:00"), ("16:00", "17:00")
+        ("9:00", "9:30"),
+        ("11:00", "11:30"),
+        ("12:00", "12:30"),
+        ("13:30", "14:00"),
+        ("16:00", "17:00")
     ]
+    julie_busy_minutes = [(time_to_minutes(s), time_to_minutes(e)) for s, e in julie_busy]
+    free_julie = compute_free_intervals(julie_busy_minutes, work_start, work_end)
+    
+    # Sean's busy intervals
     sean_busy = [
-        ("9:00", "9:30"), ("13:00", "13:30"), ("15:00", "15:30"), 
+        ("9:00", "9:30"),
+        ("13:00", "13:30"),
+        ("15:00", "15:30"),
         ("16:00", "16:30")
     ]
-    lori_busy = [
-        ("10:00", "10:30"), ("11:00", "13:00"), ("15:30", "17:00")
-    ]
-
-    # Combine all busy intervals
-    all_busy = []
-    for start, end in julie_busy:
-        all_busy.append((time_to_minutes(start), time_to_minutes(end)))
-    for start, end in sean_busy:
-        all_busy.append((time_to_minutes(start), time_to_minutes(end)))
-    for start, end in lori_busy:
-        all_busy.append((time_to_minutes(start), time_to_minutes(end)))
-
-    # Merge overlapping busy intervals
-    all_busy.sort(key=lambda x: x[0])
-    merged = []
-    current_start, current_end = all_busy[0]
-    for s, e in all_busy[1:]:
-        if s <= current_end:
-            current_end = max(current_end, e)
-        else:
-            merged.append((current_start, current_end))
-            current_start, current_end = s, e
-    merged.append((current_start, current_end))
-
-    # Find free intervals
-    free_intervals = []
-    # Before first busy interval
-    if day_start < merged[0][0]:
-        free_intervals.append((day_start, merged[0][0]))
-    # Between busy intervals
-    for i in range(1, len(merged)):
-        prev_end = merged[i-1][1]
-        curr_start = merged[i][0]
-        if prev_end < curr_start:
-            free_intervals.append((prev_end, curr_start))
-    # After last busy interval
-    if merged[-1][1] < day_end:
-        free_intervals.append((merged[-1][1], day_end))
-
-    # Find first free interval that can fit the meeting
-    meeting_start = None
-    for start, end in free_intervals:
-        if end - start >= duration:
-            meeting_start = start
-            break
-
-    # Convert meeting start and end to time strings
-    def minutes_to_time(mins):
-        hour = mins // 60
-        minute = mins % 60
-        return f"{hour:02d}:{minute:02d}"
-
-    meeting_end = meeting_start + duration
-    start_str = minutes_to_time(meeting_start)
-    end_str = minutes_to_time(meeting_end)
+    sean_busy_minutes = [(time_to_minutes(s), time_to_minutes(e)) for s, e in sean_busy]
+    free_sean = compute_free_intervals(sean_busy_minutes, work_start, work_end)
     
-    # Output the day and time range
-    print("Monday")
-    print(f"{start_str}:{end_str}")
+    # Lori's busy intervals
+    lori_busy = [
+        ("10:00", "10:30"),
+        ("11:00", "13:00"),
+        ("15:30", "17:00")
+    ]
+    lori_busy_minutes = [(time_to_minutes(s), time_to_minutes(e)) for s, e in lori_busy]
+    free_lori = compute_free_intervals(lori_busy_minutes, work_start, work_end)
+    
+    common_free = intersect_intervals(free_julie, free_sean)
+    common_free = intersect_intervals(common_free, free_lori)
+    
+    meeting_start = None
+    meeting_end = None
+    for start, end in common_free:
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = start + meeting_duration
+            break
+    
+    if meeting_start is None:
+        print("No suitable time found")
+    else:
+        start_str = minutes_to_time(meeting_start)
+        end_str = minutes_to_time(meeting_end)
+        print("Monday")
+        print(f"{start_str}:{end_str}")
 
 if __name__ == "__main__":
     main()

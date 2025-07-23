@@ -1,109 +1,124 @@
-def time_str_to_minutes(time_str):
-    hours, minutes = map(int, time_str.split(':'))
-    return hours * 60 + minutes
-
-def minutes_to_time_str(total_minutes):
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
-    return f"{hours:02d}:{minutes:02d}"
-
-def merge_intervals(intervals):
-    if not intervals:
-        return []
-    sorted_intervals = sorted(intervals, key=lambda x: x[0])
-    merged = []
-    current_start, current_end = sorted_intervals[0]
-    for s, e in sorted_intervals[1:]:
-        if s <= current_end:
-            current_end = max(current_end, e)
-        else:
-            merged.append((current_start, current_end))
-            current_start, current_end = s, e
-    merged.append((current_start, current_end))
-    return merged
-
-def invert_intervals(work_start, work_end, busy_intervals):
-    merged_busy = merge_intervals(busy_intervals)
-    free = []
-    if not merged_busy:
-        return [(work_start, work_end)]
-    if work_start < merged_busy[0][0]:
-        free.append((work_start, merged_busy[0][0]))
-    for i in range(1, len(merged_busy)):
-        free.append((merged_busy[i-1][1], merged_busy[i][0]))
-    if merged_busy[-1][1] < work_end:
-        free.append((merged_busy[-1][1], work_end))
-    return free
-
-def find_common_free_intervals(free1, free2):
-    common_free = []
-    i = j = 0
-    while i < len(free1) and j < len(free2):
-        start = max(free1[i][0], free2[j][0])
-        end = min(free1[i][1], free2[j][1])
-        if start < end:
-            common_free.append((start, end))
-        if free1[i][1] < free2[j][1]:
-            i += 1
-        else:
-            j += 1
-    return common_free
-
 def main():
-    work_start_min = time_str_to_minutes("9:00")
-    work_end_min = time_str_to_minutes("17:00")
-    meeting_duration = 60  # minutes
+    # Define work hours: 9:00 to 17:00
+    work_start_min = 9 * 60   # 540 minutes
+    work_end_min = 17 * 60    # 1020 minutes
     
-    # Define the schedule
-    schedule = {
+    # Define schedules with blocked times
+    schedules = {
         'Martha': {
-            'Monday': [("16:00", "17:00")],
-            'Tuesday': [("15:00", "15:30")],
-            'Wednesday': [("10:00", "11:00"), ("14:00", "14:30")]
+            'Monday': [('16:00', '17:00')],
+            'Tuesday': [('15:00', '15:30')],
+            'Wednesday': [('10:00', '11:00'), ('14:00', '14:30')]
         },
         'Beverly': {
-            'Monday': [("9:00", "13:30"), ("14:00", "17:00")],
-            'Tuesday': [("9:00", "17:00")],
-            'Wednesday': [("9:30", "15:30"), ("16:30", "17:00")]
+            'Monday': [('9:00', '13:30'), ('14:00', '17:00')],
+            'Tuesday': [('9:00', '17:00')],
+            'Wednesday': [('9:30', '15:30'), ('16:30', '17:00')]
         }
     }
     
-    days = ["Monday", "Tuesday", "Wednesday"]
+    days = ['Monday', 'Tuesday', 'Wednesday']
     
+    # Helper function to convert time string to minutes
+    def time_str_to_minutes(time_str):
+        parts = time_str.split(':')
+        return int(parts[0]) * 60 + int(parts[1])
+    
+    # Helper function to convert minutes to HH:MM string
+    def minutes_to_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+    
+    # Function to subtract a blocked interval from free intervals
+    def subtract_blocked_interval(free_intervals, blocked):
+        new_free = []
+        b_start, b_end = blocked
+        for interval in free_intervals:
+            s, e = interval
+            if b_end <= s or b_start >= e:
+                new_free.append([s, e])
+            else:
+                if s < b_start:
+                    new_free.append([s, b_start])
+                if b_end < e:
+                    new_free.append([b_end, e])
+        return new_free
+    
+    # Function to compute intersection of two sets of intervals
+    def intersect_intervals(intervals1, intervals2):
+        i = j = 0
+        common = []
+        while i < len(intervals1) and j < len(intervals2):
+            s1, e1 = intervals1[i]
+            s2, e2 = intervals2[j]
+            low = max(s1, s2)
+            high = min(e1, e2)
+            if low < high:
+                common.append([low, high])
+            if e1 < e2:
+                i += 1
+            else:
+                j += 1
+        return common
+    
+    # Iterate over days to find a suitable meeting time
+    found = False
     for day in days:
-        # Get busy intervals for Martha and convert to minutes
-        martha_busy = []
-        for interval in schedule['Martha'][day]:
-            start_min = time_str_to_minutes(interval[0])
-            end_min = time_str_to_minutes(interval[1])
-            martha_busy.append((start_min, end_min))
+        # Get blocked intervals for Martha and convert to minutes
+        martha_blocks = schedules['Martha'].get(day, [])
+        martha_blocks_min = []
+        for block in martha_blocks:
+            start_min = time_str_to_minutes(block[0])
+            end_min = time_str_to_minutes(block[1])
+            martha_blocks_min.append((start_min, end_min))
         
-        # Get busy intervals for Beverly and convert to minutes
-        beverly_busy = []
-        for interval in schedule['Beverly'][day]:
-            start_min = time_str_to_minutes(interval[0])
-            end_min = time_str_to_minutes(interval[1])
-            beverly_busy.append((start_min, end_min))
+        # Get blocked intervals for Beverly and convert to minutes
+        beverly_blocks = schedules['Beverly'].get(day, [])
+        beverly_blocks_min = []
+        for block in beverly_blocks:
+            start_min = time_str_to_minutes(block[0])
+            end_min = time_str_to_minutes(block[1])
+            beverly_blocks_min.append((start_min, end_min))
         
-        # Calculate free intervals for each
-        martha_free = invert_intervals(work_start_min, work_end_min, martha_busy)
-        beverly_free = invert_intervals(work_start_min, work_end_min, beverly_busy)
+        # Compute free intervals for Martha
+        martha_free = [[work_start_min, work_end_min]]
+        for block in martha_blocks_min:
+            martha_free = subtract_blocked_interval(martha_free, block)
+        martha_free.sort(key=lambda x: x[0])
+        
+        # Compute free intervals for Beverly
+        beverly_free = [[work_start_min, work_end_min]]
+        for block in beverly_blocks_min:
+            beverly_free = subtract_blocked_interval(beverly_free, block)
+        beverly_free.sort(key=lambda x: x[0])
         
         # Find common free intervals
-        common_free = find_common_free_intervals(martha_free, beverly_free)
+        common_free = intersect_intervals(martha_free, beverly_free)
         
-        # Check for a slot that fits the meeting duration
-        for start, end in common_free:
-            if end - start >= meeting_duration:
-                meeting_start = start
-                meeting_end = meeting_start + meeting_duration
-                start_str = minutes_to_time_str(meeting_start)
-                end_str = minutes_to_time_str(meeting_end)
-                print(f"{day}:{start_str}:{end_str}")
-                return
+        # Check for a slot of at least 60 minutes
+        for interval in common_free:
+            start_common, end_common = interval
+            duration = end_common - start_common
+            if duration >= 60:
+                meeting_start = start_common
+                meeting_end = meeting_start + 60
+                
+                # Convert times to strings and format output
+                start_time_str = minutes_to_time(meeting_start)
+                end_time_str = minutes_to_time(meeting_end)
+                start_h, start_m = start_time_str.split(':')
+                end_h, end_m = end_time_str.split(':')
+                time_output = f"{start_h}:{start_m}:{end_h}:{end_m}"
+                
+                print(day)
+                print(time_output)
+                found = True
+                return  # Exit after finding the first suitable slot
     
-    # If no slot is found (though problem states there is a solution)
-    print("No suitable time found")
+    # If no slot found (though problem states there is a solution)
+    if not found:
+        print("No suitable time found")
 
 if __name__ == "__main__":
     main()

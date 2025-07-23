@@ -1,66 +1,93 @@
-def min_to_time(m):
-    total_minutes = 9 * 60 + m
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
-    return f"{hours}:{minutes:02d}"
-
-def main():
-    # Define the busy intervals in minutes from 9:00 for each participant and day
-    # Monday
-    ryan_monday = [(30, 60), (120, 180), (240, 270), (390, 420)]  # 9:30-10:00, 11:00-12:00, 13:00-13:30, 15:30-16:00
-    adam_monday = [(0, 90), (120, 270), (300, 420), (450, 480)]    # 9:00-10:30, 11:00-13:30, 14:00-16:00, 16:30-17:00
+def compute_free_intervals(busy_intervals, constraint):
+    a, b = constraint
+    intervals_in_constraint = []
+    for start, end in busy_intervals:
+        if end <= a or start >= b:
+            continue
+        s_clip = max(start, a)
+        e_clip = min(end, b)
+        intervals_in_constraint.append((s_clip, e_clip))
     
-    # Tuesday
-    ryan_tuesday = [(150, 210), (390, 420)]                        # 11:30-12:30, 15:30-16:00
-    adam_tuesday = [(0, 60), (90, 390), (420, 480)]                # 9:00-10:00, 10:30-15:30, 16:00-17:00
+    if not intervals_in_constraint:
+        return [(a, b)]
+    
+    intervals_in_constraint.sort(key=lambda x: x[0])
+    free = []
+    current = a
+    for s, e in intervals_in_constraint:
+        if current < s:
+            free.append((current, s))
+        current = max(current, e)
+    if current < b:
+        free.append((current, b))
+    return free
 
-    # Days to check: Monday (only after 14:30) and Tuesday (all day)
-    days = [
-        ("Monday", 330, 480, ryan_monday + adam_monday),  # 14:30 = 330 minutes from 9:00
-        ("Tuesday", 0, 480, ryan_tuesday + adam_tuesday)
-    ]
+def min_to_time(minutes):
+    total_minutes = minutes
+    hours = 9 + total_minutes // 60
+    minutes_part = total_minutes % 60
+    return f"{hours:02d}:{minutes_part:02d}"
 
-    for day, window_start, window_end, intervals in days:
-        # Merge overlapping busy intervals
-        intervals.sort(key=lambda x: x[0])
-        merged = []
-        for start, end in intervals:
-            if not merged:
-                merged.append((start, end))
-            else:
-                last_start, last_end = merged[-1]
-                if start <= last_end:
-                    merged[-1] = (last_start, max(last_end, end))
-                else:
-                    merged.append((start, end))
-        
-        # Compute free intervals within the window
-        free = []
-        current = window_start
-        for start, end in merged:
-            if end <= window_start:
-                continue
-            if start > window_end:
-                break
-            if start > current:
-                free.append((current, start))
-                current = end
-            else:
-                if end > current:
-                    current = end
-        if current < window_end:
-            free.append((current, window_end))
-        
-        # Find the first free interval with at least 30 minutes
-        for start, end in free:
-            if end - start >= 30:
-                meeting_start = start
-                meeting_end = meeting_start + 30
-                start_str = min_to_time(meeting_start)
-                end_str = min_to_time(meeting_end)
-                print(day)
-                print(f"{start_str}:{end_str}")
-                return
+day_constraints = {
+    'Monday': (330, 480),
+    'Tuesday': (0, 480)
+}
 
-if __name__ == "__main__":
-    main()
+schedules = {
+    'Ryan': {
+        'Monday': [
+            (30, 60),    # 9:30-10:00
+            (120, 180),  # 11:00-12:00
+            (240, 270),  # 13:00-13:30
+            (390, 420)   # 15:30-16:00
+        ],
+        'Tuesday': [
+            (150, 210),  # 11:30-12:30
+            (390, 420)   # 15:30-16:00
+        ]
+    },
+    'Adam': {
+        'Monday': [
+            (0, 90),     # 9:00-10:30
+            (120, 270),  # 11:00-13:30
+            (300, 420),  # 14:00-16:00
+            (450, 480)   # 16:30-17:00
+        ],
+        'Tuesday': [
+            (0, 60),     # 9:00-10:00
+            (90, 390),   # 10:30-15:30
+            (420, 480)   # 16:00-17:00
+        ]
+    }
+}
+
+days = ['Monday', 'Tuesday']
+found = False
+for day in days:
+    constraint = day_constraints[day]
+    ryan_busy = schedules['Ryan'].get(day, [])
+    adam_busy = schedules['Adam'].get(day, [])
+    
+    ryan_free = compute_free_intervals(ryan_busy, constraint)
+    adam_free = compute_free_intervals(adam_busy, constraint)
+    
+    candidate = None
+    for r_int in ryan_free:
+        for a_int in adam_free:
+            low = max(r_int[0], a_int[0])
+            high = min(r_int[1], a_int[1])
+            if high - low >= 30:
+                if candidate is None or low < candidate[0]:
+                    candidate = (low, high)
+    
+    if candidate is not None:
+        start_time_str = min_to_time(candidate[0])
+        end_time_str = min_to_time(candidate[1])
+        time_range_str = f"{start_time_str}:{end_time_str}"
+        print(day)
+        print(time_range_str)
+        found = True
+        break
+
+if not found:
+    print("No suitable time found")

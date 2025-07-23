@@ -1,48 +1,67 @@
 def main():
-    # Work hours: 9:00 to 17:00
-    work_start = 9 * 60  # 540 minutes
-    work_end = 17 * 60   # 1020 minutes
-
-    # Albert's blocked periods in minutes
-    albert_blocked = [
-        (9 * 60, 10 * 60),        # 9:00-10:00
-        (10 * 60 + 30, 12 * 60),  # 10:30-12:00
-        (15 * 60, 16 * 60 + 30)   # 15:00-16:30
-    ]
-    # Sort blocked periods by start time
-    albert_blocked.sort(key=lambda x: x[0])
+    # Define the day
+    day = "Monday"
     
-    # Find free intervals for Albert within work hours
+    # Convert time to minutes since midnight
+    work_start = 9 * 60  # 9:00
+    # Albert cannot meet after 11:00, so the meeting must end by 11:00 (660 minutes)
+    effective_end = 11 * 60  # 11:00
+    meeting_duration = 30  # minutes
+    
+    # Albert's busy intervals in minutes (start inclusive, end exclusive)
+    # Only consider intervals that overlap with [work_start, effective_end]
+    busy_intervals = [
+        (9 * 60, 10 * 60),     # 9:00-10:00
+        (10 * 60 + 30, 12 * 60) # 10:30-12:00, but truncated at 11:00
+    ]
+    
+    # Adjust the second busy interval to end at effective_end (11:00)
+    adjusted_busy = []
+    for start, end in busy_intervals:
+        if start < effective_end:
+            adj_end = min(end, effective_end)
+            adjusted_busy.append((start, adj_end))
+    busy_intervals = adjusted_busy
+    
+    # Sort busy intervals by start time
+    busy_intervals.sort(key=lambda x: x[0])
+    
+    # Find free intervals for Albert between work_start and effective_end
     free_intervals = []
     current = work_start
-    for block_start, block_end in albert_blocked:
-        if current < block_start:
-            free_intervals.append((current, block_start))
-        current = max(current, block_end)
-    if current < work_end:
-        free_intervals.append((current, work_end))
     
-    # Additional constraint: meeting must end by 11:00 (660 minutes)
-    meeting_duration = 30
-    candidate = None
+    for start, end in busy_intervals:
+        if current < start:
+            # Found a free interval from current to start
+            free_intervals.append((current, start))
+        current = max(current, end)
+    
+    # Check after the last busy interval
+    if current < effective_end:
+        free_intervals.append((current, effective_end))
+    
+    # Find the first free interval that can fit the meeting
     for start, end in free_intervals:
-        # The meeting must end by min(end, 660)
-        latest_end = min(end, 660)
-        if latest_end - start >= meeting_duration:
-            candidate = (start, start + meeting_duration)
+        if end - start >= meeting_duration:
+            meeting_start = start
+            meeting_end = meeting_start + meeting_duration
             break
-    
-    if candidate is None:
-        print("No suitable time found")
     else:
-        start_min, end_min = candidate
-        start_hour = start_min // 60
-        start_minute = start_min % 60
-        end_hour = end_min // 60
-        end_minute = end_min % 60
-        time_str = f"{start_hour}:{start_minute:02d}:{end_hour}:{end_minute:02d}"
-        print("Monday")
-        print(time_str)
+        # According to the problem, a solution exists, so this should not happen
+        meeting_start = None
+        meeting_end = None
+    
+    # Convert meeting times to HH:MM format
+    def format_time(minutes):
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+    
+    start_str = format_time(meeting_start)
+    end_str = format_time(meeting_end)
+    
+    # Output day and time range in HH:MM:HH:MM format
+    print(f"{day} {start_str}:{end_str}")
 
 if __name__ == "__main__":
     main()

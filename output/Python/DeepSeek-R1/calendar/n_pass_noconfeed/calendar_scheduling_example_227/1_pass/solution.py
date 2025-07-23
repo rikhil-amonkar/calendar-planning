@@ -1,117 +1,77 @@
-def time_to_minutes(time_str):
-    parts = time_str.split(':')
-    hours = int(parts[0])
-    minutes = int(parts[1])
-    return (hours - 9) * 60 + minutes
+# Define work hours and meeting duration
+day_start_minutes = 0    # 9:00
+day_end_minutes = 480    # 17:00 (8 hours after 9:00)
+duration = 30
+constraint_start = 300   # 14:00 (5 hours after 9:00)
 
-def minutes_to_time(mins):
-    total_minutes = mins
-    hours = 9 + total_minutes // 60
-    minutes = total_minutes % 60
-    return f"{hours:02d}:{minutes:02d}"
+# Collect all busy intervals (including constraint)
+busy_intervals = []
 
-def get_free_intervals(busy_intervals, work_start=0, work_end=480):
-    if not busy_intervals:
-        return [(work_start, work_end)]
-    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
-    free = []
-    if sorted_busy[0][0] > work_start:
-        free.append((work_start, sorted_busy[0][0]))
-    for i in range(len(sorted_busy) - 1):
-        if sorted_busy[i][1] < sorted_busy[i+1][0]:
-            free.append((sorted_busy[i][1], sorted_busy[i+1][0]))
-    if sorted_busy[-1][1] < work_end:
-        free.append((sorted_busy[-1][1], work_end))
-    return free
+# Add constraint: [0, 300) - no meetings before 14:00
+busy_intervals.append((0, constraint_start))
 
-def intersect_two_intervals(intervals_a, intervals_b):
-    i, j = 0, 0
-    result = []
-    while i < len(intervals_a) and j < len(intervals_b):
-        a_start, a_end = intervals_a[i]
-        b_start, b_end = intervals_b[j]
-        start = max(a_start, b_start)
-        end = min(a_end, b_end)
-        if start < end:
-            result.append((start, end))
-        if a_end < b_end:
-            i += 1
-        else:
-            j += 1
-    return result
+# David's busy times
+busy_intervals.append((150, 180))  # 11:30-12:00
+busy_intervals.append((330, 360))  # 14:30-15:00
 
-def intersect_multiple_intervals(intervals_list):
-    if not intervals_list:
-        return []
-    current = intervals_list[0]
-    for i in range(1, len(intervals_list)):
-        current = intersect_two_intervals(current, intervals_list[i])
-    return current
+# Douglas' busy times
+busy_intervals.append((30, 60))    # 9:30-10:00
+busy_intervals.append((150, 180))  # 11:30-12:00
+busy_intervals.append((240, 270))  # 13:00-13:30
+busy_intervals.append((330, 360))  # 14:30-15:00
 
-def main():
-    work_start = 0
-    work_end = 480
-    constraint_start = 300  # 14:00
+# Ralph's busy times
+busy_intervals.append((0, 30))     # 9:00-9:30
+busy_intervals.append((60, 120))   # 10:00-11:00
+busy_intervals.append((150, 210))  # 11:30-12:30
+busy_intervals.append((270, 360))  # 13:30-15:00
+busy_intervals.append((390, 420))  # 15:30-16:00
+busy_intervals.append((450, 480))  # 16:30-17:00
 
-    persons_busy_minutes = {
-        "Natalie": [],
-        "David": [
-            (time_to_minutes("11:30"), time_to_minutes("12:00")),
-            (time_to_minutes("14:30"), time_to_minutes("15:00"))
-        ],
-        "Douglas": [
-            (time_to_minutes("9:30"), time_to_minutes("10:00")),
-            (time_to_minutes("11:30"), time_to_minutes("12:00")),
-            (time_to_minutes("13:00"), time_to_minutes("13:30")),
-            (time_to_minutes("14:30"), time_to_minutes("15:00"))
-        ],
-        "Ralph": [
-            (time_to_minutes("9:00"), time_to_minutes("9:30")),
-            (time_to_minutes("10:00"), time_to_minutes("11:00")),
-            (time_to_minutes("11:30"), time_to_minutes("12:30")),
-            (time_to_minutes("13:30"), time_to_minutes("15:00")),
-            (time_to_minutes("15:30"), time_to_minutes("16:00")),
-            (time_to_minutes("16:30"), time_to_minutes("17:00"))
-        ],
-        "Jordan": [
-            (time_to_minutes("9:00"), time_to_minutes("10:00")),
-            (time_to_minutes("12:00"), time_to_minutes("12:30")),
-            (time_to_minutes("13:00"), time_to_minutes("13:30")),
-            (time_to_minutes("14:30"), time_to_minutes("15:00")),
-            (time_to_minutes("15:30"), time_to_minutes("17:00"))
-        ]
-    }
+# Jordan's busy times
+busy_intervals.append((0, 60))     # 9:00-10:00
+busy_intervals.append((180, 210))  # 12:00-12:30
+busy_intervals.append((240, 270))  # 13:00-13:30
+busy_intervals.append((330, 360))  # 14:30-15:00
+busy_intervals.append((390, 480))  # 15:30-17:00
 
-    free_intervals_per_person = []
-    for person, busy_list in persons_busy_minutes.items():
-        free_intervals = get_free_intervals(busy_list, work_start, work_end)
-        free_intervals_per_person.append(free_intervals)
+# Merge intervals
+sorted_intervals = sorted(busy_intervals, key=lambda x: x[0])
+merged = []
+start, end = sorted_intervals[0]
+for interval in sorted_intervals[1:]:
+    s, e = interval
+    if s <= end:
+        end = max(end, e)
+    else:
+        merged.append((start, end))
+        start, end = s, e
+merged.append((start, end))
 
-    common_free = intersect_multiple_intervals(free_intervals_per_person)
-    
-    common_after_constraint = []
-    for s, e in common_free:
-        low = max(s, constraint_start)
-        high = min(e, work_end)
-        if low < high:
-            common_after_constraint.append((low, high))
-    
-    meeting_start = None
-    for s, e in common_after_constraint:
-        if e - s >= 30:
-            meeting_start = s
+# Find first available gap after constraint_start
+free_start = constraint_start
+meeting_time = None
+for s, e in merged:
+    if s > free_start:
+        if s - free_start >= duration:
+            meeting_time = (free_start, free_start + duration)
             break
-    
-    if meeting_start is None:
-        # According to the problem, there is a solution, so this should not happen.
-        meeting_start = constraint_start
-    
-    start_time_str = minutes_to_time(meeting_start)
-    end_time_str = minutes_to_time(meeting_start + 30)
-    time_range_str = f"{start_time_str}:{end_time_str}"
-    
-    print("Monday")
-    print(time_range_str)
+    if e > free_start:
+        free_start = e
+if meeting_time is None and day_end_minutes - free_start >= duration:
+    meeting_time = (free_start, free_start + duration)
 
-if __name__ == "__main__":
-    main()
+# Convert meeting time to HH:MM format
+start_minutes, end_minutes = meeting_time
+start_hour = 9 + start_minutes // 60
+start_min = start_minutes % 60
+end_hour = 9 + end_minutes // 60
+end_min = end_minutes % 60
+
+start_str = f"{int(start_hour):02d}:{int(start_min):02d}"
+end_str = f"{int(end_hour):02d}:{int(end_min):02d}"
+time_output = f"{start_str}:{end_str}"
+
+# Output results
+print("Monday")
+print(time_output)

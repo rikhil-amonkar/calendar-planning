@@ -1,72 +1,93 @@
-def main():
-    # Work hours: 9:00 to 17:00 (converted to minutes from 9:00)
-    work_start = 0       # 9:00 is 0 minutes
-    work_end = 480       # 17:00 is 480 minutes (8 hours * 60)
-    meeting_duration = 30  # 30 minutes
+def get_free_intervals(busy_intervals, day_start, day_end):
+    if not busy_intervals:
+        return [(day_start, day_end)]
+    sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
+    free = []
+    current_start = day_start
+    for s, e in sorted_busy:
+        if current_start < s:
+            free.append((current_start, s))
+        current_start = max(current_start, e)
+    if current_start < day_end:
+        free.append((current_start, day_end))
+    return free
 
-    # Busy intervals for each participant (in minutes from 9:00)
-    # Eric: no meetings -> empty
-    # Ashley: [10:00-10:30], [11:00-12:00], [12:30-13:00], [15:00-16:00]
-    ashley = [[60, 90], [120, 180], [210, 240], [360, 420]]
-    # Ronald: [9:00-9:30], [10:00-11:30], [12:30-14:00], [14:30-17:00]
-    ronald = [[0, 30], [60, 150], [210, 300], [330, 480]]
-    # Larry: [9:00-12:00], [13:00-17:00]
-    larry = [[0, 180], [240, 480]]
-    # Eric: no meetings
-
-    # Combine all busy intervals
-    busy_intervals = ashley + ronald + larry
-    busy_intervals.sort(key=lambda x: x[0])
-
-    # Merge overlapping intervals
-    merged = []
-    for interval in busy_intervals:
-        if not merged:
-            merged.append(interval)
+def intersect_intervals(intervals1, intervals2):
+    if not intervals1 or not intervals2:
+        return []
+    i = j = 0
+    result = []
+    while i < len(intervals1) and j < len(intervals2):
+        low = max(intervals1[i][0], intervals2[j][0])
+        high = min(intervals1[i][1], intervals2[j][1])
+        if low < high:
+            result.append((low, high))
+        if intervals1[i][1] < intervals2[j][1]:
+            i += 1
         else:
-            last = merged[-1]
-            if interval[0] <= last[1]:
-                merged[-1][1] = max(last[1], interval[1])
-            else:
-                merged.append(interval)
+            j += 1
+    return result
 
-    # Calculate free intervals within work hours
-    free_intervals = []
-    # Before first meeting
-    if merged[0][0] > work_start:
-        free_intervals.append([work_start, merged[0][0]])
-    # Between meetings
-    for i in range(len(merged) - 1):
-        free_start = merged[i][1]
-        free_end = merged[i+1][0]
-        if free_start < free_end:
-            free_intervals.append([free_start, free_end])
-    # After last meeting
-    if merged[-1][1] < work_end:
-        free_intervals.append([merged[-1][1], work_end])
+def minutes_to_time(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
 
-    # Find the first free interval that fits the meeting duration
+def main():
+    day_start = 540   # 9:00 in minutes
+    day_end = 1020    # 17:00 in minutes
+    meeting_duration = 30
+
+    # Define busy intervals in minutes (start, end)
+    eric_busy = []
+    ashley_busy = [
+        (10*60, 10*60+30),   # 10:00-10:30
+        (11*60, 12*60),       # 11:00-12:00
+        (12*60+30, 13*60),    # 12:30-13:00
+        (15*60, 16*60)        # 15:00-16:00
+    ]
+    ronald_busy = [
+        (9*60, 9*60+30),      # 9:00-9:30
+        (10*60, 11*60+30),    # 10:00-11:30
+        (12*60+30, 14*60),    # 12:30-14:00
+        (14*60+30, 17*60)     # 14:30-17:00
+    ]
+    larry_busy = [
+        (9*60, 12*60),        # 9:00-12:00
+        (13*60, 17*60)        # 13:00-17:00
+    ]
+
+    # Compute free intervals
+    free_eric = get_free_intervals(eric_busy, day_start, day_end)
+    free_ashley = get_free_intervals(ashley_busy, day_start, day_end)
+    free_ronald = get_free_intervals(ronald_busy, day_start, day_end)
+    free_larry = get_free_intervals(larry_busy, day_start, day_end)
+
+    # Find common free intervals
+    common_free = intersect_intervals(free_eric, free_ashley)
+    common_free = intersect_intervals(common_free, free_ronald)
+    common_free = intersect_intervals(common_free, free_larry)
+
+    # Find the first slot of at least meeting_duration
     meeting_start = None
-    for interval in free_intervals:
-        start, end = interval
+    for start, end in common_free:
         if end - start >= meeting_duration:
             meeting_start = start
             meeting_end = start + meeting_duration
             break
 
-    # Convert meeting start and end to time strings
-    def minutes_to_time(total_minutes):
-        hours = 9 + total_minutes // 60
-        minutes = total_minutes % 60
-        return f"{hours:02d}:{minutes:02d}"
+    if meeting_start is None:
+        print("No suitable time found")
+        return
 
-    start_time_str = minutes_to_time(meeting_start)
-    end_time_str = minutes_to_time(meeting_end)
-    time_range = f"{start_time_str}:{end_time_str}"
+    # Convert to time strings
+    start_str = minutes_to_time(meeting_start)
+    end_str = minutes_to_time(meeting_end)
+    time_range_str = f"{start_str}:{end_str}"
 
-    # Output results
+    # Output day and time range
     print("Monday")
-    print(time_range)
+    print(time_range_str)
 
 if __name__ == "__main__":
     main()

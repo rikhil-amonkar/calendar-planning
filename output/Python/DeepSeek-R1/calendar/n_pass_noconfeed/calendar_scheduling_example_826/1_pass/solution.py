@@ -1,68 +1,49 @@
 def time_to_minutes(time_str):
     parts = time_str.split(':')
-    hours = int(parts[0])
-    minutes = int(parts[1]) if len(parts) > 1 else 0
-    return hours * 60 + minutes
+    return int(parts[0]) * 60 + int(parts[1])
 
-def main():
-    james_busy = {
-        'Monday': ['9:00 to 9:30', '10:30 to 11:00', '12:30 to 13:00', '14:30 to 15:30', '16:30 to 17:00'],
-        'Tuesday': ['9:00 to 11:00', '11:30 to 12:00', '12:30 to 15:30', '16:00 to 17:00'],
-        'Wednesday': ['10:00 to 11:00', '12:00 to 13:00', '13:30 to 16:00'],
-        'Thursday': ['9:30 to 11:30', '12:00 to 12:30', '13:00 to 13:30', '14:00 to 14:30', '16:30 to 17:00']
-    }
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
-    work_start = 9 * 60
-    work_end = 17 * 60
-    duration = 30
+def minutes_to_time_tuple(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return h, m
 
-    for day in days:
-        busy_intervals = []
-        if day in james_busy:
-            for interval in james_busy[day]:
-                tokens = interval.split()
-                start_min = time_to_minutes(tokens[0])
-                end_min = time_to_minutes(tokens[2])
-                busy_intervals.append((start_min, end_min))
-        
-        if busy_intervals:
-            busy_intervals.sort(key=lambda x: x[0])
-            merged_busy = []
-            current_start, current_end = busy_intervals[0]
-            for i in range(1, len(busy_intervals)):
-                s, e = busy_intervals[i]
-                if s <= current_end:
-                    current_end = max(current_end, e)
+james_busy = {
+    'Monday': [('9:00', '9:30'), ('10:30', '11:00'), ('12:30', '13:00'), ('14:30', '15:30'), ('16:30', '17:00')],
+    'Tuesday': [('9:00', '11:00'), ('11:30', '12:00'), ('12:30', '15:30'), ('16:00', '17:00')],
+    'Wednesday': [('10:00', '11:00'), ('12:00', '13:00'), ('13:30', '16:00')],
+    'Thursday': [('9:30', '11:30'), ('12:00', '12:30'), ('13:00', '13:30'), ('14:00', '14:30'), ('16:30', '17:00')]
+}
+
+days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday']
+work_start_min = time_to_minutes('9:00')
+work_end_min = time_to_minutes('17:00')
+
+for day in days:
+    free_intervals = [(work_start_min, work_end_min)]
+    if day in james_busy:
+        for busy in james_busy[day]:
+            b_start = time_to_minutes(busy[0])
+            b_end = time_to_minutes(busy[1])
+            new_free = []
+            for interval in free_intervals:
+                if interval[1] <= b_start or interval[0] >= b_end:
+                    new_free.append(interval)
                 else:
-                    merged_busy.append((current_start, current_end))
-                    current_start, current_end = s, e
-            merged_busy.append((current_start, current_end))
-        else:
-            merged_busy = []
-        
-        free_intervals = []
-        current = work_start
-        for s, e in merged_busy:
-            if current < s:
-                free_intervals.append((current, s))
-            current = max(current, e)
-        if current < work_end:
-            free_intervals.append((current, work_end))
-        
-        for start, end in free_intervals:
-            if end - start >= duration:
-                meeting_start = start
-                meeting_end = start + duration
-                start_h = meeting_start // 60
-                start_m = meeting_start % 60
-                end_h = meeting_end // 60
-                end_m = meeting_end % 60
-                time_range_str = f"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}"
-                print(day)
-                print(time_range_str)
-                return
-                
-    print("No suitable time found")
+                    if interval[0] < b_start:
+                        new_free.append((interval[0], b_start))
+                    if interval[1] > b_end:
+                        new_free.append((b_end, interval[1]))
+            free_intervals = new_free
 
-if __name__ == "__main__":
-    main()
+    for interval in free_intervals:
+        start_free, end_free = interval
+        if end_free - start_free >= 30:
+            slot_start = start_free
+            slot_end = slot_start + 30
+            start_h, start_m = minutes_to_time_tuple(slot_start)
+            end_h, end_m = minutes_to_time_tuple(slot_end)
+            time_str = f"{start_h:02d}:{start_m:02d}:{end_h:02d}:{end_m:02d}"
+            print(f"{day} {time_str}")
+            exit(0)
+
+print("No suitable time found")

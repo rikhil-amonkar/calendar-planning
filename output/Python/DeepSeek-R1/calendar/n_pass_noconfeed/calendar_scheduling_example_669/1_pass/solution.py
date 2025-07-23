@@ -1,25 +1,15 @@
-work_start = 9 * 60
-work_end = 17 * 60
+import itertools
 
-jean_busy = {
-    'Monday': [],
-    'Tuesday': [(11*60+30, 12*60), (16*60, 16*60+30)]
-}
+def time_to_minutes(time_str):
+    h, m = time_str.split(':')
+    return int(h) * 60 + int(m)
 
-doris_busy = {
-    'Monday': [
-        (9*60, 11*60+30),
-        (12*60, 12*60+30),
-        (13*60+30, 16*60),
-        (16*60+30, 17*60)
-    ],
-    'Tuesday': [(9*60, 17*60)]
-}
+def minutes_to_time(minutes):
+    h = minutes // 60
+    m = minutes % 60
+    return f"{h:02d}:{m:02d}"
 
-days = ['Monday', 'Tuesday']
-meeting_duration = 30
-
-def compute_free_intervals(busy_intervals, work_start, work_end):
+def get_free_intervals(busy_intervals, work_start, work_end):
     if not busy_intervals:
         return [(work_start, work_end)]
     sorted_busy = sorted(busy_intervals, key=lambda x: x[0])
@@ -33,77 +23,69 @@ def compute_free_intervals(busy_intervals, work_start, work_end):
         free.append((current, work_end))
     return free
 
-found = False
-result_day = None
-result_start = None
-result_end = None
+def combine_intervals(intervals1, intervals2):
+    combined = []
+    for (s1, e1) in intervals1:
+        for (s2, e2) in intervals2:
+            low = max(s1, s2)
+            high = min(e1, e2)
+            if low < high:
+                combined.append((low, high))
+    return combined
 
-for day in days:
-    jean_free = compute_free_intervals(jean_busy[day], work_start, work_end)
-    doris_free = compute_free_intervals(doris_busy[day], work_start, work_end)
-    common_free = []
-    i = 0
-    j = 0
-    while i < len(jean_free) and j < len(doris_free):
-        j_start, j_end = jean_free[i]
-        d_start, d_end = doris_free[j]
-        low = max(j_start, d_start)
-        high = min(j_end, d_end)
-        if low < high:
-            common_free.append((low, high))
-        if j_end < d_end:
-            i += 1
-        else:
-            j += 1
+def main():
+    work_start = time_to_minutes("09:00")
+    work_end = time_to_minutes("17:00")
+    meeting_duration = 30
     
-    if day == 'Monday':
-        for interval in common_free:
-            start_interval, end_interval = interval
-            meeting_start = start_interval
-            meeting_end = meeting_start + meeting_duration
-            if meeting_end <= end_interval and meeting_end <= 14*60:
-                result_day = day
-                result_start = meeting_start
-                result_end = meeting_end
-                found = True
+    jean_busy = {
+        'Tuesday': [
+            (time_to_minutes("11:30"), time_to_minutes("12:00")),
+            (time_to_minutes("16:00"), time_to_minutes("16:30"))
+        ]
+    }
+    
+    doris_busy = {
+        'Monday': [
+            (time_to_minutes("09:00"), time_to_minutes("11:30")),
+            (time_to_minutes("12:00"), time_to_minutes("12:30")),
+            (time_to_minutes("13:30"), time_to_minutes("16:00")),
+            (time_to_minutes("16:30"), time_to_minutes("17:00"))
+        ],
+        'Tuesday': [
+            (time_to_minutes("09:00"), time_to_minutes("17:00"))
+        ]
+    }
+    
+    days = ['Monday', 'Tuesday']
+    candidate = None
+    
+    for day in days:
+        jean_busy_today = jean_busy.get(day, [])
+        jean_free = get_free_intervals(jean_busy_today, work_start, work_end)
+        
+        doris_busy_today = doris_busy.get(day, [])
+        doris_free = get_free_intervals(doris_busy_today, work_start, work_end)
+        
+        common_free = combine_intervals(jean_free, doris_free)
+        
+        end_limit = work_end
+        if day == 'Monday':
+            end_limit = time_to_minutes("14:00")
+        
+        for start, end in common_free:
+            slot_end = start + meeting_duration
+            if slot_end <= min(end, end_limit):
+                candidate = (day, start, slot_end)
                 break
-        if found:
+        if candidate:
             break
-            
-        for interval in common_free:
-            start_interval, end_interval = interval
-            meeting_start = start_interval
-            meeting_end = meeting_start + meeting_duration
-            if meeting_end <= end_interval:
-                result_day = day
-                result_start = meeting_start
-                result_end = meeting_end
-                found = True
-                break
-        if found:
-            break
-    else:
-        for interval in common_free:
-            start_interval, end_interval = interval
-            meeting_start = start_interval
-            meeting_end = meeting_start + meeting_duration
-            if meeting_end <= end_interval:
-                result_day = day
-                result_start = meeting_start
-                result_end = meeting_end
-                found = True
-                break
-        if found:
-            break
+    
+    if candidate:
+        day, start_min, end_min = candidate
+        start_time = minutes_to_time(start_min)
+        end_time = minutes_to_time(end_min)
+        print(f"{day} {start_time}:{end_time}")
 
-def format_time(minutes):
-    h = minutes // 60
-    m = minutes % 60
-    return f"{h:02d}:{m:02d}"
-
-start_str = format_time(result_start)
-end_str = format_time(result_end)
-time_range_str = f"{start_str}:{end_str}"
-
-print(result_day)
-print(time_range_str)
+if __name__ == "__main__":
+    main()

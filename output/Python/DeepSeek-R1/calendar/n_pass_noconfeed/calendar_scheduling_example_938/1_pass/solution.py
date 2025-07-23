@@ -1,98 +1,117 @@
-def time_to_minutes(time_str):
-    parts = time_str.split(':')
-    hour = int(parts[0])
-    minute = int(parts[1])
-    return hour * 60 + minute
-
-def minutes_to_time(minutes):
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours:02d}:{mins:02d}"
-
 def main():
+    # Convert time string to minutes since midnight
+    def time_to_minutes(time_str):
+        h, m = time_str.split(':')
+        return int(h) * 60 + int(m)
+    
+    # Convert minutes to HH:MM format
+    def minutes_to_time(mins):
+        h = mins // 60
+        m = mins % 60
+        return f"{h:02d}:{m:02d}"
+    
+    # Calculate free intervals given work hours and busy intervals
+    def free_intervals(work_start, work_end, busy_intervals):
+        free = [(work_start, work_end)]
+        for b_start, b_end in busy_intervals:
+            new_free = []
+            for start, end in free:
+                # No overlap
+                if b_end <= start or b_start >= end:
+                    new_free.append((start, end))
+                else:
+                    # Overlap: split the free interval
+                    if start < b_start:
+                        new_free.append((start, b_start))
+                    if b_end < end:
+                        new_free.append((b_end, end))
+            free = new_free
+        return free
+    
+    # Generate 30-minute slots within free intervals
+    def free_slots(free_intervals_list):
+        slots = []
+        for start, end in free_intervals_list:
+            current = start
+            while current + 30 <= end:
+                slots.append((current, current + 30))
+                current += 30
+        return slots
+    
+    # Work hours: 9:00 to 17:00 in minutes
     work_start = time_to_minutes('9:00')
     work_end = time_to_minutes('17:00')
-    meeting_duration = 30
     
-    # Define busy schedules
-    Eugene_busy = {
-        'Monday': [('11:00', '12:00'), ('13:30', '14:00'), ('14:30', '15:00'), ('16:00', '16:30')],
-        'Wednesday': [('9:00', '9:30'), ('11:00', '11:30'), ('12:00', '12:30'), ('13:30', '15:00')],
-        'Thursday': [('9:30', '10:00'), ('11:00', '12:30')],
-        'Friday': [('10:30', '11:00'), ('12:00', '12:30'), ('13:00', '13:30')]
+    # Define busy times in minutes for each participant per day
+    eugene_busy = {
+        'Monday': [
+            (time_to_minutes('11:00'), time_to_minutes('12:00')),
+            (time_to_minutes('13:30'), time_to_minutes('14:00')),
+            (time_to_minutes('14:30'), time_to_minutes('15:00')),
+            (time_to_minutes('16:00'), time_to_minutes('16:30'))
+        ],
+        'Wednesday': [
+            (time_to_minutes('9:00'), time_to_minutes('9:30')),
+            (time_to_minutes('11:00'), time_to_minutes('11:30')),
+            (time_to_minutes('12:00'), time_to_minutes('12:30')),
+            (time_to_minutes('13:30'), time_to_minutes('15:00'))
+        ],
+        'Friday': [
+            (time_to_minutes('10:30'), time_to_minutes('11:00')),
+            (time_to_minutes('12:00'), time_to_minutes('12:30')),
+            (time_to_minutes('13:00'), time_to_minutes('13:30'))
+        ]
     }
     
-    Eric_busy = {
-        'Monday': [('9:00', '17:00')],
-        'Tuesday': [('9:00', '17:00')],
-        'Wednesday': [('9:00', '11:30'), ('12:00', '14:00'), ('14:30', '16:30')],
-        'Thursday': [('9:00', '17:00')],
-        'Friday': [('9:00', '11:00'), ('11:30', '17:00')]
+    eric_busy = {
+        'Monday': [
+            (time_to_minutes('9:00'), time_to_minutes('17:00'))
+        ],
+        'Tuesday': [
+            (time_to_minutes('9:00'), time_to_minutes('17:00'))
+        ],
+        'Wednesday': [
+            (time_to_minutes('9:00'), time_to_minutes('11:30')),
+            (time_to_minutes('12:00'), time_to_minutes('14:00')),
+            (time_to_minutes('14:30'), time_to_minutes('16:30'))
+        ],
+        'Thursday': [
+            (time_to_minutes('9:00'), time_to_minutes('17:00'))
+        ],
+        'Friday': [
+            (time_to_minutes('9:00'), time_to_minutes('11:00')),
+            (time_to_minutes('11:30'), time_to_minutes('17:00'))
+        ]
     }
     
-    # Days to check: Friday first (preferred), then Wednesday
-    days_to_check = ['Friday', 'Wednesday']
+    # Days to try (avoid Wednesday if possible)
+    candidate_days = ['Friday', 'Wednesday']
     
-    for day in days_to_check:
-        busy_intervals = []
+    for day in candidate_days:
+        # Get free slots for Eugene
+        eugene_intervals = free_intervals(work_start, work_end, eugene_busy.get(day, []))
+        eugene_slots = free_slots(eugene_intervals)
         
-        # Add Eugene's busy intervals
-        if day in Eugene_busy:
-            for interval in Eugene_busy[day]:
-                start_min = time_to_minutes(interval[0])
-                end_min = time_to_minutes(interval[1])
-                busy_intervals.append((start_min, end_min))
+        # Get free slots for Eric
+        eric_intervals = free_intervals(work_start, work_end, eric_busy.get(day, []))
+        eric_slots = free_slots(eric_intervals)
         
-        # Add Eric's busy intervals
-        if day in Eric_busy:
-            for interval in Eric_busy[day]:
-                start_min = time_to_minutes(interval[0])
-                end_min = time_to_minutes(interval[1])
-                busy_intervals.append((start_min, end_min))
-        
-        # If no busy intervals, the entire day is free
-        if not busy_intervals:
-            meeting_start = work_start
-            meeting_end = meeting_start + meeting_duration
-            start_str = minutes_to_time(meeting_start)
-            end_str = minutes_to_time(meeting_end)
+        # Find common free slots
+        common_slots = set(eugene_slots) & set(eric_slots)
+        if common_slots:
+            # Choose the earliest slot
+            slot = min(common_slots)
+            start_min, end_min = slot
+            # Format as HH:MM:HH:MM
+            start_time = minutes_to_time(start_min)
+            end_time = minutes_to_time(end_min)
+            time_str = f"{start_time}:{end_time}".replace(':', ':', 2)
+            print(time_str)
             print(day)
-            print(f"{start_str}:{end_str}")
             return
-        
-        # Sort and merge busy intervals
-        busy_intervals.sort(key=lambda x: x[0])
-        merged = []
-        current_start, current_end = busy_intervals[0]
-        for s, e in busy_intervals[1:]:
-            if s <= current_end:
-                current_end = max(current_end, e)
-            else:
-                merged.append((current_start, current_end))
-                current_start, current_end = s, e
-        merged.append((current_start, current_end))
-        
-        # Find free intervals
-        free_intervals = []
-        current = work_start
-        for s, e in merged:
-            if current < s:
-                free_intervals.append((current, s))
-            current = max(current, e)
-        if current < work_end:
-            free_intervals.append((current, work_end))
-        
-        # Check each free interval for a suitable slot
-        for start_free, end_free in free_intervals:
-            available_duration = end_free - start_free
-            if available_duration >= meeting_duration:
-                meeting_start = start_free
-                meeting_end = meeting_start + meeting_duration
-                start_str = minutes_to_time(meeting_start)
-                end_str = minutes_to_time(meeting_end)
-                print(day)
-                print(f"{start_str}:{end_str}")
-                return
+    
+    # Since a solution exists, this should not be reached
+    print("No suitable time found")
 
 if __name__ == "__main__":
     main()
